@@ -588,9 +588,12 @@ export default function Interview() {
   // End interview modal
   const [showEndModal, setShowEndModal] = useState(false);
 
-  // Offline + save status
+  // Offline + save status + mic error
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const [saveWarning, setSaveWarning] = useState("");
+  const [micError, setMicError] = useState("");
+  const [usedFallbackScore, setUsedFallbackScore] = useState(false);
+  const [evaluating, setEvaluating] = useState(false);
 
   useEffect(() => {
     const goOffline = () => setIsOffline(true);
@@ -603,6 +606,16 @@ export default function Interview() {
   // AI Voice (Text-to-Speech)
   const [aiVoiceEnabled, setAiVoiceEnabled] = useState(true);
   const ttsCancelRef = useRef<(() => void) | null>(null);
+
+  // Warn user before closing tab during active interview
+  useEffect(() => {
+    if (phase === "done" || evaluating) return;
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [phase, evaluating]);
 
   // Cancel speech + recognition on unmount
   useEffect(() => {
@@ -631,7 +644,18 @@ export default function Interview() {
           }
           setCurrentTranscript(finalText + interim);
         };
-        recognition.onerror = () => {};
+        recognition.onerror = (event: any) => {
+          const error = event?.error || "unknown";
+          if (error === "not-allowed") {
+            setMicError("Microphone access denied. Check browser permissions.");
+          } else if (error === "no-speech") {
+            // Silence — auto-restarts, no need to alert
+          } else if (error === "network") {
+            setMicError("Speech recognition network error. Your answers are still being recorded via text.");
+          } else if (error !== "aborted") {
+            setMicError("Microphone issue detected. Try unmuting or refreshing.");
+          }
+        };
         recognition.onend = () => {
           // Auto-restart only if not stopped by cleanup
           if (!stopped) {
@@ -769,8 +793,6 @@ export default function Interview() {
   }, [transcript]);
 
   // Handle end interview — evaluate with LLM, persist results, navigate
-  const [evaluating, setEvaluating] = useState(false);
-
   const handleEnd = useCallback(async () => {
     // Immediately stop everything
     setPhase("done");
@@ -807,6 +829,8 @@ export default function Interview() {
         score = evaluation.overallScore;
         aiFeedback = evaluation.feedback;
         skillScores = evaluation.skillScores;
+      } else {
+        setUsedFallbackScore(true);
       }
     }
 
@@ -869,6 +893,22 @@ export default function Interview() {
           <span style={{ fontFamily: font.ui, fontSize: 12, color: c.ember }}>
             You're offline. Your session will be saved locally and synced when you reconnect.
           </span>
+        </div>
+      )}
+
+      {/* Mic error banner */}
+      {micError && (
+        <div role="alert" style={{
+          padding: "8px 16px", background: "rgba(196,112,90,0.1)", borderBottom: "1px solid rgba(196,112,90,0.2)",
+          display: "flex", alignItems: "center", gap: 8, justifyContent: "space-between",
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.ember} strokeWidth="2" strokeLinecap="round"><line x1="1" y1="1" x2="23" y2="23"/><path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"/><path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2c0 .76-.13 1.49-.35 2.17"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+            <span style={{ fontFamily: font.ui, fontSize: 12, color: c.ember }}>{micError}</span>
+          </div>
+          <button onClick={() => setMicError("")} style={{ background: "none", border: "none", color: c.stone, cursor: "pointer", padding: 2 }}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
         </div>
       )}
 
@@ -1281,13 +1321,19 @@ export default function Interview() {
 
       {/* End Interview Modal */}
       {showEndModal && (
-        <div style={{
-          position: "fixed", inset: 0, zIndex: 100,
-          display: "flex", alignItems: "center", justifyContent: "center",
-          background: "rgba(0,0,0,0.7)",
-          backdropFilter: "blur(4px)",
-          animation: "fadeUp 0.15s ease",
-        }}>
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="end-modal-title"
+          onClick={(e) => { if (e.target === e.currentTarget) setShowEndModal(false); }}
+          onKeyDown={(e) => { if (e.key === "Escape") setShowEndModal(false); }}
+          style={{
+            position: "fixed", inset: 0, zIndex: 100,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            background: "rgba(0,0,0,0.7)",
+            backdropFilter: "blur(4px)",
+            animation: "fadeUp 0.15s ease",
+          }}>
           <div style={{
             background: c.graphite, borderRadius: 16,
             border: `1px solid ${c.border}`,
@@ -1306,7 +1352,7 @@ export default function Interview() {
                 <line x1="12" y1="17" x2="12.01" y2="17" />
               </svg>
             </div>
-            <h3 style={{ fontFamily: font.ui, fontSize: 18, fontWeight: 600, color: c.ivory, marginBottom: 8 }}>End interview early?</h3>
+            <h3 id="end-modal-title" style={{ fontFamily: font.ui, fontSize: 18, fontWeight: 600, color: c.ivory, marginBottom: 8 }}>End interview early?</h3>
             <p style={{ fontFamily: font.ui, fontSize: 13, color: c.stone, lineHeight: 1.6, marginBottom: 24 }}>
               You've completed {currentQuestionNum} of {totalQuestions} questions. Ending now will still generate feedback based on your answers so far.
             </p>
@@ -1348,8 +1394,13 @@ export default function Interview() {
           <div style={{ width: 48, height: 48, border: `3px solid ${c.border}`, borderTopColor: c.gilt, borderRadius: "50%", animation: "spin 0.8s linear infinite", marginBottom: 24 }} />
           <h3 style={{ fontFamily: font.ui, fontSize: 18, fontWeight: 600, color: c.ivory, marginBottom: 8 }}>Analyzing your performance...</h3>
           <p style={{ fontFamily: font.ui, fontSize: 13, color: c.stone }}>AI is evaluating your answers and generating personalized feedback</p>
+          {usedFallbackScore && (
+            <div style={{ marginTop: 16, padding: "10px 16px", borderRadius: 8, background: "rgba(201,169,110,0.06)", border: "1px solid rgba(201,169,110,0.12)", maxWidth: 400 }}>
+              <p style={{ fontFamily: font.ui, fontSize: 12, color: c.gilt, margin: 0 }}>AI evaluation unavailable — using estimated score based on your session metrics.</p>
+            </div>
+          )}
           {saveWarning && (
-            <div role="alert" style={{ marginTop: 20, padding: "12px 20px", borderRadius: 10, background: "rgba(196,112,90,0.1)", border: "1px solid rgba(196,112,90,0.2)", maxWidth: 400 }}>
+            <div role="alert" style={{ marginTop: 12, padding: "12px 20px", borderRadius: 10, background: "rgba(196,112,90,0.1)", border: "1px solid rgba(196,112,90,0.2)", maxWidth: 400 }}>
               <p style={{ fontFamily: font.ui, fontSize: 12, color: c.ember, margin: 0 }}>{saveWarning}</p>
             </div>
           )}

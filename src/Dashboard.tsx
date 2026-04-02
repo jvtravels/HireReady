@@ -2438,6 +2438,8 @@ export default function Dashboard() {
   const [rightTab, setRightTab] = useState<"insights" | "goals">("insights");
   const [shareTooltip, setShareTooltip] = useState(false);  const [calendarEvents, setCalendarEvents] = useState<InterviewEvent[]>(loadEvents);
   const [supabaseSessions, setSupabaseSessions] = useState<RealSession[]>([]);
+  const [syncError, setSyncError] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
 
   // Load data from Supabase on mount
   useEffect(() => {
@@ -2457,7 +2459,7 @@ export default function Dashboard() {
           skill_scores: s.skill_scores,
         })));
       }
-    }).catch(() => {});
+    }).catch(() => { setSyncError("Could not load session data. Using local data."); });
     getCalendarEvents(user.id).then(events => {
       if (events.length > 0) {
         setCalendarEvents(events.map(e => ({
@@ -2466,7 +2468,7 @@ export default function Dashboard() {
           duration: 60, location: "", status: "upcoming" as const, reminders: true,
         })));
       }
-    }).catch(() => {});
+    }).catch(() => { setSyncError("Could not load calendar data. Using local data."); });
   }, [user?.id]);
 
   // Load dynamic session data (merge Supabase + local)
@@ -2506,6 +2508,12 @@ export default function Dashboard() {
     return () => window.removeEventListener("resize", check);
   }, []);
 
+  // Debounce search query
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(searchQuery), 250);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
   const daysLeft = persisted.interviewDate ? daysUntil(persisted.interviewDate) : 0;
   const readinessScore = scoreTrend.length > 0 && skills.length > 0 ? computeReadiness(scoreTrend, skills) : 0;
 
@@ -2513,8 +2521,8 @@ export default function Dashboard() {
   const filteredSessions = recentSessions
     .filter(s => filterType === "All" || s.type === filterType)
     .filter(s => {
-      if (!searchQuery) return true;
-      const q = searchQuery.toLowerCase();
+      if (!debouncedSearch) return true;
+      const q = debouncedSearch.toLowerCase();
       return s.type.toLowerCase().includes(q) || s.topStrength.toLowerCase().includes(q) || s.topWeakness.toLowerCase().includes(q) || s.feedback.toLowerCase().includes(q);
     })
     .filter(s => {
@@ -2647,6 +2655,23 @@ export default function Dashboard() {
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
             <span style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500 }}>Menu</span>
           </button>
+        )}
+
+        {/* Sync error banner */}
+        {syncError && (
+          <div role="alert" style={{
+            padding: "10px 16px", marginBottom: 16, borderRadius: 8,
+            background: "rgba(196,112,90,0.08)", border: "1px solid rgba(196,112,90,0.2)",
+            display: "flex", alignItems: "center", justifyContent: "space-between",
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.ember} strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              <span style={{ fontFamily: font.ui, fontSize: 12, color: c.ember }}>{syncError}</span>
+            </div>
+            <button onClick={() => setSyncError("")} style={{ background: "none", border: "none", color: c.stone, cursor: "pointer", padding: 2 }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
         )}
 
         {/* Sessions page */}
@@ -2877,7 +2902,7 @@ export default function Dashboard() {
             {/* Stats */}
             <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(5, 1fr)", gap: 12, marginBottom: 24 }}>
               {[
-                { label: "Readiness", value: hasData ? readinessScore.toString() : "—", icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>, sub: hasData ? scoreLabel(readinessScore) : "Complete a session", subColor: hasData ? scoreLabelColor(readinessScore) : c.stone },
+                { label: "Readiness", value: hasData ? (readinessScore > 0 ? readinessScore.toString() : "—") : "—", icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>, sub: !hasData ? "Complete a session" : readinessScore > 0 ? scoreLabel(readinessScore) : "Need more sessions to calculate", subColor: !hasData ? c.stone : readinessScore > 0 ? scoreLabelColor(readinessScore) : c.stone },
                 { label: "Sessions", value: overallStats.sessionsCompleted.toString(), icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>, sub: hasData ? `${weekActivity.filter(Boolean).length} this week` : "Get started", subColor: c.stone },
                 { label: "Avg Score", value: hasData ? overallStats.avgScore.toString() : "—", icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="1.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>, sub: hasData ? `+${overallStats.improvement} pts` : "No data yet", subColor: hasData ? c.sage : c.stone },
                 { label: "Improvement", value: hasData ? `+${overallStats.improvement}%` : "—", icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="1.5"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>, sub: hasData ? "All skills" : "Practice to improve", subColor: c.stone },

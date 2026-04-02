@@ -390,6 +390,12 @@ body {
   .signup-visual { display: none !important; }
   .signup-form { padding: 40px 24px !important; }
 
+  /* Landing page — stack grids on mobile */
+  .feature-row-grid { grid-template-columns: 1fr !important; direction: ltr !important; }
+  .pricing-grid { grid-template-columns: 1fr !important; }
+  .footer-grid { grid-template-columns: 1fr 1fr !important; gap: 24px !important; }
+  .footer-bottom { flex-direction: column !important; gap: 12px !important; text-align: center !important; }
+
   /* Interview mobile fixes */
   .interview-pip {
     width: 80px !important;

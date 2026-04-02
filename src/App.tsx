@@ -1167,7 +1167,7 @@ function FeatureRow({ feature, index }: { feature: (typeof features)[0]; index: 
   const isEven = index % 2 === 0;
 
   return (
-    <div ref={ref} className={`reveal reveal-delay-1`} style={{
+    <div ref={ref} className={`reveal reveal-delay-1 feature-row-grid`} style={{
       display: "grid", gridTemplateColumns: "1fr 1fr", gap: 60, alignItems: "center",
       marginBottom: 80, direction: isEven ? "ltr" : "rtl",
     }}>
@@ -1471,7 +1471,7 @@ function PricingSection() {
         <h2 className="text-glow" style={{ fontFamily: font.display, fontSize: "clamp(32px, 4vw, 48px)", fontWeight: 400, letterSpacing: "-0.02em", color: c.ivory, lineHeight: 1.15, marginBottom: 16 }}>Transparent. No surprises.</h2>
         <p style={{ fontFamily: font.ui, fontSize: 15, color: c.stone, lineHeight: 1.6, maxWidth: 460, margin: "0 auto" }}>Start free. Upgrade when you're ready. No auto-renewal traps.</p>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20, alignItems: "start" }}>
+      <div className="pricing-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20, alignItems: "start" }}>
         {plans.map((p, i) => <PricingCard key={p.name} plan={p} delay={i} />)}
       </div>
     </section>
@@ -1700,7 +1700,7 @@ function Footer() {
 
   return (
     <footer style={{ borderTop: `1px solid ${c.border}`, maxWidth: 1100, margin: "0 auto", padding: "64px 40px 40px" }}>
-      <div style={{ display: "grid", gridTemplateColumns: "1.5fr repeat(4, 1fr)", gap: 48, marginBottom: 48 }}>
+      <div className="footer-grid" style={{ display: "grid", gridTemplateColumns: "1.5fr repeat(4, 1fr)", gap: 48, marginBottom: 48 }}>
         {/* Brand column */}
         <div>
           <span style={{ fontFamily: font.ui, fontSize: 18, fontWeight: 600, color: c.ivory, letterSpacing: "0.04em", display: "block", marginBottom: 12 }}>Level Up</span>
@@ -1743,7 +1743,7 @@ function Footer() {
       </div>
 
       {/* Bottom bar */}
-      <div style={{ borderTop: `1px solid ${c.border}`, paddingTop: 24, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      <div className="footer-bottom" style={{ borderTop: `1px solid ${c.border}`, paddingTop: 24, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <span style={{ fontFamily: font.ui, fontSize: 12, color: c.stone }}>
           &copy; 2026 Silva Vitalis LLC. All rights reserved.
         </span>
