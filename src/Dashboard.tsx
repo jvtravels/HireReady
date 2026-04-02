@@ -941,8 +941,12 @@ function ResumePage({ resumeFileName, onUpdateResume }: { resumeFileName: string
   // Restore profile from user context on mount
   useEffect(() => {
     if (user?.resumeText) setResumeText(user.resumeText);
-    if (user?.resumeData) setProfile(user.resumeData as unknown as ResumeProfile);
-    if (user?.resumeFileName && (user?.resumeData || user?.resumeText)) setPhase("done");
+    // Only restore if it's a valid ResumeProfile (has headline field, not old ParsedResume)
+    const stored = user?.resumeData as unknown as ResumeProfile | undefined;
+    if (stored && stored.headline) {
+      setProfile(stored);
+      setPhase("done");
+    }
   }, []);
 
   const handleFile = async (file: File | undefined) => {
@@ -1049,8 +1053,8 @@ function ResumePage({ resumeFileName, onUpdateResume }: { resumeFileName: string
     );
   }
 
-  // ─── Empty state (no resume) ───
-  if (phase === "idle" && !fileName) {
+  // ─── Empty state (no resume or no profile) ───
+  if (phase === "idle") {
     return (
       <div style={{ maxWidth: 680, margin: "0 auto", padding: "20px 0" }}>
         <h2 style={{ fontFamily: font.display, fontSize: 28, fontWeight: 400, color: c.ivory, marginBottom: 6, letterSpacing: "-0.02em" }}>Resume Intelligence</h2>
