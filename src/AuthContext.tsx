@@ -1,0 +1,245 @@
+import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
+import { supabase, supabaseConfigured, getProfile, upsertProfile, type Profile } from "./supabase";
+import type { Session } from "@supabase/supabase-js";
+import type { ParsedResume } from "./resumeParser";
+
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  targetRole: string;
+  resumeFileName: string | null;
+  hasCompletedOnboarding: boolean;
+  // Personalization fields
+  targetCompany?: string;
+  industry?: string;
+  learningStyle?: "direct" | "encouraging";
+  preferredSessionLength?: 10 | 15 | 25;
+  interviewDate?: string;
+  interviewTypes?: string[];
+  practiceTimestamps?: string[];
+  resumeText?: string;
+  resumeData?: ParsedResume;
+  avatarUrl?: string;
+  subscriptionTier?: "free" | "pro" | "team";
+}
+
+interface AuthContextType {
+  user: User | null;
+  isLoggedIn: boolean;
+  loading: boolean;
+  login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  signup: (email: string, name: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  loginWithGoogle: () => Promise<{ success: boolean; error?: string }>;
+  logout: () => Promise<void>;
+  updateUser: (updates: Partial<User>) => Promise<void>;
+  resetPassword: (email: string) => Promise<{ success: boolean; error?: string }>;
+}
+
+const AuthContext = createContext<AuthContextType | null>(null);
+
+function profileToUser(profile: Profile, session: Session): User {
+  return {
+    id: profile.id,
+    name: profile.name || session.user.user_metadata?.name || session.user.user_metadata?.full_name || "",
+    email: profile.email || session.user.email || "",
+    targetRole: profile.target_role || "",
+    resumeFileName: profile.resume_file_name || null,
+    hasCompletedOnboarding: !!(profile.target_role),
+    targetCompany: profile.target_company || undefined,
+    industry: profile.industry || undefined,
+    learningStyle: (profile.learning_style as "direct" | "encouraging") || "direct",
+    interviewDate: profile.interview_date || undefined,
+    practiceTimestamps: profile.practice_timestamps || [],
+    resumeText: profile.resume_text || undefined,
+    avatarUrl: profile.avatar_url || undefined,
+    subscriptionTier: (profile.subscription_tier as "free" | "pro" | "team") || "free",
+  };
+}
+
+/* ─── localStorage fallback (when Supabase not configured) ─── */
+const AUTH_KEY = "levelup_auth";
+function loadLocalUser(): User | null {
+  try { const raw = localStorage.getItem(AUTH_KEY); if (raw) return JSON.parse(raw); } catch {} return null;
+}
+function saveLocalUser(user: User | null) {
+  try { if (user) localStorage.setItem(AUTH_KEY, JSON.stringify(user)); else localStorage.removeItem(AUTH_KEY); } catch {}
+}
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [user, setUser] = useState<User | null>(supabaseConfigured ? null : loadLocalUser);
+  const [loading, setLoading] = useState(supabaseConfigured);
+
+  // Listen for auth state changes (Supabase mode)
+  useEffect(() => {
+    if (!supabaseConfigured) return;
+
+    // Check current session
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (session) {
+        const profile = await getProfile(session.user.id);
+        if (profile) {
+          setUser(profileToUser(profile, session));
+        } else {
+          setUser({
+            id: session.user.id,
+            name: session.user.user_metadata?.name || session.user.user_metadata?.full_name || "",
+            email: session.user.email || "",
+            targetRole: "",
+            resumeFileName: null,
+            hasCompletedOnboarding: false,
+            avatarUrl: session.user.user_metadata?.avatar_url || session.user.user_metadata?.picture || undefined,
+          });
+        }
+      }
+      setLoading(false);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === "SIGNED_IN" && session) {
+        await new Promise(r => setTimeout(r, 500));
+        const profile = await getProfile(session.user.id);
+        if (profile) {
+          setUser(profileToUser(profile, session));
+        } else {
+          setUser({
+            id: session.user.id,
+            name: session.user.user_metadata?.name || session.user.user_metadata?.full_name || "",
+            email: session.user.email || "",
+            targetRole: "",
+            resumeFileName: null,
+            hasCompletedOnboarding: false,
+            avatarUrl: session.user.user_metadata?.avatar_url || session.user.user_metadata?.picture || undefined,
+          });
+        }
+      } else if (event === "SIGNED_OUT") {
+        setUser(null);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const signup = useCallback(async (email: string, name: string, password: string): Promise<{ success: boolean; error?: string }> => {
+    if (!supabaseConfigured) {
+      // localStorage fallback
+      const newUser: User = { id: Date.now().toString(36), name, email, targetRole: "", resumeFileName: null, hasCompletedOnboarding: false };
+      setUser(newUser);
+      saveLocalUser(newUser);
+      return { success: true };
+    }
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { data: { name } },
+    });
+    if (error) return { success: false, error: error.message };
+    return { success: true };
+  }, []);
+
+  const login = useCallback(async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
+    if (!supabaseConfigured) {
+      const existing = loadLocalUser();
+      if (existing && existing.email === email) {
+        setUser(existing);
+      } else {
+        const newUser: User = { id: Date.now().toString(36), name: email.split("@")[0], email, targetRole: "", resumeFileName: null, hasCompletedOnboarding: false };
+        setUser(newUser);
+        saveLocalUser(newUser);
+      }
+      return { success: true };
+    }
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) return { success: false, error: error.message };
+    return { success: true };
+  }, []);
+
+  const loginWithGoogle = useCallback(async (): Promise<{ success: boolean; error?: string }> => {
+    if (!supabaseConfigured) return { success: false, error: "Google login requires Supabase configuration" };
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: `${window.location.origin}/dashboard` },
+    });
+    if (error) return { success: false, error: error.message };
+    return { success: true };
+  }, []);
+
+  const logout = useCallback(async () => {
+    if (supabaseConfigured) await supabase.auth.signOut();
+    setUser(null);
+    saveLocalUser(null);
+  }, []);
+
+  const updateUser = useCallback(async (updates: Partial<User>) => {
+    setUser(prev => {
+      if (!prev) return prev;
+      const next = { ...prev, ...updates };
+      if (!supabaseConfigured) saveLocalUser(next);
+      return next;
+    });
+
+    if (!supabaseConfigured) return;
+
+    // Persist to Supabase
+    const currentUser = user;
+    if (!currentUser) return;
+
+    const profileUpdates: Partial<Profile> & { id: string } = { id: currentUser.id };
+    if (updates.name !== undefined) profileUpdates.name = updates.name;
+    if (updates.targetRole !== undefined) profileUpdates.target_role = updates.targetRole;
+    if (updates.targetCompany !== undefined) profileUpdates.target_company = updates.targetCompany;
+    if (updates.industry !== undefined) profileUpdates.industry = updates.industry;
+    if (updates.interviewDate !== undefined) profileUpdates.interview_date = updates.interviewDate;
+    if (updates.learningStyle !== undefined) profileUpdates.learning_style = updates.learningStyle;
+    if (updates.resumeFileName !== undefined) profileUpdates.resume_file_name = updates.resumeFileName || "";
+    if (updates.resumeText !== undefined) profileUpdates.resume_text = updates.resumeText || "";
+    if (updates.practiceTimestamps !== undefined) profileUpdates.practice_timestamps = updates.practiceTimestamps;
+    if (updates.avatarUrl !== undefined) profileUpdates.avatar_url = updates.avatarUrl;
+
+    await upsertProfile(profileUpdates);
+  }, [user]);
+
+  const resetPassword = useCallback(async (email: string): Promise<{ success: boolean; error?: string }> => {
+    if (!supabaseConfigured) return { success: false, error: "Password reset requires Supabase configuration" };
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    if (error) return { success: false, error: error.message };
+    return { success: true };
+  }, []);
+
+  return (
+    <AuthContext.Provider value={{ user, isLoggedIn: !!user, loading, login, signup, loginWithGoogle, logout, updateUser, resetPassword }}>
+      {children}
+    </AuthContext.Provider>
+  );
+}
+
+export function useAuth() {
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error("useAuth must be used within AuthProvider");
+  return ctx;
+}
+
+/* Route guard — redirects to /login if not authenticated */
+export function RequireAuth({ children }: { children: ReactNode }) {
+  const { isLoggedIn, loading, user } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    if (loading) return;
+    if (!isLoggedIn) {
+      navigate("/login", { replace: true, state: { from: location.pathname } });
+    } else if (user && !user.hasCompletedOnboarding && location.pathname !== "/onboarding") {
+      navigate("/onboarding", { replace: true });
+    }
+  }, [isLoggedIn, loading, user, navigate, location.pathname]);
+
+  if (loading) return null;
+  if (!isLoggedIn) return null;
+  if (user && !user.hasCompletedOnboarding && location.pathname !== "/onboarding") return null;
+
+  return <>{children}</>;
+}
