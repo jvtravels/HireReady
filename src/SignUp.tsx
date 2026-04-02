@@ -43,15 +43,12 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
           setError(result.error || "Signup failed");
           return;
         }
-        // If user is now logged in (email confirmation disabled), go to onboarding
-        // Otherwise show "check your email" message
-        // Small delay to let auth state update
-        await new Promise(r => setTimeout(r, 1000));
-        if (!isLoggedIn) {
-          setSignupSent(true);
-        } else {
-          navigate("/onboarding");
-        }
+        // Small delay to let auth state propagate
+        await new Promise(r => setTimeout(r, 500));
+        // After signup, check current auth state via a fresh read
+        // If using localStorage fallback, user is already logged in
+        // If using Supabase with email confirmation, show check-email message
+        setSignupSent(true);
       }
     } finally {
       setLoading(false);
@@ -292,8 +289,8 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
             {!isLogin && (
               <p style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, marginTop: 20, textAlign: "center", lineHeight: 1.5 }}>
                 By creating an account, you agree to our{" "}
-                <span style={{ color: c.chalk, textDecoration: "underline", cursor: "pointer" }}>Terms of Service</span>{" "}
-                and <span style={{ color: c.chalk, textDecoration: "underline", cursor: "pointer" }}>Privacy Policy</span>.
+                <a href="/terms" target="_blank" style={{ color: c.chalk, textDecoration: "underline" }}>Terms of Service</a>{" "}
+                and <a href="/privacy" target="_blank" style={{ color: c.chalk, textDecoration: "underline" }}>Privacy Policy</a>.
               </p>
             )}
           </>

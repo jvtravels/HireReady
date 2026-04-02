@@ -22,6 +22,8 @@ export interface Profile {
   interview_date: string;
   experience_level: string;
   learning_style: string;
+  preferred_session_length: number;
+  interview_types: string[];
   resume_file_name: string;
   resume_text: string;
   practice_timestamps: string[];

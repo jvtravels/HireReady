@@ -50,6 +50,8 @@ function profileToUser(profile: Profile, session: Session): User {
     targetCompany: profile.target_company || undefined,
     industry: profile.industry || undefined,
     learningStyle: (profile.learning_style as "direct" | "encouraging") || "direct",
+    preferredSessionLength: (profile.preferred_session_length as 10 | 15 | 25) || undefined,
+    interviewTypes: profile.interview_types || undefined,
     interviewDate: profile.interview_date || undefined,
     practiceTimestamps: profile.practice_timestamps || [],
     resumeText: profile.resume_text || undefined,
@@ -194,6 +196,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (updates.learningStyle !== undefined) profileUpdates.learning_style = updates.learningStyle;
     if (updates.resumeFileName !== undefined) profileUpdates.resume_file_name = updates.resumeFileName || "";
     if (updates.resumeText !== undefined) profileUpdates.resume_text = updates.resumeText || "";
+    if (updates.preferredSessionLength !== undefined) profileUpdates.preferred_session_length = updates.preferredSessionLength;
+    if (updates.interviewTypes !== undefined) profileUpdates.interview_types = updates.interviewTypes;
     if (updates.practiceTimestamps !== undefined) profileUpdates.practice_timestamps = updates.practiceTimestamps;
     if (updates.avatarUrl !== undefined) profileUpdates.avatar_url = updates.avatarUrl;
 

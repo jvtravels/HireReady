@@ -16,6 +16,10 @@ interface PersistedState {
   targetRole: string;
   resumeFileName: string | null;
   interviewDate: string;
+  defaultDifficulty?: string;
+  emailNotifs?: boolean;
+  streakReminder?: boolean;
+  weeklyDigest?: boolean;
 }
 
 function loadState(): PersistedState {
@@ -413,12 +417,19 @@ function getGreeting() {
   if (hour < 17) return "Good afternoon";
   return "Good evening";
 }
-function computeReadiness(trend: { score: number }[], sk: SkillData[]) {
+function computeReadiness(trend: { score: number; date: string }[], sk: SkillData[]) {
   if (trend.length === 0 || sk.length === 0) return 0;
   const latestScore = trend[trend.length - 1].score;
   const avgSkill = sk.reduce((sum, s) => sum + s.score, 0) / sk.length;
-  const consistencyBonus = 6 / 7 * 10;
-  return Math.round(latestScore * 0.4 + avgSkill * 0.4 + consistencyBonus * 2);
+  // Compute actual consistency: how many of the last 7 days had sessions
+  const now = Date.now();
+  const weekMs = 7 * 24 * 60 * 60 * 1000;
+  const recentDays = new Set(
+    trend.filter(t => now - new Date(t.date).getTime() < weekMs)
+      .map(t => new Date(t.date).toDateString())
+  );
+  const consistencyBonus = (recentDays.size / 7) * 10;
+  return Math.min(100, Math.round(latestScore * 0.4 + avgSkill * 0.4 + consistencyBonus * 2));
 }
 
 /* Dynamic streak calculation from session dates */
@@ -1690,17 +1701,20 @@ function SettingsPage({ persisted, onUpdate, onLogout, onSyncToSupabase }: {
   const [editRole, setEditRole] = useState(persisted.targetRole);
   const [editDate, setEditDate] = useState(persisted.interviewDate);
   const [saved, setSaved] = useState(false);
-  const [difficulty, setDifficulty] = useState("standard");
-  const [emailNotifs, setEmailNotifs] = useState(true);
-  const [streakReminder, setStreakReminder] = useState(true);
-  const [weeklyDigest, setWeeklyDigest] = useState(false);
+  const [difficulty, setDifficulty] = useState(persisted.defaultDifficulty || "standard");
+  const [emailNotifs, setEmailNotifs] = useState(persisted.emailNotifs !== false);
+  const [streakReminder, setStreakReminder] = useState(persisted.streakReminder !== false);
+  const [weeklyDigest, setWeeklyDigest] = useState(persisted.weeklyDigest || false);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   // TTS Settings
   const [ttsSettings, setTtsSettings] = useState<TTSSettings>(loadTTSSettings);
 
   const handleSave = () => {
-    onUpdate({ userName: editName, targetRole: editRole, interviewDate: editDate });
+    onUpdate({
+      userName: editName, targetRole: editRole, interviewDate: editDate,
+      defaultDifficulty: difficulty, emailNotifs, streakReminder, weeklyDigest,
+    });
     onSyncToSupabase({ name: editName, targetRole: editRole, interviewDate: editDate });
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
@@ -1987,19 +2001,25 @@ function CalendarPage({ onStartSession }: { onStartSession: () => void }) {
     saveEvents(next);
   };
 
-  // Load from Supabase on mount
+  // Load from Supabase on mount and merge with localStorage
   useEffect(() => {
     if (!user?.id) return;
     getCalendarEvents(user.id).then(dbEvents => {
-      if (dbEvents.length > 0) {
-        const mapped = dbEvents.map(e => ({
-          id: e.id, title: e.title, company: e.company,
-          date: e.date, time: e.time, type: e.type,
-          duration: 60, location: "", notes: e.notes,
-          status: "upcoming" as const, reminders: true,
-        }));
-        setEvents(mapped);
-      }
+      if (dbEvents.length === 0) return;
+      const mapped = dbEvents.map(e => ({
+        id: e.id, title: e.title, company: e.company,
+        date: e.date, time: e.time, type: e.type,
+        duration: 60, location: "", notes: e.notes,
+        status: "upcoming" as const, reminders: true,
+      }));
+      // Merge: Supabase wins for existing IDs, keep local-only events
+      setEvents(prev => {
+        const dbIds = new Set(mapped.map(e => e.id));
+        const localOnly = prev.filter(e => !dbIds.has(e.id));
+        const merged = [...mapped, ...localOnly];
+        saveEvents(merged);
+        return merged;
+      });
     }).catch(() => {});
   }, [user?.id]);
 
@@ -2074,6 +2094,8 @@ function CalendarPage({ onStartSession }: { onStartSession: () => void }) {
 
   const handleCancel = (id: string) => {
     updateEvents(events.map(e => e.id === id ? { ...e, status: "cancelled" as const } : e));
+    // Remove from Supabase when cancelled
+    if (user?.id) deleteCalendarEvent(id, user.id).catch(() => {});
   };
 
   const handleExportICS = (ev: InterviewEvent) => {

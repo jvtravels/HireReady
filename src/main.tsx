@@ -8,6 +8,7 @@ import NotFound from "./NotFound";
 import ErrorBoundary from "./ErrorBoundary";
 import TempoHost from "../.tempo/tempo-host";
 
+const LegalPage = lazy(() => import("./LegalPage"));
 const SignUp = lazy(() => import("./SignUp"));
 const Onboarding = lazy(() => import("./Onboarding"));
 const Dashboard = lazy(() => import("./Dashboard"));
@@ -48,6 +49,8 @@ createRoot(document.getElementById("root")!).render(
               <Route path="/session/new" element={<RequireAuth><div className="page-enter"><SessionSetup /></div></RequireAuth>} />
               <Route path="/interview" element={<RequireAuth><Interview /></RequireAuth>} />
               <Route path="/reset-password" element={<div className="page-enter"><ResetPassword /></div>} />
+              <Route path="/terms" element={<div className="page-enter"><LegalPage type="terms" /></div>} />
+              <Route path="/privacy" element={<div className="page-enter"><LegalPage type="privacy" /></div>} />
               <Route path="/session/:id" element={<RequireAuth><div className="page-enter"><SessionDetail /></div></RequireAuth>} />
               <Route path="*" element={<div className="page-enter"><NotFound /></div>} />
             </Routes>

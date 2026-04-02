@@ -540,6 +540,11 @@ export default function Interview() {
   const [llmLoading, setLlmLoading] = useState(true);
 
   // Fetch LLM-generated questions on mount
+  const currentStepRef = useRef(0);
+  useEffect(() => {
+    currentStepRef.current = currentStep;
+  }, [currentStep]);
+
   useEffect(() => {
     let cancelled = false;
     fetchLLMQuestions({
@@ -550,7 +555,8 @@ export default function Interview() {
       industry: user?.industry,
       resumeText: user?.resumeText,
     }).then(questions => {
-      if (!cancelled && questions && questions.length > 0) {
+      // Only swap in LLM questions if still on intro step to avoid mid-interview disruption
+      if (!cancelled && questions && questions.length > 0 && currentStepRef.current <= 1) {
         setInterviewScript(questions);
       }
       setLlmLoading(false);
@@ -818,7 +824,7 @@ export default function Interview() {
     }, user?.id);
 
     if (!cloudOk && localOk) {
-      setSaveWarning("Session saved locally but could not sync to cloud. It will sync when you're back online.");
+      setSaveWarning("Session saved locally but could not sync to cloud.");
     } else if (!localOk && !cloudOk) {
       setSaveWarning("Warning: Session could not be saved. Please check your connection.");
     }
@@ -827,6 +833,11 @@ export default function Interview() {
     const timestamps = user?.practiceTimestamps || [];
     updateUser({ practiceTimestamps: [...timestamps, new Date().toISOString()] });
     setEvaluating(false);
+
+    // Brief delay to show save warning before navigating
+    if (!localOk || !cloudOk) {
+      await new Promise(r => setTimeout(r, 2500));
+    }
     navigate(`/session/${sessionId}`);
   }, [navigate, elapsed, interviewType, interviewDifficulty, interviewFocus, totalQuestions, user, updateUser, currentStep, interviewScript.length, transcript]);
 
@@ -905,7 +916,7 @@ export default function Interview() {
             background: "rgba(201,169,110,0.06)",
             border: `1px solid rgba(201,169,110,0.12)`,
           }}>
-            <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 500, color: c.gilt }}>Behavioral · VP Engineering</span>
+            <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 500, color: c.gilt }}>{interviewType.charAt(0).toUpperCase() + interviewType.slice(1)} · {user?.targetRole || "Interview"}</span>
           </div>
         </div>
       </header>
@@ -1319,6 +1330,11 @@ export default function Interview() {
           <div style={{ width: 48, height: 48, border: `3px solid ${c.border}`, borderTopColor: c.gilt, borderRadius: "50%", animation: "spin 0.8s linear infinite", marginBottom: 24 }} />
           <h3 style={{ fontFamily: font.ui, fontSize: 18, fontWeight: 600, color: c.ivory, marginBottom: 8 }}>Analyzing your performance...</h3>
           <p style={{ fontFamily: font.ui, fontSize: 13, color: c.stone }}>AI is evaluating your answers and generating personalized feedback</p>
+          {saveWarning && (
+            <div role="alert" style={{ marginTop: 20, padding: "12px 20px", borderRadius: 10, background: "rgba(196,112,90,0.1)", border: "1px solid rgba(196,112,90,0.2)", maxWidth: 400 }}>
+              <p style={{ fontFamily: font.ui, fontSize: 12, color: c.ember, margin: 0 }}>{saveWarning}</p>
+            </div>
+          )}
         </div>
       )}
     </div>
