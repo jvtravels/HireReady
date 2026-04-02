@@ -7,6 +7,7 @@
     { "source": "/api/generate-questions", "destination": "/api/generate-questions" },
     { "source": "/api/evaluate", "destination": "/api/evaluate" },
     { "source": "/api/create-checkout", "destination": "/api/create-checkout" },
+    { "source": "/api/analyze-resume", "destination": "/api/analyze-resume" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
