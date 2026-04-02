@@ -27,7 +27,7 @@ export function corsHeaders(req: Request): Record<string, string> {
     "Content-Type": "application/json",
     "Access-Control-Allow-Origin": origin,
     "Access-Control-Allow-Methods": "POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization",
     "Vary": "Origin",
   };
 }
@@ -41,7 +41,7 @@ export function handleCorsPreflightOrMethod(req: Request): Response | null {
         ? {
             "Access-Control-Allow-Origin": origin,
             "Access-Control-Allow-Methods": "POST, OPTIONS",
-            "Access-Control-Allow-Headers": "Content-Type",
+            "Access-Control-Allow-Headers": "Content-Type, Authorization",
             "Vary": "Origin",
           }
         : {},
@@ -54,6 +54,43 @@ export function handleCorsPreflightOrMethod(req: Request): Response | null {
     });
   }
   return null;
+}
+
+/* ─── Auth ─── */
+
+const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || "";
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || "";
+
+export async function verifyAuth(req: Request): Promise<{ authenticated: boolean; userId?: string }> {
+  // If Supabase is not configured, skip auth (local dev / demo mode)
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return { authenticated: true };
+
+  const authHeader = req.headers.get("authorization");
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return { authenticated: false };
+  }
+
+  const token = authHeader.slice(7);
+  try {
+    const res = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        apikey: SUPABASE_ANON_KEY,
+      },
+    });
+    if (!res.ok) return { authenticated: false };
+    const user = await res.json();
+    return { authenticated: true, userId: user.id };
+  } catch {
+    return { authenticated: false };
+  }
+}
+
+export function unauthorizedResponse(headers: Record<string, string>): Response {
+  return new Response(JSON.stringify({ error: "Unauthorized. Please log in." }), {
+    status: 401,
+    headers,
+  });
 }
 
 /* ─── Rate Limiting ─── */

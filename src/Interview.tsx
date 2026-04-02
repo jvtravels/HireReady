@@ -1,10 +1,10 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { c, font } from "./tokens";
 import { useAuth } from "./AuthContext";
 import type { User } from "./AuthContext";
 import { speak } from "./tts";
-import { saveSession } from "./supabase";
+import { saveSession, getAuthToken } from "./supabase";
 
 /* ─── Interview Script ─── */
 interface InterviewStep {
@@ -170,9 +170,10 @@ async function fetchLLMQuestions(params: {
   company?: string; industry?: string; resumeText?: string;
 }): Promise<InterviewStep[] | null> {
   try {
+    const headers = await import("./supabase").then(m => m.authHeaders());
     const res = await fetch("/api/generate-questions", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers,
       body: JSON.stringify(params),
     });
     if (!res.ok) return null;
@@ -204,9 +205,10 @@ async function fetchLLMEvaluation(params: {
   feedback: string;
 } | null> {
   try {
+    const headers = await import("./supabase").then(m => m.authHeaders());
     const res = await fetch("/api/evaluate", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers,
       body: JSON.stringify(params),
     });
     if (!res.ok) return null;
@@ -240,7 +242,7 @@ interface SpeechRecognitionResultList {
 }
 
 function createSpeechRecognition(): SpeechRecognitionInstance | null {
-  const SR = (window as Record<string, unknown>).SpeechRecognition || (window as Record<string, unknown>).webkitSpeechRecognition;
+  const SR = (window as unknown as Record<string, unknown>).SpeechRecognition || (window as unknown as Record<string, unknown>).webkitSpeechRecognition;
   if (!SR) return null;
   const recognition = new (SR as new () => SpeechRecognitionInstance)();
   recognition.continuous = true;
@@ -494,7 +496,7 @@ function formatTime(seconds: number) {
 
 /* ─── Control Button ─── */
 function ControlButton({ icon, label, active, danger, onClick }: {
-  icon: JSX.Element; label: string; active?: boolean; danger?: boolean; onClick: () => void;
+  icon: React.ReactNode; label: string; active?: boolean; danger?: boolean; onClick: () => void;
 }) {
   return (
     <button
@@ -539,6 +541,9 @@ export default function Interview() {
   const [interviewScript, setInterviewScript] = useState<InterviewStep[]>(fallbackScript);
   const [llmLoading, setLlmLoading] = useState(true);
 
+  // Interview state (declared early so refs can use it)
+  const [currentStep, setCurrentStep] = useState(0);
+
   // Fetch LLM-generated questions on mount
   const currentStepRef = useRef(0);
   useEffect(() => {
@@ -567,9 +572,6 @@ export default function Interview() {
   // Speech recognition
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
   const [currentTranscript, setCurrentTranscript] = useState("");
-
-  // Interview state
-  const [currentStep, setCurrentStep] = useState(0);
   const [phase, setPhase] = useState<"thinking" | "speaking" | "listening" | "done">("thinking");
   const [elapsed, setElapsed] = useState(0);
   const [isRecording, setIsRecording] = useState(false);
@@ -949,6 +951,22 @@ export default function Interview() {
           <div style={{ marginTop: 24, height: 36, width: 200 }}>
             <WaveformVisualizer active={phase === "speaking"} color={c.gilt} barCount={32} />
           </div>
+
+          {/* LLM loading indicator */}
+          {llmLoading && currentStep <= 1 && (
+            <div style={{
+              position: "absolute", top: 24, right: 24,
+              padding: "8px 14px", borderRadius: 8,
+              background: "rgba(10,10,11,0.7)",
+              backdropFilter: "blur(8px)",
+              border: `1px solid rgba(201,169,110,0.15)`,
+              display: "flex", alignItems: "center", gap: 8,
+              animation: "fadeUp 0.4s ease",
+            }}>
+              <div style={{ width: 12, height: 12, border: "2px solid rgba(201,169,110,0.3)", borderTopColor: c.gilt, borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
+              <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>Generating personalized questions...</span>
+            </div>
+          )}
 
           {/* Score note hint */}
           {step?.scoreNote && phase !== "done" && (

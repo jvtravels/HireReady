@@ -94,7 +94,7 @@ async function unzip(data: Uint8Array): Promise<{ entries: { filename: string; d
           }
         })();
 
-        writer.write(compressedData);
+        writer.write(new Uint8Array(compressedData) as unknown as BufferSource);
         writer.close();
         await readAll;
 

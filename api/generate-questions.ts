@@ -2,7 +2,7 @@
 
 export const config = { runtime: "edge" };
 
-import { handleCorsPreflightOrMethod, corsHeaders, isRateLimited, getClientIp, rateLimitResponse } from "./_shared";
+import { handleCorsPreflightOrMethod, corsHeaders, isRateLimited, getClientIp, rateLimitResponse, verifyAuth, unauthorizedResponse } from "./_shared";
 
 declare const process: { env: Record<string, string | undefined> };
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "";
@@ -16,6 +16,9 @@ export default async function handler(req: Request): Promise<Response> {
   if (!GEMINI_API_KEY) {
     return new Response(JSON.stringify({ error: "LLM not configured" }), { status: 503, headers });
   }
+
+  const auth = await verifyAuth(req);
+  if (!auth.authenticated) return unauthorizedResponse(headers);
 
   const ip = getClientIp(req);
   if (isRateLimited(ip, "generate", 10, 60_000)) {

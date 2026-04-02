@@ -3,6 +3,19 @@ import { useNavigate } from "react-router-dom";
 import { c, font } from "./tokens";
 import { supabase, supabaseConfigured } from "./supabase";
 
+function getPasswordStrength(pw: string): { score: number; label: string; color: string } {
+  let score = 0;
+  if (pw.length >= 8) score++;
+  if (pw.length >= 12) score++;
+  if (/[a-z]/.test(pw) && /[A-Z]/.test(pw)) score++;
+  if (/\d/.test(pw)) score++;
+  if (/[^a-zA-Z0-9]/.test(pw)) score++;
+  if (score <= 1) return { score, label: "Weak", color: c.ember };
+  if (score <= 2) return { score, label: "Fair", color: "#D4A04A" };
+  if (score <= 3) return { score, label: "Good", color: c.gilt };
+  return { score, label: "Strong", color: c.sage };
+}
+
 export default function ResetPassword() {
   const navigate = useNavigate();
   const [password, setPassword] = useState("");
@@ -11,6 +24,7 @@ export default function ResetPassword() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
   const [hasSession, setHasSession] = useState(false);
+  const strength = getPasswordStrength(password);
 
   useEffect(() => {
     if (!supabaseConfigured) {
@@ -106,6 +120,20 @@ export default function ResetPassword() {
                   color: c.ivory, fontSize: 13, outline: "none", boxSizing: "border-box",
                 }}
               />
+              {password.length > 0 && (
+                <div style={{ marginTop: 8 }}>
+                  <div style={{ display: "flex", gap: 4, marginBottom: 4 }}>
+                    {[0, 1, 2, 3, 4].map(i => (
+                      <div key={i} style={{
+                        flex: 1, height: 3, borderRadius: 2,
+                        background: i < strength.score ? strength.color : c.border,
+                        transition: "background 0.2s",
+                      }} />
+                    ))}
+                  </div>
+                  <span style={{ fontFamily: font.ui, fontSize: 11, color: strength.color }}>{strength.label}</span>
+                </div>
+              )}
             </div>
 
             <div style={{ marginBottom: 24 }}>

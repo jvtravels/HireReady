@@ -264,7 +264,7 @@ export default function SessionSetup() {
           display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
           background: "rgba(5,5,6,0.95)", backdropFilter: "blur(8px)",
         }}>
-          <div style={{ animation: "countPulse 0.5s ease", key: countdown }}>
+          <div key={countdown} style={{ animation: "countPulse 0.5s ease" }}>
             <span style={{
               fontFamily: font.display, fontSize: 120, fontWeight: 400, color: c.gilt,
               lineHeight: 1, display: "block", textAlign: "center",

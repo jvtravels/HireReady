@@ -10,6 +10,21 @@ export const supabase: SupabaseClient = supabaseConfigured
   ? createClient(supabaseUrl, supabaseAnonKey)
   : createClient("https://placeholder.supabase.co", "placeholder-key");
 
+/* ─── Auth Token Helper ─── */
+
+export async function getAuthToken(): Promise<string | null> {
+  if (!supabaseConfigured) return null;
+  const { data: { session } } = await supabase.auth.getSession();
+  return session?.access_token || null;
+}
+
+export async function authHeaders(): Promise<Record<string, string>> {
+  const token = await getAuthToken();
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+  return headers;
+}
+
 /* ─── Database Types ─── */
 
 export interface Profile {

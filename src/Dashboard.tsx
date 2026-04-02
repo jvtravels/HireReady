@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { c, font } from "./tokens";
 import { useAuth } from "./AuthContext";
 import { loadTTSSettings, saveTTSSettings, GOOGLE_VOICES, type TTSSettings } from "./tts";
-import { getUserSessions, getCalendarEvents, saveCalendarEvent, deleteCalendarEvent, type SessionRecord, type CalendarEvent as DBCalendarEvent } from "./supabase";
+import { getUserSessions, getCalendarEvents, saveCalendarEvent, deleteCalendarEvent, authHeaders, type SessionRecord, type CalendarEvent as DBCalendarEvent } from "./supabase";
 import { extractResumeText, parseResumeData, type ParsedResume } from "./resumeParser";
 
 /* ─── localStorage helpers ─── */
@@ -152,7 +152,7 @@ const userDefaults = {
 };
 
 /* ─── Dashboard data types ─── */
-type UserContext = { targetRole?: string; targetCompany?: string; industry?: string; interviewDate?: string } | null;
+type UserContext = { targetRole?: string; targetCompany?: string; industry?: string; interviewDate?: string; practiceTimestamps?: string[] } | null;
 interface DashboardSession {
   id: string;
   date: string;
@@ -622,7 +622,7 @@ const navItems = [
 ];
 
 /* ─── Score Trend Chart with tooltips ─── */
-function ScoreTrendChart({ data }: { data: typeof scoreTrend }) {
+function ScoreTrendChart({ data }: { data: TrendPoint[] }) {
   const [hovered, setHovered] = useState<number | null>(null);
   const w = 400, h = 140, px = 24, py = 20;
   const scores = data.map(d => d.score);
@@ -685,7 +685,7 @@ function ScoreTrendChart({ data }: { data: typeof scoreTrend }) {
 }
 
 /* ─── Skill Radar ─── */
-function SkillRadar({ skills: s }: { skills: typeof skills }) {
+function SkillRadar({ skills: s }: { skills: SkillData[] }) {
   const size = 200, cx = size / 2, cy = size / 2, r = 70;
   const n = s.length;
   const getPoint = (i: number, val: number) => {
@@ -925,9 +925,10 @@ interface ResumeProfile {
 
 async function analyzeResumeWithAI(resumeText: string, targetRole?: string): Promise<ResumeProfile | null> {
   try {
+    const headers = await authHeaders();
     const res = await fetch("/api/analyze-resume", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers,
       body: JSON.stringify({ resumeText, targetRole }),
     });
     if (!res.ok) return null;
@@ -1450,8 +1451,8 @@ function SessionsPage({ sessions, onNewSession }: {
    ═══════════════════════════════════════════════ */
 function AnalyticsPage({ sessions, skills: sk, scoreTrend: trend, onNewSession }: {
   sessions: DashboardSession[];
-  skills: typeof skills;
-  scoreTrend: typeof scoreTrend;
+  skills: SkillData[];
+  scoreTrend: TrendPoint[];
   onNewSession?: () => void;
 }) {
   if (sessions.length === 0) {
@@ -2428,9 +2429,9 @@ export default function Dashboard() {
   const { logout: authLogout, user, updateUser: authUpdateUser } = useAuth();
   const [persisted, setPersisted] = useState<PersistedState>(loadState);
   const [activeNav, setActiveNav] = useState("dashboard");
-  const [expandedSession, setExpandedSession] = useState<number | null>(null);
-  const [feedbackSession, setFeedbackSession] = useState<number | null>(null);
-  const [viewingSession, setViewingSession] = useState<number | null>(null);  const [filterType, setFilterType] = useState("All");
+  const [expandedSession, setExpandedSession] = useState<string | null>(null);
+  const [feedbackSession, setFeedbackSession] = useState<string | null>(null);
+  const [viewingSession, setViewingSession] = useState<string | null>(null);  const [filterType, setFilterType] = useState("All");
   const [sortBy, setSortBy] = useState<"date" | "score">("date");
   const [searchQuery, setSearchQuery] = useState("");  const [dateRange, setDateRange] = useState<"all" | "week" | "month">("all");  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -2461,7 +2462,8 @@ export default function Dashboard() {
       if (events.length > 0) {
         setCalendarEvents(events.map(e => ({
           id: e.id, title: e.title, company: e.company,
-          date: e.date, time: e.time, type: e.type as any, notes: e.notes,
+          date: e.date, time: e.time, type: e.type, notes: e.notes,
+          duration: 60, location: "", status: "upcoming" as const, reminders: true,
         })));
       }
     }).catch(() => {});
