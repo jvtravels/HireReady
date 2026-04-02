@@ -139,37 +139,37 @@ async function readPdf(file: File): Promise<string> {
 }
 
 /** Dynamically load pdf.js from CDN */
+const PDFJS_VERSION = "3.11.174";
+const PDFJS_CDN = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS_VERSION}`;
+
 let pdfjsPromise: Promise<any> | null = null;
 function loadPdfJs(): Promise<any> {
   if (pdfjsPromise) return pdfjsPromise;
 
   pdfjsPromise = new Promise((resolve, reject) => {
-    // Check if already loaded
     if ((window as any).pdfjsLib) {
       resolve((window as any).pdfjsLib);
       return;
     }
 
     const script = document.createElement("script");
-    script.src = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.min.mjs";
-    script.type = "module";
-
-    // pdf.js as module needs a different loading approach
-    // Use the global build instead
-    script.src = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.min.js";
+    script.src = `${PDFJS_CDN}/pdf.min.js`;
     script.type = "text/javascript";
+    script.crossOrigin = "anonymous";
 
     script.onload = () => {
       const lib = (window as any).pdfjsLib;
       if (lib) {
-        lib.GlobalWorkerOptions.workerSrc =
-          "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.worker.min.js";
+        lib.GlobalWorkerOptions.workerSrc = `${PDFJS_CDN}/pdf.worker.min.js`;
         resolve(lib);
       } else {
-        reject(new Error("pdf.js failed to load"));
+        reject(new Error("pdf.js failed to initialize"));
       }
     };
-    script.onerror = () => reject(new Error("Failed to load pdf.js"));
+    script.onerror = () => {
+      pdfjsPromise = null;
+      reject(new Error("Failed to load pdf.js"));
+    };
     document.head.appendChild(script);
   });
 
