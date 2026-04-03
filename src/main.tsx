@@ -2,6 +2,7 @@ import "./index.css";
 import { StrictMode, Suspense, lazy } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { SpeedInsights } from "@vercel/speed-insights/react";
 import { AuthProvider, RequireAuth } from "./AuthContext";
 import { DashboardProvider } from "./DashboardContext";
 import App from "./App";
@@ -71,6 +72,7 @@ createRoot(document.getElementById("root")!).render(
           </Suspense>
         </AuthProvider>
       </BrowserRouter>
+      <SpeedInsights />
       </ErrorBoundary>
     )}
   </StrictMode>,
