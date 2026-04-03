@@ -108,8 +108,8 @@ export default function DashboardLayout() {
               {isPro ? "Pro Plan" : isStarter ? "Starter Plan" : "Free Plan"}
             </span>
           </div>
-          <p style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, lineHeight: 1.5, marginBottom: user?.subscriptionEnd && !isFree ? 4 : 10 }}>
-            {isPro ? "Unlimited sessions" : isStarter ? `${starterRemaining} of ${STARTER_WEEKLY_LIMIT} sessions left this week` : sessionsRemaining > 0 ? `${sessionsRemaining} of ${FREE_SESSION_LIMIT} session${sessionsRemaining !== 1 ? "s" : ""} remaining` : "No sessions remaining"}
+          <p style={{ fontFamily: font.ui, fontSize: 11, color: (isFree && sessionsRemaining <= 1 && sessionsRemaining > 0) || (isStarter && starterRemaining <= 2 && starterRemaining > 0) ? c.ember : c.stone, lineHeight: 1.5, marginBottom: user?.subscriptionEnd && !isFree ? 4 : 10, fontWeight: (isFree && sessionsRemaining <= 1) || (isStarter && starterRemaining <= 2) ? 600 : 400 }}>
+            {isPro ? "Unlimited sessions" : isStarter ? `${starterRemaining} of ${STARTER_WEEKLY_LIMIT} sessions left this week${starterRemaining <= 2 && starterRemaining > 0 ? " — running low!" : ""}` : sessionsRemaining > 0 ? `${sessionsRemaining} of ${FREE_SESSION_LIMIT} session${sessionsRemaining !== 1 ? "s" : ""} remaining${sessionsRemaining === 1 ? " — last one!" : ""}` : "No sessions remaining"}
           </p>
           {user?.subscriptionEnd && !isFree && (
             <p style={{ fontFamily: font.ui, fontSize: 10, color: c.stone, opacity: 0.7, marginBottom: 10 }}>

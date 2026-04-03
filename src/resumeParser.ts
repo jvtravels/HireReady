@@ -144,9 +144,11 @@ const PDFJS_CDN = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS_VERSION
 
 let pdfjsPromise: Promise<any> | null = null;
 function loadPdfJs(): Promise<any> {
+  // Return existing promise to prevent duplicate script loads (race condition fix)
   if (pdfjsPromise) return pdfjsPromise;
 
-  pdfjsPromise = new Promise((resolve, reject) => {
+  // Assign synchronously before any async work to prevent concurrent calls from both passing the null check
+  const promise = new Promise((resolve, reject) => {
     if ((window as any).pdfjsLib) {
       resolve((window as any).pdfjsLib);
       return;
@@ -172,6 +174,7 @@ function loadPdfJs(): Promise<any> {
     };
     document.head.appendChild(script);
   });
+  pdfjsPromise = promise;
 
   return pdfjsPromise;
 }

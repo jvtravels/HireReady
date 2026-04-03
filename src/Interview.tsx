@@ -607,15 +607,22 @@ export default function Interview() {
   const [aiVoiceEnabled, setAiVoiceEnabled] = useState(true);
   const ttsCancelRef = useRef<(() => void) | null>(null);
 
-  // Warn user before closing tab during active interview
+  // Warn user before closing tab during active interview + auto-save draft
   useEffect(() => {
     if (phase === "done" || evaluating) return;
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       e.preventDefault();
+      // Auto-save draft so session isn't lost on accidental close
+      try {
+        localStorage.setItem("hireready_interview_draft", JSON.stringify({
+          transcript, currentStep, elapsed, interviewType, interviewDifficulty, interviewFocus,
+          savedAt: Date.now(),
+        }));
+      } catch {}
     };
     window.addEventListener("beforeunload", handleBeforeUnload);
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
-  }, [phase, evaluating]);
+  }, [phase, evaluating, transcript, currentStep, elapsed, interviewType, interviewDifficulty, interviewFocus]);
 
   // Cancel speech + recognition on unmount
   useEffect(() => {
@@ -855,7 +862,8 @@ export default function Interview() {
       setSaveWarning("Warning: Session could not be saved. Please check your connection.");
     }
 
-    // Track practice timestamp
+    // Clear draft and track practice timestamp
+    try { localStorage.removeItem("hireready_interview_draft"); } catch {}
     const timestamps = user?.practiceTimestamps || [];
     updateUser({ practiceTimestamps: [...timestamps, new Date().toISOString()] });
     setEvaluating(false);
