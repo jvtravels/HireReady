@@ -94,9 +94,10 @@ export function UpgradeModal({ onClose, sessionsUsed, user, currentTier, onPayme
     setLoading(planId);
     setError("");
     try {
+      const hdrs = await import("./supabase").then(m => m.authHeaders());
       const res = await fetch("/api/create-order", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: hdrs,
         body: JSON.stringify({ plan: planId, userId: user?.id, email: user?.email }),
       });
       const data = await res.json();
