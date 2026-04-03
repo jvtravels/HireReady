@@ -334,22 +334,10 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
 
       {/* Right: Visual panel */}
       <div className="signup-visual" style={{ position: "relative", overflow: "hidden", background: c.graphite }}>
-        {/* Abstract gradient background — no external image dependency */}
-        <div style={{
-          position: "absolute", inset: 0,
-          background: `
-            radial-gradient(ellipse at 30% 20%, rgba(201,169,110,0.12) 0%, transparent 50%),
-            radial-gradient(ellipse at 70% 60%, rgba(122,158,126,0.08) 0%, transparent 50%),
-            radial-gradient(ellipse at 50% 90%, rgba(196,112,90,0.06) 0%, transparent 40%),
-            linear-gradient(135deg, ${c.graphite} 0%, ${c.obsidian} 100%)
-          `,
-        }} />
-        {/* Subtle grid pattern */}
-        <div style={{
-          position: "absolute", inset: 0, opacity: 0.03,
-          backgroundImage: `linear-gradient(rgba(240,237,232,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(240,237,232,0.5) 1px, transparent 1px)`,
-          backgroundSize: "40px 40px",
-        }} />
+        <img src="https://images.unsplash.com/photo-1551836022-d5d88e9218df?w=900&h=1200&fit=crop&crop=face" alt="Professional preparing for an interview"
+          style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", objectPosition: "center 20%" }} />
+        <div style={{ position: "absolute", inset: 0, background: `linear-gradient(180deg, ${c.obsidian}40 0%, transparent 30%, transparent 50%, ${c.obsidian}E6 85%)` }} />
+        <div style={{ position: "absolute", inset: 0, background: `linear-gradient(90deg, ${c.obsidian}80 0%, transparent 40%)` }} />
 
         {/* Floating product mockup */}
         <div style={{ position: "absolute", top: "12%", right: "8%", width: 260, background: "rgba(22,22,24,0.65)", backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)", borderRadius: 14, border: "1px solid rgba(240,237,232,0.08)", padding: "20px", boxShadow: "0 24px 64px rgba(0,0,0,0.4)", animation: "floatSlow 6s ease-in-out infinite" }}>
