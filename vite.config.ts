@@ -18,6 +18,16 @@ export default defineConfig(async () => {
         projectDiscovery: "lazy",
       }),
     ],
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            "vendor-react": ["react", "react-dom", "react-router-dom"],
+            "vendor-supabase": ["@supabase/supabase-js"],
+          },
+        },
+      },
+    },
     test: {
       environment: "jsdom",
       globals: true,

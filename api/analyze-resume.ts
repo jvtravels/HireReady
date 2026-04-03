@@ -1,11 +1,11 @@
-/* Vercel Edge Function — AI Resume Analysis via Google Gemini */
+/* Vercel Edge Function — AI Resume Analysis via Groq */
 
 export const config = { runtime: "edge" };
 
 import { handleCorsPreflightOrMethod, corsHeaders, isRateLimited, getClientIp, rateLimitResponse, verifyAuth, unauthorizedResponse } from "./_shared";
 
 declare const process: { env: Record<string, string | undefined> };
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "";
+const GROQ_API_KEY = process.env.GROQ_API_KEY || "";
 
 export default async function handler(req: Request): Promise<Response> {
   const earlyResponse = handleCorsPreflightOrMethod(req);
@@ -13,7 +13,7 @@ export default async function handler(req: Request): Promise<Response> {
 
   const headers = corsHeaders(req);
 
-  if (!GEMINI_API_KEY) {
+  if (!GROQ_API_KEY) {
     return new Response(JSON.stringify({ error: "LLM not configured" }), { status: 503, headers });
   }
 
@@ -60,30 +60,29 @@ Return a JSON object with these exact fields:
 Be specific — reference real details from the resume. Don't invent information not present.
 Respond with ONLY the JSON object, no markdown or explanation.`;
 
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: {
-            temperature: 0.4,
-            maxOutputTokens: 1500,
-            responseMimeType: "application/json",
-          },
-        }),
+    const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${GROQ_API_KEY}`,
       },
-    );
+      body: JSON.stringify({
+        model: "llama-3.3-70b-versatile",
+        messages: [{ role: "user", content: prompt }],
+        temperature: 0.4,
+        max_tokens: 1500,
+        response_format: { type: "json_object" },
+      }),
+    });
 
     if (!res.ok) {
       const errText = await res.text().catch(() => "");
-      console.error("Gemini error:", res.status, errText);
+      console.error("Groq error:", res.status, errText);
       return new Response(JSON.stringify({ error: "Resume analysis failed" }), { status: 502, headers });
     }
 
     const data = await res.json();
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+    const text = data.choices?.[0]?.message?.content || "";
 
     let profile;
     try {

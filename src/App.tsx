@@ -135,6 +135,7 @@ function Nav() {
 
   return (
     <header>
+    <a href="#main-content" className="skip-to-content">Skip to main content</a>
     <nav aria-label="Main navigation" style={{
       position: "fixed", top: 0, left: 0, right: 0, zIndex: 100, padding: "0 40px", height: 64,
       display: "flex", alignItems: "center", justifyContent: "space-between",
@@ -145,19 +146,21 @@ function Nav() {
       transition: "all 0.5s cubic-bezier(0.16, 1, 0.3, 1)",
     }}>
       <div style={{ fontFamily: font.ui, fontSize: 15, fontWeight: 600, letterSpacing: "0.06em", color: c.ivory, cursor: "pointer" }}>
-        Level Up
+        HireReady
       </div>
 
       {/* Mobile hamburger */}
       <button
         onClick={() => setMobileOpen(!mobileOpen)}
+        aria-label={mobileOpen ? "Close navigation menu" : "Open navigation menu"}
+        aria-expanded={mobileOpen}
         style={{
           display: "none", background: "none", border: "none", cursor: "pointer", padding: 8,
           color: c.ivory, position: "relative", zIndex: 102,
         }}
         className="mobile-nav-toggle"
       >
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+        <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
           {mobileOpen ? <><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></> : <><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></>}
         </svg>
       </button>
@@ -254,7 +257,7 @@ function Nav() {
 function HeroCTA() {
   const { isLoggedIn } = useAuth();
   return (
-    <div style={{ display: "flex", gap: 16, animation: "fadeInUp 0.8s ease 2.2s both", marginBottom: 40 }}>
+    <div className="hero-cta" style={{ display: "flex", gap: 16, animation: "fadeInUp 0.8s ease 2.2s both", marginBottom: 40 }}>
       <Link to={isLoggedIn ? "/dashboard" : "/signup"} className="shimmer-btn" style={{
         fontFamily: font.ui, fontSize: 14, fontWeight: 500, padding: "14px 32px",
         borderRadius: 8, border: "none", background: c.ivory, color: c.obsidian,
@@ -487,7 +490,7 @@ function HeroMockup() {
           }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
               <div style={{ width: 24, height: 24, borderRadius: "50%", background: `linear-gradient(135deg, ${c.gilt}40, ${c.gilt}15)`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>
+                <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>
               </div>
               <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, color: c.gilt, letterSpacing: "0.06em", textTransform: "uppercase" }}>Interviewer</span>
             </div>
@@ -506,7 +509,7 @@ function HeroMockup() {
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, justifyContent: "flex-end" }}>
               <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, color: c.sage, letterSpacing: "0.06em", textTransform: "uppercase" }}>You</span>
               <div style={{ width: 24, height: 24, borderRadius: "50%", background: `linear-gradient(135deg, ${c.sage}40, ${c.sage}15)`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
               </div>
             </div>
             <div style={{ background: c.obsidian, border: `1px solid ${c.border}`, borderRadius: "12px 2px 12px 12px", padding: "12px 16px", marginRight: 32 }}>
@@ -569,7 +572,7 @@ function HeroMockup() {
         zIndex: 2,
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="2" strokeLinecap="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+          <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="2" strokeLinecap="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
           <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, color: c.gilt, letterSpacing: "0.06em", textTransform: "uppercase" }}>AI Insight</span>
         </div>
         <p style={{ fontFamily: font.ui, fontSize: 11, lineHeight: 1.5, color: c.chalk }}>
@@ -587,7 +590,7 @@ const companyLogos: { name: string; svg: React.ReactNode }[] = [
   {
     name: "Google",
     svg: (
-      <svg width="74" height="24" viewBox="0 0 256 86" fill="currentColor">
+      <svg aria-hidden="true" width="74" height="24" viewBox="0 0 256 86" fill="currentColor">
         <path d="M34.8 43.7c0 12-9.4 20.8-20.9 20.8S-7 55.7-7 43.7c0-12.1 9.4-20.9 20.9-20.9s20.9 8.8 20.9 20.9zm-9.2 0c0-7.5-5.4-12.6-11.7-12.6S2.2 36.2 2.2 43.7c0 7.4 5.4 12.6 11.7 12.6s11.7-5.2 11.7-12.6z" transform="translate(7 0)"/>
         <path d="M73.4 43.7c0 12-9.4 20.8-20.9 20.8s-20.9-8.8-20.9-20.8c0-12.1 9.4-20.9 20.9-20.9S73.4 31.6 73.4 43.7zm-9.2 0c0-7.5-5.4-12.6-11.7-12.6S40.8 36.2 40.8 43.7c0 7.4 5.4 12.6 11.7 12.6s11.7-5.2 11.7-12.6z" transform="translate(7 0)"/>
         <path d="M110.6 24.1v37.8c0 15.6-9.2 21.9-20 21.9-10.2 0-16.4-6.8-18.7-12.4l8-3.3c1.4 3.4 4.9 7.5 10.7 7.5 7 0 11.3-4.3 11.3-12.5V60h-.3c-2.1 2.6-6.1 4.8-11.2 4.8-10.6 0-20.3-9.2-20.3-21.1 0-11.9 9.7-21.2 20.3-21.2 5 0 9.1 2.2 11.2 4.8h.3v-3.3h8.7zm-8 19.8c0-7.3-4.9-12.7-11.1-12.7-6.3 0-11.6 5.3-11.6 12.7 0 7.2 5.3 12.4 11.6 12.4 6.2.1 11.1-5.2 11.1-12.4z" transform="translate(7 0)"/>
@@ -600,7 +603,7 @@ const companyLogos: { name: string; svg: React.ReactNode }[] = [
   {
     name: "Apple",
     svg: (
-      <svg width="20" height="24" viewBox="0 0 256 315" fill="currentColor">
+      <svg aria-hidden="true" width="20" height="24" viewBox="0 0 256 315" fill="currentColor">
         <path d="M213.8 167c.4 47.6 41.8 63.4 42.2 63.6-.3 1.1-6.6 22.6-21.8 44.7-13.1 19.2-26.7 38.3-48.1 38.7-21.1.4-27.8-12.5-51.9-12.5s-31.4 12.1-51.4 12.9c-20.7.8-36.5-20.7-49.7-39.8-27-39.4-47.6-111.4-19.9-159.9 13.8-24.1 38.3-39.3 65-39.7 20.3-.4 39.5 13.7 51.9 13.7 12.4 0 35.7-16.9 60.2-14.4 10.3.4 39.1 4.1 57.5 31.1-1.5.9-34.4 20.1-34 60.1M174.2 50.2c11-13.3 18.4-31.8 16.4-50.2-15.8.6-35 10.5-46.3 23.8-10.2 11.8-19 30.3-16.6 48.2 17.6 1.4 35.6-8.9 46.5-21.8"/>
       </svg>
     ),
@@ -608,7 +611,7 @@ const companyLogos: { name: string; svg: React.ReactNode }[] = [
   {
     name: "Microsoft",
     svg: (
-      <svg width="22" height="22" viewBox="0 0 256 256" fill="currentColor">
+      <svg aria-hidden="true" width="22" height="22" viewBox="0 0 256 256" fill="currentColor">
         <rect x="0" y="0" width="121.7" height="121.7" opacity="0.8"/>
         <rect x="134.3" y="0" width="121.7" height="121.7" opacity="0.6"/>
         <rect x="0" y="134.3" width="121.7" height="121.7" opacity="0.6"/>
@@ -619,7 +622,7 @@ const companyLogos: { name: string; svg: React.ReactNode }[] = [
   {
     name: "Meta",
     svg: (
-      <svg width="28" height="20" viewBox="0 0 256 171" fill="currentColor">
+      <svg aria-hidden="true" width="28" height="20" viewBox="0 0 256 171" fill="currentColor">
         <path d="M27.7 112.1c0 9.8 2.1 17.3 4.9 21.8 3.7 5.9 9.2 8.5 14.8 8.5 7.2 0 13.8-1.8 26.5-19.4 10.2-14.1 22.2-33.9 30.3-46.3L118 55.8c9.5-14.6 20.5-30.8 33.1-41.8C161.2 5 172.3 0 183.5 0c18.8 0 36.6 10.9 50.3 31.3 15 22.3 22.2 50.4 22.2 79.4 0 17.3-3.4 29.9-9.2 39.9-5.6 9.7-16.5 19.4-34.8 19.4v-27.6c15.7 0 19.6-14.4 19.6-30.9 0-23.5-5.5-49.6-17.6-68.3-8.6-13.2-19.7-21.3-31.9-21.3-13.2 0-23.9 10-35.8 27.8-6.4 9.4-12.9 21-20.2 34l-8.1 14.3C101.8 126.6 97.7 133.2 89.6 144c-14.2 18.9-26.3 26.1-42.3 26.1-18.9 0-30.9-8.2-38.3-20.6C2.97 139.4 0 126.2 0 111.1l27.7 1z"/>
       </svg>
     ),
@@ -627,7 +630,7 @@ const companyLogos: { name: string; svg: React.ReactNode }[] = [
   {
     name: "Amazon",
     svg: (
-      <svg width="74" height="22" viewBox="0 0 603 182" fill="currentColor">
+      <svg aria-hidden="true" width="74" height="22" viewBox="0 0 603 182" fill="currentColor">
         <path d="M374.1 142.3c-34.8 25.7-85.3 39.4-128.8 39.4-61 0-115.8-22.5-157.3-60-.3-.3-.3-7.5 3.3-3.3 44.8 36.4 100.1 58.3 157.3 58.3 38.6 0 81-8 120-24.5 5.9-2.5 10.8 3.8 5.5 10.1z"/>
         <path d="M389.6 125.5c-4.5-5.8-30-2.8-41.5-1.4-3.5.4-4-2.6-.9-4.8 20.3-14.3 53.6-10.2 57.5-5.4 3.9 4.9-1 38.8-20.1 55-2.9 2.5-5.7 1.2-4.4-2.1 4.3-10.7 13.9-35.5 9.4-41.3z"/>
         <path d="M349.3 23.5V7.2c0-2.5 1.9-4.1 4.1-4.1h72.8c2.3 0 4.2 1.7 4.2 4.1v14c0 2.3-2 5.3-5.4 10l-37.7 53.8c14-0.3 28.8 1.7 41.5 8.8 2.9 1.6 3.6 3.9 3.8 6.2v17.4c0 2.3-2.6 5.1-5.3 3.7-22.1-11.6-51.5-12.9-76 .1-2.5 1.3-5.1-1.4-5.1-3.7V100c0-2.6.1-7 2.6-10.9L389.7 36h-36.3c-2.3 0-4.1-1.7-4.1-4V23.5z"/>
@@ -641,7 +644,7 @@ const companyLogos: { name: string; svg: React.ReactNode }[] = [
   {
     name: "McKinsey",
     svg: (
-      <svg width="90" height="16" viewBox="0 0 180 24" fill="currentColor">
+      <svg aria-hidden="true" width="90" height="16" viewBox="0 0 180 24" fill="currentColor">
         <text x="0" y="18" fontFamily="'Inter', sans-serif" fontSize="17" fontWeight="600" letterSpacing="0.06em">McKinsey</text>
       </svg>
     ),
@@ -649,7 +652,7 @@ const companyLogos: { name: string; svg: React.ReactNode }[] = [
   {
     name: "Deloitte",
     svg: (
-      <svg width="72" height="16" viewBox="0 0 150 24" fill="currentColor">
+      <svg aria-hidden="true" width="72" height="16" viewBox="0 0 150 24" fill="currentColor">
         <text x="0" y="18" fontFamily="'Inter', sans-serif" fontSize="17" fontWeight="600" letterSpacing="0.04em">Deloitte</text>
         <circle cx="142" cy="16" r="4" fill="#86BC25" opacity="0.7"/>
       </svg>
@@ -658,7 +661,7 @@ const companyLogos: { name: string; svg: React.ReactNode }[] = [
   {
     name: "Goldman Sachs",
     svg: (
-      <svg width="115" height="16" viewBox="0 0 220 24" fill="currentColor">
+      <svg aria-hidden="true" width="115" height="16" viewBox="0 0 220 24" fill="currentColor">
         <text x="0" y="18" fontFamily="'Inter', sans-serif" fontSize="17" fontWeight="600" letterSpacing="0.03em">Goldman Sachs</text>
       </svg>
     ),
@@ -674,7 +677,7 @@ function LogoMarquee() {
   return (
     <section ref={ref} className="reveal" style={{ padding: "60px 40px", borderTop: `1px solid ${c.border}`, borderBottom: `1px solid ${c.border}` }}>
       <p style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 500, letterSpacing: "0.1em", textTransform: "uppercase", color: c.stone, textAlign: "center", marginBottom: 36 }}>
-        Professionals from these companies practice with Level Up
+        Professionals from these companies practice with HireReady
       </p>
       <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 44, flexWrap: "wrap", maxWidth: 1000, margin: "0 auto" }}>
         {companyLogos.map((logo) => (
@@ -744,16 +747,16 @@ function StatsSection() {
 
   const stats = [
     { ref: stat1.ref, value: `${stat1.value.toLocaleString()}+`, label: "Mock Sessions Completed", icon: (
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+      <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
     )},
     { ref: stat2.ref, value: `${(stat2.value / 10).toFixed(1)}`, label: "Average User Rating", icon: (
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+      <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
     )},
     { ref: stat3.ref, value: `${stat3.value}%`, label: "Report Improvement", icon: (
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+      <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
     )},
     { ref: stat4.ref, value: `${stat4.value}min`, label: "Avg. Feedback Time", icon: (
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
     )},
   ];
 
@@ -994,7 +997,7 @@ function ProductMockup({ type, showChrome = false }: { type: "upload" | "intervi
       <div style={{ height: 38, background: c.obsidian, borderBottom: `1px solid ${c.border}`, display: "flex", alignItems: "center", padding: "0 14px", gap: 6 }}>
         {[0.15, 0.1, 0.1].map((o, i) => <div key={i} style={{ width: 8, height: 8, borderRadius: "50%", background: `rgba(240,237,232,${o})` }} />)}
         <div style={{ flex: 1, textAlign: "center" }}>
-          <span style={{ fontFamily: font.ui, fontSize: 10, color: c.stone, letterSpacing: "0.02em" }}>levelupinterviews.com</span>
+          <span style={{ fontFamily: font.ui, fontSize: 10, color: c.stone, letterSpacing: "0.02em" }}>hireready.com</span>
         </div>
       </div>
       <div style={{ padding: 24 }}>{content}</div>
@@ -1007,7 +1010,7 @@ function MockupUpload() {
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <div style={{ fontFamily: font.ui, fontSize: 14, fontWeight: 600, color: c.ivory }}>New Session</div>
       <div style={{ border: `1.5px dashed rgba(201,169,110,0.25)`, borderRadius: 10, padding: "32px 20px", textAlign: "center", background: "rgba(201,169,110,0.02)", transition: "all 0.3s ease" }}>
-        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5" style={{ margin: "0 auto 12px", display: "block" }}>
+        <svg aria-hidden="true" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5" style={{ margin: "0 auto 12px", display: "block" }}>
           <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" />
         </svg>
         <p style={{ fontFamily: font.ui, fontSize: 13, color: c.chalk, marginBottom: 4 }}>Drop your resume here</p>
@@ -1127,7 +1130,7 @@ function DemoVideoSection() {
             backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)",
             border: "1px solid rgba(240,237,232,0.15)", display: "flex", alignItems: "center", justifyContent: "center",
           }}>
-            <svg width="28" height="28" viewBox="0 0 24 24" fill={c.ivory} style={{ marginLeft: 3 }}><polygon points="5,3 19,12 5,21" /></svg>
+            <svg aria-hidden="true" width="28" height="28" viewBox="0 0 24 24" fill={c.ivory} style={{ marginLeft: 3 }}><polygon points="5,3 19,12 5,21" /></svg>
           </div>
         </div>
 
@@ -1141,10 +1144,10 @@ function DemoVideoSection() {
    FEATURES — gradient border cards with icons
    ═══════════════════════════════════════════════ */
 const features = [
-  { label: "Adaptive", title: "Questions from your resume", description: "No recycled question banks. Every session is generated from your actual experience, targeting the role and level you're interviewing for.", accent: c.gilt, accentClass: "", icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg> },
-  { label: "Real-Time", title: "Conversational AI that listens", description: "The interviewer responds to what you say — asking follow-ups, probing deeper — exactly like a senior hiring manager.", accent: c.sage, accentClass: "accent-sage", icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg> },
-  { label: "Precise", title: "Feedback that's specific", description: '"Your answer undersold revenue impact by 40%." Not "try to be more specific."', accent: c.ember, accentClass: "accent-ember", icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg> },
-  { label: "Private", title: "Your data stays yours", description: "GDPR-ready from day one. Export or delete anytime. No social features, no tracking beyond what you control.", accent: c.slate, accentClass: "accent-slate", icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> },
+  { label: "Adaptive", title: "Questions from your resume", description: "No recycled question banks. Every session is generated from your actual experience, targeting the role and level you're interviewing for.", accent: c.gilt, accentClass: "", icon: <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg> },
+  { label: "Real-Time", title: "Conversational AI that listens", description: "The interviewer responds to what you say — asking follow-ups, probing deeper — exactly like a senior hiring manager.", accent: c.sage, accentClass: "accent-sage", icon: <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg> },
+  { label: "Precise", title: "Feedback that's specific", description: '"Your answer undersold revenue impact by 40%." Not "try to be more specific."', accent: c.ember, accentClass: "accent-ember", icon: <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg> },
+  { label: "Private", title: "Your data stays yours", description: "GDPR-ready from day one. Export or delete anytime. No social features, no tracking beyond what you control.", accent: c.slate, accentClass: "accent-slate", icon: <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> },
 ];
 
 function FeaturesSection() {
@@ -1152,7 +1155,7 @@ function FeaturesSection() {
   return (
     <section id="features" ref={ref} className="reveal" style={{ padding: "140px 40px 80px", maxWidth: 1100, margin: "0 auto" }}>
       <div style={{ textAlign: "center", marginBottom: 80 }}>
-        <p style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: c.gilt, marginBottom: 16 }}>Why Level Up</p>
+        <p style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: c.gilt, marginBottom: 16 }}>Why HireReady</p>
         <h2 className="text-glow" style={{ fontFamily: font.display, fontSize: "clamp(32px, 4vw, 48px)", fontWeight: 400, letterSpacing: "-0.02em", color: c.ivory, lineHeight: 1.15 }}>
           Built for professionals who are already good
         </h2>
@@ -1346,7 +1349,7 @@ function ScorePreview() {
    ═══════════════════════════════════════════════ */
 const testimonials = [
   { quote: "I've done 200 interviews as a hiring manager. This is the first tool that practices at the level my candidates need to perform.", name: "Marcus T.", role: "VP of Engineering, Fortune 500", image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=500&fit=crop&crop=face", result: "Hired at target company" },
-  { quote: "My $8K coaching clients need serious prep, not flashcard apps. Level Up is the only platform I trust to send them to.", name: "Dana R.", role: "Executive Career Coach", image: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&h=500&fit=crop&crop=face", result: "Recommends to all clients" },
+  { quote: "My $8K coaching clients need serious prep, not flashcard apps. HireReady is the only platform I trust to send them to.", name: "Dana R.", role: "Executive Career Coach", image: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&h=500&fit=crop&crop=face", result: "Recommends to all clients" },
   { quote: "The feedback told me I was underselling my impact by 40%. No human coach had ever caught that. I got the offer.", name: "Priya K.", role: "Director of Product, FAANG", image: "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=400&h=500&fit=crop&crop=face", result: "Landed Director role" },
 ];
 
@@ -1420,7 +1423,7 @@ function TestimonialsSection() {
                   padding: "6px 12px", background: `${c.sage}10`, border: `1px solid ${c.sage}20`,
                   borderRadius: 100, alignSelf: "flex-start",
                 }}>
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg>
+                  <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg>
                   <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 500, color: c.sage }}>{t.result}</span>
                 </div>
               </div>
@@ -1457,9 +1460,9 @@ function TestimonialsSection() {
    PRICING — with gradient border featured card
    ═══════════════════════════════════════════════ */
 const plans = [
-  { name: "Free Trial", price: "Free", period: "", description: "One complete mock interview. No credit card required.", features: ["1 full AI mock interview", "Resume-tailored questions", "Scored feedback & suggestions", "PDF export"], cta: "Start Free Session", featured: false },
-  { name: "Weekly", price: "$29", period: "/ week", description: "Unlimited practice with optional auto-renewal.", features: ["Unlimited sessions", "All question types & roles", "Full feedback & scoring", "Export in PDF, CSV, or JSON", "Auto-renew optional"], cta: "Get Weekly Access", featured: false },
-  { name: "Pro", price: "$199", period: "/ quarter", description: "For professionals committed to sustained improvement.", features: ["Everything in Weekly", "Improvement analytics & trends", "Practice challenges", "Priority feedback generation", "$29 credit from Weekly applied"], cta: "Upgrade to Pro", featured: true },
+  { name: "Free", price: "Free", period: "", planId: "", description: "Try it out — no credit card required.", features: ["3 AI mock interviews", "Behavioral questions only", "Basic score & feedback", "Resume-tailored questions"], cta: "Start Free", featured: false },
+  { name: "Starter", price: "₹49", period: "/ week", planId: "weekly", description: "10 sessions per week. Cancel anytime.", features: ["10 sessions per week", "All question types & roles", "Detailed feedback & skill scores", "Basic resume analysis", "PDF export"], cta: "Get Started", featured: false },
+  { name: "Pro", price: "₹149", period: "/ month", planId: "monthly", description: "Unlimited prep. Best value for serious candidates.", features: ["Unlimited sessions", "Full AI coaching feedback", "Performance analytics & trends", "Interview calendar & reminders", "Full resume analysis", "Export PDF, CSV, JSON"], cta: "Go Pro", featured: true },
 ];
 
 function PricingSection() {
@@ -1471,7 +1474,7 @@ function PricingSection() {
         <h2 className="text-glow" style={{ fontFamily: font.display, fontSize: "clamp(32px, 4vw, 48px)", fontWeight: 400, letterSpacing: "-0.02em", color: c.ivory, lineHeight: 1.15, marginBottom: 16 }}>Transparent. No surprises.</h2>
         <p style={{ fontFamily: font.ui, fontSize: 15, color: c.stone, lineHeight: 1.6, maxWidth: 460, margin: "0 auto" }}>Start free. Upgrade when you're ready. No auto-renewal traps.</p>
       </div>
-      <div className="pricing-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20, alignItems: "start" }}>
+      <div className="pricing-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16, alignItems: "start" }}>
         {plans.map((p, i) => <PricingCard key={p.name} plan={p} delay={i} />)}
       </div>
     </section>
@@ -1481,31 +1484,73 @@ function PricingSection() {
 function PricingCard({ plan, delay }: { plan: (typeof plans)[0]; delay: number }) {
   const ref = useReveal<HTMLDivElement>();
   const navigate = useNavigate();
-  const { user, isLoggedIn } = useAuth();
+  const { user, isLoggedIn, updateUser } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const handleClick = async () => {
     if (plan.price === "Free") {
       navigate(isLoggedIn ? "/session/new" : "/signup");
       return;
     }
-    if (!isLoggedIn) { navigate("/signup"); return; }
+    if (!isLoggedIn) { navigate(`/signup?plan=${plan.planId}`); return; }
 
     setLoading(true);
+    setError("");
     try {
-      const planId = plan.price === "$29" ? "weekly" : "quarterly";
-      const res = await fetch("/api/create-checkout", {
+      const res = await fetch("/api/create-order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ plan: planId, userId: user?.id, email: user?.email }),
+        body: JSON.stringify({ plan: plan.planId, userId: user?.id, email: user?.email }),
       });
       const data = await res.json();
-      if (data.url) {
-        window.location.href = data.url;
+      if (data.orderId && (window as any).Razorpay) {
+        const options = {
+          key: data.keyId,
+          amount: data.amount,
+          currency: data.currency,
+          name: "HireReady",
+          description: data.description,
+          order_id: data.orderId,
+          prefill: { email: user?.email || "", name: user?.name || "" },
+          theme: { color: "#C9A96E" },
+          handler: async (response: { razorpay_payment_id: string; razorpay_order_id: string; razorpay_signature: string }) => {
+            try {
+              const authHeaders = await import("./supabase").then(m => m.authHeaders());
+              const verifyRes = await fetch("/api/verify-payment", {
+                method: "POST",
+                headers: authHeaders,
+                body: JSON.stringify({
+                  razorpay_order_id: response.razorpay_order_id,
+                  razorpay_payment_id: response.razorpay_payment_id,
+                  razorpay_signature: response.razorpay_signature,
+                  plan: plan.planId,
+                }),
+              });
+              const verifyData = await verifyRes.json();
+              if (verifyData.success) {
+                updateUser({ subscriptionTier: verifyData.subscriptionTier, subscriptionStart: verifyData.subscriptionStart, subscriptionEnd: verifyData.subscriptionEnd });
+                navigate("/dashboard?payment=success");
+              } else {
+                setError(verifyData.error || "Payment verification failed.");
+                setLoading(false);
+              }
+            } catch {
+              setError("Payment verification failed. Contact support.");
+              setLoading(false);
+            }
+          },
+          modal: { ondismiss: () => setLoading(false) },
+        };
+        const rzp = new (window as any).Razorpay(options);
+        rzp.on("payment.failed", () => { setError("Payment failed. Please try again."); setLoading(false); });
+        rzp.open();
+      } else {
+        setError(data.error || "Checkout unavailable. Please try again.");
+        setLoading(false);
       }
     } catch {
-      // Fallback if Stripe isn't configured
-    } finally {
+      setError("Something went wrong. Please try again.");
       setLoading(false);
     }
   };
@@ -1546,8 +1591,9 @@ function PricingCard({ plan, delay }: { plan: (typeof plans)[0]; delay: number }
           if (plan.featured) { e.currentTarget.style.filter = "brightness(1)"; }
           else { e.currentTarget.style.borderColor = c.borderHover; e.currentTarget.style.color = c.chalk; e.currentTarget.style.background = "transparent"; }
         }}>
-        {loading ? "Redirecting..." : plan.cta}
+        {loading ? "Redirecting to checkout..." : plan.cta}
       </button>
+      {error && <p style={{ fontFamily: font.ui, fontSize: 11, color: c.ember, marginTop: 8, textAlign: "center" }}>{error}</p>}
     </div>
   );
 }
@@ -1587,22 +1633,22 @@ function TrustBadges() {
   const ref = useReveal<HTMLElement>();
   const badges = [
     {
-      icon: <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>,
+      icon: <svg aria-hidden="true" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>,
       title: "SOC 2 Type II",
       desc: "Enterprise-grade security controls",
     },
     {
-      icon: <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M14.31 8l5.74 9.94M9.69 8h11.48M7.38 12l5.74-9.94M9.69 16L3.95 6.06M14.31 16H2.83M16.62 12l-5.74 9.94"/></svg>,
+      icon: <svg aria-hidden="true" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M14.31 8l5.74 9.94M9.69 8h11.48M7.38 12l5.74-9.94M9.69 16L3.95 6.06M14.31 16H2.83M16.62 12l-5.74 9.94"/></svg>,
       title: "GDPR Compliant",
       desc: "Full data rights & portability",
     },
     {
-      icon: <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={c.ember} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>,
+      icon: <svg aria-hidden="true" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={c.ember} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>,
       title: "AES-256 Encryption",
       desc: "Data encrypted at rest & in transit",
     },
     {
-      icon: <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={c.slate} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>,
+      icon: <svg aria-hidden="true" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={c.slate} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>,
       title: "No Tracking",
       desc: "Zero third-party analytics or ads",
     },
@@ -1703,17 +1749,17 @@ function Footer() {
       <div className="footer-grid" style={{ display: "grid", gridTemplateColumns: "1.5fr repeat(4, 1fr)", gap: 48, marginBottom: 48 }}>
         {/* Brand column */}
         <div>
-          <span style={{ fontFamily: font.ui, fontSize: 18, fontWeight: 600, color: c.ivory, letterSpacing: "0.04em", display: "block", marginBottom: 12 }}>Level Up</span>
+          <span style={{ fontFamily: font.ui, fontSize: 18, fontWeight: 600, color: c.ivory, letterSpacing: "0.04em", display: "block", marginBottom: 12 }}>HireReady</span>
           <p style={{ fontFamily: font.ui, fontSize: 13, color: c.stone, lineHeight: 1.6, marginBottom: 20, maxWidth: 220 }}>
             AI-powered mock interviews for experienced professionals. A Silva Vitalis LLC product.
           </p>
           {/* Social icons */}
           <div style={{ display: "flex", gap: 12 }}>
             {[
-              <svg key="x" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>,
-              <svg key="li" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>,
+              <svg key="x" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>,
+              <svg key="li" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>,
             ].map((icon, i) => (
-              <a key={i} href="#" style={{
+              <a key={i} href="#" aria-label={["Follow on X", "Follow on LinkedIn"][i]} style={{
                 width: 32, height: 32, borderRadius: "50%", border: `1px solid ${c.border}`,
                 display: "flex", alignItems: "center", justifyContent: "center",
                 color: c.stone, transition: "all 0.25s ease", textDecoration: "none",
@@ -1759,10 +1805,23 @@ function Footer() {
    APP
    ═══════════════════════════════════════════════ */
 export default function App() {
+  const { isLoggedIn, user, loading } = useAuth();
+  const navigate = useNavigate();
+
+  // Redirect logged-in users (e.g. after email confirmation) to dashboard/onboarding
+  useEffect(() => {
+    if (loading || !isLoggedIn) return;
+    if (user && !user.hasCompletedOnboarding) {
+      navigate("/onboarding", { replace: true });
+    } else {
+      navigate("/dashboard", { replace: true });
+    }
+  }, [isLoggedIn, loading, user, navigate]);
+
   return (
     <div style={{ minHeight: "100vh", background: c.obsidian, color: c.ivory, position: "relative", overflow: "hidden" }}>
       <Nav />
-      <main>
+      <main id="main-content">
         <Hero />
         <LogoMarquee />
         <StatsSection />

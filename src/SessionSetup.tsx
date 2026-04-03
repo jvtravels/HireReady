@@ -6,7 +6,7 @@ import { useAuth } from "./AuthContext";
 /* ─── Adaptive difficulty helper ─── */
 function getSuggestedDifficulty(): { id: string; reason: string } {
   try {
-    const raw = localStorage.getItem("levelup_sessions");
+    const raw = localStorage.getItem("hireready_sessions");
     if (!raw) return { id: "standard", reason: "Default for first session" };
     const sessions = JSON.parse(raw);
     if (!sessions.length) return { id: "standard", reason: "Default for first session" };
@@ -25,20 +25,24 @@ const interviewTypes = [
     label: "Behavioral",
     description: "STAR-format questions about leadership, conflict resolution, and decision-making",
     icon: (
-      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+      <svg aria-hidden="true" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
         <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
       </svg>
     ),
     duration: "15–20 min",
     questions: "4–6 questions",
     color: c.gilt,
+    sampleQuestions: [
+      "Tell me about a time you had to make a difficult technical decision that impacted your team's roadmap.",
+      "Describe a situation where you had to scale your engineering organization.",
+    ],
   },
   {
     id: "strategic",
     label: "Strategic",
     description: "Roadmap planning, stakeholder alignment, and organizational strategy",
     icon: (
-      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+      <svg aria-hidden="true" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
         <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
         <polyline points="17 6 23 6 23 12" />
       </svg>
@@ -46,13 +50,17 @@ const interviewTypes = [
     duration: "20–25 min",
     questions: "3–5 questions",
     color: c.sage,
+    sampleQuestions: [
+      "How would you approach building a 3-year technical strategy for an aging stack?",
+      "Tell me about a time you had to pivot a major initiative based on changing business conditions.",
+    ],
   },
   {
     id: "technical",
     label: "Technical Leadership",
     description: "System design decisions, architecture trade-offs, and technical team management",
     icon: (
-      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+      <svg aria-hidden="true" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
         <polyline points="16 18 22 12 16 6" />
         <polyline points="8 6 2 12 8 18" />
       </svg>
@@ -60,13 +68,17 @@ const interviewTypes = [
     duration: "20–30 min",
     questions: "3–4 questions",
     color: c.ember,
+    sampleQuestions: [
+      "Describe a system you designed that had to handle 10x growth in traffic.",
+      "Tell me about a major production incident you led the response for.",
+    ],
   },
   {
     id: "case-study",
     label: "Case Study",
     description: "Real-world engineering scenarios: diagnose, strategize, and present solutions",
     icon: (
-      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+      <svg aria-hidden="true" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
         <rect x="2" y="3" width="20" height="14" rx="2" />
         <line x1="8" y1="21" x2="16" y2="21" />
         <line x1="12" y1="17" x2="12" y2="21" />
@@ -75,6 +87,10 @@ const interviewTypes = [
     duration: "25–35 min",
     questions: "1–2 deep dives",
     color: c.slate,
+    sampleQuestions: [
+      "Your core API has 99.95% uptime but customers are churning citing 'reliability issues.' How would you investigate?",
+      "A competitor launched a feature in 2 months; your team estimates 6. The CEO wants it in 3. How do you handle this?",
+    ],
   },
 ];
 
@@ -290,7 +306,7 @@ export default function SessionSetup() {
           onMouseEnter={(e) => { e.currentTarget.style.color = c.ivory; }}
           onMouseLeave={(e) => { e.currentTarget.style.color = c.stone; }}
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6" /></svg>
+          <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6" /></svg>
           Back to Dashboard
         </button>
 
@@ -306,7 +322,7 @@ export default function SessionSetup() {
                 transition: "all 0.3s ease",
               }}>
                 {step > s ? (
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.obsidian} strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12" /></svg>
+                  <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.obsidian} strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12" /></svg>
                 ) : (
                   <span style={{ fontFamily: font.mono, fontSize: 11, fontWeight: 600, color: step === s ? c.obsidian : c.stone }}>{s}</span>
                 )}
@@ -355,7 +371,7 @@ export default function SessionSetup() {
                     <div style={{ color: type.color }}>{type.icon}</div>
                     {selectedType === type.id && (
                       <div style={{ width: 20, height: 20, borderRadius: "50%", background: type.color, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={c.obsidian} strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12" /></svg>
+                        <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={c.obsidian} strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12" /></svg>
                       </div>
                     )}
                   </div>
@@ -368,6 +384,25 @@ export default function SessionSetup() {
                 </button>
               ))}
             </div>
+
+            {/* Sample questions preview */}
+            {selectedTypeData && (
+              <div style={{
+                marginBottom: 32, padding: "14px 18px", borderRadius: 10,
+                background: `rgba(${selectedTypeData.color === c.gilt ? "201,169,110" : selectedTypeData.color === c.sage ? "122,158,126" : selectedTypeData.color === c.ember ? "196,112,90" : "91,103,112"},0.04)`,
+                border: `1px solid ${c.border}`,
+              }}>
+                <p style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.stone, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10 }}>
+                  Sample questions
+                </p>
+                {selectedTypeData.sampleQuestions.map((q, i) => (
+                  <div key={i} style={{ display: "flex", gap: 10, alignItems: "flex-start", marginBottom: i < selectedTypeData.sampleQuestions.length - 1 ? 8 : 0 }}>
+                    <span style={{ fontFamily: font.mono, fontSize: 10, color: selectedTypeData.color, marginTop: 3, flexShrink: 0 }}>{i + 1}.</span>
+                    <p style={{ fontFamily: font.ui, fontSize: 12.5, color: c.chalk, lineHeight: 1.5, fontStyle: "italic", margin: 0 }}>"{q}"</p>
+                  </div>
+                ))}
+              </div>
+            )}
 
             {/* Focus area */}
             <h2 style={{ fontFamily: font.ui, fontSize: 16, fontWeight: 600, color: c.ivory, marginBottom: 4 }}>Focus area <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 400, color: c.stone }}>(optional)</span></h2>
@@ -408,7 +443,7 @@ export default function SessionSetup() {
 
             {/* Adaptive suggestion */}
             <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 16px", borderRadius: 10, background: "rgba(201,169,110,0.04)", border: `1px solid rgba(201,169,110,0.12)`, marginBottom: 24 }}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="2"><path d="M12 2a10 10 0 1 0 10 10"/><path d="M12 6v6l4 2"/></svg>
+              <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="2"><path d="M12 2a10 10 0 1 0 10 10"/><path d="M12 6v6l4 2"/></svg>
               <span style={{ fontFamily: font.ui, fontSize: 12, color: c.chalk }}>
                 <span style={{ fontWeight: 600, color: c.gilt }}>Recommended: {difficulties.find(d => d.id === suggested.id)?.label}</span>
                 {" — "}{suggested.reason}
@@ -439,9 +474,9 @@ export default function SessionSetup() {
                     border: `1px solid ${d.color}30`,
                     display: "flex", alignItems: "center", justifyContent: "center",
                   }}>
-                    {d.id === "warmup" && <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={d.color} strokeWidth="1.5" strokeLinecap="round"><path d="M12 3v1m0 16v1m-8-9h1m16 0h1M5.6 5.6l.7.7m11.4 11.4l.7.7M5.6 18.4l.7-.7m11.4-11.4l.7-.7"/><circle cx="12" cy="12" r="4"/></svg>}
-                    {d.id === "standard" && <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={d.color} strokeWidth="1.5" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>}
-                    {d.id === "intense" && <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={d.color} strokeWidth="1.5" strokeLinecap="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>}
+                    {d.id === "warmup" && <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={d.color} strokeWidth="1.5" strokeLinecap="round"><path d="M12 3v1m0 16v1m-8-9h1m16 0h1M5.6 5.6l.7.7m11.4 11.4l.7.7M5.6 18.4l.7-.7m11.4-11.4l.7-.7"/><circle cx="12" cy="12" r="4"/></svg>}
+                    {d.id === "standard" && <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={d.color} strokeWidth="1.5" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>}
+                    {d.id === "intense" && <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={d.color} strokeWidth="1.5" strokeLinecap="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>}
                   </div>
                   <div style={{ flex: 1 }}>
                     <h3 style={{ fontFamily: font.ui, fontSize: 15, fontWeight: 600, color: c.ivory, marginBottom: 2 }}>{d.label}</h3>
@@ -449,7 +484,7 @@ export default function SessionSetup() {
                   </div>
                   {difficulty === d.id && (
                     <div style={{ width: 22, height: 22, borderRadius: "50%", background: d.color, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={c.obsidian} strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12" /></svg>
+                      <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={c.obsidian} strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12" /></svg>
                     </div>
                   )}
                 </button>
@@ -497,7 +532,7 @@ export default function SessionSetup() {
                     border: `1px solid ${micStatus === "ready" ? "rgba(122,158,126,0.2)" : micStatus === "error" ? "rgba(196,112,90,0.2)" : "rgba(201,169,110,0.12)"}`,
                     display: "flex", alignItems: "center", justifyContent: "center",
                   }}>
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={micStatus === "ready" ? c.sage : micStatus === "error" ? c.ember : c.gilt} strokeWidth="1.5" strokeLinecap="round">
+                    <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={micStatus === "ready" ? c.sage : micStatus === "error" ? c.ember : c.gilt} strokeWidth="1.5" strokeLinecap="round">
                       <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
                       <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
                       <line x1="12" y1="19" x2="12" y2="23" />
@@ -544,7 +579,7 @@ export default function SessionSetup() {
                     border: `1px solid ${camStatus === "ready" ? "rgba(122,158,126,0.2)" : camStatus === "error" ? "rgba(196,112,90,0.2)" : "rgba(201,169,110,0.12)"}`,
                     display: "flex", alignItems: "center", justifyContent: "center",
                   }}>
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={camStatus === "ready" ? c.sage : camStatus === "error" ? c.ember : c.gilt} strokeWidth="1.5" strokeLinecap="round">
+                    <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={camStatus === "ready" ? c.sage : camStatus === "error" ? c.ember : c.gilt} strokeWidth="1.5" strokeLinecap="round">
                       <path d="M23 7l-7 5 7 5V7z" /><rect x="1" y="5" width="15" height="14" rx="2" />
                     </svg>
                   </div>
@@ -594,7 +629,7 @@ export default function SessionSetup() {
                   "Press Enter when you're done answering to move to the next question",
                 ].map((tip, i) => (
                   <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="2" style={{ marginTop: 2, flexShrink: 0 }}><polyline points="20 6 9 17 4 12" /></svg>
+                    <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="2" style={{ marginTop: 2, flexShrink: 0 }}><polyline points="20 6 9 17 4 12" /></svg>
                     <span style={{ fontFamily: font.ui, fontSize: 13, color: c.chalk, lineHeight: 1.5 }}>{tip}</span>
                   </div>
                 ))}
@@ -625,7 +660,7 @@ export default function SessionSetup() {
           onMouseEnter={(e) => { e.currentTarget.style.color = c.ivory; e.currentTarget.style.borderColor = c.borderHover; }}
           onMouseLeave={(e) => { e.currentTarget.style.color = c.stone; e.currentTarget.style.borderColor = c.border; }}
         >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6" /></svg>
+          <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6" /></svg>
           {step === 1 ? "Cancel" : "Back"}
         </button>
 
@@ -651,7 +686,7 @@ export default function SessionSetup() {
             onMouseLeave={(e) => { e.currentTarget.style.filter = "brightness(1)"; }}
           >
             Continue
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6" /></svg>
+            <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6" /></svg>
           </button>
         ) : (
           <button
@@ -668,7 +703,7 @@ export default function SessionSetup() {
             onMouseEnter={(e) => { e.currentTarget.style.filter = "brightness(1.15)"; }}
             onMouseLeave={(e) => { e.currentTarget.style.filter = "brightness(1)"; }}
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="5,3 19,12 5,21" /></svg>
+            <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="5,3 19,12 5,21" /></svg>
             Start Interview
           </button>
         )}

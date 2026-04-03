@@ -1,10 +1,11 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { c, font } from "./tokens";
 import { useAuth } from "./AuthContext";
 import { extractResumeText, parseResumeData, type ParsedResume } from "./resumeParser";
 
 const TOTAL_STEPS = 5;
+const ONBOARDING_KEY = "hireready_onboarding_draft";
 
 const roleOptions = [
   "VP of Engineering",
@@ -34,24 +35,48 @@ const companyExamples = [
   "Figma", "Notion", "Airbnb", "Series A-C Startup", "Other",
 ];
 
+function loadDraft() {
+  try {
+    const raw = sessionStorage.getItem(ONBOARDING_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return null;
+}
+
+function clearDraft() {
+  try { sessionStorage.removeItem(ONBOARDING_KEY); } catch {}
+}
+
 export default function Onboarding() {
   const navigate = useNavigate();
   const { updateUser } = useAuth();
-  const [step, setStep] = useState(1);
-  const [targetRole, setTargetRole] = useState("");
-  const [customRole, setCustomRole] = useState("");
-  const [selectedTypes, setSelectedTypes] = useState<string[]>(["behavioral"]);
-  const [fileName, setFileName] = useState("");
+  const draft = useRef(loadDraft()).current;
+  const [step, setStep] = useState(draft?.step || 1);
+  const [slideDir, setSlideDir] = useState<"forward" | "back">("forward");
+  const [targetRole, setTargetRole] = useState(draft?.targetRole || "");
+  const [customRole, setCustomRole] = useState(draft?.customRole || "");
+  const [selectedTypes, setSelectedTypes] = useState<string[]>(draft?.selectedTypes || ["behavioral"]);
+  const [fileName, setFileName] = useState(draft?.fileName || "");
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // New personalization fields
-  const [targetCompany, setTargetCompany] = useState("");
-  const [customCompany, setCustomCompany] = useState("");
-  const [industry, setIndustry] = useState("");
-  const [learningStyle, setLearningStyle] = useState<"direct" | "encouraging">("direct");
-  const [sessionLength, setSessionLength] = useState<10 | 15 | 25>(15);
-  const [interviewDate, setInterviewDate] = useState("");
+  const [targetCompany, setTargetCompany] = useState(draft?.targetCompany || "");
+  const [customCompany, setCustomCompany] = useState(draft?.customCompany || "");
+  const [industry, setIndustry] = useState(draft?.industry || "");
+  const [learningStyle, setLearningStyle] = useState<"direct" | "encouraging">(draft?.learningStyle || "direct");
+  const [sessionLength, setSessionLength] = useState<10 | 15 | 25>(draft?.sessionLength || 15);
+  const [interviewDate, setInterviewDate] = useState(draft?.interviewDate || "");
+
+  // Persist draft to sessionStorage on every change
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(ONBOARDING_KEY, JSON.stringify({
+        step, targetRole, customRole, selectedTypes, fileName,
+        targetCompany, customCompany, industry, learningStyle, sessionLength, interviewDate,
+      }));
+    } catch {}
+  }, [step, targetRole, customRole, selectedTypes, fileName, targetCompany, customCompany, industry, learningStyle, sessionLength, interviewDate]);
 
   const canContinue = () => {
     if (step === 1) return targetRole !== "" && (targetRole !== "Other" || customRole !== "");
@@ -101,8 +126,10 @@ export default function Onboarding() {
       if (step === 4) {
         updateUser({ learningStyle, preferredSessionLength: sessionLength, interviewDate: interviewDate || undefined });
       }
+      setSlideDir("forward");
       setStep(step + 1);
     } else {
+      clearDraft();
       updateUser({ hasCompletedOnboarding: true });
       navigate("/dashboard");
     }
@@ -120,10 +147,22 @@ export default function Onboarding() {
 
   return (
     <div style={{ minHeight: "100vh", background: c.obsidian, display: "flex", flexDirection: "column" }}>
+      <style>{`
+        @keyframes slideInForward { from { opacity: 0; transform: translateX(40px); } to { opacity: 1; transform: translateX(0); } }
+        @keyframes slideInBack { from { opacity: 0; transform: translateX(-40px); } to { opacity: 1; transform: translateX(0); } }
+        .step-enter { animation: ${slideDir === "forward" ? "slideInForward" : "slideInBack"} 0.35s cubic-bezier(0.16, 1, 0.3, 1); }
+      `}</style>
       {/* Top bar */}
       <div style={{ padding: "20px 40px", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: `1px solid ${c.border}` }}>
-        <span style={{ fontFamily: font.ui, fontSize: 15, fontWeight: 600, color: c.ivory, letterSpacing: "0.06em" }}>Level Up</span>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <span style={{ fontFamily: font.ui, fontSize: 15, fontWeight: 600, color: c.ivory, letterSpacing: "0.06em" }}>HireReady</span>
+        <div
+          role="progressbar"
+          aria-valuenow={step}
+          aria-valuemin={1}
+          aria-valuemax={TOTAL_STEPS}
+          aria-label={`Step ${step} of ${TOTAL_STEPS}`}
+          style={{ display: "flex", alignItems: "center", gap: 8 }}
+        >
           {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
             <div key={i} style={{ display: "flex", alignItems: "center", gap: 4 }}>
               <div style={{
@@ -135,7 +174,7 @@ export default function Onboarding() {
           ))}
           <span style={{ fontFamily: font.mono, fontSize: 11, color: c.stone, marginLeft: 8 }}>{step}/{TOTAL_STEPS}</span>
         </div>
-        <button onClick={() => { updateUser({ hasCompletedOnboarding: true }); navigate("/dashboard"); }}
+        <button onClick={() => { clearDraft(); updateUser({ hasCompletedOnboarding: true }); navigate("/dashboard"); }}
           style={{ fontFamily: font.ui, fontSize: 13, color: c.stone, background: "none", border: "none", cursor: "pointer", transition: "color 0.2s" }}
           onMouseEnter={(e) => e.currentTarget.style.color = c.ivory}
           onMouseLeave={(e) => e.currentTarget.style.color = c.stone}>
@@ -145,7 +184,7 @@ export default function Onboarding() {
 
       {/* Content */}
       <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "40px" }}>
-        <div style={{ width: "100%", maxWidth: 560 }}>
+        <div key={step} className="step-enter" style={{ width: "100%", maxWidth: 560 }}>
 
           {/* Step 1: Role + interview types */}
           {step === 1 && (
@@ -265,9 +304,9 @@ export default function Onboarding() {
                       {resumeParsing ? (
                         <div style={{ width: 20, height: 20, border: `2px solid rgba(201,169,110,0.3)`, borderTopColor: c.gilt, borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
                       ) : resumeError ? (
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={c.ember} strokeWidth="1.5"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                        <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={c.ember} strokeWidth="1.5"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
                       ) : (
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="1.5"><polyline points="20 6 9 17 4 12"/></svg>
+                        <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="1.5"><polyline points="20 6 9 17 4 12"/></svg>
                       )}
                     </div>
                     <p style={{ fontFamily: font.ui, fontSize: 15, fontWeight: 500, color: c.ivory, marginBottom: 4 }}>{fileName}</p>
@@ -279,7 +318,7 @@ export default function Onboarding() {
                 ) : (
                   <>
                     <div style={{ width: 56, height: 56, borderRadius: 14, margin: "0 auto 16px", background: "rgba(201,169,110,0.06)", border: "1px solid rgba(201,169,110,0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                      <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
                     </div>
                     <p style={{ fontFamily: font.ui, fontSize: 15, fontWeight: 500, color: c.ivory, marginBottom: 4 }}>Drop your resume here</p>
                     <p style={{ fontFamily: font.ui, fontSize: 13, color: c.stone, marginBottom: 16 }}>or click to browse</p>
@@ -323,7 +362,7 @@ export default function Onboarding() {
                 </div>
               )}
               <div style={{ display: "flex", alignItems: "flex-start", gap: 10, marginTop: 16, padding: "14px 16px", borderRadius: 10, background: c.graphite, border: `1px solid ${c.border}` }}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5" style={{ flexShrink: 0, marginTop: 1 }}><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5" style={{ flexShrink: 0, marginTop: 1 }}><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
                 <p style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, lineHeight: 1.5 }}>Your resume text is used only to generate personalized interview questions. You can delete it anytime.</p>
               </div>
             </div>
@@ -380,7 +419,7 @@ export default function Onboarding() {
           {step === 5 && (
             <div style={{ textAlign: "center" }}>
               <div style={{ width: 80, height: 80, borderRadius: 20, margin: "0 auto 28px", background: "rgba(201,169,110,0.08)", border: "1px solid rgba(201,169,110,0.2)", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 0 40px rgba(201,169,110,0.1)" }}>
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5"><polygon points="5,3 19,12 5,21"/></svg>
+                <svg aria-hidden="true" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5"><polygon points="5,3 19,12 5,21"/></svg>
               </div>
               <p style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: c.gilt, marginBottom: 12 }}>You're all set</p>
               <h2 style={{ fontFamily: font.display, fontSize: 36, fontWeight: 400, color: c.ivory, letterSpacing: "-0.02em", lineHeight: 1.2, marginBottom: 12 }}>Your personalized prep is ready</h2>
@@ -397,21 +436,34 @@ export default function Onboarding() {
                   <span style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: c.ivory }}>Your Profile</span>
                   <span style={{ fontFamily: font.mono, fontSize: 11, color: c.sage }}>Personalized</span>
                 </div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                   {[
-                    { label: "Target Role", value: targetRole === "Other" ? customRole : targetRole },
-                    { label: "Company", value: targetCompany === "Other" ? customCompany : targetCompany },
-                    { label: "Industry", value: industry },
-                    { label: "Resume", value: fileName ? `${fileName}${resumeParsed ? ` (${resumeParsed.skills.length} skills, ${resumeParsed.experience.length} roles)` : ""}` : "Not uploaded" },
-                    { label: "Focus Areas", value: selectedTypes.map(t => interviewTypes.find(it => it.id === t)?.label).join(", ") },
-                    { label: "Feedback Style", value: learningStyle === "direct" ? "Direct & Blunt" : "Encouraging First" },
-                    { label: "Session Length", value: `${sessionLength} minutes` },
-                    ...(interviewDate ? [{ label: "Interview Date", value: new Date(interviewDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) }] : []),
+                    { label: "Target Role", value: targetRole === "Other" ? customRole : targetRole, editStep: 1 },
+                    { label: "Company", value: targetCompany === "Other" ? customCompany : targetCompany, editStep: 2 },
+                    { label: "Industry", value: industry, editStep: 2 },
+                    { label: "Resume", value: fileName ? `${fileName}${resumeParsed ? ` (${resumeParsed.skills.length} skills, ${resumeParsed.experience.length} roles)` : ""}` : "Not uploaded", editStep: 3 },
+                    { label: "Focus Areas", value: selectedTypes.map(t => interviewTypes.find(it => it.id === t)?.label).join(", "), editStep: 1 },
+                    { label: "Feedback Style", value: learningStyle === "direct" ? "Direct & Blunt" : "Encouraging First", editStep: 4 },
+                    { label: "Session Length", value: `${sessionLength} minutes`, editStep: 4 },
+                    ...(interviewDate ? [{ label: "Interview Date", value: new Date(interviewDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }), editStep: 2 }] : []),
                   ].filter(item => item.value).map((item) => (
-                    <div key={item.label} style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <button
+                      key={item.label}
+                      onClick={() => { setSlideDir("back"); setStep(item.editStep); }}
+                      style={{
+                        display: "flex", justifyContent: "space-between", alignItems: "center",
+                        padding: "8px 10px", borderRadius: 6, border: "none", background: "transparent",
+                        cursor: "pointer", transition: "background 0.15s", width: "100%", textAlign: "left",
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = "rgba(240,237,232,0.04)"}
+                      onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
+                    >
                       <span style={{ fontFamily: font.ui, fontSize: 12, color: c.stone }}>{item.label}</span>
-                      <span style={{ fontFamily: font.ui, fontSize: 12, color: c.chalk, fontWeight: 500, textAlign: "right", maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.value}</span>
-                    </div>
+                      <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <span style={{ fontFamily: font.ui, fontSize: 12, color: c.chalk, fontWeight: 500, maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.value}</span>
+                        <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={c.stone} strokeWidth="2" strokeLinecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                      </span>
+                    </button>
                   ))}
                 </div>
               </div>
@@ -421,11 +473,11 @@ export default function Onboarding() {
           {/* Navigation */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 40 }}>
             {step > 1 ? (
-              <button onClick={() => setStep(step - 1)}
+              <button onClick={() => { setSlideDir("back"); setStep(step - 1); }}
                 style={{ fontFamily: font.ui, fontSize: 14, fontWeight: 500, color: c.stone, background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, transition: "color 0.2s" }}
                 onMouseEnter={(e) => e.currentTarget.style.color = c.ivory}
                 onMouseLeave={(e) => e.currentTarget.style.color = c.stone}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+                <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>
                 Back
               </button>
             ) : <div />}
@@ -440,7 +492,7 @@ export default function Onboarding() {
               onMouseEnter={(e) => { if (canContinue()) { e.currentTarget.style.background = c.gilt; e.currentTarget.style.boxShadow = "0 8px 32px rgba(201,169,110,0.2)"; } }}
               onMouseLeave={(e) => { if (canContinue()) { e.currentTarget.style.background = step === TOTAL_STEPS ? c.gilt : c.ivory; e.currentTarget.style.boxShadow = "none"; } }}>
               {step === TOTAL_STEPS ? "Start Practicing" : "Continue"}
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+              <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
             </button>
           </div>
         </div>

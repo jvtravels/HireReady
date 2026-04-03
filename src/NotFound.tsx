@@ -18,7 +18,7 @@ export default function NotFound() {
         background: c.gilt, padding: "12px 28px", borderRadius: 8, textDecoration: "none",
         display: "inline-flex", alignItems: "center", gap: 8,
       }}>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6" /></svg>
+        <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6" /></svg>
         Back to Home
       </Link>
     </div>

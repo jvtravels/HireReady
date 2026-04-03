@@ -22,7 +22,9 @@ export interface User {
   resumeText?: string;
   resumeData?: ParsedResume;
   avatarUrl?: string;
-  subscriptionTier?: "free" | "pro" | "team";
+  subscriptionTier?: "free" | "starter" | "pro" | "team";
+  subscriptionStart?: string;
+  subscriptionEnd?: string;
 }
 
 interface AuthContextType {
@@ -55,13 +57,23 @@ function profileToUser(profile: Profile, session: Session): User {
     interviewDate: profile.interview_date || undefined,
     practiceTimestamps: profile.practice_timestamps || [],
     resumeText: profile.resume_text || undefined,
+    resumeData: (profile.resume_data as unknown as ParsedResume) || undefined,
     avatarUrl: profile.avatar_url || undefined,
-    subscriptionTier: (profile.subscription_tier as "free" | "pro" | "team") || "free",
+    subscriptionTier: (() => {
+      const tier = (profile.subscription_tier as "free" | "starter" | "pro" | "team") || "free";
+      // Auto-downgrade expired subscriptions
+      if (tier !== "free" && profile.subscription_end) {
+        if (new Date(profile.subscription_end) < new Date()) return "free";
+      }
+      return tier;
+    })(),
+    subscriptionStart: profile.subscription_start || undefined,
+    subscriptionEnd: profile.subscription_end || undefined,
   };
 }
 
 /* ─── localStorage fallback (when Supabase not configured) ─── */
-const AUTH_KEY = "levelup_auth";
+const AUTH_KEY = "hireready_auth";
 function loadLocalUser(): User | null {
   try { const raw = localStorage.getItem(AUTH_KEY); if (raw) return JSON.parse(raw); } catch {} return null;
 }
@@ -134,7 +146,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { error } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { name } },
+      options: { data: { name }, emailRedirectTo: `${window.location.origin}/dashboard` },
     });
     if (error) return { success: false, error: error.message };
     return { success: true };
@@ -196,10 +208,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (updates.learningStyle !== undefined) profileUpdates.learning_style = updates.learningStyle;
     if (updates.resumeFileName !== undefined) profileUpdates.resume_file_name = updates.resumeFileName || "";
     if (updates.resumeText !== undefined) profileUpdates.resume_text = updates.resumeText || "";
+    if (updates.resumeData !== undefined) profileUpdates.resume_data = (updates.resumeData as unknown as Record<string, unknown>) || null;
     if (updates.preferredSessionLength !== undefined) profileUpdates.preferred_session_length = updates.preferredSessionLength;
     if (updates.interviewTypes !== undefined) profileUpdates.interview_types = updates.interviewTypes;
     if (updates.practiceTimestamps !== undefined) profileUpdates.practice_timestamps = updates.practiceTimestamps;
     if (updates.avatarUrl !== undefined) profileUpdates.avatar_url = updates.avatarUrl;
+    // Note: subscriptionTier/Start/End are NOT written to Supabase from the client.
+    // They are only set server-side by /api/verify-payment using the service role key.
+    // Local state is updated for immediate UI feedback but the DB is the source of truth.
 
     await upsertProfile(profileUpdates);
   }, [user]);

@@ -41,9 +41,13 @@ export interface Profile {
   interview_types: string[];
   resume_file_name: string;
   resume_text: string;
+  resume_data: Record<string, unknown> | null;
   practice_timestamps: string[];
   avatar_url: string;
-  subscription_tier: "free" | "pro" | "team";
+  subscription_tier: "free" | "starter" | "pro" | "team";
+  subscription_start: string | null;
+  subscription_end: string | null;
+  razorpay_payment_id: string | null;
   created_at: string;
 }
 

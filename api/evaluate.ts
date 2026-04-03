@@ -1,11 +1,11 @@
-/* Vercel Edge Function — LLM Answer Evaluation via Google Gemini */
+/* Vercel Edge Function — LLM Answer Evaluation via Groq */
 
 export const config = { runtime: "edge" };
 
-import { handleCorsPreflightOrMethod, corsHeaders, isRateLimited, getClientIp, rateLimitResponse, verifyAuth, unauthorizedResponse } from "./_shared";
+import { handleCorsPreflightOrMethod, corsHeaders, isRateLimited, getClientIp, rateLimitResponse, verifyAuth, unauthorizedResponse, checkSessionLimit } from "./_shared";
 
 declare const process: { env: Record<string, string | undefined> };
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "";
+const GROQ_API_KEY = process.env.GROQ_API_KEY || "";
 
 export default async function handler(req: Request): Promise<Response> {
   const earlyResponse = handleCorsPreflightOrMethod(req);
@@ -13,12 +13,19 @@ export default async function handler(req: Request): Promise<Response> {
 
   const headers = corsHeaders(req);
 
-  if (!GEMINI_API_KEY) {
+  if (!GROQ_API_KEY) {
     return new Response(JSON.stringify({ error: "LLM not configured" }), { status: 503, headers });
   }
 
   const auth = await verifyAuth(req);
   if (!auth.authenticated) return unauthorizedResponse(headers);
+
+  if (auth.userId) {
+    const limit = await checkSessionLimit(auth.userId);
+    if (!limit.allowed) {
+      return new Response(JSON.stringify({ error: limit.reason }), { status: 403, headers });
+    }
+  }
 
   const ip = getClientIp(req);
   if (isRateLimited(ip, "evaluate", 10, 60_000)) {
@@ -32,16 +39,21 @@ export default async function handler(req: Request): Promise<Response> {
       return new Response(JSON.stringify({ error: "Missing transcript" }), { status: 400, headers });
     }
 
+    // Sanitize inputs — strip prompt injection attempts
+    const sanitize = (s: unknown, maxLen = 200) =>
+      typeof s === "string" ? s.replace(/(?:^|\n)\s*(system|assistant)\s*:/gi, "").slice(0, maxLen).trim() : "";
+
     const formattedTranscript = transcript
-      .map((t: { speaker: string; text: string }) => `${t.speaker === "ai" ? "INTERVIEWER" : "CANDIDATE"}: ${t.text}`)
+      .slice(0, 50) // cap transcript entries
+      .map((t: { speaker: string; text: string }) => `${t.speaker === "ai" ? "INTERVIEWER" : "CANDIDATE"}: ${sanitize(t.text, 2000)}`)
       .join("\n\n");
 
     const prompt = `You are an expert interview coach evaluating a mock interview performance.
 
-Interview Type: ${type || "behavioral"}
-Difficulty: ${difficulty || "standard"}
-Target Role: ${role || "senior leader"}
-${company ? `Company: ${company}` : ""}
+Interview Type: ${sanitize(type, 50) || "behavioral"}
+Difficulty: ${sanitize(difficulty, 20) || "standard"}
+Target Role: ${sanitize(role, 100) || "senior leader"}
+${company ? `Company: ${sanitize(company, 100)}` : ""}
 
 Here is the full interview transcript:
 
@@ -71,30 +83,29 @@ Scoring guidelines:
 
 Be honest but constructive. Reference specific moments from the transcript.`;
 
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: {
-            temperature: 0.3,
-            maxOutputTokens: 2000,
-            responseMimeType: "application/json",
-          },
-        }),
+    const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${GROQ_API_KEY}`,
       },
-    );
+      body: JSON.stringify({
+        model: "llama-3.3-70b-versatile",
+        messages: [{ role: "user", content: prompt }],
+        temperature: 0.3,
+        max_tokens: 2000,
+        response_format: { type: "json_object" },
+      }),
+    });
 
     if (!res.ok) {
       const errText = await res.text().catch(() => "");
-      console.error("Gemini eval error:", res.status, errText);
+      console.error("Groq eval error:", res.status, errText);
       return new Response(JSON.stringify({ error: "Evaluation failed" }), { status: 502, headers });
     }
 
     const data = await res.json();
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+    const text = data.choices?.[0]?.message?.content || "";
 
     let evaluation;
     try {

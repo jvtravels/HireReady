@@ -3,7 +3,7 @@
 
 export const config = { runtime: "edge" };
 
-import { handleCorsPreflightOrMethod, corsHeaders, isRateLimited, getClientIp, rateLimitResponse } from "./_shared";
+import { handleCorsPreflightOrMethod, corsHeaders, isRateLimited, getClientIp, rateLimitResponse, verifyAuth, unauthorizedResponse } from "./_shared";
 
 declare const process: { env: Record<string, string | undefined> };
 const GCP_TTS_KEY = process.env.GCP_TTS_API_KEY || "";
@@ -17,6 +17,9 @@ export default async function handler(req: Request): Promise<Response> {
   if (!GCP_TTS_KEY) {
     return new Response(JSON.stringify({ error: "TTS not configured" }), { status: 503, headers });
   }
+
+  const auth = await verifyAuth(req);
+  if (!auth.authenticated) return unauthorizedResponse(headers);
 
   const ip = getClientIp(req);
   if (isRateLimited(ip, "tts", 30, 60_000)) {

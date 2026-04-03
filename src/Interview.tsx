@@ -110,7 +110,7 @@ function getScript(type: string | null, difficulty: string | null, user: User | 
 }
 
 /* ─── Result persistence (Supabase + localStorage fallback) ─── */
-const RESULTS_KEY = "levelup_sessions";
+const RESULTS_KEY = "hireready_sessions";
 
 interface SessionResult {
   id: string;
@@ -329,7 +329,7 @@ function AIAvatar({ isSpeaking, isThinking }: { isSpeaking: boolean; isThinking:
         transition: "border-color 0.3s ease",
         boxShadow: isSpeaking ? `0 0 40px rgba(201,169,110,0.15)` : "none",
       }}>
-        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.2" strokeLinecap="round">
+        <svg aria-hidden="true" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.2" strokeLinecap="round">
           <circle cx="12" cy="12" r="3" />
           <path d="M12 1v2m0 18v2m-9-11h2m18 0h2" />
           <path d="M5.6 5.6l1.4 1.4m9.9 9.9l1.4 1.4M5.6 18.4l1.4-1.4m9.9-9.9l1.4-1.4" />
@@ -445,7 +445,7 @@ function UserWebcam({ isMuted, isCameraOff }: { isMuted: boolean; isCameraOff: b
             border: `1px solid rgba(201,169,110,0.2)`,
             display: "flex", alignItems: "center", justifyContent: "center",
           }}>
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={c.stone} strokeWidth="1.5" strokeLinecap="round">
+            <svg aria-hidden="true" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={c.stone} strokeWidth="1.5" strokeLinecap="round">
               <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
               <circle cx="12" cy="7" r="4" />
             </svg>
@@ -465,7 +465,7 @@ function UserWebcam({ isMuted, isCameraOff }: { isMuted: boolean; isCameraOff: b
           border: `1px solid rgba(196,112,90,0.3)`,
           display: "flex", alignItems: "center", justifyContent: "center",
         }}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.ember} strokeWidth="2" strokeLinecap="round">
+          <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.ember} strokeWidth="2" strokeLinecap="round">
             <line x1="1" y1="1" x2="23" y2="23" />
             <path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6" />
             <path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2c0 .76-.13 1.49-.35 2.17" />
@@ -889,7 +889,7 @@ export default function Interview() {
           padding: "8px 16px", background: "rgba(196,112,90,0.15)", borderBottom: "1px solid rgba(196,112,90,0.3)",
           display: "flex", alignItems: "center", gap: 8, justifyContent: "center",
         }}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.ember} strokeWidth="2"><line x1="1" y1="1" x2="23" y2="23"/><path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"/><path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"/><path d="M10.71 5.05A16 16 0 0 1 22.56 9"/><path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>
+          <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.ember} strokeWidth="2"><line x1="1" y1="1" x2="23" y2="23"/><path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"/><path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"/><path d="M10.71 5.05A16 16 0 0 1 22.56 9"/><path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>
           <span style={{ fontFamily: font.ui, fontSize: 12, color: c.ember }}>
             You're offline. Your session will be saved locally and synced when you reconnect.
           </span>
@@ -903,11 +903,11 @@ export default function Interview() {
           display: "flex", alignItems: "center", gap: 8, justifyContent: "space-between",
         }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.ember} strokeWidth="2" strokeLinecap="round"><line x1="1" y1="1" x2="23" y2="23"/><path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"/><path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2c0 .76-.13 1.49-.35 2.17"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+            <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.ember} strokeWidth="2" strokeLinecap="round"><line x1="1" y1="1" x2="23" y2="23"/><path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"/><path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2c0 .76-.13 1.49-.35 2.17"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
             <span style={{ fontFamily: font.ui, fontSize: 12, color: c.ember }}>{micError}</span>
           </div>
           <button onClick={() => setMicError("")} style={{ background: "none", border: "none", color: c.stone, cursor: "pointer", padding: 2 }}>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>
         </div>
       )}
@@ -921,7 +921,7 @@ export default function Interview() {
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
           <span style={{ fontFamily: font.ui, fontSize: 14, fontWeight: 600, color: c.ivory, letterSpacing: "0.04em" }}>
-            Level Up
+            HireReady
           </span>
           <div style={{ width: 1, height: 20, background: c.border }} />
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -979,7 +979,7 @@ export default function Interview() {
           {/* AI Name */}
           <div style={{ marginTop: 20, textAlign: "center" }}>
             <p style={{ fontFamily: font.ui, fontSize: 16, fontWeight: 600, color: c.ivory, marginBottom: 4 }}>AI Interviewer</p>
-            <p style={{ fontFamily: font.ui, fontSize: 12, color: c.stone }}>
+            <p aria-live="polite" style={{ fontFamily: font.ui, fontSize: 12, color: c.stone }}>
               {phase === "thinking" ? "Preparing next question..." :
                phase === "speaking" ? "Speaking" :
                phase === "listening" ? "Listening to your answer..." :
@@ -1056,10 +1056,33 @@ export default function Interview() {
               <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                 <WaveformVisualizer active={!isMuted} color={c.sage} barCount={16} />
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <div style={{ width: 6, height: 6, borderRadius: "50%", background: c.sage, animation: "recordPulse 1s ease-in-out infinite" }} />
-                  <span style={{ fontFamily: font.mono, fontSize: 12, color: c.sage }}>{formatTime(answerTimer)}</span>
+                  <div style={{ width: 6, height: 6, borderRadius: "50%", background: answerTimer >= 180 ? c.ember : c.sage, animation: "recordPulse 1s ease-in-out infinite" }} />
+                  <span style={{ fontFamily: font.mono, fontSize: 12, color: answerTimer >= 180 ? c.ember : answerTimer >= 120 ? c.gilt : c.sage, transition: "color 0.5s ease" }}>{formatTime(answerTimer)}</span>
                 </div>
               </div>
+
+              {/* Answer time nudge */}
+              {answerTimer >= 120 && (
+                <div
+                  role="status"
+                  style={{
+                    display: "flex", alignItems: "center", gap: 8,
+                    padding: "8px 14px", borderRadius: 8,
+                    background: answerTimer >= 180 ? "rgba(196,112,90,0.08)" : "rgba(201,169,110,0.06)",
+                    border: `1px solid ${answerTimer >= 180 ? "rgba(196,112,90,0.15)" : "rgba(201,169,110,0.12)"}`,
+                    animation: "fadeUp 0.3s ease",
+                  }}
+                >
+                  <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={answerTimer >= 180 ? c.ember : c.gilt} strokeWidth="1.5" strokeLinecap="round">
+                    <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                  </svg>
+                  <span style={{ fontFamily: font.ui, fontSize: 11, color: answerTimer >= 180 ? c.ember : c.gilt }}>
+                    {answerTimer >= 180
+                      ? "3+ minutes \u2014 try wrapping up with your key takeaway"
+                      : "2 minutes \u2014 consider landing your main point soon"}
+                  </span>
+                </div>
+              )}
 
               <button
                 onClick={handleNextQuestion}
@@ -1075,7 +1098,7 @@ export default function Interview() {
                 onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(201,169,110,0.2)"; }}
                 onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(201,169,110,0.1)"; }}
               >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                   <polyline points="9 18 15 12 9 6" />
                 </svg>
                 {currentStep < interviewScript.length - 1 ? "I'm done — next question" : "Finish answer"}
@@ -1096,7 +1119,7 @@ export default function Interview() {
                 background: "rgba(122,158,126,0.1)",
                 border: `1px solid rgba(122,158,126,0.2)`,
               }}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="2" strokeLinecap="round">
+                <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="2" strokeLinecap="round">
                   <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" />
                 </svg>
                 <span style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: c.sage }}>
@@ -1118,7 +1141,7 @@ export default function Interview() {
                 onMouseLeave={(e) => { e.currentTarget.style.filter = "brightness(1)"; }}
               >
                 View Feedback
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                   <polyline points="9 18 15 12 9 6" />
                 </svg>
               </button>
@@ -1156,11 +1179,11 @@ export default function Interview() {
               display: "flex", justifyContent: "space-between", alignItems: "center",
             }}>
               <span style={{ fontFamily: font.ui, fontSize: 14, fontWeight: 600, color: c.ivory }}>Transcript</span>
-              <button onClick={() => setShowTranscript(false)} style={{ background: "none", border: "none", color: c.stone, cursor: "pointer", padding: 4 }}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+              <button onClick={() => setShowTranscript(false)} aria-label="Close transcript" style={{ background: "none", border: "none", color: c.stone, cursor: "pointer", padding: 4 }}>
+                <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
               </button>
             </div>
-            <div ref={transcriptRef} style={{ flex: 1, overflow: "auto", padding: "16px 20px", display: "flex", flexDirection: "column", gap: 16 }}>
+            <div ref={transcriptRef} aria-live="polite" aria-label="Interview transcript" style={{ flex: 1, overflow: "auto", padding: "16px 20px", display: "flex", flexDirection: "column", gap: 16 }}>
               {transcript.length === 0 && (
                 <p style={{ fontFamily: font.ui, fontSize: 13, color: c.stone, textAlign: "center", padding: "40px 0" }}>Transcript will appear here...</p>
               )}
@@ -1173,9 +1196,9 @@ export default function Interview() {
                     display: "flex", alignItems: "center", justifyContent: "center",
                   }}>
                     {msg.speaker === "ai" ? (
-                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="2"><circle cx="12" cy="12" r="3" /></svg>
+                      <svg aria-hidden="true" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="2"><circle cx="12" cy="12" r="3" /></svg>
                     ) : (
-                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
+                      <svg aria-hidden="true" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
                     )}
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
@@ -1226,14 +1249,14 @@ export default function Interview() {
           onClick={() => setIsMuted(!isMuted)}
           label={isMuted ? "Unmute" : "Mute"}
           icon={isMuted ? (
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+            <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
               <line x1="1" y1="1" x2="23" y2="23" />
               <path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6" />
               <path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2c0 .76-.13 1.49-.35 2.17" />
               <line x1="12" y1="19" x2="12" y2="23" />
             </svg>
           ) : (
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+            <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
               <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
               <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
               <line x1="12" y1="19" x2="12" y2="23" />
@@ -1246,13 +1269,13 @@ export default function Interview() {
           onClick={() => setIsCameraOff(!isCameraOff)}
           label={isCameraOff ? "Turn camera on" : "Turn camera off"}
           icon={isCameraOff ? (
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+            <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
               <line x1="1" y1="1" x2="23" y2="23" />
               <path d="M21 21H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h3m3.06 0H21a2 2 0 0 1 2 2v11" />
               <circle cx="12" cy="13" r="3" />
             </svg>
           ) : (
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+            <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
               <path d="M23 7l-7 5 7 5V7z" />
               <rect x="1" y="5" width="15" height="14" rx="2" />
             </svg>
@@ -1266,7 +1289,7 @@ export default function Interview() {
           onClick={() => setShowTranscript(!showTranscript)}
           label="Toggle transcript"
           icon={
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+            <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
               <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
             </svg>
           }
@@ -1280,13 +1303,13 @@ export default function Interview() {
           }}
           label={aiVoiceEnabled ? "Mute AI voice" : "Enable AI voice"}
           icon={aiVoiceEnabled ? (
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+            <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
               <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
               <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
               <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
             </svg>
           ) : (
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+            <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
               <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
               <line x1="23" y1="9" x2="17" y2="15" />
               <line x1="17" y1="9" x2="23" y2="15" />
@@ -1301,7 +1324,7 @@ export default function Interview() {
           label="End interview"
           danger
           icon={
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
               <path d="M10.68 13.31a16 16 0 0 0 3.41 2.6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7 2 2 0 0 1 1.72 2v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91" />
               <line x1="23" y1="1" x2="17" y2="7" />
               <line x1="17" y1="1" x2="23" y2="7" />
@@ -1326,7 +1349,23 @@ export default function Interview() {
           aria-modal="true"
           aria-labelledby="end-modal-title"
           onClick={(e) => { if (e.target === e.currentTarget) setShowEndModal(false); }}
-          onKeyDown={(e) => { if (e.key === "Escape") setShowEndModal(false); }}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") setShowEndModal(false);
+            if (e.key === "Tab") {
+              const modal = e.currentTarget.querySelector("[data-modal-content]") as HTMLElement;
+              if (!modal) return;
+              const focusable = modal.querySelectorAll<HTMLElement>("button, [href], input, select, textarea, [tabindex]:not([tabindex='-1'])");
+              if (focusable.length === 0) return;
+              const first = focusable[0];
+              const last = focusable[focusable.length - 1];
+              if (e.shiftKey) {
+                if (document.activeElement === first) { e.preventDefault(); last.focus(); }
+              } else {
+                if (document.activeElement === last) { e.preventDefault(); first.focus(); }
+              }
+            }
+          }}
+          ref={(el) => { if (el) { const btn = el.querySelector("button"); if (btn) btn.focus(); } }}
           style={{
             position: "fixed", inset: 0, zIndex: 100,
             display: "flex", alignItems: "center", justifyContent: "center",
@@ -1334,7 +1373,7 @@ export default function Interview() {
             backdropFilter: "blur(4px)",
             animation: "fadeUp 0.15s ease",
           }}>
-          <div style={{
+          <div data-modal-content style={{
             background: c.graphite, borderRadius: 16,
             border: `1px solid ${c.border}`,
             padding: "32px", maxWidth: 400, width: "90%",
@@ -1346,7 +1385,7 @@ export default function Interview() {
               border: `1px solid rgba(196,112,90,0.2)`,
               display: "flex", alignItems: "center", justifyContent: "center",
             }}>
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={c.ember} strokeWidth="1.5" strokeLinecap="round">
+              <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={c.ember} strokeWidth="1.5" strokeLinecap="round">
                 <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
                 <line x1="12" y1="9" x2="12" y2="13" />
                 <line x1="12" y1="17" x2="12.01" y2="17" />

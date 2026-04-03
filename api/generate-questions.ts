@@ -1,11 +1,11 @@
-/* Vercel Edge Function — LLM Interview Question Generation via Google Gemini */
+/* Vercel Edge Function — LLM Interview Question Generation via Groq */
 
 export const config = { runtime: "edge" };
 
-import { handleCorsPreflightOrMethod, corsHeaders, isRateLimited, getClientIp, rateLimitResponse, verifyAuth, unauthorizedResponse } from "./_shared";
+import { handleCorsPreflightOrMethod, corsHeaders, isRateLimited, getClientIp, rateLimitResponse, verifyAuth, unauthorizedResponse, checkSessionLimit } from "./_shared";
 
 declare const process: { env: Record<string, string | undefined> };
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "";
+const GROQ_API_KEY = process.env.GROQ_API_KEY || "";
 
 export default async function handler(req: Request): Promise<Response> {
   const earlyResponse = handleCorsPreflightOrMethod(req);
@@ -13,12 +13,20 @@ export default async function handler(req: Request): Promise<Response> {
 
   const headers = corsHeaders(req);
 
-  if (!GEMINI_API_KEY) {
+  if (!GROQ_API_KEY) {
     return new Response(JSON.stringify({ error: "LLM not configured" }), { status: 503, headers });
   }
 
   const auth = await verifyAuth(req);
   if (!auth.authenticated) return unauthorizedResponse(headers);
+
+  // Server-side session limit enforcement
+  if (auth.userId) {
+    const limit = await checkSessionLimit(auth.userId);
+    if (!limit.allowed) {
+      return new Response(JSON.stringify({ error: limit.reason }), { status: 403, headers });
+    }
+  }
 
   const ip = getClientIp(req);
   if (isRateLimited(ip, "generate", 10, 60_000)) {
@@ -28,14 +36,18 @@ export default async function handler(req: Request): Promise<Response> {
   try {
     const { type, difficulty, role, company, industry, resumeText, pastTopics } = await req.json();
 
-    const interviewType = type || "behavioral";
-    const diff = difficulty || "standard";
-    const targetRole = role || "senior engineering leader";
+    // Sanitize inputs — strip prompt injection attempts
+    const sanitize = (s: unknown, maxLen = 200) =>
+      typeof s === "string" ? s.replace(/(?:^|\n)\s*(system|assistant)\s*:/gi, "").slice(0, maxLen).trim() : "";
 
-    const companyContext = company ? `The candidate is interviewing at ${company}.` : "";
-    const industryContext = industry ? `The industry is ${industry}.` : "";
-    const resumeContext = resumeText ? `Resume summary: ${resumeText.slice(0, 1500)}` : "";
-    const avoidTopics = pastTopics?.length ? `Avoid repeating these topics from past sessions: ${pastTopics.join(", ")}.` : "";
+    const interviewType = sanitize(type, 50) || "behavioral";
+    const diff = sanitize(difficulty, 20) || "standard";
+    const targetRole = sanitize(role, 100) || "senior engineering leader";
+
+    const companyContext = company ? `The candidate is interviewing at ${sanitize(company, 100)}.` : "";
+    const industryContext = industry ? `The industry is ${sanitize(industry, 100)}.` : "";
+    const resumeContext = resumeText ? `Resume summary: ${sanitize(resumeText, 1500)}` : "";
+    const avoidTopics = Array.isArray(pastTopics) ? `Avoid repeating these topics from past sessions: ${pastTopics.map((t: unknown) => sanitize(t, 100)).filter(Boolean).join(", ")}.` : "";
 
     const difficultyGuide = diff === "warmup"
       ? "Use a warm, conversational tone. Ask open-ended questions that build confidence. Keep follow-ups gentle."
@@ -65,34 +77,34 @@ Make questions specific to the role, company, and industry. If resume text is pr
 
 Respond with ONLY the JSON array, no markdown or explanation.`;
 
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: {
-            temperature: 0.8,
-            maxOutputTokens: 2000,
-            responseMimeType: "application/json",
-          },
-        }),
+    const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${GROQ_API_KEY}`,
       },
-    );
+      body: JSON.stringify({
+        model: "llama-3.3-70b-versatile",
+        messages: [{ role: "user", content: prompt }],
+        temperature: 0.8,
+        max_tokens: 2000,
+        response_format: { type: "json_object" },
+      }),
+    });
 
     if (!res.ok) {
       const errText = await res.text().catch(() => "");
-      console.error("Gemini error:", res.status, errText);
+      console.error("Groq error:", res.status, errText);
       return new Response(JSON.stringify({ error: "Question generation failed" }), { status: 502, headers });
     }
 
     const data = await res.json();
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+    const text = data.choices?.[0]?.message?.content || "";
 
     let questions;
     try {
-      questions = JSON.parse(text);
+      const parsed = JSON.parse(text);
+      questions = Array.isArray(parsed) ? parsed : parsed.questions || parsed.steps || parsed.interview_steps || Object.values(parsed)[0];
     } catch {
       const match = text.match(/\[[\s\S]*\]/);
       if (match) {

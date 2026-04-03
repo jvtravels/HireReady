@@ -1,7 +1,7 @@
 /* ─── Text-to-Speech Service ─── */
 /* Uses server-side Google Cloud TTS proxy (free for users) with Web Speech API fallback */
 
-const TTS_SETTINGS_KEY = "levelup_tts";
+const TTS_SETTINGS_KEY = "hireready_tts";
 
 export interface TTSSettings {
   provider: "google" | "browser";
@@ -60,9 +60,12 @@ async function speakWithProxy(
   let audio: HTMLAudioElement | null = null;
 
   try {
+    // Dynamically import to avoid circular deps
+    const { authHeaders } = await import("./supabase");
+    const headers = await authHeaders();
     const res = await fetch("/api/tts", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers,
       body: JSON.stringify({ text, voiceName: voiceId }),
       signal: controller.signal,
     });

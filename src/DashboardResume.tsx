@@ -1,0 +1,305 @@
+import { useState, useEffect } from "react";
+import { c, font } from "./tokens";
+import { useAuth } from "./AuthContext";
+import { useDashboard } from "./DashboardContext";
+import { extractResumeText, parseResumeData, type ParsedResume } from "./resumeParser";
+import { type ResumeProfile, analyzeResumeWithAI } from "./dashboardData";
+import { DataLoadingSkeleton } from "./dashboardComponents";
+
+export default function DashboardResume() {
+  const { user, updateUser } = useAuth();
+  const { persisted, updatePersisted, dataLoading } = useDashboard();
+
+  const [isDragging, setIsDragging] = useState(false);
+  const [fileName, setFileName] = useState(user?.resumeFileName || persisted.resumeFileName);
+  const [resumeText, setResumeText] = useState("");
+  const [profile, setProfile] = useState<ResumeProfile | null>(null);
+  const [phase, setPhase] = useState<"idle" | "extracting" | "analyzing" | "done" | "error">("idle");
+  const [errorMsg, setErrorMsg] = useState("");
+
+  useEffect(() => {
+    if (user?.resumeText) setResumeText(user.resumeText);
+    const stored = user?.resumeData as unknown as (ResumeProfile & { name?: string; skills?: string[] }) | undefined;
+    if (stored) {
+      if (stored.headline) {
+        setProfile(stored);
+        setPhase("done");
+      } else if (stored.name || stored.skills) {
+        const parsed = stored as any;
+        const fallback: ResumeProfile = {
+          headline: parsed.name || "Resume uploaded",
+          summary: parsed.summary || "Your resume has been uploaded and will be used to personalize your interview questions.",
+          yearsExperience: null, seniorityLevel: "",
+          topSkills: (parsed.skills || []).slice(0, 8),
+          keyAchievements: (parsed.experience || []).flatMap((e: any) => e.bullets || []).slice(0, 5),
+          industries: [], interviewStrengths: [], interviewGaps: [], careerTrajectory: "",
+        };
+        setProfile(fallback);
+        setPhase("done");
+      }
+    }
+    if (!fileName && user?.resumeFileName) setFileName(user.resumeFileName);
+  }, []);
+
+  if (dataLoading) return <DataLoadingSkeleton />;
+
+  const handleFile = async (file: File | undefined) => {
+    if (!file) return;
+    setFileName(file.name);
+    setErrorMsg("");
+    setProfile(null);
+
+    setPhase("extracting");
+    let text: string;
+    try {
+      text = await extractResumeText(file);
+      setResumeText(text);
+      updatePersisted({ resumeFileName: file.name });
+      updateUser({ resumeFileName: file.name, resumeText: text });
+    } catch (err: any) {
+      setErrorMsg(err.message || "Failed to parse resume");
+      setPhase("error");
+      return;
+    }
+
+    setPhase("analyzing");
+    const aiProfile = await analyzeResumeWithAI(text, user?.targetRole);
+    if (aiProfile) {
+      setProfile(aiProfile);
+      updateUser({ resumeData: aiProfile as unknown as ParsedResume });
+      setPhase("done");
+    } else {
+      const parsed = parseResumeData(text);
+      const fallback: ResumeProfile = {
+        headline: parsed.name || "Resume uploaded",
+        summary: parsed.summary || "Your resume has been uploaded and will be used to personalize your interview questions.",
+        yearsExperience: null, seniorityLevel: "",
+        topSkills: parsed.skills.slice(0, 8),
+        keyAchievements: parsed.experience.flatMap(e => e.bullets).slice(0, 5),
+        industries: [], interviewStrengths: [], interviewGaps: [], careerTrajectory: "",
+      };
+      setProfile(fallback);
+      updateUser({ resumeData: fallback as unknown as ParsedResume });
+      setPhase("done");
+    }
+  };
+
+  const handleRemove = () => {
+    setFileName(null);
+    setResumeText("");
+    setProfile(null);
+    setPhase("idle");
+    setErrorMsg("");
+    updatePersisted({ resumeFileName: null });
+    updateUser({ resumeFileName: null, resumeText: undefined, resumeData: undefined });
+  };
+
+  const handleReanalyze = async () => {
+    if (!resumeText) return;
+    setPhase("analyzing");
+    const aiProfile = await analyzeResumeWithAI(resumeText, user?.targetRole);
+    if (aiProfile) {
+      setProfile(aiProfile);
+      updateUser({ resumeData: aiProfile as unknown as ParsedResume });
+    }
+    setPhase("done");
+  };
+
+  const triggerUpload = () => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".pdf,.docx,.txt";
+    input.onchange = (e) => { handleFile((e.target as HTMLInputElement).files?.[0]); };
+    input.click();
+  };
+
+  if (phase === "extracting" || phase === "analyzing") {
+    return (
+      <div style={{ maxWidth: 680, margin: "0 auto", padding: "20px 0" }}>
+        <div style={{ background: c.graphite, borderRadius: 16, border: `1px solid ${c.border}`, padding: "60px 40px", textAlign: "center" }}>
+          <div style={{ width: 64, height: 64, borderRadius: 16, margin: "0 auto 24px", background: "rgba(201,169,110,0.06)", border: "1px solid rgba(201,169,110,0.12)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <div style={{ width: 24, height: 24, border: "2.5px solid rgba(201,169,110,0.2)", borderTopColor: c.gilt, borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
+          </div>
+          <h2 style={{ fontFamily: font.display, fontSize: 24, color: c.ivory, marginBottom: 8, letterSpacing: "-0.02em" }}>
+            {phase === "extracting" ? "Reading your resume" : "Building your profile"}
+          </h2>
+          <p style={{ fontFamily: font.ui, fontSize: 14, color: c.stone, lineHeight: 1.6, maxWidth: 380, margin: "0 auto" }}>
+            {phase === "extracting" ? "Extracting text from your document..." : "AI is analyzing your experience, skills, and achievements to create a personalized candidate profile..."}
+          </p>
+          {fileName && (
+            <div style={{ marginTop: 20, display: "inline-flex", alignItems: "center", gap: 8, background: c.obsidian, borderRadius: 8, padding: "8px 16px", border: `1px solid ${c.border}` }}>
+              <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="1.5"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
+              <span style={{ fontFamily: font.ui, fontSize: 12, color: c.chalk }}>{fileName}</span>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  if (phase === "idle") {
+    return (
+      <div style={{ maxWidth: 680, margin: "0 auto", padding: "20px 0" }}>
+        <h2 style={{ fontFamily: font.display, fontSize: 28, fontWeight: 400, color: c.ivory, marginBottom: 6, letterSpacing: "-0.02em" }}>Resume Intelligence</h2>
+        <p style={{ fontFamily: font.ui, fontSize: 14, color: c.stone, marginBottom: 28, lineHeight: 1.6 }}>
+          Upload your resume and our AI will build a candidate profile — identifying your strengths, key achievements, and areas to prepare for interviews.
+        </p>
+        <div onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }} onDragLeave={() => setIsDragging(false)}
+          onDrop={(e) => { e.preventDefault(); setIsDragging(false); handleFile(e.dataTransfer.files[0]); }}
+          onClick={triggerUpload}
+          style={{ border: `2px dashed ${isDragging ? c.gilt : "rgba(201,169,110,0.2)"}`, borderRadius: 16, padding: "64px 32px", textAlign: "center", background: isDragging ? "rgba(201,169,110,0.04)" : "transparent", transition: "all 0.2s ease", cursor: "pointer" }}>
+          <div style={{ width: 64, height: 64, borderRadius: 16, margin: "0 auto 20px", background: "rgba(201,169,110,0.06)", border: "1px solid rgba(201,169,110,0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <svg aria-hidden="true" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          </div>
+          <p style={{ fontFamily: font.ui, fontSize: 16, fontWeight: 500, color: c.ivory, marginBottom: 6 }}>Drop your resume here</p>
+          <p style={{ fontFamily: font.ui, fontSize: 13, color: c.stone, marginBottom: 20 }}>or click to browse</p>
+          <div style={{ display: "flex", justifyContent: "center", gap: 8 }}>
+            {["PDF", "DOCX", "TXT"].map((type) => (
+              <span key={type} style={{ fontFamily: font.mono, fontSize: 10, fontWeight: 600, color: c.stone, background: c.graphite, padding: "4px 12px", borderRadius: 4, border: `1px solid ${c.border}` }}>{type}</span>
+            ))}
+          </div>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 20, padding: "12px 16px", borderRadius: 8, background: "rgba(201,169,110,0.03)", border: `1px solid ${c.border}` }}>
+          <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>Your resume is analyzed securely and never shared. Delete anytime.</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (phase === "error") {
+    return (
+      <div style={{ maxWidth: 680, margin: "0 auto", padding: "20px 0" }}>
+        <h2 style={{ fontFamily: font.display, fontSize: 28, fontWeight: 400, color: c.ivory, marginBottom: 6, letterSpacing: "-0.02em" }}>Resume Intelligence</h2>
+        <div style={{ background: c.graphite, borderRadius: 14, border: "1px solid rgba(196,112,90,0.15)", padding: "32px", textAlign: "center", marginTop: 20 }}>
+          <div style={{ width: 48, height: 48, borderRadius: 12, margin: "0 auto 16px", background: "rgba(196,112,90,0.08)", border: "1px solid rgba(196,112,90,0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c.ember} strokeWidth="1.5"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+          </div>
+          <p style={{ fontFamily: font.ui, fontSize: 14, fontWeight: 500, color: c.ivory, marginBottom: 4 }}>Couldn't process this file</p>
+          <p style={{ fontFamily: font.ui, fontSize: 13, color: c.stone, marginBottom: 20 }}>{errorMsg}</p>
+          <button onClick={triggerUpload} style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: c.obsidian, background: c.gilt, border: "none", borderRadius: 8, padding: "10px 24px", cursor: "pointer" }}>Try another file</button>
+        </div>
+      </div>
+    );
+  }
+
+  // Profile view (done state)
+  return (
+    <div style={{ maxWidth: 680, margin: "0 auto", padding: "20px 0" }}>
+      <div style={{ background: `linear-gradient(135deg, ${c.graphite} 0%, rgba(201,169,110,0.04) 100%)`, borderRadius: 16, border: `1px solid ${c.border}`, padding: "28px 28px 24px", marginBottom: 14 }}>
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 12 }}>
+          <div style={{ flex: 1 }}>
+            {profile?.headline && <h2 style={{ fontFamily: font.display, fontSize: 24, color: c.ivory, marginBottom: 6, letterSpacing: "-0.02em", lineHeight: 1.3 }}>{profile.headline}</h2>}
+            <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+              {profile?.seniorityLevel && <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.gilt, background: "rgba(201,169,110,0.08)", border: "1px solid rgba(201,169,110,0.15)", borderRadius: 5, padding: "3px 10px" }}>{profile.seniorityLevel}</span>}
+              {profile?.yearsExperience && <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>{profile.yearsExperience}+ years experience</span>}
+              {profile?.industries && profile.industries.length > 0 && <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>{profile.industries.join(", ")}</span>}
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: 6, flexShrink: 0, marginLeft: 16 }}>
+            <button onClick={handleReanalyze} title="Re-analyze" style={{ width: 32, height: 32, borderRadius: 8, background: "rgba(240,237,232,0.04)", border: `1px solid ${c.border}`, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(240,237,232,0.08)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(240,237,232,0.04)"; }}>
+              <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.stone} strokeWidth="1.5"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+            </button>
+            <button onClick={handleRemove} title="Remove resume" style={{ width: 32, height: 32, borderRadius: 8, background: "rgba(196,112,90,0.04)", border: "1px solid rgba(196,112,90,0.1)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(196,112,90,0.1)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(196,112,90,0.04)"; }}>
+              <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.ember} strokeWidth="1.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+            </button>
+          </div>
+        </div>
+        {profile?.summary && <p style={{ fontFamily: font.ui, fontSize: 13.5, color: c.chalk, lineHeight: 1.7, margin: 0 }}>{profile.summary}</p>}
+        {profile?.careerTrajectory && (
+          <div style={{ marginTop: 14, display: "flex", alignItems: "center", gap: 8, padding: "10px 14px", borderRadius: 8, background: "rgba(122,158,126,0.04)", border: "1px solid rgba(122,158,126,0.1)" }}>
+            <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="1.5"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+            <span style={{ fontFamily: font.ui, fontSize: 12, color: c.sage }}>{profile.careerTrajectory}</span>
+          </div>
+        )}
+        {fileName && (
+          <div style={{ marginTop: 14, display: "flex", alignItems: "center", gap: 8 }}>
+            <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={c.stone} strokeWidth="1.5"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
+            <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>{fileName}</span>
+            <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, opacity: 0.5 }}>·</span>
+            <button onClick={triggerUpload} style={{ fontFamily: font.ui, fontSize: 11, color: c.gilt, background: "none", border: "none", cursor: "pointer", padding: 0, textDecoration: "underline", textUnderlineOffset: 2 }}>Replace</button>
+          </div>
+        )}
+      </div>
+
+      {profile?.topSkills && profile.topSkills.length > 0 && (
+        <div style={{ background: c.graphite, borderRadius: 14, border: `1px solid ${c.border}`, padding: "20px 24px", marginBottom: 14 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
+            <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            <h3 style={{ fontFamily: font.ui, fontSize: 14, fontWeight: 600, color: c.ivory }}>Top Skills</h3>
+          </div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+            {profile.topSkills.map((skill, i) => (
+              <span key={i} style={{ fontFamily: font.ui, fontSize: 12.5, color: i < 3 ? c.ivory : c.chalk, background: i < 3 ? "rgba(201,169,110,0.1)" : "rgba(240,237,232,0.04)", border: `1px solid ${i < 3 ? "rgba(201,169,110,0.18)" : c.border}`, borderRadius: 8, padding: "6px 14px", fontWeight: i < 3 ? 500 : 400 }}>{skill}</span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {profile?.keyAchievements && profile.keyAchievements.length > 0 && (
+        <div style={{ background: c.graphite, borderRadius: 14, border: `1px solid ${c.border}`, padding: "20px 24px", marginBottom: 14 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
+            <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/></svg>
+            <h3 style={{ fontFamily: font.ui, fontSize: 14, fontWeight: 600, color: c.ivory }}>Key Achievements</h3>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {profile.keyAchievements.map((item, i) => (
+              <div key={i} style={{ display: "flex", gap: 12, padding: "12px 16px", borderRadius: 10, background: c.obsidian, border: `1px solid ${c.border}` }}>
+                <div style={{ width: 24, height: 24, borderRadius: 6, background: "rgba(201,169,110,0.08)", border: "1px solid rgba(201,169,110,0.12)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 1 }}>
+                  <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg>
+                </div>
+                <p style={{ fontFamily: font.ui, fontSize: 13, color: c.chalk, lineHeight: 1.5, margin: 0 }}>{item}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {((profile?.interviewStrengths && profile.interviewStrengths.length > 0) || (profile?.interviewGaps && profile.interviewGaps.length > 0)) && (
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
+          {profile?.interviewStrengths && profile.interviewStrengths.length > 0 && (
+            <div style={{ background: c.graphite, borderRadius: 14, border: `1px solid ${c.border}`, padding: "20px 20px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
+                <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="1.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                <h3 style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: c.ivory }}>Interview Strengths</h3>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {profile.interviewStrengths.map((s, i) => (
+                  <div key={i} style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+                    <span style={{ width: 5, height: 5, borderRadius: "50%", background: c.sage, flexShrink: 0, marginTop: 6 }} />
+                    <span style={{ fontFamily: font.ui, fontSize: 12.5, color: c.chalk, lineHeight: 1.5 }}>{s}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          {profile?.interviewGaps && profile.interviewGaps.length > 0 && (
+            <div style={{ background: c.graphite, borderRadius: 14, border: `1px solid ${c.border}`, padding: "20px 20px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
+                <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                <h3 style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: c.ivory }}>Areas to Prepare</h3>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {profile.interviewGaps.map((g, i) => (
+                  <div key={i} style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+                    <span style={{ width: 5, height: 5, borderRadius: "50%", background: c.gilt, flexShrink: 0, marginTop: 6 }} />
+                    <span style={{ fontFamily: font.ui, fontSize: 12.5, color: c.chalk, lineHeight: 1.5 }}>{g}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "12px 16px", borderRadius: 8, background: "rgba(201,169,110,0.03)", border: `1px solid ${c.border}` }}>
+        <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>Your resume is analyzed securely and never shared. Delete anytime.</span>
+      </div>
+    </div>
+  );
+}

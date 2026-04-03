@@ -3,6 +3,7 @@ import { StrictMode, Suspense, lazy } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider, RequireAuth } from "./AuthContext";
+import { DashboardProvider } from "./DashboardContext";
 import App from "./App";
 import NotFound from "./NotFound";
 import ErrorBoundary from "./ErrorBoundary";
@@ -11,7 +12,13 @@ import TempoHost from "../.tempo/tempo-host";
 const LegalPage = lazy(() => import("./LegalPage"));
 const SignUp = lazy(() => import("./SignUp"));
 const Onboarding = lazy(() => import("./Onboarding"));
-const Dashboard = lazy(() => import("./Dashboard"));
+const DashboardLayout = lazy(() => import("./DashboardLayout"));
+const DashboardHome = lazy(() => import("./DashboardHome"));
+const DashboardSessions = lazy(() => import("./DashboardSessions"));
+const DashboardCalendar = lazy(() => import("./DashboardCalendar"));
+const DashboardAnalytics = lazy(() => import("./DashboardAnalytics"));
+const DashboardResume = lazy(() => import("./DashboardResume"));
+const DashboardSettings = lazy(() => import("./DashboardSettings"));
 const Interview = lazy(() => import("./Interview"));
 const SessionSetup = lazy(() => import("./SessionSetup"));
 const ResetPassword = lazy(() => import("./ResetPassword"));
@@ -45,7 +52,14 @@ createRoot(document.getElementById("root")!).render(
               <Route path="/signup" element={<div className="page-enter"><SignUp /></div>} />
               <Route path="/login" element={<div className="page-enter"><SignUp isLogin /></div>} />
               <Route path="/onboarding" element={<RequireAuth><div className="page-enter"><Onboarding /></div></RequireAuth>} />
-              <Route path="/dashboard" element={<RequireAuth><div className="page-enter"><Dashboard /></div></RequireAuth>} />
+              <Route path="/dashboard" element={<RequireAuth><DashboardProvider><div className="page-enter"><DashboardLayout /></div></DashboardProvider></RequireAuth>}>
+                <Route index element={<DashboardHome />} />
+                <Route path="sessions" element={<DashboardSessions />} />
+                <Route path="calendar" element={<DashboardCalendar />} />
+                <Route path="analytics" element={<DashboardAnalytics />} />
+                <Route path="resume" element={<DashboardResume />} />
+                <Route path="settings" element={<DashboardSettings />} />
+              </Route>
               <Route path="/session/new" element={<RequireAuth><div className="page-enter"><SessionSetup /></div></RequireAuth>} />
               <Route path="/interview" element={<RequireAuth><Interview /></RequireAuth>} />
               <Route path="/reset-password" element={<div className="page-enter"><ResetPassword /></div>} />

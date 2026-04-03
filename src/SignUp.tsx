@@ -15,14 +15,19 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
   const [resetSent, setResetSent] = useState(false);
   const [showReset, setShowReset] = useState(false);
   const [signupSent, setSignupSent] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+
+  // Preserve plan intent from pricing page
+  const planParam = new URLSearchParams(location.search).get("plan");
 
   // If already logged in, redirect to dashboard
   useEffect(() => {
     if (isLoggedIn) {
       const from = (location.state as any)?.from || "/dashboard";
-      navigate(from, { replace: true });
+      const dest = planParam ? `${from}?plan=${planParam}` : from;
+      navigate(dest, { replace: true });
     }
-  }, [isLoggedIn, navigate, location.state]);
+  }, [isLoggedIn, navigate, location.state, planParam]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,7 +41,8 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
           return;
         }
         const from = (location.state as any)?.from || "/dashboard";
-        navigate(from, { replace: true });
+        const dest = planParam ? `${from}?plan=${planParam}` : from;
+        navigate(dest, { replace: true });
       } else {
         const result = await signup(email, name, password);
         if (!result.success) {
@@ -98,7 +104,7 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
             fontFamily: font.ui, fontSize: 16, fontWeight: 600,
             color: c.ivory, letterSpacing: "0.06em",
           }}>
-            Level Up
+            HireReady
           </span>
         </Link>
 
@@ -124,7 +130,7 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
           <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
             <div style={{ padding: "20px 24px", borderRadius: 12, background: "rgba(122,158,126,0.08)", border: "1px solid rgba(122,158,126,0.2)" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="2" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+                <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="2" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
                 <span style={{ fontFamily: font.ui, fontSize: 15, fontWeight: 600, color: c.sage }}>Account created!</span>
               </div>
               <p style={{ fontFamily: font.ui, fontSize: 13, color: c.ivory, lineHeight: 1.6, margin: 0 }}>
@@ -185,7 +191,7 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
                 onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(240,237,232,0.04)"; e.currentTarget.style.borderColor = c.chalk; }}
                 onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.borderColor = c.borderHover; }}
               >
-                <svg width="18" height="18" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+                <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
                 Continue with Google
               </button>
             </div>
@@ -221,12 +227,41 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
 
               <div>
                 <label style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: c.chalk, display: "block", marginBottom: 6, letterSpacing: "0.02em" }}>Password</label>
-                <input type="password" value={password} onChange={(e) => setPassword(e.target.value)}
-                  placeholder={isLogin ? "Enter your password" : "Create a password (8+ chars)"} required minLength={8}
-                  style={{ width: "100%", padding: "12px 16px", borderRadius: 8, background: c.graphite, border: `1px solid ${c.border}`, color: c.ivory, fontFamily: font.ui, fontSize: 14, outline: "none", transition: "border-color 0.2s ease", boxSizing: "border-box" }}
-                  onFocus={(e) => e.currentTarget.style.borderColor = c.gilt}
-                  onBlur={(e) => e.currentTarget.style.borderColor = c.border}
-                />
+                <div style={{ position: "relative" }}>
+                  <input type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)}
+                    placeholder={isLogin ? "Enter your password" : "Create a password (8+ chars)"} required minLength={8}
+                    style={{ width: "100%", padding: "12px 44px 12px 16px", borderRadius: 8, background: c.graphite, border: `1px solid ${c.border}`, color: c.ivory, fontFamily: font.ui, fontSize: 14, outline: "none", transition: "border-color 0.2s ease", boxSizing: "border-box" }}
+                    onFocus={(e) => e.currentTarget.style.borderColor = c.gilt}
+                    onBlur={(e) => e.currentTarget.style.borderColor = c.border}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                    style={{
+                      position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)",
+                      background: "none", border: "none", cursor: "pointer", padding: 4,
+                      color: c.stone, display: "flex", alignItems: "center", justifyContent: "center",
+                      transition: "color 0.2s",
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.color = c.ivory}
+                    onMouseLeave={(e) => e.currentTarget.style.color = c.stone}
+                  >
+                    {showPassword ? (
+                      <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
+                        <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
+                        <path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"/>
+                        <line x1="1" y1="1" x2="23" y2="23"/>
+                      </svg>
+                    ) : (
+                      <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                        <circle cx="12" cy="12" r="3"/>
+                      </svg>
+                    )}
+                  </button>
+                </div>
                 {!isLogin && password.length > 0 && (() => {
                   const strength = password.length >= 12 && /[A-Z]/.test(password) && /[0-9]/.test(password) && /[^A-Za-z0-9]/.test(password) ? 4
                     : password.length >= 10 && /[A-Z]/.test(password) && /[0-9]/.test(password) ? 3
@@ -254,7 +289,7 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
               )}
 
               {error && (
-                <div style={{ padding: "10px 14px", borderRadius: 8, background: "rgba(196,112,90,0.08)", border: "1px solid rgba(196,112,90,0.2)", marginBottom: 4 }}>
+                <div role="alert" style={{ padding: "10px 14px", borderRadius: 8, background: "rgba(196,112,90,0.08)", border: "1px solid rgba(196,112,90,0.2)", marginBottom: 4 }}>
                   <p style={{ fontFamily: font.ui, fontSize: 13, color: c.ember, margin: 0 }}>{error}</p>
                 </div>
               )}
@@ -299,10 +334,22 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
 
       {/* Right: Visual panel */}
       <div className="signup-visual" style={{ position: "relative", overflow: "hidden", background: c.graphite }}>
-        <img src="https://images.unsplash.com/photo-1551836022-d5d88e9218df?w=900&h=1200&fit=crop&crop=face" alt="Professional preparing for an interview"
-          style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", objectPosition: "center 20%" }} />
-        <div style={{ position: "absolute", inset: 0, background: `linear-gradient(180deg, ${c.obsidian}40 0%, transparent 30%, transparent 50%, ${c.obsidian}E6 85%)` }} />
-        <div style={{ position: "absolute", inset: 0, background: `linear-gradient(90deg, ${c.obsidian}80 0%, transparent 40%)` }} />
+        {/* Abstract gradient background — no external image dependency */}
+        <div style={{
+          position: "absolute", inset: 0,
+          background: `
+            radial-gradient(ellipse at 30% 20%, rgba(201,169,110,0.12) 0%, transparent 50%),
+            radial-gradient(ellipse at 70% 60%, rgba(122,158,126,0.08) 0%, transparent 50%),
+            radial-gradient(ellipse at 50% 90%, rgba(196,112,90,0.06) 0%, transparent 40%),
+            linear-gradient(135deg, ${c.graphite} 0%, ${c.obsidian} 100%)
+          `,
+        }} />
+        {/* Subtle grid pattern */}
+        <div style={{
+          position: "absolute", inset: 0, opacity: 0.03,
+          backgroundImage: `linear-gradient(rgba(240,237,232,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(240,237,232,0.5) 1px, transparent 1px)`,
+          backgroundSize: "40px 40px",
+        }} />
 
         {/* Floating product mockup */}
         <div style={{ position: "absolute", top: "12%", right: "8%", width: 260, background: "rgba(22,22,24,0.65)", backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)", borderRadius: 14, border: "1px solid rgba(240,237,232,0.08)", padding: "20px", boxShadow: "0 24px 64px rgba(0,0,0,0.4)", animation: "floatSlow 6s ease-in-out infinite" }}>
