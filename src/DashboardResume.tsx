@@ -45,6 +45,11 @@ export default function DashboardResume() {
 
   const handleFile = async (file: File | undefined) => {
     if (!file) return;
+    if (file.size > 10 * 1024 * 1024) {
+      setErrorMsg("File too large — please upload a file under 10 MB.");
+      setPhase("error");
+      return;
+    }
     setFileName(file.name);
     setErrorMsg("");
     setProfile(null);
@@ -63,7 +68,13 @@ export default function DashboardResume() {
     }
 
     setPhase("analyzing");
-    const aiProfile = await analyzeResumeWithAI(text, user?.targetRole);
+    let aiProfile: ResumeProfile | null = null;
+    try {
+      aiProfile = await Promise.race([
+        analyzeResumeWithAI(text, user?.targetRole),
+        new Promise<null>((_, reject) => setTimeout(() => reject(new Error("timeout")), 30_000)),
+      ]);
+    } catch { /* timeout or network error — fall through to fallback */ }
     if (aiProfile) {
       setProfile(aiProfile);
       updateUser({ resumeData: aiProfile as unknown as ParsedResume });

@@ -108,7 +108,9 @@ Respond with ONLY the JSON array, no markdown or explanation.`;
     } catch {
       const match = text.match(/\[[\s\S]*\]/);
       if (match) {
-        questions = JSON.parse(match[0]);
+        try { questions = JSON.parse(match[0]); } catch {
+          return new Response(JSON.stringify({ error: "Failed to parse questions" }), { status: 500, headers });
+        }
       } else {
         return new Response(JSON.stringify({ error: "Failed to parse questions" }), { status: 500, headers });
       }

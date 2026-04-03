@@ -13,7 +13,7 @@ const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || "").split(",").filter(Bo
 
 function getAllowedOrigin(origin: string): string {
   if (ALLOWED_ORIGINS.length > 0 && ALLOWED_ORIGINS.includes(origin)) return origin;
-  if (origin.endsWith(".vercel.app")) return origin;
+  if (ALLOWED_ORIGINS.length === 0 && origin.endsWith(".vercel.app")) return origin;
   if (origin.startsWith("http://localhost:")) return origin;
   return "";
 }
@@ -113,7 +113,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // 3. Check for duplicate payment ID
     const dupCheck = await fetch(
-      `${SUPABASE_URL}/rest/v1/profiles?razorpay_payment_id=eq.${razorpay_payment_id}&select=id`,
+      `${SUPABASE_URL}/rest/v1/profiles?razorpay_payment_id=eq.${encodeURIComponent(razorpay_payment_id)}&select=id`,
       { headers: { apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` } },
     );
     const dupRows = await dupCheck.json();
@@ -123,7 +123,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // 4. Check if user already has an active subscription at this tier or higher
     const profileRes = await fetch(
-      `${SUPABASE_URL}/rest/v1/profiles?id=eq.${userId}&select=subscription_tier,subscription_end`,
+      `${SUPABASE_URL}/rest/v1/profiles?id=eq.${encodeURIComponent(userId)}&select=subscription_tier,subscription_end`,
       { headers: { apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` } },
     );
     const profiles = await profileRes.json();
@@ -147,7 +147,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // 6. Update profile (service role key bypasses RLS)
     const updateRes = await fetch(
-      `${SUPABASE_URL}/rest/v1/profiles?id=eq.${userId}`,
+      `${SUPABASE_URL}/rest/v1/profiles?id=eq.${encodeURIComponent(userId)}`,
       {
         method: "PATCH",
         headers: {

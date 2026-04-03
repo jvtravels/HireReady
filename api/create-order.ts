@@ -66,15 +66,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     const { plan, userId, email } = req.body;
-    const price = PRICE_MAP[plan];
+    const price = PRICE_MAP[typeof plan === "string" ? plan : ""];
     if (!price) return res.status(400).json({ error: "Invalid plan" });
 
     const auth = Buffer.from(`${RAZORPAY_KEY_ID}:${RAZORPAY_KEY_SECRET}`).toString("base64");
     const receipt = `${plan}_${Date.now()}`.slice(0, 40);
 
     const notes: Record<string, string> = { plan };
-    if (userId) notes.userId = userId;
-    if (email) notes.email = email;
+    if (typeof userId === "string" && userId.length > 0 && userId.length <= 200) notes.userId = userId;
+    if (typeof email === "string" && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) notes.email = email;
 
     const response = await fetch("https://api.razorpay.com/v1/orders", {
       method: "POST",

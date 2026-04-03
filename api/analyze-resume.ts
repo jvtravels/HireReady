@@ -90,7 +90,9 @@ Respond with ONLY the JSON object, no markdown or explanation.`;
     } catch {
       const match = text.match(/\{[\s\S]*\}/);
       if (match) {
-        profile = JSON.parse(match[0]);
+        try { profile = JSON.parse(match[0]); } catch {
+          return new Response(JSON.stringify({ error: "Failed to parse analysis" }), { status: 500, headers });
+        }
       } else {
         return new Response(JSON.stringify({ error: "Failed to parse analysis" }), { status: 500, headers });
       }

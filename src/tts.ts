@@ -96,6 +96,7 @@ async function speakWithProxy(
     return { cancel: () => {} };
   }
 
+  const blobUrl = audio ? (audio as HTMLAudioElement).src : null;
   return {
     cancel: () => {
       controller.abort();
@@ -103,6 +104,7 @@ async function speakWithProxy(
         audio.pause();
         audio.src = "";
       }
+      if (blobUrl && blobUrl.startsWith("blob:")) URL.revokeObjectURL(blobUrl);
     },
   };
 }

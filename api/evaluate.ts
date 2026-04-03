@@ -35,8 +35,9 @@ export default async function handler(req: Request): Promise<Response> {
   try {
     const { transcript, type, difficulty, role, company } = await req.json();
 
-    if (!transcript || !Array.isArray(transcript)) {
-      return new Response(JSON.stringify({ error: "Missing transcript" }), { status: 400, headers });
+    if (!transcript || !Array.isArray(transcript) || transcript.length === 0 ||
+        !transcript.every((t: unknown) => typeof t === "object" && t !== null && typeof (t as any).speaker === "string" && typeof (t as any).text === "string")) {
+      return new Response(JSON.stringify({ error: "Missing or malformed transcript" }), { status: 400, headers });
     }
 
     // Sanitize inputs — strip prompt injection attempts
@@ -113,7 +114,9 @@ Be honest but constructive. Reference specific moments from the transcript.`;
     } catch {
       const match = text.match(/\{[\s\S]*\}/);
       if (match) {
-        evaluation = JSON.parse(match[0]);
+        try { evaluation = JSON.parse(match[0]); } catch {
+          return new Response(JSON.stringify({ error: "Failed to parse evaluation" }), { status: 500, headers });
+        }
       } else {
         return new Response(JSON.stringify({ error: "Failed to parse evaluation" }), { status: 500, headers });
       }

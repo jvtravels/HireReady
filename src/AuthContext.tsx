@@ -186,8 +186,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const updateUser = useCallback(async (updates: Partial<User>) => {
+    let currentId: string | null = null;
     setUser(prev => {
       if (!prev) return prev;
+      currentId = prev.id;
       const next = { ...prev, ...updates };
       if (!supabaseConfigured) saveLocalUser(next);
       return next;
@@ -195,11 +197,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     if (!supabaseConfigured) return;
 
-    // Persist to Supabase
-    const currentUser = user;
-    if (!currentUser) return;
+    // Persist to Supabase — use ID captured from state setter to avoid stale closure
+    if (!currentId) return;
 
-    const profileUpdates: Partial<Profile> & { id: string } = { id: currentUser.id };
+    const profileUpdates: Partial<Profile> & { id: string } = { id: currentId };
     if (updates.name !== undefined) profileUpdates.name = updates.name;
     if (updates.targetRole !== undefined) profileUpdates.target_role = updates.targetRole;
     if (updates.targetCompany !== undefined) profileUpdates.target_company = updates.targetCompany;
@@ -218,7 +219,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Local state is updated for immediate UI feedback but the DB is the source of truth.
 
     await upsertProfile(profileUpdates);
-  }, [user]);
+  }, []);
 
   const resetPassword = useCallback(async (email: string): Promise<{ success: boolean; error?: string }> => {
     if (!supabaseConfigured) return { success: false, error: "Password reset requires Supabase configuration" };

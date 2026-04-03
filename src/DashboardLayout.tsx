@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, Outlet, useNavigate, useLocation } from "react-router-dom";
 import { c, font } from "./tokens";
 import { useAuth } from "./AuthContext";
@@ -30,6 +30,14 @@ export default function DashboardLayout() {
   } = useDashboard();
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // Prevent body scroll when mobile sidebar is open
+  useEffect(() => {
+    if (isMobile && sidebarOpen) {
+      document.body.style.overflow = "hidden";
+      return () => { document.body.style.overflow = ""; };
+    }
+  }, [isMobile, sidebarOpen]);
 
   // Determine active nav from current route
   const activeNav = (() => {

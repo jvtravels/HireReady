@@ -81,7 +81,6 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
   const [isMobile, setIsMobile] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [paymentBanner, setPaymentBanner] = useState<"success" | "cancelled" | null>(null);
-  const [shareTooltip, setShareTooltip] = useState(false);
 
   // Load data from Supabase on mount
   useEffect(() => {
@@ -193,10 +192,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
 
   const handleExport = useCallback(() => {
     const report = generateReport(persisted.userName, overallStats, skills, recentSessions);
-    navigator.clipboard.writeText(report).then(() => {
-      setShareTooltip(true);
-      setTimeout(() => setShareTooltip(false), 2000);
-    });
+    navigator.clipboard.writeText(report);
   }, [persisted.userName, overallStats, skills, recentSessions]);
 
   const handleDownload = useCallback(() => {

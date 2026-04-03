@@ -38,10 +38,10 @@ export default async function handler(req: Request): Promise<Response> {
     const voice = voiceName || "en-US-Neural2-D";
 
     const res = await fetch(
-      `https://texttospeech.googleapis.com/v1/text:synthesize?key=${GCP_TTS_KEY}`,
+      "https://texttospeech.googleapis.com/v1/text:synthesize",
       {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "X-Goog-Api-Key": GCP_TTS_KEY },
         body: JSON.stringify({
           input: { text: trimmedText },
           voice: { languageCode: "en-US", name: voice },
