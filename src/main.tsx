@@ -8,6 +8,7 @@ import App from "./App";
 import NotFound from "./NotFound";
 import ErrorBoundary from "./ErrorBoundary";
 import TempoHost from "../.tempo/tempo-host";
+import { Analytics } from "@vercel/analytics/react";
 
 const LegalPage = lazy(() => import("./LegalPage"));
 const SignUp = lazy(() => import("./SignUp"));
@@ -73,5 +74,6 @@ createRoot(document.getElementById("root")!).render(
       </BrowserRouter>
       </ErrorBoundary>
     )}
+    <Analytics />
   </StrictMode>,
 );
