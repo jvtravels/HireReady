@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { c, font } from "./tokens";
-import { useAuth, hasStoredSession } from "./AuthContext";
+import { useAuth, hasStoredSession, getLastRoute } from "./AuthContext";
 
 /* ─── Hooks ─── */
 function useReveal<T extends HTMLElement>(): React.RefObject<T | null> {
@@ -1832,13 +1832,14 @@ export default function App() {
   const navigate = useNavigate();
   const [hadStoredSession] = useState(() => hasStoredSession());
 
-  // Redirect logged-in users (e.g. after email confirmation) to dashboard/onboarding
+  // Redirect logged-in users to their last route, or dashboard/onboarding
   useEffect(() => {
     if (loading || !isLoggedIn) return;
+    const lastRoute = getLastRoute();
     if (user && !user.hasCompletedOnboarding) {
-      navigate("/onboarding", { replace: true });
+      navigate(lastRoute?.startsWith("/onboarding") ? lastRoute : "/onboarding", { replace: true });
     } else {
-      navigate("/dashboard", { replace: true });
+      navigate(lastRoute && lastRoute !== "/" ? lastRoute : "/dashboard", { replace: true });
     }
   }, [isLoggedIn, loading, user, navigate]);
 

@@ -18,6 +18,23 @@ export function hasStoredSession(): boolean {
   return false;
 }
 
+/** Save/restore the last authenticated route so users return where they left off */
+const LAST_ROUTE_KEY = "hireready_last_route";
+export function saveLastRoute(path: string) {
+  try {
+    // Only save authenticated app routes, not public pages
+    if (path.startsWith("/dashboard") || path.startsWith("/onboarding") || path.startsWith("/session") || path.startsWith("/interview")) {
+      localStorage.setItem(LAST_ROUTE_KEY, path);
+    }
+  } catch {}
+}
+export function getLastRoute(): string | null {
+  try { return localStorage.getItem(LAST_ROUTE_KEY); } catch { return null; }
+}
+export function clearLastRoute() {
+  try { localStorage.removeItem(LAST_ROUTE_KEY); } catch {}
+}
+
 export interface User {
   id: string;
   name: string;
@@ -240,6 +257,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = useCallback(async () => {
     if (supabaseConfigured) await supabase.auth.signOut();
     setUser(null);
+    clearLastRoute();
     saveLocalUser(null);
   }, []);
 
@@ -305,6 +323,13 @@ export function RequireAuth({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const location = useLocation();
   const retryCount = useRef(0);
+
+  // Track the last authenticated route so users return where they left off
+  useEffect(() => {
+    if (isLoggedIn) {
+      saveLastRoute(location.pathname);
+    }
+  }, [isLoggedIn, location.pathname]);
 
   useEffect(() => {
     if (loading) return;
