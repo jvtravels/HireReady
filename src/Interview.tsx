@@ -1222,53 +1222,55 @@ export default function Interview() {
         <div className="interview-left" style={{
           flex: showTranscript ? "0 0 55%" : "1 1 60%",
           display: "flex", flexDirection: "column",
+          alignItems: "center", justifyContent: "center",
           position: "relative", overflow: "hidden",
           transition: "flex 0.3s ease",
+          padding: "24px",
         }}>
-          {/* AI section — avatar + status */}
-          <div className="interview-avatar-row" style={{
-            display: "flex", alignItems: "center", gap: 16,
-            padding: "20px 28px 0",
-          }}>
-            <div className="ai-avatar-wrap" style={{ position: "relative", flexShrink: 0 }}>
-              <AIAvatar isSpeaking={phase === "speaking"} isThinking={phase === "thinking"} />
-            </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 2 }}>
-                <p style={{ fontFamily: font.ui, fontSize: 14, fontWeight: 600, color: c.ivory, margin: 0 }}>AI Interviewer</p>
-                <span aria-live="polite" style={{
-                  fontFamily: font.ui, fontSize: 10, fontWeight: 500,
-                  color: phase === "speaking" ? c.gilt : phase === "listening" ? c.sage : c.stone,
-                  padding: "2px 8px", borderRadius: 100,
-                  background: phase === "speaking" ? "rgba(201,169,110,0.08)" : phase === "listening" ? "rgba(122,158,126,0.08)" : "transparent",
-                }}>
-                  {phase === "thinking" ? "Preparing..." :
-                   phase === "speaking" ? "Speaking" :
-                   phase === "listening" ? "Listening" :
-                   "Complete"}
-                </span>
-              </div>
-              {/* Waveform — compact */}
-              <div style={{ height: 20, width: 120, marginTop: 4 }}>
-                <WaveformVisualizer active={phase === "speaking"} color={c.gilt} barCount={18} />
-              </div>
-            </div>
-          </div>
+          {/* Centered content container */}
+          <div style={{ width: "100%", maxWidth: 680, display: "flex", flexDirection: "column", gap: 24 }}>
 
-          {/* Question Card */}
-          <div className="interview-qcard" style={{ flex: 1, padding: "20px 28px", display: "flex", flexDirection: "column", overflow: "hidden" }}>
-            {/* Current question / AI speech */}
+            {/* AI section — avatar + status, centered */}
+            <div className="interview-avatar-row" style={{
+              display: "flex", flexDirection: "column", alignItems: "center", gap: 12,
+            }}>
+              <div className="ai-avatar-wrap" style={{ position: "relative" }}>
+                <AIAvatar isSpeaking={phase === "speaking"} isThinking={phase === "thinking"} />
+              </div>
+              <div style={{ textAlign: "center" }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, marginBottom: 6 }}>
+                  <p style={{ fontFamily: font.ui, fontSize: 14, fontWeight: 600, color: c.ivory, margin: 0 }}>AI Interviewer</p>
+                  <span aria-live="polite" style={{
+                    fontFamily: font.ui, fontSize: 10, fontWeight: 500,
+                    color: phase === "speaking" ? c.gilt : phase === "listening" ? c.sage : c.stone,
+                    padding: "2px 8px", borderRadius: 100,
+                    background: phase === "speaking" ? "rgba(201,169,110,0.08)" : phase === "listening" ? "rgba(122,158,126,0.08)" : "rgba(240,237,232,0.03)",
+                  }}>
+                    {phase === "thinking" ? "Preparing..." :
+                     phase === "speaking" ? "Speaking" :
+                     phase === "listening" ? "Listening" :
+                     "Complete"}
+                  </span>
+                </div>
+                {/* Waveform — centered */}
+                <div style={{ height: 20, width: 140, margin: "0 auto" }}>
+                  <WaveformVisualizer active={phase === "speaking"} color={c.gilt} barCount={20} />
+                </div>
+              </div>
+            </div>
+
+            {/* Question Card */}
             <div style={{
-              background: c.graphite, borderRadius: 12,
+              background: c.graphite, borderRadius: 14,
               border: `1px solid ${phase === "speaking" ? "rgba(201,169,110,0.12)" : c.border}`,
-              padding: "20px 24px", flex: "0 0 auto",
+              padding: "24px 28px",
               transition: "all 0.4s ease",
             }}>
-              {/* Score note — subtle, sentence-case */}
+              {/* Score note */}
               {step?.scoreNote && phase !== "done" && (
                 <p style={{
                   fontFamily: font.ui, fontSize: 11, color: "rgba(201,169,110,0.6)",
-                  letterSpacing: "0.02em", margin: "0 0 10px",
+                  letterSpacing: "0.02em", margin: "0 0 12px",
                   display: "flex", alignItems: "center", gap: 5,
                 }}>
                   <svg aria-hidden="true" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="rgba(201,169,110,0.5)" strokeWidth="1.5" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4m0-4h.01"/></svg>
@@ -1286,139 +1288,121 @@ export default function Interview() {
               ) : null}
             </div>
 
-            {/* User's response area — grows to fill remaining space */}
-            <div style={{ flex: 1, minHeight: 0, marginTop: 16, display: "flex", flexDirection: "column" }}>
-              {/* Listening state: user speaking area */}
-              {phase === "listening" && (
-                <div style={{
-                  flex: 1, borderRadius: 14,
-                  background: "rgba(122,158,126,0.03)",
-                  border: `1px solid rgba(122,158,126,0.12)`,
-                  padding: "20px 24px",
-                  display: "flex", flexDirection: "column",
-                  animation: "fadeUp 0.3s ease",
-                }}>
-                  {/* Header */}
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <div style={{ width: 7, height: 7, borderRadius: "50%", background: c.sage, animation: "recordPulse 1s ease-in-out infinite" }} />
-                      <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: c.sage }}>Your answer</span>
-                      <span style={{ fontFamily: font.mono, fontSize: 11, color: answerTimer >= 180 ? c.ember : answerTimer >= 120 ? c.gilt : c.stone }}>{formatTime(answerTimer)}</span>
-                    </div>
-                    <WaveformVisualizer active={!isMuted} color={c.sage} barCount={12} />
+            {/* Listening state: user speaking area */}
+            {phase === "listening" && (
+              <div style={{
+                borderRadius: 14,
+                background: "rgba(122,158,126,0.03)",
+                border: `1px solid rgba(122,158,126,0.12)`,
+                padding: "20px 24px",
+                display: "flex", flexDirection: "column",
+                animation: "fadeUp 0.3s ease",
+                maxHeight: 280, minHeight: 160,
+              }}>
+                {/* Header */}
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <div style={{ width: 6, height: 6, borderRadius: "50%", background: c.sage, animation: "recordPulse 1s ease-in-out infinite" }} />
+                    <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: c.sage }}>Your answer</span>
+                    <span style={{ fontFamily: font.mono, fontSize: 11, color: answerTimer >= 180 ? c.ember : answerTimer >= 120 ? c.gilt : c.stone }}>{formatTime(answerTimer)}</span>
                   </div>
+                  <WaveformVisualizer active={!isMuted} color={c.sage} barCount={12} />
+                </div>
 
-                  {/* Live transcript */}
-                  <div style={{ flex: 1, overflowY: "auto" }}>
-                    {currentTranscript ? (
-                      <p style={{ fontFamily: font.ui, fontSize: 13, color: c.ivory, lineHeight: 1.7, margin: 0, opacity: 0.9 }}>
-                        {currentTranscript}
-                        <span style={{ display: "inline-block", width: 2, height: 14, background: c.sage, marginLeft: 2, verticalAlign: "text-bottom", animation: "blink 0.8s ease-in-out infinite" }} />
-                      </p>
-                    ) : (
-                      <p style={{ fontFamily: font.ui, fontSize: 13, color: c.stone, lineHeight: 1.7, margin: 0, fontStyle: "italic" }}>
-                        Start speaking — your answer will appear here...
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Answer time nudge */}
-                  {answerTimer >= 120 && (
-                    <div
-                      role="status"
-                      style={{
-                        display: "flex", alignItems: "center", gap: 8,
-                        padding: "8px 12px", borderRadius: 8, marginTop: 12,
-                        background: answerTimer >= 180 ? "rgba(196,112,90,0.08)" : "rgba(201,169,110,0.06)",
-                        border: `1px solid ${answerTimer >= 180 ? "rgba(196,112,90,0.15)" : "rgba(201,169,110,0.12)"}`,
-                        animation: "fadeUp 0.3s ease",
-                      }}
-                    >
-                      <svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={answerTimer >= 180 ? c.ember : c.gilt} strokeWidth="1.5" strokeLinecap="round">
-                        <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
-                      </svg>
-                      <span style={{ fontFamily: font.ui, fontSize: 11, color: answerTimer >= 180 ? c.ember : c.gilt }}>
-                        {answerTimer >= 180
-                          ? "3+ minutes — try wrapping up with your key takeaway"
-                          : "2 minutes — consider landing your main point soon"}
-                      </span>
-                    </div>
+                {/* Live transcript */}
+                <div style={{ flex: 1, overflowY: "auto", marginBottom: 12 }}>
+                  {currentTranscript ? (
+                    <p style={{ fontFamily: font.ui, fontSize: 13, color: c.ivory, lineHeight: 1.7, margin: 0, opacity: 0.9 }}>
+                      {currentTranscript}
+                      <span style={{ display: "inline-block", width: 2, height: 14, background: c.sage, marginLeft: 2, verticalAlign: "text-bottom", animation: "blink 0.8s ease-in-out infinite" }} />
+                    </p>
+                  ) : (
+                    <p style={{ fontFamily: font.ui, fontSize: 13, color: c.stone, lineHeight: 1.7, margin: 0, fontStyle: "italic" }}>
+                      Start speaking — your answer will appear here...
+                    </p>
                   )}
-
-                  {/* Next question button */}
-                  <div style={{ marginTop: 16, display: "flex", alignItems: "center", justifyContent: "flex-end" }}>
-                    <button
-                      onClick={handleNextQuestion}
-                      style={{
-                        fontFamily: font.ui, fontSize: 13, fontWeight: 600,
-                        padding: "10px 24px", borderRadius: 10,
-                        background: `linear-gradient(135deg, ${c.gilt}, #B8923E)`,
-                        border: "none", color: c.obsidian, cursor: "pointer",
-                        display: "flex", alignItems: "center", gap: 8,
-                        transition: "all 0.2s ease",
-                        boxShadow: "0 4px 16px rgba(201,169,110,0.2)",
-                        animation: "gentlePulse 2s ease-in-out infinite",
-                      }}
-                      onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 6px 20px rgba(201,169,110,0.3)"; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 4px 16px rgba(201,169,110,0.2)"; }}
-                    >
-                      {currentStep < interviewScript.length - 1 ? "Next Question" : "Finish"}
-                      <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
-                    </button>
-                  </div>
                 </div>
-              )}
 
-              {/* Done state */}
-              {phase === "done" && (
+                {/* Answer time nudge */}
+                {answerTimer >= 120 && (
+                  <div role="status" style={{
+                    display: "flex", alignItems: "center", gap: 8,
+                    padding: "6px 12px", borderRadius: 8, marginBottom: 12,
+                    background: answerTimer >= 180 ? "rgba(196,112,90,0.08)" : "rgba(201,169,110,0.06)",
+                    border: `1px solid ${answerTimer >= 180 ? "rgba(196,112,90,0.15)" : "rgba(201,169,110,0.12)"}`,
+                  }}>
+                    <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={answerTimer >= 180 ? c.ember : c.gilt} strokeWidth="1.5" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    <span style={{ fontFamily: font.ui, fontSize: 11, color: answerTimer >= 180 ? c.ember : c.gilt }}>
+                      {answerTimer >= 180 ? "3+ min — wrap up with your key takeaway" : "2 min — consider landing your main point"}
+                    </span>
+                  </div>
+                )}
+
+                {/* Next question button — centered */}
+                <div style={{ display: "flex", justifyContent: "center" }}>
+                  <button
+                    onClick={handleNextQuestion}
+                    style={{
+                      fontFamily: font.ui, fontSize: 13, fontWeight: 600,
+                      padding: "10px 28px", borderRadius: 10,
+                      background: `linear-gradient(135deg, ${c.gilt}, #B8923E)`,
+                      border: "none", color: c.obsidian, cursor: "pointer",
+                      display: "flex", alignItems: "center", gap: 8,
+                      transition: "all 0.2s ease",
+                      boxShadow: "0 4px 16px rgba(201,169,110,0.2)",
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 6px 20px rgba(201,169,110,0.3)"; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 4px 16px rgba(201,169,110,0.2)"; }}
+                  >
+                    {currentStep < interviewScript.length - 1 ? "Next Question" : "Finish"}
+                    <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Done state */}
+            {phase === "done" && (
+              <div style={{
+                borderRadius: 14,
+                background: "rgba(122,158,126,0.04)",
+                border: `1px solid rgba(122,158,126,0.15)`,
+                padding: "32px", display: "flex", flexDirection: "column",
+                alignItems: "center", justifyContent: "center", gap: 14,
+                animation: "slideUp 0.5s ease",
+              }}>
+                <svg aria-hidden="true" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="2" strokeLinecap="round">
+                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
+                </svg>
+                <p style={{ fontFamily: font.ui, fontSize: 16, fontWeight: 600, color: c.ivory, margin: 0 }}>Session complete</p>
+                <p style={{ fontFamily: font.ui, fontSize: 13, color: c.stone, margin: 0 }}>{currentQuestionNum} questions answered · {formatTime(elapsed)}</p>
+              </div>
+            )}
+
+            {/* Last user answer recap during thinking/speaking */}
+            {(phase === "thinking" || phase === "speaking") && (() => {
+              const lastUserMsg = [...transcript].reverse().find(t => t.speaker === "user");
+              if (!lastUserMsg) return null;
+              return (
                 <div style={{
-                  flex: 1, borderRadius: 14,
-                  background: "rgba(122,158,126,0.04)",
-                  border: `1px solid rgba(122,158,126,0.15)`,
-                  padding: "32px", display: "flex", flexDirection: "column",
-                  alignItems: "center", justifyContent: "center", gap: 16,
-                  animation: "slideUp 0.5s ease",
+                  borderRadius: 10, padding: "14px 18px",
+                  background: "rgba(122,158,126,0.03)",
+                  border: `1px solid rgba(122,158,126,0.06)`,
                 }}>
-                  <div style={{
-                    width: 56, height: 56, borderRadius: "50%",
-                    background: "rgba(122,158,126,0.1)",
-                    border: `1px solid rgba(122,158,126,0.2)`,
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                  }}>
-                    <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="2" strokeLinecap="round">
-                      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
-                    </svg>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
+                    <div style={{ width: 4, height: 4, borderRadius: "50%", background: "rgba(122,158,126,0.35)" }} />
+                    <span style={{ fontFamily: font.ui, fontSize: 10, color: c.stone }}>Your last answer</span>
                   </div>
-                  <p style={{ fontFamily: font.ui, fontSize: 16, fontWeight: 600, color: c.ivory }}>Session complete</p>
-                  <p style={{ fontFamily: font.ui, fontSize: 13, color: c.stone }}>{currentQuestionNum} questions answered · {formatTime(elapsed)}</p>
-                  <p style={{ fontFamily: font.ui, fontSize: 12, color: c.gilt, marginTop: 4 }}>Click "View Feedback" below to see your results</p>
+                  <p style={{
+                    fontFamily: font.ui, fontSize: 12, color: "rgba(197,192,186,0.5)", lineHeight: 1.5, margin: 0,
+                    overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" as const,
+                  }}>{lastUserMsg.text}</p>
                 </div>
-              )}
+              );
+            })()}
 
-              {/* Last user answer recap during thinking/speaking */}
-              {(phase === "thinking" || phase === "speaking") && (() => {
-                const lastUserMsg = [...transcript].reverse().find(t => t.speaker === "user");
-                if (!lastUserMsg) return null;
-                return (
-                  <div style={{
-                    borderRadius: 10, padding: "14px 18px", marginTop: 4,
-                    background: "rgba(122,158,126,0.03)",
-                    border: `1px solid rgba(122,158,126,0.08)`,
-                  }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
-                      <div style={{ width: 5, height: 5, borderRadius: "50%", background: "rgba(122,158,126,0.4)" }} />
-                      <span style={{ fontFamily: font.ui, fontSize: 10, color: c.stone, letterSpacing: "0.03em" }}>Your last answer</span>
-                    </div>
-                    <p style={{
-                      fontFamily: font.ui, fontSize: 12, color: "rgba(197,192,186,0.6)", lineHeight: 1.5, margin: 0,
-                      overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" as const,
-                    }}>{lastUserMsg.text}</p>
-                  </div>
-                );
-              })()}
-            </div>
-          </div>
-        </div>
+          </div>{/* end centered container */}
+        </div>{/* end left panel */}
 
         {/* ═══ RIGHT PANEL: User Camera + Status ═══ */}
         {!showTranscript && (
