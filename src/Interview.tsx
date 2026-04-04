@@ -387,55 +387,39 @@ function WaveformVisualizer({ active, color, barCount = 24 }: { active: boolean;
 /* ─── AI Avatar with Speaking Animation ─── */
 function AIAvatar({ isSpeaking, isThinking }: { isSpeaking: boolean; isThinking: boolean }) {
   return (
-    <div style={{ position: "relative", width: 120, height: 120 }}>
-      {/* Outer pulse ring when speaking */}
+    <div style={{ position: "relative", width: 56, height: 56 }}>
+      {/* Subtle pulse ring when speaking */}
       {isSpeaking && (
-        <>
-          <div style={{
-            position: "absolute", inset: -12, borderRadius: "50%",
-            border: `2px solid ${c.gilt}`,
-            opacity: 0.3,
-            animation: "avatarPulse 1.5s ease-in-out infinite",
-          }} />
-          <div style={{
-            position: "absolute", inset: -6, borderRadius: "50%",
-            border: `1.5px solid ${c.gilt}`,
-            opacity: 0.5,
-            animation: "avatarPulse 1.5s ease-in-out infinite 0.3s",
-          }} />
-        </>
+        <div style={{
+          position: "absolute", inset: -4, borderRadius: "50%",
+          border: `1.5px solid ${c.gilt}`,
+          opacity: 0.25,
+          animation: "avatarPulse 2s ease-in-out infinite",
+        }} />
       )}
 
-      {/* Thinking dots */}
+      {/* Thinking indicator */}
       {isThinking && (
         <div style={{
-          position: "absolute", inset: -8, borderRadius: "50%",
-          border: `2px dashed ${c.gilt}`,
-          opacity: 0.4,
-          animation: "spin 4s linear infinite",
+          position: "absolute", inset: -4, borderRadius: "50%",
+          border: `1.5px dashed rgba(201,169,110,0.3)`,
+          animation: "spin 6s linear infinite",
         }} />
       )}
 
       {/* Avatar circle */}
       <div style={{
-        width: 120, height: 120, borderRadius: "50%",
-        background: `linear-gradient(135deg, rgba(201,169,110,0.15) 0%, rgba(201,169,110,0.05) 100%)`,
-        border: `2px solid ${isSpeaking ? c.gilt : isThinking ? "rgba(201,169,110,0.4)" : c.border}`,
+        width: 56, height: 56, borderRadius: "50%",
+        background: `linear-gradient(145deg, rgba(201,169,110,0.12) 0%, rgba(201,169,110,0.04) 100%)`,
+        border: `1.5px solid ${isSpeaking ? "rgba(201,169,110,0.5)" : isThinking ? "rgba(201,169,110,0.25)" : c.border}`,
         display: "flex", alignItems: "center", justifyContent: "center",
-        transition: "border-color 0.3s ease",
-        boxShadow: isSpeaking ? `0 0 40px rgba(201,169,110,0.15)` : "none",
+        transition: "all 0.4s ease",
+        boxShadow: isSpeaking ? "0 0 24px rgba(201,169,110,0.1)" : "none",
       }}>
-        <svg aria-hidden="true" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.2" strokeLinecap="round">
+        <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5" strokeLinecap="round">
           <circle cx="12" cy="12" r="3" />
           <path d="M12 1v2m0 18v2m-9-11h2m18 0h2" />
           <path d="M5.6 5.6l1.4 1.4m9.9 9.9l1.4 1.4M5.6 18.4l1.4-1.4m9.9-9.9l1.4-1.4" />
-          {isSpeaking && (
-            <>
-              <circle cx="12" cy="12" r="6" strokeDasharray="4 4">
-                <animateTransform attributeName="transform" type="rotate" from="0 12 12" to="360 12 12" dur="3s" repeatCount="indefinite" />
-              </circle>
-            </>
-          )}
         </svg>
       </div>
     </div>
@@ -464,20 +448,14 @@ function LiveCaptions({ text, isTyping }: { text: string; isTyping: boolean }) {
   if (!isTyping && !displayText) return null;
 
   return (
-    <div style={{
-      padding: "14px 20px", borderRadius: 12,
-      background: "rgba(10, 10, 11, 0.85)",
-      backdropFilter: "blur(12px)",
-      border: `1px solid ${c.border}`,
-      maxWidth: 640, width: "100%",
-    }}>
+    <div style={{ width: "100%" }}>
       <p style={{
-        fontFamily: font.ui, fontSize: 14, color: c.ivory,
-        lineHeight: 1.6, margin: 0, minHeight: 22,
+        fontFamily: font.ui, fontSize: 14, color: c.chalk,
+        lineHeight: 1.75, margin: 0, minHeight: 22,
       }}>
         {displayText}
         {isTyping && charIndex < text.length && (
-          <span style={{ display: "inline-block", width: 2, height: 16, background: c.gilt, marginLeft: 2, verticalAlign: "text-bottom", animation: "blink 0.8s ease-in-out infinite" }} />
+          <span style={{ display: "inline-block", width: 2, height: 15, background: c.gilt, marginLeft: 2, verticalAlign: "text-bottom", animation: "blink 0.8s ease-in-out infinite" }} />
         )}
       </p>
     </div>
@@ -630,7 +608,8 @@ export default function Interview() {
   const navigate = useNavigate();
   const { user, updateUser } = useAuth();
   const [searchParams] = useSearchParams();
-  const interviewType = searchParams.get("type") || "behavioral";
+  const rawType = searchParams.get("type");
+  const interviewType = (rawType && rawType !== "undefined" && rawType !== "null") ? rawType : "behavioral";
   const interviewFocus = searchParams.get("focus") || "general";
   const interviewDifficulty = searchParams.get("difficulty") || "standard";
   const isMiniMode = searchParams.get("mini") === "true";
@@ -1248,23 +1227,30 @@ export default function Interview() {
         }}>
           {/* AI section — avatar + status */}
           <div className="interview-avatar-row" style={{
-            display: "flex", alignItems: "center", gap: 20,
-            padding: "24px 28px 0",
+            display: "flex", alignItems: "center", gap: 16,
+            padding: "20px 28px 0",
           }}>
-            <div className="ai-avatar-wrap" style={{ position: "relative" }}>
+            <div className="ai-avatar-wrap" style={{ position: "relative", flexShrink: 0 }}>
               <AIAvatar isSpeaking={phase === "speaking"} isThinking={phase === "thinking"} />
             </div>
-            <div style={{ flex: 1 }}>
-              <p style={{ fontFamily: font.ui, fontSize: 15, fontWeight: 600, color: c.ivory, marginBottom: 4 }}>AI Interviewer</p>
-              <p aria-live="polite" style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, marginBottom: 8 }}>
-                {phase === "thinking" ? "Preparing next question..." :
-                 phase === "speaking" ? "Speaking..." :
-                 phase === "listening" ? "Listening to your answer" :
-                 "Interview complete"}
-              </p>
-              {/* Waveform inline with avatar */}
-              <div style={{ height: 28, width: 160 }}>
-                <WaveformVisualizer active={phase === "speaking"} color={c.gilt} barCount={24} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 2 }}>
+                <p style={{ fontFamily: font.ui, fontSize: 14, fontWeight: 600, color: c.ivory, margin: 0 }}>AI Interviewer</p>
+                <span aria-live="polite" style={{
+                  fontFamily: font.ui, fontSize: 10, fontWeight: 500,
+                  color: phase === "speaking" ? c.gilt : phase === "listening" ? c.sage : c.stone,
+                  padding: "2px 8px", borderRadius: 100,
+                  background: phase === "speaking" ? "rgba(201,169,110,0.08)" : phase === "listening" ? "rgba(122,158,126,0.08)" : "transparent",
+                }}>
+                  {phase === "thinking" ? "Preparing..." :
+                   phase === "speaking" ? "Speaking" :
+                   phase === "listening" ? "Listening" :
+                   "Complete"}
+                </span>
+              </div>
+              {/* Waveform — compact */}
+              <div style={{ height: 20, width: 120, marginTop: 4 }}>
+                <WaveformVisualizer active={phase === "speaking"} color={c.gilt} barCount={18} />
               </div>
             </div>
           </div>
@@ -1273,27 +1259,28 @@ export default function Interview() {
           <div className="interview-qcard" style={{ flex: 1, padding: "20px 28px", display: "flex", flexDirection: "column", overflow: "hidden" }}>
             {/* Current question / AI speech */}
             <div style={{
-              background: c.graphite, borderRadius: 14,
-              border: `1px solid ${phase === "speaking" ? "rgba(201,169,110,0.15)" : c.border}`,
-              padding: "24px", flex: "0 0 auto",
-              transition: "border-color 0.3s ease",
-              boxShadow: phase === "speaking" ? "0 4px 24px rgba(201,169,110,0.06)" : "none",
+              background: c.graphite, borderRadius: 12,
+              border: `1px solid ${phase === "speaking" ? "rgba(201,169,110,0.12)" : c.border}`,
+              padding: "20px 24px", flex: "0 0 auto",
+              transition: "all 0.4s ease",
             }}>
-              {/* Score note badge */}
+              {/* Score note — subtle, sentence-case */}
               {step?.scoreNote && phase !== "done" && (
-                <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 12 }}>
-                  <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4m0-4h.01"/></svg>
-                  <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, color: c.gilt, letterSpacing: "0.06em", textTransform: "uppercase" }}>
-                    {step.scoreNote}
-                  </span>
-                </div>
+                <p style={{
+                  fontFamily: font.ui, fontSize: 11, color: "rgba(201,169,110,0.6)",
+                  letterSpacing: "0.02em", margin: "0 0 10px",
+                  display: "flex", alignItems: "center", gap: 5,
+                }}>
+                  <svg aria-hidden="true" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="rgba(201,169,110,0.5)" strokeWidth="1.5" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4m0-4h.01"/></svg>
+                  {step.scoreNote}
+                </p>
               )}
 
-              {/* Show LiveCaptions only while speaking, static text otherwise — never both */}
+              {/* Show LiveCaptions only while speaking, static text otherwise */}
               {phase === "speaking" ? (
                 <LiveCaptions text={step?.aiText || ""} isTyping={true} />
               ) : step?.aiText ? (
-                <p style={{ fontFamily: font.ui, fontSize: 14, color: c.chalk, lineHeight: 1.7, margin: 0 }}>
+                <p style={{ fontFamily: font.ui, fontSize: 14, color: c.chalk, lineHeight: 1.75, margin: 0 }}>
                   {step.aiText}
                 </p>
               ) : null}
@@ -1408,34 +1395,27 @@ export default function Interview() {
                 </div>
               )}
 
-              {/* Previous exchange recap during thinking/speaking */}
-              {(phase === "thinking" || phase === "speaking") && transcript.length > 0 && (
-                <div style={{
-                  flex: 1, borderRadius: 14, overflow: "auto",
-                  padding: "16px 20px",
-                }}>
-                  <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, color: c.stone, letterSpacing: "0.06em", textTransform: "uppercase", display: "block", marginBottom: 10 }}>Previous exchange</span>
-                  {transcript.slice(-2).map((msg, i) => (
-                    <div key={i} style={{ display: "flex", gap: 8, marginBottom: 10 }}>
-                      <div style={{
-                        width: 18, height: 18, borderRadius: "50%", flexShrink: 0, marginTop: 2,
-                        background: msg.speaker === "ai" ? "rgba(201,169,110,0.08)" : "rgba(122,158,126,0.08)",
-                        display: "flex", alignItems: "center", justifyContent: "center",
-                      }}>
-                        {msg.speaker === "ai" ? (
-                          <svg aria-hidden="true" width="8" height="8" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="2"><circle cx="12" cy="12" r="3"/></svg>
-                        ) : (
-                          <svg aria-hidden="true" width="8" height="8" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                        )}
-                      </div>
-                      <p style={{
-                        fontFamily: font.ui, fontSize: 12, color: c.stone, lineHeight: 1.5, margin: 0,
-                        overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical" as const,
-                      }}>{msg.text}</p>
+              {/* Last user answer recap during thinking/speaking */}
+              {(phase === "thinking" || phase === "speaking") && (() => {
+                const lastUserMsg = [...transcript].reverse().find(t => t.speaker === "user");
+                if (!lastUserMsg) return null;
+                return (
+                  <div style={{
+                    borderRadius: 10, padding: "14px 18px", marginTop: 4,
+                    background: "rgba(122,158,126,0.03)",
+                    border: `1px solid rgba(122,158,126,0.08)`,
+                  }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
+                      <div style={{ width: 5, height: 5, borderRadius: "50%", background: "rgba(122,158,126,0.4)" }} />
+                      <span style={{ fontFamily: font.ui, fontSize: 10, color: c.stone, letterSpacing: "0.03em" }}>Your last answer</span>
                     </div>
-                  ))}
-                </div>
-              )}
+                    <p style={{
+                      fontFamily: font.ui, fontSize: 12, color: "rgba(197,192,186,0.6)", lineHeight: 1.5, margin: 0,
+                      overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" as const,
+                    }}>{lastUserMsg.text}</p>
+                  </div>
+                );
+              })()}
             </div>
           </div>
         </div>
@@ -1524,50 +1504,46 @@ export default function Interview() {
                 <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
               </button>
             </div>
-            <div ref={transcriptRef} aria-live="polite" aria-label="Interview transcript" style={{ flex: 1, overflow: "auto", padding: "16px 20px", display: "flex", flexDirection: "column", gap: 14 }}>
+            {/* PiP webcam — above transcript list */}
+            {!isCameraOff && (
+              <div className="interview-pip-float" style={{
+                margin: "12px 16px 0",
+                height: 110, borderRadius: 10,
+                border: `1.5px solid ${phase === "listening" ? "rgba(122,158,126,0.2)" : c.border}`,
+                overflow: "hidden", flexShrink: 0,
+              }}>
+                <UserWebcam isMuted={isMuted} isCameraOff={false} />
+              </div>
+            )}
+            <div ref={transcriptRef} aria-live="polite" aria-label="Interview transcript" style={{ flex: 1, overflow: "auto", padding: "14px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
               {transcript.length === 0 && (
                 <p style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, textAlign: "center", padding: "40px 0" }}>Transcript will appear here...</p>
               )}
               {transcript.map((msg, i) => (
                 <div key={i} style={{ display: "flex", gap: 10 }}>
                   <div style={{
-                    width: 22, height: 22, borderRadius: "50%", flexShrink: 0, marginTop: 2,
-                    background: msg.speaker === "ai" ? "rgba(201,169,110,0.1)" : "rgba(122,158,126,0.1)",
-                    border: `1px solid ${msg.speaker === "ai" ? "rgba(201,169,110,0.2)" : "rgba(122,158,126,0.2)"}`,
+                    width: 20, height: 20, borderRadius: "50%", flexShrink: 0, marginTop: 2,
+                    background: msg.speaker === "ai" ? "rgba(201,169,110,0.08)" : "rgba(122,158,126,0.08)",
                     display: "flex", alignItems: "center", justifyContent: "center",
                   }}>
                     {msg.speaker === "ai" ? (
-                      <svg aria-hidden="true" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="2"><circle cx="12" cy="12" r="3"/></svg>
+                      <svg aria-hidden="true" width="8" height="8" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="2"><circle cx="12" cy="12" r="3"/></svg>
                     ) : (
-                      <svg aria-hidden="true" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                      <svg aria-hidden="true" width="8" height="8" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                     )}
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 3 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 2 }}>
                       <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, color: msg.speaker === "ai" ? c.gilt : c.sage }}>
                         {msg.speaker === "ai" ? "Interviewer" : "You"}
                       </span>
                       <span style={{ fontFamily: font.mono, fontSize: 9, color: c.stone }}>{msg.time}</span>
                     </div>
-                    <p style={{ fontFamily: font.ui, fontSize: 12, color: c.chalk, lineHeight: 1.6, margin: 0 }}>{msg.text}</p>
+                    <p style={{ fontFamily: font.ui, fontSize: 12, color: c.chalk, lineHeight: 1.55, margin: 0 }}>{msg.text}</p>
                   </div>
                 </div>
               ))}
             </div>
-
-            {/* PiP webcam while transcript is open */}
-            {!isCameraOff && (
-              <div className="interview-pip-float" style={{
-                position: "absolute", bottom: 16, right: 16,
-                width: 140, height: 105, borderRadius: 12,
-                border: `2px solid ${phase === "listening" ? "rgba(122,158,126,0.3)" : c.border}`,
-                overflow: "hidden",
-                boxShadow: "0 4px 20px rgba(0,0,0,0.5)",
-                zIndex: 5,
-              }}>
-                <UserWebcam isMuted={isMuted} isCameraOff={false} />
-              </div>
-            )}
           </div>
         )}
       </div>
@@ -1575,75 +1551,71 @@ export default function Interview() {
       {/* ─── Bottom Footer ─── */}
       <footer style={{
         display: "flex", alignItems: "center", justifyContent: "space-between",
-        padding: "10px 20px",
+        padding: "8px 24px",
         borderTop: `1px solid ${c.border}`,
-        background: c.graphite,
+        background: c.obsidian,
         flexShrink: 0, zIndex: 10,
       }}>
-        {/* Left: phase indicator */}
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          {phase === "listening" && (
-            <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "3px 10px", borderRadius: 100, background: "rgba(122,158,126,0.06)", border: "1px solid rgba(122,158,126,0.12)" }}>
-              <div style={{ width: 6, height: 6, borderRadius: "50%", background: c.sage, animation: "recordPulse 1s ease-in-out infinite" }} />
-              <span style={{ fontFamily: font.ui, fontSize: 11, color: c.sage }}>Your turn</span>
-            </div>
-          )}
-          {phase === "speaking" && (
-            <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "3px 10px", borderRadius: 100, background: "rgba(201,169,110,0.06)", border: "1px solid rgba(201,169,110,0.12)" }}>
-              <div style={{ width: 6, height: 6, borderRadius: "50%", background: c.gilt, animation: "recordPulse 1s ease-in-out infinite" }} />
-              <span style={{ fontFamily: font.ui, fontSize: 11, color: c.gilt }}>AI speaking</span>
-            </div>
-          )}
-          {phase === "thinking" && (
-            <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "3px 10px", borderRadius: 100, background: "rgba(240,237,232,0.03)", border: `1px solid ${c.border}` }}>
-              <div style={{ width: 10, height: 10, border: "1.5px solid rgba(201,169,110,0.3)", borderTopColor: c.gilt, borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
-              <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>Thinking...</span>
-            </div>
-          )}
-          {phase === "done" && (
-            <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "3px 10px", borderRadius: 100, background: "rgba(122,158,126,0.06)", border: "1px solid rgba(122,158,126,0.12)" }}>
-              <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="2" strokeLinecap="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-              <span style={{ fontFamily: font.ui, fontSize: 11, color: c.sage }}>Complete</span>
-            </div>
-          )}
+        {/* Left: phase pill */}
+        <div style={{ width: 140 }}>
+          <div style={{
+            display: "inline-flex", alignItems: "center", gap: 6,
+            padding: "4px 12px", borderRadius: 100,
+            background: phase === "listening" ? "rgba(122,158,126,0.06)" : phase === "speaking" ? "rgba(201,169,110,0.05)" : "transparent",
+            border: `1px solid ${phase === "listening" ? "rgba(122,158,126,0.12)" : phase === "speaking" ? "rgba(201,169,110,0.1)" : c.border}`,
+          }}>
+            {phase === "thinking" ? (
+              <div style={{ width: 8, height: 8, border: "1.5px solid rgba(201,169,110,0.3)", borderTopColor: c.gilt, borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
+            ) : phase === "done" ? (
+              <svg aria-hidden="true" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="2.5" strokeLinecap="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+            ) : (
+              <div style={{ width: 5, height: 5, borderRadius: "50%", background: phase === "listening" ? c.sage : c.gilt, animation: "recordPulse 1.2s ease-in-out infinite" }} />
+            )}
+            <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 500, color: phase === "listening" ? c.sage : phase === "speaking" ? c.gilt : c.stone }}>
+              {phase === "thinking" ? "Preparing" : phase === "speaking" ? "AI speaking" : phase === "listening" ? "Your turn" : "Complete"}
+            </span>
+          </div>
         </div>
 
         {/* Center: keyboard hint */}
-        <div>
+        <div style={{ flex: 1, textAlign: "center" }}>
           {phase === "listening" && (
-            <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>
-              Press <kbd style={{ fontFamily: font.mono, fontSize: 10, padding: "2px 6px", borderRadius: 3, background: "rgba(240,237,232,0.06)", border: `1px solid ${c.border}`, color: c.chalk }}>Enter</kbd> to advance
+            <span style={{ fontFamily: font.ui, fontSize: 10, color: c.stone, letterSpacing: "0.02em" }}>
+              <kbd style={{ fontFamily: font.mono, fontSize: 9, padding: "1px 5px", borderRadius: 3, background: "rgba(240,237,232,0.04)", border: `1px solid ${c.border}`, color: c.chalk }}>Enter</kbd> to advance
             </span>
           )}
         </div>
 
-        {/* Right: End interview button */}
-        <button
-          onClick={() => phase === "done" ? handleEnd() : setShowEndModal(true)}
-          style={{
-            fontFamily: font.ui, fontSize: 12, fontWeight: 500,
-            padding: "8px 20px", borderRadius: 8,
-            background: phase === "done" ? c.gilt : "rgba(196,112,90,0.08)",
-            border: phase === "done" ? "none" : `1px solid rgba(196,112,90,0.2)`,
-            color: phase === "done" ? c.obsidian : c.ember,
-            cursor: "pointer", transition: "all 0.2s",
-            display: "flex", alignItems: "center", gap: 6,
-          }}
-          onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.filter = "brightness(1.1)"; }}
-          onMouseLeave={(e) => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.filter = "brightness(1)"; }}
-        >
-          {phase === "done" ? (
-            <>
-              View Feedback
-              <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
-            </>
-          ) : (
-            <>
-              <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>
-              End Interview
-            </>
-          )}
-        </button>
+        {/* Right: End / View Feedback */}
+        <div style={{ width: 140, display: "flex", justifyContent: "flex-end" }}>
+          <button
+            onClick={() => phase === "done" ? handleEnd() : setShowEndModal(true)}
+            style={{
+              fontFamily: font.ui, fontSize: 11, fontWeight: 500,
+              padding: "6px 16px", borderRadius: 8,
+              background: phase === "done" ? `linear-gradient(135deg, ${c.gilt}, #B8923E)` : "transparent",
+              border: phase === "done" ? "none" : `1px solid rgba(240,237,232,0.08)`,
+              color: phase === "done" ? c.obsidian : c.stone,
+              cursor: "pointer", transition: "all 0.25s",
+              display: "flex", alignItems: "center", gap: 5,
+            }}
+            onMouseEnter={(e) => {
+              if (phase === "done") { e.currentTarget.style.filter = "brightness(1.1)"; }
+              else { e.currentTarget.style.color = c.ember; e.currentTarget.style.borderColor = "rgba(196,112,90,0.2)"; }
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.filter = "brightness(1)";
+              if (phase !== "done") { e.currentTarget.style.color = c.stone; e.currentTarget.style.borderColor = "rgba(240,237,232,0.08)"; }
+            }}
+          >
+            {phase === "done" ? (
+              <>
+                View Feedback
+                <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+              </>
+            ) : "End"}
+          </button>
+        </div>
       </footer>
 
       {/* End Interview Modal */}
