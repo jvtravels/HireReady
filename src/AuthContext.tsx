@@ -5,7 +5,7 @@ import type { Session } from "@supabase/supabase-js";
 import type { ParsedResume } from "./resumeParser";
 
 /** Check if Supabase has a session token stored in localStorage */
-function hasStoredSession(): boolean {
+export function hasStoredSession(): boolean {
   try {
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
