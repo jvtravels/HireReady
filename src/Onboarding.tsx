@@ -308,7 +308,9 @@ export default function Onboarding() {
     navigate("/interview?type=behavioral&difficulty=standard&mini=true");
   };
 
+  const isStep1Busy = step === 1 && (resumeParsing || aiPhase === "analyzing");
   const isStep2Disabled = step === 2 && (!targetRole.trim() || interviewFocus.length === 0);
+  const isContinueDisabled = isStep1Busy || isStep2Disabled;
 
   return (
     <div style={{ minHeight: "100vh", background: `radial-gradient(ellipse 80% 50% at 50% 0%, rgba(201,169,110,0.03) 0%, ${c.obsidian} 70%)`, display: "flex", flexDirection: "column", position: "relative" }}>
@@ -934,17 +936,17 @@ export default function Onboarding() {
           {/* ─── Navigation ─── */}
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12, marginTop: 40 }}>
             {step < TOTAL_STEPS ? (
-              <button onClick={goNext} disabled={isStep2Disabled}
+              <button onClick={goNext} disabled={isContinueDisabled}
                 style={{
                   fontFamily: font.ui, fontSize: 15, fontWeight: 600, padding: "14px 40px", borderRadius: 10, border: "none",
-                  background: isStep2Disabled ? "rgba(201,169,110,0.15)" : `linear-gradient(135deg, ${c.gilt}, #B8923E)`,
-                  color: isStep2Disabled ? "rgba(201,169,110,0.4)" : c.obsidian,
-                  cursor: isStep2Disabled ? "not-allowed" : "pointer",
+                  background: isContinueDisabled ? "rgba(201,169,110,0.15)" : `linear-gradient(135deg, ${c.gilt}, #B8923E)`,
+                  color: isContinueDisabled ? "rgba(201,169,110,0.4)" : c.obsidian,
+                  cursor: isContinueDisabled ? "not-allowed" : "pointer",
                   transition: "all 0.25s ease", display: "inline-flex", alignItems: "center", gap: 8,
-                  boxShadow: isStep2Disabled ? "none" : "0 8px 24px rgba(201,169,110,0.2)",
+                  boxShadow: isContinueDisabled ? "none" : "0 8px 24px rgba(201,169,110,0.2)",
                 }}
-                onMouseEnter={(e) => { if (!isStep2Disabled) { e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 12px 32px rgba(201,169,110,0.3)"; } }}
-                onMouseLeave={(e) => { if (!isStep2Disabled) { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 8px 24px rgba(201,169,110,0.2)"; } }}>
+                onMouseEnter={(e) => { if (!isContinueDisabled) { e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 12px 32px rgba(201,169,110,0.3)"; } }}
+                onMouseLeave={(e) => { if (!isContinueDisabled) { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 8px 24px rgba(201,169,110,0.2)"; } }}>
                 Continue
                 <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
               </button>
