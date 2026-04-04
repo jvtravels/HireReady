@@ -94,9 +94,20 @@ export async function getProfile(userId: string): Promise<Profile | null> {
 }
 
 export async function upsertProfile(profile: Partial<Profile> & { id: string }) {
-  const result = await supabase.from("profiles").upsert(profile, { onConflict: "id" });
+  const { id, ...updates } = profile;
+  // Use UPDATE for existing rows — upsert can be silently blocked by RLS
+  const result = await supabase
+    .from("profiles")
+    .update(updates)
+    .eq("id", id);
   if (result.error) {
-    console.error("[supabase] upsertProfile failed:", result.error.message, result.error.code);
+    console.warn("[supabase] update failed, trying upsert:", result.error.message);
+    // Fallback to upsert (for new rows)
+    const upsertResult = await supabase.from("profiles").upsert(profile, { onConflict: "id" });
+    if (upsertResult.error) {
+      console.error("[supabase] upsert also failed:", upsertResult.error.message, upsertResult.error.code);
+    }
+    return upsertResult;
   }
   return result;
 }

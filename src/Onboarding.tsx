@@ -266,7 +266,7 @@ export default function Onboarding() {
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement)?.tagName;
-      if (tag === "INPUT" || tag === "TEXTAREA") return;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "BUTTON") return;
       if (e.key === "Enter") {
         e.preventDefault();
         if (step < TOTAL_STEPS) {
