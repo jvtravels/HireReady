@@ -938,18 +938,19 @@ export default function Onboarding() {
                 <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
               </button>
             ) : (
-              <button onClick={handleStart}
+              <button onClick={handleStart} disabled={micStatus !== "granted"}
                 style={{
                   fontFamily: font.ui, fontSize: 15, fontWeight: 600, padding: "14px 40px", borderRadius: 10, border: "none",
-                  background: `linear-gradient(135deg, ${c.gilt}, #B8923E)`,
-                  color: c.obsidian, cursor: "pointer",
+                  background: micStatus === "granted" ? `linear-gradient(135deg, ${c.gilt}, #B8923E)` : "rgba(201,169,110,0.15)",
+                  color: micStatus === "granted" ? c.obsidian : "rgba(201,169,110,0.4)",
+                  cursor: micStatus === "granted" ? "pointer" : "not-allowed",
                   transition: "all 0.25s ease", display: "inline-flex", alignItems: "center", gap: 8,
-                  boxShadow: "0 8px 24px rgba(201,169,110,0.2)", opacity: micStatus === "granted" ? 1 : 0.7,
+                  boxShadow: micStatus === "granted" ? "0 8px 24px rgba(201,169,110,0.2)" : "none",
                 }}
-                onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 12px 32px rgba(201,169,110,0.3)"; }}
-                onMouseLeave={(e) => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 8px 24px rgba(201,169,110,0.2)"; }}>
+                onMouseEnter={(e) => { if (micStatus === "granted") { e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 12px 32px rgba(201,169,110,0.3)"; } }}
+                onMouseLeave={(e) => { if (micStatus === "granted") { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 8px 24px rgba(201,169,110,0.2)"; } }}>
                 <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polygon points="5,3 19,12 5,21"/></svg>
-                Start Practice Interview
+                {micStatus === "granted" ? "Start Practice Interview" : "Allow microphone to continue"}
               </button>
             )}
 
