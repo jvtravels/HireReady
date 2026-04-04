@@ -122,7 +122,6 @@ export default function Onboarding() {
   const [targetCompany, setTargetCompany] = useState("");
   const [interviewFocus, setInterviewFocus] = useState<string[]>(["Behavioral"]);
   const [sessionLength, setSessionLength] = useState("15m");
-  const [feedbackStyle, setFeedbackStyle] = useState("Direct & Blunt");
 
   // ─── Step 3: Mic/Camera ───
   const [micStatus, setMicStatus] = useState<"idle" | "requesting" | "granted" | "denied">("idle");
@@ -296,7 +295,6 @@ export default function Onboarding() {
     if (targetCompany.trim()) saveData.targetCompany = targetCompany.trim();
     if (interviewFocus.length > 0) saveData.interviewTypes = interviewFocus;
     if (sessionLength) saveData.preferredSessionLength = parseInt(sessionLength) as 10 | 15 | 25 || 15;
-    if (feedbackStyle) saveData.learningStyle = feedbackStyle === "Direct & Blunt" ? "direct" as const : "encouraging" as const;
     // Only send resume fields if user uploaded a resume in this session
     if (fileName) {
       saveData.resumeFileName = fileName;
@@ -363,7 +361,7 @@ export default function Onboarding() {
         </div>
         {/* Stepper — center */}
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          {["Resume", "Profile", "Review"].map((label, i) => (
+          {["Resume", "Profile", "Ready"].map((label, i) => (
             <div key={i} style={{ display: "flex", alignItems: "center", gap: 6 }}>
               <div style={{
                 width: 26, height: 26, borderRadius: "50%",
@@ -784,172 +782,141 @@ export default function Onboarding() {
             </div>
           )}
 
-          {/* ════════════════ STEP 3: Review & Permissions ════════════════ */}
+          {/* ════════════════ STEP 3: Permissions & Review ════════════════ */}
           {step === 3 && (
             <div>
-              {/* Hero Section */}
-              <div style={{ textAlign: "center", marginBottom: 40 }}>
-                {/* Play icon circle */}
-                <div className="fade-up-1" style={{ width: 72, height: 72, borderRadius: "50%", background: `linear-gradient(135deg, ${c.gilt}, #B8923E)`, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 24px", boxShadow: "0 12px 40px rgba(201,169,110,0.25)" }}>
-                  <svg width="28" height="28" viewBox="0 0 24 24" fill={c.obsidian} stroke="none"><polygon points="8,5 19,12 8,19"/></svg>
-                </div>
-
-                {/* Gold label */}
-                <p className="fade-up-1" style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 700, color: c.gilt, textTransform: "uppercase", letterSpacing: "0.15em", marginBottom: 12 }}>You're All Set</p>
-
-                {/* Display heading */}
-                <h2 className="fade-up-2" style={{ fontFamily: font.display, fontSize: 32, fontWeight: 400, color: c.ivory, letterSpacing: "-0.02em", lineHeight: 1.2, marginBottom: 12 }}>Your personalized prep<br />is ready</h2>
-
-                {/* Personalized subtitle */}
-                <p className="fade-up-2" style={{ fontFamily: font.ui, fontSize: 14, color: c.stone, lineHeight: 1.6 }}>
-                  {targetRole && targetCompany
-                    ? `Tailored for your ${targetRole} interview${targetCompany !== "Exploring" ? ` at ${targetCompany}` : ""}.`
-                    : targetRole
-                    ? `Tailored for your ${targetRole} interview.`
-                    : "Tailored to your interview goals."}
+              {/* Heading — consistent with Steps 1 & 2 */}
+              <div style={{ marginBottom: 32 }} className="fade-up-1">
+                <p style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 700, color: c.gilt, textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 12 }}>Step 3 — Almost There</p>
+                <h2 style={{ fontFamily: font.display, fontSize: 32, fontWeight: 400, color: c.ivory, letterSpacing: "-0.025em", lineHeight: 1.2, marginBottom: 10 }}>
+                  Allow permissions & review
+                </h2>
+                <p style={{ fontFamily: font.ui, fontSize: 15, color: c.stone, lineHeight: 1.7 }}>
+                  We need microphone access for the interview. Review your profile below, then you're ready to go.
                 </p>
               </div>
 
-              {/* Your Profile Card */}
-              <div className="ob-card fade-up-3" style={{ borderRadius: 16, padding: "24px 28px", marginBottom: 20 }}>
-                <p style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.stone, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 20 }}>Your Profile</p>
-                <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
-                  {[
-                    { label: "Resume", value: fileName || "Not uploaded", icon: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={c.stone} strokeWidth="1.5" strokeLinecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>, editStep: 1 },
-                    { label: "Target Role", value: targetRole || "Not set", icon: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={c.stone} strokeWidth="1.5" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>, editStep: 2 },
-                    { label: "Target Company", value: targetCompany || "Exploring", icon: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={c.stone} strokeWidth="1.5" strokeLinecap="round"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="9" y1="6" x2="15" y2="6"/><line x1="9" y1="10" x2="15" y2="10"/><line x1="9" y1="14" x2="15" y2="14"/></svg>, editStep: 2 },
-                    { label: "Interview Focus", value: interviewFocus.length > 0 ? interviewFocus.join(", ") : "None selected", icon: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={c.stone} strokeWidth="1.5" strokeLinecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>, editStep: 2 },
-                    { label: "Session Length", value: sessionLength === "10m" ? "10 minutes" : sessionLength === "25m" ? "25 minutes" : "15 minutes", icon: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={c.stone} strokeWidth="1.5" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>, editStep: 2 },
-                  ].map((item, i, arr) => (
-                    <div key={item.label}>
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "13px 0" }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 0 }}>
-                          <span style={{ flexShrink: 0, display: "flex" }}>{item.icon}</span>
-                          <span style={{ fontFamily: font.ui, fontSize: 13, color: c.stone, flexShrink: 0 }}>{item.label}</span>
+              <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+                {/* ── Permissions Card ── */}
+                <div className="ob-card fade-up-1" style={{ borderRadius: 16, padding: "24px 28px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 20 }}>
+                    <div style={{ width: 28, height: 28, borderRadius: 7, background: "rgba(201,169,110,0.06)", border: "1px solid rgba(201,169,110,0.12)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5" strokeLinecap="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>
+                    </div>
+                    <span style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: c.ivory }}>Permissions</span>
+                  </div>
+
+                  <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                    {/* Mic */}
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", borderRadius: 10, background: micStatus === "granted" ? "rgba(122,158,126,0.04)" : "rgba(240,237,232,0.02)", border: `1px solid ${micStatus === "granted" ? "rgba(122,158,126,0.12)" : "rgba(240,237,232,0.06)"}` }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                        <div style={{ width: 38, height: 38, borderRadius: 10, background: micStatus === "granted" ? `${c.sage}12` : "rgba(240,237,232,0.03)", border: `1px solid ${micStatus === "granted" ? `${c.sage}25` : "rgba(240,237,232,0.06)"}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                          <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={micStatus === "granted" ? c.sage : c.stone} strokeWidth="1.5" strokeLinecap="round">
+                            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                          </svg>
                         </div>
+                        <div>
+                          <p style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.ivory }}>Microphone</p>
+                          <p style={{ fontFamily: font.ui, fontSize: 11, color: micStatus === "granted" ? c.sage : micStatus === "denied" ? c.ember : c.stone }}>
+                            {micStatus === "granted" ? "Connected — ready to go" : micStatus === "denied" ? "Permission denied — click Retry" : "Required for the interview"}
+                          </p>
+                        </div>
+                      </div>
+                      {micStatus === "granted" ? (
                         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                          <span style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: item.value === "Not set" || item.value === "Not uploaded" || item.value === "None selected" ? "rgba(154,149,144,0.5)" : c.ivory, maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textAlign: "right" }}>
-                            {item.value}
-                          </span>
-                          <button
-                            onClick={() => { setSlideDir("back"); setStep(item.editStep); }}
-                            style={{ background: "none", border: "none", cursor: "pointer", padding: 4, display: "flex", alignItems: "center", opacity: 0.3, transition: "opacity 0.2s" }}
-                            onMouseEnter={(e) => { e.currentTarget.style.opacity = "0.8"; }}
-                            onMouseLeave={(e) => { e.currentTarget.style.opacity = "0.3"; }}
-                            aria-label={`Edit ${item.label}`}>
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={c.stone} strokeWidth="2" strokeLinecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                          </button>
+                          <div style={{ width: 60, height: 4, borderRadius: 2, background: "rgba(240,237,232,0.06)", overflow: "hidden" }}>
+                            <div style={{ height: "100%", borderRadius: 2, background: c.sage, width: `${Math.max(5, micLevel)}%`, transition: "width 0.1s" }} />
+                          </div>
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
                         </div>
-                      </div>
-                      {i < arr.length - 1 && <div style={{ height: 1, background: "rgba(240,237,232,0.04)" }} />}
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Session Preferences */}
-              <div className="ob-card fade-up-3" style={{ borderRadius: 16, padding: "24px 28px", marginBottom: 20 }}>
-                <p style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.stone, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 18 }}>Session Preferences</p>
-
-                {/* Feedback Style */}
-                <div>
-                  <p style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.chalk, marginBottom: 10 }}>Feedback style</p>
-                  <div style={{ display: "flex", gap: 8 }}>
-                    {[
-                      { value: "Direct & Blunt", label: "Direct", desc: "Tell me exactly what's wrong. No sugarcoating." },
-                      { value: "Encouraging First", label: "Encouraging", desc: "Lead with what I did well, then suggest improvements." },
-                    ].map(opt => {
-                      const sel = feedbackStyle === opt.value;
-                      return (
-                        <button key={opt.value} onClick={() => setFeedbackStyle(opt.value)}
-                          style={{
-                            flex: 1, padding: "10px 14px", borderRadius: 8, cursor: "pointer", textAlign: "left",
-                            background: sel ? "rgba(201,169,110,0.08)" : "transparent",
-                            border: `1px solid ${sel ? c.gilt : c.border}`,
-                            transition: "all 0.2s",
-                          }}>
-                          <span style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: sel ? c.ivory : c.chalk, display: "block" }}>{opt.label}</span>
-                          <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, lineHeight: 1.4 }}>{opt.desc}</span>
+                      ) : (
+                        <button onClick={requestMic}
+                          style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: c.gilt, background: "rgba(201,169,110,0.08)", border: `1px solid rgba(201,169,110,0.2)`, borderRadius: 8, padding: "8px 18px", cursor: "pointer", transition: "all 0.2s" }}
+                          onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(201,169,110,0.15)"; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(201,169,110,0.08)"; }}>
+                          {micStatus === "denied" ? "Retry" : "Allow Microphone"}
                         </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-
-              {/* Permissions Card */}
-              <div className="ob-card fade-up-3" style={{ borderRadius: 16, padding: "24px 28px" }}>
-                <p style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.stone, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 16 }}>Permissions</p>
-                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                  {/* Mic */}
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                      <div style={{ width: 36, height: 36, borderRadius: 9, background: micStatus === "granted" ? `${c.sage}12` : "rgba(240,237,232,0.03)", border: `1px solid ${micStatus === "granted" ? `${c.sage}25` : "rgba(240,237,232,0.06)"}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                        <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={micStatus === "granted" ? c.sage : c.stone} strokeWidth="1.5" strokeLinecap="round">
-                          <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-                        </svg>
-                      </div>
-                      <div>
-                        <p style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.ivory }}>Microphone</p>
-                        <p style={{ fontFamily: font.ui, fontSize: 11, color: micStatus === "granted" ? c.sage : micStatus === "denied" ? c.ember : c.stone }}>
-                          {micStatus === "granted" ? "Connected" : micStatus === "denied" ? "Permission denied" : "Required for the interview"}
-                        </p>
-                      </div>
+                      )}
                     </div>
-                    {micStatus === "granted" ? (
-                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                        <div style={{ width: 60, height: 4, borderRadius: 2, background: "rgba(240,237,232,0.06)", overflow: "hidden" }}>
-                          <div style={{ height: "100%", borderRadius: 2, background: c.sage, width: `${Math.max(5, micLevel)}%`, transition: "width 0.1s" }} />
+
+                    {/* Camera */}
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", borderRadius: 10, background: camStatus === "granted" ? "rgba(122,158,126,0.04)" : "rgba(240,237,232,0.02)", border: `1px solid ${camStatus === "granted" ? "rgba(122,158,126,0.12)" : "rgba(240,237,232,0.06)"}` }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                        <div style={{ width: 38, height: 38, borderRadius: 10, background: camStatus === "granted" ? `${c.sage}12` : "rgba(240,237,232,0.03)", border: `1px solid ${camStatus === "granted" ? `${c.sage}25` : "rgba(240,237,232,0.06)"}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                          <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={camStatus === "granted" ? c.sage : c.stone} strokeWidth="1.5" strokeLinecap="round">
+                            <path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+                          </svg>
                         </div>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                        <div>
+                          <p style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.ivory }}>Camera <span style={{ fontSize: 11, color: c.stone, fontWeight: 400 }}>(optional)</span></p>
+                          <p style={{ fontFamily: font.ui, fontSize: 11, color: camStatus === "granted" ? c.sage : camStatus === "denied" ? c.ember : c.stone }}>
+                            {camStatus === "granted" ? "Connected" : camStatus === "denied" ? "No worries — camera is optional" : "For a realistic interview feel"}
+                          </p>
+                        </div>
                       </div>
-                    ) : (
-                      <button onClick={requestMic}
-                        style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: c.gilt, background: "rgba(201,169,110,0.08)", border: `1px solid rgba(201,169,110,0.2)`, borderRadius: 6, padding: "6px 14px", cursor: "pointer", transition: "all 0.2s" }}
-                        onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(201,169,110,0.15)"; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(201,169,110,0.08)"; }}>
-                        {micStatus === "denied" ? "Retry" : "Allow"}
-                      </button>
-                    )}
+                      {camStatus === "granted" ? (
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                      ) : (
+                        <button onClick={requestCamera}
+                          style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: c.stone, background: "rgba(240,237,232,0.03)", border: `1px solid rgba(240,237,232,0.06)`, borderRadius: 8, padding: "8px 18px", cursor: "pointer", transition: "all 0.2s" }}
+                          onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(240,237,232,0.06)"; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(240,237,232,0.03)"; }}>
+                          {camStatus === "denied" ? "Retry" : "Enable"}
+                        </button>
+                      )}
+                    </div>
                   </div>
 
-                  <div style={{ height: 1, background: "rgba(240,237,232,0.04)" }} />
-
-                  {/* Camera */}
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                      <div style={{ width: 36, height: 36, borderRadius: 9, background: camStatus === "granted" ? `${c.sage}12` : "rgba(240,237,232,0.03)", border: `1px solid ${camStatus === "granted" ? `${c.sage}25` : "rgba(240,237,232,0.06)"}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                        <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={camStatus === "granted" ? c.sage : c.stone} strokeWidth="1.5" strokeLinecap="round">
-                          <path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
-                        </svg>
-                      </div>
-                      <div>
-                        <p style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.ivory }}>Camera <span style={{ fontSize: 11, color: c.stone, fontWeight: 400 }}>(optional)</span></p>
-                        <p style={{ fontFamily: font.ui, fontSize: 11, color: camStatus === "granted" ? c.sage : camStatus === "denied" ? c.ember : c.stone }}>
-                          {camStatus === "granted" ? "Connected" : camStatus === "denied" ? "No worries — camera is optional" : "For a realistic interview feel"}
-                        </p>
-                      </div>
+                  {/* Camera preview */}
+                  {camStatus === "granted" && (
+                    <div style={{ marginTop: 16, borderRadius: 10, overflow: "hidden", background: "#000", aspectRatio: "16/9", maxHeight: 140 }}>
+                      <video ref={videoRef} autoPlay muted playsInline style={{ width: "100%", height: "100%", objectFit: "cover", transform: "scaleX(-1)" }} />
                     </div>
-                    {camStatus === "granted" ? (
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-                    ) : (
-                      <button onClick={requestCamera}
-                        style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: c.stone, background: "rgba(240,237,232,0.03)", border: `1px solid rgba(240,237,232,0.06)`, borderRadius: 6, padding: "6px 14px", cursor: "pointer", transition: "all 0.2s" }}
-                        onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(240,237,232,0.06)"; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(240,237,232,0.03)"; }}>
-                        {camStatus === "denied" ? "Retry" : "Enable"}
-                      </button>
-                    )}
+                  )}
+                </div>
+
+                {/* ── Your Profile Card ── */}
+                <div className="ob-card fade-up-2" style={{ borderRadius: 16, padding: "24px 28px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 20 }}>
+                    <div style={{ width: 28, height: 28, borderRadius: 7, background: "rgba(201,169,110,0.06)", border: "1px solid rgba(201,169,110,0.12)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5" strokeLinecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                    </div>
+                    <span style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: c.ivory }}>Your Profile</span>
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+                    {[
+                      { label: "Resume", value: fileName || "Not uploaded", icon: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={c.stone} strokeWidth="1.5" strokeLinecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>, editStep: 1 },
+                      { label: "Target Role", value: targetRole || "Not set", icon: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={c.stone} strokeWidth="1.5" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>, editStep: 2 },
+                      { label: "Target Company", value: targetCompany || "Exploring", icon: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={c.stone} strokeWidth="1.5" strokeLinecap="round"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="9" y1="6" x2="15" y2="6"/><line x1="9" y1="10" x2="15" y2="10"/><line x1="9" y1="14" x2="15" y2="14"/></svg>, editStep: 2 },
+                      { label: "Interview Focus", value: interviewFocus.length > 0 ? interviewFocus.join(", ") : "None selected", icon: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={c.stone} strokeWidth="1.5" strokeLinecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>, editStep: 2 },
+                      { label: "Session Length", value: sessionLength === "10m" ? "10 minutes" : sessionLength === "25m" ? "25 minutes" : "15 minutes", icon: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={c.stone} strokeWidth="1.5" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>, editStep: 2 },
+                    ].map((item, i, arr) => (
+                      <div key={item.label}>
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "13px 0" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 0 }}>
+                            <span style={{ flexShrink: 0, display: "flex" }}>{item.icon}</span>
+                            <span style={{ fontFamily: font.ui, fontSize: 13, color: c.stone, flexShrink: 0 }}>{item.label}</span>
+                          </div>
+                          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                            <span style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: item.value === "Not set" || item.value === "Not uploaded" || item.value === "None selected" ? "rgba(154,149,144,0.5)" : c.ivory, maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textAlign: "right" }}>
+                              {item.value}
+                            </span>
+                            <button
+                              onClick={() => { setSlideDir("back"); setStep(item.editStep); }}
+                              style={{ background: "none", border: "none", cursor: "pointer", padding: 4, display: "flex", alignItems: "center", opacity: 0.3, transition: "opacity 0.2s" }}
+                              onMouseEnter={(e) => { e.currentTarget.style.opacity = "0.8"; }}
+                              onMouseLeave={(e) => { e.currentTarget.style.opacity = "0.3"; }}
+                              aria-label={`Edit ${item.label}`}>
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={c.stone} strokeWidth="2" strokeLinecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                            </button>
+                          </div>
+                        </div>
+                        {i < arr.length - 1 && <div style={{ height: 1, background: "rgba(240,237,232,0.04)" }} />}
+                      </div>
+                    ))}
                   </div>
                 </div>
               </div>
-
-              {/* Camera preview */}
-              {camStatus === "granted" && (
-                <div style={{ marginTop: 16, borderRadius: 12, overflow: "hidden", background: "#000", aspectRatio: "16/9", maxHeight: 140 }}>
-                  <video ref={videoRef} autoPlay muted playsInline style={{ width: "100%", height: "100%", objectFit: "cover", transform: "scaleX(-1)" }} />
-                </div>
-              )}
             </div>
           )}
 
