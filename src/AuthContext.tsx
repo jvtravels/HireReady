@@ -17,6 +17,9 @@ export interface User {
   learningStyle?: "direct" | "encouraging";
   preferredSessionLength?: 10 | 15 | 25;
   interviewDate?: string;
+  interviewFocus?: string[];
+  sessionLength?: string;
+  feedbackStyle?: string;
   interviewTypes?: string[];
   practiceTimestamps?: string[];
   resumeText?: string;
@@ -89,43 +92,81 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!supabaseConfigured) return;
 
-    // Check current session
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (session) {
-        const profile = await getProfile(session.user.id);
-        if (profile) {
-          setUser(profileToUser(profile, session));
-        } else {
-          setUser({
-            id: session.user.id,
-            name: session.user.user_metadata?.name || session.user.user_metadata?.full_name || "",
-            email: session.user.email || "",
-            targetRole: "",
-            resumeFileName: null,
-            hasCompletedOnboarding: false,
-            avatarUrl: session.user.user_metadata?.avatar_url || session.user.user_metadata?.picture || undefined,
-          });
+    // Helper: build a new user from session metadata and seed the profiles table
+    async function ensureProfile(session: Session) {
+      const meta = session.user.user_metadata || {};
+      const newProfile: Partial<Profile> & { id: string } = {
+        id: session.user.id,
+        email: session.user.email || "",
+        name: meta.name || meta.full_name || "",
+        avatar_url: meta.avatar_url || meta.picture || "",
+      };
+      console.log("[auth] ensureProfile: creating profile for", session.user.id, session.user.email);
+      const { error } = await upsertProfile(newProfile);
+      if (error) {
+        console.error("[auth] ensureProfile failed, trying insert:", error.message);
+        // Fallback: try plain insert in case upsert has RLS issues
+        const { error: insertErr } = await supabase
+          .from("profiles")
+          .insert(newProfile);
+        if (insertErr) {
+          console.error("[auth] insert also failed:", insertErr.message, insertErr.code);
         }
       }
+      const newUser: User = {
+        id: session.user.id,
+        name: newProfile.name || "",
+        email: newProfile.email || "",
+        targetRole: "",
+        resumeFileName: null,
+        hasCompletedOnboarding: false,
+        avatarUrl: newProfile.avatar_url || undefined,
+      };
+      setUser(newUser);
+    }
+
+    // Check current session — refresh to avoid stale cached tokens
+    supabase.auth.getSession().then(async ({ data: { session: cached } }) => {
+      // If there's a cached session, refresh it to get a valid token
+      let session = cached;
+      if (cached) {
+        const { data: { session: refreshed } } = await supabase.auth.refreshSession();
+        if (refreshed) session = refreshed;
+      }
+      if (session) {
+        console.log("[auth] session found for:", session.user.id, session.user.email);
+        try {
+          const profile = await getProfile(session.user.id);
+          if (profile) {
+            console.log("[auth] existing profile loaded");
+            setUser(profileToUser(profile, session));
+          } else {
+            console.log("[auth] no profile found, creating...");
+            await ensureProfile(session);
+          }
+        } catch (err) {
+          console.error("[auth] getProfile threw:", err);
+          await ensureProfile(session);
+        }
+      }
+      setLoading(false);
+    }).catch((err) => {
+      console.error("[auth] getSession failed:", err);
       setLoading(false);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === "SIGNED_IN" && session) {
         await new Promise(r => setTimeout(r, 500));
-        const profile = await getProfile(session.user.id);
-        if (profile) {
-          setUser(profileToUser(profile, session));
-        } else {
-          setUser({
-            id: session.user.id,
-            name: session.user.user_metadata?.name || session.user.user_metadata?.full_name || "",
-            email: session.user.email || "",
-            targetRole: "",
-            resumeFileName: null,
-            hasCompletedOnboarding: false,
-            avatarUrl: session.user.user_metadata?.avatar_url || session.user.user_metadata?.picture || undefined,
-          });
+        try {
+          const profile = await getProfile(session.user.id);
+          if (profile) {
+            setUser(profileToUser(profile, session));
+          } else {
+            await ensureProfile(session);
+          }
+        } catch {
+          await ensureProfile(session);
         }
       } else if (event === "SIGNED_OUT") {
         setUser(null);

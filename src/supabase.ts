@@ -82,16 +82,23 @@ export interface CalendarEvent {
 /* ─── Profile helpers ─── */
 
 export async function getProfile(userId: string): Promise<Profile | null> {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("profiles")
     .select("*")
     .eq("id", userId)
-    .single();
+    .maybeSingle();
+  if (error) {
+    console.warn("[supabase] getProfile error:", error.message, error.code, "for user:", userId);
+  }
   return data;
 }
 
 export async function upsertProfile(profile: Partial<Profile> & { id: string }) {
-  return supabase.from("profiles").upsert(profile, { onConflict: "id" });
+  const result = await supabase.from("profiles").upsert(profile, { onConflict: "id" });
+  if (result.error) {
+    console.error("[supabase] upsertProfile failed:", result.error.message, result.error.code);
+  }
+  return result;
 }
 
 /* ─── Session helpers ─── */
@@ -115,7 +122,7 @@ export async function getSessionById(sessionId: string, userId: string): Promise
     .select("*")
     .eq("id", sessionId)
     .eq("user_id", userId)
-    .single();
+    .maybeSingle();
   return data;
 }
 
