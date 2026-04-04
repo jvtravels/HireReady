@@ -10,9 +10,12 @@ import App from "./App";
 import NotFound from "./NotFound";
 import ErrorBoundary from "./ErrorBoundary";
 
-// Dynamic import — path variable prevents Vite from failing the build when the file doesn't exist
-const tempoPath = "../.tempo/tempo-host";
-const TempoHost = lazy(() => import(/* @vite-ignore */ tempoPath).catch(() => ({ default: () => null as any })));
+const TempoHost = lazy(() => {
+  if (typeof window !== "undefined" && window.location.pathname.startsWith("/tempo-host")) {
+    return import(/* @vite-ignore */ "../.tempo/tempo-host").catch(() => ({ default: () => null as any }));
+  }
+  return Promise.resolve({ default: () => null as any });
+});
 const LegalPage = lazy(() => import("./LegalPage"));
 const SignUp = lazy(() => import("./SignUp"));
 const Onboarding = lazy(() => import("./Onboarding"));
