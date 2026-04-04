@@ -108,10 +108,17 @@ function AutocompleteInput({
   );
 }
 
+const OB_STEP_KEY = "hireready_ob_step";
+function saveObStep(step: number) { try { localStorage.setItem(OB_STEP_KEY, String(step)); } catch {} }
+function loadObStep(): number { try { const v = localStorage.getItem(OB_STEP_KEY); return v ? Math.min(Math.max(parseInt(v), 1), TOTAL_STEPS) : 1; } catch { return 1; } }
+function clearObStep() { try { localStorage.removeItem(OB_STEP_KEY); } catch {} }
+
+const SESSION_LENGTH_MAP: Record<string, 10 | 15 | 25> = { "10m": 10, "15m": 15, "25m": 25 };
+
 export default function Onboarding() {
   const navigate = useNavigate();
   const { updateUser } = useAuth();
-  const [step, setStep] = useState(1);
+  const [step, setStep] = useState(loadObStep);
   const [slideDir, setSlideDir] = useState<"forward" | "back">("forward");
 
   // ─── Step 1: Resume ───
@@ -144,8 +151,8 @@ export default function Onboarding() {
   const streamRef = useRef<MediaStream | null>(null);
   const animFrameRef = useRef(0);
 
-  const goNext = () => { setSlideDir("forward"); setStep(s => Math.min(s + 1, TOTAL_STEPS)); };
-  const goBack = () => { setSlideDir("back"); setStep(s => Math.max(s - 1, 1)); };
+  const goNext = () => { setSlideDir("forward"); setStep(s => { const next = Math.min(s + 1, TOTAL_STEPS); saveObStep(next); return next; }); };
+  const goBack = () => { setSlideDir("back"); setStep(s => { const next = Math.max(s - 1, 1); saveObStep(next); return next; }); };
 
   // ─── File handling ───
   const handleFileChange = async (file: File | undefined) => {
@@ -259,12 +266,20 @@ export default function Onboarding() {
     }
   }, []);
 
-  // Attach camera stream to video element when it mounts
+  // Attach camera stream to video element when it mounts or step changes
   useEffect(() => {
-    if (camStatus === "granted" && videoRef.current && camStreamRef.current) {
-      videoRef.current.srcObject = camStreamRef.current;
+    if (step === 3 && camStatus === "granted" && videoRef.current && camStreamRef.current) {
+      // Check if camera tracks are still active
+      const videoTracks = camStreamRef.current.getVideoTracks();
+      if (videoTracks.length > 0 && videoTracks[0].readyState === "live") {
+        videoRef.current.srcObject = camStreamRef.current;
+      } else {
+        // Stream died (e.g., navigated away and back) — reset status
+        setCamStatus("idle");
+        camStreamRef.current = null;
+      }
     }
-  }, [camStatus]);
+  }, [camStatus, step]);
 
   // Cleanup streams on unmount
   useEffect(() => {
@@ -286,6 +301,7 @@ export default function Onboarding() {
           if (step === 2 && (!targetRole.trim() || interviewFocus.length === 0)) return;
           goNext();
         } else {
+          if (micStatus !== "granted") return;
           handleStart();
         }
       } else if (e.key === "Escape" && step > 1) {
@@ -298,8 +314,11 @@ export default function Onboarding() {
   });
 
   const handleStart = async () => {
+    if (micStatus !== "granted") return;
     cancelAnimationFrame(animFrameRef.current);
-    streamRef.current?.getTracks().forEach(t => t.stop());
+    // Don't stop mic stream — Interview component will re-use the permission grant
+    // Only stop camera stream (not needed in interview by default)
+    camStreamRef.current?.getTracks().forEach(t => t.stop());
     // Only include fields that have values — don't overwrite existing data with empty strings
     const saveData: Partial<Parameters<typeof updateUser>[0]> = {
       hasCompletedOnboarding: true,
@@ -307,7 +326,7 @@ export default function Onboarding() {
     if (targetRole.trim()) saveData.targetRole = targetRole.trim();
     if (targetCompany.trim()) saveData.targetCompany = targetCompany.trim();
     if (interviewFocus.length > 0) saveData.interviewTypes = interviewFocus;
-    if (sessionLength) saveData.preferredSessionLength = parseInt(sessionLength) as 10 | 15 | 25 || 15;
+    if (sessionLength) saveData.preferredSessionLength = SESSION_LENGTH_MAP[sessionLength] || 15;
     // Only send resume fields if user uploaded a resume in this session
     if (fileName) {
       saveData.resumeFileName = fileName;
@@ -321,6 +340,7 @@ export default function Onboarding() {
     } catch (err) {
       console.error("[handleStart] save failed:", err);
     }
+    clearObStep();
     navigate("/interview?type=behavioral&difficulty=standard&mini=true");
   };
 
@@ -349,6 +369,8 @@ export default function Onboarding() {
         .ob-card-gold { background: linear-gradient(135deg, rgba(22,22,24,0.8) 0%, rgba(201,169,110,0.06) 100%); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid rgba(201,169,110,0.1); }
         .ob-drop:hover { border-color: rgba(201,169,110,0.35) !important; background: rgba(201,169,110,0.02) !important; }
         .ob-focus-card:hover { transform: translateY(-2px); box-shadow: 0 4px 20px rgba(0,0,0,0.3) !important; border-color: rgba(201,169,110,0.3) !important; }
+        @keyframes micPulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(201,169,110,0); } 50% { box-shadow: 0 0 0 8px rgba(201,169,110,0.12); } }
+        .ob-mic-pulse { animation: micPulse 2s ease-in-out infinite; }
         @media (max-width: 768px) {
           .ob-s1-split { flex-direction: column !important; }
           .ob-s1-left { max-width: 100% !important; }
@@ -359,6 +381,8 @@ export default function Onboarding() {
           .ob-s1-header-actions { position: static !important; margin-top: 8px !important; }
           .ob-s2-focus-grid { grid-template-columns: 1fr 1fr !important; }
           .ob-s2-bottom-row { grid-template-columns: 1fr !important; }
+          .ob-s3-profile-row { flex-direction: column !important; }
+          .ob-s3-perm-row { flex-direction: column !important; gap: 12px !important; }
         }
         @media (max-height: 700px) {
           .ob-content-area { padding-top: 16px !important; padding-bottom: 16px !important; }
@@ -695,6 +719,7 @@ export default function Onboarding() {
                     </div>
                     <span style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: c.ivory }}>Target Role</span>
                   </div>
+                  <p style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, marginBottom: 16, paddingLeft: 36 }}>The AI tailors every question to match this role's expectations and seniority level.</p>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
                     <div>
                       <AutocompleteInput id="ob-role" value={targetRole} onChange={(v) => { setTargetRole(v); setRoleAutoFilled(false); }} suggestions={ROLE_SUGGESTIONS} placeholder="e.g. Senior Engineering Manager..." label="Role" required />
@@ -821,7 +846,7 @@ export default function Onboarding() {
 
                   <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                     {/* Mic */}
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", borderRadius: 10, background: micStatus === "granted" ? "rgba(122,158,126,0.04)" : "rgba(240,237,232,0.02)", border: `1px solid ${micStatus === "granted" ? "rgba(122,158,126,0.12)" : "rgba(240,237,232,0.06)"}` }}>
+                    <div className={micStatus !== "granted" ? "ob-mic-pulse ob-s3-perm-row" : "ob-s3-perm-row"} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", borderRadius: 10, background: micStatus === "granted" ? "rgba(122,158,126,0.04)" : "rgba(240,237,232,0.02)", border: `1px solid ${micStatus === "granted" ? "rgba(122,158,126,0.12)" : "rgba(201,169,110,0.2)"}` }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                         <div style={{ width: 38, height: 38, borderRadius: 10, background: micStatus === "granted" ? `${c.sage}12` : "rgba(240,237,232,0.03)", border: `1px solid ${micStatus === "granted" ? `${c.sage}25` : "rgba(240,237,232,0.06)"}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
                           <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={micStatus === "granted" ? c.sage : c.stone} strokeWidth="1.5" strokeLinecap="round">
@@ -853,7 +878,7 @@ export default function Onboarding() {
                     </div>
 
                     {/* Camera */}
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", borderRadius: 10, background: camStatus === "granted" ? "rgba(122,158,126,0.04)" : "rgba(240,237,232,0.02)", border: `1px solid ${camStatus === "granted" ? "rgba(122,158,126,0.12)" : "rgba(240,237,232,0.06)"}` }}>
+                    <div className="ob-s3-perm-row" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", borderRadius: 10, background: camStatus === "granted" ? "rgba(122,158,126,0.04)" : "rgba(240,237,232,0.02)", border: `1px solid ${camStatus === "granted" ? "rgba(122,158,126,0.12)" : "rgba(240,237,232,0.06)"}` }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                         <div style={{ width: 38, height: 38, borderRadius: 10, background: camStatus === "granted" ? `${c.sage}12` : "rgba(240,237,232,0.03)", border: `1px solid ${camStatus === "granted" ? `${c.sage}25` : "rgba(240,237,232,0.06)"}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
                           <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={camStatus === "granted" ? c.sage : c.stone} strokeWidth="1.5" strokeLinecap="round">
@@ -967,6 +992,15 @@ export default function Onboarding() {
               </button>
             )}
 
+            {step === 1 && !resumeParsed && !resumeParsing && (
+              <button onClick={goNext}
+                style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.stone, background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 5, transition: "color 0.2s" }}
+                onMouseEnter={(e) => e.currentTarget.style.color = c.ivory}
+                onMouseLeave={(e) => e.currentTarget.style.color = c.stone}>
+                Skip, I'll add later
+                <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+              </button>
+            )}
             {step > 1 && (
               <button onClick={goBack}
                 style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.stone, background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 5, transition: "color 0.2s" }}
