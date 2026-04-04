@@ -125,6 +125,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(newUser);
     }
 
+    // Safety timeout: ensure loading never hangs
+    const safetyTimer = setTimeout(() => {
+      console.warn("[auth] safety timeout: forcing loading=false");
+      setLoading(false);
+    }, 5000);
+
     // Check current session
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session) {
@@ -143,9 +149,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           await ensureProfile(session);
         }
       }
+      clearTimeout(safetyTimer);
       setLoading(false);
     }).catch((err) => {
       console.error("[auth] getSession failed:", err);
+      clearTimeout(safetyTimer);
       setLoading(false);
     });
 
@@ -291,7 +299,15 @@ export function RequireAuth({ children }: { children: ReactNode }) {
     }
   }, [isLoggedIn, loading, user, navigate, location.pathname]);
 
-  if (loading) return null;
+  if (loading) return (
+    <div style={{ minHeight: "100vh", background: "#0A0A0B", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16 }}>
+      <div style={{ width: 40, height: 40, borderRadius: 10, background: "rgba(201,169,110,0.08)", border: "1px solid rgba(201,169,110,0.2)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ width: 16, height: 16, border: "2px solid rgba(201,169,110,0.3)", borderTopColor: "#C9A96E", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
+      </div>
+      <span style={{ fontFamily: "'Inter', sans-serif", fontSize: 13, color: "#9A9590" }}>Loading...</span>
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+    </div>
+  );
   if (!isLoggedIn) return null;
   if (user && !user.hasCompletedOnboarding && location.pathname !== "/onboarding") return null;
 
