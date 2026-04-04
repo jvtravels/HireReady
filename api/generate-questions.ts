@@ -39,7 +39,7 @@ export default async function handler(req: Request): Promise<Response> {
   }
 
   try {
-    const { type, difficulty, role, company, industry, resumeText, pastTopics } = await req.json();
+    const { type, focus, difficulty, role, company, industry, resumeText, pastTopics } = await req.json();
 
     // Sanitize inputs — strip prompt injection attempts
     const sanitize = (s: unknown, maxLen = 200) => {
@@ -55,11 +55,13 @@ export default async function handler(req: Request): Promise<Response> {
     };
 
     const interviewType = sanitize(type, 50) || "behavioral";
+    const interviewFocus = sanitize(focus, 50) || "general";
     const diff = sanitize(difficulty, 20) || "standard";
     const targetRole = sanitize(role, 100) || "senior engineering leader";
 
     const companyContext = company ? `The candidate is interviewing at ${sanitize(company, 100)}.` : "";
     const industryContext = industry ? `The industry is ${sanitize(industry, 100)}.` : "";
+    const focusContext = interviewFocus !== "general" ? `Focus area: ${interviewFocus.replace(/-/g, " ")}. Tailor questions to emphasize this skill area.` : "";
     const resumeContext = resumeText ? `Resume summary: ${sanitize(resumeText, 1500)}` : "";
     const avoidTopics = Array.isArray(pastTopics) ? `Avoid repeating these topics from past sessions: ${pastTopics.slice(0, 20).map((t: unknown) => sanitize(t, 100)).filter(Boolean).join(", ")}.` : "";
 
@@ -73,6 +75,7 @@ export default async function handler(req: Request): Promise<Response> {
 
 Role: ${targetRole}
 Interview Type: ${interviewType}
+${focusContext}
 ${companyContext}
 ${industryContext}
 ${resumeContext}

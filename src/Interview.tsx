@@ -239,7 +239,7 @@ async function saveSessionResult(result: SessionResult, userId?: string): Promis
 
 /* ─── LLM Question Generation ─── */
 async function fetchLLMQuestions(params: {
-  type: string; difficulty: string; role: string;
+  type: string; focus?: string; difficulty: string; role: string;
   company?: string; industry?: string; resumeText?: string;
 }): Promise<InterviewStep[] | null> {
   const attempt = async (): Promise<InterviewStep[] | null> => {
@@ -656,6 +656,7 @@ export default function Interview() {
     let cancelled = false;
     fetchLLMQuestions({
       type: interviewType,
+      focus: interviewFocus,
       difficulty: interviewDifficulty,
       role: user?.targetRole || "senior leader",
       company: user?.targetCompany,
@@ -1136,7 +1137,7 @@ export default function Interview() {
             border: `1px solid rgba(201,169,110,0.12)`,
           }}>
             <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 500, color: c.gilt, letterSpacing: "0.02em" }}>
-              {interviewFocus.charAt(0).toUpperCase() + interviewFocus.slice(1)}{user?.targetRole ? ` · ${user.targetRole}` : ""}
+              {interviewType.split("-").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ")}{interviewFocus !== "general" ? ` · ${interviewFocus.split("-").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ")}` : ""}{user?.targetRole ? ` · ${user.targetRole}` : ""}
             </span>
           </div>
         </div>
