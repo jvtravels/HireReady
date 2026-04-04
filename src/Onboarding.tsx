@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { c, font } from "./tokens";
 import { useAuth } from "./AuthContext";
@@ -41,18 +42,29 @@ function AutocompleteInput({
 }) {
   const [focused, setFocused] = useState(false);
   const [selectedIdx, setSelectedIdx] = useState(-1);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [dropdownPos, setDropdownPos] = useState<{ top: number; left: number; width: number } | null>(null);
   const filtered = focused && value.length > 0
     ? suggestions.filter(s => s.toLowerCase().includes(value.toLowerCase()) && s.toLowerCase() !== value.toLowerCase()).slice(0, 6)
     : [];
 
+  // Update dropdown position when filtered results change or input is focused
+  useEffect(() => {
+    if (filtered.length > 0 && inputRef.current) {
+      const rect = inputRef.current.getBoundingClientRect();
+      setDropdownPos({ top: rect.bottom + 4, left: rect.left, width: rect.width });
+    }
+  }, [filtered.length, focused, value]);
+
   return (
-    <div style={{ position: "relative" }}>
+    <div>
       {label && (
         <label htmlFor={id} style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.chalk, display: "block", marginBottom: 8 }}>
           {label} {required && <span style={{ color: c.ember }}>*</span>}
         </label>
       )}
       <input
+        ref={inputRef}
         id={id} type="text" value={value}
         onChange={(e) => { onChange(e.target.value); setSelectedIdx(-1); }}
         onFocus={() => setFocused(true)}
@@ -72,9 +84,9 @@ function AutocompleteInput({
           outline: "none", transition: "border-color 0.2s", boxSizing: "border-box",
         }}
       />
-      {filtered.length > 0 && (
+      {filtered.length > 0 && dropdownPos && createPortal(
         <div style={{
-          position: "absolute", top: "100%", left: 0, right: 0, marginTop: 4, zIndex: 20,
+          position: "fixed", top: dropdownPos.top, left: dropdownPos.left, width: dropdownPos.width, zIndex: 9999,
           background: c.graphite, border: `1px solid ${c.border}`, borderRadius: 10,
           boxShadow: "0 8px 32px rgba(0,0,0,0.5)", maxHeight: 220, overflowY: "auto",
         }}>
@@ -89,7 +101,8 @@ function AutocompleteInput({
               {s}
             </button>
           ))}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
@@ -675,7 +688,7 @@ export default function Onboarding() {
 
               <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
                 {/* ── Section 1: Role & Company ── */}
-                <div className="ob-card fade-up-1" style={{ borderRadius: 16, padding: "24px 28px", overflow: "visible" }}>
+                <div className="ob-card fade-up-1" style={{ borderRadius: 16, padding: "24px 28px" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 20 }}>
                     <div style={{ width: 28, height: 28, borderRadius: 7, background: "rgba(201,169,110,0.06)", border: "1px solid rgba(201,169,110,0.12)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
