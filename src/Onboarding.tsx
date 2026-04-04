@@ -675,7 +675,7 @@ export default function Onboarding() {
 
               <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
                 {/* ── Section 1: Role & Company ── */}
-                <div className="ob-card fade-up-1" style={{ borderRadius: 16, padding: "24px 28px" }}>
+                <div className="ob-card fade-up-1" style={{ borderRadius: 16, padding: "24px 28px", overflow: "visible" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 20 }}>
                     <div style={{ width: 28, height: 28, borderRadius: 7, background: "rgba(201,169,110,0.06)", border: "1px solid rgba(201,169,110,0.12)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
