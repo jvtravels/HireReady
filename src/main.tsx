@@ -8,7 +8,7 @@ import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/react";
 import App from "./App";
 import NotFound from "./NotFound";
-import ErrorBoundary from "./ErrorBoundary";
+import ErrorBoundary, { RouteErrorBoundary } from "./ErrorBoundary";
 
 const TempoHost = lazy(() => {
   if (typeof window !== "undefined" && window.location.pathname.startsWith("/tempo-host")) {
@@ -72,19 +72,19 @@ createRoot(document.getElementById("root")!).render(
               <Route path="/onboarding" element={<RequireAuth><div className="page-enter"><Onboarding /></div></RequireAuth>} />
               <Route path="/onboarding/complete" element={<RequireAuth><div className="page-enter"><OnboardingComplete /></div></RequireAuth>} />
               <Route path="/dashboard" element={<RequireAuth><DashboardProvider><div className="page-enter"><DashboardLayout /></div></DashboardProvider></RequireAuth>}>
-                <Route index element={<DashboardHome />} />
-                <Route path="sessions" element={<DashboardSessions />} />
-                <Route path="calendar" element={<DashboardCalendar />} />
-                <Route path="analytics" element={<DashboardAnalytics />} />
-                <Route path="resume" element={<DashboardResume />} />
-                <Route path="settings" element={<DashboardSettings />} />
+                <Route index element={<RouteErrorBoundary><DashboardHome /></RouteErrorBoundary>} />
+                <Route path="sessions" element={<RouteErrorBoundary><DashboardSessions /></RouteErrorBoundary>} />
+                <Route path="calendar" element={<RouteErrorBoundary><DashboardCalendar /></RouteErrorBoundary>} />
+                <Route path="analytics" element={<RouteErrorBoundary><DashboardAnalytics /></RouteErrorBoundary>} />
+                <Route path="resume" element={<RouteErrorBoundary><DashboardResume /></RouteErrorBoundary>} />
+                <Route path="settings" element={<RouteErrorBoundary><DashboardSettings /></RouteErrorBoundary>} />
               </Route>
               <Route path="/session/new" element={<RequireAuth><div className="page-enter"><SessionSetup /></div></RequireAuth>} />
-              <Route path="/interview" element={<RequireAuth><Interview /></RequireAuth>} />
+              <Route path="/interview" element={<RequireAuth><RouteErrorBoundary><Interview /></RouteErrorBoundary></RequireAuth>} />
               <Route path="/reset-password" element={<div className="page-enter"><ResetPassword /></div>} />
               <Route path="/terms" element={<div className="page-enter"><LegalPage type="terms" /></div>} />
               <Route path="/privacy" element={<div className="page-enter"><LegalPage type="privacy" /></div>} />
-              <Route path="/session/:id" element={<RequireAuth><div className="page-enter"><SessionDetail /></div></RequireAuth>} />
+              <Route path="/session/:id" element={<RequireAuth><div className="page-enter"><RouteErrorBoundary><SessionDetail /></RouteErrorBoundary></div></RequireAuth>} />
               <Route path="/page/:slug" element={<div className="page-enter"><PlaceholderPage /></div>} />
               <Route path="*" element={<div className="page-enter"><NotFound /></div>} />
             </Routes>

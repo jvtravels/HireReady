@@ -312,7 +312,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     showToast("CSV exported");
   }, [recentSessions, showToast]);
 
-  const value: DashboardContextValue = {
+  const value: DashboardContextValue = useMemo(() => ({
     persisted, updatePersisted,
     recentSessions, scoreTrend, skills, overallStats, hasData,
     weekActivity, currentStreak, readinessScore,
@@ -329,7 +329,21 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     returnContext, smartSchedule, prepPlan,
     badges, dailyChallenge, practiceReminder,
     handleStartSession, handleExport, handleDownload, handleExportCSV,
-  };
+  }), [
+    persisted, updatePersisted,
+    recentSessions, scoreTrend, skills, overallStats, hasData,
+    weekActivity, currentStreak, readinessScore,
+    calendarEvents,
+    isFree, isStarter, isPro, atSessionLimit,
+    sessionsUsed, sessionsRemaining, starterRemaining, sessionsThisWeek,
+    showUpgradeModal, dataLoading, isMobile,
+    paymentBanner, syncError, toast, showToast,
+    displayName, isNewUser, daysLeft,
+    aiInsights, notifications, upcomingGoals,
+    returnContext, smartSchedule, prepPlan,
+    badges, dailyChallenge, practiceReminder,
+    handleStartSession, handleExport, handleDownload, handleExportCSV,
+  ]);
 
   return <DashboardContext.Provider value={value}>{children}</DashboardContext.Provider>;
 }

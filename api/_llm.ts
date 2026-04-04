@@ -74,8 +74,14 @@ export async function callLLM(opts: LLMOptions, timeoutMs = 15000): Promise<LLMR
         clearTimeout(timer);
         return result;
       } catch (err) {
-        // If Groq fails with rate limit (429) or server error (5xx), try Gemini
         const msg = err instanceof Error ? err.message : "";
+        // Auth errors (invalid key) should fail fast — don't waste Gemini credits
+        const isAuthError = msg.includes("401") || msg.includes("403");
+        if (isAuthError) {
+          console.error("[LLM] Groq auth error — check GROQ_API_KEY:", msg.slice(0, 100));
+          throw err;
+        }
+        // Rate limit (429) or server error (5xx) — try Gemini fallback
         const isRetryable = msg.includes("429") || msg.includes("500") || msg.includes("502") || msg.includes("503") || msg.includes("AbortError");
         if (isRetryable && GEMINI_API_KEY) {
           console.warn("[LLM] Groq failed, falling back to Gemini:", msg.slice(0, 100));

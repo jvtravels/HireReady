@@ -65,6 +65,14 @@ export default function DashboardLayout() {
 
   return (
     <div style={{ display: "flex", height: "100vh", background: c.obsidian, overflow: "hidden" }}>
+      <a href="#dashboard-main" style={{
+        position: "absolute", left: -9999, top: "auto", width: 1, height: 1, overflow: "hidden",
+        zIndex: 100, padding: "12px 24px", background: c.gilt, color: c.obsidian,
+        fontFamily: font.ui, fontSize: 14, fontWeight: 600, borderRadius: 8, textDecoration: "none",
+      }} onFocus={(e) => { e.currentTarget.style.left = "16px"; e.currentTarget.style.top = "16px"; e.currentTarget.style.width = "auto"; e.currentTarget.style.height = "auto"; }}
+        onBlur={(e) => { e.currentTarget.style.left = "-9999px"; e.currentTarget.style.width = "1px"; e.currentTarget.style.height = "1px"; }}>
+        Skip to main content
+      </a>
       <style>{`
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
         @keyframes slideDown { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
@@ -180,7 +188,7 @@ export default function DashboardLayout() {
       </aside>
 
       {/* Main Content */}
-      <main style={{ flex: 1, marginLeft: isMobile ? 0 : 240, padding: isMobile ? "20px 16px 60px" : "32px 40px 60px", overflowY: "auto", height: "100vh" }}>
+      <main id="dashboard-main" style={{ flex: 1, marginLeft: isMobile ? 0 : 240, padding: isMobile ? "20px 16px 60px" : "32px 40px 60px", overflowY: "auto", height: "100vh" }}>
         {isMobile && (
           <button onClick={() => setSidebarOpen(true)} aria-label="Open navigation menu" aria-expanded={sidebarOpen}
             style={{ background: c.graphite, border: `1px solid ${c.border}`, borderRadius: 8, padding: "8px 10px", cursor: "pointer", marginBottom: 20, color: c.ivory, display: "flex", alignItems: "center", gap: 8 }}>
