@@ -125,14 +125,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(newUser);
     }
 
-    // Check current session — refresh to avoid stale cached tokens
-    supabase.auth.getSession().then(async ({ data: { session: cached } }) => {
-      // If there's a cached session, refresh it to get a valid token
-      let session = cached;
-      if (cached) {
-        const { data: { session: refreshed } } = await supabase.auth.refreshSession();
-        if (refreshed) session = refreshed;
-      }
+    // Check current session
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session) {
         console.log("[auth] session found for:", session.user.id, session.user.email);
         try {
