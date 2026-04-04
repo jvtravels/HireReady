@@ -287,17 +287,24 @@ export default function Onboarding() {
   const handleStart = async () => {
     cancelAnimationFrame(animFrameRef.current);
     streamRef.current?.getTracks().forEach(t => t.stop());
-    await updateUser({
+    const saveData = {
       targetRole: targetRole.trim() || "Senior Leader",
-      targetCompany: targetCompany.trim() || undefined,
+      targetCompany: targetCompany.trim() || "",
       interviewTypes: interviewFocus,
       preferredSessionLength: parseInt(sessionLength) as 10 | 15 | 25 || 15,
-      learningStyle: feedbackStyle === "Direct & Blunt" ? "direct" : "encouraging",
+      learningStyle: feedbackStyle === "Direct & Blunt" ? "direct" as const : "encouraging" as const,
       hasCompletedOnboarding: true,
       resumeFileName: fileName || null,
-      resumeText: resumeText || undefined,
+      resumeText: resumeText || "",
       resumeData: (aiProfile || resumeParsed) as unknown as ParsedResume || undefined,
-    });
+    };
+    console.log("[handleStart] saving onboarding data:", JSON.stringify(saveData, null, 2));
+    try {
+      await updateUser(saveData);
+      console.log("[handleStart] save complete, navigating...");
+    } catch (err) {
+      console.error("[handleStart] save failed:", err);
+    }
     navigate("/interview?type=behavioral&difficulty=standard&mini=true");
   };
 
