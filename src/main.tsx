@@ -12,7 +12,9 @@ import ErrorBoundary from "./ErrorBoundary";
 
 const TempoHost = lazy(() => {
   if (typeof window !== "undefined" && window.location.pathname.startsWith("/tempo-host")) {
-    return import(/* @vite-ignore */ "../.tempo/tempo-host").catch(() => ({ default: () => null as any }));
+    const base = "..";
+    const path = ".tempo/tempo-host";
+    return import(/* @vite-ignore */ `${base}/${path}`).catch(() => ({ default: () => null as any }));
   }
   return Promise.resolve({ default: () => null as any });
 });
