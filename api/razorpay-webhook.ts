@@ -128,7 +128,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // Store payment record
-    await fetch(`${SUPABASE_URL}/rest/v1/payments`, {
+    const paymentRecordRes = await fetch(`${SUPABASE_URL}/rest/v1/payments`, {
       method: "POST",
       headers: {
         apikey: SUPABASE_SERVICE_ROLE_KEY,
@@ -137,7 +137,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         Prefer: "return=minimal",
       },
       body: JSON.stringify({
-        id: `whpay_${Date.now().toString(36)}`,
+        id: crypto.randomUUID(),
         user_id: userId,
         razorpay_payment_id: paymentId,
         razorpay_order_id: orderId,
@@ -150,6 +150,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         subscription_end: end.toISOString(),
       }),
     });
+
+    if (!paymentRecordRes.ok) {
+      console.error("[webhook] Payment record insert failed:", paymentRecordRes.status, "for payment", paymentId);
+      // Subscription is already activated — log for manual reconciliation, don't fail webhook
+    }
 
     // Send confirmation email (best-effort)
     if (RESEND_API_KEY && notes.email) {

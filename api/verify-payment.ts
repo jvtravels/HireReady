@@ -303,8 +303,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const isActive = currentEnd && currentEnd > new Date();
       const tierRank: Record<string, number> = { free: 0, starter: 1, pro: 2, team: 3 };
       const newTier = PLAN_TIER[plan];
-      if (isActive && (tierRank[current.subscription_tier] || 0) >= (tierRank[newTier] || 0)) {
-        return res.status(400).json({ error: `You already have an active ${current.subscription_tier} plan` });
+      if (isActive && (tierRank[current.subscription_tier] || 0) > (tierRank[newTier] || 0)) {
+        return res.status(400).json({ error: `You already have an active ${current.subscription_tier} plan. Downgrading is not supported — wait for it to expire or contact support.` });
       }
     }
 
@@ -363,7 +363,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         Prefer: "return=minimal",
       },
       body: JSON.stringify({
-        id: `pay_${Date.now().toString(36)}`,
+        id: crypto.randomUUID(),
         user_id: userId,
         razorpay_payment_id,
         razorpay_order_id,

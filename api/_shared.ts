@@ -143,10 +143,10 @@ export async function checkSessionLimit(userId: string): Promise<{ allowed: bool
         return { allowed: false, reason: "Free plan limit reached (3 sessions). Upgrade to continue." };
       }
     } else if (tier === "starter") {
-      // Count sessions this week
-      const weekStart = new Date();
-      weekStart.setDate(weekStart.getDate() - weekStart.getDay());
-      weekStart.setHours(0, 0, 0, 0);
+      // Count sessions this week (UTC-based for serverless consistency)
+      const now2 = new Date();
+      const weekStart = new Date(now2.getTime() - now2.getUTCDay() * 86400000);
+      weekStart.setUTCHours(0, 0, 0, 0);
       const thisWeek = sessions.filter((s: { created_at: string }) => new Date(s.created_at) >= weekStart).length;
       if (thisWeek >= 10) {
         return { allowed: false, reason: "Starter plan limit reached (10/week). Upgrade to Pro for unlimited." };

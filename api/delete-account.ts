@@ -89,6 +89,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (failures.length > 0) {
       console.error("Partial delete failure:", failures.join(", "), "for user", userId.slice(0, 8));
+      return res.status(500).json({ error: `Failed to delete data from: ${failures.join(", ")}. Account not deleted. Please try again or contact support.` });
     }
 
     // Delete the auth user (requires admin/service role)
