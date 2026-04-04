@@ -1,8 +1,22 @@
-import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from "react";
+import { createContext, useContext, useState, useCallback, useEffect, useRef, type ReactNode } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { supabase, supabaseConfigured, getProfile, upsertProfile, type Profile } from "./supabase";
 import type { Session } from "@supabase/supabase-js";
 import type { ParsedResume } from "./resumeParser";
+
+/** Check if Supabase has a session token stored in localStorage */
+function hasStoredSession(): boolean {
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith("sb-") && key.endsWith("-auth-token")) {
+        const val = localStorage.getItem(key);
+        return !!val && val !== "null";
+      }
+    }
+  } catch {}
+  return false;
+}
 
 export interface User {
   id: string;
@@ -125,11 +139,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(newUser);
     }
 
-    // Safety timeout: ensure loading never hangs
+    // Safety timeout: ensure loading never hangs (15s — generous to avoid premature logout)
     const safetyTimer = setTimeout(() => {
       console.warn("[auth] safety timeout: forcing loading=false");
       setLoading(false);
-    }, 5000);
+    }, 15000);
 
     // Check current session
     supabase.auth.getSession().then(async ({ data: { session } }) => {
@@ -158,8 +172,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === "SIGNED_IN" && session) {
-        await new Promise(r => setTimeout(r, 500));
+      console.log("[auth] onAuthStateChange:", event, session?.user?.id);
+      if ((event === "SIGNED_IN" || event === "TOKEN_REFRESHED" || event === "INITIAL_SESSION") && session) {
         try {
           const profile = await getProfile(session.user.id);
           if (profile) {
@@ -170,6 +184,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } catch {
           await ensureProfile(session);
         }
+        setLoading(false);
       } else if (event === "SIGNED_OUT") {
         setUser(null);
       }
@@ -289,17 +304,31 @@ export function RequireAuth({ children }: { children: ReactNode }) {
   const { isLoggedIn, loading, user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const retryCount = useRef(0);
 
   useEffect(() => {
     if (loading) return;
     if (!isLoggedIn) {
+      // If there's a stored session token, Supabase may still be restoring it.
+      // Wait and retry before redirecting — don't log the user out prematurely.
+      if (hasStoredSession() && retryCount.current < 3) {
+        retryCount.current++;
+        console.log("[auth] session token exists in storage, retrying...", retryCount.current);
+        // Trigger a re-check by getting the session again
+        supabase.auth.getSession().then(({ data: { session } }) => {
+          if (!session) {
+            console.log("[auth] retry: still no session after re-check");
+          }
+        });
+        return;
+      }
       navigate("/login", { replace: true, state: { from: location.pathname } });
     } else if (user && !user.hasCompletedOnboarding && location.pathname !== "/onboarding") {
       navigate("/onboarding", { replace: true });
     }
   }, [isLoggedIn, loading, user, navigate, location.pathname]);
 
-  if (loading) return (
+  if (loading || (!isLoggedIn && hasStoredSession())) return (
     <div style={{ minHeight: "100vh", background: "#0A0A0B", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16 }}>
       <div style={{ width: 40, height: 40, borderRadius: 10, background: "rgba(201,169,110,0.08)", border: "1px solid rgba(201,169,110,0.2)", display: "flex", alignItems: "center", justifyContent: "center" }}>
         <div style={{ width: 16, height: 16, border: "2px solid rgba(201,169,110,0.3)", borderTopColor: "#C9A96E", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
