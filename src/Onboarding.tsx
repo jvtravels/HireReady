@@ -186,14 +186,14 @@ export default function Onboarding() {
         }
       } catch {}
       setAiPhase("done");
-      // Save resume info to profile immediately
-      const profileSave = {
+      // Save resume info to profile immediately — only set name/role if not already set
+      const profileSave: Partial<Parameters<typeof updateUser>[0]> = {
         resumeFileName: file.name,
         resumeText: text,
         resumeData: { ...data, aiProfile: finalProfile } as unknown as ParsedResume,
-        targetRole: targetRole || autoRole || undefined,
-        name: data.name || undefined,
       };
+      if (!targetRole && autoRole) profileSave.targetRole = autoRole;
+      if (data.name) profileSave.name = data.name;
       console.log("[onboarding] Saving resume to profile:", { fileName: profileSave.resumeFileName, textLength: profileSave.resumeText?.length, hasData: !!profileSave.resumeData });
       try {
         await updateUser(profileSave);
@@ -287,17 +287,21 @@ export default function Onboarding() {
   const handleStart = async () => {
     cancelAnimationFrame(animFrameRef.current);
     streamRef.current?.getTracks().forEach(t => t.stop());
-    const saveData = {
-      targetRole: targetRole.trim() || "Senior Leader",
-      targetCompany: targetCompany.trim() || "",
-      interviewTypes: interviewFocus,
-      preferredSessionLength: parseInt(sessionLength) as 10 | 15 | 25 || 15,
-      learningStyle: feedbackStyle === "Direct & Blunt" ? "direct" as const : "encouraging" as const,
+    // Only include fields that have values — don't overwrite existing data with empty strings
+    const saveData: Partial<Parameters<typeof updateUser>[0]> = {
       hasCompletedOnboarding: true,
-      resumeFileName: fileName || null,
-      resumeText: resumeText || "",
-      resumeData: (aiProfile || resumeParsed) as unknown as ParsedResume || undefined,
     };
+    if (targetRole.trim()) saveData.targetRole = targetRole.trim();
+    if (targetCompany.trim()) saveData.targetCompany = targetCompany.trim();
+    if (interviewFocus.length > 0) saveData.interviewTypes = interviewFocus;
+    if (sessionLength) saveData.preferredSessionLength = parseInt(sessionLength) as 10 | 15 | 25 || 15;
+    if (feedbackStyle) saveData.learningStyle = feedbackStyle === "Direct & Blunt" ? "direct" as const : "encouraging" as const;
+    // Only send resume fields if user uploaded a resume in this session
+    if (fileName) {
+      saveData.resumeFileName = fileName;
+      saveData.resumeText = resumeText;
+      saveData.resumeData = (aiProfile || resumeParsed) as unknown as ParsedResume;
+    }
     console.log("[handleStart] saving onboarding data:", JSON.stringify(saveData, null, 2));
     try {
       await updateUser(saveData);
