@@ -284,15 +284,15 @@ export default function Onboarding() {
     return () => window.removeEventListener("keydown", handler);
   });
 
-  const handleStart = () => {
+  const handleStart = async () => {
     cancelAnimationFrame(animFrameRef.current);
     streamRef.current?.getTracks().forEach(t => t.stop());
-    updateUser({
+    await updateUser({
       targetRole: targetRole.trim() || "Senior Leader",
       targetCompany: targetCompany.trim() || undefined,
-      interviewFocus,
-      sessionLength,
-      feedbackStyle,
+      interviewTypes: interviewFocus,
+      preferredSessionLength: parseInt(sessionLength) as 10 | 15 | 25 || 15,
+      learningStyle: feedbackStyle === "Direct & Blunt" ? "direct" : "encouraging",
       hasCompletedOnboarding: true,
       resumeFileName: fileName || null,
       resumeText: resumeText || undefined,
