@@ -293,8 +293,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       { headers: { apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` } },
     );
     const profiles = await profileRes.json();
-    if (Array.isArray(profiles) && profiles.length > 0) {
-      const current = profiles[0];
+    const current = Array.isArray(profiles) && profiles.length > 0 ? profiles[0] : null;
+    if (current) {
       // Check duplicate payment on this user's profile
       if (current.razorpay_payment_id === razorpay_payment_id) {
         return res.status(409).json({ error: "Payment already processed" });
