@@ -2,6 +2,29 @@ import { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { c, font } from "./tokens";
 import { useAuth } from "./AuthContext";
+import { supabase, supabaseConfigured } from "./supabase";
+
+// Map raw Supabase errors to user-friendly messages with suggestions
+function friendlyError(raw: string, isLogin: boolean): { message: string; suggestion?: string } {
+  const lower = raw.toLowerCase();
+  if (lower.includes("invalid login credentials"))
+    return { message: "Incorrect email or password.", suggestion: "Double-check your credentials or reset your password below." };
+  if (lower.includes("email not confirmed"))
+    return { message: "Your email hasn't been verified yet.", suggestion: "Check your inbox for the confirmation link we sent when you signed up." };
+  if (lower.includes("user already registered") || lower.includes("already been registered"))
+    return { message: "An account with this email already exists.", suggestion: "Try logging in instead, or reset your password if you forgot it." };
+  if (lower.includes("signup is not allowed") || lower.includes("signups not allowed"))
+    return { message: "Sign-ups are currently disabled.", suggestion: "Please try again later or contact support." };
+  if (lower.includes("rate limit") || lower.includes("too many requests"))
+    return { message: "Too many attempts.", suggestion: "Please wait a minute before trying again." };
+  if (lower.includes("network") || lower.includes("fetch"))
+    return { message: "Connection error.", suggestion: "Check your internet connection and try again." };
+  if (lower.includes("weak password") || lower.includes("password should"))
+    return { message: "Password is too weak.", suggestion: "Use at least 8 characters with a mix of letters, numbers, and symbols." };
+  if (lower.includes("invalid email"))
+    return { message: "That doesn't look like a valid email address.", suggestion: "Please check for typos." };
+  return { message: raw };
+}
 
 export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
   const navigate = useNavigate();
@@ -134,21 +157,38 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
                 <span style={{ fontFamily: font.ui, fontSize: 15, fontWeight: 600, color: c.sage }}>Account created!</span>
               </div>
               <p style={{ fontFamily: font.ui, fontSize: 13, color: c.ivory, lineHeight: 1.6, margin: 0 }}>
-                We've sent a confirmation link to <strong>{email}</strong>. Click the link in your email to activate your account, then come back and log in.
+                We've sent a confirmation link to <strong>{email}</strong>. Click the link in your email to activate your account, then come back and log in. Check your spam folder if you don't see it within a few minutes.
               </p>
             </div>
-            <button onClick={() => { setSignupSent(false); }}
-              style={{ background: "none", border: "none", fontFamily: font.ui, fontSize: 13, color: c.gilt, cursor: "pointer", marginTop: 4 }}>
-              Back to login
-            </button>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
+              {supabaseConfigured && (
+                <button onClick={async () => {
+                  try {
+                    await supabase.auth.resend({ type: "signup", email });
+                    setError("");
+                    alert("Confirmation email resent! Check your inbox.");
+                  } catch { setError("Could not resend email. Try again later."); }
+                }}
+                  style={{ background: "none", border: "none", fontFamily: font.ui, fontSize: 13, color: c.stone, cursor: "pointer", textDecoration: "underline" }}>
+                  Didn't receive it? Resend confirmation email
+                </button>
+              )}
+              <button onClick={() => { setSignupSent(false); }}
+                style={{ background: "none", border: "none", fontFamily: font.ui, fontSize: 13, color: c.gilt, cursor: "pointer" }}>
+                Back to login
+              </button>
+            </div>
           </div>
         ) : showReset ? (
           <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
             {resetSent ? (
               <div style={{ padding: "16px 20px", borderRadius: 8, background: "rgba(122,158,126,0.08)", border: "1px solid rgba(122,158,126,0.2)" }}>
                 <p style={{ fontFamily: font.ui, fontSize: 14, color: c.sage, margin: 0, lineHeight: 1.6 }}>
-                  Check your email for a password reset link. It may take a minute to arrive.
+                  Check your email for a password reset link. It may take a minute to arrive. Check your spam folder too.
                 </p>
+                <button onClick={() => setResetSent(false)} style={{ background: "none", border: "none", fontFamily: font.ui, fontSize: 13, color: c.gilt, cursor: "pointer", marginTop: 12 }}>
+                  Didn't receive it? Try again
+                </button>
               </div>
             ) : (
               <>
@@ -160,11 +200,26 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
                     onBlur={(e) => e.currentTarget.style.borderColor = c.border}
                   />
                 </div>
-                {error && (
-                  <div style={{ padding: "10px 14px", borderRadius: 8, background: "rgba(196,112,90,0.08)", border: "1px solid rgba(196,112,90,0.2)" }}>
-                    <p style={{ fontFamily: font.ui, fontSize: 13, color: c.ember, margin: 0 }}>{error}</p>
-                  </div>
-                )}
+                {error && (() => {
+                  const { message, suggestion } = friendlyError(error, isLogin);
+                  return (
+                    <div role="alert" style={{ padding: "12px 14px", borderRadius: 10, background: "rgba(196,112,90,0.06)", border: "1px solid rgba(196,112,90,0.15)" }}>
+                      <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+                        <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={c.ember} strokeWidth="2" strokeLinecap="round" style={{ flexShrink: 0, marginTop: 1 }}>
+                          <circle cx="12" cy="12" r="10" />
+                          <line x1="12" y1="8" x2="12" y2="12" />
+                          <line x1="12" y1="16" x2="12.01" y2="16" />
+                        </svg>
+                        <div>
+                          <p style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.ember, margin: 0 }}>{message}</p>
+                          {suggestion && (
+                            <p style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, margin: "4px 0 0", lineHeight: 1.5 }}>{suggestion}</p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
                 <button onClick={handleResetPassword} disabled={loading} className="shimmer-btn"
                   style={{ width: "100%", padding: "14px 24px", borderRadius: 8, background: c.ivory, color: c.obsidian, border: "none", fontFamily: font.ui, fontSize: 15, fontWeight: 500, cursor: loading ? "wait" : "pointer", opacity: loading ? 0.7 : 1 }}>
                   {loading ? "Sending..." : "Send reset link"}
@@ -288,11 +343,26 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
                 </button>
               )}
 
-              {error && (
-                <div role="alert" style={{ padding: "10px 14px", borderRadius: 8, background: "rgba(196,112,90,0.08)", border: "1px solid rgba(196,112,90,0.2)", marginBottom: 4 }}>
-                  <p style={{ fontFamily: font.ui, fontSize: 13, color: c.ember, margin: 0 }}>{error}</p>
-                </div>
-              )}
+              {error && (() => {
+                const { message, suggestion } = friendlyError(error, isLogin);
+                return (
+                  <div role="alert" style={{ padding: "12px 14px", borderRadius: 10, background: "rgba(196,112,90,0.06)", border: "1px solid rgba(196,112,90,0.15)", marginBottom: 4 }}>
+                    <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+                      <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={c.ember} strokeWidth="2" strokeLinecap="round" style={{ flexShrink: 0, marginTop: 1 }}>
+                        <circle cx="12" cy="12" r="10" />
+                        <line x1="12" y1="8" x2="12" y2="12" />
+                        <line x1="12" y1="16" x2="12.01" y2="16" />
+                      </svg>
+                      <div>
+                        <p style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.ember, margin: 0 }}>{message}</p>
+                        {suggestion && (
+                          <p style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, margin: "4px 0 0", lineHeight: 1.5 }}>{suggestion}</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
 
               <button type="submit" disabled={loading} className="shimmer-btn"
                 style={{

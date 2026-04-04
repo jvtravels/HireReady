@@ -2,7 +2,7 @@
 
 export const config = { runtime: "edge" };
 
-import { handleCorsPreflightOrMethod, corsHeaders, isRateLimited, getClientIp, rateLimitResponse, verifyAuth, unauthorizedResponse, checkSessionLimit } from "./_shared";
+import { handleCorsPreflightOrMethod, corsHeaders, isRateLimited, getClientIp, rateLimitResponse, verifyAuth, unauthorizedResponse, checkSessionLimit, validateOrigin } from "./_shared";
 
 declare const process: { env: Record<string, string | undefined> };
 const GROQ_API_KEY = process.env.GROQ_API_KEY || "";
@@ -17,6 +17,11 @@ export default async function handler(req: Request): Promise<Response> {
     return new Response(JSON.stringify({ error: "LLM not configured" }), { status: 503, headers });
   }
 
+  // CSRF: validate Origin header on POST
+  if (!validateOrigin(req)) {
+    return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers });
+  }
+
   const auth = await verifyAuth(req);
   if (!auth.authenticated) return unauthorizedResponse(headers);
 
@@ -29,7 +34,7 @@ export default async function handler(req: Request): Promise<Response> {
   }
 
   const ip = getClientIp(req);
-  if (isRateLimited(ip, "generate", 10, 60_000)) {
+  if (await isRateLimited(ip, "generate", 10, 60_000)) {
     return rateLimitResponse(headers);
   }
 
@@ -37,8 +42,17 @@ export default async function handler(req: Request): Promise<Response> {
     const { type, difficulty, role, company, industry, resumeText, pastTopics } = await req.json();
 
     // Sanitize inputs — strip prompt injection attempts
-    const sanitize = (s: unknown, maxLen = 200) =>
-      typeof s === "string" ? s.replace(/(?:^|\n)\s*(system|assistant)\s*:/gi, "").slice(0, maxLen).trim() : "";
+    const sanitize = (s: unknown, maxLen = 200) => {
+      if (typeof s !== "string") return "";
+      return s
+        .replace(/(?:^|\n)\s*(system|assistant|user|human|instruction|<\|im_start\||<\|im_end\|)\s*:?/gi, "")
+        .replace(/```[\s\S]*?```/g, "")
+        .replace(/\{[^}]*"role"\s*:/gi, "")
+        .replace(/(?:ignore|disregard|forget)\s+(?:all\s+)?(?:previous|above|prior)\s+(?:instructions?|prompts?|context)/gi, "")
+        .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "")
+        .slice(0, maxLen)
+        .trim();
+    };
 
     const interviewType = sanitize(type, 50) || "behavioral";
     const diff = sanitize(difficulty, 20) || "standard";
@@ -47,7 +61,7 @@ export default async function handler(req: Request): Promise<Response> {
     const companyContext = company ? `The candidate is interviewing at ${sanitize(company, 100)}.` : "";
     const industryContext = industry ? `The industry is ${sanitize(industry, 100)}.` : "";
     const resumeContext = resumeText ? `Resume summary: ${sanitize(resumeText, 1500)}` : "";
-    const avoidTopics = Array.isArray(pastTopics) ? `Avoid repeating these topics from past sessions: ${pastTopics.map((t: unknown) => sanitize(t, 100)).filter(Boolean).join(", ")}.` : "";
+    const avoidTopics = Array.isArray(pastTopics) ? `Avoid repeating these topics from past sessions: ${pastTopics.slice(0, 20).map((t: unknown) => sanitize(t, 100)).filter(Boolean).join(", ")}.` : "";
 
     const difficultyGuide = diff === "warmup"
       ? "Use a warm, conversational tone. Ask open-ended questions that build confidence. Keep follow-ups gentle."
@@ -77,12 +91,15 @@ Make questions specific to the role, company, and industry. If resume text is pr
 
 Respond with ONLY the JSON array, no markdown or explanation.`;
 
+    const ac = new AbortController();
+    const acTimer = setTimeout(() => ac.abort(), 15_000);
     const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${GROQ_API_KEY}`,
       },
+      signal: ac.signal,
       body: JSON.stringify({
         model: "llama-3.3-70b-versatile",
         messages: [{ role: "user", content: prompt }],
@@ -91,6 +108,7 @@ Respond with ONLY the JSON array, no markdown or explanation.`;
         response_format: { type: "json_object" },
       }),
     });
+    clearTimeout(acTimer);
 
     if (!res.ok) {
       const errText = await res.text().catch(() => "");
@@ -114,6 +132,10 @@ Respond with ONLY the JSON array, no markdown or explanation.`;
       } else {
         return new Response(JSON.stringify({ error: "Failed to parse questions" }), { status: 500, headers });
       }
+    }
+
+    if (!Array.isArray(questions) || questions.length === 0) {
+      return new Response(JSON.stringify({ error: "Failed to generate valid questions" }), { status: 500, headers });
     }
 
     return new Response(JSON.stringify({ questions }), { status: 200, headers });

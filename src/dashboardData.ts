@@ -1,8 +1,22 @@
 import { c } from "./tokens";
 import { type InterviewEvent, loadEvents, daysUntilEvent, formatEventTime } from "./dashboardHelpers";
-import { authHeaders } from "./supabase";
+import { authHeaders, supabaseConfigured } from "./supabase";
 import type { UserContext, DashboardSession, SkillData, TrendPoint, PersistedState } from "./dashboardTypes";
 import { scoreLabel } from "./dashboardTypes";
+
+/** Retry a fetch-based async function on network errors (not on 4xx/5xx) */
+async function withRetry<T>(fn: () => Promise<T>, retries = 2, delayMs = 1000): Promise<T> {
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      const isNetworkError = err instanceof TypeError && err.message.includes("fetch");
+      if (!isNetworkError || attempt === retries) throw err;
+      await new Promise(r => setTimeout(r, delayMs * (attempt + 1)));
+    }
+  }
+  throw new Error("Retry exhausted");
+}
 
 export { scoreLabel };
 export type { UserContext, DashboardSession, SkillData, TrendPoint, PersistedState };
@@ -133,14 +147,16 @@ function realSessionsToDashboard(realSessions: RealSession[], targetRole: string
 }
 
 export function getSessionData(targetRole: string, supabaseSessions: RealSession[] = []) {
-  const local = loadRealSessionsLocal();
-  const seen = new Set<string>();
-  const merged: RealSession[] = [];
-  for (const s of [...local, ...supabaseSessions]) {
-    if (!seen.has(s.id)) { seen.add(s.id); merged.push(s); }
+  // When Supabase is configured, use ONLY Supabase sessions (localStorage is not user-scoped
+  // and would leak sessions between accounts on the same browser).
+  // Only use localStorage when Supabase is not configured (demo/offline mode).
+  let real: RealSession[];
+  if (supabaseConfigured) {
+    real = [...supabaseSessions];
+  } else {
+    real = loadRealSessionsLocal();
   }
-  merged.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  const real = merged;
+  real.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   const realConverted = realSessionsToDashboard(real, targetRole);
   const recentSessions = realConverted;
 
@@ -431,18 +447,21 @@ export interface ResumeProfile {
   careerTrajectory: string;
 }
 
-export async function analyzeResumeWithAI(resumeText: string, targetRole?: string): Promise<ResumeProfile | null> {
-  try {
+export async function analyzeResumeWithAI(resumeText: string, targetRole?: string): Promise<{ profile: ResumeProfile; truncated?: boolean } | null> {
+  return withRetry(async () => {
     const headers = await authHeaders();
     const res = await fetch("/api/analyze-resume", {
       method: "POST",
       headers,
       body: JSON.stringify({ resumeText, targetRole }),
     });
+    if (res.status === 429) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.retryAfter ? `Too many requests. Please wait ${data.retryAfter} seconds.` : "Too many requests. Please wait a moment.");
+    }
     if (!res.ok) return null;
     const data = await res.json();
-    return data.profile || null;
-  } catch {
-    return null;
-  }
+    if (!data.profile) return null;
+    return { profile: data.profile, truncated: data.truncated };
+  });
 }

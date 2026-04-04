@@ -73,7 +73,21 @@ export function useDashboard() {
 export function DashboardProvider({ children }: { children: ReactNode }) {
   const nav = useNavigate();
   const { logout: authLogout, user, updateUser: authUpdateUser } = useAuth();
-  const [persisted, setPersisted] = useState<PersistedState>(loadState);
+  const [persisted, setPersisted] = useState<PersistedState>(() => {
+    const local = loadState();
+    // Merge with auth user profile (Supabase data takes precedence over empty localStorage)
+    if (user) {
+      return {
+        ...local,
+        userName: user.name || local.userName,
+        targetRole: user.targetRole || local.targetRole,
+        interviewDate: user.interviewDate || local.interviewDate,
+        resumeFileName: user.resumeFileName || local.resumeFileName,
+        hasCompletedFirstSession: user.hasCompletedOnboarding || local.hasCompletedFirstSession,
+      };
+    }
+    return local;
+  });
   const [calendarEvents, setCalendarEvents] = useState<InterviewEvent[]>(loadEvents);
   const [supabaseSessions, setSupabaseSessions] = useState<RealSession[]>([]);
   const [syncError, setSyncError] = useState("");
@@ -82,29 +96,84 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [paymentBanner, setPaymentBanner] = useState<"success" | "cancelled" | null>(null);
 
-  // Load data from Supabase on mount
+  // Sync persisted state when user profile loads/changes (e.g., after profile fetch completes)
+  useEffect(() => {
+    if (!user) return;
+    setPersisted(prev => {
+      const updated = {
+        ...prev,
+        userName: user.name || prev.userName,
+        targetRole: user.targetRole || prev.targetRole,
+        interviewDate: user.interviewDate || prev.interviewDate,
+        resumeFileName: user.resumeFileName || prev.resumeFileName,
+        hasCompletedFirstSession: user.hasCompletedOnboarding || prev.hasCompletedFirstSession,
+      };
+      saveState(updated);
+      return updated;
+    });
+  }, [user?.name, user?.targetRole, user?.interviewDate, user?.resumeFileName, user?.hasCompletedOnboarding]);
+
+  // Load data from Supabase on mount, with localStorage cache fallback
   useEffect(() => {
     if (!user?.id) { setDataLoading(false); return; }
+
+    const sessionsCacheKey = `hireready_cache_sessions_${user.id}`;
+    const eventsCacheKey = `hireready_cache_events_${user.id}`;
+
+    let cancelled = false;
     let loaded = 0;
-    const checkDone = () => { loaded++; if (loaded >= 2) setDataLoading(false); };
+    const checkDone = () => { loaded++; if (!cancelled && loaded >= 2) setDataLoading(false); };
+
     getUserSessions(user.id).then(sessions => {
-      if (sessions.length > 0) {
-        setSupabaseSessions(sessions.map(s => ({
-          id: s.id, date: s.date, type: s.type, difficulty: s.difficulty,
-          focus: s.focus, duration: s.duration, score: s.score, questions: s.questions,
-          ai_feedback: s.ai_feedback, skill_scores: s.skill_scores,
-        })));
+      if (cancelled) return;
+      const mapped = sessions.map(s => ({
+        id: s.id, date: s.date, type: s.type, difficulty: s.difficulty,
+        focus: s.focus, duration: s.duration, score: s.score, questions: s.questions,
+        ai_feedback: s.ai_feedback, skill_scores: s.skill_scores,
+      }));
+      if (mapped.length > 0) {
+        setSupabaseSessions(mapped);
+        try { localStorage.setItem(sessionsCacheKey, JSON.stringify(mapped)); } catch {}
       }
-    }).catch(() => { setSyncError("Could not load session data. Using local data."); }).finally(checkDone);
+    }).catch(() => {
+      if (cancelled) return;
+      // Fallback to cached sessions
+      try {
+        const cached = localStorage.getItem(sessionsCacheKey);
+        if (cached) {
+          setSupabaseSessions(JSON.parse(cached));
+          setSyncError("Offline — showing cached data.");
+        } else {
+          setSyncError("Could not load session data.");
+        }
+      } catch { setSyncError("Could not load session data."); }
+    }).finally(checkDone);
+
     getCalendarEvents(user.id).then(events => {
-      if (events.length > 0) {
-        setCalendarEvents(events.map(e => ({
-          id: e.id, title: e.title, company: e.company,
-          date: e.date, time: e.time, type: e.type, notes: e.notes,
-          duration: 60, location: "", status: "upcoming" as const, reminders: true,
-        })));
+      if (cancelled) return;
+      const mapped = events.map(e => ({
+        id: e.id, title: e.title, company: e.company,
+        date: e.date, time: e.time, type: e.type, notes: e.notes,
+        duration: 60, location: "", status: "upcoming" as const, reminders: true,
+      }));
+      if (mapped.length > 0) {
+        setCalendarEvents(mapped);
+        try { localStorage.setItem(eventsCacheKey, JSON.stringify(mapped)); } catch {}
       }
-    }).catch(() => { setSyncError("Could not load calendar data. Using local data."); }).finally(checkDone);
+    }).catch(() => {
+      if (cancelled) return;
+      try {
+        const cached = localStorage.getItem(eventsCacheKey);
+        if (cached) {
+          setCalendarEvents(JSON.parse(cached));
+          if (!syncError) setSyncError("Offline — showing cached data.");
+        }
+      } catch {}
+    }).finally(checkDone);
+
+    // Safety timeout — never stay stuck on loading skeleton
+    const timeout = setTimeout(() => { if (!cancelled) setDataLoading(false); }, 5000);
+    return () => { cancelled = true; clearTimeout(timeout); };
   }, [user?.id]);
 
   // Session data

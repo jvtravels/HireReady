@@ -168,12 +168,34 @@ function MicTestWaveform({ stream }: { stream: MediaStream | null }) {
 /* ═══════════════════════════════════════════════
    SESSION SETUP
    ═══════════════════════════════════════════════ */
+// Check for a saved interview draft (less than 2 hours old)
+function loadDraft(userId?: string): { type: string; difficulty: string; focus: string; elapsed: number; savedAt: number } | null {
+  try {
+    const key = `hireready_interview_draft_${userId || "anon"}`;
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    const draft = JSON.parse(raw);
+    if (!draft.savedAt || Date.now() - draft.savedAt > 2 * 60 * 60 * 1000) {
+      localStorage.removeItem(key);
+      return null;
+    }
+    // Skip drafts with negligible progress (< 10 seconds elapsed)
+    if (!draft.elapsed || draft.elapsed < 10) {
+      localStorage.removeItem(key);
+      return null;
+    }
+    return draft;
+  } catch { return null; }
+}
+
 export default function SessionSetup() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [searchParams] = useSearchParams();
   const preselectedType = searchParams.get("type");
   const suggested = getSuggestedDifficulty();
+  const [draft] = useState(() => loadDraft(user?.id));
+  const [showDraftBanner, setShowDraftBanner] = useState(!!draft);
 
   // Steps: 1 = type + focus, 2 = difficulty, 3 = mic/camera check
   const [step, setStep] = useState(1);
@@ -272,6 +294,36 @@ export default function SessionSetup() {
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
         @keyframes countPulse { 0% { transform: scale(0.8); opacity: 0; } 50% { transform: scale(1.1); } 100% { transform: scale(1); opacity: 1; } }
       `}</style>
+
+      {/* Draft recovery banner */}
+      {showDraftBanner && draft && (
+        <div style={{
+          position: "fixed", top: 0, left: 0, right: 0, zIndex: 50,
+          padding: "14px 24px", background: "rgba(201,169,110,0.1)",
+          borderBottom: `1px solid rgba(201,169,110,0.2)`,
+          display: "flex", alignItems: "center", justifyContent: "center", gap: 16,
+          backdropFilter: "blur(8px)",
+        }}>
+          <span style={{ fontFamily: font.ui, fontSize: 13, color: c.ivory }}>
+            You have an unfinished <strong>{draft.type}</strong> session ({Math.floor(draft.elapsed / 60)}m {draft.elapsed % 60}s in).
+          </span>
+          <button onClick={() => {
+            navigate(`/interview?type=${draft.type}&difficulty=${draft.difficulty}&focus=${draft.focus || "general"}&resume=true`);
+          }} style={{
+            padding: "6px 16px", borderRadius: 6, border: "none", cursor: "pointer",
+            background: `linear-gradient(135deg, ${c.gilt}, #B8923E)`, color: c.obsidian,
+            fontFamily: font.ui, fontSize: 12, fontWeight: 600,
+          }}>Resume</button>
+          <button onClick={() => {
+            localStorage.removeItem(`hireready_interview_draft_${user?.id || "anon"}`);
+            setShowDraftBanner(false);
+          }} style={{
+            padding: "6px 16px", borderRadius: 6, cursor: "pointer",
+            background: "transparent", border: `1px solid ${c.border}`, color: c.stone,
+            fontFamily: font.ui, fontSize: 12, fontWeight: 500,
+          }}>Discard</button>
+        </div>
+      )}
 
       {/* Countdown overlay */}
       {countdown !== null && (

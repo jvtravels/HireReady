@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { c, font } from "./tokens";
 import { useAuth } from "./AuthContext";
 import { useDashboard } from "./DashboardContext";
@@ -16,14 +16,37 @@ export default function DashboardResume() {
   const [profile, setProfile] = useState<ResumeProfile | null>(null);
   const [phase, setPhase] = useState<"idle" | "extracting" | "analyzing" | "done" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState("");
+  const [needsReupload, setNeedsReupload] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [reanalyzeDone, setReanalyzeDone] = useState(false);
+  const analyzingRef = useRef(false);
 
   useEffect(() => {
     if (user?.resumeText) setResumeText(user.resumeText);
+    if (user?.resumeFileName) setFileName(user.resumeFileName);
+
     const stored = user?.resumeData as unknown as (ResumeProfile & { name?: string; skills?: string[] }) | undefined;
     if (stored) {
-      if (stored.headline) {
+      // Check if this is a full AI profile (has real data beyond the fallback)
+      const isFallback = !stored.headline || stored.headline === "Resume uploaded" ||
+        (!stored.seniorityLevel && (!stored.topSkills || stored.topSkills.length === 0) && (!stored.interviewStrengths || stored.interviewStrengths.length === 0));
+      if (stored.headline && !isFallback) {
         setProfile(stored);
         setPhase("done");
+      } else if (isFallback && user?.resumeText && !analyzingRef.current) {
+        // Fallback profile stored — auto-trigger AI re-analysis
+        analyzingRef.current = true;
+        setProfile(stored); // show fallback while analyzing
+        setPhase("analyzing");
+        analyzeResumeWithAI(user.resumeText, user?.targetRole)
+          .then(result => {
+            if (result?.profile) {
+              setProfile(result.profile);
+              updateUser({ resumeData: result.profile as unknown as ParsedResume });
+            }
+            setPhase("done");
+          })
+          .catch(() => setPhase("done"));
       } else if (stored.name || stored.skills) {
         const parsed = stored as any;
         const fallback: ResumeProfile = {
@@ -37,9 +60,27 @@ export default function DashboardResume() {
         setProfile(fallback);
         setPhase("done");
       }
+    } else if (user?.resumeText && user?.resumeFileName) {
+      // Resume was uploaded (e.g. during onboarding) but no AI profile exists yet.
+      // Auto-trigger AI analysis (guard against duplicate calls).
+      if (analyzingRef.current) return;
+      analyzingRef.current = true;
+      setPhase("analyzing");
+      analyzeResumeWithAI(user.resumeText, user?.targetRole)
+        .then(result => {
+          if (result?.profile) {
+            setProfile(result.profile);
+            updateUser({ resumeData: result.profile as unknown as ParsedResume });
+          }
+          setPhase("done");
+        })
+        .catch(() => setPhase("done"));
+    } else if (user?.resumeFileName) {
+      // Resume filename exists but no text/analysis — mark done but show re-upload prompt
+      setPhase("done");
+      setNeedsReupload(true);
     }
-    if (!fileName && user?.resumeFileName) setFileName(user.resumeFileName);
-  }, []);
+  }, [user?.resumeData, user?.resumeFileName, user?.resumeText]);
 
   if (dataLoading) return <DataLoadingSkeleton />;
 
@@ -53,6 +94,7 @@ export default function DashboardResume() {
     setFileName(file.name);
     setErrorMsg("");
     setProfile(null);
+    setNeedsReupload(false);
 
     setPhase("extracting");
     let text: string;
@@ -68,16 +110,17 @@ export default function DashboardResume() {
     }
 
     setPhase("analyzing");
-    let aiProfile: ResumeProfile | null = null;
+    let result: { profile: ResumeProfile; truncated?: boolean } | null = null;
     try {
-      aiProfile = await Promise.race([
+      result = await Promise.race([
         analyzeResumeWithAI(text, user?.targetRole),
         new Promise<null>((_, reject) => setTimeout(() => reject(new Error("timeout")), 30_000)),
       ]);
     } catch { /* timeout or network error — fall through to fallback */ }
-    if (aiProfile) {
-      setProfile(aiProfile);
-      updateUser({ resumeData: aiProfile as unknown as ParsedResume });
+    if (result?.profile) {
+      setProfile(result.profile);
+      updateUser({ resumeData: result.profile as unknown as ParsedResume });
+      if (result.truncated) setErrorMsg("Note: Only the first 3,000 characters of your resume were analyzed.");
       setPhase("done");
     } else {
       const parsed = parseResumeData(text);
@@ -107,13 +150,27 @@ export default function DashboardResume() {
 
   const handleReanalyze = async () => {
     if (!resumeText) return;
+    setReanalyzeDone(false);
+    setErrorMsg("");
     setPhase("analyzing");
-    const aiProfile = await analyzeResumeWithAI(resumeText, user?.targetRole);
-    if (aiProfile) {
-      setProfile(aiProfile);
-      updateUser({ resumeData: aiProfile as unknown as ParsedResume });
+    try {
+      const result = await Promise.race([
+        analyzeResumeWithAI(resumeText, user?.targetRole),
+        new Promise<null>((_, reject) => setTimeout(() => reject(new Error("timeout")), 30_000)),
+      ]);
+      if (result?.profile) {
+        setProfile(result.profile);
+        updateUser({ resumeData: result.profile as unknown as ParsedResume });
+        if (result.truncated) setErrorMsg("Note: Only the first 3,000 characters of your resume were analyzed.");
+      } else {
+        setErrorMsg("Analysis returned no results. Try again.");
+      }
+    } catch {
+      setErrorMsg("Analysis timed out. Please try again.");
     }
     setPhase("done");
+    setReanalyzeDone(true);
+    setTimeout(() => setReanalyzeDone(false), 3000);
   };
 
   const triggerUpload = () => {
@@ -137,6 +194,9 @@ export default function DashboardResume() {
           <p style={{ fontFamily: font.ui, fontSize: 14, color: c.stone, lineHeight: 1.6, maxWidth: 380, margin: "0 auto" }}>
             {phase === "extracting" ? "Extracting text from your document..." : "AI is analyzing your experience, skills, and achievements to create a personalized candidate profile..."}
           </p>
+          {phase === "analyzing" && (
+            <p style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, marginTop: 12 }}>This usually takes 10–20 seconds.</p>
+          )}
           {fileName && (
             <div style={{ marginTop: 20, display: "inline-flex", alignItems: "center", gap: 8, background: c.obsidian, borderRadius: 8, padding: "8px 16px", border: `1px solid ${c.border}` }}>
               <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="1.5"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
@@ -188,7 +248,10 @@ export default function DashboardResume() {
           </div>
           <p style={{ fontFamily: font.ui, fontSize: 14, fontWeight: 500, color: c.ivory, marginBottom: 4 }}>Couldn't process this file</p>
           <p style={{ fontFamily: font.ui, fontSize: 13, color: c.stone, marginBottom: 20 }}>{errorMsg}</p>
-          <button onClick={triggerUpload} style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: c.obsidian, background: c.gilt, border: "none", borderRadius: 8, padding: "10px 24px", cursor: "pointer" }}>Try another file</button>
+          <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
+            <button onClick={triggerUpload} style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: c.obsidian, background: c.gilt, border: "none", borderRadius: 8, padding: "10px 24px", cursor: "pointer" }}>Try another file</button>
+            <button onClick={() => { setPhase("idle"); setErrorMsg(""); }} style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.stone, background: "transparent", border: `1px solid ${c.border}`, borderRadius: 8, padding: "10px 24px", cursor: "pointer" }}>Dismiss</button>
+          </div>
         </div>
       </div>
     );
@@ -200,27 +263,50 @@ export default function DashboardResume() {
       <div style={{ background: `linear-gradient(135deg, ${c.graphite} 0%, rgba(201,169,110,0.04) 100%)`, borderRadius: 16, border: `1px solid ${c.border}`, padding: "28px 28px 24px", marginBottom: 14 }}>
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 12 }}>
           <div style={{ flex: 1 }}>
-            {profile?.headline && <h2 style={{ fontFamily: font.display, fontSize: 24, color: c.ivory, marginBottom: 6, letterSpacing: "-0.02em", lineHeight: 1.3 }}>{profile.headline}</h2>}
+            {profile?.headline ? <h2 style={{ fontFamily: font.display, fontSize: 24, color: c.ivory, marginBottom: 6, letterSpacing: "-0.02em", lineHeight: 1.3 }}>{profile.headline}</h2> : <h2 style={{ fontFamily: font.display, fontSize: 24, color: c.ivory, marginBottom: 6, letterSpacing: "-0.02em", lineHeight: 1.3 }}>Resume uploaded</h2>}
             <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
               {profile?.seniorityLevel && <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.gilt, background: "rgba(201,169,110,0.08)", border: "1px solid rgba(201,169,110,0.15)", borderRadius: 5, padding: "3px 10px" }}>{profile.seniorityLevel}</span>}
               {profile?.yearsExperience && <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>{profile.yearsExperience}+ years experience</span>}
               {profile?.industries && profile.industries.length > 0 && <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>{profile.industries.join(", ")}</span>}
             </div>
           </div>
-          <div style={{ display: "flex", gap: 6, flexShrink: 0, marginLeft: 16 }}>
-            <button onClick={handleReanalyze} title="Re-analyze" style={{ width: 32, height: 32, borderRadius: 8, background: "rgba(240,237,232,0.04)", border: `1px solid ${c.border}`, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
+          <div style={{ display: "flex", gap: 6, flexShrink: 0, marginLeft: 16, alignItems: "center" }}>
+            {reanalyzeDone && <span style={{ fontFamily: font.ui, fontSize: 11, color: c.sage, marginRight: 4 }}>Updated ✓</span>}
+            <button onClick={handleReanalyze} aria-label="Re-analyze resume" title="Re-analyze" style={{ width: 32, height: 32, borderRadius: 8, background: "rgba(240,237,232,0.04)", border: `1px solid ${c.border}`, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
               onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(240,237,232,0.08)"; }}
               onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(240,237,232,0.04)"; }}>
               <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.stone} strokeWidth="1.5"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
             </button>
-            <button onClick={handleRemove} title="Remove resume" style={{ width: 32, height: 32, borderRadius: 8, background: "rgba(196,112,90,0.04)", border: "1px solid rgba(196,112,90,0.1)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(196,112,90,0.1)"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(196,112,90,0.04)"; }}>
-              <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.ember} strokeWidth="1.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-            </button>
+            {confirmDelete ? (
+              <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+                <span style={{ fontFamily: font.ui, fontSize: 11, color: c.ember }}>Delete?</span>
+                <button onClick={() => { handleRemove(); setConfirmDelete(false); }} aria-label="Confirm delete resume" style={{ padding: "4px 10px", borderRadius: 6, border: "none", background: c.ember, color: "#fff", fontFamily: font.ui, fontSize: 11, fontWeight: 600, cursor: "pointer" }}>Yes</button>
+                <button onClick={() => setConfirmDelete(false)} aria-label="Cancel delete" style={{ padding: "4px 10px", borderRadius: 6, border: `1px solid ${c.border}`, background: "transparent", color: c.stone, fontFamily: font.ui, fontSize: 11, cursor: "pointer" }}>No</button>
+              </div>
+            ) : (
+              <button onClick={() => setConfirmDelete(true)} aria-label="Delete resume" title="Remove resume" style={{ width: 32, height: 32, borderRadius: 8, background: "rgba(196,112,90,0.04)", border: "1px solid rgba(196,112,90,0.1)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(196,112,90,0.1)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(196,112,90,0.04)"; }}>
+                <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.ember} strokeWidth="1.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+              </button>
+            )}
           </div>
         </div>
         {profile?.summary && <p style={{ fontFamily: font.ui, fontSize: 13.5, color: c.chalk, lineHeight: 1.7, margin: 0 }}>{profile.summary}</p>}
+        {needsReupload && !profile && (
+          <div style={{ marginTop: 14, padding: "16px 20px", borderRadius: 10, background: "rgba(201,169,110,0.06)", border: `1px solid rgba(201,169,110,0.12)` }}>
+            <p style={{ fontFamily: font.ui, fontSize: 13, color: c.chalk, lineHeight: 1.6, margin: "0 0 12px" }}>
+              Your resume was uploaded but the AI summary wasn't generated. Re-upload it to get a detailed profile analysis with strengths, skills, and interview preparation insights.
+            </p>
+            <button onClick={triggerUpload} style={{
+              padding: "8px 20px", borderRadius: 8, border: "none", cursor: "pointer",
+              background: `linear-gradient(135deg, ${c.gilt}, #B8923E)`, color: c.obsidian,
+              fontFamily: font.ui, fontSize: 12, fontWeight: 600,
+            }}>
+              Re-upload for AI Analysis
+            </button>
+          </div>
+        )}
         {profile?.careerTrajectory && (
           <div style={{ marginTop: 14, display: "flex", alignItems: "center", gap: 8, padding: "10px 14px", borderRadius: 8, background: "rgba(122,158,126,0.04)", border: "1px solid rgba(122,158,126,0.1)" }}>
             <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="1.5"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>

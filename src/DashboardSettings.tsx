@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { c, font } from "./tokens";
 import { useAuth } from "./AuthContext";
+import { authHeaders } from "./supabase";
 import { loadTTSSettings, saveTTSSettings, GOOGLE_VOICES, type TTSSettings } from "./tts";
 import type { PersistedState } from "./dashboardTypes";
 import { useDashboard } from "./DashboardContext";
@@ -14,7 +15,7 @@ export default function SettingsPage() {
   const onLogout = () => { authLogout(); };
   const onSyncToSupabase = (updates: { name?: string; targetRole?: string; interviewDate?: string }) => authUpdateUser(updates);
 
-  if (dataLoading) return <DataLoadingSkeleton />;
+  // All hooks must be called before any conditional return (React rules of hooks)
   const [editName, setEditName] = useState(persisted.userName);
   const [editRole, setEditRole] = useState(persisted.targetRole);
   const [editDate, setEditDate] = useState(persisted.interviewDate);
@@ -24,18 +25,30 @@ export default function SettingsPage() {
   const [streakReminder, setStreakReminder] = useState(persisted.streakReminder !== false);
   const [weeklyDigest, setWeeklyDigest] = useState(persisted.weeklyDigest || false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [confirmCancel, setConfirmCancel] = useState(false);
+  const [cancelLoading, setCancelLoading] = useState(false);
+  const [cancelMsg, setCancelMsg] = useState("");
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteMsg, setDeleteMsg] = useState("");
 
   // TTS Settings
   const [ttsSettings, setTtsSettings] = useState<TTSSettings>(loadTTSSettings);
 
-  const handleSave = () => {
+  const [saving, setSaving] = useState(false);
+
+  if (dataLoading) return <DataLoadingSkeleton />;
+
+  const handleSave = async () => {
+    setSaving(true);
+    setSaved(false);
     onUpdate({
       userName: editName, targetRole: editRole, interviewDate: editDate,
       defaultDifficulty: difficulty, emailNotifs, streakReminder, weeklyDigest,
     });
-    onSyncToSupabase({ name: editName, targetRole: editRole, interviewDate: editDate });
+    await onSyncToSupabase({ name: editName, targetRole: editRole, interviewDate: editDate });
+    setSaving(false);
     setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+    setTimeout(() => setSaved(false), 3000);
   };
 
   const Toggle = ({ on, onToggle }: { on: boolean; onToggle: () => void }) => (
@@ -77,7 +90,7 @@ export default function SettingsPage() {
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           <div>
             <label style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: c.chalk, display: "block", marginBottom: 6 }}>Full Name</label>
-            <input type="text" value={editName} onChange={(e) => setEditName(e.target.value)}
+            <input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} maxLength={60}
               style={{ width: "100%", padding: "10px 14px", borderRadius: 8, background: c.obsidian, border: `1px solid ${c.border}`, color: c.ivory, fontFamily: font.ui, fontSize: 13, outline: "none", boxSizing: "border-box" }}
               onFocus={(e) => e.currentTarget.style.borderColor = c.gilt}
               onBlur={(e) => e.currentTarget.style.borderColor = c.border}
@@ -85,7 +98,7 @@ export default function SettingsPage() {
           </div>
           <div>
             <label style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: c.chalk, display: "block", marginBottom: 6 }}>Target Role</label>
-            <input type="text" value={editRole} onChange={(e) => setEditRole(e.target.value)}
+            <input type="text" value={editRole} onChange={(e) => setEditRole(e.target.value)} maxLength={80}
               style={{ width: "100%", padding: "10px 14px", borderRadius: 8, background: c.obsidian, border: `1px solid ${c.border}`, color: c.ivory, fontFamily: font.ui, fontSize: 13, outline: "none", boxSizing: "border-box" }}
               onFocus={(e) => e.currentTarget.style.borderColor = c.gilt}
               onBlur={(e) => e.currentTarget.style.borderColor = c.border}
@@ -104,7 +117,7 @@ export default function SettingsPage() {
         <div style={{ display: "flex", gap: 12, marginTop: 20 }}>
           <button onClick={handleSave} className="shimmer-btn"
             style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, padding: "10px 24px", borderRadius: 8, border: "none", background: c.gilt, color: c.obsidian, cursor: "pointer" }}>
-            {saved ? "Saved!" : "Save Changes"}
+            {saving ? "Saving..." : saved ? "Saved ✓" : "Save Changes"}
           </button>
           {saved && <span style={{ fontFamily: font.ui, fontSize: 12, color: c.sage, display: "flex", alignItems: "center", gap: 4 }}>
             <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg>
@@ -138,6 +151,116 @@ export default function SettingsPage() {
             ))}
           </div>
         </div>
+      </div>
+
+      {/* Subscription Management */}
+      <div style={{ background: c.graphite, borderRadius: 12, border: `1px solid ${c.border}`, padding: "24px 28px", marginBottom: 16 }}>
+        <h3 style={{ fontFamily: font.ui, fontSize: 14, fontWeight: 600, color: c.ivory, marginBottom: 20 }}>Subscription</h3>
+
+        <div style={{ padding: "16px 20px", borderRadius: 10, background: c.obsidian, border: `1px solid ${c.border}`, marginBottom: 16 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+            <span style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: c.ivory }}>Current Plan</span>
+            <span style={{
+              fontFamily: font.ui, fontSize: 11, fontWeight: 600, padding: "4px 10px", borderRadius: 6,
+              background: authUser?.subscriptionTier === "pro" ? "rgba(122,158,126,0.12)" : authUser?.subscriptionTier === "starter" ? "rgba(201,169,110,0.12)" : "rgba(240,237,232,0.06)",
+              color: authUser?.subscriptionTier === "pro" ? c.sage : authUser?.subscriptionTier === "starter" ? c.gilt : c.stone,
+            }}>
+              {(authUser?.subscriptionTier || "free").charAt(0).toUpperCase() + (authUser?.subscriptionTier || "free").slice(1)}
+            </span>
+          </div>
+
+          {authUser?.subscriptionTier && authUser.subscriptionTier !== "free" && authUser.subscriptionStart && authUser.subscriptionEnd && (
+            <>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>Started</span>
+                <span style={{ fontFamily: font.ui, fontSize: 11, color: c.chalk }}>{new Date(authUser.subscriptionStart).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</span>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12 }}>
+                <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>Expires</span>
+                <span style={{ fontFamily: font.ui, fontSize: 11, color: c.chalk }}>{new Date(authUser.subscriptionEnd).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</span>
+              </div>
+              {/* Progress bar */}
+              {(() => {
+                const start = new Date(authUser.subscriptionStart!).getTime();
+                const end = new Date(authUser.subscriptionEnd!).getTime();
+                const now = Date.now();
+                const progress = Math.min(100, Math.max(0, ((now - start) / (end - start)) * 100));
+                const daysLeft = Math.max(0, Math.ceil((end - now) / 86400000));
+                return (
+                  <>
+                    <div style={{ height: 4, borderRadius: 2, background: c.border, marginBottom: 6 }}>
+                      <div style={{ height: "100%", borderRadius: 2, background: daysLeft <= 3 ? c.ember : c.gilt, width: `${progress}%`, transition: "width 0.3s" }} />
+                    </div>
+                    <span style={{ fontFamily: font.ui, fontSize: 10, color: daysLeft <= 3 ? c.ember : c.stone }}>
+                      {daysLeft > 0 ? `${daysLeft} day${daysLeft !== 1 ? "s" : ""} remaining` : "Expired"}
+                    </span>
+                  </>
+                );
+              })()}
+            </>
+          )}
+
+          {(!authUser?.subscriptionTier || authUser.subscriptionTier === "free") && (
+            <p style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, margin: 0 }}>
+              You're on the free plan with 3 total sessions. Upgrade for more sessions and features.
+            </p>
+          )}
+        </div>
+
+        <div style={{ display: "flex", gap: 8 }}>
+          {(!authUser?.subscriptionTier || authUser.subscriptionTier !== "pro") && (
+            <button onClick={() => nav("/dashboard?plan=monthly")}
+              style={{ flex: 1, padding: "10px 20px", borderRadius: 8, border: "none", cursor: "pointer", background: `linear-gradient(135deg, ${c.gilt}, #B8923E)`, color: c.obsidian, fontFamily: font.ui, fontSize: 12, fontWeight: 600 }}>
+              {authUser?.subscriptionTier === "starter" ? "Upgrade to Pro" : "Upgrade"}
+            </button>
+          )}
+          {authUser?.subscriptionTier && authUser.subscriptionTier !== "free" && (
+            !confirmCancel ? (
+              <button onClick={() => setConfirmCancel(true)}
+                style={{ padding: "10px 20px", borderRadius: 8, cursor: "pointer", background: "transparent", border: `1px solid rgba(196,112,90,0.2)`, color: c.ember, fontFamily: font.ui, fontSize: 12, fontWeight: 500 }}>
+                Cancel Plan
+              </button>
+            ) : (
+              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <span style={{ fontFamily: font.ui, fontSize: 11, color: c.ember }}>Are you sure?</span>
+                <button disabled={cancelLoading} onClick={async () => {
+                  setCancelLoading(true);
+                  setCancelMsg("");
+                  try {
+                    // Refresh session to ensure token is valid
+                    const { supabase, supabaseConfigured } = await import("./supabase");
+                    if (supabaseConfigured) await supabase.auth.getSession();
+                    const hdrs = await authHeaders();
+                    const res = await fetch("/api/cancel-subscription", { method: "POST", headers: hdrs });
+                    if (res.ok) {
+                      const data = await res.json();
+                      if (data.success) {
+                        authUpdateUser({ subscriptionTier: "free", subscriptionEnd: new Date().toISOString() });
+                        setCancelMsg("Subscription cancelled successfully.");
+                        setConfirmCancel(false);
+                      } else {
+                        setCancelMsg(data.error || "Failed to cancel. Try again.");
+                      }
+                    } else {
+                      const errData = await res.json().catch(() => ({}));
+                      setCancelMsg(errData.error || `Server error (${res.status}). Try again.`);
+                    }
+                  } catch (err) {
+                    setCancelMsg("Network error. Check your connection and try again.");
+                  } finally { setCancelLoading(false); }
+                }}
+                  style={{ padding: "6px 14px", borderRadius: 6, border: "none", cursor: "pointer", background: c.ember, color: "#fff", fontFamily: font.ui, fontSize: 11, fontWeight: 600, opacity: cancelLoading ? 0.6 : 1 }}>
+                  {cancelLoading ? "Cancelling..." : "Yes, Cancel"}
+                </button>
+                <button onClick={() => setConfirmCancel(false)}
+                  style={{ padding: "6px 14px", borderRadius: 6, cursor: "pointer", background: "transparent", border: `1px solid ${c.border}`, color: c.stone, fontFamily: font.ui, fontSize: 11 }}>
+                  Keep Plan
+                </button>
+              </div>
+            )
+          )}
+        </div>
+        {cancelMsg && <p style={{ fontFamily: font.ui, fontSize: 12, color: cancelMsg.includes("cancelled") ? c.sage : c.ember, marginTop: 8 }}>{cancelMsg}</p>}
       </div>
 
       {/* AI Voice Settings */}
@@ -284,12 +407,36 @@ export default function SettingsPage() {
               <button onClick={() => setConfirmDelete(false)} style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, background: "transparent", border: `1px solid ${c.border}`, borderRadius: 6, padding: "8px 14px", cursor: "pointer" }}>
                 Cancel
               </button>
-              <button onClick={() => { localStorage.clear(); onLogout(); }} style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: "#fff", background: c.ember, border: "none", borderRadius: 6, padding: "8px 20px", cursor: "pointer" }}>
-                Confirm Delete
+              <button disabled={deleteLoading} onClick={async () => {
+                setDeleteLoading(true);
+                setDeleteMsg("");
+                try {
+                  const hdrs = await authHeaders();
+                  const controller = new AbortController();
+                  const timeout = setTimeout(() => controller.abort(), 15000);
+                  const res = await fetch("/api/delete-account", { method: "POST", headers: hdrs, signal: controller.signal });
+                  clearTimeout(timeout);
+                  if (res.ok || res.status === 207) {
+                    localStorage.clear();
+                    onLogout();
+                  } else {
+                    const errData = await res.json().catch(() => ({}));
+                    setDeleteMsg(errData.error || "Failed to delete account. Try again.");
+                    setDeleteLoading(false);
+                  }
+                } catch (err) {
+                  setDeleteMsg(err instanceof DOMException && err.name === "AbortError"
+                    ? "Request timed out. Try again."
+                    : "Network error. Check your connection and try again.");
+                  setDeleteLoading(false);
+                }
+              }} style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: "#fff", background: c.ember, border: "none", borderRadius: 6, padding: "8px 20px", cursor: "pointer", opacity: deleteLoading ? 0.6 : 1 }}>
+                {deleteLoading ? "Deleting..." : "Confirm Delete"}
               </button>
             </div>
           )}
         </div>
+        {deleteMsg && <p style={{ fontFamily: font.ui, fontSize: 12, color: c.ember, marginTop: 8 }}>{deleteMsg}</p>}
       </div>
     </div>
   );

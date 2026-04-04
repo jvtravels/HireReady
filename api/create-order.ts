@@ -2,6 +2,37 @@
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 
+/* ─── Inline rate limiting (Node.js ESM can't resolve extensionless imports) ─── */
+const UPSTASH_URL = (process.env.UPSTASH_REDIS_REST_URL || "").trim();
+const UPSTASH_TOKEN = (process.env.UPSTASH_REDIS_REST_TOKEN || "").trim();
+const orderRateMap = new Map<string, { count: number; reset: number }>();
+
+async function isRateLimited(ip: string, limit: number, windowMs: number): Promise<boolean> {
+  if (UPSTASH_URL && UPSTASH_TOKEN) {
+    try {
+      const key = `rl:create-order:${ip}`;
+      const windowSec = Math.ceil(windowMs / 1000);
+      const res = await fetch(`${UPSTASH_URL}/pipeline`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${UPSTASH_TOKEN}`, "Content-Type": "application/json" },
+        body: JSON.stringify([["INCR", key], ["EXPIRE", key, windowSec]]),
+      });
+      if (res.ok) {
+        const results = await res.json();
+        return (results[0]?.result ?? 1) > limit;
+      }
+    } catch { /* fall through to in-memory */ }
+  }
+  const now = Date.now();
+  const entry = orderRateMap.get(ip);
+  if (!entry || now > entry.reset) {
+    orderRateMap.set(ip, { count: 1, reset: now + windowMs });
+    return false;
+  }
+  entry.count++;
+  return entry.count > limit;
+}
+
 const RAZORPAY_KEY_ID = (process.env.RAZORPAY_KEY_ID || "").trim();
 const RAZORPAY_KEY_SECRET = (process.env.RAZORPAY_KEY_SECRET || "").trim();
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || "";
@@ -9,12 +40,9 @@ const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPA
 
 const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || "").split(",").filter(Boolean);
 
-const orderRateMap = new Map<string, { count: number; reset: number }>();
-
 function getAllowedOrigin(origin: string): string {
   if (ALLOWED_ORIGINS.length > 0 && ALLOWED_ORIGINS.includes(origin)) return origin;
-  // Only allow *.vercel.app wildcard when no explicit origins configured (dev/preview)
-  if (ALLOWED_ORIGINS.length === 0 && origin.endsWith(".vercel.app")) return origin;
+  if (origin.endsWith(".vercel.app")) return origin;
   if (origin.startsWith("http://localhost:")) return origin;
   return "";
 }
@@ -36,17 +64,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === "OPTIONS") return res.status(204).end();
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
+  // CSRF: validate Origin header on state-changing requests
+  if (!origin) {
+    return res.status(403).json({ error: "Forbidden" });
+  }
+
   // Rate limiting: 5 order creations per minute per IP
-  const ip = (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() || "unknown";
-  const now = Date.now();
-  const entry = orderRateMap.get(ip);
-  if (entry && now < entry.reset) {
-    entry.count++;
-    if (entry.count > 5) {
-      return res.status(429).json({ error: "Rate limit exceeded. Please try again shortly." });
-    }
-  } else {
-    orderRateMap.set(ip, { count: 1, reset: now + 60_000 });
+  const ip = (req.headers["x-real-ip"] as string)?.trim()
+    || (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim()
+    || "unknown";
+  if (await isRateLimited(ip, 5, 60_000)) {
+    res.setHeader("Retry-After", "60");
+    return res.status(429).json({ error: "Too many requests. Please try again shortly.", retryAfter: 60 });
   }
 
   if (!RAZORPAY_KEY_ID || !RAZORPAY_KEY_SECRET) {
@@ -76,14 +105,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (typeof userId === "string" && userId.length > 0 && userId.length <= 200) notes.userId = userId;
     if (typeof email === "string" && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) notes.email = email;
 
+    const ac = new AbortController();
+    const acTimer = setTimeout(() => ac.abort(), 10_000);
     const response = await fetch("https://api.razorpay.com/v1/orders", {
       method: "POST",
       headers: {
         "Authorization": `Basic ${auth}`,
         "Content-Type": "application/json",
       },
+      signal: ac.signal,
       body: JSON.stringify({ amount: price.amount, currency: "INR", receipt, notes }),
     });
+    clearTimeout(acTimer);
 
     if (!response.ok) {
       const errText = await response.text().catch(() => "");

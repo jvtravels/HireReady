@@ -85,6 +85,12 @@ export default function DashboardSessions() {
             <p style={{ fontFamily: font.ui, fontSize: 14, color: c.stone, marginBottom: 16 }}>
               {search ? `No sessions matching "${search}"` : "No sessions in this category yet."}
             </p>
+            {(search || filter !== "All") && (
+              <button onClick={() => { setSearch(""); setFilter("All"); }}
+                style={{ fontFamily: font.ui, fontSize: 12, color: c.gilt, background: "none", border: "none", cursor: "pointer", marginBottom: 12, textDecoration: "underline" }}>
+                Clear filters
+              </button>
+            )}
             <button onClick={handleStartSession}
               style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.gilt, background: "rgba(201,169,110,0.06)", border: `1px solid rgba(201,169,110,0.15)`, borderRadius: 8, padding: "10px 24px", cursor: "pointer" }}>
               Start a {filter !== "All" ? filter : ""} Session

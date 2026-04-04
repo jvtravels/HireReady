@@ -117,66 +117,49 @@ async function unzip(data: Uint8Array): Promise<{ entries: { filename: string; d
   return { entries };
 }
 
-/** Extract text from a PDF using pdf.js from CDN */
+/** Extract text from a PDF using locally bundled pdf.js */
 async function readPdf(file: File): Promise<string> {
   const arrayBuffer = await file.arrayBuffer();
 
-  // Load pdf.js from CDN if not already loaded
-  const pdfjsLib = await loadPdfJs();
-  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+  const pdfjsLib = await import("pdfjs-dist");
+  // Vite: use ?url import pattern to get the correct asset path for the worker
+  const workerUrl = await import("pdfjs-dist/build/pdf.worker.min.js?url").then(m => m.default);
+  pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl;
+
+  const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer) }).promise;
 
   const textParts: string[] = [];
   for (let i = 1; i <= pdf.numPages; i++) {
     const page = await pdf.getPage(i);
     const content = await page.getTextContent();
-    const pageText = content.items
-      .map((item: any) => item.str)
-      .join(" ");
-    textParts.push(pageText);
+    const items = content.items as any[];
+
+    // Reconstruct text with line breaks by detecting Y-position changes
+    // PDF text items have transform[5] = Y position (higher = higher on page)
+    const lines: string[] = [];
+    let currentLine = "";
+    let lastY: number | null = null;
+
+    for (const item of items) {
+      if (!("str" in item) || !item.str) continue;
+      const y = item.transform ? item.transform[5] : null;
+
+      if (lastY !== null && y !== null && Math.abs(y - lastY) > 2) {
+        // Y position changed significantly = new line
+        if (currentLine.trim()) lines.push(currentLine.trim());
+        currentLine = item.str;
+      } else {
+        // Same line — add space between items if needed
+        const needsSpace = currentLine.length > 0 && !currentLine.endsWith(" ") && !item.str.startsWith(" ");
+        currentLine += (needsSpace ? " " : "") + item.str;
+      }
+      lastY = y;
+    }
+    if (currentLine.trim()) lines.push(currentLine.trim());
+    textParts.push(lines.join("\n"));
   }
 
   return textParts.join("\n\n").trim();
-}
-
-/** Dynamically load pdf.js from CDN */
-const PDFJS_VERSION = "3.11.174";
-const PDFJS_CDN = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS_VERSION}`;
-
-let pdfjsPromise: Promise<any> | null = null;
-function loadPdfJs(): Promise<any> {
-  // Return existing promise to prevent duplicate script loads (race condition fix)
-  if (pdfjsPromise) return pdfjsPromise;
-
-  // Assign synchronously before any async work to prevent concurrent calls from both passing the null check
-  const promise = new Promise((resolve, reject) => {
-    if ((window as any).pdfjsLib) {
-      resolve((window as any).pdfjsLib);
-      return;
-    }
-
-    const script = document.createElement("script");
-    script.src = `${PDFJS_CDN}/pdf.min.js`;
-    script.type = "text/javascript";
-    script.crossOrigin = "anonymous";
-
-    script.onload = () => {
-      const lib = (window as any).pdfjsLib;
-      if (lib) {
-        lib.GlobalWorkerOptions.workerSrc = `${PDFJS_CDN}/pdf.worker.min.js`;
-        resolve(lib);
-      } else {
-        reject(new Error("pdf.js failed to initialize"));
-      }
-    };
-    script.onerror = () => {
-      pdfjsPromise = null;
-      reject(new Error("Failed to load pdf.js"));
-    };
-    document.head.appendChild(script);
-  });
-  pdfjsPromise = promise;
-
-  return pdfjsPromise;
 }
 
 /* ─── Structured Resume Data ─── */

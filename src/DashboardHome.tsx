@@ -68,7 +68,7 @@ export default function DashboardHome() {
     .filter(s => {
       if (!debouncedSearch) return true;
       const q = debouncedSearch.toLowerCase();
-      return s.type.toLowerCase().includes(q) || s.topStrength.toLowerCase().includes(q) || s.topWeakness.toLowerCase().includes(q) || s.feedback.toLowerCase().includes(q);
+      return (s.type || "").toLowerCase().includes(q) || (s.topStrength || "").toLowerCase().includes(q) || (s.topWeakness || "").toLowerCase().includes(q) || (s.feedback || "").toLowerCase().includes(q);
     })
     .filter(s => {
       if (dateRange === "all") return true;

@@ -78,15 +78,11 @@ async function speakWithProxy(
 
     const blob = await res.blob();
     const url = URL.createObjectURL(blob);
+    let revoked = false;
+    const revokeUrl = () => { if (!revoked) { revoked = true; URL.revokeObjectURL(url); } };
     audio = new Audio(url);
-    audio.onended = () => {
-      URL.revokeObjectURL(url);
-      onEnd();
-    };
-    audio.onerror = () => {
-      URL.revokeObjectURL(url);
-      onError();
-    };
+    audio.onended = () => { revokeUrl(); onEnd(); };
+    audio.onerror = () => { revokeUrl(); onError(); };
     audio.play();
   } catch (err: any) {
     if (err.name !== "AbortError") {
@@ -96,15 +92,16 @@ async function speakWithProxy(
     return { cancel: () => {} };
   }
 
-  const blobUrl = audio ? (audio as HTMLAudioElement).src : null;
+  const capturedAudio = audio;
   return {
     cancel: () => {
       controller.abort();
-      if (audio) {
-        audio.pause();
-        audio.src = "";
+      if (capturedAudio) {
+        capturedAudio.pause();
+        capturedAudio.onended = null;
+        capturedAudio.onerror = null;
+        capturedAudio.src = "";
       }
-      if (blobUrl && blobUrl.startsWith("blob:")) URL.revokeObjectURL(blobUrl);
     },
   };
 }

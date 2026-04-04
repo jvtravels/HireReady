@@ -1,499 +1,954 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { c, font } from "./tokens";
 import { useAuth } from "./AuthContext";
 import { extractResumeText, parseResumeData, type ParsedResume } from "./resumeParser";
+import { analyzeResumeWithAI, type ResumeProfile } from "./dashboardData";
 
-const TOTAL_STEPS = 5;
-const ONBOARDING_KEY = "hireready_onboarding_draft";
+const TOTAL_STEPS = 3;
 
-const roleOptions = [
-  "VP of Engineering",
-  "Director of Product",
-  "Senior Engineering Manager",
-  "Head of Design",
-  "Chief of Staff",
-  "VP of Marketing",
-  "Director of Operations",
-  "Other",
+/* ─── Suggestion data ─── */
+const ROLE_SUGGESTIONS = [
+  "Senior Software Engineer", "Senior Engineering Manager", "Staff Engineer", "Principal Engineer",
+  "VP of Engineering", "Director of Engineering", "Engineering Manager", "Head of Engineering", "CTO",
+  "Director of Product", "Senior Product Manager", "VP of Product", "Head of Product", "Chief Product Officer",
+  "Head of Design", "Senior UX Designer", "Design Manager", "VP of Design",
+  "Chief of Staff", "VP of Marketing", "Director of Marketing", "Head of Growth",
+  "Director of Operations", "VP of Operations", "Data Science Manager", "Head of Data",
+  "ML Engineering Manager", "Director of Analytics", "VP of Sales", "Director of Sales",
+  "Solutions Architect", "Technical Program Manager", "Senior TPM", "Director of QA", "VP of People", "Head of Talent",
 ];
 
-const interviewTypes = [
-  { id: "behavioral", label: "Behavioral", desc: "Leadership, decision-making, conflict resolution", icon: "💬" },
-  { id: "strategic", label: "Strategic", desc: "Vision, roadmap, business alignment", icon: "🎯" },
-  { id: "technical", label: "Technical Leadership", desc: "Architecture, system design, tech strategy", icon: "⚙️" },
-  { id: "case", label: "Case Study", desc: "Problem-solving, analytical frameworks", icon: "📊" },
+const COMPANY_SUGGESTIONS = [
+  "Google", "Meta", "Amazon", "Apple", "Microsoft", "Netflix", "Stripe", "Airbnb", "Uber", "Spotify",
+  "Databricks", "Figma", "Notion", "Coinbase", "Salesforce", "Adobe", "Oracle", "Snowflake", "Palantir", "Shopify",
+  "Square (Block)", "Atlassian", "Slack", "LinkedIn", "Twitter (X)", "Pinterest", "Snap", "Lyft", "DoorDash",
+  "Instacart", "Robinhood", "Plaid", "OpenAI", "Anthropic", "Scale AI",
+  "Series A Startup", "Series B Startup", "Series C+ Startup", "Pre-seed / Seed Startup", "Enterprise / Fortune 500",
 ];
 
-const industryOptions = [
-  "SaaS / Cloud", "Fintech", "E-Commerce", "Healthcare / Biotech",
-  "AI / ML", "Consumer Tech", "Enterprise", "Crypto / Web3", "Other",
-];
+/* ─── Autocomplete Input Component ─── */
+function AutocompleteInput({
+  id, value, onChange, placeholder, suggestions, label, required,
+}: {
+  id: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder: string;
+  suggestions: string[];
+  label?: string;
+  required?: boolean;
+}) {
+  const [focused, setFocused] = useState(false);
+  const [selectedIdx, setSelectedIdx] = useState(-1);
+  const filtered = focused && value.length > 0
+    ? suggestions.filter(s => s.toLowerCase().includes(value.toLowerCase()) && s.toLowerCase() !== value.toLowerCase()).slice(0, 6)
+    : [];
 
-const companyExamples = [
-  "Google", "Meta", "Amazon", "Stripe", "Databricks",
-  "Figma", "Notion", "Airbnb", "Series A-C Startup", "Other",
-];
-
-function loadDraft() {
-  try {
-    const raw = sessionStorage.getItem(ONBOARDING_KEY);
-    if (raw) return JSON.parse(raw);
-  } catch {}
-  return null;
-}
-
-function clearDraft() {
-  try { sessionStorage.removeItem(ONBOARDING_KEY); } catch {}
+  return (
+    <div style={{ position: "relative" }}>
+      {label && (
+        <label htmlFor={id} style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.chalk, display: "block", marginBottom: 8 }}>
+          {label} {required && <span style={{ color: c.ember }}>*</span>}
+        </label>
+      )}
+      <input
+        id={id} type="text" value={value}
+        onChange={(e) => { onChange(e.target.value); setSelectedIdx(-1); }}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setTimeout(() => setFocused(false), 150)}
+        onKeyDown={(e) => {
+          if (filtered.length === 0) return;
+          if (e.key === "ArrowDown") { e.preventDefault(); setSelectedIdx(i => Math.min(i + 1, filtered.length - 1)); }
+          else if (e.key === "ArrowUp") { e.preventDefault(); setSelectedIdx(i => Math.max(i - 1, 0)); }
+          else if (e.key === "Enter" && selectedIdx >= 0) { e.preventDefault(); onChange(filtered[selectedIdx]); setFocused(false); }
+        }}
+        placeholder={placeholder}
+        autoComplete="off"
+        style={{
+          width: "100%", padding: "12px 16px", borderRadius: 10,
+          background: c.graphite, border: `1.5px solid ${focused ? c.gilt : c.border}`,
+          color: c.ivory, fontFamily: font.ui, fontSize: 14,
+          outline: "none", transition: "border-color 0.2s", boxSizing: "border-box",
+        }}
+      />
+      {filtered.length > 0 && (
+        <div style={{
+          position: "absolute", top: "100%", left: 0, right: 0, marginTop: 4, zIndex: 100,
+          background: c.graphite, border: `1px solid ${c.border}`, borderRadius: 10,
+          boxShadow: "0 8px 32px rgba(0,0,0,0.5)", maxHeight: 220, overflowY: "auto",
+        }}>
+          {filtered.map((s, i) => (
+            <button key={s} onMouseDown={() => { onChange(s); setFocused(false); }}
+              style={{
+                display: "block", width: "100%", padding: "10px 16px", border: "none", textAlign: "left",
+                fontFamily: font.ui, fontSize: 13, cursor: "pointer",
+                background: i === selectedIdx ? "rgba(201,169,110,0.08)" : "transparent",
+                color: i === selectedIdx ? c.ivory : c.chalk,
+              }}>
+              {s}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function Onboarding() {
   const navigate = useNavigate();
   const { updateUser } = useAuth();
-  const draft = useRef(loadDraft()).current;
-  const [step, setStep] = useState(draft?.step || 1);
+  const [step, setStep] = useState(1);
   const [slideDir, setSlideDir] = useState<"forward" | "back">("forward");
-  const [targetRole, setTargetRole] = useState(draft?.targetRole || "");
-  const [customRole, setCustomRole] = useState(draft?.customRole || "");
-  const [selectedTypes, setSelectedTypes] = useState<string[]>(draft?.selectedTypes || ["behavioral"]);
-  const [fileName, setFileName] = useState(draft?.fileName || "");
-  const [isDragging, setIsDragging] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // New personalization fields
-  const [targetCompany, setTargetCompany] = useState(draft?.targetCompany || "");
-  const [customCompany, setCustomCompany] = useState(draft?.customCompany || "");
-  const [industry, setIndustry] = useState(draft?.industry || "");
-  const [learningStyle, setLearningStyle] = useState<"direct" | "encouraging">(draft?.learningStyle || "direct");
-  const [sessionLength, setSessionLength] = useState<10 | 15 | 25>(draft?.sessionLength || 15);
-  const [interviewDate, setInterviewDate] = useState(draft?.interviewDate || "");
-
-  // Persist draft to sessionStorage on every change
-  useEffect(() => {
-    try {
-      sessionStorage.setItem(ONBOARDING_KEY, JSON.stringify({
-        step, targetRole, customRole, selectedTypes, fileName,
-        targetCompany, customCompany, industry, learningStyle, sessionLength, interviewDate,
-      }));
-    } catch {}
-  }, [step, targetRole, customRole, selectedTypes, fileName, targetCompany, customCompany, industry, learningStyle, sessionLength, interviewDate]);
-
-  const canContinue = () => {
-    if (step === 1) return targetRole !== "" && (targetRole !== "Other" || customRole !== "");
-    if (step === 2) return targetCompany !== "" && (targetCompany !== "Other" || customCompany !== "") && industry !== "";
-    if (step === 3) return true; // resume is optional now
-    if (step === 4) return true; // preferences always valid
-    return true;
-  };
-
+  // ─── Step 1: Resume ───
+  const [fileName, setFileName] = useState("");
   const [resumeText, setResumeText] = useState("");
   const [resumeParsed, setResumeParsed] = useState<ParsedResume | null>(null);
   const [resumeParsing, setResumeParsing] = useState(false);
   const [resumeError, setResumeError] = useState("");
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragFileName, setDragFileName] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [aiProfile, setAiProfile] = useState<ResumeProfile | null>(null);
+  const [aiPhase, setAiPhase] = useState<"idle" | "analyzing" | "done">("idle");
+  const undoRef = useRef<{ fileName: string; resumeText: string; resumeParsed: ParsedResume | null; aiProfile: ResumeProfile | null; aiPhase: "idle" | "analyzing" | "done"; targetRole: string; targetCompany: string } | null>(null);
+  const [showUndo, setShowUndo] = useState(false);
+  const undoTimerRef = useRef<number>(0);
 
+  // ─── Step 2: Profile ───
+  const [targetRole, setTargetRole] = useState("");
+  const [roleAutoFilled, setRoleAutoFilled] = useState(false);
+  const [targetCompany, setTargetCompany] = useState("");
+  const [interviewFocus, setInterviewFocus] = useState<string[]>(["Behavioral"]);
+  const [sessionLength, setSessionLength] = useState("15m");
+  const [feedbackStyle, setFeedbackStyle] = useState("Direct & Blunt");
+
+  // ─── Step 3: Mic/Camera ───
+  const [micStatus, setMicStatus] = useState<"idle" | "requesting" | "granted" | "denied">("idle");
+  const [camStatus, setCamStatus] = useState<"idle" | "requesting" | "granted" | "denied">("idle");
+  const [micLevel, setMicLevel] = useState(0);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const animFrameRef = useRef(0);
+
+  const goNext = () => { setSlideDir("forward"); setStep(s => Math.min(s + 1, TOTAL_STEPS)); };
+  const goBack = () => { setSlideDir("back"); setStep(s => Math.max(s - 1, 1)); };
+
+  // ─── File handling ───
   const handleFileChange = async (file: File | undefined) => {
     if (!file) return;
+    // Reset file input so re-selecting the same file triggers onChange
+    if (fileInputRef.current) fileInputRef.current.value = "";
+    // File size limit: 10MB
+    if (file.size > 10 * 1024 * 1024) {
+      setResumeError("File is too large. Please upload a file under 10 MB.");
+      return;
+    }
     setFileName(file.name);
     setResumeError("");
     setResumeParsing(true);
     try {
       const text = await extractResumeText(file);
+      if (!text || text.trim().length < 30) {
+        const ext = file.name.split(".").pop()?.toLowerCase();
+        if (ext && ["jpg", "jpeg", "png", "gif", "webp", "bmp"].includes(ext)) {
+          throw new Error("Image files aren't supported. Please upload a PDF, DOCX, or TXT resume.");
+        }
+        throw new Error("We couldn't extract text from this file. Try a different format.");
+      }
       const data = parseResumeData(text);
       setResumeText(text);
       setResumeParsed(data);
+      // Build fallback profile
+      const fallback: ResumeProfile = {
+        headline: data.name || "Your Profile",
+        summary: "", yearsExperience: null, seniorityLevel: "",
+        topSkills: data.skills.slice(0, 8),
+        keyAchievements: [], industries: [],
+        interviewStrengths: [], interviewGaps: [],
+        careerTrajectory: "",
+      };
+      setAiProfile(fallback);
+      if (data.experience?.[0]?.title && !targetRole) { setTargetRole(data.experience[0].title); setRoleAutoFilled(true); }
+      // AI analysis in background
+      setAiPhase("analyzing");
+      try {
+        const result = await Promise.race([
+          analyzeResumeWithAI(text, targetRole || data.experience?.[0]?.title),
+          new Promise<null>((_, reject) => setTimeout(() => reject(new Error("timeout")), 30000)),
+        ]);
+        if (result && typeof result === "object" && "profile" in result) {
+          setAiProfile(result.profile);
+        }
+      } catch {}
+      setAiPhase("done");
     } catch (err: any) {
       setResumeError(err.message || "Failed to parse resume");
-      setResumeText("");
-      setResumeParsed(null);
+      setResumeText(""); setResumeParsed(null);
     } finally {
       setResumeParsing(false);
     }
   };
 
-  const handleNext = () => {
-    if (step < TOTAL_STEPS) {
-      if (step === 1) {
-        const role = targetRole === "Other" ? customRole : targetRole;
-        updateUser({ targetRole: role, interviewTypes: selectedTypes });
-      }
-      if (step === 2) {
-        const company = targetCompany === "Other" ? customCompany : targetCompany;
-        updateUser({ targetCompany: company, industry });
-      }
-      if (step === 3) {
-        updateUser({ resumeFileName: fileName || null, resumeText: resumeText || undefined, resumeData: resumeParsed || undefined });
-      }
-      if (step === 4) {
-        updateUser({ learningStyle, preferredSessionLength: sessionLength, interviewDate: interviewDate || undefined });
-      }
-      setSlideDir("forward");
-      setStep(step + 1);
-    } else {
-      clearDraft();
-      updateUser({ hasCompletedOnboarding: true });
-      navigate("/dashboard");
+  // ─── Mic/Camera ───
+  const requestMic = useCallback(async () => {
+    setMicStatus("requesting");
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
+      setMicStatus("granted");
+      const ctx = new AudioContext();
+      const analyser = ctx.createAnalyser();
+      analyser.fftSize = 256;
+      ctx.createMediaStreamSource(stream).connect(analyser);
+      const buf = new Uint8Array(analyser.frequencyBinCount);
+      const poll = () => {
+        analyser.getByteFrequencyData(buf);
+        const avg = buf.reduce((a, b) => a + b, 0) / buf.length;
+        setMicLevel(Math.min(100, Math.round((avg / 128) * 100)));
+        animFrameRef.current = requestAnimationFrame(poll);
+      };
+      poll();
+    } catch { setMicStatus("denied"); }
+  }, []);
+
+  const camStreamRef = useRef<MediaStream | null>(null);
+  const requestCamera = useCallback(async () => {
+    setCamStatus("requesting");
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      camStreamRef.current = stream;
+      setCamStatus("granted");
+      if (streamRef.current) { stream.getTracks().forEach(t => streamRef.current!.addTrack(t)); }
+      else { streamRef.current = stream; }
+    } catch (err: any) {
+      setCamStatus("denied");
+      console.warn("Camera access denied:", err?.name, err?.message);
     }
+  }, []);
+
+  // Attach camera stream to video element when it mounts
+  useEffect(() => {
+    if (camStatus === "granted" && videoRef.current && camStreamRef.current) {
+      videoRef.current.srcObject = camStreamRef.current;
+    }
+  }, [camStatus]);
+
+  // Cleanup streams on unmount
+  useEffect(() => {
+    return () => {
+      cancelAnimationFrame(animFrameRef.current);
+      streamRef.current?.getTracks().forEach(t => t.stop());
+      camStreamRef.current?.getTracks().forEach(t => t.stop());
+    };
+  }, []);
+
+  // ─── Keyboard shortcuts ───
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA") return;
+      if (e.key === "Enter") {
+        e.preventDefault();
+        if (step < TOTAL_STEPS) {
+          if (step === 2 && (!targetRole.trim() || interviewFocus.length === 0)) return;
+          goNext();
+        } else {
+          handleStart();
+        }
+      } else if (e.key === "Escape" && step > 1) {
+        e.preventDefault();
+        goBack();
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  });
+
+  const handleStart = () => {
+    cancelAnimationFrame(animFrameRef.current);
+    streamRef.current?.getTracks().forEach(t => t.stop());
+    updateUser({
+      targetRole: targetRole.trim() || "Senior Leader",
+      targetCompany: targetCompany.trim() || undefined,
+      interviewFocus,
+      sessionLength,
+      feedbackStyle,
+      hasCompletedOnboarding: true,
+      resumeFileName: fileName || null,
+      resumeText: resumeText || undefined,
+      resumeData: (aiProfile || resumeParsed) as unknown as ParsedResume || undefined,
+    });
+    navigate("/interview?type=behavioral&difficulty=standard&mini=true");
   };
 
-  const stepLabels = ["Your Target", "Company & Industry", "Your Experience", "Preferences", "Ready"];
-
-  const inputStyle = {
-    width: "100%" as const, padding: "14px 18px", borderRadius: 10,
-    background: c.graphite, border: `1.5px solid ${c.border}`,
-    color: c.ivory, fontFamily: font.ui, fontSize: 14,
-    outline: "none" as const, transition: "border-color 0.2s",
-    boxSizing: "border-box" as const,
-  };
+  const isStep2Disabled = step === 2 && (!targetRole.trim() || interviewFocus.length === 0);
 
   return (
-    <div style={{ minHeight: "100vh", background: c.obsidian, display: "flex", flexDirection: "column" }}>
+    <div style={{ minHeight: "100vh", background: `radial-gradient(ellipse 80% 50% at 50% 0%, rgba(201,169,110,0.03) 0%, ${c.obsidian} 70%)`, display: "flex", flexDirection: "column", position: "relative" }}>
       <style>{`
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes progressFill { 0% { width: 0%; } 30% { width: 35%; } 60% { width: 65%; } 80% { width: 80%; } 100% { width: 92%; } }
+        .ob-progress-bar { animation: progressFill 18s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
         @keyframes slideInForward { from { opacity: 0; transform: translateX(40px); } to { opacity: 1; transform: translateX(0); } }
         @keyframes slideInBack { from { opacity: 0; transform: translateX(-40px); } to { opacity: 1; transform: translateX(0); } }
-        .step-enter { animation: ${slideDir === "forward" ? "slideInForward" : "slideInBack"} 0.35s cubic-bezier(0.16, 1, 0.3, 1); }
+        .ob-step { animation: ${slideDir === "forward" ? "slideInForward" : "slideInBack"} 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+        @keyframes popIn { from { opacity: 0; transform: scale(0.92); } to { opacity: 1; transform: scale(1); } }
+        @keyframes fadeUp { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+        .skeleton-line { background: linear-gradient(90deg, rgba(240,237,232,0.03) 25%, rgba(240,237,232,0.07) 50%, rgba(240,237,232,0.03) 75%); background-size: 200% 100%; animation: shimmer 1.5s ease-in-out infinite; border-radius: 6px; }
+        .fade-up-1 { animation: fadeUp 0.35s ease-out 0ms both; }
+        .fade-up-2 { animation: fadeUp 0.35s ease-out 80ms both; }
+        .fade-up-3 { animation: fadeUp 0.35s ease-out 160ms both; }
+        @keyframes toastIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+        .ob-card { background: rgba(22,22,24,0.7); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid rgba(240,237,232,0.06); }
+        .ob-card-gold { background: linear-gradient(135deg, rgba(22,22,24,0.8) 0%, rgba(201,169,110,0.06) 100%); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid rgba(201,169,110,0.1); }
+        .ob-drop:hover { border-color: rgba(201,169,110,0.35) !important; background: rgba(201,169,110,0.02) !important; }
+        .ob-focus-card:hover { transform: translateY(-2px); box-shadow: 0 4px 20px rgba(0,0,0,0.3) !important; border-color: rgba(201,169,110,0.3) !important; }
+        @media (max-width: 768px) {
+          .ob-s1-split { flex-direction: column !important; }
+          .ob-s1-left { max-width: 100% !important; }
+          .ob-s1-profile-grid { grid-template-columns: 1fr !important; }
+          .ob-s1-sg-grid { grid-template-columns: 1fr !important; }
+          .ob-s1-header { flex-direction: column !important; }
+          .ob-s1-header-text { max-width: 100% !important; }
+          .ob-s1-header-actions { position: static !important; margin-top: 8px !important; }
+          .ob-s2-focus-grid { grid-template-columns: 1fr 1fr !important; }
+          .ob-s2-bottom-row { grid-template-columns: 1fr !important; }
+        }
+        @media (max-height: 700px) {
+          .ob-content-area { padding-top: 16px !important; padding-bottom: 16px !important; }
+        }
       `}</style>
-      {/* Top bar */}
-      <div style={{ padding: "20px 40px", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: `1px solid ${c.border}` }}>
-        <span style={{ fontFamily: font.ui, fontSize: 15, fontWeight: 600, color: c.ivory, letterSpacing: "0.06em" }}>HireReady</span>
-        <div
-          role="progressbar"
-          aria-valuenow={step}
-          aria-valuemin={1}
-          aria-valuemax={TOTAL_STEPS}
-          aria-label={`Step ${step} of ${TOTAL_STEPS}`}
-          style={{ display: "flex", alignItems: "center", gap: 8 }}
-        >
-          {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
-            <div key={i} style={{ display: "flex", alignItems: "center", gap: 4 }}>
-              <div style={{
-                width: i + 1 === step ? 32 : 24, height: 4, borderRadius: 2,
-                background: i + 1 <= step ? c.gilt : c.border,
-                transition: "all 0.4s cubic-bezier(0.16, 1, 0.3, 1)",
-              }} />
-            </div>
-          ))}
-          <span style={{ fontFamily: font.mono, fontSize: 11, color: c.stone, marginLeft: 8 }}>{step}/{TOTAL_STEPS}</span>
+
+      {/* ─── Top Bar ─── */}
+      <div style={{ padding: "18px 40px", display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", borderBottom: `1px solid rgba(240,237,232,0.04)`, background: "rgba(10,10,11,0.6)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)", zIndex: 10 }}>
+        {/* Logo — left */}
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <div style={{ width: 6, height: 6, borderRadius: 2, background: `linear-gradient(135deg, ${c.gilt}, #B8923E)`, boxShadow: "0 0 8px rgba(201,169,110,0.3)" }} />
+          <span style={{ fontFamily: font.display, fontSize: 17, fontWeight: 400, color: c.ivory, letterSpacing: "0.02em" }}>HireReady</span>
         </div>
-        <button onClick={() => { clearDraft(); updateUser({ hasCompletedOnboarding: true }); navigate("/dashboard"); }}
-          style={{ fontFamily: font.ui, fontSize: 13, color: c.stone, background: "none", border: "none", cursor: "pointer", transition: "color 0.2s" }}
-          onMouseEnter={(e) => e.currentTarget.style.color = c.ivory}
-          onMouseLeave={(e) => e.currentTarget.style.color = c.stone}>
-          Skip for now
-        </button>
-      </div>
-
-      {/* Content */}
-      <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "40px" }}>
-        <div key={step} className="step-enter" style={{ width: "100%", maxWidth: 560 }}>
-
-          {/* Step 1: Role + interview types */}
-          {step === 1 && (
-            <div>
-              <div style={{ marginBottom: 40 }}>
-                <p style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: c.gilt, marginBottom: 12 }}>Step 1 — {stepLabels[0]}</p>
-                <h2 style={{ fontFamily: font.display, fontSize: 32, fontWeight: 400, color: c.ivory, letterSpacing: "-0.02em", lineHeight: 1.2, marginBottom: 8 }}>What role are you interviewing for?</h2>
-                <p style={{ fontFamily: font.ui, fontSize: 14, color: c.stone, lineHeight: 1.6 }}>We'll tailor every question to this role's expectations and seniority level.</p>
-              </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                {roleOptions.map((role) => (
-                  <button key={role} onClick={() => setTargetRole(role)}
-                    style={{ padding: "14px 18px", borderRadius: 10, cursor: "pointer", background: targetRole === role ? "rgba(201,169,110,0.08)" : c.graphite, border: `1.5px solid ${targetRole === role ? c.gilt : c.border}`, color: targetRole === role ? c.ivory : c.chalk, fontFamily: font.ui, fontSize: 13, fontWeight: 500, textAlign: "left", transition: "all 0.25s ease", boxShadow: targetRole === role ? "0 0 20px rgba(201,169,110,0.08)" : "none" }}
-                    onMouseEnter={(e) => { if (targetRole !== role) e.currentTarget.style.borderColor = c.borderHover; }}
-                    onMouseLeave={(e) => { if (targetRole !== role) e.currentTarget.style.borderColor = c.border; }}>
-                    {role}
-                  </button>
-                ))}
-              </div>
-              {targetRole === "Other" && (
-                <input type="text" id="custom-role" aria-label="Enter your target role" value={customRole} onChange={(e) => setCustomRole(e.target.value)} placeholder="Enter your target role" autoFocus
-                  style={{ ...inputStyle, marginTop: 12 }}
-                  onFocus={(e) => e.currentTarget.style.borderColor = c.gilt}
-                  onBlur={(e) => e.currentTarget.style.borderColor = c.border} />
-              )}
-              <div style={{ marginTop: 32 }}>
-                <label style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: c.chalk, display: "block", marginBottom: 12, letterSpacing: "0.02em" }}>Interview focus (select one or more)</label>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                  {interviewTypes.map((type) => {
-                    const selected = selectedTypes.includes(type.id);
-                    return (
-                      <button key={type.id} onClick={() => setSelectedTypes(selected ? selectedTypes.filter(t => t !== type.id) : [...selectedTypes, type.id])}
-                        style={{ padding: "14px 16px", borderRadius: 10, cursor: "pointer", background: selected ? "rgba(201,169,110,0.06)" : c.graphite, border: `1.5px solid ${selected ? "rgba(201,169,110,0.3)" : c.border}`, textAlign: "left", transition: "all 0.25s ease" }}
-                        onMouseEnter={(e) => { if (!selected) e.currentTarget.style.borderColor = c.borderHover; }}
-                        onMouseLeave={(e) => { if (!selected) e.currentTarget.style.borderColor = c.border; }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-                          <span style={{ fontSize: 16 }}>{type.icon}</span>
-                          <span style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: selected ? c.ivory : c.chalk }}>{type.label}</span>
-                        </div>
-                        <p style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, lineHeight: 1.4, paddingLeft: 24 }}>{type.desc}</p>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Step 2: Company & Industry */}
-          {step === 2 && (
-            <div>
-              <div style={{ marginBottom: 40 }}>
-                <p style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: c.gilt, marginBottom: 12 }}>Step 2 — {stepLabels[1]}</p>
-                <h2 style={{ fontFamily: font.display, fontSize: 32, fontWeight: 400, color: c.ivory, letterSpacing: "-0.02em", lineHeight: 1.2, marginBottom: 8 }}>Where are you interviewing?</h2>
-                <p style={{ fontFamily: font.ui, fontSize: 14, color: c.stone, lineHeight: 1.6 }}>We'll adapt question style and expectations to match this company's interview culture.</p>
-              </div>
-
-              <label htmlFor="target-company" style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: c.chalk, display: "block", marginBottom: 10, letterSpacing: "0.02em" }}>Target company</label>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8, marginBottom: 12 }}>
-                {companyExamples.map((co) => (
-                  <button key={co} onClick={() => setTargetCompany(co)}
-                    style={{ padding: "10px 12px", borderRadius: 8, cursor: "pointer", background: targetCompany === co ? "rgba(201,169,110,0.08)" : c.graphite, border: `1.5px solid ${targetCompany === co ? c.gilt : c.border}`, color: targetCompany === co ? c.ivory : c.chalk, fontFamily: font.ui, fontSize: 12, fontWeight: 500, textAlign: "center", transition: "all 0.2s ease" }}
-                    onMouseEnter={(e) => { if (targetCompany !== co) e.currentTarget.style.borderColor = c.borderHover; }}
-                    onMouseLeave={(e) => { if (targetCompany !== co) e.currentTarget.style.borderColor = c.border; }}>
-                    {co}
-                  </button>
-                ))}
-              </div>
-              {targetCompany === "Other" && (
-                <input type="text" id="target-company" aria-label="Enter company name" value={customCompany} onChange={(e) => setCustomCompany(e.target.value)} placeholder="Enter company name" autoFocus
-                  style={{ ...inputStyle, marginBottom: 8 }}
-                  onFocus={(e) => e.currentTarget.style.borderColor = c.gilt}
-                  onBlur={(e) => e.currentTarget.style.borderColor = c.border} />
-              )}
-
-              <label style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: c.chalk, display: "block", marginBottom: 10, marginTop: 28, letterSpacing: "0.02em" }}>Industry</label>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
-                {industryOptions.map((ind) => (
-                  <button key={ind} onClick={() => setIndustry(ind)}
-                    style={{ padding: "10px 12px", borderRadius: 8, cursor: "pointer", background: industry === ind ? "rgba(201,169,110,0.08)" : c.graphite, border: `1.5px solid ${industry === ind ? c.gilt : c.border}`, color: industry === ind ? c.ivory : c.chalk, fontFamily: font.ui, fontSize: 12, fontWeight: 500, textAlign: "center", transition: "all 0.2s ease" }}
-                    onMouseEnter={(e) => { if (industry !== ind) e.currentTarget.style.borderColor = c.borderHover; }}
-                    onMouseLeave={(e) => { if (industry !== ind) e.currentTarget.style.borderColor = c.border; }}>
-                    {ind}
-                  </button>
-                ))}
-              </div>
-
-              <div style={{ marginTop: 28 }}>
-                <label htmlFor="interview-date" style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: c.chalk, display: "block", marginBottom: 8, letterSpacing: "0.02em" }}>When is your interview?</label>
-                <input type="date" id="interview-date" value={interviewDate} onChange={(e) => setInterviewDate(e.target.value)}
-                  style={{ ...inputStyle, colorScheme: "dark" }}
-                  onFocus={(e) => e.currentTarget.style.borderColor = c.gilt}
-                  onBlur={(e) => e.currentTarget.style.borderColor = c.border} />
-                <p style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, marginTop: 6 }}>We'll create a personalized prep plan based on your timeline.</p>
-              </div>
-            </div>
-          )}
-
-          {/* Step 3: Resume */}
-          {step === 3 && (
-            <div>
-              <div style={{ marginBottom: 40 }}>
-                <p style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: c.gilt, marginBottom: 12 }}>Step 3 — {stepLabels[2]}</p>
-                <h2 style={{ fontFamily: font.display, fontSize: 32, fontWeight: 400, color: c.ivory, letterSpacing: "-0.02em", lineHeight: 1.2, marginBottom: 8 }}>Upload your resume</h2>
-                <p style={{ fontFamily: font.ui, fontSize: 14, color: c.stone, lineHeight: 1.6 }}>We'll generate questions from your actual experience — no generic prompts.</p>
-              </div>
-              <div
-                onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
-                onDragLeave={() => setIsDragging(false)}
-                onDrop={(e) => { e.preventDefault(); setIsDragging(false); handleFileChange(e.dataTransfer.files[0]); }}
-                onClick={() => fileInputRef.current?.click()}
-                style={{ border: `2px dashed ${isDragging ? c.gilt : fileName ? c.sage : "rgba(201,169,110,0.2)"}`, borderRadius: 16, padding: "48px 32px", textAlign: "center", cursor: "pointer", transition: "all 0.3s ease", background: isDragging ? "rgba(201,169,110,0.04)" : fileName ? "rgba(122,158,126,0.04)" : "transparent" }}>
-                <input ref={fileInputRef} type="file" accept=".pdf,.docx,.doc,.txt" onChange={(e) => handleFileChange(e.target.files?.[0])} style={{ display: "none" }} />
-                {fileName ? (
-                  <>
-                    <div style={{ width: 56, height: 56, borderRadius: 14, margin: "0 auto 16px", background: resumeParsing ? "rgba(201,169,110,0.08)" : resumeError ? "rgba(196,112,90,0.08)" : `${c.sage}15`, border: `1px solid ${resumeParsing ? "rgba(201,169,110,0.2)" : resumeError ? "rgba(196,112,90,0.2)" : `${c.sage}25`}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                      {resumeParsing ? (
-                        <div style={{ width: 20, height: 20, border: `2px solid rgba(201,169,110,0.3)`, borderTopColor: c.gilt, borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
-                      ) : resumeError ? (
-                        <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={c.ember} strokeWidth="1.5"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
-                      ) : (
-                        <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="1.5"><polyline points="20 6 9 17 4 12"/></svg>
-                      )}
-                    </div>
-                    <p style={{ fontFamily: font.ui, fontSize: 15, fontWeight: 500, color: c.ivory, marginBottom: 4 }}>{fileName}</p>
-                    <p style={{ fontFamily: font.ui, fontSize: 12, color: resumeParsing ? c.gilt : resumeError ? c.ember : c.sage }}>
-                      {resumeParsing ? "Analyzing resume..." : resumeError ? resumeError : `${resumeParsed?.skills.length || 0} skills · ${resumeParsed?.experience.length || 0} roles · ${resumeParsed?.education.length || 0} degrees found`}
-                    </p>
-                    <button onClick={(e) => { e.stopPropagation(); setFileName(""); setResumeText(""); setResumeParsed(null); setResumeError(""); }} style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, background: "none", border: "none", cursor: "pointer", marginTop: 12, textDecoration: "underline" }}>Replace file</button>
-                  </>
+        {/* Stepper — center */}
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          {["Resume", "Profile", "Review"].map((label, i) => (
+            <div key={i} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <div style={{
+                width: 26, height: 26, borderRadius: "50%",
+                background: step > i + 1 ? `linear-gradient(135deg, ${c.gilt}, #B8923E)` : step === i + 1 ? "rgba(201,169,110,0.1)" : "transparent",
+                border: `1.5px solid ${step >= i + 1 ? c.gilt : "rgba(240,237,232,0.08)"}`,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                transition: "all 0.4s cubic-bezier(0.16, 1, 0.3, 1)",
+                boxShadow: step === i + 1 ? "0 0 12px rgba(201,169,110,0.15)" : "none",
+              }}>
+                {step > i + 1 ? (
+                  <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={c.obsidian} strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
                 ) : (
-                  <>
-                    <div style={{ width: 56, height: 56, borderRadius: 14, margin: "0 auto 16px", background: "rgba(201,169,110,0.06)", border: "1px solid rgba(201,169,110,0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                      <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                    </div>
-                    <p style={{ fontFamily: font.ui, fontSize: 15, fontWeight: 500, color: c.ivory, marginBottom: 4 }}>Drop your resume here</p>
-                    <p style={{ fontFamily: font.ui, fontSize: 13, color: c.stone, marginBottom: 16 }}>or click to browse</p>
-                    <div style={{ display: "flex", justifyContent: "center", gap: 8 }}>
-                      {["PDF", "DOCX", "TXT"].map((type) => (
-                        <span key={type} style={{ fontFamily: font.mono, fontSize: 10, fontWeight: 600, color: c.stone, background: c.graphite, padding: "4px 10px", borderRadius: 4, border: `1px solid ${c.border}` }}>{type}</span>
-                      ))}
-                    </div>
-                  </>
+                  <span style={{ fontFamily: font.mono, fontSize: 10, fontWeight: 600, color: step === i + 1 ? c.gilt : c.stone }}>{i + 1}</span>
                 )}
               </div>
-              {/* Parsed resume preview */}
-              {resumeParsed && !resumeParsing && (resumeParsed.skills.length > 0 || resumeParsed.experience.length > 0) && (
-                <div style={{ marginTop: 16, background: c.graphite, borderRadius: 10, border: `1px solid ${c.border}`, padding: "16px 20px" }}>
-                  <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.sage, letterSpacing: "0.06em", textTransform: "uppercase", display: "block", marginBottom: 12 }}>What we found</span>
-                  {resumeParsed.skills.length > 0 && (
-                    <div style={{ marginBottom: resumeParsed.experience.length > 0 ? 12 : 0 }}>
-                      <p style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, marginBottom: 6 }}>Skills</p>
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
-                        {resumeParsed.skills.slice(0, 12).map((skill, i) => (
-                          <span key={i} style={{ fontFamily: font.ui, fontSize: 11, color: c.ivory, background: "rgba(201,169,110,0.06)", border: "1px solid rgba(201,169,110,0.12)", borderRadius: 5, padding: "3px 9px" }}>{skill}</span>
-                        ))}
-                        {resumeParsed.skills.length > 12 && (
-                          <span style={{ fontFamily: font.ui, fontSize: 11, color: c.slate, padding: "3px 6px" }}>+{resumeParsed.skills.length - 12} more</span>
-                        )}
+              <span style={{ fontFamily: font.ui, fontSize: 11, color: step === i + 1 ? c.ivory : c.stone, fontWeight: step === i + 1 ? 500 : 400 }}>{label}</span>
+              {i < 2 && <div style={{ width: 24, height: 1, background: step > i + 1 ? `linear-gradient(90deg, ${c.gilt}, rgba(201,169,110,0.2))` : "rgba(240,237,232,0.06)", transition: "background 0.4s", borderRadius: 1 }} />}
+            </div>
+          ))}
+        </div>
+        {/* Right spacer for grid balance */}
+        <div />
+      </div>
+
+      {/* ─── Content ─── */}
+      <div className="ob-content-area" style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "40px 32px", overflow: "auto" }}>
+        <div key={step} className="ob-step" style={{ width: "100%", maxWidth: step === 3 ? 680 : (step === 1 && !resumeParsed) ? 680 : 960, transition: "max-width 0.4s ease" }}>
+
+          {/* ════════════════ STEP 1: Resume Intelligence ════════════════ */}
+          {step === 1 && (
+            <div>
+              {/* ── State: Empty / Error ── */}
+              {!resumeParsed && !resumeParsing && aiPhase !== "analyzing" && (
+                <>
+                  {/* Step label */}
+                  <p style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 700, color: c.gilt, textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 12 }}>Step 1 — Your Experience</p>
+
+                  {/* Heading */}
+                  <h2 style={{ fontFamily: font.display, fontSize: 32, fontWeight: 400, color: c.ivory, letterSpacing: "-0.025em", lineHeight: 1.2, marginBottom: 10 }}>
+                    Upload your resume <span style={{ fontFamily: font.ui, fontSize: 16, fontWeight: 400, color: c.stone }}>(optional)</span>
+                  </h2>
+
+                  {/* Description */}
+                  <p style={{ fontFamily: font.ui, fontSize: 15, color: c.stone, lineHeight: 1.7, marginBottom: 28 }}>
+                    Upload to get personalized questions from your experience, or skip to use general questions.
+                  </p>
+
+                  {/* Drop zone — full width */}
+                  <div
+                    onDragOver={(e) => { e.preventDefault(); setIsDragging(true); if (!dragFileName && e.dataTransfer.types.includes("Files")) setDragFileName(e.dataTransfer.items?.[0]?.getAsFile?.()?.name || ""); }}
+                    onDragLeave={() => { setIsDragging(false); setDragFileName(""); }}
+                    onDrop={(e) => { e.preventDefault(); setIsDragging(false); setDragFileName(""); handleFileChange(e.dataTransfer.files[0]); }}
+                    onClick={() => fileInputRef.current?.click()}
+                    className={!resumeError && !isDragging ? "ob-drop" : undefined}
+                    style={{
+                      border: `1.5px dashed ${isDragging ? c.gilt : resumeError ? c.ember : "rgba(201,169,110,0.18)"}`,
+                      borderRadius: 16, padding: isDragging ? "48px 24px" : "56px 24px",
+                      textAlign: "center", cursor: "pointer",
+                      transition: "all 0.3s cubic-bezier(0.16, 1, 0.3, 1)",
+                      background: isDragging ? "rgba(201,169,110,0.04)" : c.graphite,
+                      boxShadow: isDragging ? "0 0 30px rgba(201,169,110,0.08), inset 0 0 30px rgba(201,169,110,0.03)" : "none",
+                      marginBottom: 16,
+                    }}
+                  >
+                    <input ref={fileInputRef} type="file" accept=".pdf,.docx,.doc,.txt" onChange={(e) => handleFileChange(e.target.files?.[0])} style={{ display: "none" }} />
+                    {resumeError ? (
+                      <div>
+                        <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c.ember} strokeWidth="1.5" style={{ marginBottom: 8 }}><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                        <p style={{ fontFamily: font.ui, fontSize: 13, color: c.ember, marginBottom: 4, lineHeight: 1.5 }}>{resumeError}</p>
+                        <p style={{ fontFamily: font.ui, fontSize: 12, color: c.stone }}>Click to try a different file</p>
                       </div>
+                    ) : isDragging ? (
+                      <>
+                        <div style={{ width: 52, height: 52, borderRadius: 14, margin: "0 auto 14px", background: "rgba(201,169,110,0.1)", border: "1px solid rgba(201,169,110,0.25)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                          <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                        </div>
+                        <p style={{ fontFamily: font.ui, fontSize: 16, fontWeight: 600, color: c.gilt }}>Release to upload</p>
+                        {dragFileName && <p style={{ fontFamily: font.ui, fontSize: 12, color: c.chalk, marginTop: 4 }}>{dragFileName}</p>}
+                      </>
+                    ) : (
+                      <>
+                        <div style={{ width: 52, height: 52, borderRadius: 14, margin: "0 auto 16px", background: "rgba(201,169,110,0.05)", border: "1px solid rgba(201,169,110,0.12)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                          <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                        </div>
+                        <p style={{ fontFamily: font.ui, fontSize: 16, fontWeight: 500, color: c.ivory, marginBottom: 6 }}>Drop your resume here</p>
+                        <p style={{ fontFamily: font.ui, fontSize: 14, color: c.stone, marginBottom: 16 }}>or click to browse</p>
+                        <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 10 }}>
+                          {["PDF", "DOCX", "TXT"].map((t) => (
+                            <span key={t} style={{ fontFamily: font.mono, fontSize: 11, fontWeight: 500, color: c.stone, background: "rgba(240,237,232,0.03)", padding: "6px 14px", borderRadius: 6, border: `1px solid rgba(240,237,232,0.06)`, letterSpacing: "0.05em" }}>{t}</span>
+                          ))}
+                          <span style={{ fontFamily: font.ui, fontSize: 11, color: "rgba(154,149,144,0.5)" }}>Max 10 MB</span>
+                        </div>
+                      </>
+                    )}
+                  </div>
+
+                  {/* Privacy bar */}
+                  {!showUndo && (
+                    <div style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: "16px 20px", borderRadius: 12, background: c.graphite, border: `1px solid ${c.border}` }}>
+                      <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={c.stone} strokeWidth="1.5" style={{ flexShrink: 0, marginTop: 1 }}><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                      <p style={{ fontFamily: font.ui, fontSize: 13, color: c.stone, lineHeight: 1.5 }}>Your resume text is used only to generate personalized interview questions. You can delete it anytime.</p>
                     </div>
                   )}
-                  {resumeParsed.experience.length > 0 && (
-                    <div>
-                      <p style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, marginBottom: 6 }}>Recent roles</p>
-                      {resumeParsed.experience.slice(0, 3).map((exp, i) => (
-                        <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-                          <span style={{ width: 4, height: 4, borderRadius: 2, background: i === 0 ? c.gilt : c.border, flexShrink: 0 }} />
-                          <span style={{ fontFamily: font.ui, fontSize: 12, color: c.ivory }}>{exp.title}</span>
-                          {exp.company && <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>at {exp.company}</span>}
+
+                  {/* Undo toast */}
+                  {showUndo && (
+                    <div className="ob-card" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", borderRadius: 10, animation: "toastIn 0.25s ease-out", boxShadow: "0 4px 16px rgba(0,0,0,0.2)" }}>
+                      <span style={{ fontFamily: font.ui, fontSize: 12, color: c.chalk }}>Resume removed</span>
+                      <button onClick={() => {
+                        if (!undoRef.current) return;
+                        const s = undoRef.current;
+                        setFileName(s.fileName); setResumeText(s.resumeText); setResumeParsed(s.resumeParsed); setAiProfile(s.aiProfile); setAiPhase(s.aiPhase); setTargetRole(s.targetRole); setTargetCompany(s.targetCompany);
+                        setShowUndo(false); clearTimeout(undoTimerRef.current); undoRef.current = null;
+                      }}
+                        style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: c.gilt, background: "none", border: "none", cursor: "pointer", padding: "2px 8px" }}>
+                        Undo
+                      </button>
+                    </div>
+                  )}
+                </>
+              )}
+
+              {/* ── State: Building profile (parsing + AI analyzing) ── */}
+              {(resumeParsing || (aiPhase === "analyzing" && !aiProfile?.summary)) && (
+                <>
+                  {/* Same headings as empty state */}
+                  <p style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 700, color: c.gilt, textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 12 }}>Step 1 — Your Experience</p>
+                  <h2 style={{ fontFamily: font.display, fontSize: 32, fontWeight: 400, color: c.ivory, letterSpacing: "-0.025em", lineHeight: 1.2, marginBottom: 10 }}>
+                    Upload your resume <span style={{ fontFamily: font.ui, fontSize: 16, fontWeight: 400, color: c.stone }}>(optional)</span>
+                  </h2>
+                  <p style={{ fontFamily: font.ui, fontSize: 15, color: c.stone, lineHeight: 1.7, marginBottom: 28 }}>
+                    Upload to get personalized questions from your experience, or skip to use general questions.
+                  </p>
+
+                  {/* Loading card — replaces the drop zone */}
+                  <div className="ob-card" style={{ borderRadius: 16, padding: "64px 32px", textAlign: "center", border: `1px solid rgba(240,237,232,0.06)` }}>
+                    <div style={{ width: 60, height: 60, borderRadius: 16, margin: "0 auto 24px", background: "rgba(201,169,110,0.06)", border: "1px solid rgba(201,169,110,0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <div style={{ width: 24, height: 24, border: "2.5px solid rgba(201,169,110,0.2)", borderTopColor: c.gilt, borderRadius: "50%", animation: "spin 1s linear infinite" }} />
+                    </div>
+                    <h3 style={{ fontFamily: font.display, fontSize: 28, fontWeight: 400, color: c.ivory, marginBottom: 14, letterSpacing: "-0.02em" }}>Building your profile</h3>
+                    <p style={{ fontFamily: font.ui, fontSize: 15, color: c.stone, lineHeight: 1.7, maxWidth: 440, margin: "0 auto 8px" }}>
+                      AI is analyzing your experience, skills, and achievements to create a personalized candidate profile...
+                    </p>
+                    {/* Progress bar */}
+                    <div style={{ maxWidth: 320, margin: "20px auto 0", height: 4, borderRadius: 2, background: "rgba(240,237,232,0.06)", overflow: "hidden" }}>
+                      <div className="ob-progress-bar" style={{ height: "100%", borderRadius: 2, background: `linear-gradient(90deg, ${c.gilt}, #B8923E)` }} />
+                    </div>
+                    <p style={{ fontFamily: font.ui, fontSize: 12, color: "rgba(154,149,144,0.5)", marginTop: 8 }}>Usually 10–20 seconds</p>
+                    {fileName && (
+                      <div style={{ display: "inline-flex", alignItems: "center", gap: 8, marginTop: 20, padding: "8px 16px", borderRadius: 8, background: c.graphite, border: `1px solid ${c.border}` }}>
+                        <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.stone} strokeWidth="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                        <span style={{ fontFamily: font.ui, fontSize: 14, color: c.ivory }}>{fileName}</span>
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
+
+              {/* ── State: Profile ready ── */}
+              {resumeParsed && aiPhase === "done" && aiProfile?.summary && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                  {/* Step heading */}
+                  <div style={{ marginBottom: 8 }}>
+                    <p style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 700, color: c.gilt, textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 12 }}>Step 1 — Your Experience</p>
+                    <h2 style={{ fontFamily: font.display, fontSize: 32, fontWeight: 400, color: c.ivory, letterSpacing: "-0.025em", lineHeight: 1.2, marginBottom: 10 }}>
+                      Upload your resume <span style={{ fontFamily: font.ui, fontSize: 16, fontWeight: 400, color: c.stone }}>(optional)</span>
+                    </h2>
+                    <p style={{ fontFamily: font.ui, fontSize: 15, color: c.stone, lineHeight: 1.7 }}>
+                      Upload to get personalized questions from your experience, or skip to use general questions.
+                    </p>
+                  </div>
+
+                  {/* Header: headline + badges + actions — compact row */}
+                  <div className="ob-card ob-s1-header" style={{ borderRadius: 14, padding: "20px 24px", border: `1px solid rgba(240,237,232,0.06)`, display: "flex", alignItems: "flex-start", gap: 20 }}>
+                    <div className="ob-s1-header-text" style={{ flex: 1, minWidth: 0 }}>
+                      <h3 style={{ fontFamily: font.display, fontSize: 22, color: c.ivory, letterSpacing: "-0.025em", lineHeight: 1.2, marginBottom: 8 }}>
+                        {aiProfile.headline || resumeParsed.name}
+                      </h3>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
+                        {aiProfile.seniorityLevel && <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, color: c.gilt, background: "rgba(201,169,110,0.08)", border: "1px solid rgba(201,169,110,0.18)", borderRadius: 4, padding: "2px 10px" }}>{aiProfile.seniorityLevel}</span>}
+                        {aiProfile.yearsExperience && <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>{aiProfile.yearsExperience}+ yrs</span>}
+                        {aiProfile.industries && aiProfile.industries.length > 0 && <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>{aiProfile.industries.slice(0, 2).join(", ")}</span>}
+                      </div>
+                      <p style={{ fontFamily: font.ui, fontSize: 13, color: c.chalk, lineHeight: 1.6, display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{aiProfile.summary}</p>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 10 }}>
+                        <svg aria-hidden="true" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={c.stone} strokeWidth="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                        <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>{fileName}</span>
+                        <span style={{ color: c.stone, fontSize: 11 }}>·</span>
+                        <button onClick={() => fileInputRef.current?.click()} style={{ fontFamily: font.ui, fontSize: 11, color: c.gilt, background: "none", border: "none", cursor: "pointer", padding: 0, textDecoration: "underline" }}>Replace</button>
+                        <input ref={fileInputRef} type="file" accept=".pdf,.docx,.doc,.txt" onChange={(e) => handleFileChange(e.target.files?.[0])} style={{ display: "none" }} />
+                      </div>
+                    </div>
+                    <div className="ob-s1-header-actions" style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+                      <button onClick={() => { setAiPhase("analyzing"); analyzeResumeWithAI(resumeText, targetRole).then(r => { if (r?.profile) setAiProfile(r.profile); setAiPhase("done"); }).catch(() => setAiPhase("done")); }}
+                        style={{ display: "flex", alignItems: "center", gap: 5, padding: "6px 12px", borderRadius: 7, background: c.graphite, border: `1px solid ${c.border}`, cursor: "pointer", fontFamily: font.ui, fontSize: 11, color: c.stone, transition: "all 0.2s" }}
+                        onMouseEnter={(e) => { e.currentTarget.style.borderColor = "rgba(240,237,232,0.15)"; e.currentTarget.style.color = c.ivory; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.borderColor = c.border; e.currentTarget.style.color = c.stone; }}>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                        Re-analyze
+                      </button>
+                      <button onClick={() => {
+                        undoRef.current = { fileName, resumeText, resumeParsed, aiProfile, aiPhase, targetRole, targetCompany };
+                        setFileName(""); setResumeText(""); setResumeParsed(null); setResumeError(""); setAiProfile(null); setAiPhase("idle"); setTargetRole(""); setTargetCompany("");
+                        setShowUndo(true); clearTimeout(undoTimerRef.current);
+                        undoTimerRef.current = window.setTimeout(() => { setShowUndo(false); undoRef.current = null; }, 8000);
+                      }}
+                        style={{ display: "flex", alignItems: "center", gap: 5, padding: "6px 12px", borderRadius: 7, background: c.graphite, border: `1px solid ${c.border}`, cursor: "pointer", fontFamily: font.ui, fontSize: 11, color: c.stone, transition: "all 0.2s" }}
+                        onMouseEnter={(e) => { e.currentTarget.style.borderColor = "rgba(240,237,232,0.15)"; e.currentTarget.style.color = c.ivory; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.borderColor = c.border; e.currentTarget.style.color = c.stone; }}>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                        Remove
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* 3-column grid: Skills | Achievements | Strengths & Gaps */}
+                  <div className="ob-s1-profile-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+                    {/* Skills */}
+                    {aiProfile.topSkills && aiProfile.topSkills.length > 0 && (
+                      <div className="ob-card fade-up-1" style={{ borderRadius: 14, padding: "16px 20px" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
+                          <svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                          <h4 style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: c.ivory, margin: 0 }}>Top Skills</h4>
                         </div>
-                      ))}
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                          {aiProfile.topSkills.slice(0, 6).map((skill, i) => (
+                            <span key={i} style={{ fontFamily: font.ui, fontSize: 11, color: i < 3 ? c.ivory : c.chalk, background: i < 3 ? "linear-gradient(135deg, rgba(201,169,110,0.12), rgba(201,169,110,0.05))" : "rgba(240,237,232,0.03)", border: `1px solid ${i < 3 ? "rgba(201,169,110,0.2)" : "rgba(240,237,232,0.06)"}`, borderRadius: 6, padding: "5px 10px", fontWeight: i < 3 ? 500 : 400 }}>{skill}</span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Key Achievements */}
+                    {aiProfile.keyAchievements && aiProfile.keyAchievements.length > 0 && (
+                      <div className="ob-card fade-up-2" style={{ borderRadius: 14, padding: "16px 20px" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
+                          <svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5"><path d="M12 15l-2 5-1-3-3-1 5-2"/><circle cx="12" cy="8" r="6"/></svg>
+                          <h4 style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: c.ivory, margin: 0 }}>Key Achievements</h4>
+                        </div>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                          {aiProfile.keyAchievements.slice(0, 2).map((a, i) => (
+                            <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 8, padding: "8px 10px", borderRadius: 8, background: "rgba(240,237,232,0.02)", border: `1px solid rgba(240,237,232,0.04)` }}>
+                              <div style={{ width: 18, height: 18, borderRadius: 5, background: "rgba(122,158,126,0.08)", border: `1px solid rgba(122,158,126,0.15)`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 1 }}>
+                                <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                              </div>
+                              <span style={{ fontFamily: font.ui, fontSize: 12, color: c.chalk, lineHeight: 1.4 }}>{a}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Strengths & Gaps stacked */}
+                    <div className="fade-up-3" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                      {aiProfile.interviewStrengths && aiProfile.interviewStrengths.length > 0 && (
+                        <div className="ob-card" style={{ borderRadius: 14, padding: "16px 20px", flex: 1 }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
+                            <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="1.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                            <h4 style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.ivory, margin: 0 }}>Strengths</h4>
+                          </div>
+                          {aiProfile.interviewStrengths.slice(0, 2).map((s, i) => (
+                            <div key={i} style={{ display: "flex", gap: 6, alignItems: "flex-start", marginBottom: 6 }}>
+                              <span style={{ width: 4, height: 4, borderRadius: "50%", background: c.sage, flexShrink: 0, marginTop: 5 }} />
+                              <span style={{ fontFamily: font.ui, fontSize: 11, color: c.chalk, lineHeight: 1.4 }}>{s}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {aiProfile.interviewGaps && aiProfile.interviewGaps.length > 0 && (
+                        <div className="ob-card" style={{ borderRadius: 14, padding: "16px 20px", flex: 1 }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
+                            <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                            <h4 style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.ivory, margin: 0 }}>To Prepare</h4>
+                          </div>
+                          {aiProfile.interviewGaps.slice(0, 2).map((g, i) => (
+                            <div key={i} style={{ display: "flex", gap: 6, alignItems: "flex-start", marginBottom: 6 }}>
+                              <span style={{ width: 4, height: 4, borderRadius: "50%", background: c.gilt, flexShrink: 0, marginTop: 5 }} />
+                              <span style={{ fontFamily: font.ui, fontSize: 11, color: c.chalk, lineHeight: 1.4 }}>{g}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Career trajectory + privacy — compact row */}
+                  {aiProfile.careerTrajectory && (
+                    <div className="ob-card fade-up-3" style={{ borderRadius: 12, padding: "12px 18px", display: "flex", alignItems: "center", gap: 10, border: `1px solid rgba(240,237,232,0.04)` }}>
+                      <svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="1.5" style={{ flexShrink: 0 }}><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+                      <span style={{ fontFamily: font.ui, fontSize: 12, color: c.chalk, lineHeight: 1.4 }}>{aiProfile.careerTrajectory}</span>
                     </div>
                   )}
                 </div>
               )}
-              <div style={{ display: "flex", alignItems: "flex-start", gap: 10, marginTop: 16, padding: "14px 16px", borderRadius: 10, background: c.graphite, border: `1px solid ${c.border}` }}>
-                <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5" style={{ flexShrink: 0, marginTop: 1 }}><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                <p style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, lineHeight: 1.5 }}>Your resume text is used only to generate personalized interview questions. You can delete it anytime.</p>
-              </div>
             </div>
           )}
 
-          {/* Step 4: Preferences — learning style + session length */}
-          {step === 4 && (
+          {/* ════════════════ STEP 2: Interview Setup ════════════════ */}
+          {step === 2 && (
             <div>
-              <div style={{ marginBottom: 40 }}>
-                <p style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: c.gilt, marginBottom: 12 }}>Step 4 — {stepLabels[3]}</p>
-                <h2 style={{ fontFamily: font.display, fontSize: 32, fontWeight: 400, color: c.ivory, letterSpacing: "-0.02em", lineHeight: 1.2, marginBottom: 8 }}>How should we coach you?</h2>
-                <p style={{ fontFamily: font.ui, fontSize: 14, color: c.stone, lineHeight: 1.6 }}>These preferences shape how your AI interviewer gives feedback.</p>
+              {/* Heading */}
+              <div style={{ marginBottom: 28 }} className="fade-up-1">
+                <p style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 700, color: c.gilt, textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 12 }}>Step 2 — Interview Setup</p>
+                <h2 style={{ fontFamily: font.display, fontSize: 32, fontWeight: 400, color: c.ivory, letterSpacing: "-0.025em", lineHeight: 1.2, marginBottom: 10 }}>
+                  {resumeParsed ? "Confirm your target" : "What are you preparing for?"}
+                </h2>
+                <p style={{ fontFamily: font.ui, fontSize: 15, color: c.stone, lineHeight: 1.7 }}>
+                  {resumeParsed ? "We pre-filled the role from your resume. Adjust anything that's off." : "These two inputs shape every question the AI asks you."}
+                </p>
               </div>
 
-              <label style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: c.chalk, display: "block", marginBottom: 12, letterSpacing: "0.02em" }}>Feedback style</label>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 32 }}>
-                {([
-                  { id: "direct" as const, label: "Direct & Blunt", desc: "Tell me exactly what's wrong. No sugarcoating.", icon: "🎯" },
-                  { id: "encouraging" as const, label: "Encouraging First", desc: "Lead with what I did well, then suggest improvements.", icon: "💪" },
-                ] as const).map((style) => (
-                  <button key={style.id} onClick={() => setLearningStyle(style.id)}
-                    style={{ padding: "20px 18px", borderRadius: 12, cursor: "pointer", background: learningStyle === style.id ? "rgba(201,169,110,0.08)" : c.graphite, border: `1.5px solid ${learningStyle === style.id ? c.gilt : c.border}`, textAlign: "left", transition: "all 0.25s ease" }}
-                    onMouseEnter={(e) => { if (learningStyle !== style.id) e.currentTarget.style.borderColor = c.borderHover; }}
-                    onMouseLeave={(e) => { if (learningStyle !== style.id) e.currentTarget.style.borderColor = c.border; }}>
-                    <span style={{ fontSize: 24, display: "block", marginBottom: 10 }}>{style.icon}</span>
-                    <span style={{ fontFamily: font.ui, fontSize: 14, fontWeight: 600, color: learningStyle === style.id ? c.ivory : c.chalk, display: "block", marginBottom: 4 }}>{style.label}</span>
-                    <p style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, lineHeight: 1.5 }}>{style.desc}</p>
-                  </button>
-                ))}
-              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
+                {/* Target Role + Company */}
+                <div className="fade-up-1" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                  <div>
+                    <label htmlFor="ob-role" style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.chalk, display: "block", marginBottom: 8 }}>
+                      Target role <span style={{ color: c.ember }}>*</span>
+                    </label>
+                    <AutocompleteInput id="ob-role" value={targetRole} onChange={(v) => { setTargetRole(v); setRoleAutoFilled(false); }} suggestions={ROLE_SUGGESTIONS} placeholder="e.g. Senior Engineering Manager..." />
+                    {roleAutoFilled && targetRole && (
+                      <p style={{ fontFamily: font.ui, fontSize: 11, color: c.sage, marginTop: 4, display: "flex", alignItems: "center", gap: 4 }}>
+                        <svg aria-hidden="true" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg>
+                        Auto-filled from resume
+                      </p>
+                    )}
+                    {!targetRole.trim() && interviewFocus.length > 0 && (
+                      <p style={{ fontFamily: font.ui, fontSize: 11, color: c.ember, marginTop: 4 }}>Required to personalize your questions</p>
+                    )}
+                  </div>
+                  <div>
+                    <label htmlFor="ob-company" style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.chalk, display: "block", marginBottom: 8 }}>
+                      Target company <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 400, color: c.stone }}>(optional)</span>
+                    </label>
+                    <AutocompleteInput id="ob-company" value={targetCompany} onChange={setTargetCompany} suggestions={COMPANY_SUGGESTIONS} placeholder="e.g. Google, Stripe..." />
+                    <p style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, marginTop: 4 }}>Helps tailor questions to company culture and interview style.</p>
+                  </div>
+                </div>
 
-              <label style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: c.chalk, display: "block", marginBottom: 12, letterSpacing: "0.02em" }}>Preferred session length</label>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
-                {([
-                  { mins: 10 as const, label: "Quick", desc: "2-3 questions", icon: "⚡" },
-                  { mins: 15 as const, label: "Standard", desc: "4-5 questions", icon: "🎙️" },
-                  { mins: 25 as const, label: "Deep Dive", desc: "6-8 questions", icon: "🔬" },
-                ] as const).map((opt) => (
-                  <button key={opt.mins} onClick={() => setSessionLength(opt.mins)}
-                    style={{ padding: "18px 14px", borderRadius: 10, cursor: "pointer", background: sessionLength === opt.mins ? "rgba(201,169,110,0.08)" : c.graphite, border: `1.5px solid ${sessionLength === opt.mins ? c.gilt : c.border}`, textAlign: "center", transition: "all 0.25s ease" }}
-                    onMouseEnter={(e) => { if (sessionLength !== opt.mins) e.currentTarget.style.borderColor = c.borderHover; }}
-                    onMouseLeave={(e) => { if (sessionLength !== opt.mins) e.currentTarget.style.borderColor = c.border; }}>
-                    <span style={{ fontSize: 20, display: "block", marginBottom: 6 }}>{opt.icon}</span>
-                    <span style={{ fontFamily: font.mono, fontSize: 18, fontWeight: 600, color: sessionLength === opt.mins ? c.gilt : c.ivory, display: "block", marginBottom: 2 }}>{opt.mins}m</span>
-                    <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: sessionLength === opt.mins ? c.ivory : c.chalk, display: "block", marginBottom: 2 }}>{opt.label}</span>
-                    <span style={{ fontFamily: font.ui, fontSize: 10, color: c.stone }}>{opt.desc}</span>
-                  </button>
-                ))}
+                <div style={{ height: 1, background: `linear-gradient(90deg, transparent, ${c.border}, transparent)` }} />
+
+                {/* Interview Focus — 4 columns */}
+                <div className="fade-up-2">
+                  <label style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.chalk, display: "block", marginBottom: 4 }}>
+                    Interview focus <span style={{ color: c.ember }}>*</span>
+                  </label>
+                  <p style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, marginBottom: 14 }}>Select the areas you want the AI to focus on. This directly shapes your questions.</p>
+                  <div className="ob-s2-focus-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 10 }}>
+                    {[
+                      { value: "Behavioral", icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>, desc: "Leadership, decision-making, conflict resolution" },
+                      { value: "Strategic", icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>, desc: "Vision, roadmap, business alignment" },
+                      { value: "Technical Leadership", icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>, desc: "Architecture, system design, tech strategy" },
+                      { value: "Case Study", icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>, desc: "Problem-solving, analytical frameworks" },
+                    ].map(opt => {
+                      const sel = interviewFocus.includes(opt.value);
+                      return (
+                        <button key={opt.value} className="ob-focus-card" onClick={() => setInterviewFocus(prev => prev.includes(opt.value) ? prev.filter(v => v !== opt.value) : [...prev, opt.value])}
+                          style={{
+                            padding: "16px 18px", borderRadius: 12, cursor: "pointer", transition: "all 0.2s ease", textAlign: "left",
+                            background: sel ? "rgba(201,169,110,0.10)" : c.graphite,
+                            border: `1.5px solid ${sel ? c.gilt : c.border}`,
+                            boxShadow: sel ? "0 0 16px rgba(201,169,110,0.08), inset 0 1px 0 rgba(201,169,110,0.06)" : "none",
+                            display: "flex", flexDirection: "column", gap: 8, color: sel ? c.gilt : c.stone,
+                          }}>
+                          {opt.icon}
+                          <span style={{ fontFamily: font.ui, fontSize: 14, fontWeight: 600, color: c.ivory }}>{opt.value}</span>
+                          <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 400, color: c.stone, lineHeight: 1.4 }}>{opt.desc}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {interviewFocus.length === 0 && (
+                    <p style={{ fontFamily: font.ui, fontSize: 11, color: c.ember, marginTop: 8 }}>Select at least one focus area</p>
+                  )}
+                </div>
               </div>
             </div>
           )}
 
-          {/* Step 5: Ready — personalized preview */}
-          {step === 5 && (
-            <div style={{ textAlign: "center" }}>
-              <div style={{ width: 80, height: 80, borderRadius: 20, margin: "0 auto 28px", background: "rgba(201,169,110,0.08)", border: "1px solid rgba(201,169,110,0.2)", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 0 40px rgba(201,169,110,0.1)" }}>
-                <svg aria-hidden="true" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5"><polygon points="5,3 19,12 5,21"/></svg>
-              </div>
-              <p style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: c.gilt, marginBottom: 12 }}>You're all set</p>
-              <h2 style={{ fontFamily: font.display, fontSize: 36, fontWeight: 400, color: c.ivory, letterSpacing: "-0.02em", lineHeight: 1.2, marginBottom: 12 }}>Your personalized prep is ready</h2>
-              <p style={{ fontFamily: font.ui, fontSize: 15, color: c.stone, lineHeight: 1.6, marginBottom: 40, maxWidth: 440, margin: "0 auto 40px" }}>
-                We've built a custom interview experience for{" "}
-                <span style={{ color: c.gilt, fontWeight: 600 }}>{targetRole === "Other" ? customRole : targetRole}</span>
-                {targetCompany && targetCompany !== "Other" && <> at <span style={{ color: c.gilt, fontWeight: 600 }}>{targetCompany}</span></>}
-                {customCompany && targetCompany === "Other" && <> at <span style={{ color: c.gilt, fontWeight: 600 }}>{customCompany}</span></>}
-                .
-              </p>
-
-              <div style={{ background: c.graphite, borderRadius: 14, border: `1px solid ${c.border}`, padding: "24px 28px", textAlign: "left", maxWidth: 440, margin: "0 auto 40px" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-                  <span style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: c.ivory }}>Your Profile</span>
-                  <span style={{ fontFamily: font.mono, fontSize: 11, color: c.sage }}>Personalized</span>
+          {/* ════════════════ STEP 3: Review & Permissions ════════════════ */}
+          {step === 3 && (
+            <div>
+              {/* Hero Section */}
+              <div style={{ textAlign: "center", marginBottom: 40 }}>
+                {/* Play icon circle */}
+                <div className="fade-up-1" style={{ width: 72, height: 72, borderRadius: "50%", background: `linear-gradient(135deg, ${c.gilt}, #B8923E)`, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 24px", boxShadow: "0 12px 40px rgba(201,169,110,0.25)" }}>
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill={c.obsidian} stroke="none"><polygon points="8,5 19,12 8,19"/></svg>
                 </div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+
+                {/* Gold label */}
+                <p className="fade-up-1" style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 700, color: c.gilt, textTransform: "uppercase", letterSpacing: "0.15em", marginBottom: 12 }}>You're All Set</p>
+
+                {/* Display heading */}
+                <h2 className="fade-up-2" style={{ fontFamily: font.display, fontSize: 32, fontWeight: 400, color: c.ivory, letterSpacing: "-0.02em", lineHeight: 1.2, marginBottom: 12 }}>Your personalized prep<br />is ready</h2>
+
+                {/* Personalized subtitle */}
+                <p className="fade-up-2" style={{ fontFamily: font.ui, fontSize: 14, color: c.stone, lineHeight: 1.6 }}>
+                  {targetRole && targetCompany
+                    ? `Tailored for your ${targetRole} interview${targetCompany !== "Exploring" ? ` at ${targetCompany}` : ""}.`
+                    : targetRole
+                    ? `Tailored for your ${targetRole} interview.`
+                    : "Tailored to your interview goals."}
+                </p>
+              </div>
+
+              {/* Your Profile Card */}
+              <div className="ob-card fade-up-3" style={{ borderRadius: 16, padding: "24px 28px", marginBottom: 20 }}>
+                <p style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.stone, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 20 }}>Your Profile</p>
+                <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
                   {[
-                    { label: "Target Role", value: targetRole === "Other" ? customRole : targetRole, editStep: 1 },
-                    { label: "Company", value: targetCompany === "Other" ? customCompany : targetCompany, editStep: 2 },
-                    { label: "Industry", value: industry, editStep: 2 },
-                    { label: "Resume", value: fileName ? `${fileName}${resumeParsed ? ` (${resumeParsed.skills.length} skills, ${resumeParsed.experience.length} roles)` : ""}` : "Not uploaded", editStep: 3 },
-                    { label: "Focus Areas", value: selectedTypes.map(t => interviewTypes.find(it => it.id === t)?.label).join(", "), editStep: 1 },
-                    { label: "Feedback Style", value: learningStyle === "direct" ? "Direct & Blunt" : "Encouraging First", editStep: 4 },
-                    { label: "Session Length", value: `${sessionLength} minutes`, editStep: 4 },
-                    ...(interviewDate ? [{ label: "Interview Date", value: new Date(interviewDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }), editStep: 2 }] : []),
-                  ].filter(item => item.value).map((item) => (
-                    <button
-                      key={item.label}
-                      onClick={() => { setSlideDir("back"); setStep(item.editStep); }}
-                      style={{
-                        display: "flex", justifyContent: "space-between", alignItems: "center",
-                        padding: "8px 10px", borderRadius: 6, border: "none", background: "transparent",
-                        cursor: "pointer", transition: "background 0.15s", width: "100%", textAlign: "left",
-                      }}
-                      onMouseEnter={(e) => e.currentTarget.style.background = "rgba(240,237,232,0.04)"}
-                      onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
-                    >
-                      <span style={{ fontFamily: font.ui, fontSize: 12, color: c.stone }}>{item.label}</span>
-                      <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                        <span style={{ fontFamily: font.ui, fontSize: 12, color: c.chalk, fontWeight: 500, maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.value}</span>
-                        <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={c.stone} strokeWidth="2" strokeLinecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                      </span>
-                    </button>
+                    { label: "Resume", value: fileName || "Not uploaded", icon: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={c.stone} strokeWidth="1.5" strokeLinecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>, editStep: 1 },
+                    { label: "Target Role", value: targetRole || "Not set", icon: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={c.stone} strokeWidth="1.5" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>, editStep: 2 },
+                    { label: "Target Company", value: targetCompany || "Exploring", icon: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={c.stone} strokeWidth="1.5" strokeLinecap="round"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="9" y1="6" x2="15" y2="6"/><line x1="9" y1="10" x2="15" y2="10"/><line x1="9" y1="14" x2="15" y2="14"/></svg>, editStep: 2 },
+                    { label: "Interview Focus", value: interviewFocus.length > 0 ? interviewFocus.join(", ") : "None selected", icon: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={c.stone} strokeWidth="1.5" strokeLinecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>, editStep: 2 },
+                  ].map((item, i, arr) => (
+                    <div key={item.label}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "13px 0" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 0 }}>
+                          <span style={{ flexShrink: 0, display: "flex" }}>{item.icon}</span>
+                          <span style={{ fontFamily: font.ui, fontSize: 13, color: c.stone, flexShrink: 0 }}>{item.label}</span>
+                        </div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          <span style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: item.value === "Not set" || item.value === "Not uploaded" || item.value === "None selected" ? "rgba(154,149,144,0.5)" : c.ivory, maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textAlign: "right" }}>
+                            {item.value}
+                          </span>
+                          <button
+                            onClick={() => { setSlideDir("back"); setStep(item.editStep); }}
+                            style={{ background: "none", border: "none", cursor: "pointer", padding: 4, display: "flex", alignItems: "center", opacity: 0.3, transition: "opacity 0.2s" }}
+                            onMouseEnter={(e) => { e.currentTarget.style.opacity = "0.8"; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.opacity = "0.3"; }}
+                            aria-label={`Edit ${item.label}`}>
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={c.stone} strokeWidth="2" strokeLinecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                          </button>
+                        </div>
+                      </div>
+                      {i < arr.length - 1 && <div style={{ height: 1, background: "rgba(240,237,232,0.04)" }} />}
+                    </div>
                   ))}
                 </div>
               </div>
+
+              {/* Session Preferences */}
+              <div className="ob-card fade-up-3" style={{ borderRadius: 16, padding: "24px 28px", marginBottom: 20 }}>
+                <p style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.stone, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 18 }}>Session Preferences</p>
+
+                {/* Feedback Style */}
+                <div style={{ marginBottom: 18 }}>
+                  <p style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.chalk, marginBottom: 10 }}>Feedback style</p>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    {[
+                      { value: "Direct & Blunt", label: "Direct", desc: "Tell me exactly what's wrong. No sugarcoating." },
+                      { value: "Encouraging First", label: "Encouraging", desc: "Lead with what I did well, then suggest improvements." },
+                    ].map(opt => {
+                      const sel = feedbackStyle === opt.value;
+                      return (
+                        <button key={opt.value} onClick={() => setFeedbackStyle(opt.value)}
+                          style={{
+                            flex: 1, padding: "10px 14px", borderRadius: 8, cursor: "pointer", textAlign: "left",
+                            background: sel ? "rgba(201,169,110,0.08)" : "transparent",
+                            border: `1px solid ${sel ? c.gilt : c.border}`,
+                            transition: "all 0.2s",
+                          }}>
+                          <span style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: sel ? c.ivory : c.chalk, display: "block" }}>{opt.label}</span>
+                          <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, lineHeight: 1.4 }}>{opt.desc}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div style={{ height: 1, background: "rgba(240,237,232,0.04)", marginBottom: 18 }} />
+
+                {/* Session Length */}
+                <div>
+                  <p style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.chalk, marginBottom: 10 }}>Session length</p>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    {[
+                      { value: "10m", label: "10 min", desc: "2–3 questions" },
+                      { value: "15m", label: "15 min", desc: "4–5 questions" },
+                      { value: "25m", label: "25 min", desc: "6–8 questions" },
+                    ].map(opt => {
+                      const sel = sessionLength === opt.value;
+                      return (
+                        <button key={opt.value} onClick={() => setSessionLength(opt.value)}
+                          style={{
+                            flex: 1, padding: "10px 14px", borderRadius: 8, cursor: "pointer", textAlign: "center",
+                            background: sel ? "rgba(201,169,110,0.08)" : "transparent",
+                            border: `1px solid ${sel ? c.gilt : c.border}`,
+                            transition: "all 0.2s",
+                          }}>
+                          <span style={{ fontFamily: font.ui, fontSize: 15, fontWeight: 600, color: sel ? c.gilt : c.ivory, display: "block" }}>{opt.label}</span>
+                          <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>{opt.desc}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              {/* Permissions Card */}
+              <div className="ob-card fade-up-3" style={{ borderRadius: 16, padding: "24px 28px" }}>
+                <p style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.stone, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 16 }}>Permissions</p>
+                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                  {/* Mic */}
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <div style={{ width: 36, height: 36, borderRadius: 9, background: micStatus === "granted" ? `${c.sage}12` : "rgba(240,237,232,0.03)", border: `1px solid ${micStatus === "granted" ? `${c.sage}25` : "rgba(240,237,232,0.06)"}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={micStatus === "granted" ? c.sage : c.stone} strokeWidth="1.5" strokeLinecap="round">
+                          <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                        </svg>
+                      </div>
+                      <div>
+                        <p style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.ivory }}>Microphone</p>
+                        <p style={{ fontFamily: font.ui, fontSize: 11, color: micStatus === "granted" ? c.sage : micStatus === "denied" ? c.ember : c.stone }}>
+                          {micStatus === "granted" ? "Connected" : micStatus === "denied" ? "Permission denied" : "Required for the interview"}
+                        </p>
+                      </div>
+                    </div>
+                    {micStatus === "granted" ? (
+                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <div style={{ width: 60, height: 4, borderRadius: 2, background: "rgba(240,237,232,0.06)", overflow: "hidden" }}>
+                          <div style={{ height: "100%", borderRadius: 2, background: c.sage, width: `${Math.max(5, micLevel)}%`, transition: "width 0.1s" }} />
+                        </div>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                      </div>
+                    ) : (
+                      <button onClick={requestMic}
+                        style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: c.gilt, background: "rgba(201,169,110,0.08)", border: `1px solid rgba(201,169,110,0.2)`, borderRadius: 6, padding: "6px 14px", cursor: "pointer", transition: "all 0.2s" }}
+                        onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(201,169,110,0.15)"; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(201,169,110,0.08)"; }}>
+                        {micStatus === "denied" ? "Retry" : "Allow"}
+                      </button>
+                    )}
+                  </div>
+
+                  <div style={{ height: 1, background: "rgba(240,237,232,0.04)" }} />
+
+                  {/* Camera */}
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <div style={{ width: 36, height: 36, borderRadius: 9, background: camStatus === "granted" ? `${c.sage}12` : "rgba(240,237,232,0.03)", border: `1px solid ${camStatus === "granted" ? `${c.sage}25` : "rgba(240,237,232,0.06)"}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={camStatus === "granted" ? c.sage : c.stone} strokeWidth="1.5" strokeLinecap="round">
+                          <path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+                        </svg>
+                      </div>
+                      <div>
+                        <p style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.ivory }}>Camera <span style={{ fontSize: 11, color: c.stone, fontWeight: 400 }}>(optional)</span></p>
+                        <p style={{ fontFamily: font.ui, fontSize: 11, color: camStatus === "granted" ? c.sage : camStatus === "denied" ? c.ember : c.stone }}>
+                          {camStatus === "granted" ? "Connected" : camStatus === "denied" ? "No worries — camera is optional" : "For a realistic interview feel"}
+                        </p>
+                      </div>
+                    </div>
+                    {camStatus === "granted" ? (
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                    ) : (
+                      <button onClick={requestCamera}
+                        style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: c.stone, background: "rgba(240,237,232,0.03)", border: `1px solid rgba(240,237,232,0.06)`, borderRadius: 6, padding: "6px 14px", cursor: "pointer", transition: "all 0.2s" }}
+                        onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(240,237,232,0.06)"; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(240,237,232,0.03)"; }}>
+                        {camStatus === "denied" ? "Retry" : "Enable"}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Camera preview */}
+              {camStatus === "granted" && (
+                <div style={{ marginTop: 16, borderRadius: 12, overflow: "hidden", background: "#000", aspectRatio: "16/9", maxHeight: 140 }}>
+                  <video ref={videoRef} autoPlay muted playsInline style={{ width: "100%", height: "100%", objectFit: "cover", transform: "scaleX(-1)" }} />
+                </div>
+              )}
             </div>
           )}
 
-          {/* Navigation */}
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 40 }}>
-            {step > 1 ? (
-              <button onClick={() => { setSlideDir("back"); setStep(step - 1); }}
-                style={{ fontFamily: font.ui, fontSize: 14, fontWeight: 500, color: c.stone, background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, transition: "color 0.2s" }}
+          {/* ─── Navigation ─── */}
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12, marginTop: 40 }}>
+            {step < TOTAL_STEPS ? (
+              <button onClick={goNext} disabled={isStep2Disabled}
+                style={{
+                  fontFamily: font.ui, fontSize: 15, fontWeight: 600, padding: "14px 40px", borderRadius: 10, border: "none",
+                  background: isStep2Disabled ? "rgba(201,169,110,0.15)" : `linear-gradient(135deg, ${c.gilt}, #B8923E)`,
+                  color: isStep2Disabled ? "rgba(201,169,110,0.4)" : c.obsidian,
+                  cursor: isStep2Disabled ? "not-allowed" : "pointer",
+                  transition: "all 0.25s ease", display: "inline-flex", alignItems: "center", gap: 8,
+                  boxShadow: isStep2Disabled ? "none" : "0 8px 24px rgba(201,169,110,0.2)",
+                }}
+                onMouseEnter={(e) => { if (!isStep2Disabled) { e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 12px 32px rgba(201,169,110,0.3)"; } }}
+                onMouseLeave={(e) => { if (!isStep2Disabled) { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 8px 24px rgba(201,169,110,0.2)"; } }}>
+                Continue
+                <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+              </button>
+            ) : (
+              <button onClick={handleStart}
+                style={{
+                  fontFamily: font.ui, fontSize: 15, fontWeight: 600, padding: "14px 40px", borderRadius: 10, border: "none",
+                  background: `linear-gradient(135deg, ${c.gilt}, #B8923E)`,
+                  color: c.obsidian, cursor: "pointer",
+                  transition: "all 0.25s ease", display: "inline-flex", alignItems: "center", gap: 8,
+                  boxShadow: "0 8px 24px rgba(201,169,110,0.2)", opacity: micStatus === "granted" ? 1 : 0.7,
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 12px 32px rgba(201,169,110,0.3)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 8px 24px rgba(201,169,110,0.2)"; }}>
+                <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polygon points="5,3 19,12 5,21"/></svg>
+                Start Practice Interview
+              </button>
+            )}
+
+            {step > 1 && (
+              <button onClick={goBack}
+                style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.stone, background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 5, transition: "color 0.2s" }}
                 onMouseEnter={(e) => e.currentTarget.style.color = c.ivory}
                 onMouseLeave={(e) => e.currentTarget.style.color = c.stone}>
-                <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+                <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>
                 Back
               </button>
-            ) : <div />}
-            <button onClick={handleNext} disabled={!canContinue()} className="shimmer-btn"
-              style={{
-                fontFamily: font.ui, fontSize: 14, fontWeight: 500, padding: "14px 36px", borderRadius: 8, border: "none",
-                background: canContinue() ? (step === TOTAL_STEPS ? c.gilt : c.ivory) : `${c.ivory}30`,
-                color: canContinue() ? c.obsidian : `${c.obsidian}60`,
-                cursor: canContinue() ? "pointer" : "not-allowed",
-                transition: "all 0.25s ease", display: "flex", alignItems: "center", gap: 8,
-              }}
-              onMouseEnter={(e) => { if (canContinue()) { e.currentTarget.style.background = c.gilt; e.currentTarget.style.boxShadow = "0 8px 32px rgba(201,169,110,0.2)"; } }}
-              onMouseLeave={(e) => { if (canContinue()) { e.currentTarget.style.background = step === TOTAL_STEPS ? c.gilt : c.ivory; e.currentTarget.style.boxShadow = "none"; } }}>
-              {step === TOTAL_STEPS ? "Start Practicing" : "Continue"}
-              <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
-            </button>
+            )}
+
           </div>
         </div>
       </div>

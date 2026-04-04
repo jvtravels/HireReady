@@ -1504,7 +1504,28 @@ function PricingCard({ plan, delay }: { plan: (typeof plans)[0]; delay: number }
         body: JSON.stringify({ plan: plan.planId, userId: user?.id, email: user?.email }),
       });
       const data = await res.json();
-      if (data.orderId && (window as any).Razorpay) {
+      if (!data.orderId) {
+        setError(data.error || "Checkout unavailable. Please try again.");
+        setLoading(false);
+        return;
+      }
+      // Dynamically load Razorpay if not already loaded
+      if (!(window as any).Razorpay) {
+        try {
+          await new Promise<void>((resolve, reject) => {
+            const s = document.createElement("script");
+            s.src = "https://checkout.razorpay.com/v1/checkout.js";
+            s.onload = () => resolve();
+            s.onerror = () => reject();
+            document.head.appendChild(s);
+          });
+        } catch {
+          setError("Payment system failed to load. Please refresh.");
+          setLoading(false);
+          return;
+        }
+      }
+      {
         const options = {
           key: data.keyId,
           amount: data.amount,
@@ -1545,9 +1566,6 @@ function PricingCard({ plan, delay }: { plan: (typeof plans)[0]; delay: number }
         const rzp = new (window as any).Razorpay(options);
         rzp.on("payment.failed", () => { setError("Payment failed. Please try again."); setLoading(false); });
         rzp.open();
-      } else {
-        setError(data.error || "Checkout unavailable. Please try again.");
-        setLoading(false);
       }
     } catch {
       setError("Something went wrong. Please try again.");
@@ -1593,7 +1611,12 @@ function PricingCard({ plan, delay }: { plan: (typeof plans)[0]; delay: number }
         }}>
         {loading ? "Redirecting to checkout..." : plan.cta}
       </button>
-      {error && <p style={{ fontFamily: font.ui, fontSize: 11, color: c.ember, marginTop: 8, textAlign: "center" }}>{error}</p>}
+      {error && (
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginTop: 8 }}>
+          <p style={{ fontFamily: font.ui, fontSize: 11, color: c.ember, margin: 0 }}>{error}</p>
+          <button onClick={() => setError("")} style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, color: c.gilt, background: "none", border: `1px solid rgba(201,169,110,0.3)`, borderRadius: 4, padding: "2px 8px", cursor: "pointer" }}>Dismiss</button>
+        </div>
+      )}
     </div>
   );
 }

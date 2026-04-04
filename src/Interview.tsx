@@ -6,6 +6,46 @@ import type { User } from "./AuthContext";
 import { speak } from "./tts";
 import { saveSession, getAuthToken } from "./supabase";
 
+/* ─── IndexedDB transcript backup ─── */
+const IDB_NAME = "hireready";
+const IDB_STORE = "drafts";
+function openIDB(): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(IDB_NAME, 1);
+    req.onupgradeneeded = () => { req.result.createObjectStore(IDB_STORE); };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+async function saveToIDB(key: string, data: unknown) {
+  try {
+    const db = await openIDB();
+    const tx = db.transaction(IDB_STORE, "readwrite");
+    tx.objectStore(IDB_STORE).put(data, key);
+    db.close();
+  } catch {}
+}
+async function loadFromIDB(key: string): Promise<unknown | null> {
+  try {
+    const db = await openIDB();
+    return new Promise((resolve) => {
+      const tx = db.transaction(IDB_STORE, "readonly");
+      const req = tx.objectStore(IDB_STORE).get(key);
+      req.onsuccess = () => resolve(req.result ?? null);
+      req.onerror = () => resolve(null);
+      db.close();
+    });
+  } catch { return null; }
+}
+async function deleteFromIDB(key: string) {
+  try {
+    const db = await openIDB();
+    const tx = db.transaction(IDB_STORE, "readwrite");
+    tx.objectStore(IDB_STORE).delete(key);
+    db.close();
+  } catch {}
+}
+
 /* ─── Interview Script ─── */
 interface InterviewStep {
   type: "intro" | "question" | "follow-up" | "closing";
@@ -56,6 +96,39 @@ const scriptsByType: Record<string, InterviewStep[]> = {
 };
 
 const defaultScript = scriptsByType.behavioral;
+
+/* ─── Mini Interview Script (3 questions for onboarding) ─── */
+function getMiniScript(user: User | null): InterviewStep[] {
+  const name = user?.name?.split(" ")[0] || "";
+  const role = user?.targetRole || "the role";
+  const hasResume = !!user?.resumeFileName;
+  const latestRole = user?.resumeData?.experience?.[0];
+
+  const resumeContext = hasResume && latestRole
+    ? ` I've reviewed your resume — I can see you were ${latestRole.title}${latestRole.company ? ` at ${latestRole.company}` : ""}. I'll reference your background in my questions.`
+    : "";
+
+  // When we have resume context, tailor questions to their experience
+  const q1 = hasResume && latestRole
+    ? `Based on your experience as ${latestRole.title}, tell me about a time you had to make a tough decision with incomplete information. What was the situation, and how did you approach it?`
+    : "Tell me about a time you had to make a tough decision with incomplete information. What was the situation, and how did you approach it?";
+
+  const q2 = hasResume && latestRole
+    ? `In your role as ${latestRole.title}, what's the biggest challenge you faced working with cross-functional teams, and how did you handle it?`
+    : "What's the biggest challenge you've faced working with cross-functional teams, and how did you handle it?";
+
+  const q3 = hasResume
+    ? `Imagine you're stepping into a new ${role} position and you find that team velocity has dropped 40% over the last quarter. Given your background, what would be your first three steps?`
+    : `If you joined a new team tomorrow as a ${role} and found that velocity had dropped 40% over the last quarter, what would be your first three steps?`;
+
+  return [
+    { type: "intro", aiText: `Hi${name ? ` ${name}` : ""}! Welcome to HireReady. This is a quick 3-question practice round for the ${role} position.${resumeContext} I'll ask you real interview questions and give you a score at the end. Ready? Let's go.`, thinkingDuration: 800, speakingDuration: 5000, waitForUser: true },
+    { type: "question", aiText: q1, thinkingDuration: 1200, speakingDuration: 4000, waitForUser: true, scoreNote: "STAR structure, decision-making clarity, outcome" },
+    { type: "question", aiText: q2, thinkingDuration: 1200, speakingDuration: 3500, waitForUser: true, scoreNote: "Collaboration, communication, conflict resolution" },
+    { type: "question", aiText: q3, thinkingDuration: 1200, speakingDuration: 4000, waitForUser: true, scoreNote: "Analytical thinking, prioritization, leadership approach" },
+    { type: "closing", aiText: "Great answers! That wraps up your quick practice round. Let me calculate your score — you'll see detailed feedback in just a moment.", thinkingDuration: 1000, speakingDuration: 4000, waitForUser: false },
+  ];
+}
 
 function getScript(type: string | null, difficulty: string | null, user: User | null): InterviewStep[] {
   const base = (type && scriptsByType[type]) ? scriptsByType[type] : defaultScript;
@@ -169,17 +242,20 @@ async function fetchLLMQuestions(params: {
   type: string; difficulty: string; role: string;
   company?: string; industry?: string; resumeText?: string;
 }): Promise<InterviewStep[] | null> {
-  try {
+  const attempt = async (): Promise<InterviewStep[] | null> => {
     const headers = await import("./supabase").then(m => m.authHeaders());
     const res = await fetch("/api/generate-questions", {
       method: "POST",
       headers,
       body: JSON.stringify(params),
     });
+    if (res.status === 429) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.retryAfter ? `Too many requests. Please wait ${data.retryAfter} seconds and try again.` : "Too many requests. Please wait a moment and try again.");
+    }
     if (!res.ok) return null;
     const data = await res.json();
     if (!data.questions || !Array.isArray(data.questions)) return null;
-    // Map LLM response to InterviewStep format
     return data.questions.map((q: { type?: string; aiText?: string; text?: string; scoreNote?: string }) => ({
       type: (q.type || "question") as InterviewStep["type"],
       aiText: q.aiText || q.text || "",
@@ -188,16 +264,25 @@ async function fetchLLMQuestions(params: {
       waitForUser: q.type !== "closing",
       scoreNote: q.scoreNote || "",
     }));
-  } catch {
-    return null;
+  };
+  // Retry once on network errors
+  for (let i = 0; i < 2; i++) {
+    try {
+      return await attempt();
+    } catch (err) {
+      if (err instanceof Error && err.message.includes("Too many requests")) throw err;
+      if (i === 1 || !(err instanceof TypeError)) return null;
+      await new Promise(r => setTimeout(r, 1500));
+    }
   }
+  return null;
 }
 
 /* ─── LLM Answer Evaluation ─── */
 async function fetchLLMEvaluation(params: {
   transcript: { speaker: string; text: string }[];
   type: string; difficulty: string; role: string; company?: string;
-}): Promise<{
+}, timeoutMs = 35000): Promise<{
   overallScore: number;
   skillScores: Record<string, number>;
   strengths: string[];
@@ -206,14 +291,25 @@ async function fetchLLMEvaluation(params: {
 } | null> {
   try {
     const headers = await import("./supabase").then(m => m.authHeaders());
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
     const res = await fetch("/api/evaluate", {
       method: "POST",
       headers,
       body: JSON.stringify(params),
+      signal: controller.signal,
     });
+    clearTimeout(timer);
+    if (res.status === 429) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.retryAfter ? `Too many requests. Please wait ${data.retryAfter} seconds and try again.` : "Too many requests. Please wait a moment and try again.");
+    }
     if (!res.ok) return null;
     return await res.json();
-  } catch {
+  } catch (err) {
+    if (err instanceof DOMException && err.name === "AbortError") {
+      throw new Error("Evaluation timed out. Using estimated score.");
+    }
     return null;
   }
 }
@@ -537,12 +633,38 @@ export default function Interview() {
   const interviewType = searchParams.get("type") || "behavioral";
   const interviewFocus = searchParams.get("focus") || "general";
   const interviewDifficulty = searchParams.get("difficulty") || "standard";
-  const fallbackScript = getScript(interviewType, interviewDifficulty, user);
+  const isMiniMode = searchParams.get("mini") === "true";
+  // Restore draft if resuming
+  const draftKey = `hireready_interview_draft_${user?.id || "anon"}`;
+  const isResuming = searchParams.get("resume") === "true";
+  const draftRef = useRef<{ transcript: any[]; currentStep: number; elapsed: number } | null>(null);
+  if (isResuming && !draftRef.current) {
+    try {
+      const raw = localStorage.getItem(draftKey);
+      if (raw) draftRef.current = JSON.parse(raw);
+    } catch {}
+  }
+
+  const fallbackScript = isMiniMode ? getMiniScript(user) : getScript(interviewType, interviewDifficulty, user);
   const [interviewScript, setInterviewScript] = useState<InterviewStep[]>(fallbackScript);
-  const [llmLoading, setLlmLoading] = useState(true);
+  const [llmLoading, setLlmLoading] = useState(!draftRef.current && !isMiniMode);
 
   // Interview state (declared early so refs can use it)
-  const [currentStep, setCurrentStep] = useState(0);
+  const [currentStep, setCurrentStep] = useState(draftRef.current?.currentStep || 0);
+
+  // Async IndexedDB fallback — if localStorage had no draft, try IDB
+  useEffect(() => {
+    if (!isResuming || draftRef.current) return;
+    loadFromIDB(draftKey).then(data => {
+      if (data && typeof data === "object" && "transcript" in (data as any)) {
+        const d = data as any;
+        draftRef.current = d;
+        setCurrentStep(d.currentStep || 0);
+        setTranscript(d.transcript || []);
+        setElapsed(d.elapsed || 0);
+      }
+    });
+  }, []);
 
   // Fetch LLM-generated questions on mount
   const currentStepRef = useRef(0);
@@ -551,6 +673,7 @@ export default function Interview() {
   }, [currentStep]);
 
   useEffect(() => {
+    if (isMiniMode) return; // Mini mode uses built-in script, no LLM fetch
     let cancelled = false;
     fetchLLMQuestions({
       type: interviewType,
@@ -560,11 +683,18 @@ export default function Interview() {
       industry: user?.industry,
       resumeText: user?.resumeText,
     }).then(questions => {
-      // Only swap in LLM questions if still on intro step to avoid mid-interview disruption
-      if (!cancelled && questions && questions.length > 0 && currentStepRef.current <= 1) {
+      if (cancelled) return;
+      if (questions && questions.length > 0 && currentStepRef.current <= 1) {
         setInterviewScript(questions);
+      } else if (!questions) {
+        setSaveWarning("AI questions unavailable. Using practice questions instead.");
       }
       setLlmLoading(false);
+    }).catch(err => {
+      if (!cancelled) {
+        setSaveWarning(err.message || "Could not generate questions. Using practice questions.");
+        setLlmLoading(false);
+      }
     });
     return () => { cancelled = true; };
   }, []);
@@ -573,7 +703,7 @@ export default function Interview() {
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
   const [currentTranscript, setCurrentTranscript] = useState("");
   const [phase, setPhase] = useState<"thinking" | "speaking" | "listening" | "done">("thinking");
-  const [elapsed, setElapsed] = useState(0);
+  const [elapsed, setElapsed] = useState(draftRef.current?.elapsed || 0);
   const [isRecording, setIsRecording] = useState(false);
 
   // Controls
@@ -582,7 +712,7 @@ export default function Interview() {
   const [showTranscript, setShowTranscript] = useState(false);
 
   // Transcript history
-  const [transcript, setTranscript] = useState<{ speaker: "ai" | "user"; text: string; time: string }[]>([]);
+  const [transcript, setTranscript] = useState<{ speaker: "ai" | "user"; text: string; time: string }[]>(draftRef.current?.transcript || []);
   const transcriptRef = useRef<HTMLDivElement>(null);
 
   // End interview modal
@@ -594,6 +724,14 @@ export default function Interview() {
   const [micError, setMicError] = useState("");
   const [usedFallbackScore, setUsedFallbackScore] = useState(false);
   const [evaluating, setEvaluating] = useState(false);
+  const [evalElapsed, setEvalElapsed] = useState(0);
+
+  // Eval elapsed timer
+  useEffect(() => {
+    if (!evaluating) { setEvalElapsed(0); return; }
+    const t = setInterval(() => setEvalElapsed(e => e + 1), 1000);
+    return () => clearInterval(t);
+  }, [evaluating]);
 
   useEffect(() => {
     const goOffline = () => setIsOffline(true);
@@ -606,22 +744,30 @@ export default function Interview() {
   // AI Voice (Text-to-Speech)
   const [aiVoiceEnabled, setAiVoiceEnabled] = useState(true);
   const ttsCancelRef = useRef<(() => void) | null>(null);
+  const interviewEndedRef = useRef(false);
 
   // Warn user before closing tab during active interview + auto-save draft
   useEffect(() => {
     if (phase === "done" || evaluating) return;
+    const saveDraft = () => {
+      const draftData = {
+        transcript, currentStep, elapsed, interviewType, interviewDifficulty, interviewFocus,
+        savedAt: Date.now(),
+      };
+      try { localStorage.setItem(draftKey, JSON.stringify(draftData)); } catch {}
+      saveToIDB(draftKey, draftData);
+    };
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       e.preventDefault();
-      // Auto-save draft so session isn't lost on accidental close
-      try {
-        localStorage.setItem("hireready_interview_draft", JSON.stringify({
-          transcript, currentStep, elapsed, interviewType, interviewDifficulty, interviewFocus,
-          savedAt: Date.now(),
-        }));
-      } catch {}
+      saveDraft();
     };
     window.addEventListener("beforeunload", handleBeforeUnload);
-    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+    // Auto-save every 30 seconds during active interview
+    const autoSaveInterval = setInterval(saveDraft, 30_000);
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      clearInterval(autoSaveInterval);
+    };
   }, [phase, evaluating, transcript, currentStep, elapsed, interviewType, interviewDifficulty, interviewFocus]);
 
   // Cancel speech + recognition on unmount
@@ -664,12 +810,15 @@ export default function Interview() {
           }
         };
         recognition.onend = () => {
-          // Auto-restart only if not stopped by cleanup
-          if (!stopped) {
+          // Auto-restart only if not stopped by cleanup and interview hasn't ended
+          if (!stopped && !interviewEndedRef.current) {
             try { recognition.start(); } catch {}
           }
         };
-        try { recognition.start(); } catch {}
+        try { recognition.start(); } catch (e) {
+          console.warn("Speech recognition failed to start:", e);
+          setMicError("Could not start speech recognition. Try refreshing.");
+        }
         recognitionRef.current = recognition;
       }
       return () => {
@@ -686,7 +835,7 @@ export default function Interview() {
   // User answer simulation
   const [answerTimer, setAnswerTimer] = useState(0);
 
-  const step = interviewScript[currentStep];
+  const step = interviewScript[currentStep] ?? interviewScript[interviewScript.length - 1];
   const totalQuestions = interviewScript.filter(s => s.type === "question").length;
   const currentQuestionNum = interviewScript.slice(0, currentStep + 1).filter(s => s.type === "question").length;
 
@@ -712,6 +861,7 @@ export default function Interview() {
     if (phase === "done") return;
 
     const step = interviewScript[currentStep];
+    if (!step) return;
 
     // Phase 1: Thinking
     setPhase("thinking");
@@ -743,7 +893,7 @@ export default function Interview() {
         // Use unified TTS service (ElevenLabs or browser based on settings)
         speak(step.aiText, onSpeechEnd, onSpeechEnd).then(handle => {
           ttsCancelRef.current = handle.cancel;
-        });
+        }).catch(() => { onSpeechEnd(); });
       } else {
         // No voice — use timer fallback
         const speakTimer = setTimeout(onSpeechEnd, step.speakingDuration);
@@ -758,8 +908,11 @@ export default function Interview() {
   }, [currentStep, aiVoiceEnabled]);
 
   // Handle user "finishing" their answer
+  const advancingRef = useRef(false);
   const handleNextQuestion = useCallback(() => {
-    if (phase !== "listening") return;
+    if (phase !== "listening" || advancingRef.current) return;
+    advancingRef.current = true;
+    setTimeout(() => { advancingRef.current = false; }, 500);
 
     // Cancel any ongoing speech and stop recognition
     ttsCancelRef.current?.();
@@ -802,12 +955,15 @@ export default function Interview() {
   // Handle end interview — evaluate with LLM, persist results, navigate
   const handleEnd = useCallback(async () => {
     // Immediately stop everything
+    interviewEndedRef.current = true;
     setPhase("done");
     ttsCancelRef.current?.();
     ttsCancelRef.current = null;
     recognitionRef.current?.stop();
     recognitionRef.current = null;
     setAiVoiceEnabled(false); // prevent interview flow effect from restarting
+    setIsCameraOff(true); // stop camera immediately
+    setIsMuted(true); // stop mic
     setEvaluating(true);
 
     // Deterministic fallback score
@@ -825,19 +981,24 @@ export default function Interview() {
     let skillScores: Record<string, number> | null = null;
 
     if (hasRealAnswers) {
-      const evaluation = await fetchLLMEvaluation({
-        transcript,
-        type: interviewType,
-        difficulty: interviewDifficulty,
-        role: user?.targetRole || "senior leader",
-        company: user?.targetCompany,
-      });
-      if (evaluation) {
-        score = evaluation.overallScore;
-        aiFeedback = evaluation.feedback;
-        skillScores = evaluation.skillScores;
-      } else {
+      try {
+        const evaluation = await fetchLLMEvaluation({
+          transcript,
+          type: interviewType,
+          difficulty: interviewDifficulty,
+          role: user?.targetRole || "senior leader",
+          company: user?.targetCompany,
+        });
+        if (evaluation) {
+          score = evaluation.overallScore;
+          aiFeedback = evaluation.feedback;
+          skillScores = evaluation.skillScores;
+        } else {
+          setUsedFallbackScore(true);
+        }
+      } catch (err) {
         setUsedFallbackScore(true);
+        setSaveWarning(err instanceof Error ? err.message : "Could not get AI feedback. Using estimated score.");
       }
     }
 
@@ -863,7 +1024,8 @@ export default function Interview() {
     }
 
     // Clear draft and track practice timestamp
-    try { localStorage.removeItem("hireready_interview_draft"); } catch {}
+    try { localStorage.removeItem(draftKey); } catch {}
+    deleteFromIDB(draftKey);
     const timestamps = user?.practiceTimestamps || [];
     updateUser({ practiceTimestamps: [...timestamps, new Date().toISOString()] });
     setEvaluating(false);
@@ -872,7 +1034,21 @@ export default function Interview() {
     if (!localOk || !cloudOk) {
       await new Promise(r => setTimeout(r, 2500));
     }
-    navigate(`/session/${sessionId}`);
+
+    if (isMiniMode) {
+      navigate("/onboarding/complete", {
+        state: {
+          score,
+          aiFeedback,
+          skillScores,
+          sessionId,
+          type: interviewType,
+          duration: elapsed,
+        },
+      });
+    } else {
+      navigate(`/session/${sessionId}`);
+    }
   }, [navigate, elapsed, interviewType, interviewDifficulty, interviewFocus, totalQuestions, user, updateUser, currentStep, interviewScript.length, transcript]);
 
   return (
@@ -1441,6 +1617,13 @@ export default function Interview() {
           <div style={{ width: 48, height: 48, border: `3px solid ${c.border}`, borderTopColor: c.gilt, borderRadius: "50%", animation: "spin 0.8s linear infinite", marginBottom: 24 }} />
           <h3 style={{ fontFamily: font.ui, fontSize: 18, fontWeight: 600, color: c.ivory, marginBottom: 8 }}>Analyzing your performance...</h3>
           <p style={{ fontFamily: font.ui, fontSize: 13, color: c.stone }}>AI is evaluating your answers and generating personalized feedback</p>
+          <p style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, opacity: 0.7, marginTop: 4 }}>
+            {evalElapsed < 10 ? "This usually takes 10–30 seconds." : evalElapsed < 25 ? `Almost there... (${evalElapsed}s)` : `Taking longer than usual... (${evalElapsed}s)`}
+          </p>
+          {/* Progress bar */}
+          <div style={{ width: 200, height: 3, borderRadius: 2, background: c.border, marginTop: 16, overflow: "hidden" }}>
+            <div style={{ height: "100%", borderRadius: 2, background: c.gilt, transition: "width 1s ease", width: `${Math.min(95, (evalElapsed / 30) * 100)}%` }} />
+          </div>
           {usedFallbackScore && (
             <div style={{ marginTop: 16, padding: "10px 16px", borderRadius: 8, background: "rgba(201,169,110,0.06)", border: "1px solid rgba(201,169,110,0.12)", maxWidth: 400 }}>
               <p style={{ fontFamily: font.ui, fontSize: 12, color: c.gilt, margin: 0 }}>AI evaluation unavailable — using estimated score based on your session metrics.</p>

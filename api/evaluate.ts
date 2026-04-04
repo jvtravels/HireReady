@@ -2,7 +2,7 @@
 
 export const config = { runtime: "edge" };
 
-import { handleCorsPreflightOrMethod, corsHeaders, isRateLimited, getClientIp, rateLimitResponse, verifyAuth, unauthorizedResponse, checkSessionLimit } from "./_shared";
+import { handleCorsPreflightOrMethod, corsHeaders, isRateLimited, getClientIp, rateLimitResponse, verifyAuth, unauthorizedResponse, checkSessionLimit, validateOrigin } from "./_shared";
 
 declare const process: { env: Record<string, string | undefined> };
 const GROQ_API_KEY = process.env.GROQ_API_KEY || "";
@@ -17,6 +17,11 @@ export default async function handler(req: Request): Promise<Response> {
     return new Response(JSON.stringify({ error: "LLM not configured" }), { status: 503, headers });
   }
 
+  // CSRF: validate Origin header on POST
+  if (!validateOrigin(req)) {
+    return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers });
+  }
+
   const auth = await verifyAuth(req);
   if (!auth.authenticated) return unauthorizedResponse(headers);
 
@@ -28,7 +33,7 @@ export default async function handler(req: Request): Promise<Response> {
   }
 
   const ip = getClientIp(req);
-  if (isRateLimited(ip, "evaluate", 10, 60_000)) {
+  if (await isRateLimited(ip, "evaluate", 10, 60_000)) {
     return rateLimitResponse(headers);
   }
 
@@ -41,8 +46,17 @@ export default async function handler(req: Request): Promise<Response> {
     }
 
     // Sanitize inputs — strip prompt injection attempts
-    const sanitize = (s: unknown, maxLen = 200) =>
-      typeof s === "string" ? s.replace(/(?:^|\n)\s*(system|assistant)\s*:/gi, "").slice(0, maxLen).trim() : "";
+    const sanitize = (s: unknown, maxLen = 200) => {
+      if (typeof s !== "string") return "";
+      return s
+        .replace(/(?:^|\n)\s*(system|assistant|user|human|instruction|<\|im_start\||<\|im_end\|)\s*:?/gi, "")
+        .replace(/```[\s\S]*?```/g, "") // strip markdown code blocks
+        .replace(/\{[^}]*"role"\s*:/gi, "") // strip JSON role injection
+        .replace(/(?:ignore|disregard|forget)\s+(?:all\s+)?(?:previous|above|prior)\s+(?:instructions?|prompts?|context)/gi, "")
+        .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "") // strip control chars
+        .slice(0, maxLen)
+        .trim();
+    };
 
     const formattedTranscript = transcript
       .slice(0, 50) // cap transcript entries
@@ -84,12 +98,15 @@ Scoring guidelines:
 
 Be honest but constructive. Reference specific moments from the transcript.`;
 
+    const ac = new AbortController();
+    const acTimer = setTimeout(() => ac.abort(), 15_000);
     const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${GROQ_API_KEY}`,
       },
+      signal: ac.signal,
       body: JSON.stringify({
         model: "llama-3.3-70b-versatile",
         messages: [{ role: "user", content: prompt }],
@@ -98,6 +115,7 @@ Be honest but constructive. Reference specific moments from the transcript.`;
         response_format: { type: "json_object" },
       }),
     });
+    clearTimeout(acTimer);
 
     if (!res.ok) {
       const errText = await res.text().catch(() => "");

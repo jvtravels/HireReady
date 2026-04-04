@@ -4,14 +4,17 @@ import { createRoot } from "react-dom/client";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider, RequireAuth } from "./AuthContext";
 import { DashboardProvider } from "./DashboardContext";
+import { Analytics } from "@vercel/analytics/react";
+import { SpeedInsights } from "@vercel/speed-insights/react";
 import App from "./App";
 import NotFound from "./NotFound";
 import ErrorBoundary from "./ErrorBoundary";
-import TempoHost from "../.tempo/tempo-host";
 
+const TempoHost = lazy(() => import("../.tempo/tempo-host"));
 const LegalPage = lazy(() => import("./LegalPage"));
 const SignUp = lazy(() => import("./SignUp"));
 const Onboarding = lazy(() => import("./Onboarding"));
+const OnboardingComplete = lazy(() => import("./OnboardingComplete"));
 const DashboardLayout = lazy(() => import("./DashboardLayout"));
 const DashboardHome = lazy(() => import("./DashboardHome"));
 const DashboardSessions = lazy(() => import("./DashboardSessions"));
@@ -41,7 +44,7 @@ const isTempoHostRoute = window.location.pathname.startsWith("/tempo-host");
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     {isTempoHostRoute ? (
-      <TempoHost />
+      <Suspense fallback={<LoadingFallback />}><TempoHost /></Suspense>
     ) : (
       <ErrorBoundary>
       <BrowserRouter>
@@ -52,6 +55,7 @@ createRoot(document.getElementById("root")!).render(
               <Route path="/signup" element={<div className="page-enter"><SignUp /></div>} />
               <Route path="/login" element={<div className="page-enter"><SignUp isLogin /></div>} />
               <Route path="/onboarding" element={<RequireAuth><div className="page-enter"><Onboarding /></div></RequireAuth>} />
+              <Route path="/onboarding/complete" element={<RequireAuth><div className="page-enter"><OnboardingComplete /></div></RequireAuth>} />
               <Route path="/dashboard" element={<RequireAuth><DashboardProvider><div className="page-enter"><DashboardLayout /></div></DashboardProvider></RequireAuth>}>
                 <Route index element={<DashboardHome />} />
                 <Route path="sessions" element={<DashboardSessions />} />
@@ -73,5 +77,7 @@ createRoot(document.getElementById("root")!).render(
       </BrowserRouter>
       </ErrorBoundary>
     )}
+    <Analytics />
+    <SpeedInsights />
   </StrictMode>,
 );

@@ -21,8 +21,11 @@ vi.mock("../AuthContext", () => ({
 
 // Mock supabase
 vi.mock("../supabase", () => ({
+  supabaseConfigured: false,
   getUserSessions: vi.fn(() => Promise.resolve([])),
   getCalendarEvents: vi.fn(() => Promise.resolve([])),
+  getProfile: vi.fn(() => Promise.resolve(null)),
+  authHeaders: vi.fn(() => Promise.resolve({ "Content-Type": "application/json" })),
 }));
 
 // Mock dashboard helpers

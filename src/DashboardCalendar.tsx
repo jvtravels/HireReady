@@ -13,8 +13,6 @@ import { DataLoadingSkeleton, ProGate } from "./dashboardComponents";
 export default function CalendarPage() {
   const { handleStartSession: onStartSession, dataLoading, isFree, isStarter, setShowUpgradeModal } = useDashboard();
 
-  if (dataLoading) return <DataLoadingSkeleton />;
-  if (isFree || isStarter) return <ProGate feature="Interview Calendar" onUpgrade={() => setShowUpgradeModal(true)} />;
   const { user } = useAuth();
   const [events, setEvents] = useState<InterviewEvent[]>(loadEvents);
   const [showForm, setShowForm] = useState(false);
@@ -31,6 +29,10 @@ export default function CalendarPage() {
   const [formLocation, setFormLocation] = useState("");
   const [formNotes, setFormNotes] = useState("");
   const [formReminders, setFormReminders] = useState(true);
+  const [formError, setFormError] = useState("");
+
+  if (dataLoading) return <DataLoadingSkeleton />;
+  if (isFree || isStarter) return <ProGate feature="Interview Calendar" onUpgrade={() => setShowUpgradeModal(true)} />;
 
   const updateEvents = (next: InterviewEvent[]) => {
     setEvents(next);
@@ -93,7 +95,11 @@ export default function CalendarPage() {
   };
 
   const handleSave = () => {
-    if (!formTitle || !formDate || !formTime) return;
+    if (!formTitle || !formDate || !formTime) {
+      setFormError(!formTitle ? "Event title is required." : !formDate ? "Date is required." : "Time is required.");
+      return;
+    }
+    setFormError("");
     const ev: InterviewEvent = {
       id: editingId || generateEventId(),
       title: formTitle,
@@ -277,6 +283,7 @@ export default function CalendarPage() {
                 background: "transparent", border: `1px solid ${c.border}`, borderRadius: 8,
                 padding: "10px 20px", cursor: "pointer",
               }}>Cancel</button>
+              {formError && <span style={{ fontFamily: font.ui, fontSize: 12, color: c.ember }}>{formError}</span>}
               <button onClick={handleSave} disabled={!formTitle || !formDate || !formTime} style={{
                 fontFamily: font.ui, fontSize: 13, fontWeight: 500,
                 background: formTitle && formDate && formTime ? c.gilt : c.border,

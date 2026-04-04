@@ -35,6 +35,8 @@ export default function ResetPassword() {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) setHasSession(true);
       else setError("Invalid or expired reset link. Please request a new one.");
+    }).catch(() => {
+      setError("Could not verify reset link. Please try again.");
     });
   }, []);
 

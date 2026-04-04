@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="HireReady — Premium AI mock interview practice for experienced professionals. Practice for the room you're walking into." />
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://checkout.razorpay.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://*.supabase.co https://generativelanguage.googleapis.com https://texttospeech.googleapis.com https://api.razorpay.com https://lumberjack.razorpay.com wss://*.supabase.co; media-src 'self' blob:; worker-src 'self' blob:; frame-src https://api.razorpay.com https://checkout.razorpay.com;" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://checkout.razorpay.com https://*.razorpay.com https://va.vercel-scripts.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://*.supabase.co https://generativelanguage.googleapis.com https://texttospeech.googleapis.com https://api.razorpay.com https://lumberjack.razorpay.com wss://*.supabase.co https://vitals.vercel-insights.com https://va.vercel-scripts.com; media-src 'self' blob:; worker-src 'self' blob:; frame-src https://api.razorpay.com https://checkout.razorpay.com;" />
 
     <!-- Open Graph -->
     <meta property="og:type" content="website" />
@@ -21,8 +21,9 @@
     <title>HireReady — Practice for the room you're walking into.</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
-    <script async src="https://checkout.razorpay.com/v1/checkout.js"></script>
+    <!-- Non-render-blocking font load: swap from print→all after load -->
+    <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
+    <noscript><link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" /></noscript>
   </head>
   <body>
     <div id="root"></div>

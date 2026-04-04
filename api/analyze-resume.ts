@@ -21,7 +21,7 @@ export default async function handler(req: Request): Promise<Response> {
   if (!auth.authenticated) return unauthorizedResponse(headers);
 
   const ip = getClientIp(req);
-  if (isRateLimited(ip, "analyze-resume", 5, 60_000)) {
+  if (await isRateLimited(ip, "analyze-resume", 5, 60_000)) {
     return rateLimitResponse(headers);
   }
 
@@ -60,12 +60,15 @@ Return a JSON object with these exact fields:
 Be specific — reference real details from the resume. Don't invent information not present.
 Respond with ONLY the JSON object, no markdown or explanation.`;
 
+    const ac = new AbortController();
+    const acTimer = setTimeout(() => ac.abort(), 15_000);
     const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${GROQ_API_KEY}`,
       },
+      signal: ac.signal,
       body: JSON.stringify({
         model: "llama-3.3-70b-versatile",
         messages: [{ role: "user", content: prompt }],
@@ -74,6 +77,7 @@ Respond with ONLY the JSON object, no markdown or explanation.`;
         response_format: { type: "json_object" },
       }),
     });
+    clearTimeout(acTimer);
 
     if (!res.ok) {
       const errText = await res.text().catch(() => "");
@@ -98,7 +102,8 @@ Respond with ONLY the JSON object, no markdown or explanation.`;
       }
     }
 
-    return new Response(JSON.stringify({ profile }), { status: 200, headers });
+    const truncated = resumeText.length > 3000;
+    return new Response(JSON.stringify({ profile, truncated }), { status: 200, headers });
   } catch (err) {
     console.error("Resume analysis error:", err);
     return new Response(JSON.stringify({ error: "Internal error" }), { status: 500, headers });

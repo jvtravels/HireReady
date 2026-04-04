@@ -218,6 +218,7 @@ export default function DashboardLayout() {
           onPaymentSuccess={(tier, start, end) => {
             setShowUpgradeModal(false);
             setPaymentBanner("success");
+            setTimeout(() => setPaymentBanner(null), 8000);
             authUpdateUser({ subscriptionTier: tier as "starter" | "pro", subscriptionStart: start, subscriptionEnd: end });
           }}
         />

@@ -37,8 +37,18 @@ export function DashboardSkeleton() {
 }
 
 export function DataLoadingSkeleton() {
+  const [showSlowMsg, setShowSlowMsg] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setShowSlowMsg(true), 3000);
+    return () => clearTimeout(t);
+  }, []);
   return (
     <div style={{ padding: "32px 0" }}>
+      {showSlowMsg && (
+        <div style={{ textAlign: "center", marginBottom: 16 }}>
+          <p style={{ fontFamily: font.ui, fontSize: 12, color: c.stone }}>Still loading... check your connection if this persists.</p>
+        </div>
+      )}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
         <div>
           <div className="skeleton skeleton-heading" style={{ width: 280 }} />
@@ -89,62 +99,104 @@ const ALL_PLANS = [
 export function UpgradeModal({ onClose, sessionsUsed, user, currentTier, onPaymentSuccess }: { onClose: () => void; sessionsUsed: number; user?: { id?: string; email?: string; name?: string } | null; currentTier: string; onPaymentSuccess: (tier: string, start: string, end: string) => void }) {
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState("");
+  // Store Razorpay response + plan in state so useEffect handles verification
+  // (fetch inside Razorpay's handler callback doesn't work reliably)
+  const [pendingVerification, setPendingVerification] = useState<{
+    razorpay_order_id: string;
+    razorpay_payment_id: string;
+    razorpay_signature: string;
+    plan: string;
+  } | null>(null);
+  const authHeadersRef = useRef<Record<string, string>>({});
+
+  // Verify payment in React lifecycle, not in Razorpay callback
+  useEffect(() => {
+    if (!pendingVerification) return;
+    let cancelled = false;
+    setLoading("verifying");
+    setError("");
+
+    fetch("/api/verify-payment", {
+      method: "POST",
+      headers: authHeadersRef.current,
+      body: JSON.stringify(pendingVerification),
+    })
+      .then(r => r.json())
+      .then(verifyData => {
+        if (cancelled) return;
+        if (verifyData.success) {
+          onPaymentSuccess(verifyData.subscriptionTier, verifyData.subscriptionStart, verifyData.subscriptionEnd);
+        } else {
+          setError(verifyData.error || "Payment verification failed. Contact support.");
+          setLoading(null);
+        }
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setError("Payment verification failed. Your payment was received — please refresh the page.");
+        setLoading(null);
+      })
+      .finally(() => { setPendingVerification(null); });
+
+    return () => { cancelled = true; };
+  }, [pendingVerification, onPaymentSuccess]);
 
   const handleCheckout = async (planId: string) => {
     setLoading(planId);
     setError("");
     try {
       const hdrs = await import("./supabase").then(m => m.authHeaders());
+      authHeadersRef.current = hdrs;
       const res = await fetch("/api/create-order", {
         method: "POST",
         headers: hdrs,
         body: JSON.stringify({ plan: planId, userId: user?.id, email: user?.email }),
       });
       const data = await res.json();
-      if (data.orderId && (window as any).Razorpay) {
-        const options = {
-          key: data.keyId,
-          amount: data.amount,
-          currency: data.currency,
-          name: "HireReady",
-          description: data.description,
-          order_id: data.orderId,
-          prefill: { email: user?.email || "", name: user?.name || "" },
-          theme: { color: "#C9A96E" },
-          handler: async (response: { razorpay_payment_id: string; razorpay_order_id: string; razorpay_signature: string }) => {
-            try {
-              const authHeaders = await import("./supabase").then(m => m.authHeaders());
-              const verifyRes = await fetch("/api/verify-payment", {
-                method: "POST",
-                headers: authHeaders,
-                body: JSON.stringify({
-                  razorpay_order_id: response.razorpay_order_id,
-                  razorpay_payment_id: response.razorpay_payment_id,
-                  razorpay_signature: response.razorpay_signature,
-                  plan: planId,
-                }),
-              });
-              const verifyData = await verifyRes.json();
-              if (verifyData.success) {
-                onPaymentSuccess(verifyData.subscriptionTier, verifyData.subscriptionStart, verifyData.subscriptionEnd);
-              } else {
-                setError(verifyData.error || "Payment verification failed. Contact support.");
-                setLoading(null);
-              }
-            } catch {
-              setError("Payment verification failed. Please contact support.");
-              setLoading(null);
-            }
-          },
-          modal: { ondismiss: () => setLoading(null) },
-        };
-        const rzp = new (window as any).Razorpay(options);
-        rzp.on("payment.failed", () => { setError("Payment failed. Please try again."); setLoading(null); });
-        rzp.open();
-      } else {
+      if (!data.orderId) {
         setError(data.error || "Could not start checkout. Please try again.");
         setLoading(null);
+        return;
       }
+      if (!(window as any).Razorpay) {
+        // Dynamically load Razorpay checkout script
+        try {
+          await new Promise<void>((resolve, reject) => {
+            const s = document.createElement("script");
+            s.src = "https://checkout.razorpay.com/v1/checkout.js";
+            s.onload = () => resolve();
+            s.onerror = () => reject();
+            document.head.appendChild(s);
+          });
+        } catch {
+          setError("Payment system failed to load. Please refresh and try again.");
+          setLoading(null);
+          return;
+        }
+      }
+
+      const rzp = new (window as any).Razorpay({
+        key: data.keyId,
+        amount: data.amount,
+        currency: data.currency,
+        name: "HireReady",
+        description: data.description,
+        order_id: data.orderId,
+        prefill: { email: user?.email || "", name: user?.name || "" },
+        theme: { color: "#C9A96E" },
+        handler: function (response: { razorpay_payment_id: string; razorpay_order_id: string; razorpay_signature: string }) {
+          // Just store the response — useEffect handles verification
+          setPendingVerification({
+            razorpay_order_id: response.razorpay_order_id,
+            razorpay_payment_id: response.razorpay_payment_id,
+            razorpay_signature: response.razorpay_signature,
+            plan: planId,
+          });
+        },
+        modal: { ondismiss: function () { setLoading(null); } },
+      });
+      rzp.on("payment.failed", function () { setError("Payment failed. Please try again."); setLoading(null); });
+      rzp.open();
     } catch {
       setError("Something went wrong. Please try again.");
       setLoading(null);
@@ -188,8 +240,9 @@ export function UpgradeModal({ onClose, sessionsUsed, user, currentTier, onPayme
         </div>
 
         {error && (
-          <div style={{ background: "rgba(196,112,90,0.1)", border: `1px solid rgba(196,112,90,0.2)`, borderRadius: 8, padding: "10px 14px", marginBottom: 16, textAlign: "center" }}>
+          <div style={{ background: "rgba(196,112,90,0.1)", border: `1px solid rgba(196,112,90,0.2)`, borderRadius: 8, padding: "10px 14px", marginBottom: 16, textAlign: "center", display: "flex", alignItems: "center", justifyContent: "center", gap: 12 }}>
             <span style={{ fontFamily: font.ui, fontSize: 12, color: c.ember }}>{error}</span>
+            <button onClick={() => setError(null)} style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.gilt, background: "none", border: `1px solid rgba(201,169,110,0.3)`, borderRadius: 6, padding: "4px 12px", cursor: "pointer" }}>Dismiss</button>
           </div>
         )}
 
@@ -235,7 +288,7 @@ export function UpgradeModal({ onClose, sessionsUsed, user, currentTier, onPayme
                   onMouseEnter={(e) => { if (!loading) { if (plan.featured) e.currentTarget.style.filter = "brightness(1.15)"; else { e.currentTarget.style.borderColor = c.chalk; e.currentTarget.style.background = "rgba(240,237,232,0.03)"; } } }}
                   onMouseLeave={(e) => { if (plan.featured) e.currentTarget.style.filter = "brightness(1)"; else { e.currentTarget.style.borderColor = c.borderHover; e.currentTarget.style.background = "transparent"; } }}
                 >
-                  {loading === plan.id ? "Redirecting..." : plan.featured ? "Go Pro" : "Get Started"}
+                  {loading === "verifying" ? "Verifying..." : loading === plan.id ? "Redirecting..." : plan.featured ? "Go Pro" : "Get Started"}
                 </button>
               )}
             </div>

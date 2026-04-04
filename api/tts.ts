@@ -22,7 +22,7 @@ export default async function handler(req: Request): Promise<Response> {
   if (!auth.authenticated) return unauthorizedResponse(headers);
 
   const ip = getClientIp(req);
-  if (isRateLimited(ip, "tts", 30, 60_000)) {
+  if (await isRateLimited(ip, "tts", 30, 60_000)) {
     return rateLimitResponse(headers);
   }
 
@@ -35,13 +35,23 @@ export default async function handler(req: Request): Promise<Response> {
 
     // Cap text length to prevent abuse
     const trimmedText = text.slice(0, 2000);
-    const voice = voiceName || "en-US-Neural2-D";
 
+    // Whitelist allowed voices
+    const ALLOWED_VOICES = [
+      "en-US-Neural2-F", "en-US-Neural2-C", "en-US-Neural2-H", "en-US-Neural2-E",
+      "en-US-Neural2-D", "en-US-Neural2-A", "en-US-Neural2-I", "en-US-Neural2-J",
+    ];
+    const voice = (typeof voiceName === "string" && ALLOWED_VOICES.includes(voiceName))
+      ? voiceName : "en-US-Neural2-D";
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10_000);
     const res = await fetch(
       "https://texttospeech.googleapis.com/v1/text:synthesize",
       {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-Goog-Api-Key": GCP_TTS_KEY },
+        signal: controller.signal,
         body: JSON.stringify({
           input: { text: trimmedText },
           voice: { languageCode: "en-US", name: voice },
@@ -54,6 +64,7 @@ export default async function handler(req: Request): Promise<Response> {
         }),
       },
     );
+    clearTimeout(timeout);
 
     if (!res.ok) {
       const errText = await res.text().catch(() => "");
@@ -73,6 +84,7 @@ export default async function handler(req: Request): Promise<Response> {
 
     const audioHeaders: Record<string, string> = {
       "Content-Type": "audio/mpeg",
+      "Content-Length": String(bytes.length),
       "Cache-Control": "no-store",
     };
     // Add CORS origin if allowed

@@ -1,0 +1,86 @@
+/* Vercel Serverless Function — Cancel Subscription */
+
+import type { VercelRequest, VercelResponse } from "@vercel/node";
+
+const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || "";
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || "";
+
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || "").split(",").filter(Boolean);
+
+function getAllowedOrigin(origin: string): string {
+  if (ALLOWED_ORIGINS.length > 0 && ALLOWED_ORIGINS.includes(origin)) return origin;
+  if (origin.endsWith(".vercel.app")) return origin;
+  if (origin.startsWith("http://localhost:")) return origin;
+  return "";
+}
+
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  const origin = getAllowedOrigin(req.headers.origin || "");
+  if (origin) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+    res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+    res.setHeader("Vary", "Origin");
+  }
+
+  if (req.method === "OPTIONS") return res.status(204).end();
+  if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
+
+  // CSRF: validate Origin header on state-changing requests
+  if (!origin) {
+    return res.status(403).json({ error: "Forbidden" });
+  }
+
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+    return res.status(503).json({ error: "Not configured" });
+  }
+
+  // Verify user auth
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+
+  const token = authHeader.slice(7);
+  let userId: string;
+  try {
+    const userRes = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+      headers: { Authorization: `Bearer ${token}`, apikey: SUPABASE_ANON_KEY },
+    });
+    if (!userRes.ok) return res.status(401).json({ error: "Invalid auth token" });
+    const userData = await userRes.json();
+    userId = userData.id;
+  } catch {
+    return res.status(401).json({ error: "Auth verification failed" });
+  }
+
+  try {
+    // Update profile to free tier
+    const updateRes = await fetch(
+      `${SUPABASE_URL}/rest/v1/profiles?id=eq.${encodeURIComponent(userId)}`,
+      {
+        method: "PATCH",
+        headers: {
+          apikey: SUPABASE_SERVICE_ROLE_KEY,
+          Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+          "Content-Type": "application/json",
+          Prefer: "return=minimal",
+        },
+        body: JSON.stringify({
+          subscription_tier: "free",
+          subscription_end: new Date().toISOString(),
+        }),
+      },
+    );
+
+    if (!updateRes.ok) {
+      return res.status(500).json({ error: "Failed to cancel subscription" });
+    }
+
+    return res.status(200).json({ success: true });
+  } catch (err) {
+    console.error("Cancel subscription error:", err);
+    return res.status(500).json({ error: "Internal error" });
+  }
+}

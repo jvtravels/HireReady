@@ -18,6 +18,12 @@ function scoreLabel(score: number) {
   return "Developing";
 }
 
+function scoreTip(score: number) {
+  if (score >= 85) return "Strong: Interview-ready performance";
+  if (score >= 70) return "Good: Solid foundation, minor areas to refine";
+  return "Developing: Key areas need practice before interviews";
+}
+
 function normalizeType(type: string): string {
   const map: Record<string, string> = {
     behavioral: "Behavioral", strategic: "Strategic",
@@ -191,10 +197,17 @@ export default function SessionDetail() {
           <div style={{ display: "flex", gap: 8 }}>
             <button onClick={handleCopy} aria-label="Copy report to clipboard" style={{
               padding: "7px 14px", borderRadius: 8, fontSize: 12, fontWeight: 500,
-              background: "transparent", border: `1px solid ${c.border}`, color: c.stone,
+              background: copied ? "rgba(122,158,126,0.1)" : "transparent",
+              border: `1px solid ${copied ? "rgba(122,158,126,0.3)" : c.border}`,
+              color: copied ? c.sage : c.stone,
               cursor: "pointer", display: "flex", alignItems: "center", gap: 6,
+              transition: "all 0.2s ease",
             }}>
-              <svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              {copied ? (
+                <svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+              ) : (
+                <svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              )}
               {copied ? "Copied!" : "Copy"}
             </button>
             <button onClick={handleDownload} aria-label="Download session report" style={{
@@ -222,7 +235,7 @@ export default function SessionDetail() {
             <div style={{ textAlign: "center" }}>
               <div style={{ width: 72, height: 72, borderRadius: "50%", border: `3px solid ${scoreLabelColor(session.score)}`, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
                 <span style={{ fontFamily: font.mono, fontSize: 26, fontWeight: 700, color: c.ivory, lineHeight: 1 }}>{session.score}</span>
-                <span style={{ fontSize: 10, fontWeight: 600, color: scoreLabelColor(session.score), marginTop: 2 }}>{scoreLabel(session.score)}</span>
+                <span title={scoreTip(session.score)} style={{ fontSize: 10, fontWeight: 600, color: scoreLabelColor(session.score), marginTop: 2, cursor: "help" }}>{scoreLabel(session.score)}</span>
               </div>
             </div>
           </div>
@@ -285,7 +298,7 @@ export default function SessionDetail() {
         {session.ai_feedback && (
           <div style={{ background: c.graphite, borderRadius: 14, border: `1px solid ${c.border}`, padding: "28px 32px" }}>
             <h3 style={{ fontSize: 15, fontWeight: 600, color: c.ivory, marginBottom: 12 }}>AI Coach Summary</h3>
-            <p style={{ fontSize: 14, color: c.chalk, lineHeight: 1.7, margin: 0, whiteSpace: "pre-wrap" }}>{session.ai_feedback}</p>
+            <p style={{ fontSize: 14, color: c.chalk, lineHeight: 1.7, margin: 0, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{session.ai_feedback}</p>
           </div>
         )}
       </div>
