@@ -22,8 +22,8 @@ export function hasStoredSession(): boolean {
 const LAST_ROUTE_KEY = "hireready_last_route";
 export function saveLastRoute(path: string) {
   try {
-    // Only save authenticated app routes, not public pages
-    if (path.startsWith("/dashboard") || path.startsWith("/onboarding") || path.startsWith("/session") || path.startsWith("/interview")) {
+    // Only save persistent app routes — not transient screens like /interview
+    if (path.startsWith("/dashboard") || path.startsWith("/onboarding") || path.startsWith("/session")) {
       localStorage.setItem(LAST_ROUTE_KEY, path);
     }
   } catch {}
