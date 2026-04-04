@@ -84,7 +84,7 @@ const scriptsByType: Record<string, InterviewStep[]> = {
     { type: "question", aiText: "How do you evaluate and introduce new technologies into your stack? Walk me through a recent technology decision you drove.", thinkingDuration: 2000, speakingDuration: 4500, waitForUser: true, scoreNote: "Focus on: tech evaluation rigor, risk management" },
     { type: "closing", aiText: "Strong session. Your technical depth is evident, and you communicate architecture decisions clearly. For improvement, try connecting technical decisions more explicitly to business outcomes. Great work!", thinkingDuration: 2000, speakingDuration: 6500, waitForUser: false },
   ],
-  case: [
+  "case-study": [
     { type: "intro", aiText: "Welcome to your case study interview. I'll present you with business scenarios that test your analytical thinking and problem-solving frameworks. Let's start.", thinkingDuration: 1000, speakingDuration: 5000, waitForUser: true },
     { type: "question", aiText: "Your company's core API has 99.95% uptime but customers are churning citing 'reliability issues.' Latency p99 is 2 seconds. How would you investigate and address this?", thinkingDuration: 2000, speakingDuration: 5500, waitForUser: true, scoreNote: "Focus on: problem decomposition, data-driven approach" },
     { type: "follow-up", aiText: "You discover the latency spikes correlate with a third-party dependency. What's your short-term and long-term mitigation strategy?", thinkingDuration: 1500, speakingDuration: 4000, waitForUser: true, scoreNote: "Looking for: tactical vs strategic thinking, vendor management" },
@@ -823,8 +823,8 @@ export default function Interview() {
   const [answerTimer, setAnswerTimer] = useState(0);
 
   const step = interviewScript[currentStep] ?? interviewScript[interviewScript.length - 1];
-  const totalQuestions = interviewScript.filter(s => s.type === "question").length;
-  const currentQuestionNum = interviewScript.slice(0, currentStep + 1).filter(s => s.type === "question").length;
+  const totalQuestions = interviewScript.filter(s => s.type === "question" || s.type === "follow-up").length;
+  const currentQuestionNum = interviewScript.slice(0, currentStep + 1).filter(s => s.type === "question" || s.type === "follow-up").length;
 
   // Timer
   useEffect(() => {
