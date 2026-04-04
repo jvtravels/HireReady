@@ -170,19 +170,30 @@ export default function Onboarding() {
         careerTrajectory: "",
       };
       setAiProfile(fallback);
-      if (data.experience?.[0]?.title && !targetRole) { setTargetRole(data.experience[0].title); setRoleAutoFilled(true); }
+      const autoRole = data.experience?.[0]?.title || "";
+      if (autoRole && !targetRole) { setTargetRole(autoRole); setRoleAutoFilled(true); }
       // AI analysis in background
       setAiPhase("analyzing");
+      let finalProfile: ResumeProfile = fallback;
       try {
         const result = await Promise.race([
-          analyzeResumeWithAI(text, targetRole || data.experience?.[0]?.title),
+          analyzeResumeWithAI(text, targetRole || autoRole),
           new Promise<null>((_, reject) => setTimeout(() => reject(new Error("timeout")), 30000)),
         ]);
         if (result && typeof result === "object" && "profile" in result) {
-          setAiProfile(result.profile);
+          finalProfile = result.profile;
+          setAiProfile(finalProfile);
         }
       } catch {}
       setAiPhase("done");
+      // Save resume info to profile immediately
+      updateUser({
+        resumeFileName: file.name,
+        resumeText: text,
+        resumeData: { ...data, aiProfile: finalProfile } as unknown as ParsedResume,
+        targetRole: targetRole || autoRole || undefined,
+        name: data.name || undefined,
+      });
     } catch (err: any) {
       setResumeError(err.message || "Failed to parse resume");
       setResumeText(""); setResumeParsed(null);
