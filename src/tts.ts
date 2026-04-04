@@ -83,7 +83,11 @@ async function speakWithProxy(
     audio = new Audio(url);
     audio.onended = () => { revokeUrl(); onEnd(); };
     audio.onerror = () => { revokeUrl(); onError(); };
-    audio.play();
+    audio.play().catch(() => {
+      // Autoplay blocked or playback failed — trigger error fallback
+      revokeUrl();
+      onError();
+    });
   } catch (err: any) {
     if (err.name !== "AbortError") {
       console.warn("TTS proxy failed:", err);

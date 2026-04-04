@@ -863,6 +863,8 @@ export default function Interview() {
     const step = interviewScript[currentStep];
     if (!step) return;
 
+    let safetyTimer: ReturnType<typeof setTimeout> | null = null;
+
     // Phase 1: Thinking
     setPhase("thinking");
     const thinkTimer = setTimeout(() => {
@@ -880,7 +882,11 @@ export default function Interview() {
       // Cancel any prior speech
       ttsCancelRef.current?.();
 
+      let speechEnded = false;
       const onSpeechEnd = () => {
+        if (speechEnded) return; // prevent double-fire
+        speechEnded = true;
+        if (safetyTimer) clearTimeout(safetyTimer);
         setIsRecording(false);
         if (step.waitForUser) {
           setPhase("listening");
@@ -889,8 +895,16 @@ export default function Interview() {
         }
       };
 
+      // Safety timeout: force transition if TTS hangs or never fires callback
+      safetyTimer = setTimeout(() => {
+        if (!speechEnded) {
+          console.warn("[interview] TTS safety timeout — forcing phase transition");
+          onSpeechEnd();
+        }
+      }, Math.max(step.speakingDuration + 5000, 30000));
+
       if (aiVoiceEnabled) {
-        // Use unified TTS service (ElevenLabs or browser based on settings)
+        // Use unified TTS service (Google Cloud or browser fallback)
         speak(step.aiText, onSpeechEnd, onSpeechEnd).then(handle => {
           ttsCancelRef.current = handle.cancel;
         }).catch(() => { onSpeechEnd(); });
@@ -903,6 +917,7 @@ export default function Interview() {
 
     return () => {
       clearTimeout(thinkTimer);
+      if (safetyTimer) clearTimeout(safetyTimer);
       ttsCancelRef.current?.();
     };
   }, [currentStep, aiVoiceEnabled]);
