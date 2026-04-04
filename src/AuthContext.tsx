@@ -106,29 +106,35 @@ function profileToUser(profile: Profile, session: Session): User {
   };
 }
 
-/* ─── localStorage cache for instant load ─── */
-const AUTH_KEY = "hireready_auth";
-function loadLocalUser(): User | null {
-  try { const raw = localStorage.getItem(AUTH_KEY); if (raw) return JSON.parse(raw); } catch {} return null;
-}
-function saveLocalUser(user: User | null) {
-  try { if (user) localStorage.setItem(AUTH_KEY, JSON.stringify(user)); else localStorage.removeItem(AUTH_KEY); } catch {}
-}
-
 export function AuthProvider({ children }: { children: ReactNode }) {
-  // Load cached user immediately for instant UI — will be validated against Supabase
-  const cachedUser = supabaseConfigured && hasStoredSession() ? loadLocalUser() : (!supabaseConfigured ? loadLocalUser() : null);
-  const [user, setUserRaw] = useState<User | null>(cachedUser);
-  // If we have a cached user, skip the loading state entirely (show UI instantly)
-  const [loading, setLoading] = useState(supabaseConfigured && !cachedUser);
+  const [user, setUser] = useState<User | null>(null);
+  // Always show loading when Supabase is configured — server validates session
+  const [loading, setLoading] = useState(supabaseConfigured);
 
-  // Wrap setUser to also persist to localStorage for instant load next time
-  const setUser = useCallback((u: User | null | ((prev: User | null) => User | null)) => {
-    setUserRaw(prev => {
-      const next = typeof u === "function" ? u(prev) : u;
-      saveLocalUser(next);
-      return next;
-    });
+  // Clean up legacy localStorage cache from previous versions
+  useEffect(() => {
+    try { localStorage.removeItem("hireready_auth"); } catch {}
+  }, []);
+
+  // "Remember me" — clear session on tab/browser close if ephemeral
+  useEffect(() => {
+    const handleUnload = () => {
+      try {
+        if (sessionStorage.getItem("hireready_ephemeral") === "1") {
+          // Clear auth data so session doesn't persist
+          clearLastRoute();
+          // Remove Supabase session tokens from localStorage
+          for (let i = localStorage.length - 1; i >= 0; i--) {
+            const key = localStorage.key(i);
+            if (key && key.startsWith("sb-") && key.endsWith("-auth-token")) {
+              localStorage.removeItem(key);
+            }
+          }
+        }
+      } catch {}
+    };
+    window.addEventListener("beforeunload", handleUnload);
+    return () => window.removeEventListener("beforeunload", handleUnload);
   }, []);
 
   // Listen for auth state changes (Supabase mode)
@@ -174,8 +180,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false);
     }, 8000);
 
-    // Check current session
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
+    // Check current session — use getUser() to validate server-side,
+    // not just getSession() which only reads the local JWT cache.
+    // A deleted user's JWT can still appear valid locally until it expires.
+    supabase.auth.getUser().then(async ({ data: { user: authUser }, error: userError }) => {
+      if (userError || !authUser) {
+        // Token is invalid server-side — user was deleted or session expired
+        console.log("[auth] getUser failed (account deleted or token invalid):", userError?.message);
+        setUser(null);
+
+        // Clean up the stale session
+        await supabase.auth.signOut().catch(() => {});
+        clearTimeout(safetyTimer);
+        setLoading(false);
+        return;
+      }
+
+      // Valid auth user — now get session and profile
+      const { data: { session } } = await supabase.auth.getSession();
       if (session) {
         console.log("[auth] session found for:", session.user.id, session.user.email);
         try {
@@ -184,25 +206,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             console.log("[auth] existing profile loaded");
             setUser(profileToUser(profile, session));
           } else {
-            console.log("[auth] no profile found, creating...");
-            await ensureProfile(session);
+            // No profile on page load = profile was deleted or never created.
+            // Don't auto-create — sign out so user goes to login.
+            // Profile creation only happens on fresh SIGNED_IN (signup/login).
+            console.log("[auth] no profile found on load, signing out");
+            setUser(null);
+    
+            await supabase.auth.signOut().catch(() => {});
           }
         } catch (err) {
           console.error("[auth] getProfile threw:", err);
-          await ensureProfile(session);
+          setUser(null);
+  
+          await supabase.auth.signOut().catch(() => {});
         }
+      } else {
+        console.log("[auth] no session found, clearing cached user");
+        setUser(null);
       }
       clearTimeout(safetyTimer);
       setLoading(false);
     }).catch((err) => {
-      console.error("[auth] getSession failed:", err);
+      console.error("[auth] getUser failed:", err);
+      setUser(null);
       clearTimeout(safetyTimer);
       setLoading(false);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log("[auth] onAuthStateChange:", event, session?.user?.id);
-      if ((event === "SIGNED_IN" || event === "TOKEN_REFRESHED" || event === "INITIAL_SESSION") && session) {
+      // Skip INITIAL_SESSION — the explicit getUser() call above handles initial load
+      // with proper server-side validation. INITIAL_SESSION only reads the local JWT
+      // which can be stale (e.g. account deleted server-side).
+      if (event === "INITIAL_SESSION") return;
+      if ((event === "SIGNED_IN" || event === "TOKEN_REFRESHED") && session) {
         try {
           const profile = await getProfile(session.user.id);
           if (profile) {
@@ -216,6 +253,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setLoading(false);
       } else if (event === "SIGNED_OUT") {
         setUser(null);
+
       }
     });
 
@@ -227,7 +265,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // localStorage fallback
       const newUser: User = { id: Date.now().toString(36), name, email, targetRole: "", resumeFileName: null, hasCompletedOnboarding: false };
       setUser(newUser);
-      saveLocalUser(newUser);
       return { success: true };
     }
     const { error } = await supabase.auth.signUp({
@@ -241,14 +278,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = useCallback(async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
     if (!supabaseConfigured) {
-      const existing = loadLocalUser();
-      if (existing && existing.email === email) {
-        setUser(existing);
-      } else {
-        const newUser: User = { id: Date.now().toString(36), name: email.split("@")[0], email, targetRole: "", resumeFileName: null, hasCompletedOnboarding: false };
-        setUser(newUser);
-        saveLocalUser(newUser);
-      }
+      const newUser: User = { id: Date.now().toString(36), name: email.split("@")[0], email, targetRole: "", resumeFileName: null, hasCompletedOnboarding: false };
+      setUser(newUser);
       return { success: true };
     }
     const { error } = await supabase.auth.signInWithPassword({ email, password });
@@ -270,7 +301,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (supabaseConfigured) await supabase.auth.signOut();
     setUser(null);
     clearLastRoute();
-    saveLocalUser(null);
   }, []);
 
   const updateUser = useCallback(async (updates: Partial<User>) => {
@@ -279,7 +309,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!prev) return prev;
       currentId = prev.id;
       const next = { ...prev, ...updates };
-      if (!supabaseConfigured) saveLocalUser(next);
       return next;
     });
 

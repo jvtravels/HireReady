@@ -1053,7 +1053,7 @@ export default function Interview() {
 
   return (
     <div style={{
-      width: "100vw", height: "100vh", background: "#050506",
+      width: "100vw", height: "100vh", background: c.obsidian,
       display: "flex", flexDirection: "column", overflow: "hidden",
       fontFamily: font.ui,
     }}>
@@ -1065,6 +1065,24 @@ export default function Interview() {
         @keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes recordPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
         @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes gentlePulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(122,158,126,0.3); } 50% { box-shadow: 0 0 0 8px rgba(122,158,126,0); } }
+        /* Responsive: stack panels on narrow screens */
+        @media (max-width: 800px) {
+          .interview-split { flex-direction: column !important; }
+          .interview-left { flex: 1 1 auto !important; min-height: 0 !important; }
+          .interview-right { width: 100% !important; max-width: none !important; min-width: 0 !important; height: 200px !important; flex: 0 0 200px !important; border-left: none !important; border-top: 1px solid rgba(240,237,232,0.06) !important; }
+          .interview-right > div:first-child { margin: 8px !important; }
+          .interview-right .interview-stats { display: none !important; }
+          .interview-transcript-panel { width: 100% !important; max-width: none !important; min-width: 0 !important; height: 50% !important; flex: 0 0 50% !important; border-left: none !important; border-top: 1px solid rgba(240,237,232,0.06) !important; }
+          .interview-avatar-row { padding: 16px 16px 0 !important; gap: 12px !important; }
+          .interview-avatar-row .ai-avatar-wrap { display: none; }
+          .interview-qcard { padding: 12px 16px !important; }
+          .interview-header-right .header-controls { display: none !important; }
+          .interview-pip-float { width: 100px !important; height: 75px !important; bottom: 8px !important; right: 8px !important; }
+        }
+        @media (max-width: 480px) {
+          .interview-header-left .interview-type-badge { display: none !important; }
+        }
       `}</style>
 
       {/* Offline banner */}
@@ -1099,19 +1117,18 @@ export default function Interview() {
       {/* ─── Top Bar ─── */}
       <header style={{
         display: "flex", alignItems: "center", justifyContent: "space-between",
-        padding: "12px 24px", borderBottom: `1px solid ${c.border}`,
-        background: "rgba(10,10,11,0.9)", backdropFilter: "blur(12px)",
-        zIndex: 10,
+        padding: "10px 20px", borderBottom: `1px solid ${c.border}`,
+        background: c.graphite,
+        zIndex: 10, flexShrink: 0,
       }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+        <div className="interview-header-left" style={{ display: "flex", alignItems: "center", gap: 14 }}>
           <span style={{ fontFamily: font.ui, fontSize: 14, fontWeight: 600, color: c.ivory, letterSpacing: "0.04em" }}>
             HireReady
           </span>
-          <div style={{ width: 1, height: 20, background: c.border }} />
+          <div style={{ width: 1, height: 18, background: c.border }} />
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            {/* Recording indicator */}
             <div style={{
-              width: 8, height: 8, borderRadius: "50%",
+              width: 7, height: 7, borderRadius: "50%",
               background: phase === "done" ? c.stone : c.ember,
               animation: phase !== "done" ? "recordPulse 1.5s ease-in-out infinite" : "none",
             }} />
@@ -1119,276 +1136,401 @@ export default function Interview() {
               {formatTime(elapsed)}
             </span>
           </div>
+          <div className="interview-type-badge" style={{
+            padding: "3px 10px", borderRadius: 100,
+            background: "rgba(201,169,110,0.06)",
+            border: `1px solid rgba(201,169,110,0.12)`,
+          }}>
+            <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 500, color: c.gilt, letterSpacing: "0.02em" }}>
+              {interviewType.charAt(0).toUpperCase() + interviewType.slice(1)}{user?.targetRole ? ` · ${user.targetRole}` : ""}
+            </span>
+          </div>
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-          {/* Progress pills */}
-          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>Q{currentQuestionNum}/{totalQuestions}</span>
+        <div className="interview-header-right" style={{ display: "flex", alignItems: "center", gap: 14 }}>
+          {/* Progress */}
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ fontFamily: font.mono, fontSize: 11, color: c.stone }}>Q{currentQuestionNum}/{totalQuestions}</span>
             <div style={{ display: "flex", gap: 3 }}>
               {interviewScript.filter(s => s.type === "question" || s.type === "closing").map((_, i) => (
                 <div key={i} style={{
-                  width: i < currentQuestionNum ? 20 : 12, height: 3, borderRadius: 2,
-                  background: i < currentQuestionNum ? c.gilt : i === currentQuestionNum ? "rgba(201,169,110,0.4)" : c.border,
+                  width: i < currentQuestionNum ? 18 : 10, height: 3, borderRadius: 2,
+                  background: i < currentQuestionNum ? c.gilt : i === currentQuestionNum ? "rgba(201,169,110,0.4)" : "rgba(240,237,232,0.08)",
                   transition: "all 0.3s ease",
                 }} />
               ))}
             </div>
           </div>
 
-          {/* Interview type badge */}
-          <div style={{
-            padding: "4px 12px", borderRadius: 100,
-            background: "rgba(201,169,110,0.06)",
-            border: `1px solid rgba(201,169,110,0.12)`,
-          }}>
-            <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 500, color: c.gilt }}>{interviewType.charAt(0).toUpperCase() + interviewType.slice(1)} · {user?.targetRole || "Interview"}</span>
+          {/* LLM loading indicator */}
+          {llmLoading && currentStep <= 1 && (
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <div style={{ width: 10, height: 10, border: "1.5px solid rgba(201,169,110,0.3)", borderTopColor: c.gilt, borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
+              <span style={{ fontFamily: font.ui, fontSize: 10, color: c.stone }}>Generating questions...</span>
+            </div>
+          )}
+
+          {/* Quick controls */}
+          <div className="header-controls" style={{ display: "flex", alignItems: "center", gap: 4 }}>
+            <button
+              onClick={() => setIsMuted(!isMuted)}
+              title={isMuted ? "Unmute" : "Mute"}
+              aria-label={isMuted ? "Unmute" : "Mute"}
+              style={{ width: 32, height: 32, borderRadius: 8, background: isMuted ? "rgba(196,112,90,0.1)" : "transparent", border: `1px solid ${isMuted ? "rgba(196,112,90,0.2)" : "transparent"}`, color: isMuted ? c.ember : c.stone, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s" }}
+            >
+              {isMuted ? (
+                <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><line x1="1" y1="1" x2="23" y2="23"/><path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"/><path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2c0 .76-.13 1.49-.35 2.17"/><line x1="12" y1="19" x2="12" y2="23"/></svg>
+              ) : (
+                <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg>
+              )}
+            </button>
+            <button
+              onClick={() => setIsCameraOff(!isCameraOff)}
+              title={isCameraOff ? "Turn camera on" : "Turn camera off"}
+              aria-label={isCameraOff ? "Turn camera on" : "Turn camera off"}
+              style={{ width: 32, height: 32, borderRadius: 8, background: isCameraOff ? "rgba(196,112,90,0.1)" : "transparent", border: `1px solid ${isCameraOff ? "rgba(196,112,90,0.2)" : "transparent"}`, color: isCameraOff ? c.ember : c.stone, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s" }}
+            >
+              {isCameraOff ? (
+                <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><line x1="1" y1="1" x2="23" y2="23"/><path d="M21 21H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h3m3.06 0H21a2 2 0 0 1 2 2v11"/><circle cx="12" cy="13" r="3"/></svg>
+              ) : (
+                <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+              )}
+            </button>
+            <button
+              onClick={() => { if (aiVoiceEnabled) ttsCancelRef.current?.(); setAiVoiceEnabled(!aiVoiceEnabled); }}
+              title={aiVoiceEnabled ? "Mute AI voice" : "Enable AI voice"}
+              aria-label={aiVoiceEnabled ? "Mute AI voice" : "Enable AI voice"}
+              style={{ width: 32, height: 32, borderRadius: 8, background: !aiVoiceEnabled ? "rgba(196,112,90,0.1)" : "transparent", border: `1px solid ${!aiVoiceEnabled ? "rgba(196,112,90,0.2)" : "transparent"}`, color: !aiVoiceEnabled ? c.ember : c.stone, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s" }}
+            >
+              {aiVoiceEnabled ? (
+                <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+              ) : (
+                <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
+              )}
+            </button>
+            <button
+              onClick={() => setShowTranscript(!showTranscript)}
+              title="Toggle transcript"
+              aria-label="Toggle transcript"
+              style={{ width: 32, height: 32, borderRadius: 8, background: showTranscript ? "rgba(201,169,110,0.1)" : "transparent", border: `1px solid ${showTranscript ? "rgba(201,169,110,0.2)" : "transparent"}`, color: showTranscript ? c.gilt : c.stone, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s" }}
+            >
+              <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            </button>
           </div>
+
         </div>
       </header>
 
-      {/* ─── Main Interview Area ─── */}
-      <div style={{ flex: 1, display: "flex", position: "relative", overflow: "hidden" }}>
+      {/* ─── Main Split Layout ─── */}
+      <div className="interview-split" style={{ flex: 1, display: "flex", overflow: "hidden" }}>
 
-        {/* AI Interviewer Panel (main) */}
-        <div style={{
-          flex: 1, display: "flex", flexDirection: "column",
-          alignItems: "center", justifyContent: "center",
-          position: "relative", padding: "40px 32px",
-          background: `radial-gradient(ellipse at center, rgba(201,169,110,0.03) 0%, transparent 70%)`,
+        {/* ═══ LEFT PANEL: AI Interviewer ═══ */}
+        <div className="interview-left" style={{
+          flex: showTranscript ? "0 0 55%" : "1 1 60%",
+          display: "flex", flexDirection: "column",
+          position: "relative", overflow: "hidden",
+          transition: "flex 0.3s ease",
         }}>
-          {/* AI Avatar */}
-          <AIAvatar isSpeaking={phase === "speaking"} isThinking={phase === "thinking"} />
-
-          {/* AI Name */}
-          <div style={{ marginTop: 20, textAlign: "center" }}>
-            <p style={{ fontFamily: font.ui, fontSize: 16, fontWeight: 600, color: c.ivory, marginBottom: 4 }}>AI Interviewer</p>
-            <p aria-live="polite" style={{ fontFamily: font.ui, fontSize: 12, color: c.stone }}>
-              {phase === "thinking" ? "Preparing next question..." :
-               phase === "speaking" ? "Speaking" :
-               phase === "listening" ? "Listening to your answer..." :
-               "Interview complete"}
-            </p>
-          </div>
-
-          {/* Waveform */}
-          <div style={{ marginTop: 24, height: 36, width: 200 }}>
-            <WaveformVisualizer active={phase === "speaking"} color={c.gilt} barCount={32} />
-          </div>
-
-          {/* LLM loading indicator */}
-          {llmLoading && currentStep <= 1 && (
-            <div style={{
-              position: "absolute", top: 24, right: 24,
-              padding: "8px 14px", borderRadius: 8,
-              background: "rgba(10,10,11,0.7)",
-              backdropFilter: "blur(8px)",
-              border: `1px solid rgba(201,169,110,0.15)`,
-              display: "flex", alignItems: "center", gap: 8,
-              animation: "fadeUp 0.4s ease",
-            }}>
-              <div style={{ width: 12, height: 12, border: "2px solid rgba(201,169,110,0.3)", borderTopColor: c.gilt, borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
-              <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>Generating personalized questions...</span>
-            </div>
-          )}
-
-          {/* Score note hint */}
-          {step?.scoreNote && phase !== "done" && (
-            <div style={{
-              position: "absolute", top: 24, left: 24,
-              padding: "8px 14px", borderRadius: 8,
-              background: "rgba(10,10,11,0.7)",
-              backdropFilter: "blur(8px)",
-              border: `1px solid ${c.border}`,
-              animation: "fadeUp 0.4s ease",
-            }}>
-              <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, color: c.gilt, letterSpacing: "0.06em", textTransform: "uppercase", display: "block", marginBottom: 2 }}>Evaluating</span>
-              <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>{step.scoreNote}</span>
-            </div>
-          )}
-
-          {/* Live AI captions — centered near bottom */}
-          <div style={{
-            position: "absolute", bottom: 100, left: "50%", transform: "translateX(-50%)",
-            width: "90%", maxWidth: 640,
-            display: "flex", justifyContent: "center",
+          {/* AI section — avatar + status */}
+          <div className="interview-avatar-row" style={{
+            display: "flex", alignItems: "center", gap: 20,
+            padding: "24px 28px 0",
           }}>
-            <LiveCaptions text={step?.aiText || ""} isTyping={phase === "speaking"} />
+            <div className="ai-avatar-wrap" style={{ position: "relative" }}>
+              <AIAvatar isSpeaking={phase === "speaking"} isThinking={phase === "thinking"} />
+            </div>
+            <div style={{ flex: 1 }}>
+              <p style={{ fontFamily: font.ui, fontSize: 15, fontWeight: 600, color: c.ivory, marginBottom: 4 }}>AI Interviewer</p>
+              <p aria-live="polite" style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, marginBottom: 8 }}>
+                {phase === "thinking" ? "Preparing next question..." :
+                 phase === "speaking" ? "Speaking..." :
+                 phase === "listening" ? "Listening to your answer" :
+                 "Interview complete"}
+              </p>
+              {/* Waveform inline with avatar */}
+              <div style={{ height: 28, width: 160 }}>
+                <WaveformVisualizer active={phase === "speaking"} color={c.gilt} barCount={24} />
+              </div>
+            </div>
           </div>
 
-          {/* Listening indicator + Next button */}
-          {phase === "listening" && (
+          {/* Question Card */}
+          <div className="interview-qcard" style={{ flex: 1, padding: "20px 28px", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+            {/* Current question / AI speech */}
             <div style={{
-              position: "absolute", bottom: 24, left: "50%", transform: "translateX(-50%)",
-              display: "flex", flexDirection: "column", alignItems: "center", gap: 12,
-              animation: "fadeUp 0.3s ease",
+              background: c.graphite, borderRadius: 14,
+              border: `1px solid ${phase === "speaking" ? "rgba(201,169,110,0.15)" : c.border}`,
+              padding: "24px", flex: "0 0 auto",
+              transition: "border-color 0.3s ease",
+              boxShadow: phase === "speaking" ? "0 4px 24px rgba(201,169,110,0.06)" : "none",
             }}>
-              {/* Live transcript of user's speech */}
-              {currentTranscript && (
-                <div style={{
-                  maxWidth: 500, padding: "10px 16px", borderRadius: 8,
-                  background: "rgba(122,158,126,0.06)", border: "1px solid rgba(122,158,126,0.15)",
-                  marginBottom: 4,
-                }}>
-                  <p style={{ fontFamily: font.ui, fontSize: 12, color: c.ivory, lineHeight: 1.5, margin: 0, opacity: 0.9 }}>
-                    {currentTranscript}
-                  </p>
-                </div>
-              )}
-
-              {/* User speaking waveform */}
-              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                <WaveformVisualizer active={!isMuted} color={c.sage} barCount={16} />
-                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <div style={{ width: 6, height: 6, borderRadius: "50%", background: answerTimer >= 180 ? c.ember : c.sage, animation: "recordPulse 1s ease-in-out infinite" }} />
-                  <span style={{ fontFamily: font.mono, fontSize: 12, color: answerTimer >= 180 ? c.ember : answerTimer >= 120 ? c.gilt : c.sage, transition: "color 0.5s ease" }}>{formatTime(answerTimer)}</span>
-                </div>
-              </div>
-
-              {/* Answer time nudge */}
-              {answerTimer >= 120 && (
-                <div
-                  role="status"
-                  style={{
-                    display: "flex", alignItems: "center", gap: 8,
-                    padding: "8px 14px", borderRadius: 8,
-                    background: answerTimer >= 180 ? "rgba(196,112,90,0.08)" : "rgba(201,169,110,0.06)",
-                    border: `1px solid ${answerTimer >= 180 ? "rgba(196,112,90,0.15)" : "rgba(201,169,110,0.12)"}`,
-                    animation: "fadeUp 0.3s ease",
-                  }}
-                >
-                  <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={answerTimer >= 180 ? c.ember : c.gilt} strokeWidth="1.5" strokeLinecap="round">
-                    <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
-                  </svg>
-                  <span style={{ fontFamily: font.ui, fontSize: 11, color: answerTimer >= 180 ? c.ember : c.gilt }}>
-                    {answerTimer >= 180
-                      ? "3+ minutes \u2014 try wrapping up with your key takeaway"
-                      : "2 minutes \u2014 consider landing your main point soon"}
+              {/* Score note badge */}
+              {step?.scoreNote && phase !== "done" && (
+                <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 12 }}>
+                  <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4m0-4h.01"/></svg>
+                  <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, color: c.gilt, letterSpacing: "0.06em", textTransform: "uppercase" }}>
+                    {step.scoreNote}
                   </span>
                 </div>
               )}
 
-              <button
-                onClick={handleNextQuestion}
-                style={{
-                  fontFamily: font.ui, fontSize: 13, fontWeight: 500,
-                  padding: "10px 28px", borderRadius: 8,
-                  background: "rgba(201,169,110,0.1)",
-                  border: `1px solid rgba(201,169,110,0.2)`,
-                  color: c.gilt, cursor: "pointer",
-                  display: "flex", alignItems: "center", gap: 8,
-                  transition: "all 0.2s ease", outline: "none",
-                }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(201,169,110,0.2)"; }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(201,169,110,0.1)"; }}
-              >
-                <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                  <polyline points="9 18 15 12 9 6" />
-                </svg>
-                {currentStep < interviewScript.length - 1 ? "I'm done — next question" : "Finish answer"}
-              </button>
+              {/* Show LiveCaptions only while speaking, static text otherwise — never both */}
+              {phase === "speaking" ? (
+                <LiveCaptions text={step?.aiText || ""} isTyping={true} />
+              ) : step?.aiText ? (
+                <p style={{ fontFamily: font.ui, fontSize: 14, color: c.chalk, lineHeight: 1.7, margin: 0 }}>
+                  {step.aiText}
+                </p>
+              ) : null}
             </div>
-          )}
 
-          {/* Done state */}
-          {phase === "done" && (
+            {/* User's response area — grows to fill remaining space */}
+            <div style={{ flex: 1, minHeight: 0, marginTop: 16, display: "flex", flexDirection: "column" }}>
+              {/* Listening state: user speaking area */}
+              {phase === "listening" && (
+                <div style={{
+                  flex: 1, borderRadius: 14,
+                  background: "rgba(122,158,126,0.03)",
+                  border: `1px solid rgba(122,158,126,0.12)`,
+                  padding: "20px 24px",
+                  display: "flex", flexDirection: "column",
+                  animation: "fadeUp 0.3s ease",
+                }}>
+                  {/* Header */}
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <div style={{ width: 7, height: 7, borderRadius: "50%", background: c.sage, animation: "recordPulse 1s ease-in-out infinite" }} />
+                      <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: c.sage }}>Your answer</span>
+                      <span style={{ fontFamily: font.mono, fontSize: 11, color: answerTimer >= 180 ? c.ember : answerTimer >= 120 ? c.gilt : c.stone }}>{formatTime(answerTimer)}</span>
+                    </div>
+                    <WaveformVisualizer active={!isMuted} color={c.sage} barCount={12} />
+                  </div>
+
+                  {/* Live transcript */}
+                  <div style={{ flex: 1, overflowY: "auto" }}>
+                    {currentTranscript ? (
+                      <p style={{ fontFamily: font.ui, fontSize: 13, color: c.ivory, lineHeight: 1.7, margin: 0, opacity: 0.9 }}>
+                        {currentTranscript}
+                        <span style={{ display: "inline-block", width: 2, height: 14, background: c.sage, marginLeft: 2, verticalAlign: "text-bottom", animation: "blink 0.8s ease-in-out infinite" }} />
+                      </p>
+                    ) : (
+                      <p style={{ fontFamily: font.ui, fontSize: 13, color: c.stone, lineHeight: 1.7, margin: 0, fontStyle: "italic" }}>
+                        Start speaking — your answer will appear here...
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Answer time nudge */}
+                  {answerTimer >= 120 && (
+                    <div
+                      role="status"
+                      style={{
+                        display: "flex", alignItems: "center", gap: 8,
+                        padding: "8px 12px", borderRadius: 8, marginTop: 12,
+                        background: answerTimer >= 180 ? "rgba(196,112,90,0.08)" : "rgba(201,169,110,0.06)",
+                        border: `1px solid ${answerTimer >= 180 ? "rgba(196,112,90,0.15)" : "rgba(201,169,110,0.12)"}`,
+                        animation: "fadeUp 0.3s ease",
+                      }}
+                    >
+                      <svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={answerTimer >= 180 ? c.ember : c.gilt} strokeWidth="1.5" strokeLinecap="round">
+                        <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                      </svg>
+                      <span style={{ fontFamily: font.ui, fontSize: 11, color: answerTimer >= 180 ? c.ember : c.gilt }}>
+                        {answerTimer >= 180
+                          ? "3+ minutes — try wrapping up with your key takeaway"
+                          : "2 minutes — consider landing your main point soon"}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Next question button */}
+                  <div style={{ marginTop: 16, display: "flex", alignItems: "center", justifyContent: "flex-end" }}>
+                    <button
+                      onClick={handleNextQuestion}
+                      style={{
+                        fontFamily: font.ui, fontSize: 13, fontWeight: 600,
+                        padding: "10px 24px", borderRadius: 10,
+                        background: `linear-gradient(135deg, ${c.gilt}, #B8923E)`,
+                        border: "none", color: c.obsidian, cursor: "pointer",
+                        display: "flex", alignItems: "center", gap: 8,
+                        transition: "all 0.2s ease",
+                        boxShadow: "0 4px 16px rgba(201,169,110,0.2)",
+                        animation: "gentlePulse 2s ease-in-out infinite",
+                      }}
+                      onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 6px 20px rgba(201,169,110,0.3)"; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 4px 16px rgba(201,169,110,0.2)"; }}
+                    >
+                      {currentStep < interviewScript.length - 1 ? "Next Question" : "Finish"}
+                      <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Done state */}
+              {phase === "done" && (
+                <div style={{
+                  flex: 1, borderRadius: 14,
+                  background: "rgba(122,158,126,0.04)",
+                  border: `1px solid rgba(122,158,126,0.15)`,
+                  padding: "32px", display: "flex", flexDirection: "column",
+                  alignItems: "center", justifyContent: "center", gap: 16,
+                  animation: "slideUp 0.5s ease",
+                }}>
+                  <div style={{
+                    width: 56, height: 56, borderRadius: "50%",
+                    background: "rgba(122,158,126,0.1)",
+                    border: `1px solid rgba(122,158,126,0.2)`,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                  }}>
+                    <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="2" strokeLinecap="round">
+                      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
+                    </svg>
+                  </div>
+                  <p style={{ fontFamily: font.ui, fontSize: 16, fontWeight: 600, color: c.ivory }}>Session complete</p>
+                  <p style={{ fontFamily: font.ui, fontSize: 13, color: c.stone }}>{currentQuestionNum} questions answered · {formatTime(elapsed)}</p>
+                  <p style={{ fontFamily: font.ui, fontSize: 12, color: c.gilt, marginTop: 4 }}>Click "View Feedback" below to see your results</p>
+                </div>
+              )}
+
+              {/* Previous exchange recap during thinking/speaking */}
+              {(phase === "thinking" || phase === "speaking") && transcript.length > 0 && (
+                <div style={{
+                  flex: 1, borderRadius: 14, overflow: "auto",
+                  padding: "16px 20px",
+                }}>
+                  <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, color: c.stone, letterSpacing: "0.06em", textTransform: "uppercase", display: "block", marginBottom: 10 }}>Previous exchange</span>
+                  {transcript.slice(-2).map((msg, i) => (
+                    <div key={i} style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+                      <div style={{
+                        width: 18, height: 18, borderRadius: "50%", flexShrink: 0, marginTop: 2,
+                        background: msg.speaker === "ai" ? "rgba(201,169,110,0.08)" : "rgba(122,158,126,0.08)",
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                      }}>
+                        {msg.speaker === "ai" ? (
+                          <svg aria-hidden="true" width="8" height="8" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="2"><circle cx="12" cy="12" r="3"/></svg>
+                        ) : (
+                          <svg aria-hidden="true" width="8" height="8" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                        )}
+                      </div>
+                      <p style={{
+                        fontFamily: font.ui, fontSize: 12, color: c.stone, lineHeight: 1.5, margin: 0,
+                        overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical" as const,
+                      }}>{msg.text}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* ═══ RIGHT PANEL: User Camera + Status ═══ */}
+        {!showTranscript && (
+          <div className="interview-right" style={{
+            width: "35%", maxWidth: 480, minWidth: 280,
+            borderLeft: `1px solid ${c.border}`,
+            display: "flex", flexDirection: "column",
+            overflow: "hidden",
+          }}>
+            {/* Webcam feed */}
             <div style={{
-              position: "absolute", bottom: 32, left: "50%", transform: "translateX(-50%)",
-              display: "flex", flexDirection: "column", alignItems: "center", gap: 16,
-              animation: "slideUp 0.5s ease",
+              flex: 1, margin: "16px 16px 8px",
+              borderRadius: 16,
+              border: `2px solid ${phase === "listening" ? "rgba(122,158,126,0.4)" : c.border}`,
+              overflow: "hidden",
+              transition: "border-color 0.3s ease",
+              boxShadow: phase === "listening" ? "0 0 24px rgba(122,158,126,0.08)" : "none",
             }}>
-              <div style={{
-                display: "flex", alignItems: "center", gap: 8,
-                padding: "8px 16px", borderRadius: 100,
-                background: "rgba(122,158,126,0.1)",
-                border: `1px solid rgba(122,158,126,0.2)`,
-              }}>
-                <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="2" strokeLinecap="round">
-                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" />
-                </svg>
-                <span style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: c.sage }}>
-                  Session complete · {formatTime(elapsed)}
-                </span>
-              </div>
-              <button
-                onClick={handleEnd}
-                className="shimmer-btn"
-                style={{
-                  fontFamily: font.ui, fontSize: 14, fontWeight: 500,
-                  padding: "12px 32px", borderRadius: 8,
-                  background: c.gilt, color: c.obsidian,
-                  border: "none", cursor: "pointer",
-                  display: "flex", alignItems: "center", gap: 8,
-                  boxShadow: "0 8px 32px rgba(201,169,110,0.15)",
-                }}
-                onMouseEnter={(e) => { e.currentTarget.style.filter = "brightness(1.15)"; }}
-                onMouseLeave={(e) => { e.currentTarget.style.filter = "brightness(1)"; }}
-              >
-                View Feedback
-                <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                  <polyline points="9 18 15 12 9 6" />
-                </svg>
-              </button>
+              <UserWebcam isMuted={isMuted} isCameraOff={isCameraOff || evaluating} />
             </div>
-          )}
-        </div>
 
-        {/* User Webcam PiP */}
-        <div className="interview-pip" style={{
-          position: "absolute",
-          top: 20, right: 20,
-          width: 240, height: 180,
-          borderRadius: 16,
-          border: `2px solid ${phase === "listening" ? c.sage : c.border}`,
-          overflow: "hidden",
-          boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
-          transition: "border-color 0.3s ease",
-          zIndex: 5,
-        }}>
-          <UserWebcam isMuted={isMuted} isCameraOff={isCameraOff || evaluating} />
-        </div>
+            {/* User status card below camera */}
+            <div className="interview-stats" style={{ padding: "0 16px 16px" }}>
+              <div style={{
+                background: c.graphite, borderRadius: 12,
+                border: `1px solid ${c.border}`,
+                padding: "14px 16px",
+              }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+                  <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: c.ivory }}>
+                    {user?.name?.split(" ")[0] || "You"}
+                  </span>
+                  <div style={{
+                    padding: "2px 10px", borderRadius: 100,
+                    background: phase === "listening" ? "rgba(122,158,126,0.1)" : phase === "speaking" ? "rgba(201,169,110,0.06)" : "rgba(240,237,232,0.04)",
+                    border: `1px solid ${phase === "listening" ? "rgba(122,158,126,0.2)" : phase === "speaking" ? "rgba(201,169,110,0.12)" : c.border}`,
+                  }}>
+                    <span style={{
+                      fontFamily: font.ui, fontSize: 10, fontWeight: 500,
+                      color: phase === "listening" ? c.sage : phase === "speaking" ? c.gilt : c.stone,
+                    }}>
+                      {phase === "listening" ? "Your turn" : phase === "speaking" ? "Listening" : phase === "thinking" ? "Waiting" : "Done"}
+                    </span>
+                  </div>
+                </div>
+                {/* Mini stats row */}
+                <div style={{ display: "flex", gap: 16 }}>
+                  <div>
+                    <span style={{ fontFamily: font.ui, fontSize: 10, color: c.stone, display: "block" }}>Questions</span>
+                    <span style={{ fontFamily: font.mono, fontSize: 13, color: c.ivory }}>{currentQuestionNum}/{totalQuestions}</span>
+                  </div>
+                  <div>
+                    <span style={{ fontFamily: font.ui, fontSize: 10, color: c.stone, display: "block" }}>Duration</span>
+                    <span style={{ fontFamily: font.mono, fontSize: 13, color: c.ivory }}>{formatTime(elapsed)}</span>
+                  </div>
+                  <div>
+                    <span style={{ fontFamily: font.ui, fontSize: 10, color: c.stone, display: "block" }}>Answers</span>
+                    <span style={{ fontFamily: font.mono, fontSize: 13, color: c.ivory }}>{transcript.filter(t => t.speaker === "user").length}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
-        {/* Transcript Sidebar */}
+        {/* ═══ TRANSCRIPT SIDEBAR (replaces right panel when open) ═══ */}
         {showTranscript && (
-          <div style={{
-            width: 340, borderLeft: `1px solid ${c.border}`,
-            background: "rgba(10,10,11,0.95)",
-            backdropFilter: "blur(12px)",
+          <div className="interview-transcript-panel" style={{
+            width: "35%", maxWidth: 420, minWidth: 300,
+            borderLeft: `1px solid ${c.border}`,
+            background: c.graphite,
             display: "flex", flexDirection: "column",
             animation: "fadeUp 0.2s ease",
+            position: "relative",
           }}>
             <div style={{
-              padding: "16px 20px",
+              padding: "14px 20px",
               borderBottom: `1px solid ${c.border}`,
               display: "flex", justifyContent: "space-between", alignItems: "center",
             }}>
-              <span style={{ fontFamily: font.ui, fontSize: 14, fontWeight: 600, color: c.ivory }}>Transcript</span>
+              <span style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: c.ivory }}>Transcript</span>
               <button onClick={() => setShowTranscript(false)} aria-label="Close transcript" style={{ background: "none", border: "none", color: c.stone, cursor: "pointer", padding: 4 }}>
-                <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
               </button>
             </div>
-            <div ref={transcriptRef} aria-live="polite" aria-label="Interview transcript" style={{ flex: 1, overflow: "auto", padding: "16px 20px", display: "flex", flexDirection: "column", gap: 16 }}>
+            <div ref={transcriptRef} aria-live="polite" aria-label="Interview transcript" style={{ flex: 1, overflow: "auto", padding: "16px 20px", display: "flex", flexDirection: "column", gap: 14 }}>
               {transcript.length === 0 && (
-                <p style={{ fontFamily: font.ui, fontSize: 13, color: c.stone, textAlign: "center", padding: "40px 0" }}>Transcript will appear here...</p>
+                <p style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, textAlign: "center", padding: "40px 0" }}>Transcript will appear here...</p>
               )}
               {transcript.map((msg, i) => (
                 <div key={i} style={{ display: "flex", gap: 10 }}>
                   <div style={{
-                    width: 24, height: 24, borderRadius: "50%", flexShrink: 0, marginTop: 2,
+                    width: 22, height: 22, borderRadius: "50%", flexShrink: 0, marginTop: 2,
                     background: msg.speaker === "ai" ? "rgba(201,169,110,0.1)" : "rgba(122,158,126,0.1)",
                     border: `1px solid ${msg.speaker === "ai" ? "rgba(201,169,110,0.2)" : "rgba(122,158,126,0.2)"}`,
                     display: "flex", alignItems: "center", justifyContent: "center",
                   }}>
                     {msg.speaker === "ai" ? (
-                      <svg aria-hidden="true" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="2"><circle cx="12" cy="12" r="3" /></svg>
+                      <svg aria-hidden="true" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="2"><circle cx="12" cy="12" r="3"/></svg>
                     ) : (
-                      <svg aria-hidden="true" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
+                      <svg aria-hidden="true" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                     )}
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
-                      <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: msg.speaker === "ai" ? c.gilt : c.sage }}>
-                        {msg.speaker === "ai" ? "AI Interviewer" : "You"}
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 3 }}>
+                      <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, color: msg.speaker === "ai" ? c.gilt : c.sage }}>
+                        {msg.speaker === "ai" ? "Interviewer" : "You"}
                       </span>
                       <span style={{ fontFamily: font.mono, fontSize: 9, color: c.stone }}>{msg.time}</span>
                     </div>
@@ -1397,133 +1539,96 @@ export default function Interview() {
                 </div>
               ))}
             </div>
+
+            {/* PiP webcam while transcript is open */}
+            {!isCameraOff && (
+              <div className="interview-pip-float" style={{
+                position: "absolute", bottom: 16, right: 16,
+                width: 140, height: 105, borderRadius: 12,
+                border: `2px solid ${phase === "listening" ? "rgba(122,158,126,0.3)" : c.border}`,
+                overflow: "hidden",
+                boxShadow: "0 4px 20px rgba(0,0,0,0.5)",
+                zIndex: 5,
+              }}>
+                <UserWebcam isMuted={isMuted} isCameraOff={false} />
+              </div>
+            )}
           </div>
         )}
       </div>
 
-      {/* ─── Bottom Controls ─── */}
-      <footer className="interview-controls" style={{
-        display: "flex", alignItems: "center", justifyContent: "center",
-        padding: "16px 24px",
+      {/* ─── Bottom Footer ─── */}
+      <footer style={{
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+        padding: "10px 20px",
         borderTop: `1px solid ${c.border}`,
-        background: "rgba(10,10,11,0.9)",
-        backdropFilter: "blur(12px)",
-        gap: 16,
-        zIndex: 10,
+        background: c.graphite,
+        flexShrink: 0, zIndex: 10,
       }}>
-        {/* Left: interview info */}
-        <div style={{ position: "absolute", left: 24, display: "flex", alignItems: "center", gap: 8 }}>
+        {/* Left: phase indicator */}
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           {phase === "listening" && (
-            <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "4px 12px", borderRadius: 100, background: "rgba(122,158,126,0.06)", border: `1px solid rgba(122,158,126,0.12)` }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "3px 10px", borderRadius: 100, background: "rgba(122,158,126,0.06)", border: "1px solid rgba(122,158,126,0.12)" }}>
               <div style={{ width: 6, height: 6, borderRadius: "50%", background: c.sage, animation: "recordPulse 1s ease-in-out infinite" }} />
               <span style={{ fontFamily: font.ui, fontSize: 11, color: c.sage }}>Your turn</span>
             </div>
           )}
           {phase === "speaking" && (
-            <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "4px 12px", borderRadius: 100, background: "rgba(201,169,110,0.06)", border: `1px solid rgba(201,169,110,0.12)` }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "3px 10px", borderRadius: 100, background: "rgba(201,169,110,0.06)", border: "1px solid rgba(201,169,110,0.12)" }}>
               <div style={{ width: 6, height: 6, borderRadius: "50%", background: c.gilt, animation: "recordPulse 1s ease-in-out infinite" }} />
               <span style={{ fontFamily: font.ui, fontSize: 11, color: c.gilt }}>AI speaking</span>
             </div>
           )}
+          {phase === "thinking" && (
+            <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "3px 10px", borderRadius: 100, background: "rgba(240,237,232,0.03)", border: `1px solid ${c.border}` }}>
+              <div style={{ width: 10, height: 10, border: "1.5px solid rgba(201,169,110,0.3)", borderTopColor: c.gilt, borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
+              <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>Thinking...</span>
+            </div>
+          )}
+          {phase === "done" && (
+            <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "3px 10px", borderRadius: 100, background: "rgba(122,158,126,0.06)", border: "1px solid rgba(122,158,126,0.12)" }}>
+              <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="2" strokeLinecap="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+              <span style={{ fontFamily: font.ui, fontSize: 11, color: c.sage }}>Complete</span>
+            </div>
+          )}
         </div>
 
-        {/* Center controls */}
-        <ControlButton
-          active={!isMuted}
-          onClick={() => setIsMuted(!isMuted)}
-          label={isMuted ? "Unmute" : "Mute"}
-          icon={isMuted ? (
-            <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-              <line x1="1" y1="1" x2="23" y2="23" />
-              <path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6" />
-              <path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2c0 .76-.13 1.49-.35 2.17" />
-              <line x1="12" y1="19" x2="12" y2="23" />
-            </svg>
-          ) : (
-            <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-              <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
-              <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
-              <line x1="12" y1="19" x2="12" y2="23" />
-            </svg>
-          )}
-        />
-
-        <ControlButton
-          active={!isCameraOff}
-          onClick={() => setIsCameraOff(!isCameraOff)}
-          label={isCameraOff ? "Turn camera on" : "Turn camera off"}
-          icon={isCameraOff ? (
-            <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-              <line x1="1" y1="1" x2="23" y2="23" />
-              <path d="M21 21H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h3m3.06 0H21a2 2 0 0 1 2 2v11" />
-              <circle cx="12" cy="13" r="3" />
-            </svg>
-          ) : (
-            <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-              <path d="M23 7l-7 5 7 5V7z" />
-              <rect x="1" y="5" width="15" height="14" rx="2" />
-            </svg>
-          )}
-        />
-
-        <div style={{ width: 1, height: 28, background: c.border, margin: "0 4px" }} />
-
-        <ControlButton
-          active={showTranscript}
-          onClick={() => setShowTranscript(!showTranscript)}
-          label="Toggle transcript"
-          icon={
-            <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-            </svg>
-          }
-        />
-
-        <ControlButton
-          active={aiVoiceEnabled}
-          onClick={() => {
-            if (aiVoiceEnabled) ttsCancelRef.current?.();
-            setAiVoiceEnabled(!aiVoiceEnabled);
-          }}
-          label={aiVoiceEnabled ? "Mute AI voice" : "Enable AI voice"}
-          icon={aiVoiceEnabled ? (
-            <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
-              <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
-              <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
-            </svg>
-          ) : (
-            <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
-              <line x1="23" y1="9" x2="17" y2="15" />
-              <line x1="17" y1="9" x2="23" y2="15" />
-            </svg>
-          )}
-        />
-
-        <div style={{ width: 1, height: 28, background: c.border, margin: "0 4px" }} />
-
-        <ControlButton
-          onClick={() => phase === "done" ? handleEnd() : setShowEndModal(true)}
-          label="End interview"
-          danger
-          icon={
-            <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-              <path d="M10.68 13.31a16 16 0 0 0 3.41 2.6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7 2 2 0 0 1 1.72 2v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91" />
-              <line x1="23" y1="1" x2="17" y2="7" />
-              <line x1="17" y1="1" x2="23" y2="7" />
-            </svg>
-          }
-        />
-
-        {/* Right: keyboard shortcut hint */}
-        <div style={{ position: "absolute", right: 24 }}>
+        {/* Center: keyboard hint */}
+        <div>
           {phase === "listening" && (
             <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>
-              Press <kbd style={{ fontFamily: font.mono, fontSize: 10, padding: "2px 6px", borderRadius: 3, background: "rgba(240,237,232,0.06)", border: `1px solid ${c.border}`, color: c.chalk }}>Enter</kbd> when done
+              Press <kbd style={{ fontFamily: font.mono, fontSize: 10, padding: "2px 6px", borderRadius: 3, background: "rgba(240,237,232,0.06)", border: `1px solid ${c.border}`, color: c.chalk }}>Enter</kbd> to advance
             </span>
           )}
         </div>
+
+        {/* Right: End interview button */}
+        <button
+          onClick={() => phase === "done" ? handleEnd() : setShowEndModal(true)}
+          style={{
+            fontFamily: font.ui, fontSize: 12, fontWeight: 500,
+            padding: "8px 20px", borderRadius: 8,
+            background: phase === "done" ? c.gilt : "rgba(196,112,90,0.08)",
+            border: phase === "done" ? "none" : `1px solid rgba(196,112,90,0.2)`,
+            color: phase === "done" ? c.obsidian : c.ember,
+            cursor: "pointer", transition: "all 0.2s",
+            display: "flex", alignItems: "center", gap: 6,
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.filter = "brightness(1.1)"; }}
+          onMouseLeave={(e) => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.filter = "brightness(1)"; }}
+        >
+          {phase === "done" ? (
+            <>
+              View Feedback
+              <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+            </>
+          ) : (
+            <>
+              <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>
+              End Interview
+            </>
+          )}
+        </button>
       </footer>
 
       {/* End Interview Modal */}
@@ -1570,9 +1675,8 @@ export default function Interview() {
               display: "flex", alignItems: "center", justifyContent: "center",
             }}>
               <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={c.ember} strokeWidth="1.5" strokeLinecap="round">
-                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-                <line x1="12" y1="9" x2="12" y2="13" />
-                <line x1="12" y1="17" x2="12.01" y2="17" />
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
               </svg>
             </div>
             <h3 id="end-modal-title" style={{ fontFamily: font.ui, fontSize: 18, fontWeight: 600, color: c.ivory, marginBottom: 8 }}>End interview early?</h3>
@@ -1618,9 +1722,8 @@ export default function Interview() {
           <h3 style={{ fontFamily: font.ui, fontSize: 18, fontWeight: 600, color: c.ivory, marginBottom: 8 }}>Analyzing your performance...</h3>
           <p style={{ fontFamily: font.ui, fontSize: 13, color: c.stone }}>AI is evaluating your answers and generating personalized feedback</p>
           <p style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, opacity: 0.7, marginTop: 4 }}>
-            {evalElapsed < 10 ? "This usually takes 10–30 seconds." : evalElapsed < 25 ? `Almost there... (${evalElapsed}s)` : `Taking longer than usual... (${evalElapsed}s)`}
+            {evalElapsed < 10 ? "This usually takes 10\u201330 seconds." : evalElapsed < 25 ? `Almost there... (${evalElapsed}s)` : `Taking longer than usual... (${evalElapsed}s)`}
           </p>
-          {/* Progress bar */}
           <div style={{ width: 200, height: 3, borderRadius: 2, background: c.border, marginTop: 16, overflow: "hidden" }}>
             <div style={{ height: "100%", borderRadius: 2, background: c.gilt, transition: "width 1s ease", width: `${Math.min(95, (evalElapsed / 30) * 100)}%` }} />
           </div>

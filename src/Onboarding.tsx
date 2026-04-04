@@ -960,37 +960,54 @@ export default function Onboarding() {
 
           {/* ─── Navigation ─── */}
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12, marginTop: 40 }}>
-            {step < TOTAL_STEPS ? (
-              <button onClick={goNext} disabled={isContinueDisabled}
-                style={{
-                  fontFamily: font.ui, fontSize: 15, fontWeight: 600, padding: "14px 40px", borderRadius: 10, border: "none",
-                  background: isContinueDisabled ? "rgba(201,169,110,0.15)" : `linear-gradient(135deg, ${c.gilt}, #B8923E)`,
-                  color: isContinueDisabled ? "rgba(201,169,110,0.4)" : c.obsidian,
-                  cursor: isContinueDisabled ? "not-allowed" : "pointer",
-                  transition: "all 0.25s ease", display: "inline-flex", alignItems: "center", gap: 8,
-                  boxShadow: isContinueDisabled ? "none" : "0 8px 24px rgba(201,169,110,0.2)",
-                }}
-                onMouseEnter={(e) => { if (!isContinueDisabled) { e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 12px 32px rgba(201,169,110,0.3)"; } }}
-                onMouseLeave={(e) => { if (!isContinueDisabled) { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 8px 24px rgba(201,169,110,0.2)"; } }}>
-                Continue
-                <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
-              </button>
-            ) : (
-              <button onClick={handleStart} disabled={micStatus !== "granted"}
-                style={{
-                  fontFamily: font.ui, fontSize: 15, fontWeight: 600, padding: "14px 40px", borderRadius: 10, border: "none",
-                  background: micStatus === "granted" ? `linear-gradient(135deg, ${c.gilt}, #B8923E)` : "rgba(201,169,110,0.15)",
-                  color: micStatus === "granted" ? c.obsidian : "rgba(201,169,110,0.4)",
-                  cursor: micStatus === "granted" ? "pointer" : "not-allowed",
-                  transition: "all 0.25s ease", display: "inline-flex", alignItems: "center", gap: 8,
-                  boxShadow: micStatus === "granted" ? "0 8px 24px rgba(201,169,110,0.2)" : "none",
-                }}
-                onMouseEnter={(e) => { if (micStatus === "granted") { e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 12px 32px rgba(201,169,110,0.3)"; } }}
-                onMouseLeave={(e) => { if (micStatus === "granted") { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 8px 24px rgba(201,169,110,0.2)"; } }}>
-                <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polygon points="5,3 19,12 5,21"/></svg>
-                {micStatus === "granted" ? "Start Practice Interview" : "Allow microphone to continue"}
-              </button>
-            )}
+            {/* Main row: back + continue/start side by side on steps 2/3 */}
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              {step > 1 && (
+                <button onClick={goBack}
+                  style={{
+                    fontFamily: font.ui, fontSize: 14, fontWeight: 500, padding: "14px 20px", borderRadius: 10,
+                    border: `1px solid ${c.border}`, background: "transparent", color: c.chalk,
+                    cursor: "pointer", transition: "all 0.2s ease", display: "inline-flex", alignItems: "center", gap: 6,
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.borderColor = c.chalk; e.currentTarget.style.color = c.ivory; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.borderColor = c.border; e.currentTarget.style.color = c.chalk; }}>
+                  <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+                  Back
+                </button>
+              )}
+
+              {step < TOTAL_STEPS ? (
+                <button onClick={goNext} disabled={isContinueDisabled}
+                  style={{
+                    fontFamily: font.ui, fontSize: 15, fontWeight: 600, padding: "14px 40px", borderRadius: 10, border: "none",
+                    background: isContinueDisabled ? "rgba(201,169,110,0.15)" : `linear-gradient(135deg, ${c.gilt}, #B8923E)`,
+                    color: isContinueDisabled ? "rgba(201,169,110,0.4)" : c.obsidian,
+                    cursor: isContinueDisabled ? "not-allowed" : "pointer",
+                    transition: "all 0.25s ease", display: "inline-flex", alignItems: "center", gap: 8,
+                    boxShadow: isContinueDisabled ? "none" : "0 8px 24px rgba(201,169,110,0.2)",
+                  }}
+                  onMouseEnter={(e) => { if (!isContinueDisabled) { e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 12px 32px rgba(201,169,110,0.3)"; } }}
+                  onMouseLeave={(e) => { if (!isContinueDisabled) { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 8px 24px rgba(201,169,110,0.2)"; } }}>
+                  Continue
+                  <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+                </button>
+              ) : (
+                <button onClick={handleStart} disabled={micStatus !== "granted"}
+                  style={{
+                    fontFamily: font.ui, fontSize: 15, fontWeight: 600, padding: "14px 40px", borderRadius: 10, border: "none",
+                    background: micStatus === "granted" ? `linear-gradient(135deg, ${c.gilt}, #B8923E)` : "rgba(201,169,110,0.15)",
+                    color: micStatus === "granted" ? c.obsidian : "rgba(201,169,110,0.4)",
+                    cursor: micStatus === "granted" ? "pointer" : "not-allowed",
+                    transition: "all 0.25s ease", display: "inline-flex", alignItems: "center", gap: 8,
+                    boxShadow: micStatus === "granted" ? "0 8px 24px rgba(201,169,110,0.2)" : "none",
+                  }}
+                  onMouseEnter={(e) => { if (micStatus === "granted") { e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 12px 32px rgba(201,169,110,0.3)"; } }}
+                  onMouseLeave={(e) => { if (micStatus === "granted") { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 8px 24px rgba(201,169,110,0.2)"; } }}>
+                  <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polygon points="5,3 19,12 5,21"/></svg>
+                  {micStatus === "granted" ? "Start Practice Interview" : "Allow microphone to continue"}
+                </button>
+              )}
+            </div>
 
             {step === 1 && !resumeParsed && !resumeParsing && (
               <button onClick={goNext}
@@ -999,15 +1016,6 @@ export default function Onboarding() {
                 onMouseLeave={(e) => e.currentTarget.style.color = c.stone}>
                 Skip, I'll add later
                 <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
-              </button>
-            )}
-            {step > 1 && (
-              <button onClick={goBack}
-                style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.stone, background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 5, transition: "color 0.2s" }}
-                onMouseEnter={(e) => e.currentTarget.style.color = c.ivory}
-                onMouseLeave={(e) => e.currentTarget.style.color = c.stone}>
-                <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>
-                Back
               </button>
             )}
 

@@ -1,8 +1,41 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { c, font } from "./tokens";
 import { useAuth } from "./AuthContext";
 import { supabase, supabaseConfigured } from "./supabase";
+
+// Remember me preference
+const REMEMBER_ME_KEY = "hireready_remember_me";
+function saveRememberMe(val: boolean) {
+  try { localStorage.setItem(REMEMBER_ME_KEY, val ? "1" : "0"); } catch {}
+}
+function getRememberMe(): boolean {
+  try { return localStorage.getItem(REMEMBER_ME_KEY) !== "0"; } catch { return true; }
+}
+
+// Track last login method for returning users
+const LOGIN_METHOD_KEY = "hireready_login_method";
+function saveLoginMethod(method: "email" | "google") {
+  try { localStorage.setItem(LOGIN_METHOD_KEY, method); } catch {}
+}
+function getLastLoginMethod(): "email" | "google" | null {
+  try { return localStorage.getItem(LOGIN_METHOD_KEY) as "email" | "google" | null; } catch { return null; }
+}
+
+// Simple Levenshtein distance for email typo detection
+function levenshtein(a: string, b: string): number {
+  const m = a.length, n = b.length;
+  const dp: number[][] = Array.from({ length: m + 1 }, (_, i) => {
+    const row = new Array(n + 1).fill(0);
+    row[0] = i;
+    return row;
+  });
+  for (let j = 1; j <= n; j++) dp[0][j] = j;
+  for (let i = 1; i <= m; i++)
+    for (let j = 1; j <= n; j++)
+      dp[i][j] = a[i - 1] === b[j - 1] ? dp[i - 1][j - 1] : 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);
+  return dp[m][n];
+}
 
 // Map raw Supabase errors to user-friendly messages with suggestions
 function friendlyError(raw: string, isLogin: boolean): { message: string; suggestion?: string } {
@@ -29,28 +62,57 @@ function friendlyError(raw: string, isLogin: boolean): { message: string; sugges
 export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
   const navigate = useNavigate();
   const location = useLocation();
-  const { login, signup, loginWithGoogle, resetPassword, isLoggedIn } = useAuth();
+  const { login, signup, loginWithGoogle, resetPassword, isLoggedIn, user } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [resetSent, setResetSent] = useState(false);
   const [showReset, setShowReset] = useState(false);
   const [signupSent, setSignupSent] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(() => getRememberMe());
+  const [emailSuggestion, setEmailSuggestion] = useState("");
+  const firstInputRef = useRef<HTMLInputElement>(null);
+
+  // Common email domain typo detection
+  const COMMON_DOMAINS = ["gmail.com", "yahoo.com", "outlook.com", "hotmail.com", "icloud.com", "protonmail.com", "mail.com", "aol.com", "zoho.com", "yandex.com"];
+  const checkEmailTypo = (emailVal: string) => {
+    const parts = emailVal.split("@");
+    if (parts.length !== 2 || !parts[1]) { setEmailSuggestion(""); return; }
+    const domain = parts[1].toLowerCase();
+    if (COMMON_DOMAINS.includes(domain)) { setEmailSuggestion(""); return; }
+    // Find closest match with edit distance 1-2
+    for (const d of COMMON_DOMAINS) {
+      const dist = levenshtein(domain, d);
+      if (dist > 0 && dist <= 2) {
+        setEmailSuggestion(`${parts[0]}@${d}`);
+        return;
+      }
+    }
+    setEmailSuggestion("");
+  };
 
   // Preserve plan intent from pricing page
   const planParam = new URLSearchParams(location.search).get("plan");
 
-  // If already logged in, redirect to dashboard
+  // If already logged in, redirect based on onboarding status
   useEffect(() => {
-    if (isLoggedIn) {
-      const from = (location.state as any)?.from || "/dashboard";
+    if (isLoggedIn && user) {
+      const defaultDest = user.hasCompletedOnboarding ? "/dashboard" : "/onboarding";
+      const from = (location.state as any)?.from || defaultDest;
       const dest = planParam ? `${from}?plan=${planParam}` : from;
       navigate(dest, { replace: true });
     }
-  }, [isLoggedIn, navigate, location.state, planParam]);
+  }, [isLoggedIn, user, navigate, location.state, planParam]);
+
+  // Auto-focus first input field
+  useEffect(() => {
+    const timer = setTimeout(() => firstInputRef.current?.focus(), 100);
+    return () => clearTimeout(timer);
+  }, [isLogin, showReset]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -63,9 +125,14 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
           setError(result.error || "Login failed");
           return;
         }
-        const from = (location.state as any)?.from || "/dashboard";
-        const dest = planParam ? `${from}?plan=${planParam}` : from;
-        navigate(dest, { replace: true });
+        saveLoginMethod("email");
+        saveRememberMe(rememberMe);
+        if (!rememberMe) {
+          // Mark session as ephemeral — will be cleared on tab close
+          try { sessionStorage.setItem("hireready_ephemeral", "1"); } catch {}
+        }
+        // Navigation handled by useEffect when isLoggedIn changes
+        // This avoids double-redirect since useEffect checks onboarding status
       } else {
         const result = await signup(email, name, password);
         if (!result.success) {
@@ -73,10 +140,20 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
           return;
         }
         // Small delay to let auth state propagate
-        await new Promise(r => setTimeout(r, 500));
-        // After signup, check current auth state via a fresh read
-        // If using localStorage fallback, user is already logged in
-        // If using Supabase with email confirmation, show check-email message
+        await new Promise(r => setTimeout(r, 600));
+        // If user is already logged in (no email confirmation / localStorage fallback),
+        // the useEffect redirect will handle navigation. Only show check-email if not logged in.
+        if (!supabaseConfigured) {
+          // localStorage fallback — user is already logged in, useEffect handles redirect
+          return;
+        }
+        // Check if session was created (no email confirmation required)
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          // Auto-logged in — useEffect redirect will handle navigation
+          return;
+        }
+        // Email confirmation required — show check-email message
         setSignupSent(true);
       }
     } finally {
@@ -86,9 +163,18 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
 
   const handleGoogleLogin = async () => {
     setError("");
-    const result = await loginWithGoogle();
-    if (!result.success) {
-      setError(result.error || "Google login failed");
+    setGoogleLoading(true);
+    try {
+      const result = await loginWithGoogle();
+      if (!result.success) {
+        setError(result.error || "Google login failed");
+        setGoogleLoading(false);
+      } else {
+        saveLoginMethod("google");
+      }
+      // Don't reset loading on success — page will redirect via OAuth
+    } catch {
+      setGoogleLoading(false);
     }
   };
 
@@ -194,7 +280,7 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
               <>
                 <div>
                   <label style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: c.chalk, display: "block", marginBottom: 6, letterSpacing: "0.02em" }}>Email</label>
-                  <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@company.com" required
+                  <input ref={showReset ? firstInputRef : undefined} type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@company.com" required
                     style={{ width: "100%", padding: "12px 16px", borderRadius: 8, background: c.graphite, border: `1px solid ${c.border}`, color: c.ivory, fontFamily: font.ui, fontSize: 14, outline: "none", transition: "border-color 0.2s ease", boxSizing: "border-box" }}
                     onFocus={(e) => e.currentTarget.style.borderColor = c.gilt}
                     onBlur={(e) => e.currentTarget.style.borderColor = c.border}
@@ -235,19 +321,27 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
           <>
             {/* Google login */}
             <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 32 }}>
-              <button onClick={handleGoogleLogin}
+              <button onClick={handleGoogleLogin} disabled={googleLoading}
                 style={{
                   display: "flex", alignItems: "center", justifyContent: "center", gap: 12,
                   width: "100%", padding: "13px 20px", borderRadius: 8,
                   background: "transparent", border: `1px solid ${c.borderHover}`,
-                  color: c.ivory, cursor: "pointer", fontFamily: font.ui, fontSize: 14,
+                  color: c.ivory, cursor: googleLoading ? "wait" : "pointer", fontFamily: font.ui, fontSize: 14,
                   fontWeight: 500, transition: "all 0.2s ease",
+                  opacity: googleLoading ? 0.7 : 1,
                 }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(240,237,232,0.04)"; e.currentTarget.style.borderColor = c.chalk; }}
+                onMouseEnter={(e) => { if (!googleLoading) { e.currentTarget.style.background = "rgba(240,237,232,0.04)"; e.currentTarget.style.borderColor = c.chalk; } }}
                 onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.borderColor = c.borderHover; }}
               >
-                <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
-                Continue with Google
+                {googleLoading ? (
+                  <div style={{ width: 18, height: 18, border: "2px solid rgba(240,237,232,0.3)", borderTopColor: c.ivory, borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
+                ) : (
+                  <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+                )}
+                {googleLoading ? "Redirecting to Google..." : "Continue with Google"}
+                {isLogin && getLastLoginMethod() === "google" && !googleLoading && (
+                  <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, color: c.sage, background: `${c.sage}12`, border: `1px solid ${c.sage}25`, borderRadius: 4, padding: "2px 6px", marginLeft: 4 }}>Last used</span>
+                )}
               </button>
             </div>
 
@@ -263,7 +357,7 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
               {!isLogin && (
                 <div>
                   <label style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: c.chalk, display: "block", marginBottom: 6, letterSpacing: "0.02em" }}>Full name</label>
-                  <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Your full name" required
+                  <input ref={!isLogin ? firstInputRef : undefined} type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Your full name" required
                     style={{ width: "100%", padding: "12px 16px", borderRadius: 8, background: c.graphite, border: `1px solid ${c.border}`, color: c.ivory, fontFamily: font.ui, fontSize: 14, outline: "none", transition: "border-color 0.2s ease", boxSizing: "border-box" }}
                     onFocus={(e) => e.currentTarget.style.borderColor = c.gilt}
                     onBlur={(e) => e.currentTarget.style.borderColor = c.border}
@@ -273,11 +367,19 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
 
               <div>
                 <label style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: c.chalk, display: "block", marginBottom: 6, letterSpacing: "0.02em" }}>Email</label>
-                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@company.com" required
+                <input ref={isLogin ? firstInputRef : undefined} type="email" value={email}
+                  onChange={(e) => { setEmail(e.target.value); setEmailSuggestion(""); }}
+                  onBlur={(e) => { e.currentTarget.style.borderColor = c.border; checkEmailTypo(email); }}
+                  placeholder="you@company.com" required
                   style={{ width: "100%", padding: "12px 16px", borderRadius: 8, background: c.graphite, border: `1px solid ${c.border}`, color: c.ivory, fontFamily: font.ui, fontSize: 14, outline: "none", transition: "border-color 0.2s ease", boxSizing: "border-box" }}
                   onFocus={(e) => e.currentTarget.style.borderColor = c.gilt}
-                  onBlur={(e) => e.currentTarget.style.borderColor = c.border}
                 />
+                {emailSuggestion && (
+                  <button type="button" onClick={() => { setEmail(emailSuggestion); setEmailSuggestion(""); }}
+                    style={{ background: "none", border: "none", fontFamily: font.ui, fontSize: 12, color: c.gilt, cursor: "pointer", padding: "4px 0 0", display: "block" }}>
+                    Did you mean <strong>{emailSuggestion}</strong>?
+                  </button>
+                )}
               </div>
 
               <div>
@@ -317,30 +419,91 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
                     )}
                   </button>
                 </div>
-                {!isLogin && password.length > 0 && (() => {
-                  const strength = password.length >= 12 && /[A-Z]/.test(password) && /[0-9]/.test(password) && /[^A-Za-z0-9]/.test(password) ? 4
-                    : password.length >= 10 && /[A-Z]/.test(password) && /[0-9]/.test(password) ? 3
-                    : password.length >= 8 ? 2 : 1;
+                {!isLogin && (() => {
+                  if (password.length === 0) {
+                    // Show requirement hints before typing
+                    const reqs = [
+                      { label: "8+ characters", met: false },
+                      { label: "Uppercase letter", met: false },
+                      { label: "Number", met: false },
+                      { label: "Special character", met: false },
+                    ];
+                    return (
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: "4px 12px", marginTop: 8 }}>
+                        {reqs.map(r => (
+                          <span key={r.label} style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, display: "flex", alignItems: "center", gap: 4 }}>
+                            <span style={{ width: 4, height: 4, borderRadius: "50%", background: c.border, display: "inline-block" }} />
+                            {r.label}
+                          </span>
+                        ))}
+                      </div>
+                    );
+                  }
+                  const reqs = [
+                    { label: "8+ characters", met: password.length >= 8 },
+                    { label: "Uppercase", met: /[A-Z]/.test(password) },
+                    { label: "Number", met: /[0-9]/.test(password) },
+                    { label: "Special char", met: /[^A-Za-z0-9]/.test(password) },
+                  ];
+                  const metCount = reqs.filter(r => r.met).length;
+                  const strength = metCount === 4 && password.length >= 12 ? 4 : metCount >= 3 ? 3 : password.length >= 8 ? 2 : 1;
                   const labels = ["", "Weak", "Fair", "Good", "Strong"];
                   const colors = ["", c.ember, c.gilt, c.sage, c.sage];
                   return (
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8 }}>
-                      <div style={{ display: "flex", gap: 3, flex: 1 }}>
-                        {[1, 2, 3, 4].map(i => (
-                          <div key={i} style={{ flex: 1, height: 3, borderRadius: 2, background: i <= strength ? colors[strength] : c.border, transition: "background 0.2s" }} />
+                    <>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8 }}>
+                        <div style={{ display: "flex", gap: 3, flex: 1 }}>
+                          {[1, 2, 3, 4].map(i => (
+                            <div key={i} style={{ flex: 1, height: 3, borderRadius: 2, background: i <= strength ? colors[strength] : c.border, transition: "background 0.2s" }} />
+                          ))}
+                        </div>
+                        <span style={{ fontFamily: font.ui, fontSize: 11, color: colors[strength], fontWeight: 500 }}>{labels[strength]}</span>
+                      </div>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: "3px 10px", marginTop: 6 }}>
+                        {reqs.map(r => (
+                          <span key={r.label} style={{ fontFamily: font.ui, fontSize: 10, color: r.met ? c.sage : c.stone, display: "flex", alignItems: "center", gap: 3, transition: "color 0.2s" }}>
+                            {r.met ? (
+                              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+                            ) : (
+                              <span style={{ width: 4, height: 4, borderRadius: "50%", background: c.border, display: "inline-block" }} />
+                            )}
+                            {r.label}
+                          </span>
                         ))}
                       </div>
-                      <span style={{ fontFamily: font.ui, fontSize: 11, color: colors[strength], fontWeight: 500 }}>{labels[strength]}</span>
-                    </div>
+                    </>
                   );
                 })()}
               </div>
 
               {isLogin && (
-                <button type="button" onClick={() => { setShowReset(true); setError(""); }}
-                  style={{ background: "none", border: "none", fontFamily: font.ui, fontSize: 12, color: c.gilt, cursor: "pointer", textAlign: "right", padding: 0, marginTop: -8 }}>
-                  Forgot password?
-                </button>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: -6 }}>
+                  <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+                    <div
+                      onClick={() => setRememberMe(!rememberMe)}
+                      role="checkbox"
+                      aria-checked={rememberMe}
+                      tabIndex={0}
+                      onKeyDown={(e) => { if (e.key === " " || e.key === "Enter") { e.preventDefault(); setRememberMe(!rememberMe); } }}
+                      style={{
+                        width: 16, height: 16, borderRadius: 4, flexShrink: 0,
+                        border: `1.5px solid ${rememberMe ? c.gilt : c.border}`,
+                        background: rememberMe ? `${c.gilt}18` : "transparent",
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        transition: "all 0.2s ease", cursor: "pointer",
+                      }}
+                    >
+                      {rememberMe && (
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                      )}
+                    </div>
+                    <span style={{ fontFamily: font.ui, fontSize: 12, color: c.stone }}>Remember me</span>
+                  </label>
+                  <button type="button" onClick={() => { setShowReset(true); setError(""); }}
+                    style={{ background: "none", border: "none", fontFamily: font.ui, fontSize: 12, color: c.gilt, cursor: "pointer", textAlign: "right", padding: 0 }}>
+                    Forgot password?
+                  </button>
+                </div>
               )}
 
               {error && (() => {
@@ -376,6 +539,9 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
                 onMouseLeave={(e) => { e.currentTarget.style.background = c.ivory; e.currentTarget.style.boxShadow = "none"; }}
               >
                 {loading ? "Please wait..." : isLogin ? "Log in" : "Create account"}
+                {isLogin && getLastLoginMethod() === "email" && !loading && (
+                  <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, color: c.sage, background: `${c.sage}12`, border: `1px solid ${c.sage}25`, borderRadius: 4, padding: "2px 6px", marginLeft: 6 }}>Last used</span>
+                )}
               </button>
             </form>
 

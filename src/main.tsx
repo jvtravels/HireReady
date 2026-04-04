@@ -1,7 +1,7 @@
 import "./index.css";
-import { StrictMode, Suspense, lazy } from "react";
+import { StrictMode, Suspense, lazy, useEffect } from "react";
 import { createRoot } from "react-dom/client";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { AuthProvider, RequireAuth } from "./AuthContext";
 import { DashboardProvider } from "./DashboardContext";
 import { Analytics } from "@vercel/analytics/react";
@@ -46,6 +46,12 @@ function LoadingFallback() {
   );
 }
 
+function ScrollToTop() {
+  const { pathname } = useLocation();
+  useEffect(() => { window.scrollTo(0, 0); }, [pathname]);
+  return null;
+}
+
 const isTempoHostRoute = window.location.pathname.startsWith("/tempo-host");
 
 createRoot(document.getElementById("root")!).render(
@@ -55,6 +61,7 @@ createRoot(document.getElementById("root")!).render(
     ) : (
       <ErrorBoundary>
       <BrowserRouter>
+        <ScrollToTop />
         <AuthProvider>
           <Suspense fallback={<LoadingFallback />}>
             <Routes>

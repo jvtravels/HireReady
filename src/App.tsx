@@ -144,7 +144,9 @@ function Nav() {
       WebkitBackdropFilter: scrolled ? "blur(24px) saturate(180%)" : "none",
       borderBottom: scrolled ? `1px solid ${c.border}` : "1px solid transparent",
       transition: "all 0.5s cubic-bezier(0.16, 1, 0.3, 1)",
+      animation: "navSlideDown 0.6s cubic-bezier(0.16, 1, 0.3, 1) both",
     }}>
+      <style>{`@keyframes navSlideDown { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }`}</style>
       <div style={{ fontFamily: font.ui, fontSize: 15, fontWeight: 600, letterSpacing: "0.06em", color: c.ivory, cursor: "pointer" }}>
         HireReady
       </div>
@@ -170,6 +172,7 @@ function Nav() {
         {["How It Works", "Features", "Pricing"].map((item) => (
           <a key={item} href={`#${item.toLowerCase().replace(/ /g, "-")}`}
             className="hover-underline"
+            onClick={(e) => { e.preventDefault(); document.getElementById(item.toLowerCase().replace(/ /g, "-"))?.scrollIntoView({ behavior: "smooth" }); }}
             style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 400, color: c.stone, textDecoration: "none", transition: "color 0.2s ease" }}
             onMouseEnter={(e) => (e.currentTarget.style.color = c.ivory)}
             onMouseLeave={(e) => (e.currentTarget.style.color = c.stone)}>
@@ -230,6 +233,7 @@ function Nav() {
         }} onClick={() => setMobileOpen(false)}>
           {["How It Works", "Features", "Pricing"].map((item) => (
             <a key={item} href={`#${item.toLowerCase().replace(/ /g, "-")}`}
+              onClick={(e) => { e.preventDefault(); setMobileOpen(false); setTimeout(() => document.getElementById(item.toLowerCase().replace(/ /g, "-"))?.scrollIntoView({ behavior: "smooth" }), 300); }}
               style={{ fontFamily: font.ui, fontSize: 18, color: c.ivory, textDecoration: "none" }}>
               {item}
             </a>
@@ -266,7 +270,7 @@ function HeroCTA() {
       }}
         onMouseEnter={(e) => { e.currentTarget.style.background = c.gilt; e.currentTarget.style.boxShadow = "0 8px 40px rgba(201,169,110,0.2)"; }}
         onMouseLeave={(e) => { e.currentTarget.style.background = c.ivory; e.currentTarget.style.boxShadow = "none"; }}>
-        {isLoggedIn ? "Go to Dashboard" : "Start Free Session"}
+        {isLoggedIn ? "Go to Dashboard" : "Get Started Free"}
       </Link>
       <button onClick={() => { document.getElementById("how-it-works")?.scrollIntoView({ behavior: "smooth" }); }}
         style={{
@@ -293,7 +297,7 @@ function BottomCTA() {
     }}
       onMouseEnter={(e) => { e.currentTarget.style.background = c.gilt; e.currentTarget.style.boxShadow = "0 8px 48px rgba(201,169,110,0.2)"; }}
       onMouseLeave={(e) => { e.currentTarget.style.background = c.ivory; e.currentTarget.style.boxShadow = "none"; }}>
-      {isLoggedIn ? "Go to Dashboard" : "Start Free Session"}
+      {isLoggedIn ? "Go to Dashboard" : "Get Started Free"}
     </Link>
   );
 }
