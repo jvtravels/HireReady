@@ -185,6 +185,7 @@ export default function Onboarding() {
           setAiProfile(finalProfile);
         }
       } catch {}
+      setResumeParsing(false);
       setAiPhase("done");
       // Save resume info to profile immediately — only set name/role if not already set
       const profileSave: Partial<Parameters<typeof updateUser>[0]> = {
@@ -486,7 +487,7 @@ export default function Onboarding() {
               )}
 
               {/* ── State: Building profile (parsing + AI analyzing) ── */}
-              {(resumeParsing || (aiPhase === "analyzing" && !aiProfile?.summary)) && (
+              {(resumeParsing || aiPhase === "analyzing") && aiPhase !== "done" && (
                 <>
                   {/* Same headings as empty state */}
                   <p style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 700, color: c.gilt, textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 12 }}>Step 1 — Your Experience</p>
@@ -522,7 +523,7 @@ export default function Onboarding() {
               )}
 
               {/* ── State: Profile ready ── */}
-              {resumeParsed && aiPhase === "done" && (
+              {resumeParsed && !resumeParsing && aiPhase === "done" && (
                 <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                   {/* Step heading */}
                   <div style={{ marginBottom: 8 }}>
