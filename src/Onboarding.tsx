@@ -109,9 +109,16 @@ function AutocompleteInput({
 }
 
 const OB_STEP_KEY = "hireready_ob_step";
+const OB_FORM_KEY = "hireready_ob_form";
 function saveObStep(step: number) { try { localStorage.setItem(OB_STEP_KEY, String(step)); } catch {} }
 function loadObStep(): number { try { const v = localStorage.getItem(OB_STEP_KEY); return v ? Math.min(Math.max(parseInt(v), 1), TOTAL_STEPS) : 1; } catch { return 1; } }
-function clearObStep() { try { localStorage.removeItem(OB_STEP_KEY); } catch {} }
+function clearObStep() { try { localStorage.removeItem(OB_STEP_KEY); localStorage.removeItem(OB_FORM_KEY); } catch {} }
+function saveObForm(data: { targetRole: string; targetCompany: string; interviewFocus: string[]; sessionLength: string }) {
+  try { localStorage.setItem(OB_FORM_KEY, JSON.stringify(data)); } catch {}
+}
+function loadObForm(): { targetRole: string; targetCompany: string; interviewFocus: string[]; sessionLength: string } | null {
+  try { const raw = localStorage.getItem(OB_FORM_KEY); return raw ? JSON.parse(raw) : null; } catch { return null; }
+}
 
 const SESSION_LENGTH_MAP: Record<string, 10 | 15 | 25> = { "10m": 10, "15m": 15, "25m": 25 };
 
@@ -136,12 +143,18 @@ export default function Onboarding() {
   const [showUndo, setShowUndo] = useState(false);
   const undoTimerRef = useRef<number>(0);
 
-  // ─── Step 2: Profile ───
-  const [targetRole, setTargetRole] = useState("");
+  // ─── Step 2: Profile (restored from localStorage if available) ───
+  const [savedForm] = useState(loadObForm);
+  const [targetRole, setTargetRole] = useState(savedForm?.targetRole || "");
   const [roleAutoFilled, setRoleAutoFilled] = useState(false);
-  const [targetCompany, setTargetCompany] = useState("");
-  const [interviewFocus, setInterviewFocus] = useState<string[]>(["Behavioral"]);
-  const [sessionLength, setSessionLength] = useState("15m");
+  const [targetCompany, setTargetCompany] = useState(savedForm?.targetCompany || "");
+  const [interviewFocus, setInterviewFocus] = useState<string[]>(savedForm?.interviewFocus || ["Behavioral"]);
+  const [sessionLength, setSessionLength] = useState(savedForm?.sessionLength || "15m");
+
+  // Auto-save form data on changes
+  useEffect(() => {
+    saveObForm({ targetRole, targetCompany, interviewFocus, sessionLength });
+  }, [targetRole, targetCompany, interviewFocus, sessionLength]);
 
   // ─── Step 3: Mic/Camera ───
   const [micStatus, setMicStatus] = useState<"idle" | "requesting" | "granted" | "denied">("idle");
@@ -301,7 +314,6 @@ export default function Onboarding() {
           if (step === 2 && (!targetRole.trim() || interviewFocus.length === 0)) return;
           goNext();
         } else {
-          if (micStatus !== "granted") return;
           handleStart();
         }
       } else if (e.key === "Escape" && step > 1) {
@@ -314,7 +326,7 @@ export default function Onboarding() {
   });
 
   const handleStart = async () => {
-    if (micStatus !== "granted") return;
+    // Allow proceeding even without mic — text input fallback exists in Interview
     cancelAnimationFrame(animFrameRef.current);
     // Don't stop mic stream — Interview component will re-use the permission grant
     // Only stop camera stream (not needed in interview by default)
@@ -856,7 +868,7 @@ export default function Onboarding() {
                         <div>
                           <p style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.ivory }}>Microphone</p>
                           <p style={{ fontFamily: font.ui, fontSize: 11, color: micStatus === "granted" ? c.sage : micStatus === "denied" ? c.ember : c.stone }}>
-                            {micStatus === "granted" ? "Connected — ready to go" : micStatus === "denied" ? "Permission denied — click Retry" : "Required for the interview"}
+                            {micStatus === "granted" ? "Connected — ready to go" : micStatus === "denied" ? "Denied — you can type answers instead" : "Recommended for best experience"}
                           </p>
                         </div>
                       </div>
@@ -992,20 +1004,27 @@ export default function Onboarding() {
                   <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
                 </button>
               ) : (
-                <button onClick={handleStart} disabled={micStatus !== "granted"}
+                <>
+                <button onClick={handleStart}
                   style={{
                     fontFamily: font.ui, fontSize: 15, fontWeight: 600, padding: "14px 40px", borderRadius: 10, border: "none",
-                    background: micStatus === "granted" ? `linear-gradient(135deg, ${c.gilt}, #B8923E)` : "rgba(201,169,110,0.15)",
-                    color: micStatus === "granted" ? c.obsidian : "rgba(201,169,110,0.4)",
-                    cursor: micStatus === "granted" ? "pointer" : "not-allowed",
+                    background: `linear-gradient(135deg, ${c.gilt}, #B8923E)`,
+                    color: c.obsidian,
+                    cursor: "pointer",
                     transition: "all 0.25s ease", display: "inline-flex", alignItems: "center", gap: 8,
-                    boxShadow: micStatus === "granted" ? "0 8px 24px rgba(201,169,110,0.2)" : "none",
+                    boxShadow: "0 8px 24px rgba(201,169,110,0.2)",
                   }}
-                  onMouseEnter={(e) => { if (micStatus === "granted") { e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 12px 32px rgba(201,169,110,0.3)"; } }}
-                  onMouseLeave={(e) => { if (micStatus === "granted") { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 8px 24px rgba(201,169,110,0.2)"; } }}>
+                  onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 12px 32px rgba(201,169,110,0.3)"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 8px 24px rgba(201,169,110,0.2)"; }}>
                   <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polygon points="5,3 19,12 5,21"/></svg>
-                  {micStatus === "granted" ? "Start Practice Interview" : "Allow microphone to continue"}
+                  {micStatus === "granted" ? "Start Practice Interview" : "Start Without Mic"}
                 </button>
+                {micStatus !== "granted" && (
+                  <p style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, textAlign: "center", marginTop: 8 }}>
+                    You can type your answers instead of speaking
+                  </p>
+                )}
+                </>
               )}
             </div>
 

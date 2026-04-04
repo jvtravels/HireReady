@@ -136,6 +136,7 @@ export default function DashboardHome() {
                 <button onClick={() => {
                   if (notif.action === "View Report") nav("/dashboard/analytics");
                   else if (notif.action === "Quick Practice" || notif.action === "Practice Now") handleStartSession();
+                  else if (notif.action === "Renew") nav("/#pricing");
                 }} style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.sage, background: "rgba(122,158,126,0.08)", border: `1px solid rgba(122,158,126,0.2)`, borderRadius: 6, padding: "5px 12px", cursor: "pointer", whiteSpace: "nowrap" }}
                   onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(122,158,126,0.15)"; }}
                   onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(122,158,126,0.08)"; }}
@@ -200,6 +201,16 @@ export default function DashboardHome() {
               <>Each session is tailored to your target role{user?.targetCompany ? ` at ${user.targetCompany}` : ""}. Complete your first session to get personalized insights.</>
             )}
           </p>
+          {/* Readiness forecast */}
+          {hasData && overallStats.sessionsCompleted >= 2 && overallStats.improvement > 0 && (
+            <p style={{ fontFamily: font.ui, fontSize: 12, color: c.sage, marginTop: 6, display: "flex", alignItems: "center", gap: 6 }}>
+              <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="2" strokeLinecap="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+              {readinessScore >= 85
+                ? "You're interview-ready! Keep practicing to stay sharp."
+                : `At your current pace (+${Math.round(overallStats.improvement / overallStats.sessionsCompleted)}pts/session), you'll reach 85 in ~${Math.max(1, Math.ceil((85 - readinessScore) / Math.max(1, overallStats.improvement / overallStats.sessionsCompleted)))} more sessions.`
+              }
+            </p>
+          )}
         </div>
         <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 12 }}>
           <button className="shimmer-btn" onClick={handleStartSession} style={{ fontFamily: font.ui, fontSize: 14, fontWeight: 500, padding: "12px 28px", borderRadius: 8, border: "none", background: c.gilt, color: c.obsidian, cursor: "pointer", display: "flex", alignItems: "center", gap: 8, whiteSpace: "nowrap" }}
@@ -209,6 +220,15 @@ export default function DashboardHome() {
             <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polygon points="5,3 19,12 5,21" /></svg>
             {atSessionLimit ? "Upgrade to Continue" : "Start Session"}
           </button>
+          {weakestSkill && !atSessionLimit && (
+            <button onClick={() => nav(`/session/new?type=behavioral&focus=${weakestSkill.name.toLowerCase().replace(/\s+/g, "-")}`)}
+              style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, padding: "9px 20px", borderRadius: 8, border: `1px solid rgba(196,112,90,0.2)`, background: "rgba(196,112,90,0.06)", color: c.ember, cursor: "pointer", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 6, transition: "all 0.2s ease" }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(196,112,90,0.12)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(196,112,90,0.06)"; }}>
+              <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              Focus: {weakestSkill.name} ({weakestSkill.score})
+            </button>
+          )}
           {isFree && sessionsRemaining > 0 && (
             <span style={{ fontFamily: font.mono, fontSize: 10, color: sessionsRemaining === 1 ? c.ember : c.stone }}>{sessionsRemaining} free session{sessionsRemaining !== 1 ? "s" : ""} left</span>
           )}

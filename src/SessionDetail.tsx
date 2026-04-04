@@ -294,11 +294,107 @@ export default function SessionDetail() {
           </div>
         )}
 
-        {/* AI Feedback */}
+        {/* AI Feedback — structured */}
         {session.ai_feedback && (
-          <div style={{ background: c.graphite, borderRadius: 14, border: `1px solid ${c.border}`, padding: "28px 32px" }}>
-            <h3 style={{ fontSize: 15, fontWeight: 600, color: c.ivory, marginBottom: 12 }}>AI Coach Summary</h3>
-            <p style={{ fontSize: 14, color: c.chalk, lineHeight: 1.7, margin: 0, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{session.ai_feedback}</p>
+          <div style={{ background: c.graphite, borderRadius: 14, border: `1px solid ${c.border}`, padding: "28px 32px", marginBottom: 20 }}>
+            <h3 style={{ fontSize: 15, fontWeight: 600, color: c.ivory, marginBottom: 16 }}>AI Coach Summary</h3>
+            {(() => {
+              const feedback = session.ai_feedback;
+              const strengths: string[] = [];
+              const improvements: string[] = [];
+              const tips: string[] = [];
+
+              // Try to parse structured feedback from sentences
+              const sentences = feedback.split(/(?<=[.!])\s+/).filter(Boolean);
+              for (const s of sentences) {
+                const lower = s.toLowerCase();
+                if (lower.includes("strong") || lower.includes("excellent") || lower.includes("well") || lower.includes("good") || lower.includes("clear") || lower.includes("solid")) {
+                  strengths.push(s.trim());
+                } else if (lower.includes("improve") || lower.includes("work on") || lower.includes("could") || lower.includes("try") || lower.includes("consider") || lower.includes("recommend")) {
+                  improvements.push(s.trim());
+                } else {
+                  tips.push(s.trim());
+                }
+              }
+
+              // If parsing didn't work well, just show the raw feedback
+              if (strengths.length === 0 && improvements.length === 0) {
+                return <p style={{ fontSize: 14, color: c.chalk, lineHeight: 1.7, margin: 0, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{feedback}</p>;
+              }
+
+              return (
+                <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                  {strengths.length > 0 && (
+                    <div style={{ padding: "14px 16px", borderRadius: 10, background: "rgba(122,158,126,0.04)", border: `1px solid rgba(122,158,126,0.12)`, borderLeft: `3px solid ${c.sage}` }}>
+                      <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", color: c.sage, display: "block", marginBottom: 6 }}>Strengths</span>
+                      {strengths.map((s, i) => <p key={i} style={{ fontSize: 13, color: c.chalk, lineHeight: 1.6, margin: i > 0 ? "4px 0 0" : 0 }}>{s}</p>)}
+                    </div>
+                  )}
+                  {improvements.length > 0 && (
+                    <div style={{ padding: "14px 16px", borderRadius: 10, background: "rgba(196,112,90,0.04)", border: `1px solid rgba(196,112,90,0.12)`, borderLeft: `3px solid ${c.ember}` }}>
+                      <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", color: c.ember, display: "block", marginBottom: 6 }}>Areas to Improve</span>
+                      {improvements.map((s, i) => <p key={i} style={{ fontSize: 13, color: c.chalk, lineHeight: 1.6, margin: i > 0 ? "4px 0 0" : 0 }}>{s}</p>)}
+                    </div>
+                  )}
+                  {tips.length > 0 && (
+                    <div style={{ padding: "14px 16px", borderRadius: 10, background: "rgba(201,169,110,0.04)", border: `1px solid rgba(201,169,110,0.12)`, borderLeft: `3px solid ${c.gilt}` }}>
+                      <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", color: c.gilt, display: "block", marginBottom: 6 }}>Tips</span>
+                      {tips.map((s, i) => <p key={i} style={{ fontSize: 13, color: c.chalk, lineHeight: 1.6, margin: i > 0 ? "4px 0 0" : 0 }}>{s}</p>)}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+          </div>
+        )}
+
+        {/* Recommended Next Session */}
+        {(() => {
+          const weakest = session.skill_scores
+            ? Object.entries(session.skill_scores).sort(([,a], [,b]) => (a as number) - (b as number))[0]
+            : null;
+          const nextType = session.type === "behavioral" ? "case-study" : session.type === "case-study" ? "technical" : "behavioral";
+          const nextDifficulty = session.score >= 85 ? "intense" : session.score < 70 ? "warmup" : "standard";
+          return (
+            <div style={{ background: `linear-gradient(135deg, rgba(201,169,110,0.06) 0%, ${c.graphite} 100%)`, borderRadius: 14, border: `1px solid rgba(201,169,110,0.12)`, padding: "24px 32px", marginBottom: 20 }}>
+              <h3 style={{ fontSize: 14, fontWeight: 600, color: c.ivory, marginBottom: 8 }}>What's Next?</h3>
+              {weakest && (
+                <p style={{ fontSize: 13, color: c.stone, lineHeight: 1.5, marginBottom: 16 }}>
+                  Your <strong style={{ color: c.chalk }}>{weakest[0]}</strong> scored {weakest[1] as number} — focus a session on this to improve fastest.
+                </p>
+              )}
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                {weakest && (
+                  <button onClick={() => navigate(`/session/new?type=${session.type}&focus=${weakest[0].toLowerCase().replace(/\s+/g, "-")}`)}
+                    style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, padding: "10px 22px", borderRadius: 8, border: "none", background: c.gilt, color: c.obsidian, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
+                    <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polygon points="5,3 19,12 5,21"/></svg>
+                    Practice {weakest[0]}
+                  </button>
+                )}
+                <button onClick={() => navigate(`/session/new?type=${nextType}&difficulty=${nextDifficulty}`)}
+                  style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, padding: "10px 22px", borderRadius: 8, border: `1px solid ${c.border}`, background: "transparent", color: c.chalk, cursor: "pointer" }}>
+                  Try {normalizeType(nextType)}
+                </button>
+                <button onClick={() => navigate("/dashboard")}
+                  style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, padding: "10px 22px", borderRadius: 8, border: `1px solid ${c.border}`, background: "transparent", color: c.stone, cursor: "pointer" }}>
+                  Back to Dashboard
+                </button>
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* Upgrade CTA for free users */}
+        {user && (!user.subscriptionTier || user.subscriptionTier === "free") && (
+          <div style={{ background: c.graphite, borderRadius: 14, border: `1px solid rgba(201,169,110,0.15)`, padding: "20px 28px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
+            <div>
+              <p style={{ fontFamily: font.ui, fontSize: 14, fontWeight: 600, color: c.ivory, marginBottom: 4 }}>Unlock Unlimited Practice</p>
+              <p style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, margin: 0 }}>Get unlimited sessions, detailed analytics, and priority AI feedback.</p>
+            </div>
+            <button onClick={() => navigate("/#pricing")}
+              style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, padding: "10px 24px", borderRadius: 8, border: "none", background: `linear-gradient(135deg, ${c.gilt}, #B8923E)`, color: c.obsidian, cursor: "pointer", whiteSpace: "nowrap" }}>
+              Upgrade Now
+            </button>
           </div>
         )}
       </div>

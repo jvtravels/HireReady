@@ -1,6 +1,6 @@
 import { c } from "./tokens";
 
-export type UserContext = { targetRole?: string; targetCompany?: string; industry?: string; interviewDate?: string; practiceTimestamps?: string[] } | null;
+export type UserContext = { targetRole?: string; targetCompany?: string; industry?: string; interviewDate?: string; practiceTimestamps?: string[]; subscriptionTier?: string; subscriptionEnd?: string } | null;
 
 export interface DashboardSession {
   id: string;

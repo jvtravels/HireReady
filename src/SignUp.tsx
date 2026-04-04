@@ -72,6 +72,7 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
   const [resetSent, setResetSent] = useState(false);
   const [showReset, setShowReset] = useState(false);
   const [signupSent, setSignupSent] = useState(false);
+  const [resendMsg, setResendMsg] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(() => getRememberMe());
   const [emailSuggestion, setEmailSuggestion] = useState("");
@@ -243,26 +244,28 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
                 <span style={{ fontFamily: font.ui, fontSize: 15, fontWeight: 600, color: c.sage }}>Account created!</span>
               </div>
               <p style={{ fontFamily: font.ui, fontSize: 13, color: c.ivory, lineHeight: 1.6, margin: 0 }}>
-                We've sent a confirmation link to <strong>{email}</strong>. Click the link in your email to activate your account, then come back and log in. Check your spam folder if you don't see it within a few minutes.
+                We've sent a confirmation link to <strong>{email}</strong>. Click the link in your email to activate your account. Check your spam folder if you don't see it within a few minutes.
               </p>
             </div>
+            <button onClick={() => { setSignupSent(false); navigate("/login"); }}
+              style={{ fontFamily: font.ui, fontSize: 14, fontWeight: 600, padding: "12px 24px", borderRadius: 10, border: "none", background: c.gilt, color: c.obsidian, cursor: "pointer", transition: "all 0.2s ease" }}>
+              Continue to Login
+            </button>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
               {supabaseConfigured && (
                 <button onClick={async () => {
                   try {
                     await supabase.auth.resend({ type: "signup", email });
                     setError("");
-                    alert("Confirmation email resent! Check your inbox.");
+                    setResendMsg("Confirmation email resent!");
+                    setTimeout(() => setResendMsg(""), 3000);
                   } catch { setError("Could not resend email. Try again later."); }
                 }}
                   style={{ background: "none", border: "none", fontFamily: font.ui, fontSize: 13, color: c.stone, cursor: "pointer", textDecoration: "underline" }}>
                   Didn't receive it? Resend confirmation email
                 </button>
               )}
-              <button onClick={() => { setSignupSent(false); }}
-                style={{ background: "none", border: "none", fontFamily: font.ui, fontSize: 13, color: c.gilt, cursor: "pointer" }}>
-                Back to login
-              </button>
+              {resendMsg && <span style={{ fontFamily: font.ui, fontSize: 12, color: c.sage }}>{resendMsg}</span>}
             </div>
           </div>
         ) : showReset ? (

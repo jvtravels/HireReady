@@ -250,6 +250,18 @@ export function generateNotifications(user: UserContext, streak: number, weekAct
     else if (days > 0 && days <= 7) notifs.push({ id: 31, type: "streak", text: `${days} days until your interview — aim for daily practice this week.`, dismissible: true });
   }
 
+  // Subscription expiry warning
+  if (user?.subscriptionEnd) {
+    const daysLeft = Math.ceil((new Date(user.subscriptionEnd).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+    if (daysLeft > 0 && daysLeft <= 3) {
+      notifs.push({ id: 40, type: "streak", text: `Your subscription expires in ${daysLeft} day${daysLeft > 1 ? "s" : ""}. Renew to keep unlimited access.`, dismissible: false, action: "Renew" });
+    } else if (daysLeft > 0 && daysLeft <= 7) {
+      notifs.push({ id: 41, type: "streak", text: `Subscription renews in ${daysLeft} days. You're on the ${user.subscriptionTier || "free"} plan.`, dismissible: true });
+    } else if (daysLeft <= 0) {
+      notifs.push({ id: 42, type: "streak", text: "Your subscription has expired. You're now on the free plan.", dismissible: false, action: "Renew" });
+    }
+  }
+
   const calEvents = loadEvents().filter(e => e.status === "upcoming");
   calEvents.forEach((ev, i) => {
     const days = daysUntilEvent(ev.date, ev.time);
