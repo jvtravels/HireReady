@@ -2,6 +2,10 @@
 
 declare const process: { env: Record<string, string | undefined> };
 
+/* ─── Plan Limits (single source of truth for backend) ─── */
+const FREE_SESSION_LIMIT = 3;
+const STARTER_WEEKLY_LIMIT = 10;
+
 /* ─── CORS ─── */
 
 const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || "").split(",").filter(Boolean);
@@ -139,8 +143,8 @@ export async function checkSessionLimit(userId: string): Promise<{ allowed: bool
     if (!Array.isArray(sessions)) return { allowed: true };
 
     if (tier === "free") {
-      if (sessions.length >= 3) {
-        return { allowed: false, reason: "Free plan limit reached (3 sessions). Upgrade to continue." };
+      if (sessions.length >= FREE_SESSION_LIMIT) {
+        return { allowed: false, reason: `Free plan limit reached (${FREE_SESSION_LIMIT} sessions). Upgrade to continue.` };
       }
     } else if (tier === "starter") {
       // Count sessions this week (UTC-based for serverless consistency)
@@ -148,8 +152,8 @@ export async function checkSessionLimit(userId: string): Promise<{ allowed: bool
       const weekStart = new Date(now2.getTime() - now2.getUTCDay() * 86400000);
       weekStart.setUTCHours(0, 0, 0, 0);
       const thisWeek = sessions.filter((s: { created_at: string }) => new Date(s.created_at) >= weekStart).length;
-      if (thisWeek >= 10) {
-        return { allowed: false, reason: "Starter plan limit reached (10/week). Upgrade to Pro for unlimited." };
+      if (thisWeek >= STARTER_WEEKLY_LIMIT) {
+        return { allowed: false, reason: `Starter plan limit reached (${STARTER_WEEKLY_LIMIT}/week). Upgrade to Pro for unlimited.` };
       }
     }
 

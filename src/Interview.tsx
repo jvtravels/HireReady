@@ -1480,6 +1480,11 @@ export default function Interview() {
                 </svg>
                 <p style={{ fontFamily: font.ui, fontSize: 16, fontWeight: 600, color: c.ivory, margin: 0 }}>Session complete</p>
                 <p style={{ fontFamily: font.ui, fontSize: 13, color: c.stone, margin: 0 }}>{currentQuestionNum} questions answered · {formatTime(elapsed)}</p>
+                {(usedFallbackScore || evalTimedOut) && (
+                  <p style={{ fontFamily: font.ui, fontSize: 11, color: c.gilt, margin: 0, padding: "6px 12px", borderRadius: 6, background: "rgba(201,169,110,0.06)", border: "1px solid rgba(201,169,110,0.1)" }}>
+                    {evalTimedOut ? "AI evaluation timed out" : "AI evaluation unavailable"} — score is estimated from session metrics
+                  </p>
+                )}
               </div>
             )}
 

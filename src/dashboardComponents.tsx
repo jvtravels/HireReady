@@ -3,6 +3,7 @@ import { c, font } from "./tokens";
 import { scoreLabel, scoreLabelColor } from "./dashboardTypes";
 import type { DashboardSession } from "./dashboardTypes";
 import { useAuth } from "./AuthContext";
+import { FREE_SESSION_LIMIT, STARTER_WEEKLY_LIMIT } from "./dashboardData";
 
 /* ─── Skeleton Loading ─── */
 export function DashboardSkeleton() {
@@ -91,8 +92,8 @@ export function DataLoadingSkeleton() {
 
 /* ─── Upgrade Modal ─── */
 const ALL_PLANS = [
-  { id: "free", tier: "free", name: "Free", price: "\u20B90", period: "", desc: "3 sessions total", features: ["3 mock interviews", "Behavioral questions", "Basic score & feedback"], featured: false },
-  { id: "weekly", tier: "starter", name: "Starter", price: "\u20B949", period: "/week", desc: "10 sessions per week", features: ["10 sessions/week", "All question types", "Detailed feedback & skill scores", "Resume analysis", "PDF export"], featured: false },
+  { id: "free", tier: "free", name: "Free", price: "\u20B90", period: "", desc: `${FREE_SESSION_LIMIT} sessions total`, features: [`${FREE_SESSION_LIMIT} mock interviews`, "Behavioral questions", "Basic score & feedback"], featured: false },
+  { id: "weekly", tier: "starter", name: "Starter", price: "\u20B949", period: "/week", desc: `${STARTER_WEEKLY_LIMIT} sessions per week`, features: [`${STARTER_WEEKLY_LIMIT} sessions/week`, "All question types", "Detailed feedback & skill scores", "Resume analysis", "PDF export"], featured: false },
   { id: "monthly", tier: "pro", name: "Pro", price: "\u20B9149", period: "/mo", desc: "Best value \u2014 unlimited prep", features: ["Unlimited sessions", "Full AI coaching feedback", "Performance analytics & trends", "Interview calendar", "Export PDF, CSV, JSON"], featured: true },
 ];
 
@@ -202,8 +203,6 @@ export function UpgradeModal({ onClose, sessionsUsed, user, currentTier, onPayme
       setLoading(null);
     }
   };
-
-  const FREE_SESSION_LIMIT = 3;
 
   const modalRef = useRef<HTMLDivElement>(null);
 

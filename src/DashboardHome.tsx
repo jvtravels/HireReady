@@ -20,7 +20,7 @@ export default function DashboardHome() {
     isFree, atSessionLimit, sessionsRemaining,
     notifications, aiInsights, upcomingGoals, returnContext, smartSchedule, prepPlan,
     badges, dailyChallenge, practiceReminder,
-    handleStartSession, handleExport, handleDownload,
+    handleStartSession, handleExport, handleDownload, handleExportPDF,
     setShowUpgradeModal,
   } = useDashboard();
 
@@ -116,6 +116,14 @@ export default function DashboardHome() {
           >
             <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
             Download
+          </button>
+          <button onClick={handleExportPDF} title="Export as PDF"
+            style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 500, color: c.stone, background: c.graphite, border: `1px solid ${c.border}`, borderRadius: 8, padding: "8px 14px", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, transition: "all 0.2s ease", outline: "none" }}
+            onMouseEnter={(e) => { e.currentTarget.style.borderColor = c.gilt; e.currentTarget.style.color = c.ivory; }}
+            onMouseLeave={(e) => { e.currentTarget.style.borderColor = c.border; e.currentTarget.style.color = c.stone; }}
+          >
+            <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            PDF
           </button>
           {!isMobile && [
             { label: "Quick Behavioral", type: "behavioral", icon: <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> },

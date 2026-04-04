@@ -66,6 +66,7 @@ interface DashboardContextValue {
   handleExport: () => void;
   handleDownload: () => void;
   handleExportCSV: () => void;
+  handleExportPDF: () => void;
 }
 
 const DashboardContext = createContext<DashboardContextValue | null>(null);
@@ -143,10 +144,9 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
           focus: s.focus, duration: s.duration, score: s.score, questions: s.questions,
           ai_feedback: s.ai_feedback, skill_scores: s.skill_scores,
         }));
-        if (mapped.length > 0) {
-          setSupabaseSessions(mapped);
-          try { localStorage.setItem(sessionsCacheKey, JSON.stringify(mapped)); } catch {}
-        }
+        // Always update from Supabase (including when sessions are deleted)
+        setSupabaseSessions(mapped);
+        try { localStorage.setItem(sessionsCacheKey, JSON.stringify(mapped)); } catch {}
       }).catch(() => {
         if (cancelled) return;
         // Fallback to cached sessions
@@ -167,10 +167,8 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
           date: e.date, time: e.time, type: e.type, notes: e.notes,
           duration: 60, location: "", status: "upcoming" as const, reminders: true,
         }));
-        if (mapped.length > 0) {
-          setCalendarEvents(mapped);
-          try { localStorage.setItem(eventsCacheKey, JSON.stringify(mapped)); } catch {}
-        }
+        setCalendarEvents(mapped);
+        try { localStorage.setItem(eventsCacheKey, JSON.stringify(mapped)); } catch {}
       }).catch(() => {
         if (cancelled) return;
         try {
@@ -312,6 +310,31 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     showToast("CSV exported");
   }, [recentSessions, showToast]);
 
+  const handleExportPDF = useCallback(() => {
+    const report = generateReport(persisted.userName, overallStats, skills, recentSessions);
+    const rows = recentSessions.slice(0, 20).map(s =>
+      `<tr><td>${s.date}</td><td>${s.type}</td><td>${s.score}</td><td>${s.topStrength || "-"}</td><td>${s.topWeakness || "-"}</td></tr>`
+    ).join("");
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>HireReady Progress Report</title>
+<style>body{font-family:Inter,Helvetica,Arial,sans-serif;color:#1a1a1a;max-width:720px;margin:0 auto;padding:40px 24px;line-height:1.6}
+h1{font-size:22px;margin-bottom:4px}h2{font-size:16px;margin-top:32px;border-bottom:1px solid #ddd;padding-bottom:6px}
+table{width:100%;border-collapse:collapse;font-size:13px;margin-top:12px}th,td{text-align:left;padding:8px 10px;border-bottom:1px solid #eee}
+th{background:#f5f5f5;font-weight:600}.meta{color:#666;font-size:13px}pre{white-space:pre-wrap;font-size:12px;background:#f9f9f9;padding:16px;border-radius:8px}
+@media print{body{padding:20px}}</style></head><body>
+<h1>HireReady Progress Report</h1>
+<p class="meta">${persisted.userName || "User"} · Generated ${new Date().toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}</p>
+<h2>Overview</h2>
+<p>Sessions: ${overallStats.sessionsCompleted} · Average Score: ${overallStats.avgScore} · Improvement: ${overallStats.improvement > 0 ? "+" : ""}${overallStats.improvement}%</p>
+${skills.length > 0 ? `<h2>Skills</h2><table><tr><th>Skill</th><th>Score</th><th>Change</th></tr>${skills.map(s => `<tr><td>${s.name}</td><td>${s.score}/100</td><td>${s.score - s.prev >= 0 ? "+" : ""}${s.score - s.prev}</td></tr>`).join("")}</table>` : ""}
+<h2>Recent Sessions</h2>
+<table><tr><th>Date</th><th>Type</th><th>Score</th><th>Strength</th><th>To Improve</th></tr>${rows}</table>
+<h2>Full Report</h2><pre>${report.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</pre>
+</body></html>`;
+    const w = window.open("", "_blank");
+    if (w) { w.document.write(html); w.document.close(); w.print(); }
+    showToast("PDF export opened — use Save as PDF in print dialog");
+  }, [persisted.userName, overallStats, skills, recentSessions, showToast]);
+
   const value: DashboardContextValue = useMemo(() => ({
     persisted, updatePersisted,
     recentSessions, scoreTrend, skills, overallStats, hasData,
@@ -328,7 +351,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     aiInsights, notifications, upcomingGoals,
     returnContext, smartSchedule, prepPlan,
     badges, dailyChallenge, practiceReminder,
-    handleStartSession, handleExport, handleDownload, handleExportCSV,
+    handleStartSession, handleExport, handleDownload, handleExportCSV, handleExportPDF,
   }), [
     persisted, updatePersisted,
     recentSessions, scoreTrend, skills, overallStats, hasData,
@@ -342,7 +365,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     aiInsights, notifications, upcomingGoals,
     returnContext, smartSchedule, prepPlan,
     badges, dailyChallenge, practiceReminder,
-    handleStartSession, handleExport, handleDownload, handleExportCSV,
+    handleStartSession, handleExport, handleDownload, handleExportCSV, handleExportPDF,
   ]);
 
   return <DashboardContext.Provider value={value}>{children}</DashboardContext.Provider>;
