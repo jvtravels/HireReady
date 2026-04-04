@@ -106,7 +106,7 @@ function profileToUser(profile: Profile, session: Session): User {
   };
 }
 
-/* ─── localStorage fallback (when Supabase not configured) ─── */
+/* ─── localStorage cache for instant load ─── */
 const AUTH_KEY = "hireready_auth";
 function loadLocalUser(): User | null {
   try { const raw = localStorage.getItem(AUTH_KEY); if (raw) return JSON.parse(raw); } catch {} return null;
@@ -116,8 +116,20 @@ function saveLocalUser(user: User | null) {
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(supabaseConfigured ? null : loadLocalUser);
-  const [loading, setLoading] = useState(supabaseConfigured);
+  // Load cached user immediately for instant UI — will be validated against Supabase
+  const cachedUser = supabaseConfigured && hasStoredSession() ? loadLocalUser() : (!supabaseConfigured ? loadLocalUser() : null);
+  const [user, setUserRaw] = useState<User | null>(cachedUser);
+  // If we have a cached user, skip the loading state entirely (show UI instantly)
+  const [loading, setLoading] = useState(supabaseConfigured && !cachedUser);
+
+  // Wrap setUser to also persist to localStorage for instant load next time
+  const setUser = useCallback((u: User | null | ((prev: User | null) => User | null)) => {
+    setUserRaw(prev => {
+      const next = typeof u === "function" ? u(prev) : u;
+      saveLocalUser(next);
+      return next;
+    });
+  }, []);
 
   // Listen for auth state changes (Supabase mode)
   useEffect(() => {
@@ -156,11 +168,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(newUser);
     }
 
-    // Safety timeout: ensure loading never hangs (15s — generous to avoid premature logout)
+    // Safety timeout: ensure loading never hangs (8s)
     const safetyTimer = setTimeout(() => {
       console.warn("[auth] safety timeout: forcing loading=false");
       setLoading(false);
-    }, 15000);
+    }, 8000);
 
     // Check current session
     supabase.auth.getSession().then(async ({ data: { session } }) => {
