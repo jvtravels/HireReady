@@ -10,8 +10,8 @@ const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || "").split(",").filter(Bo
 
 function getAllowedOrigin(origin: string): string {
   if (ALLOWED_ORIGINS.length > 0 && ALLOWED_ORIGINS.includes(origin)) return origin;
-  if (origin.endsWith(".vercel.app")) return origin;
   if (origin.startsWith("http://localhost:")) return origin;
+  if (ALLOWED_ORIGINS.length === 0 && origin.endsWith(".vercel.app")) return origin;
   return "";
 }
 
@@ -26,6 +26,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   if (req.method === "OPTIONS") return res.status(204).end();
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
+
+  // Body size check
+  const bodyContentLength = parseInt((req.headers["content-length"] as string) || "0", 10);
+  if (bodyContentLength > 1048576) {
+    return res.status(413).json({ error: "Request too large" });
+  }
 
   // CSRF: validate Origin header on state-changing requests
   if (!origin) {

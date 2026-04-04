@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useCallback, useMemo, type ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "./AuthContext";
 import { getUserSessions, getCalendarEvents } from "./supabase";
@@ -12,6 +12,7 @@ import {
   getReturnContext, getSmartScheduleSuggestion, getPrepPlan,
   computeWeekActivity, computeStreak, computeReadiness, daysUntil,
   generateReport, scoreLabel,
+  computeBadges, getDailyChallenge, getPracticeReminder,
 } from "./dashboardData";
 
 interface DashboardContextValue {
@@ -45,6 +46,8 @@ interface DashboardContextValue {
   setPaymentBanner: (v: "success" | "cancelled" | null) => void;
   syncError: string;
   setSyncError: (v: string) => void;
+  toast: string | null;
+  showToast: (msg: string) => void;
   /* Derived */
   displayName: string;
   isNewUser: boolean;
@@ -55,6 +58,9 @@ interface DashboardContextValue {
   returnContext: string | null;
   smartSchedule: string | null;
   prepPlan: { label: string; done: boolean }[] | null;
+  badges: { id: string; label: string; description: string; icon: string; earned: boolean; progress: number }[];
+  dailyChallenge: { id: string; label: string; description: string; type: string; focus?: string; difficulty: string; completed: boolean };
+  practiceReminder: string | null;
   /* Actions */
   handleStartSession: () => void;
   handleExport: () => void;
@@ -79,10 +85,10 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     if (user) {
       return {
         ...local,
-        userName: user.name || local.userName,
-        targetRole: user.targetRole || local.targetRole,
-        interviewDate: user.interviewDate || local.interviewDate,
-        resumeFileName: user.resumeFileName || local.resumeFileName,
+        userName: user.name != null && user.name !== "" ? user.name : local.userName,
+        targetRole: user.targetRole != null && user.targetRole !== "" ? user.targetRole : local.targetRole,
+        interviewDate: user.interviewDate != null && user.interviewDate !== "" ? user.interviewDate : local.interviewDate,
+        resumeFileName: user.resumeFileName != null && user.resumeFileName !== "" ? user.resumeFileName : local.resumeFileName,
         hasCompletedFirstSession: user.hasCompletedOnboarding || local.hasCompletedFirstSession,
       };
     }
@@ -95,6 +101,13 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
   const [isMobile, setIsMobile] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [paymentBanner, setPaymentBanner] = useState<"success" | "cancelled" | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const showToast = useCallback((msg: string) => {
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    setToast(msg);
+    toastTimer.current = setTimeout(() => setToast(null), 3000);
+  }, []);
 
   // Sync persisted state when user profile loads/changes (e.g., after profile fetch completes)
   useEffect(() => {
@@ -102,10 +115,10 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     setPersisted(prev => {
       const updated = {
         ...prev,
-        userName: user.name || prev.userName,
-        targetRole: user.targetRole || prev.targetRole,
-        interviewDate: user.interviewDate || prev.interviewDate,
-        resumeFileName: user.resumeFileName || prev.resumeFileName,
+        userName: user.name != null && user.name !== "" ? user.name : prev.userName,
+        targetRole: user.targetRole != null && user.targetRole !== "" ? user.targetRole : prev.targetRole,
+        interviewDate: user.interviewDate != null && user.interviewDate !== "" ? user.interviewDate : prev.interviewDate,
+        resumeFileName: user.resumeFileName != null && user.resumeFileName !== "" ? user.resumeFileName : prev.resumeFileName,
         hasCompletedFirstSession: user.hasCompletedOnboarding || prev.hasCompletedFirstSession,
       };
       saveState(updated);
@@ -121,55 +134,56 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     const eventsCacheKey = `hireready_cache_events_${user.id}`;
 
     let cancelled = false;
-    let loaded = 0;
-    const checkDone = () => { loaded++; if (!cancelled && loaded >= 2) setDataLoading(false); };
 
-    getUserSessions(user.id).then(sessions => {
-      if (cancelled) return;
-      const mapped = sessions.map(s => ({
-        id: s.id, date: s.date, type: s.type, difficulty: s.difficulty,
-        focus: s.focus, duration: s.duration, score: s.score, questions: s.questions,
-        ai_feedback: s.ai_feedback, skill_scores: s.skill_scores,
-      }));
-      if (mapped.length > 0) {
-        setSupabaseSessions(mapped);
-        try { localStorage.setItem(sessionsCacheKey, JSON.stringify(mapped)); } catch {}
-      }
-    }).catch(() => {
-      if (cancelled) return;
-      // Fallback to cached sessions
-      try {
-        const cached = localStorage.getItem(sessionsCacheKey);
-        if (cached) {
-          setSupabaseSessions(JSON.parse(cached));
-          setSyncError("Offline — showing cached data.");
-        } else {
-          setSyncError("Could not load session data.");
+    Promise.allSettled([
+      getUserSessions(user.id).then(sessions => {
+        if (cancelled) return;
+        const mapped = sessions.map(s => ({
+          id: s.id, date: s.date, type: s.type, difficulty: s.difficulty,
+          focus: s.focus, duration: s.duration, score: s.score, questions: s.questions,
+          ai_feedback: s.ai_feedback, skill_scores: s.skill_scores,
+        }));
+        if (mapped.length > 0) {
+          setSupabaseSessions(mapped);
+          try { localStorage.setItem(sessionsCacheKey, JSON.stringify(mapped)); } catch {}
         }
-      } catch { setSyncError("Could not load session data."); }
-    }).finally(checkDone);
-
-    getCalendarEvents(user.id).then(events => {
-      if (cancelled) return;
-      const mapped = events.map(e => ({
-        id: e.id, title: e.title, company: e.company,
-        date: e.date, time: e.time, type: e.type, notes: e.notes,
-        duration: 60, location: "", status: "upcoming" as const, reminders: true,
-      }));
-      if (mapped.length > 0) {
-        setCalendarEvents(mapped);
-        try { localStorage.setItem(eventsCacheKey, JSON.stringify(mapped)); } catch {}
-      }
-    }).catch(() => {
-      if (cancelled) return;
-      try {
-        const cached = localStorage.getItem(eventsCacheKey);
-        if (cached) {
-          setCalendarEvents(JSON.parse(cached));
-          if (!syncError) setSyncError("Offline — showing cached data.");
+      }).catch(() => {
+        if (cancelled) return;
+        // Fallback to cached sessions
+        try {
+          const cached = localStorage.getItem(sessionsCacheKey);
+          if (cached) {
+            setSupabaseSessions(JSON.parse(cached));
+            setSyncError("Offline — showing cached data.");
+          } else {
+            setSyncError("Could not load session data.");
+          }
+        } catch { setSyncError("Could not load session data."); }
+      }),
+      getCalendarEvents(user.id).then(events => {
+        if (cancelled) return;
+        const mapped = events.map(e => ({
+          id: e.id, title: e.title, company: e.company,
+          date: e.date, time: e.time, type: e.type, notes: e.notes,
+          duration: 60, location: "", status: "upcoming" as const, reminders: true,
+        }));
+        if (mapped.length > 0) {
+          setCalendarEvents(mapped);
+          try { localStorage.setItem(eventsCacheKey, JSON.stringify(mapped)); } catch {}
         }
-      } catch {}
-    }).finally(checkDone);
+      }).catch(() => {
+        if (cancelled) return;
+        try {
+          const cached = localStorage.getItem(eventsCacheKey);
+          if (cached) {
+            setCalendarEvents(JSON.parse(cached));
+            if (!syncError) setSyncError("Offline — showing cached data.");
+          }
+        } catch {}
+      }),
+    ]).then(() => {
+      if (!cancelled) setDataLoading(false);
+    });
 
     // Safety timeout — never stay stuck on loading skeleton
     const timeout = setTimeout(() => { if (!cancelled) setDataLoading(false); }, 5000);
@@ -192,6 +206,9 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
   const returnContext = getReturnContext(recentSessions);
   const smartSchedule = getSmartScheduleSuggestion(user);
   const prepPlan = getPrepPlan(user, recentSessions, skills);
+  const badges = computeBadges(recentSessions, skills, currentStreak);
+  const dailyChallenge = getDailyChallenge(recentSessions, skills);
+  const practiceReminder = getPracticeReminder(recentSessions, currentStreak);
 
   // Persist state
   const updatePersisted = useCallback((updates: Partial<PersistedState>) => {
@@ -262,7 +279,8 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
   const handleExport = useCallback(() => {
     const report = generateReport(persisted.userName, overallStats, skills, recentSessions);
     navigator.clipboard.writeText(report);
-  }, [persisted.userName, overallStats, skills, recentSessions]);
+    showToast("Report copied to clipboard");
+  }, [persisted.userName, overallStats, skills, recentSessions, showToast]);
 
   const handleDownload = useCallback(() => {
     const report = generateReport(persisted.userName, overallStats, skills, recentSessions);
@@ -273,7 +291,8 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     a.download = `HireReady_Progress_${new Date().toISOString().split("T")[0]}.txt`;
     a.click();
     URL.revokeObjectURL(url);
-  }, [persisted.userName, overallStats, skills, recentSessions]);
+    showToast("Report downloaded");
+  }, [persisted.userName, overallStats, skills, recentSessions, showToast]);
 
   const handleExportCSV = useCallback(() => {
     if (recentSessions.length === 0) return;
@@ -290,7 +309,8 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     a.download = `HireReady_Sessions_${new Date().toISOString().split("T")[0]}.csv`;
     a.click();
     URL.revokeObjectURL(url);
-  }, [recentSessions]);
+    showToast("CSV exported");
+  }, [recentSessions, showToast]);
 
   const value: DashboardContextValue = {
     persisted, updatePersisted,
@@ -303,9 +323,11 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     dataLoading, isMobile,
     paymentBanner, setPaymentBanner,
     syncError, setSyncError,
+    toast, showToast,
     displayName, isNewUser, daysLeft,
     aiInsights, notifications, upcomingGoals,
     returnContext, smartSchedule, prepPlan,
+    badges, dailyChallenge, practiceReminder,
     handleStartSession, handleExport, handleDownload, handleExportCSV,
   };
 

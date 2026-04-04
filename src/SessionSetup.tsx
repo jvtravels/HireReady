@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { track } from "@vercel/analytics";
 import { c, font } from "./tokens";
 import { useAuth } from "./AuthContext";
 
@@ -201,6 +202,7 @@ export default function SessionSetup() {
   const [step, setStep] = useState(1);
   const [selectedType, setSelectedType] = useState(preselectedType || "");
   const [selectedFocus, setSelectedFocus] = useState("general");
+  const [targetCompany, setTargetCompany] = useState(user?.targetCompany || "");
   const [difficulty, setDifficulty] = useState(suggested.id);
 
   // Mic/Camera check
@@ -267,6 +269,7 @@ export default function SessionSetup() {
 
   // Launch interview with countdown
   const handleLaunch = () => {
+    track("session_start", { type: selectedType, difficulty, focus: selectedFocus });
     // Stop test streams before navigating
     micStream?.getTracks().forEach(t => t.stop());
     videoStream?.getTracks().forEach(t => t.stop());
@@ -277,7 +280,7 @@ export default function SessionSetup() {
   useEffect(() => {
     if (countdown === null) return;
     if (countdown === 0) {
-      navigate(`/interview?type=${selectedType}&focus=${selectedFocus}&difficulty=${difficulty}`);
+      navigate(`/interview?type=${selectedType}&focus=${selectedFocus}&difficulty=${difficulty}${targetCompany ? `&company=${encodeURIComponent(targetCompany)}` : ""}`);
       return;
     }
     const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
@@ -327,7 +330,7 @@ export default function SessionSetup() {
 
       {/* Countdown overlay */}
       {countdown !== null && (
-        <div style={{
+        <div onClick={(e) => e.stopPropagation()} style={{
           position: "fixed", inset: 0, zIndex: 100,
           display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
           background: "rgba(5,5,6,0.95)", backdropFilter: "blur(8px)",
@@ -480,6 +483,26 @@ export default function SessionSetup() {
                 </button>
               ))}
             </div>
+
+            {/* Target company */}
+            <div style={{ marginTop: 28 }}>
+              <h2 style={{ fontFamily: font.ui, fontSize: 16, fontWeight: 600, color: c.ivory, marginBottom: 4 }}>Target company <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 400, color: c.stone }}>(optional)</span></h2>
+              <p style={{ fontFamily: font.ui, fontSize: 13, color: c.stone, marginBottom: 12 }}>The AI will tailor questions to this company's interview style and culture.</p>
+              <input
+                type="text"
+                placeholder="e.g. Google, Amazon, Stripe..."
+                value={targetCompany}
+                onChange={(e) => setTargetCompany(e.target.value)}
+                style={{
+                  width: "100%", maxWidth: 360, padding: "10px 16px", borderRadius: 8,
+                  background: c.graphite, border: `1px solid ${c.border}`, color: c.ivory,
+                  fontFamily: font.ui, fontSize: 13, outline: "none", boxSizing: "border-box",
+                  transition: "border-color 0.2s ease",
+                }}
+                onFocus={(e) => e.currentTarget.style.borderColor = c.gilt}
+                onBlur={(e) => e.currentTarget.style.borderColor = c.border}
+              />
+            </div>
           </div>
         )}
 
@@ -616,9 +639,24 @@ export default function SessionSetup() {
                 )}
 
                 {micStatus === "error" && (
+                  <>
                   <p style={{ fontFamily: font.ui, fontSize: 11, color: c.ember, marginTop: 10, lineHeight: 1.5, padding: "8px 12px", borderRadius: 6, background: "rgba(196,112,90,0.06)", border: "1px solid rgba(196,112,90,0.12)" }}>
                     {micError || "Microphone access was denied. You can still practice by typing your answers."}
                   </p>
+                  <button
+                    onClick={handleLaunch}
+                    style={{
+                      width: "100%", padding: "10px", borderRadius: 8, cursor: "pointer", marginTop: 8,
+                      fontFamily: font.ui, fontSize: 12, fontWeight: 600,
+                      background: "rgba(122,158,126,0.08)", border: `1px solid rgba(122,158,126,0.2)`,
+                      color: c.sage, transition: "all 0.2s ease", outline: "none",
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(122,158,126,0.15)"; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(122,158,126,0.08)"; }}
+                  >
+                    Continue without mic (you can type answers)
+                  </button>
+                  </>
                 )}
               </div>
 

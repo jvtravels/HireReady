@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { track } from "@vercel/analytics";
 import { c, font } from "./tokens";
 import { useAuth } from "./AuthContext";
 import type { User } from "./AuthContext";
@@ -197,6 +198,7 @@ interface SessionResult {
   transcript?: { speaker: string; text: string; time: string }[];
   ai_feedback?: string;
   skill_scores?: Record<string, number> | null;
+  ideal_answers?: { question: string; ideal: string; candidateSummary: string }[];
 }
 
 async function saveSessionResult(result: SessionResult, userId?: string): Promise<{ localOk: boolean; cloudOk: boolean }> {
@@ -288,6 +290,7 @@ async function fetchLLMEvaluation(params: {
   strengths: string[];
   improvements: string[];
   feedback: string;
+  idealAnswers?: { question: string; ideal: string; candidateSummary: string }[];
 } | null> {
   try {
     const headers = await import("./supabase").then(m => m.authHeaders());
@@ -348,7 +351,7 @@ function createSpeechRecognition(): SpeechRecognitionInstance | null {
 }
 
 /* ─── Waveform Visualizer ─── */
-function WaveformVisualizer({ active, color, barCount = 24 }: { active: boolean; color: string; barCount?: number }) {
+function WaveformVisualizer({ active, color, barCount = (typeof window !== "undefined" && window.innerWidth < 480 ? 12 : 24) }: { active: boolean; color: string; barCount?: number }) {
   const [bars, setBars] = useState<number[]>(Array(barCount).fill(0.1));
   const frameRef = useRef<number>(0);
 
@@ -612,6 +615,7 @@ export default function Interview() {
   const interviewType = (rawType && rawType !== "undefined" && rawType !== "null") ? rawType : "behavioral";
   const interviewFocus = searchParams.get("focus") || "general";
   const interviewDifficulty = searchParams.get("difficulty") || "standard";
+  const targetCompany = searchParams.get("company") || "";
   const isMiniMode = searchParams.get("mini") === "true";
   // Restore draft if resuming
   const draftKey = `hireready_interview_draft_${user?.id || "anon"}`;
@@ -620,7 +624,12 @@ export default function Interview() {
   if (isResuming && !draftRef.current) {
     try {
       const raw = localStorage.getItem(draftKey);
-      if (raw) draftRef.current = JSON.parse(raw);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && Array.isArray(parsed.transcript) && typeof parsed.currentStep === "number") {
+          draftRef.current = parsed;
+        }
+      }
     } catch {}
   }
 
@@ -651,6 +660,9 @@ export default function Interview() {
     currentStepRef.current = currentStep;
   }, [currentStep]);
 
+  // Note: Subscription limits are enforced server-side via checkSessionLimit() in
+  // generate-questions, evaluate, and analyze-resume API endpoints. No client-side
+  // re-validation needed here — it would add latency without improving security.
   useEffect(() => {
     if (isMiniMode) return; // Mini mode uses built-in script, no LLM fetch
     let cancelled = false;
@@ -659,7 +671,7 @@ export default function Interview() {
       focus: interviewFocus,
       difficulty: interviewDifficulty,
       role: user?.targetRole || "senior leader",
-      company: user?.targetCompany,
+      company: targetCompany || user?.targetCompany,
       industry: user?.industry,
       resumeText: user?.resumeText,
     }).then(questions => {
@@ -704,6 +716,9 @@ export default function Interview() {
   const [saveWarning, setSaveWarning] = useState("");
   const [micError, setMicError] = useState("");
   const [usedFallbackScore, setUsedFallbackScore] = useState(false);
+  const [evalTimedOut, setEvalTimedOut] = useState(false);
+  const noSpeechCountRef = useRef(0);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [evaluating, setEvaluating] = useState(false);
   const [evalElapsed, setEvalElapsed] = useState(0);
 
@@ -743,21 +758,21 @@ export default function Interview() {
       saveDraft();
     };
     window.addEventListener("beforeunload", handleBeforeUnload);
-    // Auto-save every 30 seconds during active interview
-    const autoSaveInterval = setInterval(saveDraft, 30_000);
+    // Auto-save every 15 seconds during active interview
+    const autoSaveInterval = setInterval(saveDraft, 15_000);
     return () => {
       window.removeEventListener("beforeunload", handleBeforeUnload);
       clearInterval(autoSaveInterval);
     };
   }, [phase, evaluating, transcript, currentStep, elapsed, interviewType, interviewDifficulty, interviewFocus]);
 
-  // Cancel speech + recognition on unmount
+  // Cancel speech + recognition on unmount or when voice toggled
   useEffect(() => {
     return () => {
       ttsCancelRef.current?.();
       recognitionRef.current?.stop();
     };
-  }, []);
+  }, [aiVoiceEnabled]);
 
   // Start/stop speech recognition based on phase
   useEffect(() => {
@@ -786,19 +801,35 @@ export default function Interview() {
           if (error === "not-allowed") {
             setMicError("Microphone access denied. Check browser permissions.");
             setSpeechUnavailable(true);
+            setTimeout(() => textareaRef.current?.focus(), 100);
           } else if (error === "no-speech") {
-            // Silence — auto-restarts, no need to alert
+            // Silence — auto-restarts, but track consecutive no-speech errors
+            noSpeechCountRef.current += 1;
+            if (noSpeechCountRef.current >= 3) {
+              setMicError("No speech detected after multiple attempts. Type your answer below.");
+              setSpeechUnavailable(true);
+              setTimeout(() => textareaRef.current?.focus(), 100);
+            }
           } else if (error === "network") {
             setMicError("Speech recognition network error. Type your answer below.");
             setSpeechUnavailable(true);
+            setTimeout(() => textareaRef.current?.focus(), 100);
           } else if (error !== "aborted") {
             setMicError("Microphone issue detected. Try unmuting or refreshing.");
             setSpeechUnavailable(true);
+            setTimeout(() => textareaRef.current?.focus(), 100);
           }
         };
+        recognition.onresult = ((origOnResult) => {
+          return (event: SpeechRecognitionEvent) => {
+            noSpeechCountRef.current = 0; // reset on successful recognition
+            origOnResult(event);
+          };
+        })(recognition.onresult);
         recognition.onend = () => {
-          // Auto-restart only if not stopped by cleanup and interview hasn't ended
-          if (!stopped && !interviewEndedRef.current) {
+          // Check interview ended FIRST to avoid race condition
+          if (interviewEndedRef.current) return;
+          if (!stopped) {
             try { recognition.start(); } catch {}
           }
         };
@@ -833,13 +864,22 @@ export default function Interview() {
     return () => clearInterval(timer);
   }, [phase]);
 
-  // Answer timer (when user is "speaking")
+  // Answer timer (when user is "speaking") with max 300s (5 min)
+  const handleNextRef = useRef<() => void>(() => {});
   useEffect(() => {
     if (phase !== "listening") {
       setAnswerTimer(0);
       return;
     }
-    const timer = setInterval(() => setAnswerTimer(t => t + 1), 1000);
+    const timer = setInterval(() => setAnswerTimer(t => {
+      const next = t + 1;
+      if (next >= 300) {
+        // Max answer time reached — auto-advance
+        handleNextRef.current();
+        return t;
+      }
+      return next;
+    }), 1000);
     return () => clearInterval(timer);
   }, [phase]);
 
@@ -907,6 +947,7 @@ export default function Interview() {
       if (safetyTimer) clearTimeout(safetyTimer);
       ttsCancelRef.current?.();
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentStep, aiVoiceEnabled]);
 
   // Handle user "finishing" their answer
@@ -936,6 +977,9 @@ export default function Interview() {
     }
   }, [phase, currentStep, answerTimer, elapsed]);
 
+  // Keep ref in sync for answer timer auto-advance
+  useEffect(() => { handleNextRef.current = handleNextQuestion; }, [handleNextQuestion]);
+
   // Keyboard: Enter to advance when listening
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -950,7 +994,10 @@ export default function Interview() {
   // Auto-scroll transcript
   useEffect(() => {
     if (transcriptRef.current) {
-      transcriptRef.current.scrollTop = transcriptRef.current.scrollHeight;
+      const lastChild = transcriptRef.current.lastElementChild;
+      if (lastChild) {
+        lastChild.scrollIntoView({ behavior: "smooth", block: "end" });
+      }
     }
   }, [transcript]);
 
@@ -981,6 +1028,7 @@ export default function Interview() {
     let score = fallbackScore;
     let aiFeedback = "";
     let skillScores: Record<string, number> | null = null;
+    let idealAnswers: { question: string; ideal: string; candidateSummary: string }[] = [];
 
     if (hasRealAnswers) {
       try {
@@ -995,12 +1043,18 @@ export default function Interview() {
           score = evaluation.overallScore;
           aiFeedback = evaluation.feedback;
           skillScores = evaluation.skillScores;
+          idealAnswers = evaluation.idealAnswers || [];
         } else {
           setUsedFallbackScore(true);
         }
       } catch (err) {
-        setUsedFallbackScore(true);
-        setSaveWarning(err instanceof Error ? err.message : "Could not get AI feedback. Using estimated score.");
+        const errMsg = err instanceof Error ? err.message : "Could not get AI feedback. Using estimated score.";
+        if (errMsg.toLowerCase().includes("timed out") || errMsg.toLowerCase().includes("timeout")) {
+          setEvalTimedOut(true);
+        } else {
+          setUsedFallbackScore(true);
+        }
+        setSaveWarning(errMsg);
       }
     }
 
@@ -1017,6 +1071,7 @@ export default function Interview() {
       transcript,
       ai_feedback: aiFeedback,
       skill_scores: skillScores,
+      ideal_answers: idealAnswers.length > 0 ? idealAnswers : undefined,
     }, user?.id);
 
     if (!cloudOk && localOk) {
@@ -1024,6 +1079,8 @@ export default function Interview() {
     } else if (!localOk && !cloudOk) {
       setSaveWarning("Warning: Session could not be saved. Please check your connection.");
     }
+
+    track("session_complete", { type: interviewType, score, difficulty: interviewDifficulty });
 
     // Clear draft and track practice timestamp
     try { localStorage.removeItem(draftKey); } catch {}
@@ -1083,7 +1140,8 @@ export default function Interview() {
           .interview-pip-float { width: 100px !important; height: 75px !important; bottom: 8px !important; right: 8px !important; }
         }
         @media (max-width: 480px) {
-          .interview-header-left .interview-type-badge { display: none !important; }
+          .interview-header-left .interview-type-badge { font-size: 9px !important; padding: 2px 6px !important; }
+          .interview-header-left .interview-type-badge span { font-size: 9px !important; }
         }
       `}</style>
 
@@ -1110,7 +1168,7 @@ export default function Interview() {
             <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.ember} strokeWidth="2" strokeLinecap="round"><line x1="1" y1="1" x2="23" y2="23"/><path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"/><path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2c0 .76-.13 1.49-.35 2.17"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
             <span style={{ fontFamily: font.ui, fontSize: 12, color: c.ember }}>{micError}</span>
           </div>
-          <button onClick={() => setMicError("")} style={{ background: "none", border: "none", color: c.stone, cursor: "pointer", padding: 2 }}>
+          <button onClick={() => setMicError("")} aria-label="Dismiss mic error" style={{ background: "none", border: "none", color: c.stone, cursor: "pointer", padding: 2 }}>
             <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>
         </div>
@@ -1248,7 +1306,7 @@ export default function Interview() {
               <div style={{ textAlign: "center" }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, marginBottom: 6 }}>
                   <p style={{ fontFamily: font.ui, fontSize: 14, fontWeight: 600, color: c.ivory, margin: 0 }}>AI Interviewer</p>
-                  <span aria-live="polite" style={{
+                  <span aria-live="polite" aria-atomic="true" role="status" style={{
                     fontFamily: font.ui, fontSize: 10, fontWeight: 500,
                     color: phase === "speaking" ? c.gilt : phase === "listening" ? c.sage : c.stone,
                     padding: "2px 8px", borderRadius: 100,
@@ -1320,7 +1378,9 @@ export default function Interview() {
                 {/* Live transcript or text input fallback */}
                 <div style={{ flex: 1, overflowY: "auto", marginBottom: 12 }}>
                   {speechUnavailable ? (
+                    <>
                     <textarea
+                      ref={textareaRef}
                       value={currentTranscript}
                       onChange={(e) => setCurrentTranscript(e.target.value)}
                       placeholder="Type your answer here..."
@@ -1338,6 +1398,23 @@ export default function Interview() {
                         }
                       }}
                     />
+                    <button
+                      onClick={() => {
+                        setSpeechUnavailable(false);
+                        setMicError("");
+                        noSpeechCountRef.current = 0;
+                      }}
+                      aria-label="Retry microphone"
+                      style={{
+                        fontFamily: font.ui, fontSize: 11, fontWeight: 500, color: c.gilt,
+                        background: "rgba(201,169,110,0.06)", border: `1px solid rgba(201,169,110,0.15)`,
+                        borderRadius: 6, padding: "4px 12px", cursor: "pointer", marginTop: 4,
+                        transition: "all 0.2s",
+                      }}
+                    >
+                      Retry Mic
+                    </button>
+                    </>
                   ) : currentTranscript ? (
                     <p style={{ fontFamily: font.ui, fontSize: 13, color: c.ivory, lineHeight: 1.7, margin: 0, opacity: 0.9 }}>
                       {currentTranscript}
@@ -1359,8 +1436,8 @@ export default function Interview() {
                     border: `1px solid ${answerTimer >= 180 ? "rgba(196,112,90,0.15)" : "rgba(201,169,110,0.12)"}`,
                   }}>
                     <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={answerTimer >= 180 ? c.ember : c.gilt} strokeWidth="1.5" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                    <span style={{ fontFamily: font.ui, fontSize: 11, color: answerTimer >= 180 ? c.ember : c.gilt }}>
-                      {answerTimer >= 180 ? "3+ min — wrap up with your key takeaway" : "2 min — consider landing your main point"}
+                    <span style={{ fontFamily: font.ui, fontSize: 11, color: answerTimer >= 240 ? c.ember : answerTimer >= 180 ? c.ember : c.gilt }}>
+                      {answerTimer >= 240 ? "1 minute remaining — start wrapping up" : answerTimer >= 180 ? "3+ min — wrap up with your key takeaway" : "2 min — consider landing your main point"}
                     </span>
                   </div>
                 )}
@@ -1635,9 +1712,10 @@ export default function Interview() {
           role="dialog"
           aria-modal="true"
           aria-labelledby="end-modal-title"
-          onClick={(e) => { if (e.target === e.currentTarget) setShowEndModal(false); }}
+          tabIndex={-1}
+          onClick={(e) => { if (e.target === e.currentTarget) { e.stopPropagation(); setShowEndModal(false); } }}
           onKeyDown={(e) => {
-            if (e.key === "Escape") setShowEndModal(false);
+            if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); setShowEndModal(false); return; }
             if (e.key === "Tab") {
               const modal = e.currentTarget.querySelector("[data-modal-content]") as HTMLElement;
               if (!modal) return;
@@ -1728,6 +1806,11 @@ export default function Interview() {
           {usedFallbackScore && (
             <div style={{ marginTop: 16, padding: "10px 16px", borderRadius: 8, background: "rgba(201,169,110,0.06)", border: "1px solid rgba(201,169,110,0.12)", maxWidth: 400 }}>
               <p style={{ fontFamily: font.ui, fontSize: 12, color: c.gilt, margin: 0 }}>AI evaluation unavailable — using estimated score based on your session metrics.</p>
+            </div>
+          )}
+          {evalTimedOut && (
+            <div style={{ marginTop: 16, padding: "10px 16px", borderRadius: 8, background: "rgba(196,112,90,0.06)", border: "1px solid rgba(196,112,90,0.15)", maxWidth: 400 }}>
+              <p style={{ fontFamily: font.ui, fontSize: 12, color: c.ember, margin: 0 }}>Evaluation timed out — using estimated score based on your session metrics.</p>
             </div>
           )}
           {saveWarning && (

@@ -48,8 +48,8 @@ const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || "").split(",").filter(Bo
 
 function getAllowedOrigin(origin: string): string {
   if (ALLOWED_ORIGINS.length > 0 && ALLOWED_ORIGINS.includes(origin)) return origin;
-  if (origin.endsWith(".vercel.app")) return origin;
   if (origin.startsWith("http://localhost:")) return origin;
+  if (ALLOWED_ORIGINS.length === 0 && origin.endsWith(".vercel.app")) return origin;
   return "";
 }
 
@@ -57,6 +57,10 @@ const PLAN_DURATION: Record<string, number> = { weekly: 7, monthly: 30 };
 const PLAN_TIER: Record<string, string> = { weekly: "starter", monthly: "pro" };
 const PLAN_AMOUNT: Record<string, number> = { weekly: 4900, monthly: 14900 };
 const PLAN_LABEL: Record<string, string> = { weekly: "Starter (₹49/week)", monthly: "Pro (₹149/month)" };
+
+function escapeHtml(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
 
 async function sendPaymentEmail(
   email: string,
@@ -68,6 +72,11 @@ async function sendPaymentEmail(
   endDate: string,
 ) {
   if (!RESEND_API_KEY) return;
+  // Basic email format validation
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) {
+    console.error("Invalid email format, skipping payment email");
+    return;
+  }
   const planLabel = PLAN_LABEL[plan] || tier;
   const start = new Date(startDate).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" });
   const end = new Date(endDate).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" });
@@ -105,7 +114,7 @@ async function sendPaymentEmail(
         <tr><td style="padding:32px 40px;">
           <h1 style="margin:0 0 8px;font-size:22px;font-weight:600;color:#F0EDE8;">Payment Successful</h1>
           <p style="margin:0 0 24px;font-size:14px;color:#9A9590;line-height:1.6;">
-            Hi ${name || "there"}, your subscription has been activated. Here are your details:
+            Hi ${escapeHtml(name || "there")}, your subscription has been activated. Here are your details:
           </p>
 
           <!-- Details card -->
@@ -189,6 +198,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === "OPTIONS") return res.status(204).end();
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
+  // Body size check
+  const bodyContentLength = parseInt((req.headers["content-length"] as string) || "0", 10);
+  if (bodyContentLength > 1048576) {
+    return res.status(413).json({ error: "Request too large" });
+  }
+
   // CSRF: validate Origin header on state-changing requests
   if (!origin) {
     return res.status(403).json({ error: "Forbidden" });
@@ -237,7 +252,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ error: "Missing payment details" });
     }
 
-    if (!PLAN_TIER[plan]) {
+    // Validate format of Razorpay IDs (prevent injection)
+    const razorpayIdPattern = /^[a-zA-Z0-9_]{6,50}$/;
+    if (!razorpayIdPattern.test(razorpay_order_id) || !razorpayIdPattern.test(razorpay_payment_id) || typeof razorpay_signature !== "string" || razorpay_signature.length > 128) {
+      return res.status(400).json({ error: "Invalid payment details format" });
+    }
+
+    if (typeof plan !== "string" || !PLAN_TIER[plan]) {
       return res.status(400).json({ error: "Invalid plan" });
     }
 
@@ -247,7 +268,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .digest("hex");
 
     if (expectedSignature !== razorpay_signature) {
-      console.error("Payment signature mismatch for order", razorpay_order_id);
+      console.error("Payment signature mismatch for order", razorpay_order_id.slice(0, 8) + "...");
       return res.status(400).json({ error: "Payment verification failed" });
     }
 
@@ -261,7 +282,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
     const orderData = await orderRes.json();
     if (orderData.amount !== PLAN_AMOUNT[plan]) {
-      console.error("Plan/amount mismatch for order", razorpay_order_id);
+      console.error("Plan/amount mismatch for order", razorpay_order_id.slice(0, 8) + "...");
       return res.status(400).json({ error: "Plan does not match payment amount" });
     }
 
@@ -297,9 +318,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(409).json({ error: "Payment already processed" });
     }
 
-    // 4. Calculate subscription dates
+    // 4. Calculate subscription dates — extend from current end if still active
     const now = new Date();
-    const end = new Date(now);
+    const currentEnd = current?.subscription_end ? new Date(current.subscription_end) : null;
+    const base = currentEnd && currentEnd > now ? currentEnd : now;
+    const end = new Date(base);
     end.setDate(end.getDate() + PLAN_DURATION[plan]);
     const tier = PLAN_TIER[plan];
 
@@ -330,45 +353,46 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(500).json({ error: "Failed to activate subscription" });
     }
 
-    // 6b. Store payment record + send email in parallel (both non-critical — profile already updated)
-    // Must await both before responding — Vercel kills the function after response
-    const results = await Promise.allSettled([
-      // Payment record
-      fetch(`${SUPABASE_URL}/rest/v1/payments`, {
-        method: "POST",
-        headers: {
-          apikey: SUPABASE_SERVICE_ROLE_KEY,
-          Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-          "Content-Type": "application/json",
-          Prefer: "return=minimal",
-        },
-        body: JSON.stringify({
-          id: `pay_${Date.now().toString(36)}`,
-          user_id: userId,
-          razorpay_payment_id,
-          razorpay_order_id,
-          plan,
-          tier,
-          amount: PLAN_AMOUNT[plan],
-          currency: "INR",
-          status: "completed",
-          subscription_start: now.toISOString(),
-          subscription_end: end.toISOString(),
-        }),
+    // 6b. Store payment record first (critical — must succeed)
+    const paymentRecordRes = await fetch(`${SUPABASE_URL}/rest/v1/payments`, {
+      method: "POST",
+      headers: {
+        apikey: SUPABASE_SERVICE_ROLE_KEY,
+        Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+        "Content-Type": "application/json",
+        Prefer: "return=minimal",
+      },
+      body: JSON.stringify({
+        id: `pay_${Date.now().toString(36)}`,
+        user_id: userId,
+        razorpay_payment_id,
+        razorpay_order_id,
+        plan,
+        tier,
+        amount: PLAN_AMOUNT[plan],
+        currency: "INR",
+        status: "completed",
+        subscription_start: now.toISOString(),
+        subscription_end: end.toISOString(),
       }),
-      // Confirmation email
-      userEmail
-        ? sendPaymentEmail(userEmail, userName, plan, tier, razorpay_payment_id, now.toISOString(), end.toISOString())
-        : Promise.resolve(),
-    ]);
-    // Log any failures (non-critical — subscription already activated)
-    results.forEach((r, i) => {
-      if (r.status === "rejected") {
-        console.error(`Post-payment task ${i === 0 ? "payment-record" : "confirmation-email"} failed:`, r.reason);
-      }
     });
 
-    const emailSent = userEmail ? results[1]?.status === "fulfilled" : false;
+    if (!paymentRecordRes.ok) {
+      const errText = await paymentRecordRes.text().catch(() => "");
+      console.error("Payment record save failed:", paymentRecordRes.status, errText);
+      return res.status(500).json({ error: "Failed to save payment record" });
+    }
+
+    // 6c. Send confirmation email (non-critical — don't fail payment if email fails)
+    let emailSent = false;
+    if (userEmail) {
+      try {
+        await sendPaymentEmail(userEmail, userName, plan, tier, razorpay_payment_id, now.toISOString(), end.toISOString());
+        emailSent = true;
+      } catch (emailErr) {
+        console.error("Confirmation email failed (non-critical):", emailErr);
+      }
+    }
 
     return res.status(200).json({
       success: true,

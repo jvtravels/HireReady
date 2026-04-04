@@ -313,7 +313,7 @@ export function ProGate({ feature, onUpgrade }: { feature: string; onUpgrade: ()
       </div>
       <h3 style={{ fontFamily: font.display, fontSize: 22, fontWeight: 400, color: c.ivory, marginBottom: 8 }}>{feature}</h3>
       <p style={{ fontFamily: font.ui, fontSize: 14, color: c.stone, lineHeight: 1.6, maxWidth: 360, marginBottom: 24 }}>
-        This feature is available on the Pro plan. Upgrade to unlock full analytics, calendar tools, and unlimited sessions.
+        Upgrade to access {feature.toLowerCase()}. Unlock full analytics, calendar tools, and unlimited sessions with the Pro plan.
       </p>
       <button onClick={onUpgrade} style={{ padding: "12px 28px", borderRadius: 10, border: "none", cursor: "pointer", background: `linear-gradient(135deg, ${c.gilt}, #B8923E)`, color: c.obsidian, fontFamily: font.ui, fontSize: 14, fontWeight: 600, transition: "opacity 0.2s" }}
         onMouseEnter={(e) => e.currentTarget.style.opacity = "0.9"}

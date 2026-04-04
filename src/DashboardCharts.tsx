@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { memo, useState } from "react";
 import { c, font } from "./tokens";
 import type { SkillData, TrendPoint } from "./dashboardTypes";
 
 /* ─── Score Trend Chart with tooltips ─── */
-export function ScoreTrendChart({ data }: { data: TrendPoint[] }) {
+export const ScoreTrendChart = memo(function ScoreTrendChart({ data }: { data: TrendPoint[] }) {
   const [hovered, setHovered] = useState<number | null>(null);
   const w = 400, h = 140, px = 24, py = 20;
   const scores = data.map(d => d.score);
@@ -63,10 +63,10 @@ export function ScoreTrendChart({ data }: { data: TrendPoint[] }) {
       </svg>
     </div>
   );
-}
+});
 
 /* ─── Skill Radar ─── */
-export function SkillRadar({ skills: s }: { skills: SkillData[] }) {
+export const SkillRadar = memo(function SkillRadar({ skills: s }: { skills: SkillData[] }) {
   const size = 200, cx = size / 2, cy = size / 2, r = 70;
   const n = s.length;
   const getPoint = (i: number, val: number) => {
@@ -91,10 +91,10 @@ export function SkillRadar({ skills: s }: { skills: SkillData[] }) {
         return (
           <g key={sk.name}>
             <circle cx={p.x} cy={p.y} r="3" fill={c.gilt} />
-            <text x={lp.x} y={lp.y} textAnchor="middle" dominantBaseline="middle" fontFamily={font.ui} fontSize="8" fontWeight="500" fill={c.stone}>{sk.name.split(" ")[0]}</text>
+            <text x={lp.x} y={lp.y} textAnchor="middle" dominantBaseline="middle" fontFamily={font.ui} fontSize="8" fontWeight="500" fill={c.stone}><title>{sk.name}</title>{sk.name.split(" ")[0]}</text>
           </g>
         );
       })}
     </svg>
   );
-}
+});

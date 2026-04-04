@@ -137,6 +137,35 @@ export async function getSessionById(sessionId: string, userId: string): Promise
   return data;
 }
 
+/* ─── Feedback helpers ─── */
+
+export interface FeedbackRecord {
+  id: string;
+  user_id: string;
+  session_id: string;
+  rating: "helpful" | "too_harsh" | "too_generous" | "inaccurate";
+  comment: string;
+  session_score: number;
+  session_type: string;
+  created_at: string;
+}
+
+export async function saveFeedback(feedback: Omit<FeedbackRecord, "created_at">) {
+  if (!supabaseConfigured) return { error: null };
+  return supabase.from("feedback").upsert(feedback, { onConflict: "id" });
+}
+
+export async function getSessionFeedback(sessionId: string, userId: string): Promise<FeedbackRecord | null> {
+  if (!supabaseConfigured) return null;
+  const { data } = await supabase
+    .from("feedback")
+    .select("*")
+    .eq("session_id", sessionId)
+    .eq("user_id", userId)
+    .maybeSingle();
+  return data;
+}
+
 /* ─── Calendar helpers ─── */
 
 export async function getCalendarEvents(userId: string): Promise<CalendarEvent[]> {

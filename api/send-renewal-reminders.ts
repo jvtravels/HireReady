@@ -8,7 +8,11 @@ const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 const RESEND_API_KEY = (process.env.RESEND_API_KEY || "").trim();
 const FROM_EMAIL = process.env.FROM_EMAIL || "HireReady <onboarding@resend.dev>";
 const CRON_SECRET = (process.env.CRON_SECRET || "").trim();
-const APP_URL = (process.env.APP_URL || "${APP_URL}").replace(/\/$/, "");
+const APP_URL = (process.env.APP_URL || "https://levelup-taupe.vercel.app").replace(/\/$/, "");
+
+function escapeHtml(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Protect cron endpoint — fail closed: require CRON_SECRET to be set
@@ -46,6 +50,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     let sent = 0;
+    let failed = 0;
     for (const profile of profiles) {
       if (!profile.email) continue;
 
@@ -55,21 +60,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const plan = tier === "pro" ? "monthly" : "weekly";
       const renewUrl = `${APP_URL}/dashboard?plan=${plan}`;
 
-      try {
-        const emailAc = new AbortController();
-        const emailTimer = setTimeout(() => emailAc.abort(), 10_000);
-        const emailRes = await fetch("https://api.resend.com/emails", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${RESEND_API_KEY}`,
-            "Content-Type": "application/json",
-          },
-          signal: emailAc.signal,
-          body: JSON.stringify({
-            from: FROM_EMAIL,
-            to: [profile.email],
-            subject: `Your HireReady ${tier} plan expires in ${daysLeft} day${daysLeft !== 1 ? "s" : ""}`,
-            html: `
+      const emailBody = JSON.stringify({
+        from: FROM_EMAIL,
+        to: [profile.email],
+        subject: `Your HireReady ${tier} plan expires in ${daysLeft} day${daysLeft !== 1 ? "s" : ""}`,
+        html: `
 <!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
@@ -83,7 +78,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         <tr><td style="padding:32px 40px;">
           <h1 style="margin:0 0 8px;font-size:20px;font-weight:600;color:#F0EDE8;">Your subscription expires soon</h1>
           <p style="margin:0 0 24px;font-size:14px;color:#9A9590;line-height:1.6;">
-            Hi ${profile.name || "there"}, your <strong style="color:#C9A96E;">${tier}</strong> plan expires in <strong>${daysLeft} day${daysLeft !== 1 ? "s" : ""}</strong> (${endDate.toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}).
+            Hi ${escapeHtml(profile.name || "there")}, your <strong style="color:#C9A96E;">${tier}</strong> plan expires in <strong>${daysLeft} day${daysLeft !== 1 ? "s" : ""}</strong> (${endDate.toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}).
           </p>
           <p style="margin:0 0 24px;font-size:14px;color:#9A9590;line-height:1.6;">
             Renew now to keep your unlimited sessions, AI coaching, and performance analytics.
@@ -106,20 +101,44 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   </table>
 </body>
 </html>`,
-          }),
+      });
+
+      const sendEmail = async (): Promise<boolean> => {
+        const emailAc = new AbortController();
+        const emailTimer = setTimeout(() => emailAc.abort(), 10_000);
+        const emailRes = await fetch("https://api.resend.com/emails", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${RESEND_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+          signal: emailAc.signal,
+          body: emailBody,
         });
         clearTimeout(emailTimer);
-        if (emailRes.ok) {
+        return emailRes.ok;
+      };
+
+      try {
+        let ok = await sendEmail();
+        // Single retry after 1s on failure
+        if (!ok) {
+          await new Promise((r) => setTimeout(r, 1000));
+          ok = await sendEmail();
+        }
+        if (ok) {
           sent++;
         } else {
-          console.error(`Resend API error for ${profile.email}: ${emailRes.status}`);
+          failed++;
+          console.error(`Resend API error for ${profile.email} after retry`);
         }
       } catch (err) {
+        failed++;
         console.error(`Failed to send reminder to ${profile.email}:`, err);
       }
     }
 
-    return res.status(200).json({ sent, total: profiles.length });
+    return res.status(200).json({ sent, failed, total: profiles.length });
   } catch (err) {
     console.error("Renewal reminder error:", err);
     return res.status(500).json({ error: "Internal error" });

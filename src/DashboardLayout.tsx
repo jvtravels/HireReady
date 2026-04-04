@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Link, Outlet, useNavigate, useLocation } from "react-router-dom";
 import { c, font } from "./tokens";
 import { useAuth } from "./AuthContext";
@@ -27,9 +27,25 @@ export default function DashboardLayout() {
     showUpgradeModal, setShowUpgradeModal,
     paymentBanner, setPaymentBanner,
     syncError, setSyncError,
+    toast,
   } = useDashboard();
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [showShortcuts, setShowShortcuts] = useState(false);
+
+  // Keyboard shortcuts
+  const handleKeydown = useCallback((e: KeyboardEvent) => {
+    // Ignore when typing in inputs
+    if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLSelectElement) return;
+    if (e.key === "n" && !e.metaKey && !e.ctrlKey) { nav("/session/new"); }
+    if (e.key === "?" && !e.metaKey && !e.ctrlKey) { setShowShortcuts(v => !v); }
+    if (e.key === "Escape" && showShortcuts) { setShowShortcuts(false); }
+  }, [nav, showShortcuts]);
+
+  useEffect(() => {
+    window.addEventListener("keydown", handleKeydown);
+    return () => window.removeEventListener("keydown", handleKeydown);
+  }, [handleKeydown]);
 
   // Prevent body scroll when mobile sidebar is open
   useEffect(() => {
@@ -150,7 +166,7 @@ export default function DashboardLayout() {
             )}
             <div style={{ flex: 1, minWidth: 0 }}>
               <p style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: c.ivory, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{displayName}</p>
-              <p style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>{user?.targetRole || persisted.targetRole || "Set your target role"}</p>
+              <p style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "100%" }}>{user?.targetRole || persisted.targetRole || "Set your target role"}</p>
             </div>
           </div>
           <button onClick={() => { authLogout(); }} style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: c.stone, background: "none", border: "none", cursor: "pointer", padding: "6px 0", transition: "color 0.2s", display: "flex", alignItems: "center", gap: 6 }}
@@ -222,6 +238,43 @@ export default function DashboardLayout() {
             authUpdateUser({ subscriptionTier: tier as "starter" | "pro", subscriptionStart: start, subscriptionEnd: end });
           }}
         />
+      )}
+
+      {/* Keyboard shortcuts help */}
+      {showShortcuts && (
+        <>
+          <div onClick={() => setShowShortcuts(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 90 }} />
+          <div role="dialog" aria-modal="true" aria-label="Keyboard shortcuts" style={{
+            position: "fixed", top: "50%", left: "50%", transform: "translate(-50%, -50%)",
+            background: c.graphite, border: `1px solid ${c.border}`, borderRadius: 14,
+            padding: "28px 32px", zIndex: 91, minWidth: 280,
+          }}>
+            <h3 style={{ fontFamily: font.ui, fontSize: 15, fontWeight: 600, color: c.ivory, marginBottom: 16 }}>Keyboard Shortcuts</h3>
+            {[
+              ["N", "New session"],
+              ["?", "Toggle this help"],
+              ["Esc", "Close dialogs"],
+            ].map(([key, desc]) => (
+              <div key={key} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 0" }}>
+                <span style={{ fontFamily: font.ui, fontSize: 13, color: c.chalk }}>{desc}</span>
+                <kbd style={{ fontFamily: font.mono, fontSize: 11, fontWeight: 600, color: c.gilt, background: "rgba(201,169,110,0.08)", border: `1px solid rgba(201,169,110,0.15)`, borderRadius: 4, padding: "2px 8px" }}>{key}</kbd>
+              </div>
+            ))}
+            <button onClick={() => setShowShortcuts(false)} style={{ marginTop: 16, width: "100%", padding: "8px 0", borderRadius: 8, border: `1px solid ${c.border}`, background: "transparent", color: c.stone, fontFamily: font.ui, fontSize: 12, cursor: "pointer" }}>Close</button>
+          </div>
+        </>
+      )}
+
+      {/* Toast notification */}
+      {toast && (
+        <div role="status" aria-live="polite" style={{
+          position: "fixed", bottom: 24, left: "50%", transform: "translateX(-50%)",
+          background: c.graphite, border: `1px solid ${c.border}`, borderRadius: 10,
+          padding: "10px 20px", zIndex: 100, animation: "slideDown 0.2s ease",
+          boxShadow: "0 4px 20px rgba(0,0,0,0.4)",
+        }}>
+          <span style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.ivory }}>{toast}</span>
+        </div>
       )}
     </div>
   );

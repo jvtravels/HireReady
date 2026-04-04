@@ -1,19 +1,27 @@
-/* Vercel Edge Function — LLM Interview Question Generation via Groq */
+/* Vercel Edge Function — LLM Interview Question Generation */
 
 export const config = { runtime: "edge" };
 
-import { handleCorsPreflightOrMethod, corsHeaders, isRateLimited, getClientIp, rateLimitResponse, verifyAuth, unauthorizedResponse, checkSessionLimit, validateOrigin } from "./_shared";
+import { handleCorsPreflightOrMethod, corsHeaders, isRateLimited, getClientIp, rateLimitResponse, verifyAuth, unauthorizedResponse, checkSessionLimit, validateOrigin, sanitizeForLLM, withRequestId } from "./_shared";
+import { callLLM, extractJSON } from "./_llm";
 
 declare const process: { env: Record<string, string | undefined> };
-const GROQ_API_KEY = process.env.GROQ_API_KEY || "";
+const GROQ_KEY = process.env.GROQ_API_KEY || "";
+const GEMINI_KEY = process.env.GEMINI_API_KEY || "";
 
 export default async function handler(req: Request): Promise<Response> {
   const earlyResponse = handleCorsPreflightOrMethod(req);
   if (earlyResponse) return earlyResponse;
 
-  const headers = corsHeaders(req);
+  const headers = withRequestId(corsHeaders(req));
 
-  if (!GROQ_API_KEY) {
+  // Body size check
+  const contentLength = parseInt(req.headers.get("content-length") || "0", 10);
+  if (contentLength > 1048576) {
+    return new Response(JSON.stringify({ error: "Request too large" }), { status: 413, headers });
+  }
+
+  if (!GROQ_KEY && !GEMINI_KEY) {
     return new Response(JSON.stringify({ error: "LLM not configured" }), { status: 503, headers });
   }
 
@@ -41,29 +49,16 @@ export default async function handler(req: Request): Promise<Response> {
   try {
     const { type, focus, difficulty, role, company, industry, resumeText, pastTopics } = await req.json();
 
-    // Sanitize inputs — strip prompt injection attempts
-    const sanitize = (s: unknown, maxLen = 200) => {
-      if (typeof s !== "string") return "";
-      return s
-        .replace(/(?:^|\n)\s*(system|assistant|user|human|instruction|<\|im_start\||<\|im_end\|)\s*:?/gi, "")
-        .replace(/```[\s\S]*?```/g, "")
-        .replace(/\{[^}]*"role"\s*:/gi, "")
-        .replace(/(?:ignore|disregard|forget)\s+(?:all\s+)?(?:previous|above|prior)\s+(?:instructions?|prompts?|context)/gi, "")
-        .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "")
-        .slice(0, maxLen)
-        .trim();
-    };
+    const interviewType = sanitizeForLLM(type, 50) || "behavioral";
+    const interviewFocus = sanitizeForLLM(focus, 50) || "general";
+    const diff = sanitizeForLLM(difficulty, 20) || "standard";
+    const targetRole = sanitizeForLLM(role, 100) || "senior engineering leader";
 
-    const interviewType = sanitize(type, 50) || "behavioral";
-    const interviewFocus = sanitize(focus, 50) || "general";
-    const diff = sanitize(difficulty, 20) || "standard";
-    const targetRole = sanitize(role, 100) || "senior engineering leader";
-
-    const companyContext = company ? `The candidate is interviewing at ${sanitize(company, 100)}.` : "";
-    const industryContext = industry ? `The industry is ${sanitize(industry, 100)}.` : "";
+    const companyContext = company ? `The candidate is interviewing at ${sanitizeForLLM(company, 100)}.` : "";
+    const industryContext = industry ? `The industry is ${sanitizeForLLM(industry, 100)}.` : "";
     const focusContext = interviewFocus !== "general" ? `Focus area: ${interviewFocus.replace(/-/g, " ")}. Tailor questions to emphasize this skill area.` : "";
-    const resumeContext = resumeText ? `Resume summary: ${sanitize(resumeText, 1500)}` : "";
-    const avoidTopics = Array.isArray(pastTopics) ? `Avoid repeating these topics from past sessions: ${pastTopics.slice(0, 20).map((t: unknown) => sanitize(t, 100)).filter(Boolean).join(", ")}.` : "";
+    const resumeContext = resumeText ? `Resume summary: ${sanitizeForLLM(resumeText, 1500)}` : "";
+    const avoidTopics = Array.isArray(pastTopics) ? `Avoid repeating these topics from past sessions: ${pastTopics.slice(0, 20).map((t: unknown) => sanitizeForLLM(t, 100)).filter(Boolean).join(", ")}.` : "";
 
     const difficultyGuide = diff === "warmup"
       ? "Use a warm, conversational tone. Ask open-ended questions that build confidence. Keep follow-ups gentle."
@@ -94,48 +89,13 @@ Make questions specific to the role, company, and industry. If resume text is pr
 
 Respond with ONLY the JSON array, no markdown or explanation.`;
 
-    const ac = new AbortController();
-    const acTimer = setTimeout(() => ac.abort(), 15_000);
-    const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${GROQ_API_KEY}`,
-      },
-      signal: ac.signal,
-      body: JSON.stringify({
-        model: "llama-3.3-70b-versatile",
-        messages: [{ role: "user", content: prompt }],
-        temperature: 0.8,
-        max_tokens: 2000,
-        response_format: { type: "json_object" },
-      }),
-    });
-    clearTimeout(acTimer);
-
-    if (!res.ok) {
-      const errText = await res.text().catch(() => "");
-      console.error("Groq error:", res.status, errText);
-      return new Response(JSON.stringify({ error: "Question generation failed" }), { status: 502, headers });
+    const result = await callLLM({ prompt, temperature: 0.7, maxTokens: 2000, jsonMode: true }, 15000);
+    const parsed = extractJSON(result.text);
+    if (!parsed) {
+      return new Response(JSON.stringify({ error: "Failed to parse questions" }), { status: 500, headers });
     }
 
-    const data = await res.json();
-    const text = data.choices?.[0]?.message?.content || "";
-
-    let questions;
-    try {
-      const parsed = JSON.parse(text);
-      questions = Array.isArray(parsed) ? parsed : parsed.questions || parsed.steps || parsed.interview_steps || Object.values(parsed)[0];
-    } catch {
-      const match = text.match(/\[[\s\S]*\]/);
-      if (match) {
-        try { questions = JSON.parse(match[0]); } catch {
-          return new Response(JSON.stringify({ error: "Failed to parse questions" }), { status: 500, headers });
-        }
-      } else {
-        return new Response(JSON.stringify({ error: "Failed to parse questions" }), { status: 500, headers });
-      }
-    }
+    const questions = Array.isArray(parsed) ? parsed : parsed.questions || parsed.steps || parsed.interview_steps || Object.values(parsed)[0];
 
     if (!Array.isArray(questions) || questions.length === 0) {
       return new Response(JSON.stringify({ error: "Failed to generate valid questions" }), { status: 500, headers });

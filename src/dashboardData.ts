@@ -335,14 +335,111 @@ export function getPrepPlan(user: UserContext, sessions: DashboardSession[], sk?
   const theSkills = sk || [];
   const weakest = theSkills.length > 0 ? [...theSkills].sort((a, b) => a.score - b.score)[0] : null;
 
-  return [
+  const types = new Set(sessions.map(s => s.type));
+  const hasIntense = sessions.some(s => (s as any).difficulty === "intense" || (s as any).difficulty === "hard");
+  const consecutiveHigh = (() => {
+    let max = 0, cur = 0;
+    for (const s of sessions) { if (s.score >= 85) { cur++; max = Math.max(max, cur); } else cur = 0; }
+    return max;
+  })();
+
+  const plan: { label: string; done: boolean }[] = [
     { label: "Complete onboarding and first session", done: sessionsCount >= 1 },
-    { label: "Try all interview types at least once", done: new Set(sessions.map(s => s.type)).size >= 3 },
-    { label: weakest ? `Focus on ${weakest.name} (currently ${weakest.score}/100)` : "Identify your weakest skill area", done: weakest ? weakest.score >= 80 : false },
-    { label: "Score 85+ on 3 consecutive sessions", done: sessions.slice(0, 3).every(s => s.score >= 85) },
-    { label: "Complete a full mock at Intense difficulty", done: false },
-    { label: "Final review session day before interview", done: days <= 1 && sessionsCount >= 5 },
+    { label: `Try all interview types (${types.size}/3 done)`, done: types.size >= 3 },
+    { label: weakest ? `Improve ${weakest.name} to 80+ (currently ${weakest.score})` : "Identify your weakest skill area", done: weakest ? weakest.score >= 80 : false },
+    { label: `Score 85+ on 3 consecutive sessions (best streak: ${consecutiveHigh})`, done: consecutiveHigh >= 3 },
+    { label: "Complete a session at Intense difficulty", done: hasIntense },
   ];
+
+  if (days <= 3) {
+    plan.push({ label: "Final review session before interview", done: days <= 1 && sessionsCount >= 5 });
+  } else {
+    plan.push({ label: `${days} days until interview — keep practicing!`, done: false });
+  }
+
+  return plan;
+}
+
+/* ─── Skill Mastery Badges ─── */
+export interface Badge {
+  id: string;
+  label: string;
+  description: string;
+  icon: string; // emoji
+  earned: boolean;
+  progress: number; // 0-100
+}
+
+export function computeBadges(sessions: DashboardSession[], sk: SkillData[], streak: number): Badge[] {
+  const sessionCount = sessions.length;
+  const highScores = sessions.filter(s => s.score >= 85).length;
+  const types = new Set(sessions.map(s => s.type));
+  const consecutiveHigh = (() => {
+    let max = 0, cur = 0;
+    for (const s of sessions) { if (s.score >= 85) { cur++; max = Math.max(max, cur); } else { cur = 0; } }
+    return max;
+  })();
+
+  return [
+    { id: "first-session", label: "First Steps", description: "Complete your first session", icon: "🎯", earned: sessionCount >= 1, progress: Math.min(100, sessionCount * 100) },
+    { id: "five-sessions", label: "Committed", description: "Complete 5 sessions", icon: "💪", earned: sessionCount >= 5, progress: Math.min(100, (sessionCount / 5) * 100) },
+    { id: "ten-sessions", label: "Dedicated", description: "Complete 10 sessions", icon: "🏆", earned: sessionCount >= 10, progress: Math.min(100, (sessionCount / 10) * 100) },
+    { id: "high-scorer", label: "High Performer", description: "Score 85+ three times", icon: "⭐", earned: highScores >= 3, progress: Math.min(100, (highScores / 3) * 100) },
+    { id: "streak-7", label: "Week Warrior", description: "7-day practice streak", icon: "🔥", earned: streak >= 7, progress: Math.min(100, (streak / 7) * 100) },
+    { id: "versatile", label: "Versatile", description: "Try 3+ interview types", icon: "🎭", earned: types.size >= 3, progress: Math.min(100, (types.size / 3) * 100) },
+    { id: "consistent", label: "Consistent", description: "Score 85+ three times in a row", icon: "💎", earned: consecutiveHigh >= 3, progress: Math.min(100, (consecutiveHigh / 3) * 100) },
+    { id: "mastery", label: "Interview Ready", description: "All skills above 80", icon: "👑", earned: sk.length > 0 && sk.every(s => s.score >= 80), progress: sk.length > 0 ? Math.min(100, (sk.filter(s => s.score >= 80).length / sk.length) * 100) : 0 },
+  ];
+}
+
+/* ─── Daily Challenge ─── */
+export interface DailyChallenge {
+  id: string;
+  label: string;
+  description: string;
+  type: string;
+  focus?: string;
+  difficulty: string;
+  completed: boolean;
+}
+
+export function getDailyChallenge(sessions: DashboardSession[], sk: SkillData[]): DailyChallenge {
+  const today = new Date().toISOString().split("T")[0];
+  const dayOfWeek = new Date().getDay();
+  const weakest = sk.length > 0 ? [...sk].sort((a, b) => a.score - b.score)[0] : null;
+
+  const challenges: Omit<DailyChallenge, "id" | "completed">[] = [
+    { label: "Speed Round", description: "Complete a warm-up behavioral session in under 10 minutes", type: "behavioral", difficulty: "warmup" },
+    { label: "Deep Dive", description: "Tackle a case study at standard difficulty", type: "case-study", difficulty: "standard" },
+    { label: "Under Pressure", description: "Complete an intense session — no second chances", type: "behavioral", difficulty: "intense" },
+    { label: "Technical Edge", description: "Practice technical leadership questions", type: "technical", difficulty: "standard" },
+    { label: "Strategic Vision", description: "Work on strategic thinking and roadmap questions", type: "strategic", difficulty: "standard" },
+    { label: "Weak Spot", description: weakest ? `Focus on your weakest area: ${weakest.name}` : "Practice your weakest skill area", type: "behavioral", focus: weakest?.name.toLowerCase().replace(/\s+/g, "-"), difficulty: "standard" },
+    { label: "Full Mock", description: "Simulate a real interview at intense difficulty", type: "behavioral", difficulty: "intense" },
+  ];
+
+  const challenge = challenges[dayOfWeek % challenges.length];
+  // Check if a matching session was completed today (type match, or any session for "Full Mock")
+  const completedToday = sessions.some(s => s.date === today && (
+    s.type.toLowerCase().includes(challenge.type.toLowerCase()) || challenge.label === "Full Mock"
+  ));
+  // Also check localStorage for explicit challenge completion
+  const explicitlyCompleted = (() => { try { return localStorage.getItem(`hireready_challenge_${today}`) === challenge.label; } catch { return false; } })();
+  return { ...challenge, id: `challenge-${today}`, completed: completedToday || explicitlyCompleted };
+}
+
+/* ─── Practice Reminder ─── */
+export function getPracticeReminder(sessions: DashboardSession[], streak: number): string | null {
+  if (sessions.length === 0) return "Start your first session today — the hardest part is beginning.";
+  const today = new Date().toISOString().split("T")[0];
+  const practicedToday = sessions.some(s => s.date === today);
+  if (practicedToday) return null;
+  if (streak >= 3) return `Don't break your ${streak}-day streak! Practice today to keep the momentum.`;
+  const lastSession = sessions[0];
+  const daysSinceLastSession = Math.floor((Date.now() - new Date(lastSession.date).getTime()) / (1000 * 60 * 60 * 24));
+  if (daysSinceLastSession >= 7) return `It's been ${daysSinceLastSession} days since your last session. Skills fade fast — jump back in.`;
+  if (daysSinceLastSession >= 3) return `${daysSinceLastSession} days since your last practice. A quick session keeps you sharp.`;
+  return null;
 }
 
 /* ─── Utility helpers ─── */

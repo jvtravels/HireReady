@@ -33,6 +33,7 @@ const Interview = lazy(() => import("./Interview"));
 const SessionSetup = lazy(() => import("./SessionSetup"));
 const ResetPassword = lazy(() => import("./ResetPassword"));
 const SessionDetail = lazy(() => import("./SessionDetail"));
+const PlaceholderPage = lazy(() => import("./PlaceholderPage"));
 
 function LoadingFallback() {
   return (
@@ -84,6 +85,7 @@ createRoot(document.getElementById("root")!).render(
               <Route path="/terms" element={<div className="page-enter"><LegalPage type="terms" /></div>} />
               <Route path="/privacy" element={<div className="page-enter"><LegalPage type="privacy" /></div>} />
               <Route path="/session/:id" element={<RequireAuth><div className="page-enter"><SessionDetail /></div></RequireAuth>} />
+              <Route path="/page/:slug" element={<div className="page-enter"><PlaceholderPage /></div>} />
               <Route path="*" element={<div className="page-enter"><NotFound /></div>} />
             </Routes>
           </Suspense>

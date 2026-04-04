@@ -20,6 +20,12 @@ export default function DashboardResume() {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [reanalyzeDone, setReanalyzeDone] = useState(false);
   const analyzingRef = useRef(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  // Cleanup abort controller on unmount
+  useEffect(() => {
+    return () => { abortControllerRef.current?.abort(); };
+  }, []);
 
   useEffect(() => {
     if (user?.resumeText) setResumeText(user.resumeText);
@@ -36,6 +42,8 @@ export default function DashboardResume() {
       } else if (isFallback && user?.resumeText && !analyzingRef.current) {
         // Fallback profile stored — auto-trigger AI re-analysis
         analyzingRef.current = true;
+        abortControllerRef.current?.abort();
+        abortControllerRef.current = new AbortController();
         setProfile(stored); // show fallback while analyzing
         setPhase("analyzing");
         analyzeResumeWithAI(user.resumeText, user?.targetRole)
@@ -65,6 +73,8 @@ export default function DashboardResume() {
       // Auto-trigger AI analysis (guard against duplicate calls).
       if (analyzingRef.current) return;
       analyzingRef.current = true;
+      abortControllerRef.current?.abort();
+      abortControllerRef.current = new AbortController();
       setPhase("analyzing");
       analyzeResumeWithAI(user.resumeText, user?.targetRole)
         .then(result => {
@@ -266,8 +276,8 @@ export default function DashboardResume() {
             {profile?.headline ? <h2 style={{ fontFamily: font.display, fontSize: 24, color: c.ivory, marginBottom: 6, letterSpacing: "-0.02em", lineHeight: 1.3 }}>{profile.headline}</h2> : <h2 style={{ fontFamily: font.display, fontSize: 24, color: c.ivory, marginBottom: 6, letterSpacing: "-0.02em", lineHeight: 1.3 }}>Resume uploaded</h2>}
             <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
               {profile?.seniorityLevel && <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.gilt, background: "rgba(201,169,110,0.08)", border: "1px solid rgba(201,169,110,0.15)", borderRadius: 5, padding: "3px 10px" }}>{profile.seniorityLevel}</span>}
-              {profile?.yearsExperience && <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>{profile.yearsExperience}+ years experience</span>}
-              {profile?.industries && profile.industries.length > 0 && <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>{profile.industries.join(", ")}</span>}
+              {profile?.yearsExperience && <span style={{ fontFamily: font.ui, fontSize: 11, color: c.chalk }}>{profile.yearsExperience}+ years experience</span>}
+              {profile?.industries && profile.industries.length > 0 && <span style={{ fontFamily: font.ui, fontSize: 11, color: c.chalk }}>{profile.industries.join(", ")}</span>}
             </div>
           </div>
           <div style={{ display: "flex", gap: 6, flexShrink: 0, marginLeft: 16, alignItems: "center" }}>

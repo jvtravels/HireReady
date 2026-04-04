@@ -1,19 +1,27 @@
-/* Vercel Edge Function — LLM Answer Evaluation via Groq */
+/* Vercel Edge Function — LLM Answer Evaluation */
 
 export const config = { runtime: "edge" };
 
-import { handleCorsPreflightOrMethod, corsHeaders, isRateLimited, getClientIp, rateLimitResponse, verifyAuth, unauthorizedResponse, checkSessionLimit, validateOrigin } from "./_shared";
+import { handleCorsPreflightOrMethod, corsHeaders, isRateLimited, getClientIp, rateLimitResponse, verifyAuth, unauthorizedResponse, checkSessionLimit, validateOrigin, sanitizeForLLM, withRequestId } from "./_shared";
+import { callLLM, extractJSON } from "./_llm";
 
 declare const process: { env: Record<string, string | undefined> };
-const GROQ_API_KEY = process.env.GROQ_API_KEY || "";
+const GROQ_KEY = process.env.GROQ_API_KEY || "";
+const GEMINI_KEY = process.env.GEMINI_API_KEY || "";
 
 export default async function handler(req: Request): Promise<Response> {
   const earlyResponse = handleCorsPreflightOrMethod(req);
   if (earlyResponse) return earlyResponse;
 
-  const headers = corsHeaders(req);
+  const headers = withRequestId(corsHeaders(req));
 
-  if (!GROQ_API_KEY) {
+  // Body size check
+  const contentLength = parseInt(req.headers.get("content-length") || "0", 10);
+  if (contentLength > 1048576) {
+    return new Response(JSON.stringify({ error: "Request too large" }), { status: 413, headers });
+  }
+
+  if (!GROQ_KEY && !GEMINI_KEY) {
     return new Response(JSON.stringify({ error: "LLM not configured" }), { status: 503, headers });
   }
 
@@ -45,30 +53,26 @@ export default async function handler(req: Request): Promise<Response> {
       return new Response(JSON.stringify({ error: "Missing or malformed transcript" }), { status: 400, headers });
     }
 
-    // Sanitize inputs — strip prompt injection attempts
-    const sanitize = (s: unknown, maxLen = 200) => {
-      if (typeof s !== "string") return "";
-      return s
-        .replace(/(?:^|\n)\s*(system|assistant|user|human|instruction|<\|im_start\||<\|im_end\|)\s*:?/gi, "")
-        .replace(/```[\s\S]*?```/g, "") // strip markdown code blocks
-        .replace(/\{[^}]*"role"\s*:/gi, "") // strip JSON role injection
-        .replace(/(?:ignore|disregard|forget)\s+(?:all\s+)?(?:previous|above|prior)\s+(?:instructions?|prompts?|context)/gi, "")
-        .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "") // strip control chars
-        .slice(0, maxLen)
-        .trim();
-    };
+    if (transcript.length > 50) {
+      return new Response(JSON.stringify({ error: "Transcript too long" }), { status: 400, headers });
+    }
+
+    // Validate individual entry text length
+    if (transcript.some((t: { text: string }) => t.text.length > 5000)) {
+      return new Response(JSON.stringify({ error: "Individual transcript entry too long" }), { status: 400, headers });
+    }
 
     const formattedTranscript = transcript
-      .slice(0, 50) // cap transcript entries
-      .map((t: { speaker: string; text: string }) => `${t.speaker === "ai" ? "INTERVIEWER" : "CANDIDATE"}: ${sanitize(t.text, 2000)}`)
+      .slice(0, 50)
+      .map((t: { speaker: string; text: string }) => `${t.speaker === "ai" ? "INTERVIEWER" : "CANDIDATE"}: ${sanitizeForLLM(t.text, 2000)}`)
       .join("\n\n");
 
     const prompt = `You are an expert interview coach evaluating a mock interview performance.
 
-Interview Type: ${sanitize(type, 50) || "behavioral"}
-Difficulty: ${sanitize(difficulty, 20) || "standard"}
-Target Role: ${sanitize(role, 100) || "senior leader"}
-${company ? `Company: ${sanitize(company, 100)}` : ""}
+Interview Type: ${sanitizeForLLM(type, 50) || "behavioral"}
+Difficulty: ${sanitizeForLLM(difficulty, 20) || "standard"}
+Target Role: ${sanitizeForLLM(role, 100) || "senior leader"}
+${company ? `Company: ${sanitizeForLLM(company, 100)}` : ""}
 
 Here is the full interview transcript:
 
@@ -87,7 +91,8 @@ Evaluate the candidate's performance and respond with ONLY this JSON object (no 
   },
   "strengths": ["<strength 1>", "<strength 2>", "<strength 3>"],
   "improvements": ["<improvement 1>", "<improvement 2>", "<improvement 3>"],
-  "feedback": "<2-3 paragraph detailed feedback with specific examples from the transcript. Be constructive and actionable. Reference specific answers the candidate gave.>"
+  "feedback": "<2-3 paragraph detailed feedback with specific examples from the transcript. Be constructive and actionable. Reference specific answers the candidate gave.>",
+  "idealAnswers": [{"question": "<question text>", "ideal": "<2-3 sentence ideal answer approach for this question>", "candidateSummary": "<1 sentence summary of what the candidate said>"}]
 }
 
 Scoring guidelines:
@@ -98,46 +103,10 @@ Scoring guidelines:
 
 Be honest but constructive. Reference specific moments from the transcript.`;
 
-    const ac = new AbortController();
-    const acTimer = setTimeout(() => ac.abort(), 15_000);
-    const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${GROQ_API_KEY}`,
-      },
-      signal: ac.signal,
-      body: JSON.stringify({
-        model: "llama-3.3-70b-versatile",
-        messages: [{ role: "user", content: prompt }],
-        temperature: 0.3,
-        max_tokens: 2000,
-        response_format: { type: "json_object" },
-      }),
-    });
-    clearTimeout(acTimer);
-
-    if (!res.ok) {
-      const errText = await res.text().catch(() => "");
-      console.error("Groq eval error:", res.status, errText);
-      return new Response(JSON.stringify({ error: "Evaluation failed" }), { status: 502, headers });
-    }
-
-    const data = await res.json();
-    const text = data.choices?.[0]?.message?.content || "";
-
-    let evaluation;
-    try {
-      evaluation = JSON.parse(text);
-    } catch {
-      const match = text.match(/\{[\s\S]*\}/);
-      if (match) {
-        try { evaluation = JSON.parse(match[0]); } catch {
-          return new Response(JSON.stringify({ error: "Failed to parse evaluation" }), { status: 500, headers });
-        }
-      } else {
-        return new Response(JSON.stringify({ error: "Failed to parse evaluation" }), { status: 500, headers });
-      }
+    const result = await callLLM({ prompt, temperature: 0.3, maxTokens: 2000, jsonMode: true }, 20000);
+    const evaluation = extractJSON(result.text);
+    if (!evaluation) {
+      return new Response(JSON.stringify({ error: "Failed to parse evaluation" }), { status: 500, headers });
     }
 
     return new Response(JSON.stringify(evaluation), { status: 200, headers });

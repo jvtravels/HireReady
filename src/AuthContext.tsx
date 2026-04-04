@@ -59,6 +59,7 @@ export interface User {
   subscriptionTier?: "free" | "starter" | "pro" | "team";
   subscriptionStart?: string;
   subscriptionEnd?: string;
+  emailVerified: boolean;
 }
 
 interface AuthContextType {
@@ -66,7 +67,7 @@ interface AuthContextType {
   isLoggedIn: boolean;
   loading: boolean;
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
-  signup: (email: string, name: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  signup: (email: string, name: string, password: string, referralCode?: string) => Promise<{ success: boolean; error?: string }>;
   loginWithGoogle: () => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   updateUser: (updates: Partial<User>) => Promise<void>;
@@ -103,6 +104,7 @@ function profileToUser(profile: Profile, session: Session): User {
     })(),
     subscriptionStart: profile.subscription_start || undefined,
     subscriptionEnd: profile.subscription_end || undefined,
+    emailVerified: !!session.user.email_confirmed_at,
   };
 }
 
@@ -150,7 +152,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         name: meta.name || meta.full_name || "",
         avatar_url: meta.avatar_url || meta.picture || "",
       };
-      console.log("[auth] ensureProfile: creating profile for", session.user.id, session.user.email);
+      console.log("[auth] ensureProfile: creating profile");
       const { error } = await upsertProfile(newProfile);
       if (error) {
         console.error("[auth] ensureProfile failed, trying insert:", error.message);
@@ -170,6 +172,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         resumeFileName: null,
         hasCompletedOnboarding: false,
         avatarUrl: newProfile.avatar_url || undefined,
+        emailVerified: !!session.user.email_confirmed_at,
       };
       setUser(newUser);
     }
@@ -186,7 +189,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     supabase.auth.getUser().then(async ({ data: { user: authUser }, error: userError }) => {
       if (userError || !authUser) {
         // Token is invalid server-side — user was deleted or session expired
-        console.log("[auth] getUser failed (account deleted or token invalid):", userError?.message);
+        console.log("[auth] getUser failed (account deleted or token invalid)");
         setUser(null);
 
         // Clean up the stale session
@@ -199,7 +202,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Valid auth user — now get session and profile
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
-        console.log("[auth] session found for:", session.user.id, session.user.email);
+        console.log("[auth] session found");
         try {
           const profile = await getProfile(session.user.id);
           if (profile) {
@@ -215,7 +218,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             await supabase.auth.signOut().catch(() => {});
           }
         } catch (err) {
-          console.error("[auth] getProfile threw:", err);
+          console.error("[auth] getProfile threw");
           setUser(null);
   
           await supabase.auth.signOut().catch(() => {});
@@ -227,14 +230,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       clearTimeout(safetyTimer);
       setLoading(false);
     }).catch((err) => {
-      console.error("[auth] getUser failed:", err);
+      console.error("[auth] getUser failed");
       setUser(null);
       clearTimeout(safetyTimer);
       setLoading(false);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log("[auth] onAuthStateChange:", event, session?.user?.id);
+      console.log("[auth] onAuthStateChange:", event);
       // Skip INITIAL_SESSION — the explicit getUser() call above handles initial load
       // with proper server-side validation. INITIAL_SESSION only reads the local JWT
       // which can be stale (e.g. account deleted server-side).
@@ -260,17 +263,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
-  const signup = useCallback(async (email: string, name: string, password: string): Promise<{ success: boolean; error?: string }> => {
+  const signup = useCallback(async (email: string, name: string, password: string, referralCode?: string): Promise<{ success: boolean; error?: string }> => {
     if (!supabaseConfigured) {
       // localStorage fallback
-      const newUser: User = { id: Date.now().toString(36), name, email, targetRole: "", resumeFileName: null, hasCompletedOnboarding: false };
+      const newUser: User = { id: Date.now().toString(36), name, email, targetRole: "", resumeFileName: null, hasCompletedOnboarding: false, emailVerified: false };
       setUser(newUser);
       return { success: true };
     }
+    const metadata: Record<string, string> = { name };
+    if (referralCode) metadata.referred_by = referralCode;
     const { error } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { name }, emailRedirectTo: `${window.location.origin}/dashboard` },
+      options: { data: metadata, emailRedirectTo: `${window.location.origin}/dashboard` },
     });
     if (error) return { success: false, error: error.message };
     return { success: true };
@@ -278,7 +283,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = useCallback(async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
     if (!supabaseConfigured) {
-      const newUser: User = { id: Date.now().toString(36), name: email.split("@")[0], email, targetRole: "", resumeFileName: null, hasCompletedOnboarding: false };
+      const newUser: User = { id: Date.now().toString(36), name: email.split("@")[0], email, targetRole: "", resumeFileName: null, hasCompletedOnboarding: false, emailVerified: false };
       setUser(newUser);
       return { success: true };
     }
@@ -332,7 +337,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (updates.practiceTimestamps !== undefined) profileUpdates.practice_timestamps = updates.practiceTimestamps;
     if (updates.avatarUrl !== undefined) profileUpdates.avatar_url = updates.avatarUrl;
 
-    console.log("[updateUser] upserting profile:", currentId, Object.keys(profileUpdates));
+    console.log("[updateUser] upserting profile:", Object.keys(profileUpdates));
     await upsertProfile(profileUpdates);
   }, []);
 

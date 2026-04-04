@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
+import { track } from "@vercel/analytics";
 import { c, font } from "./tokens";
 import { useAuth } from "./AuthContext";
 import { supabase, supabaseConfigured } from "./supabase";
@@ -96,8 +97,10 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
     setEmailSuggestion("");
   };
 
-  // Preserve plan intent from pricing page
-  const planParam = new URLSearchParams(location.search).get("plan");
+  // Preserve plan intent from pricing page and referral code
+  const searchParams = new URLSearchParams(location.search);
+  const planParam = searchParams.get("plan");
+  const refCode = searchParams.get("ref");
 
   // If already logged in, redirect based on onboarding status
   useEffect(() => {
@@ -119,6 +122,7 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
     e.preventDefault();
     setError("");
     setLoading(true);
+    track(isLogin ? "login_submit" : "signup_submit");
     try {
       if (isLogin) {
         const result = await login(email, password);
@@ -135,7 +139,7 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
         // Navigation handled by useEffect when isLoggedIn changes
         // This avoids double-redirect since useEffect checks onboarding status
       } else {
-        const result = await signup(email, name, password);
+        const result = await signup(email, name, password, refCode || undefined);
         if (!result.success) {
           setError(result.error || "Signup failed");
           return;
@@ -218,6 +222,12 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
           </span>
         </Link>
 
+        {refCode && !isLogin && (
+          <div style={{ background: "rgba(122,158,126,0.08)", border: "1px solid rgba(122,158,126,0.2)", borderRadius: 8, padding: "10px 14px", marginBottom: 16, display: "flex", alignItems: "center", gap: 8 }}>
+            <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="2" strokeLinecap="round"><path d="M20 12V8H6a2 2 0 0 1 0-4h12v4"/><path d="M4 6v12a2 2 0 0 0 2 2h14v-4"/><path d="M18 12a2 2 0 0 0 0 4h4v-4z"/></svg>
+            <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: c.sage }}>You were referred! Sign up to get a bonus free session.</span>
+          </div>
+        )}
         <h1 style={{
           fontFamily: font.display, fontSize: 36, fontWeight: 400,
           color: c.ivory, letterSpacing: "-0.02em", lineHeight: 1.2, marginBottom: 8,
@@ -282,8 +292,9 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
             ) : (
               <>
                 <div>
-                  <label style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: c.chalk, display: "block", marginBottom: 6, letterSpacing: "0.02em" }}>Email</label>
-                  <input ref={showReset ? firstInputRef : undefined} type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@company.com" required
+                  <label htmlFor="reset-email" style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: c.chalk, display: "block", marginBottom: 6, letterSpacing: "0.02em" }}>Email</label>
+                  <input id="reset-email" ref={showReset ? firstInputRef : undefined} type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@company.com" required
+                    aria-describedby={error ? "reset-error" : undefined}
                     style={{ width: "100%", padding: "12px 16px", borderRadius: 8, background: c.graphite, border: `1px solid ${c.border}`, color: c.ivory, fontFamily: font.ui, fontSize: 14, outline: "none", transition: "border-color 0.2s ease", boxSizing: "border-box" }}
                     onFocus={(e) => e.currentTarget.style.borderColor = c.gilt}
                     onBlur={(e) => e.currentTarget.style.borderColor = c.border}
@@ -292,7 +303,7 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
                 {error && (() => {
                   const { message, suggestion } = friendlyError(error, isLogin);
                   return (
-                    <div role="alert" style={{ padding: "12px 14px", borderRadius: 10, background: "rgba(196,112,90,0.06)", border: "1px solid rgba(196,112,90,0.15)" }}>
+                    <div id="reset-error" role="alert" style={{ padding: "12px 14px", borderRadius: 10, background: "rgba(196,112,90,0.06)", border: "1px solid rgba(196,112,90,0.15)" }}>
                       <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
                         <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={c.ember} strokeWidth="2" strokeLinecap="round" style={{ flexShrink: 0, marginTop: 1 }}>
                           <circle cx="12" cy="12" r="10" />
@@ -359,8 +370,8 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
             <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 18 }}>
               {!isLogin && (
                 <div>
-                  <label style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: c.chalk, display: "block", marginBottom: 6, letterSpacing: "0.02em" }}>Full name</label>
-                  <input ref={!isLogin ? firstInputRef : undefined} type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Your full name" required
+                  <label htmlFor="signup-name" style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: c.chalk, display: "block", marginBottom: 6, letterSpacing: "0.02em" }}>Full name</label>
+                  <input id="signup-name" ref={!isLogin ? firstInputRef : undefined} type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Your full name" required
                     style={{ width: "100%", padding: "12px 16px", borderRadius: 8, background: c.graphite, border: `1px solid ${c.border}`, color: c.ivory, fontFamily: font.ui, fontSize: 14, outline: "none", transition: "border-color 0.2s ease", boxSizing: "border-box" }}
                     onFocus={(e) => e.currentTarget.style.borderColor = c.gilt}
                     onBlur={(e) => e.currentTarget.style.borderColor = c.border}
@@ -369,40 +380,45 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
               )}
 
               <div>
-                <label style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: c.chalk, display: "block", marginBottom: 6, letterSpacing: "0.02em" }}>Email</label>
-                <input ref={isLogin ? firstInputRef : undefined} type="email" value={email}
+                <label htmlFor="signup-email" style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: c.chalk, display: "block", marginBottom: 6, letterSpacing: "0.02em" }}>Email</label>
+                <input id="signup-email" ref={isLogin ? firstInputRef : undefined} type="email" value={email}
                   onChange={(e) => { setEmail(e.target.value); setEmailSuggestion(""); }}
                   onBlur={(e) => { e.currentTarget.style.borderColor = c.border; checkEmailTypo(email); }}
                   placeholder="you@company.com" required
+                  aria-describedby={error ? "form-error" : undefined}
                   style={{ width: "100%", padding: "12px 16px", borderRadius: 8, background: c.graphite, border: `1px solid ${c.border}`, color: c.ivory, fontFamily: font.ui, fontSize: 14, outline: "none", transition: "border-color 0.2s ease", boxSizing: "border-box" }}
                   onFocus={(e) => e.currentTarget.style.borderColor = c.gilt}
                 />
-                {emailSuggestion && (
-                  <button type="button" onClick={() => { setEmail(emailSuggestion); setEmailSuggestion(""); }}
-                    style={{ background: "none", border: "none", fontFamily: font.ui, fontSize: 12, color: c.gilt, cursor: "pointer", padding: "4px 0 0", display: "block" }}>
-                    Did you mean <strong>{emailSuggestion}</strong>?
-                  </button>
-                )}
+                <div role="alert" aria-live="polite">
+                  {emailSuggestion && (
+                    <button type="button" onClick={() => { setEmail(emailSuggestion); setEmailSuggestion(""); }}
+                      style={{ background: "none", border: "none", fontFamily: font.ui, fontSize: 12, color: c.gilt, cursor: "pointer", padding: "4px 0 0", display: "block" }}>
+                      Did you mean <strong>{emailSuggestion}</strong>?
+                    </button>
+                  )}
+                </div>
               </div>
 
               <div>
-                <label style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: c.chalk, display: "block", marginBottom: 6, letterSpacing: "0.02em" }}>Password</label>
+                <label htmlFor="signup-password" style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: c.chalk, display: "block", marginBottom: 6, letterSpacing: "0.02em" }}>Password</label>
                 <div style={{ position: "relative" }}>
-                  <input type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)}
+                  <input id="signup-password" type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)}
                     placeholder={isLogin ? "Enter your password" : "Create a password (8+ chars)"} required minLength={8}
+                    aria-describedby={error ? "form-error" : undefined}
                     style={{ width: "100%", padding: "12px 44px 12px 16px", borderRadius: 8, background: c.graphite, border: `1px solid ${c.border}`, color: c.ivory, fontFamily: font.ui, fontSize: 14, outline: "none", transition: "border-color 0.2s ease", boxSizing: "border-box" }}
                     onFocus={(e) => e.currentTarget.style.borderColor = c.gilt}
                     onBlur={(e) => e.currentTarget.style.borderColor = c.border}
                   />
                   <button
                     type="button"
+                    className="password-toggle-btn"
                     onClick={() => setShowPassword(!showPassword)}
                     aria-label={showPassword ? "Hide password" : "Show password"}
                     style={{
                       position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)",
                       background: "none", border: "none", cursor: "pointer", padding: 4,
                       color: c.stone, display: "flex", alignItems: "center", justifyContent: "center",
-                      transition: "color 0.2s",
+                      transition: "color 0.2s", borderRadius: 4,
                     }}
                     onMouseEnter={(e) => e.currentTarget.style.color = c.ivory}
                     onMouseLeave={(e) => e.currentTarget.style.color = c.stone}
@@ -512,7 +528,7 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
               {error && (() => {
                 const { message, suggestion } = friendlyError(error, isLogin);
                 return (
-                  <div role="alert" style={{ padding: "12px 14px", borderRadius: 10, background: "rgba(196,112,90,0.06)", border: "1px solid rgba(196,112,90,0.15)", marginBottom: 4 }}>
+                  <div id="form-error" role="alert" style={{ padding: "12px 14px", borderRadius: 10, background: "rgba(196,112,90,0.06)", border: "1px solid rgba(196,112,90,0.15)", marginBottom: 4 }}>
                     <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
                       <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={c.ember} strokeWidth="2" strokeLinecap="round" style={{ flexShrink: 0, marginTop: 1 }}>
                         <circle cx="12" cy="12" r="10" />
@@ -563,8 +579,8 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
             {!isLogin && (
               <p style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, marginTop: 20, textAlign: "center", lineHeight: 1.5 }}>
                 By creating an account, you agree to our{" "}
-                <a href="/terms" target="_blank" style={{ color: c.chalk, textDecoration: "underline" }}>Terms of Service</a>{" "}
-                and <a href="/privacy" target="_blank" style={{ color: c.chalk, textDecoration: "underline" }}>Privacy Policy</a>.
+                <a href="/terms" target="_blank" rel="noopener noreferrer" style={{ color: c.chalk, textDecoration: "underline" }}>Terms of Service</a>{" "}
+                and <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ color: c.chalk, textDecoration: "underline" }}>Privacy Policy</a>.
               </p>
             )}
           </>

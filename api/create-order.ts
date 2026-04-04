@@ -42,8 +42,8 @@ const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || "").split(",").filter(Bo
 
 function getAllowedOrigin(origin: string): string {
   if (ALLOWED_ORIGINS.length > 0 && ALLOWED_ORIGINS.includes(origin)) return origin;
-  if (origin.endsWith(".vercel.app")) return origin;
   if (origin.startsWith("http://localhost:")) return origin;
+  if (ALLOWED_ORIGINS.length === 0 && origin.endsWith(".vercel.app")) return origin;
   return "";
 }
 
@@ -64,6 +64,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === "OPTIONS") return res.status(204).end();
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
+  // Body size check
+  const bodyContentLength = parseInt((req.headers["content-length"] as string) || "0", 10);
+  if (bodyContentLength > 1048576) {
+    return res.status(413).json({ error: "Request too large" });
+  }
+
   // CSRF: validate Origin header on state-changing requests
   if (!origin) {
     return res.status(403).json({ error: "Forbidden" });
@@ -83,26 +89,38 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   // Verify auth
+  let authenticatedUserId: string | undefined;
   const authToken = (req.headers.authorization || "").replace("Bearer ", "");
   if (authToken && SUPABASE_URL && SUPABASE_ANON_KEY) {
     const authRes = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
       headers: { Authorization: `Bearer ${authToken}`, apikey: SUPABASE_ANON_KEY },
     });
     if (!authRes.ok) return res.status(401).json({ error: "Unauthorized" });
+    try {
+      const userData = await authRes.json();
+      authenticatedUserId = userData.id;
+    } catch {
+      return res.status(401).json({ error: "Auth verification failed" });
+    }
   } else if (SUPABASE_URL && SUPABASE_ANON_KEY) {
     return res.status(401).json({ error: "Authentication required" });
   }
 
   try {
     const { plan, userId, email } = req.body;
-    const price = PRICE_MAP[typeof plan === "string" ? plan : ""];
+    if (typeof plan !== "string" || !["weekly", "monthly"].includes(plan)) {
+      return res.status(400).json({ error: "Invalid plan" });
+    }
+    const price = PRICE_MAP[plan];
     if (!price) return res.status(400).json({ error: "Invalid plan" });
 
     const auth = Buffer.from(`${RAZORPAY_KEY_ID}:${RAZORPAY_KEY_SECRET}`).toString("base64");
     const receipt = `${plan}_${Date.now()}`.slice(0, 40);
 
     const notes: Record<string, string> = { plan };
-    if (typeof userId === "string" && userId.length > 0 && userId.length <= 200) notes.userId = userId;
+    // Prefer server-verified userId over client-provided value
+    const resolvedUserId = authenticatedUserId || (typeof userId === "string" ? userId : "");
+    if (resolvedUserId.length > 0 && resolvedUserId.length <= 200) notes.userId = resolvedUserId;
     if (typeof email === "string" && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) notes.email = email;
 
     const ac = new AbortController();

@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { track } from "@vercel/analytics";
 import { c, font } from "./tokens";
 import { useAuth, hasStoredSession, getLastRoute } from "./AuthContext";
 
@@ -35,7 +36,13 @@ function useParallax(speed = 0.15) {
 function useMouse() {
   const [pos, setPos] = useState({ x: 0, y: 0 });
   useEffect(() => {
-    const handler = (e: MouseEvent) => setPos({ x: e.clientX, y: e.clientY });
+    let ticking = false;
+    const handler = (e: MouseEvent) => {
+      if (!ticking) {
+        requestAnimationFrame(() => { setPos({ x: e.clientX, y: e.clientY }); ticking = false; });
+        ticking = true;
+      }
+    };
     window.addEventListener("mousemove", handler, { passive: true });
     return () => window.removeEventListener("mousemove", handler);
   }, []);
@@ -56,22 +63,26 @@ function ParticleCanvas() {
 
     let animId: number;
     const dpr = window.devicePixelRatio || 1;
+    let cachedW = window.innerWidth;
+    let cachedH = window.innerHeight;
     const resize = () => {
-      canvas.width = window.innerWidth * dpr;
-      canvas.height = window.innerHeight * dpr;
-      canvas.style.width = window.innerWidth + "px";
-      canvas.style.height = window.innerHeight + "px";
+      cachedW = window.innerWidth;
+      cachedH = window.innerHeight;
+      canvas.width = cachedW * dpr;
+      canvas.height = cachedH * dpr;
+      canvas.style.width = cachedW + "px";
+      canvas.style.height = cachedH + "px";
       ctx.scale(dpr, dpr);
     };
     resize();
     window.addEventListener("resize", resize);
 
-    const isMobileDevice = window.innerWidth < 768;
+    const isMobileDevice = cachedW < 768;
     const COUNT = isMobileDevice ? 30 : 60;
     interface P { x: number; y: number; vx: number; vy: number; r: number; o: number; od: number; c: string; }
     const ps: P[] = [];
-    const w = () => window.innerWidth;
-    const h = () => window.innerHeight;
+    const w = () => cachedW;
+    const h = () => cachedH;
     const cols = ["rgba(201,169,110,", "rgba(240,237,232,", "rgba(197,192,186,"];
 
     for (let i = 0; i < COUNT; i++) {
@@ -126,12 +137,19 @@ function ParticleCanvas() {
 function Nav() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const mobileMenuRef = useRef<HTMLDivElement>(null);
   const { isLoggedIn, logout } = useAuth();
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 40);
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
+
+  useEffect(() => {
+    if (mobileOpen && mobileMenuRef.current) {
+      mobileMenuRef.current.focus();
+    }
+  }, [mobileOpen]);
 
   return (
     <header>
@@ -227,13 +245,20 @@ function Nav() {
 
       {/* Mobile overlay nav */}
       {mobileOpen && (
-        <div style={{
+        <div
+          ref={mobileMenuRef}
+          role="dialog"
+          aria-modal="true"
+          tabIndex={-1}
+          onKeyDown={(e) => { if (e.key === "Escape") setMobileOpen(false); }}
+          style={{
           position: "fixed", inset: 0, background: "rgba(10,10,11,0.95)", backdropFilter: "blur(20px)",
           zIndex: 101, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 28,
+          outline: "none",
         }} onClick={() => setMobileOpen(false)}>
           {["How It Works", "Features", "Pricing"].map((item) => (
             <a key={item} href={`#${item.toLowerCase().replace(/ /g, "-")}`}
-              onClick={(e) => { e.preventDefault(); setMobileOpen(false); setTimeout(() => document.getElementById(item.toLowerCase().replace(/ /g, "-"))?.scrollIntoView({ behavior: "smooth" }), 300); }}
+              onClick={(e) => { e.preventDefault(); setMobileOpen(false); document.getElementById(item.toLowerCase().replace(/ /g, "-"))?.scrollIntoView({ behavior: "smooth" }); }}
               style={{ fontFamily: font.ui, fontSize: 18, color: c.ivory, textDecoration: "none" }}>
               {item}
             </a>
@@ -268,6 +293,7 @@ function HeroCTA() {
         cursor: "pointer", letterSpacing: "0.01em", textDecoration: "none",
         display: "inline-flex", alignItems: "center", gap: 8,
       }}
+        onClick={() => track("cta_click", { cta: isLoggedIn ? "hero_go_to_dashboard" : "hero_get_started" })}
         onMouseEnter={(e) => { e.currentTarget.style.background = c.gilt; e.currentTarget.style.boxShadow = "0 8px 40px rgba(201,169,110,0.2)"; }}
         onMouseLeave={(e) => { e.currentTarget.style.background = c.ivory; e.currentTarget.style.boxShadow = "none"; }}>
         {isLoggedIn ? "Go to Dashboard" : "Get Started Free"}
@@ -295,6 +321,7 @@ function BottomCTA() {
       cursor: "pointer", letterSpacing: "0.01em", textDecoration: "none",
       display: "inline-flex", alignItems: "center",
     }}
+      onClick={() => track("cta_click", { cta: isLoggedIn ? "final_go_to_dashboard" : "final_get_started" })}
       onMouseEnter={(e) => { e.currentTarget.style.background = c.gilt; e.currentTarget.style.boxShadow = "0 8px 48px rgba(201,169,110,0.2)"; }}
       onMouseLeave={(e) => { e.currentTarget.style.background = c.ivory; e.currentTarget.style.boxShadow = "none"; }}>
       {isLoggedIn ? "Go to Dashboard" : "Get Started Free"}
@@ -1416,20 +1443,26 @@ function TestimonialsSection() {
                 pointerEvents: active === i ? "auto" : "none",
                 display: "flex", flexDirection: "column", justifyContent: "center",
               }}>
-                <span style={{ fontFamily: font.display, fontSize: 72, color: c.gilt, opacity: 0.15, lineHeight: 1, display: "block", marginBottom: 4 }}>&ldquo;</span>
-                <p style={{ fontFamily: font.display, fontSize: "clamp(20px, 2.5vw, 26px)", lineHeight: 1.55, color: c.ivory, fontStyle: "italic", marginBottom: 28, fontWeight: 400 }}>{t.quote}</p>
-                <div style={{ marginBottom: 20 }}>
-                  <p style={{ fontFamily: font.ui, fontSize: 15, fontWeight: 600, color: c.ivory, marginBottom: 2 }}>{t.name}</p>
-                  <p style={{ fontFamily: font.ui, fontSize: 13, color: c.stone }}>{t.role}</p>
-                </div>
-                <div style={{
-                  display: "inline-flex", alignItems: "center", gap: 6,
-                  padding: "6px 12px", background: `${c.sage}10`, border: `1px solid ${c.sage}20`,
-                  borderRadius: 100, alignSelf: "flex-start",
-                }}>
-                  <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg>
-                  <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 500, color: c.sage }}>{t.result}</span>
-                </div>
+                <figure style={{ margin: 0 }}>
+                  <span style={{ fontFamily: font.display, fontSize: 72, color: c.gilt, opacity: 0.15, lineHeight: 1, display: "block", marginBottom: 4 }}>&ldquo;</span>
+                  <blockquote style={{ margin: 0 }}>
+                    <p style={{ fontFamily: font.display, fontSize: "clamp(20px, 2.5vw, 26px)", lineHeight: 1.55, color: c.ivory, fontStyle: "italic", marginBottom: 28, fontWeight: 400 }}>{t.quote}</p>
+                  </blockquote>
+                  <figcaption>
+                    <div style={{ marginBottom: 20 }}>
+                      <p style={{ fontFamily: font.ui, fontSize: 15, fontWeight: 600, color: c.ivory, marginBottom: 2 }}>{t.name}</p>
+                      <p style={{ fontFamily: font.ui, fontSize: 13, color: c.stone }}>{t.role}</p>
+                    </div>
+                    <div style={{
+                      display: "inline-flex", alignItems: "center", gap: 6,
+                      padding: "6px 12px", background: `${c.sage}10`, border: `1px solid ${c.sage}20`,
+                      borderRadius: 100, alignSelf: "flex-start",
+                    }}>
+                      <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg>
+                      <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 500, color: c.sage }}>{t.result}</span>
+                    </div>
+                  </figcaption>
+                </figure>
               </div>
             ))}
           </div>
@@ -1493,6 +1526,7 @@ function PricingCard({ plan, delay }: { plan: (typeof plans)[0]; delay: number }
   const [error, setError] = useState("");
 
   const handleClick = async () => {
+    track("cta_click", { cta: `pricing_${plan.name.toLowerCase()}`, plan: plan.name });
     if (plan.price === "Free") {
       navigate(isLoggedIn ? "/session/new" : "/signup");
       return;
@@ -1720,6 +1754,8 @@ function FinalCTA() {
         <img
           src="https://images.unsplash.com/photo-1521737711867-e3b97375f902?w=1400&h=600&fit=crop&crop=center"
           alt=""
+          loading="lazy"
+          onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
           style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", filter: "brightness(0.3)" }}
         />
         {/* Dark overlay */}
@@ -1745,7 +1781,7 @@ function FinalCTA() {
                   "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=48&h=48&fit=crop&crop=face",
                   "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=48&h=48&fit=crop&crop=face",
                 ].map((src, i) => (
-                  <img key={i} src={src} alt="" style={{
+                  <img key={i} src={src} alt="" loading="lazy" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} style={{
                     width: 28, height: 28, borderRadius: "50%", objectFit: "cover",
                     border: `2px solid ${c.obsidian}`, marginLeft: i > 0 ? -8 : 0,
                   }} />
@@ -1764,6 +1800,24 @@ function FinalCTA() {
    FOOTER
    ═══════════════════════════════════════════════ */
 function Footer() {
+  const linkHref: Record<string, string> = {
+    "Interview Practice": "/#features",
+    "AI Feedback": "/#how-it-works",
+    "Score Analytics": "/#features",
+    "For Teams": "/#pricing",
+    "About": "/page/about",
+    "Blog": "/page/blog",
+    "Careers": "/page/careers",
+    "Contact": "/page/contact",
+    "Help Center": "/page/help",
+    "API Docs": "/page/help",
+    "Interview Tips": "/page/help",
+    "Success Stories": "/page/help",
+    "Privacy Policy": "/privacy",
+    "Terms of Service": "/terms",
+    "Cookie Policy": "/privacy",
+    "GDPR": "/privacy",
+  };
   const columns = [
     { title: "Product", links: ["Interview Practice", "AI Feedback", "Score Analytics", "For Teams"] },
     { title: "Company", links: ["About", "Blog", "Careers", "Contact"] },
@@ -1786,7 +1840,7 @@ function Footer() {
               <svg key="x" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>,
               <svg key="li" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>,
             ].map((icon, i) => (
-              <a key={i} href="#" aria-label={["Follow on X", "Follow on LinkedIn"][i]} style={{
+              <a key={i} href="#" aria-label={["Follow on X", "Follow on LinkedIn"][i]} rel="noopener noreferrer" target="_blank" onClick={(e) => e.preventDefault()} style={{
                 width: 32, height: 32, borderRadius: "50%", border: `1px solid ${c.border}`,
                 display: "flex", alignItems: "center", justifyContent: "center",
                 color: c.stone, transition: "all 0.25s ease", textDecoration: "none",
@@ -1802,15 +1856,21 @@ function Footer() {
         {columns.map((col) => (
           <div key={col.title}>
             <h4 style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: c.ivory, letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 16 }}>{col.title}</h4>
-            {col.links.map((link) => (
-              <a key={link} href="#" className="hover-underline" style={{
-                fontFamily: font.ui, fontSize: 13, color: c.stone, textDecoration: "none",
-                display: "block", marginBottom: 10, transition: "color 0.2s ease",
-              }}
-                onMouseEnter={(e) => (e.currentTarget.style.color = c.ivory)}
-                onMouseLeave={(e) => (e.currentTarget.style.color = c.stone)}
-              >{link}</a>
-            ))}
+            {col.links.map((link) => {
+              const href = linkHref[link] || "#";
+              const isAnchor = href.startsWith("/#");
+              return (
+                <a key={link} href={href} className="hover-underline"
+                  {...(isAnchor ? { onClick: (e: React.MouseEvent) => { e.preventDefault(); const id = href.replace("/#", ""); document.getElementById(id)?.scrollIntoView({ behavior: "smooth" }); } } : {})}
+                  style={{
+                    fontFamily: font.ui, fontSize: 13, color: c.stone, textDecoration: "none",
+                    display: "block", marginBottom: 10, transition: "color 0.2s ease",
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.color = c.ivory)}
+                  onMouseLeave={(e) => (e.currentTarget.style.color = c.stone)}
+                >{link}</a>
+              );
+            })}
           </div>
         ))}
       </div>

@@ -25,12 +25,18 @@
     { "source": "/api/cancel-subscription", "destination": "/api/cancel-subscription" },
     { "source": "/api/delete-account", "destination": "/api/delete-account" },
     { "source": "/api/send-renewal-reminders", "destination": "/api/send-renewal-reminders" },
+    { "source": "/api/razorpay-webhook", "destination": "/api/razorpay-webhook" },
+    { "source": "/api/reset-expired-subscriptions", "destination": "/api/reset-expired-subscriptions" },
     { "source": "/(.*)", "destination": "/index.html" }
   ],
   "crons": [
     {
       "path": "/api/send-renewal-reminders",
       "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/reset-expired-subscriptions",
+      "schedule": "0 0 * * *"
     }
   ]
 }

@@ -8,12 +8,13 @@ const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || "").split(",").filter(Bo
 
 export function getAllowedOrigin(req: Request): string {
   const origin = req.headers.get("origin") || "";
-  // Explicit allowlist (production domains)
+  // Explicit allowlist (production domains) — always checked first
   if (ALLOWED_ORIGINS.length > 0 && ALLOWED_ORIGINS.includes(origin)) return origin;
-  // Allow any *.vercel.app origin (preview/production aliases)
-  if (origin.endsWith(".vercel.app")) return origin;
   // Allow localhost in development
   if (origin.startsWith("http://localhost:")) return origin;
+  // Only allow *.vercel.app when no explicit origins configured (dev/preview mode)
+  // In production, set ALLOWED_ORIGINS to restrict to your specific domains
+  if (ALLOWED_ORIGINS.length === 0 && origin.endsWith(".vercel.app")) return origin;
   return "";
 }
 
@@ -73,12 +74,16 @@ export async function verifyAuth(req: Request): Promise<{ authenticated: boolean
 
   const token = authHeader.slice(7);
   try {
+    const ac = new AbortController();
+    const timer = setTimeout(() => ac.abort(), 5000);
     const res = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
       headers: {
         Authorization: `Bearer ${token}`,
         apikey: SUPABASE_ANON_KEY,
       },
+      signal: ac.signal,
     });
+    clearTimeout(timer);
     if (!res.ok) return { authenticated: false };
     const user = await res.json();
     return { authenticated: true, userId: user.id };
@@ -102,14 +107,16 @@ export async function checkSessionLimit(userId: string): Promise<{ allowed: bool
   if (!SUPABASE_URL || !SERVICE_ROLE_KEY) return { allowed: true }; // skip in dev
 
   try {
+    const ac = new AbortController();
+    const timer = setTimeout(() => ac.abort(), 5000);
     // Get user's subscription tier and expiry
     const profileRes = await fetch(
-      `${SUPABASE_URL}/rest/v1/profiles?id=eq.${userId}&select=subscription_tier,subscription_end`,
-      { headers: { apikey: SERVICE_ROLE_KEY, Authorization: `Bearer ${SERVICE_ROLE_KEY}` } },
+      `${SUPABASE_URL}/rest/v1/profiles?id=eq.${encodeURIComponent(userId)}&select=subscription_tier,subscription_end`,
+      { headers: { apikey: SERVICE_ROLE_KEY, Authorization: `Bearer ${SERVICE_ROLE_KEY}` }, signal: ac.signal },
     );
-    if (!profileRes.ok) return { allowed: true }; // fail open
+    if (!profileRes.ok) { clearTimeout(timer); return { allowed: true }; } // fail open
     const profiles = await profileRes.json();
-    if (!Array.isArray(profiles) || profiles.length === 0) return { allowed: true };
+    if (!Array.isArray(profiles) || profiles.length === 0) { clearTimeout(timer); return { allowed: true }; }
 
     let tier = profiles[0].subscription_tier || "free";
     const subEnd = profiles[0].subscription_end;
@@ -119,13 +126,14 @@ export async function checkSessionLimit(userId: string): Promise<{ allowed: bool
       tier = "free";
     }
 
-    if (tier === "pro" || tier === "team") return { allowed: true };
+    if (tier === "pro" || tier === "team") { clearTimeout(timer); return { allowed: true }; }
 
     // Count sessions
     const sessionsRes = await fetch(
-      `${SUPABASE_URL}/rest/v1/sessions?user_id=eq.${userId}&select=id,created_at`,
-      { headers: { apikey: SERVICE_ROLE_KEY, Authorization: `Bearer ${SERVICE_ROLE_KEY}` } },
+      `${SUPABASE_URL}/rest/v1/sessions?user_id=eq.${encodeURIComponent(userId)}&select=id,created_at`,
+      { headers: { apikey: SERVICE_ROLE_KEY, Authorization: `Bearer ${SERVICE_ROLE_KEY}` }, signal: ac.signal },
     );
+    clearTimeout(timer);
     if (!sessionsRes.ok) return { allowed: true };
     const sessions = await sessionsRes.json();
     if (!Array.isArray(sessions)) return { allowed: true };
@@ -177,10 +185,9 @@ export async function getSubscriptionTier(userId: string): Promise<"free" | "sta
 export function validateOrigin(req: Request): boolean {
   const origin = req.headers.get("origin") || "";
   if (!origin) return false; // POST requests must have an Origin header
-  // Allow configured origins, vercel.app previews/aliases, and localhost
   if (ALLOWED_ORIGINS.length > 0 && ALLOWED_ORIGINS.includes(origin)) return true;
-  if (origin.endsWith(".vercel.app")) return true;
   if (origin.startsWith("http://localhost:")) return true;
+  if (ALLOWED_ORIGINS.length === 0 && origin.endsWith(".vercel.app")) return true;
   return false;
 }
 
@@ -191,6 +198,8 @@ const UPSTASH_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN || "";
 const useRedis = !!(UPSTASH_URL && UPSTASH_TOKEN);
 
 // In-memory fallback (for local dev or if Redis not configured)
+// LIMITATION: In-memory rate limiting does not share state across serverless invocations.
+// Each cold start gets a fresh map, so limits are per-instance only. Use Redis (Upstash) in production.
 const rateLimitMaps = new Map<string, Map<string, { count: number; reset: number }>>();
 
 function inMemoryRateLimit(ip: string, bucket: string, limit: number, windowMs: number): boolean {
@@ -247,4 +256,44 @@ export function rateLimitResponse(headers: Record<string, string>, retryAfterSec
     status: 429,
     headers: { ...headers, "Retry-After": String(retryAfterSec) },
   });
+}
+
+/* ─── Request Body Size Check ─── */
+
+export function checkBodySize(req: Request, maxBytes = 1048576): boolean {
+  const contentLength = parseInt(req.headers.get("content-length") || "0", 10);
+  return contentLength > maxBytes;
+}
+
+/* ─── Input Sanitization ─── */
+
+/** Sanitize user-provided text before embedding in LLM prompts.
+ *  Strips control characters, known injection patterns, and normalizes unicode. */
+export function sanitizeForLLM(s: unknown, maxLen = 200): string {
+  if (typeof s !== "string") return "";
+  return s
+    // Normalize unicode to NFC to prevent homoglyph attacks
+    .normalize("NFC")
+    // Strip control characters (keep tab, newline, carriage return)
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F]/g, "")
+    // Strip known LLM role markers (case-insensitive, with optional whitespace/punctuation)
+    .replace(/(?:^|\n)\s*(?:system|assistant|user|human|instruction)\s*[:\-]/gim, "")
+    // Strip ChatML/special tokens
+    .replace(/<\|[^|]*\|>/g, "")
+    // Strip markdown code blocks (potential hidden instructions)
+    .replace(/```[\s\S]*?```/g, "")
+    // Strip JSON role injection attempts
+    .replace(/\{\s*"role"\s*:/gi, "{")
+    // Strip override/ignore instructions
+    .replace(/(?:ignore|disregard|forget|override|bypass)\s+(?:all\s+)?(?:previous|above|prior|system)\s+(?:instructions?|prompts?|context|rules?)/gi, "")
+    // Strip HTML/XML tags
+    .replace(/<[^>]+>/g, "")
+    .slice(0, maxLen)
+    .trim();
+}
+
+/* ─── Request ID Helper ─── */
+
+export function withRequestId(headers: Record<string, string>): Record<string, string> {
+  return { ...headers, "X-Request-ID": crypto.randomUUID() };
 }

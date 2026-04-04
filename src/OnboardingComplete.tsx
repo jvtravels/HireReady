@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { c, font } from "./tokens";
 import { useAuth } from "./AuthContext";
@@ -24,13 +24,29 @@ export default function OnboardingComplete() {
   const aiFeedback: string = state.aiFeedback || "";
   const skillScores: Record<string, number> | null = state.skillScores || null;
 
+  const [redirecting, setRedirecting] = useState(false);
+
   // Guard: if accessed directly without coming from onboarding, redirect
   useEffect(() => {
     if (!state.score && !state.aiFeedback) {
       // No score data passed — user likely navigated here directly
-      navigate(user?.hasCompletedOnboarding ? "/dashboard" : "/onboarding", { replace: true });
+      setRedirecting(true);
+      const timer = setTimeout(() => {
+        navigate(user?.hasCompletedOnboarding ? "/dashboard" : "/onboarding", { replace: true });
+      }, 1500);
+      return () => clearTimeout(timer);
     }
   }, []);
+
+  if (redirecting) {
+    return (
+      <div style={{ minHeight: "100vh", background: c.obsidian, display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 16 }}>
+        <div style={{ width: 36, height: 36, border: `3px solid ${c.border}`, borderTopColor: c.gilt, borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
+        <p style={{ fontFamily: font.ui, fontSize: 14, color: c.stone }}>Redirecting to dashboard...</p>
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      </div>
+    );
+  }
 
   return (
     <div style={{ minHeight: "100vh", background: c.obsidian, display: "flex", flexDirection: "column" }}>

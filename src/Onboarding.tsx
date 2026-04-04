@@ -30,7 +30,7 @@ const COMPANY_SUGGESTIONS = [
 
 /* ─── Autocomplete Input Component ─── */
 function AutocompleteInput({
-  id, value, onChange, placeholder, suggestions, label, required,
+  id, value, onChange, placeholder, suggestions, label, required, error,
 }: {
   id: string;
   value: string;
@@ -39,11 +39,17 @@ function AutocompleteInput({
   suggestions: string[];
   label?: string;
   required?: boolean;
+  error?: string;
 }) {
   const [focused, setFocused] = useState(false);
   const [selectedIdx, setSelectedIdx] = useState(-1);
   const inputRef = useRef<HTMLInputElement>(null);
   const [dropdownPos, setDropdownPos] = useState<{ top: number; left: number; width: number } | null>(null);
+
+  // Cleanup: set focused to false on unmount
+  useEffect(() => {
+    return () => { setFocused(false); };
+  }, []);
   const filtered = focused && value.length > 0
     ? suggestions.filter(s => s.toLowerCase().includes(value.toLowerCase()) && s.toLowerCase() !== value.toLowerCase()).slice(0, 6)
     : [];
@@ -77,21 +83,24 @@ function AutocompleteInput({
         }}
         placeholder={placeholder}
         autoComplete="off"
+        aria-invalid={error ? true : undefined}
+        aria-describedby={error ? `${id}-error` : undefined}
         style={{
           width: "100%", padding: "12px 16px", borderRadius: 10,
-          background: c.graphite, border: `1.5px solid ${focused ? c.gilt : c.border}`,
+          background: c.graphite, border: `1.5px solid ${error ? c.ember : focused ? c.gilt : c.border}`,
           color: c.ivory, fontFamily: font.ui, fontSize: 14,
           outline: "none", transition: "border-color 0.2s", boxSizing: "border-box",
         }}
       />
+      {error && <p id={`${id}-error`} role="alert" style={{ fontFamily: font.ui, fontSize: 11, color: c.ember, marginTop: 4 }}>{error}</p>}
       {filtered.length > 0 && dropdownPos && createPortal(
-        <div style={{
+        <div role="listbox" style={{
           position: "fixed", top: dropdownPos.top, left: dropdownPos.left, width: dropdownPos.width, zIndex: 9999,
           background: c.graphite, border: `1px solid ${c.border}`, borderRadius: 10,
           boxShadow: "0 8px 32px rgba(0,0,0,0.5)", maxHeight: 220, overflowY: "auto",
         }}>
           {filtered.map((s, i) => (
-            <button key={s} onMouseDown={() => { onChange(s); setFocused(false); }}
+            <button key={s} role="option" aria-selected={i === selectedIdx} onMouseDown={() => { onChange(s); setFocused(false); }}
               style={{
                 display: "block", width: "100%", padding: "10px 16px", border: "none", textAlign: "left",
                 fontFamily: font.ui, fontSize: 13, cursor: "pointer",
@@ -124,7 +133,7 @@ const SESSION_LENGTH_MAP: Record<string, 10 | 15 | 25> = { "10m": 10, "15m": 15,
 
 export default function Onboarding() {
   const navigate = useNavigate();
-  const { updateUser } = useAuth();
+  const { user, updateUser } = useAuth();
   const [step, setStep] = useState(loadObStep);
   const [slideDir, setSlideDir] = useState<"forward" | "back">("forward");
 
@@ -140,6 +149,7 @@ export default function Onboarding() {
   const [aiProfile, setAiProfile] = useState<ResumeProfile | null>(null);
   const [aiPhase, setAiPhase] = useState<"idle" | "analyzing" | "done">("idle");
   const undoRef = useRef<{ fileName: string; resumeText: string; resumeParsed: ParsedResume | null; aiProfile: ResumeProfile | null; aiPhase: "idle" | "analyzing" | "done"; targetRole: string; targetCompany: string } | null>(null);
+  const analysisAbortRef = useRef<AbortController | null>(null);
   const [showUndo, setShowUndo] = useState(false);
   const undoTimerRef = useRef<number>(0);
 
@@ -204,19 +214,27 @@ export default function Onboarding() {
       setAiProfile(fallback);
       const autoRole = data.experience?.[0]?.title || "";
       if (autoRole && !targetRole) { setTargetRole(autoRole); setRoleAutoFilled(true); }
-      // AI analysis in background
+      // AI analysis in background — abort previous if any
+      analysisAbortRef.current?.abort();
+      analysisAbortRef.current = new AbortController();
+      const currentAbort = analysisAbortRef.current;
       setAiPhase("analyzing");
       let finalProfile: ResumeProfile = fallback;
       try {
         const result = await Promise.race([
           analyzeResumeWithAI(text, targetRole || autoRole),
           new Promise<null>((_, reject) => setTimeout(() => reject(new Error("timeout")), 30000)),
+          new Promise<null>((_, reject) => {
+            currentAbort.signal.addEventListener("abort", () => reject(new Error("aborted")));
+          }),
         ]);
         if (result && typeof result === "object" && "profile" in result) {
           finalProfile = result.profile;
           setAiProfile(finalProfile);
         }
-      } catch {}
+      } catch (analysisErr: any) {
+        if (analysisErr?.message === "aborted") return; // Upload was superseded
+      }
       setResumeParsing(false);
       setAiPhase("done");
       // Save resume info to profile immediately — only set name/role if not already set
@@ -263,6 +281,12 @@ export default function Onboarding() {
       poll();
     } catch { setMicStatus("denied"); }
   }, []);
+
+  // Browser-specific mic permission guidance
+  const isChrome = typeof navigator !== "undefined" && navigator.userAgent.includes("Chrome");
+  const micPermissionHint = isChrome
+    ? "Click the lock icon in the address bar \u2192 Site settings \u2192 Microphone \u2192 Allow"
+    : "Check your browser settings to allow microphone access";
 
   const camStreamRef = useRef<MediaStream | null>(null);
   const requestCamera = useCallback(async () => {
@@ -362,6 +386,13 @@ export default function Onboarding() {
 
   return (
     <div style={{ minHeight: "100vh", background: `radial-gradient(ellipse 80% 50% at 50% 0%, rgba(201,169,110,0.03) 0%, ${c.obsidian} 70%)`, display: "flex", flexDirection: "column", position: "relative" }}>
+      {user && !user.emailVerified && (
+        <div style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 50, padding: "12px 24px", background: "rgba(201,169,110,0.1)", borderBottom: "1px solid rgba(201,169,110,0.2)", textAlign: "center", backdropFilter: "blur(8px)" }}>
+          <span style={{ fontFamily: font.ui, fontSize: 13, color: c.chalk }}>
+            Please verify your email to save your progress. Check your inbox for a confirmation link.
+          </span>
+        </div>
+      )}
       <style>{`
         @keyframes spin { to { transform: rotate(360deg); } }
         @keyframes progressFill { 0% { width: 0%; } 30% { width: 35%; } 60% { width: 65%; } 80% { width: 80%; } 100% { width: 92%; } }
@@ -437,7 +468,7 @@ export default function Onboarding() {
 
       {/* ─── Content ─── */}
       <div className="ob-content-area" style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "40px 32px", overflow: "auto" }}>
-        <div key={step} className="ob-step" style={{ width: "100%", maxWidth: step === 3 ? 680 : (step === 1 && !resumeParsed) ? 680 : 960, transition: "max-width 0.4s ease" }}>
+        <div key={step} className="ob-step" style={{ width: "100%", maxWidth: step === 3 ? "min(680px, calc(100vw - 32px))" : (step === 1 && !resumeParsed) ? "min(680px, calc(100vw - 32px))" : "min(960px, calc(100vw - 32px))", transition: "max-width 0.4s ease" }}>
 
           {/* ════════════════ STEP 1: Resume Intelligence ════════════════ */}
           {step === 1 && (
@@ -734,15 +765,12 @@ export default function Onboarding() {
                   </div>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
                     <div>
-                      <AutocompleteInput id="ob-role" value={targetRole} onChange={(v) => { setTargetRole(v); setRoleAutoFilled(false); }} suggestions={ROLE_SUGGESTIONS} placeholder="e.g. Senior Engineering Manager..." label="Role" required />
+                      <AutocompleteInput id="ob-role" value={targetRole} onChange={(v) => { setTargetRole(v); setRoleAutoFilled(false); }} suggestions={ROLE_SUGGESTIONS} placeholder="e.g. Senior Engineering Manager..." label="Role" required error={!targetRole.trim() && interviewFocus.length > 0 ? "Required to personalize your questions" : undefined} />
                       {roleAutoFilled && targetRole && (
                         <p style={{ fontFamily: font.ui, fontSize: 11, color: c.sage, marginTop: 4, display: "flex", alignItems: "center", gap: 4 }}>
                           <svg aria-hidden="true" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg>
                           Auto-filled from resume
                         </p>
-                      )}
-                      {!targetRole.trim() && interviewFocus.length > 0 && (
-                        <p style={{ fontFamily: font.ui, fontSize: 11, color: c.ember, marginTop: 4 }}>Required to personalize your questions</p>
                       )}
                     </div>
                     <div>
@@ -868,7 +896,7 @@ export default function Onboarding() {
                         <div>
                           <p style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.ivory }}>Microphone</p>
                           <p style={{ fontFamily: font.ui, fontSize: 11, color: micStatus === "granted" ? c.sage : micStatus === "denied" ? c.ember : c.stone }}>
-                            {micStatus === "granted" ? "Connected — ready to go" : micStatus === "denied" ? "Denied — you can type answers instead" : "Recommended for best experience"}
+                            {micStatus === "granted" ? "Connected — ready to go" : micStatus === "denied" ? `Denied — ${micPermissionHint}` : "Recommended for best experience"}
                           </p>
                         </div>
                       </div>

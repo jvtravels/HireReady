@@ -5,7 +5,7 @@ export const c = {
   obsidian: "#0A0A0B",
   graphite: "#161618",
   ivory: "#F0EDE8",
-  stone: "#9A9590",      // 6.4:1 on obsidian — WCAG AA
+  stone: "#8A7F77",      // Darker for better WCAG contrast on small text
   chalk: "#C5C0BA",
   gilt: "#C9A96E",
   sage: "#7A9E7E",

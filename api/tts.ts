@@ -3,7 +3,7 @@
 
 export const config = { runtime: "edge" };
 
-import { handleCorsPreflightOrMethod, corsHeaders, isRateLimited, getClientIp, rateLimitResponse, verifyAuth, unauthorizedResponse } from "./_shared";
+import { handleCorsPreflightOrMethod, corsHeaders, isRateLimited, getClientIp, rateLimitResponse, verifyAuth, unauthorizedResponse, validateOrigin, withRequestId } from "./_shared";
 
 declare const process: { env: Record<string, string | undefined> };
 const GCP_TTS_KEY = process.env.GCP_TTS_API_KEY || "";
@@ -12,10 +12,21 @@ export default async function handler(req: Request): Promise<Response> {
   const earlyResponse = handleCorsPreflightOrMethod(req);
   if (earlyResponse) return earlyResponse;
 
-  const headers = corsHeaders(req);
+  const headers = withRequestId(corsHeaders(req));
+
+  // Body size check
+  const contentLength = parseInt(req.headers.get("content-length") || "0", 10);
+  if (contentLength > 1048576) {
+    return new Response(JSON.stringify({ error: "Request too large" }), { status: 413, headers });
+  }
 
   if (!GCP_TTS_KEY) {
     return new Response(JSON.stringify({ error: "TTS not configured" }), { status: 503, headers });
+  }
+
+  // CSRF: validate Origin header on POST
+  if (!validateOrigin(req)) {
+    return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers });
   }
 
   const auth = await verifyAuth(req);
@@ -86,6 +97,7 @@ export default async function handler(req: Request): Promise<Response> {
       "Content-Type": "audio/mpeg",
       "Content-Length": String(bytes.length),
       "Cache-Control": "no-store",
+      "X-Content-Type-Options": "nosniff",
     };
     // Add CORS origin if allowed
     const origin = headers["Access-Control-Allow-Origin"];

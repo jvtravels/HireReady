@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { c, font } from "./tokens";
 import { useAuth } from "./AuthContext";
@@ -19,6 +19,7 @@ export default function DashboardHome() {
     weekActivity, currentStreak, readinessScore, daysLeft, calendarEvents,
     isFree, atSessionLimit, sessionsRemaining,
     notifications, aiInsights, upcomingGoals, returnContext, smartSchedule, prepPlan,
+    badges, dailyChallenge, practiceReminder,
     handleStartSession, handleExport, handleDownload,
     setShowUpgradeModal,
   } = useDashboard();
@@ -34,12 +35,18 @@ export default function DashboardHome() {
   const [rightTab, setRightTab] = useState<"insights" | "goals">("insights");
   const [shareTooltip, setShareTooltip] = useState(false);
   const [debouncedSearch, setDebouncedSearch] = useState("");
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Debounce search
   const handleSearch = (val: string) => {
     setSearchQuery(val);
-    setTimeout(() => setDebouncedSearch(val), 250);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => setDebouncedSearch(val), 250);
   };
+
+  useEffect(() => {
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, []);
 
   if (dataLoading) return <DataLoadingSkeleton />;
 
@@ -63,7 +70,7 @@ export default function DashboardHome() {
   const weakestSkill = skills.length > 0 ? [...skills].sort((a, b) => a.score - b.score)[0] : null;
   const activeNotifs = notifications.filter(n => !persisted.dismissedNotifs.includes(n.id));
 
-  const filteredSessions = recentSessions
+  const filteredSessions = useMemo(() => recentSessions
     .filter(s => filterType === "All" || s.type === filterType)
     .filter(s => {
       if (!debouncedSearch) return true;
@@ -77,7 +84,7 @@ export default function DashboardHome() {
       if (dateRange === "week") return sessionDate >= new Date(now.getTime() - 7 * 86400000);
       return sessionDate >= new Date(now.getTime() - 30 * 86400000);
     })
-    .sort((a, b) => sortBy === "score" ? b.score - a.score : new Date(b.date).getTime() - new Date(a.date).getTime());
+    .sort((a, b) => sortBy === "score" ? b.score - a.score : new Date(b.date).getTime() - new Date(a.date).getTime()), [recentSessions, filterType, debouncedSearch, dateRange, sortBy]);
 
   return (
     <>
@@ -114,7 +121,7 @@ export default function DashboardHome() {
             { label: "Quick Behavioral", type: "behavioral", icon: <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> },
             { label: "Quick Case Study", type: "case-study", icon: <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg> },
           ].map((action) => (
-            <button key={action.label} title={action.label} onClick={() => nav(`/session/new?type=${action.type}`)}
+            <button key={action.type} title={action.label} onClick={() => nav(`/session/new?type=${action.type}`)}
               style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 500, color: c.stone, background: c.graphite, border: `1px solid ${c.border}`, borderRadius: 8, padding: "8px 14px", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, transition: "all 0.2s ease", outline: "none" }}
               onMouseEnter={(e) => { e.currentTarget.style.borderColor = c.gilt; e.currentTarget.style.color = c.ivory; }}
               onMouseLeave={(e) => { e.currentTarget.style.borderColor = c.border; e.currentTarget.style.color = c.stone; }}
@@ -152,6 +159,18 @@ export default function DashboardHome() {
         </div>
       )}
 
+      {/* Practice Reminder */}
+      {practiceReminder && (
+        <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 18px", borderRadius: 10, background: "rgba(201,169,110,0.04)", border: `1px solid rgba(201,169,110,0.12)`, marginBottom: 16 }}>
+          <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          <span style={{ fontFamily: font.ui, fontSize: 13, color: c.chalk, flex: 1 }}>{practiceReminder}</span>
+          <button onClick={handleStartSession} style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.gilt, background: "rgba(201,169,110,0.08)", border: `1px solid rgba(201,169,110,0.2)`, borderRadius: 6, padding: "5px 12px", cursor: "pointer", whiteSpace: "nowrap" }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(201,169,110,0.15)"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(201,169,110,0.08)"; }}
+          >Practice Now</button>
+        </div>
+      )}
+
       {/* Prep Plan Timeline */}
       {prepPlan && (
         <div style={{ marginBottom: 16, background: c.graphite, borderRadius: 12, border: `1px solid ${c.border}`, padding: "20px 24px" }}>
@@ -181,7 +200,7 @@ export default function DashboardHome() {
       )}
 
       {/* CTA Banner */}
-      <div style={{ background: `linear-gradient(135deg, rgba(201,169,110,0.08) 0%, ${c.graphite} 100%)`, borderRadius: 14, border: `1px solid rgba(201,169,110,0.12)`, padding: isMobile ? "20px" : "24px 32px", marginBottom: 24, display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 20 }}>
+      <div style={{ background: `linear-gradient(135deg, rgba(201,169,110,0.08) 0%, ${c.graphite} 100%)`, borderRadius: 14, border: `1px solid rgba(201,169,110,0.12)`, padding: isMobile ? "20px" : "24px 32px", marginBottom: 24, display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: isMobile ? 12 : 20 }}>
         <div style={{ flex: 1, minWidth: 240 }}>
           {daysLeft > 0 && persisted.interviewDate && (
             <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10 }}>
@@ -207,7 +226,12 @@ export default function DashboardHome() {
               <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="2" strokeLinecap="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
               {readinessScore >= 85
                 ? "You're interview-ready! Keep practicing to stay sharp."
-                : `At your current pace (+${Math.round(overallStats.improvement / overallStats.sessionsCompleted)}pts/session), you'll reach 85 in ~${Math.max(1, Math.ceil((85 - readinessScore) / Math.max(1, overallStats.improvement / overallStats.sessionsCompleted)))} more sessions.`
+                : (() => {
+                    const ptsPerSession = overallStats.improvement / overallStats.sessionsCompleted;
+                    const sessionsNeeded = Math.max(1, Math.ceil((85 - readinessScore) / Math.max(1, ptsPerSession)));
+                    const roundedPts = Math.round(ptsPerSession);
+                    return `At your current pace (+${isFinite(roundedPts) ? roundedPts : "?"}pts/session), you'll reach 85 in ~${isFinite(sessionsNeeded) ? sessionsNeeded : "?"} more sessions.`;
+                  })()
               }
             </p>
           )}
@@ -480,7 +504,11 @@ export default function DashboardHome() {
                 <SkillRadar skills={skills} />
                 <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 12 }}>
                   {skills.map((sk) => (
-                    <div key={sk.name} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <div key={sk.name} onClick={() => nav(`/session/new?type=behavioral&focus=${sk.name.toLowerCase().replace(/\s+/g, "-")}`)}
+                      style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", padding: "4px 6px", margin: "-4px -6px", borderRadius: 6, transition: "background 0.15s ease" }}
+                      onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(201,169,110,0.04)"; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+                      title={`Practice ${sk.name}`}>
                       <span style={{ fontFamily: font.ui, fontSize: 11, color: c.chalk, flex: 1 }}>{sk.name}</span>
                       <div style={{ width: 60, height: 3, background: c.border, borderRadius: 2, overflow: "hidden" }}><div style={{ height: "100%", width: `${sk.score}%`, background: sk.color, borderRadius: 2 }} /></div>
                       <span style={{ fontFamily: font.mono, fontSize: 11, fontWeight: 600, color: c.ivory, width: 22, textAlign: "right" }}>{sk.score}</span>
@@ -537,6 +565,46 @@ export default function DashboardHome() {
               )}
             </div>
           </div>
+          {/* Daily Challenge */}
+          {dailyChallenge && !dailyChallenge.completed && (
+            <div style={{ background: c.graphite, borderRadius: 12, border: `1px solid rgba(201,169,110,0.12)`, padding: "20px 24px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
+                <h3 style={{ fontFamily: font.ui, fontSize: 14, fontWeight: 600, color: c.ivory, display: "flex", alignItems: "center", gap: 8 }}>
+                  <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="2" strokeLinecap="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" /></svg>
+                  Daily Challenge
+                </h3>
+                <span style={{ fontFamily: font.mono, fontSize: 9, fontWeight: 600, padding: "2px 8px", borderRadius: 100, background: dailyChallenge.difficulty === "hard" ? "rgba(196,112,90,0.1)" : "rgba(201,169,110,0.1)", color: dailyChallenge.difficulty === "hard" ? c.ember : c.gilt, textTransform: "uppercase" }}>{dailyChallenge.difficulty}</span>
+              </div>
+              <p style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: c.chalk, marginBottom: 4 }}>{dailyChallenge.label}</p>
+              <p style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, lineHeight: 1.5, marginBottom: 12 }}>{dailyChallenge.description}</p>
+              <button onClick={() => nav(`/session/new?type=${dailyChallenge.type}${dailyChallenge.focus ? `&focus=${dailyChallenge.focus}` : ""}`)}
+                style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: c.obsidian, background: c.gilt, border: "none", borderRadius: 6, padding: "8px 16px", cursor: "pointer", width: "100%" }}
+                onMouseEnter={(e) => { e.currentTarget.style.filter = "brightness(1.1)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.filter = "brightness(1)"; }}
+              >Start Challenge</button>
+            </div>
+          )}
+
+          {/* Badges */}
+          {badges.length > 0 && (
+            <div style={{ background: c.graphite, borderRadius: 12, border: `1px solid ${c.border}`, padding: "20px 24px" }}>
+              <h3 style={{ fontFamily: font.ui, fontSize: 14, fontWeight: 600, color: c.ivory, marginBottom: 14 }}>Achievements</h3>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 8 }}>
+                {badges.map((badge) => (
+                  <div key={badge.id} style={{ padding: "12px", borderRadius: 10, background: badge.earned ? "rgba(201,169,110,0.04)" : c.obsidian, border: `1px solid ${badge.earned ? "rgba(201,169,110,0.15)" : c.border}`, textAlign: "center", opacity: badge.earned ? 1 : 0.5 }}>
+                    <div style={{ fontSize: 22, marginBottom: 4 }}>{badge.icon}</div>
+                    <p style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: badge.earned ? c.ivory : c.stone, marginBottom: 2 }}>{badge.label}</p>
+                    <p style={{ fontFamily: font.ui, fontSize: 9, color: c.stone, lineHeight: 1.4, marginBottom: 6 }}>{badge.description}</p>
+                    {!badge.earned && (
+                      <div style={{ height: 3, background: c.border, borderRadius: 2, overflow: "hidden" }}>
+                        <div style={{ height: "100%", width: `${Math.min(100, badge.progress)}%`, background: c.gilt, borderRadius: 2, transition: "width 0.3s ease" }} />
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </>

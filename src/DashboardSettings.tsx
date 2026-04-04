@@ -11,7 +11,7 @@ import { DataLoadingSkeleton } from "./dashboardComponents";
 export default function SettingsPage() {
   const nav = useNavigate();
   const { user: authUser, logout: authLogout, updateUser: authUpdateUser } = useAuth();
-  const { persisted, updatePersisted: onUpdate, handleExportCSV: onExportCSV, dataLoading } = useDashboard();
+  const { persisted, updatePersisted: onUpdate, handleExportCSV: onExportCSV, dataLoading, showToast } = useDashboard();
   const onLogout = () => { authLogout(); };
   const onSyncToSupabase = (updates: { name?: string; targetRole?: string; interviewDate?: string }) => authUpdateUser(updates);
 
@@ -25,6 +25,7 @@ export default function SettingsPage() {
   const [streakReminder, setStreakReminder] = useState(persisted.streakReminder !== false);
   const [weeklyDigest, setWeeklyDigest] = useState(persisted.weeklyDigest || false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleteEmailInput, setDeleteEmailInput] = useState("");
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [cancelLoading, setCancelLoading] = useState(false);
   const [cancelMsg, setCancelMsg] = useState("");
@@ -115,8 +116,8 @@ export default function SettingsPage() {
         </div>
 
         <div style={{ display: "flex", gap: 12, marginTop: 20 }}>
-          <button onClick={handleSave} className="shimmer-btn"
-            style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, padding: "10px 24px", borderRadius: 8, border: "none", background: c.gilt, color: c.obsidian, cursor: "pointer" }}>
+          <button onClick={handleSave} disabled={saving} className="shimmer-btn"
+            style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, padding: "10px 24px", borderRadius: 8, border: "none", background: c.gilt, color: c.obsidian, cursor: saving ? "not-allowed" : "pointer", opacity: saving ? 0.6 : 1 }}>
             {saving ? "Saving..." : saved ? "Saved ✓" : "Save Changes"}
           </button>
           {saved && <span style={{ fontFamily: font.ui, fontSize: 12, color: c.sage, display: "flex", alignItems: "center", gap: 4 }}>
@@ -377,6 +378,30 @@ export default function SettingsPage() {
         </div>
       </div>
 
+      {/* Referral */}
+      <div style={{ background: c.graphite, borderRadius: 12, border: `1px solid rgba(201,169,110,0.12)`, padding: "24px 28px", marginBottom: 20 }}>
+        <h3 style={{ fontFamily: font.ui, fontSize: 14, fontWeight: 600, color: c.ivory, marginBottom: 6, display: "flex", alignItems: "center", gap: 8 }}>
+          <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="2" strokeLinecap="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+          Refer a Friend
+        </h3>
+        <p style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, marginBottom: 14, lineHeight: 1.5 }}>Share your referral link. When a friend signs up and completes a session, you both get a bonus free session.</p>
+        {(() => {
+          const code = authUser?.id ? authUser.id.slice(0, 8).toUpperCase() : "SHARE";
+          const link = `${window.location.origin}/signup?ref=${code}`;
+          return (
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <input readOnly value={link} style={{ flex: 1, fontFamily: font.mono, fontSize: 12, color: c.chalk, background: c.obsidian, border: `1px solid ${c.border}`, borderRadius: 6, padding: "10px 14px", outline: "none" }} onClick={(e) => (e.target as HTMLInputElement).select()} />
+              <button onClick={() => { navigator.clipboard.writeText(link); showToast("Referral link copied"); }}
+                style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: c.obsidian, background: c.gilt, border: "none", borderRadius: 6, padding: "10px 18px", cursor: "pointer", whiteSpace: "nowrap" }}
+                onMouseEnter={(e) => { e.currentTarget.style.filter = "brightness(1.1)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.filter = "brightness(1)"; }}>
+                {saved ? "Copied!" : "Copy Link"}
+              </button>
+            </div>
+          );
+        })()}
+      </div>
+
       {/* Danger Zone */}
       <div style={{ background: c.graphite, borderRadius: 12, border: `1px solid rgba(196,112,90,0.15)`, padding: "24px 28px" }}>
         <h3 style={{ fontFamily: font.ui, fontSize: 14, fontWeight: 600, color: c.ember, marginBottom: 16 }}>Danger Zone</h3>
@@ -399,40 +424,54 @@ export default function SettingsPage() {
             <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>Permanently delete your account and all data</span>
           </div>
           {!confirmDelete ? (
-            <button onClick={() => setConfirmDelete(true)} style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: c.ember, background: "transparent", border: `1px solid rgba(196,112,90,0.2)`, borderRadius: 6, padding: "8px 20px", cursor: "pointer" }}>
+            <button onClick={() => { setConfirmDelete(true); setDeleteEmailInput(""); setDeleteMsg(""); }} style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: c.ember, background: "transparent", border: `1px solid rgba(196,112,90,0.2)`, borderRadius: 6, padding: "8px 20px", cursor: "pointer" }}>
               Delete Account
             </button>
           ) : (
-            <div style={{ display: "flex", gap: 8 }}>
-              <button onClick={() => setConfirmDelete(false)} style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, background: "transparent", border: `1px solid ${c.border}`, borderRadius: 6, padding: "8px 14px", cursor: "pointer" }}>
-                Cancel
-              </button>
-              <button disabled={deleteLoading} onClick={async () => {
-                setDeleteLoading(true);
-                setDeleteMsg("");
-                try {
-                  const hdrs = await authHeaders();
-                  const controller = new AbortController();
-                  const timeout = setTimeout(() => controller.abort(), 15000);
-                  const res = await fetch("/api/delete-account", { method: "POST", headers: hdrs, signal: controller.signal });
-                  clearTimeout(timeout);
-                  if (res.ok || res.status === 207) {
-                    localStorage.clear();
-                    onLogout();
-                  } else {
-                    const errData = await res.json().catch(() => ({}));
-                    setDeleteMsg(errData.error || "Failed to delete account. Try again.");
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "flex-end" }}>
+              <div style={{ display: "flex", gap: 8, alignItems: "center", width: "100%" }}>
+                <input
+                  type="email"
+                  value={deleteEmailInput}
+                  onChange={(e) => setDeleteEmailInput(e.target.value)}
+                  placeholder="Type your email to confirm"
+                  aria-label="Confirm email for account deletion"
+                  style={{ flex: 1, fontFamily: font.ui, fontSize: 12, color: c.chalk, background: c.obsidian, border: `1px solid rgba(196,112,90,0.2)`, borderRadius: 6, padding: "8px 12px", outline: "none", minWidth: 180 }}
+                  onFocus={(e) => { e.currentTarget.style.borderColor = c.ember; }}
+                  onBlur={(e) => { e.currentTarget.style.borderColor = "rgba(196,112,90,0.2)"; }}
+                />
+              </div>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button onClick={() => { setConfirmDelete(false); setDeleteEmailInput(""); }} style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, background: "transparent", border: `1px solid ${c.border}`, borderRadius: 6, padding: "8px 14px", cursor: "pointer" }}>
+                  Cancel
+                </button>
+                <button disabled={deleteLoading || deleteEmailInput.toLowerCase() !== (authUser?.email || "").toLowerCase()} onClick={async () => {
+                  setDeleteLoading(true);
+                  setDeleteMsg("");
+                  try {
+                    const hdrs = await authHeaders();
+                    const controller = new AbortController();
+                    const timeout = setTimeout(() => controller.abort(), 15000);
+                    const res = await fetch("/api/delete-account", { method: "POST", headers: hdrs, signal: controller.signal });
+                    clearTimeout(timeout);
+                    if (res.ok || res.status === 207) {
+                      localStorage.clear();
+                      onLogout();
+                    } else {
+                      const errData = await res.json().catch(() => ({}));
+                      setDeleteMsg(errData.error || "Failed to delete account. Try again.");
+                      setDeleteLoading(false);
+                    }
+                  } catch (err) {
+                    setDeleteMsg(err instanceof DOMException && err.name === "AbortError"
+                      ? "Request timed out. Try again."
+                      : "Network error. Check your connection and try again.");
                     setDeleteLoading(false);
                   }
-                } catch (err) {
-                  setDeleteMsg(err instanceof DOMException && err.name === "AbortError"
-                    ? "Request timed out. Try again."
-                    : "Network error. Check your connection and try again.");
-                  setDeleteLoading(false);
-                }
-              }} style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: "#fff", background: c.ember, border: "none", borderRadius: 6, padding: "8px 20px", cursor: "pointer", opacity: deleteLoading ? 0.6 : 1 }}>
-                {deleteLoading ? "Deleting..." : "Confirm Delete"}
-              </button>
+                }} style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: "#fff", background: c.ember, border: "none", borderRadius: 6, padding: "8px 20px", cursor: "pointer", opacity: (deleteLoading || deleteEmailInput.toLowerCase() !== (authUser?.email || "").toLowerCase()) ? 0.4 : 1 }}>
+                  {deleteLoading ? "Deleting..." : "Confirm Delete"}
+                </button>
+              </div>
             </div>
           )}
         </div>

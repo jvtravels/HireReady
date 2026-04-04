@@ -193,7 +193,7 @@ export default function CalendarPage() {
 
       {/* Add/Edit Form */}
       {showForm && (
-        <div style={{ background: c.graphite, borderRadius: 14, border: `1px solid ${c.border}`, padding: "28px 32px", marginBottom: 24, animation: "slideDown 0.2s ease" }}>
+        <div style={{ background: c.graphite, borderRadius: 14, border: `1px solid ${c.border}`, padding: "28px 32px", paddingBottom: 36, marginBottom: 24, animation: "slideDown 0.2s ease" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
             <h3 style={{ fontFamily: font.ui, fontSize: 16, fontWeight: 600, color: c.ivory }}>{editingId ? "Edit Interview" : "Add New Interview"}</h3>
             <button onClick={() => { setShowForm(false); resetForm(); }} style={{ background: "none", border: "none", color: c.stone, cursor: "pointer", padding: 4 }}>
@@ -369,7 +369,7 @@ export default function CalendarPage() {
                         </p>
                       )}
                       {ev.notes && (
-                        <p style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, marginTop: 4, fontStyle: "italic" }}>{ev.notes}</p>
+                        <p style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, marginTop: 4, fontStyle: "italic", wordBreak: "break-word", overflow: "hidden" }}>{ev.notes}</p>
                       )}
                     </div>
                   </div>

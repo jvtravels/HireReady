@@ -73,7 +73,7 @@ export default function DashboardSessions() {
         </div>
         <div style={{ display: "flex", gap: 6 }}>
           {sessionTypes.map(type => (
-            <button key={type} onClick={() => setFilter(type)}
+            <button key={type} onClick={() => setFilter(type)} aria-pressed={filter === type}
               style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 500, padding: "7px 14px", borderRadius: 100, cursor: "pointer", background: filter === type ? "rgba(201,169,110,0.1)" : "transparent", border: `1px solid ${filter === type ? c.gilt : c.border}`, color: filter === type ? c.gilt : c.stone, transition: "all 0.2s ease", outline: "none" }}>{type}</button>
           ))}
         </div>
@@ -82,6 +82,9 @@ export default function DashboardSessions() {
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         {filtered.length === 0 ? (
           <div style={{ textAlign: "center", padding: "48px 0" }}>
+            <div style={{ width: 48, height: 48, borderRadius: 12, margin: "0 auto 16px", background: "rgba(201,169,110,0.06)", border: `1px solid rgba(201,169,110,0.15)`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5" strokeLinecap="round"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
+            </div>
             <p style={{ fontFamily: font.ui, fontSize: 14, color: c.stone, marginBottom: 16 }}>
               {search ? `No sessions matching "${search}"` : "No sessions in this category yet."}
             </p>

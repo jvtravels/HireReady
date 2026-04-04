@@ -10,8 +10,8 @@ const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || "").split(",").filter(Bo
 
 function getAllowedOrigin(origin: string): string {
   if (ALLOWED_ORIGINS.length > 0 && ALLOWED_ORIGINS.includes(origin)) return origin;
-  if (origin.endsWith(".vercel.app")) return origin;
   if (origin.startsWith("http://localhost:")) return origin;
+  if (ALLOWED_ORIGINS.length === 0 && origin.endsWith(".vercel.app")) return origin;
   return "";
 }
 
@@ -26,6 +26,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   if (req.method === "OPTIONS") return res.status(204).end();
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
+
+  // Body size check
+  const bodyContentLength = parseInt((req.headers["content-length"] as string) || "0", 10);
+  if (bodyContentLength > 1048576) {
+    return res.status(413).json({ error: "Request too large" });
+  }
 
   // CSRF: validate Origin header
   if (!origin) {
@@ -64,21 +70,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     };
     const encodedId = encodeURIComponent(userId);
 
-    // Delete all user data in parallel (order doesn't matter — all keyed by user_id)
-    const [sessionsRes, eventsRes, paymentsRes, profileRes] = await Promise.all([
-      fetch(`${SUPABASE_URL}/rest/v1/sessions?user_id=eq.${encodedId}`, { method: "DELETE", headers }),
-      fetch(`${SUPABASE_URL}/rest/v1/calendar_events?user_id=eq.${encodedId}`, { method: "DELETE", headers }),
-      fetch(`${SUPABASE_URL}/rest/v1/payments?user_id=eq.${encodedId}`, { method: "DELETE", headers }),
-      fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${encodedId}`, { method: "DELETE", headers }),
+    // Delete all user data in parallel with timeout (order doesn't matter — all keyed by user_id)
+    const ac = new AbortController();
+    const acTimer = setTimeout(() => ac.abort(), 8_000);
+    const results = await Promise.allSettled([
+      fetch(`${SUPABASE_URL}/rest/v1/sessions?user_id=eq.${encodedId}`, { method: "DELETE", headers, signal: ac.signal }),
+      fetch(`${SUPABASE_URL}/rest/v1/calendar_events?user_id=eq.${encodedId}`, { method: "DELETE", headers, signal: ac.signal }),
+      fetch(`${SUPABASE_URL}/rest/v1/payments?user_id=eq.${encodedId}`, { method: "DELETE", headers, signal: ac.signal }),
+      fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${encodedId}`, { method: "DELETE", headers, signal: ac.signal }),
+      fetch(`${SUPABASE_URL}/rest/v1/feedback?user_id=eq.${encodedId}`, { method: "DELETE", headers, signal: ac.signal }),
     ]);
+    clearTimeout(acTimer);
 
-    // Check for failures (non-critical — best effort deletion)
-    const failures = [
-      !sessionsRes.ok && "sessions",
-      !eventsRes.ok && "events",
-      !paymentsRes.ok && "payments",
-      !profileRes.ok && "profile",
-    ].filter(Boolean);
+    const tableNames = ["sessions", "events", "payments", "profile", "feedback"];
+    const failures = results
+      .map((r, i) => (r.status === "rejected" || (r.status === "fulfilled" && !r.value.ok)) ? tableNames[i] : null)
+      .filter(Boolean);
 
     if (failures.length > 0) {
       console.error("Partial delete failure:", failures.join(", "), "for user", userId.slice(0, 8));

@@ -9,7 +9,7 @@ export default function AnalyticsPage() {
   const { recentSessions: sessions, skills: sk, scoreTrend: trend, handleStartSession, dataLoading, isFree, isStarter, setShowUpgradeModal } = useDashboard();
 
   if (dataLoading) return <DataLoadingSkeleton />;
-  if (isFree || isStarter) return <ProGate feature="Performance Analytics" onUpgrade={() => setShowUpgradeModal(true)} />;
+  if (isFree) return <ProGate feature="Performance Analytics" onUpgrade={() => setShowUpgradeModal(true)} />;
 
   const onNewSession = handleStartSession;
   if (sessions.length === 0) {
@@ -20,7 +20,7 @@ export default function AnalyticsPage() {
         </div>
         <h2 style={{ fontFamily: font.ui, fontSize: 22, fontWeight: 600, color: c.ivory, marginBottom: 8 }}>Analytics</h2>
         <p style={{ fontFamily: font.ui, fontSize: 14, color: c.stone, lineHeight: 1.6, marginBottom: 28 }}>
-          Complete practice sessions to unlock detailed analytics — score trends, skill breakdowns, performance by interview type, and more.
+          Complete sessions to see analytics. Score trends, skill breakdowns, performance by interview type, and more will appear here.
         </p>
         {onNewSession && (
           <button onClick={onNewSession} className="shimmer-btn"
@@ -79,7 +79,7 @@ export default function AnalyticsPage() {
       <p style={{ fontFamily: font.ui, fontSize: 13, color: c.stone, marginBottom: 28 }}>Deep performance insights across all your sessions</p>
 
       {/* Summary cards */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 24 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12, marginBottom: 24 }}>
         {[
           { label: "Average Score", value: avgScore.toString(), color: c.gilt, sub: scoreLabel(avgScore) },
           { label: "Best Score", value: bestSession?.score.toString() || "—", color: c.sage, sub: bestSession?.type || "" },

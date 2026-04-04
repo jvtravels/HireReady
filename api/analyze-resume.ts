@@ -1,24 +1,44 @@
-/* Vercel Edge Function — AI Resume Analysis via Groq */
+/* Vercel Edge Function — AI Resume Analysis */
 
 export const config = { runtime: "edge" };
 
-import { handleCorsPreflightOrMethod, corsHeaders, isRateLimited, getClientIp, rateLimitResponse, verifyAuth, unauthorizedResponse } from "./_shared";
+import { handleCorsPreflightOrMethod, corsHeaders, isRateLimited, getClientIp, rateLimitResponse, verifyAuth, unauthorizedResponse, validateOrigin, checkSessionLimit, sanitizeForLLM, withRequestId } from "./_shared";
+import { callLLM, extractJSON } from "./_llm";
 
 declare const process: { env: Record<string, string | undefined> };
-const GROQ_API_KEY = process.env.GROQ_API_KEY || "";
+const GROQ_KEY = process.env.GROQ_API_KEY || "";
+const GEMINI_KEY = process.env.GEMINI_API_KEY || "";
 
 export default async function handler(req: Request): Promise<Response> {
   const earlyResponse = handleCorsPreflightOrMethod(req);
   if (earlyResponse) return earlyResponse;
 
-  const headers = corsHeaders(req);
+  const headers = withRequestId(corsHeaders(req));
 
-  if (!GROQ_API_KEY) {
+  // Body size check
+  const contentLength = parseInt(req.headers.get("content-length") || "0", 10);
+  if (contentLength > 1048576) {
+    return new Response(JSON.stringify({ error: "Request too large" }), { status: 413, headers });
+  }
+
+  if (!GROQ_KEY && !GEMINI_KEY) {
     return new Response(JSON.stringify({ error: "LLM not configured" }), { status: 503, headers });
+  }
+
+  // CSRF: validate Origin header on POST
+  if (!validateOrigin(req)) {
+    return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers });
   }
 
   const auth = await verifyAuth(req);
   if (!auth.authenticated) return unauthorizedResponse(headers);
+
+  if (auth.userId) {
+    const limit = await checkSessionLimit(auth.userId);
+    if (!limit.allowed) {
+      return new Response(JSON.stringify({ error: limit.reason }), { status: 403, headers });
+    }
+  }
 
   const ip = getClientIp(req);
   if (await isRateLimited(ip, "analyze-resume", 5, 60_000)) {
@@ -31,8 +51,11 @@ export default async function handler(req: Request): Promise<Response> {
     if (!resumeText || typeof resumeText !== "string" || resumeText.length < 20) {
       return new Response(JSON.stringify({ error: "Resume text too short" }), { status: 400, headers });
     }
+    if (resumeText.length > 50000) {
+      return new Response(JSON.stringify({ error: "Resume text too long" }), { status: 400, headers });
+    }
 
-    const roleContext = targetRole ? `The candidate is targeting a ${targetRole} role.` : "";
+    const roleContext = targetRole ? `The candidate is targeting a ${sanitizeForLLM(targetRole, 100)} role.` : "";
 
     const prompt = `You are an expert career coach. Analyze this resume and produce a structured JSON profile.
 
@@ -60,46 +83,10 @@ Return a JSON object with these exact fields:
 Be specific — reference real details from the resume. Don't invent information not present.
 Respond with ONLY the JSON object, no markdown or explanation.`;
 
-    const ac = new AbortController();
-    const acTimer = setTimeout(() => ac.abort(), 15_000);
-    const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${GROQ_API_KEY}`,
-      },
-      signal: ac.signal,
-      body: JSON.stringify({
-        model: "llama-3.3-70b-versatile",
-        messages: [{ role: "user", content: prompt }],
-        temperature: 0.4,
-        max_tokens: 1500,
-        response_format: { type: "json_object" },
-      }),
-    });
-    clearTimeout(acTimer);
-
-    if (!res.ok) {
-      const errText = await res.text().catch(() => "");
-      console.error("Groq error:", res.status, errText);
-      return new Response(JSON.stringify({ error: "Resume analysis failed" }), { status: 502, headers });
-    }
-
-    const data = await res.json();
-    const text = data.choices?.[0]?.message?.content || "";
-
-    let profile;
-    try {
-      profile = JSON.parse(text);
-    } catch {
-      const match = text.match(/\{[\s\S]*\}/);
-      if (match) {
-        try { profile = JSON.parse(match[0]); } catch {
-          return new Response(JSON.stringify({ error: "Failed to parse analysis" }), { status: 500, headers });
-        }
-      } else {
-        return new Response(JSON.stringify({ error: "Failed to parse analysis" }), { status: 500, headers });
-      }
+    const result = await callLLM({ prompt, temperature: 0.4, maxTokens: 1500, jsonMode: true }, 15000);
+    const profile = extractJSON(result.text);
+    if (!profile) {
+      return new Response(JSON.stringify({ error: "Failed to parse analysis" }), { status: 500, headers });
     }
 
     const truncated = resumeText.length > 3000;
