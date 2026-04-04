@@ -74,7 +74,7 @@ function AutocompleteInput({
       />
       {filtered.length > 0 && (
         <div style={{
-          position: "absolute", top: "100%", left: 0, right: 0, marginTop: 4, zIndex: 100,
+          position: "absolute", top: "100%", left: 0, right: 0, marginTop: 4, zIndex: 20,
           background: c.graphite, border: `1px solid ${c.border}`, borderRadius: 10,
           boxShadow: "0 8px 32px rgba(0,0,0,0.5)", maxHeight: 220, overflowY: "auto",
         }}>
