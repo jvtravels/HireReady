@@ -1835,7 +1835,9 @@ export default function App() {
   // Redirect logged-in users to their last route, or dashboard/onboarding
   useEffect(() => {
     if (loading || !isLoggedIn) return;
-    const lastRoute = getLastRoute();
+    let lastRoute = getLastRoute();
+    // Never restore transient routes — send to dashboard instead
+    if (lastRoute?.startsWith("/interview")) lastRoute = null;
     if (user && !user.hasCompletedOnboarding) {
       navigate(lastRoute?.startsWith("/onboarding") ? lastRoute : "/onboarding", { replace: true });
     } else {
