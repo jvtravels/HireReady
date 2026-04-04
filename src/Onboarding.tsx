@@ -661,82 +661,124 @@ export default function Onboarding() {
             </div>
           )}
 
-          {/* ════════════════ STEP 2: Interview Setup ════════════════ */}
+          {/* ════════════════ STEP 2: Your First Session ════════════════ */}
           {step === 2 && (
             <div>
               {/* Heading */}
-              <div style={{ marginBottom: 28 }} className="fade-up-1">
-                <p style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 700, color: c.gilt, textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 12 }}>Step 2 — Interview Setup</p>
+              <div style={{ marginBottom: 32 }} className="fade-up-1">
+                <p style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 700, color: c.gilt, textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 12 }}>Step 2 — Your First Session</p>
                 <h2 style={{ fontFamily: font.display, fontSize: 32, fontWeight: 400, color: c.ivory, letterSpacing: "-0.025em", lineHeight: 1.2, marginBottom: 10 }}>
-                  {resumeParsed ? "Confirm your target" : "What are you preparing for?"}
+                  Set up your practice session
                 </h2>
                 <p style={{ fontFamily: font.ui, fontSize: 15, color: c.stone, lineHeight: 1.7 }}>
-                  {resumeParsed ? "We pre-filled the role from your resume. Adjust anything that's off." : "These two inputs shape every question the AI asks you."}
+                  {resumeParsed ? "We've pre-filled some details from your resume. Adjust anything before your first session." : "Tell us about the role you're targeting so the AI can tailor every question."}
                 </p>
               </div>
 
-              <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
-                {/* Target Role + Company */}
-                <div className="fade-up-1" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-                  <div>
-                    <label htmlFor="ob-role" style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.chalk, display: "block", marginBottom: 8 }}>
-                      Target role <span style={{ color: c.ember }}>*</span>
-                    </label>
-                    <AutocompleteInput id="ob-role" value={targetRole} onChange={(v) => { setTargetRole(v); setRoleAutoFilled(false); }} suggestions={ROLE_SUGGESTIONS} placeholder="e.g. Senior Engineering Manager..." />
-                    {roleAutoFilled && targetRole && (
-                      <p style={{ fontFamily: font.ui, fontSize: 11, color: c.sage, marginTop: 4, display: "flex", alignItems: "center", gap: 4 }}>
-                        <svg aria-hidden="true" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg>
-                        Auto-filled from resume
-                      </p>
-                    )}
-                    {!targetRole.trim() && interviewFocus.length > 0 && (
-                      <p style={{ fontFamily: font.ui, fontSize: 11, color: c.ember, marginTop: 4 }}>Required to personalize your questions</p>
-                    )}
+              <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+                {/* ── Section 1: Role & Company ── */}
+                <div className="ob-card fade-up-1" style={{ borderRadius: 16, padding: "24px 28px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 20 }}>
+                    <div style={{ width: 28, height: 28, borderRadius: 7, background: "rgba(201,169,110,0.06)", border: "1px solid rgba(201,169,110,0.12)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+                    </div>
+                    <span style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: c.ivory }}>Target Role</span>
                   </div>
-                  <div>
-                    <label htmlFor="ob-company" style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.chalk, display: "block", marginBottom: 8 }}>
-                      Target company <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 400, color: c.stone }}>(optional)</span>
-                    </label>
-                    <AutocompleteInput id="ob-company" value={targetCompany} onChange={setTargetCompany} suggestions={COMPANY_SUGGESTIONS} placeholder="e.g. Google, Stripe..." />
-                    <p style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, marginTop: 4 }}>Helps tailor questions to company culture and interview style.</p>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                    <div>
+                      <AutocompleteInput id="ob-role" value={targetRole} onChange={(v) => { setTargetRole(v); setRoleAutoFilled(false); }} suggestions={ROLE_SUGGESTIONS} placeholder="e.g. Senior Engineering Manager..." label="Role" required />
+                      {roleAutoFilled && targetRole && (
+                        <p style={{ fontFamily: font.ui, fontSize: 11, color: c.sage, marginTop: 4, display: "flex", alignItems: "center", gap: 4 }}>
+                          <svg aria-hidden="true" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg>
+                          Auto-filled from resume
+                        </p>
+                      )}
+                      {!targetRole.trim() && interviewFocus.length > 0 && (
+                        <p style={{ fontFamily: font.ui, fontSize: 11, color: c.ember, marginTop: 4 }}>Required to personalize your questions</p>
+                      )}
+                    </div>
+                    <div>
+                      <AutocompleteInput id="ob-company" value={targetCompany} onChange={setTargetCompany} suggestions={COMPANY_SUGGESTIONS} placeholder="e.g. Google, Stripe..." label="Company (optional)" />
+                    </div>
                   </div>
                 </div>
 
-                <div style={{ height: 1, background: `linear-gradient(90deg, transparent, ${c.border}, transparent)` }} />
-
-                {/* Interview Focus — 4 columns */}
-                <div className="fade-up-2">
-                  <label style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.chalk, display: "block", marginBottom: 4 }}>
-                    Interview focus <span style={{ color: c.ember }}>*</span>
-                  </label>
-                  <p style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, marginBottom: 14 }}>Select the areas you want the AI to focus on. This directly shapes your questions.</p>
-                  <div className="ob-s2-focus-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 10 }}>
+                {/* ── Section 2: Interview Focus ── */}
+                <div className="ob-card fade-up-2" style={{ borderRadius: 16, padding: "24px 28px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                    <div style={{ width: 28, height: 28, borderRadius: 7, background: "rgba(201,169,110,0.06)", border: "1px solid rgba(201,169,110,0.12)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5" strokeLinecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                    </div>
+                    <span style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: c.ivory }}>Interview Focus <span style={{ color: c.ember, fontWeight: 400 }}>*</span></span>
+                  </div>
+                  <p style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, marginBottom: 16, paddingLeft: 36 }}>Select the areas you want the AI to focus on. This directly shapes your questions.</p>
+                  <div className="ob-s2-focus-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                     {[
-                      { value: "Behavioral", icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>, desc: "Leadership, decision-making, conflict resolution" },
-                      { value: "Strategic", icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>, desc: "Vision, roadmap, business alignment" },
-                      { value: "Technical Leadership", icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>, desc: "Architecture, system design, tech strategy" },
-                      { value: "Case Study", icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>, desc: "Problem-solving, analytical frameworks" },
+                      { value: "Behavioral", icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>, desc: "Leadership, decision-making, conflict resolution" },
+                      { value: "Strategic", icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>, desc: "Vision, roadmap, business alignment" },
+                      { value: "Technical Leadership", icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>, desc: "Architecture, system design, tech strategy" },
+                      { value: "Case Study", icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>, desc: "Problem-solving, analytical frameworks" },
                     ].map(opt => {
                       const sel = interviewFocus.includes(opt.value);
                       return (
                         <button key={opt.value} className="ob-focus-card" onClick={() => setInterviewFocus(prev => prev.includes(opt.value) ? prev.filter(v => v !== opt.value) : [...prev, opt.value])}
                           style={{
-                            padding: "16px 18px", borderRadius: 12, cursor: "pointer", transition: "all 0.2s ease", textAlign: "left",
-                            background: sel ? "rgba(201,169,110,0.10)" : c.graphite,
+                            padding: "14px 18px", borderRadius: 12, cursor: "pointer", transition: "all 0.2s ease", textAlign: "left",
+                            background: sel ? "rgba(201,169,110,0.08)" : "transparent",
                             border: `1.5px solid ${sel ? c.gilt : c.border}`,
-                            boxShadow: sel ? "0 0 16px rgba(201,169,110,0.08), inset 0 1px 0 rgba(201,169,110,0.06)" : "none",
-                            display: "flex", flexDirection: "column", gap: 8, color: sel ? c.gilt : c.stone,
+                            boxShadow: sel ? "0 0 16px rgba(201,169,110,0.06)" : "none",
+                            display: "flex", alignItems: "center", gap: 12, color: sel ? c.gilt : c.stone,
                           }}>
-                          {opt.icon}
-                          <span style={{ fontFamily: font.ui, fontSize: 14, fontWeight: 600, color: c.ivory }}>{opt.value}</span>
-                          <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 400, color: c.stone, lineHeight: 1.4 }}>{opt.desc}</span>
+                          <div style={{ width: 36, height: 36, borderRadius: 9, background: sel ? "rgba(201,169,110,0.1)" : "rgba(240,237,232,0.03)", border: `1px solid ${sel ? "rgba(201,169,110,0.2)" : "rgba(240,237,232,0.06)"}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                            {opt.icon}
+                          </div>
+                          <div>
+                            <span style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: c.ivory, display: "block" }}>{opt.value}</span>
+                            <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, lineHeight: 1.4 }}>{opt.desc}</span>
+                          </div>
                         </button>
                       );
                     })}
                   </div>
                   {interviewFocus.length === 0 && (
-                    <p style={{ fontFamily: font.ui, fontSize: 11, color: c.ember, marginTop: 8 }}>Select at least one focus area</p>
+                    <p style={{ fontFamily: font.ui, fontSize: 11, color: c.ember, marginTop: 8, paddingLeft: 36 }}>Select at least one focus area</p>
                   )}
+                </div>
+
+                {/* ── Section 3: Session Length ── */}
+                <div className="ob-card fade-up-3" style={{ borderRadius: 16, padding: "24px 28px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 18 }}>
+                    <div style={{ width: 28, height: 28, borderRadius: 7, background: "rgba(201,169,110,0.06)", border: "1px solid rgba(201,169,110,0.12)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    </div>
+                    <span style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: c.ivory }}>Session Length</span>
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
+                    {[
+                      { value: "10m", label: "10 min", desc: "Quick practice", sub: "2–3 questions" },
+                      { value: "15m", label: "15 min", desc: "Standard session", sub: "4–5 questions", recommended: true },
+                      { value: "25m", label: "25 min", desc: "Deep dive", sub: "6–8 questions" },
+                    ].map(opt => {
+                      const sel = sessionLength === opt.value;
+                      return (
+                        <button key={opt.value} onClick={() => setSessionLength(opt.value)}
+                          style={{
+                            padding: "16px 14px", borderRadius: 12, cursor: "pointer", textAlign: "center", position: "relative",
+                            background: sel ? "rgba(201,169,110,0.08)" : "transparent",
+                            border: `1.5px solid ${sel ? c.gilt : c.border}`,
+                            boxShadow: sel ? "0 0 16px rgba(201,169,110,0.06)" : "none",
+                            transition: "all 0.2s",
+                          }}>
+                          {opt.recommended && (
+                            <span style={{ position: "absolute", top: -8, left: "50%", transform: "translateX(-50%)", fontFamily: font.ui, fontSize: 9, fontWeight: 700, color: c.obsidian, background: c.gilt, padding: "2px 8px", borderRadius: 4, letterSpacing: "0.04em", textTransform: "uppercase" }}>Recommended</span>
+                          )}
+                          <span style={{ fontFamily: font.ui, fontSize: 20, fontWeight: 600, color: sel ? c.gilt : c.ivory, display: "block", marginBottom: 2 }}>{opt.label}</span>
+                          <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: sel ? c.ivory : c.chalk, display: "block", marginBottom: 2 }}>{opt.desc}</span>
+                          <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>{opt.sub}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
             </div>
@@ -777,6 +819,7 @@ export default function Onboarding() {
                     { label: "Target Role", value: targetRole || "Not set", icon: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={c.stone} strokeWidth="1.5" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>, editStep: 2 },
                     { label: "Target Company", value: targetCompany || "Exploring", icon: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={c.stone} strokeWidth="1.5" strokeLinecap="round"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="9" y1="6" x2="15" y2="6"/><line x1="9" y1="10" x2="15" y2="10"/><line x1="9" y1="14" x2="15" y2="14"/></svg>, editStep: 2 },
                     { label: "Interview Focus", value: interviewFocus.length > 0 ? interviewFocus.join(", ") : "None selected", icon: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={c.stone} strokeWidth="1.5" strokeLinecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>, editStep: 2 },
+                    { label: "Session Length", value: sessionLength === "10m" ? "10 minutes" : sessionLength === "25m" ? "25 minutes" : "15 minutes", icon: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={c.stone} strokeWidth="1.5" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>, editStep: 2 },
                   ].map((item, i, arr) => (
                     <div key={item.label}>
                       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "13px 0" }}>
@@ -809,7 +852,7 @@ export default function Onboarding() {
                 <p style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.stone, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 18 }}>Session Preferences</p>
 
                 {/* Feedback Style */}
-                <div style={{ marginBottom: 18 }}>
+                <div>
                   <p style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.chalk, marginBottom: 10 }}>Feedback style</p>
                   <div style={{ display: "flex", gap: 8 }}>
                     {[
@@ -827,34 +870,6 @@ export default function Onboarding() {
                           }}>
                           <span style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: sel ? c.ivory : c.chalk, display: "block" }}>{opt.label}</span>
                           <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, lineHeight: 1.4 }}>{opt.desc}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                <div style={{ height: 1, background: "rgba(240,237,232,0.04)", marginBottom: 18 }} />
-
-                {/* Session Length */}
-                <div>
-                  <p style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.chalk, marginBottom: 10 }}>Session length</p>
-                  <div style={{ display: "flex", gap: 8 }}>
-                    {[
-                      { value: "10m", label: "10 min", desc: "2–3 questions" },
-                      { value: "15m", label: "15 min", desc: "4–5 questions" },
-                      { value: "25m", label: "25 min", desc: "6–8 questions" },
-                    ].map(opt => {
-                      const sel = sessionLength === opt.value;
-                      return (
-                        <button key={opt.value} onClick={() => setSessionLength(opt.value)}
-                          style={{
-                            flex: 1, padding: "10px 14px", borderRadius: 8, cursor: "pointer", textAlign: "center",
-                            background: sel ? "rgba(201,169,110,0.08)" : "transparent",
-                            border: `1px solid ${sel ? c.gilt : c.border}`,
-                            transition: "all 0.2s",
-                          }}>
-                          <span style={{ fontFamily: font.ui, fontSize: 15, fontWeight: 600, color: sel ? c.gilt : c.ivory, display: "block" }}>{opt.label}</span>
-                          <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>{opt.desc}</span>
                         </button>
                       );
                     })}
