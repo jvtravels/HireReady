@@ -187,13 +187,20 @@ export default function Onboarding() {
       } catch {}
       setAiPhase("done");
       // Save resume info to profile immediately
-      updateUser({
+      const profileSave = {
         resumeFileName: file.name,
         resumeText: text,
         resumeData: { ...data, aiProfile: finalProfile } as unknown as ParsedResume,
         targetRole: targetRole || autoRole || undefined,
         name: data.name || undefined,
-      });
+      };
+      console.log("[onboarding] Saving resume to profile:", { fileName: profileSave.resumeFileName, textLength: profileSave.resumeText?.length, hasData: !!profileSave.resumeData });
+      try {
+        await updateUser(profileSave);
+        console.log("[onboarding] Resume saved to profile successfully");
+      } catch (saveErr) {
+        console.error("[onboarding] Failed to save resume to profile:", saveErr);
+      }
     } catch (err: any) {
       setResumeError(err.message || "Failed to parse resume");
       setResumeText(""); setResumeParsed(null);

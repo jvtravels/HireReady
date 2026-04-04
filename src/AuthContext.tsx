@@ -236,10 +236,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return next;
     });
 
-    if (!supabaseConfigured) return;
+    if (!supabaseConfigured) { console.log("[updateUser] skipped: supabase not configured"); return; }
 
     // Persist to Supabase — use ID captured from state setter to avoid stale closure
-    if (!currentId) return;
+    if (!currentId) { console.warn("[updateUser] skipped: no user ID"); return; }
 
     const profileUpdates: Partial<Profile> & { id: string } = { id: currentId };
     if (updates.name !== undefined) profileUpdates.name = updates.name;
@@ -255,10 +255,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (updates.interviewTypes !== undefined) profileUpdates.interview_types = updates.interviewTypes;
     if (updates.practiceTimestamps !== undefined) profileUpdates.practice_timestamps = updates.practiceTimestamps;
     if (updates.avatarUrl !== undefined) profileUpdates.avatar_url = updates.avatarUrl;
-    // Note: subscriptionTier/Start/End are NOT written to Supabase from the client.
-    // They are only set server-side by /api/verify-payment using the service role key.
-    // Local state is updated for immediate UI feedback but the DB is the source of truth.
 
+    console.log("[updateUser] upserting profile:", currentId, Object.keys(profileUpdates));
     await upsertProfile(profileUpdates);
   }, []);
 
