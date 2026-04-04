@@ -102,7 +102,20 @@ export default function ResetPassword() {
                 padding: "10px 14px", borderRadius: 8, marginBottom: 16,
                 background: "rgba(196,112,90,0.1)", border: `1px solid rgba(196,112,90,0.3)`,
               }}>
-                <p style={{ color: c.ember, fontSize: 12 }}>{error}</p>
+                <p style={{ color: c.ember, fontSize: 12, marginBottom: !hasSession ? 8 : 0 }}>{error}</p>
+                {!hasSession && (
+                  <button
+                    type="button"
+                    onClick={() => navigate("/login")}
+                    style={{
+                      fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: c.gilt,
+                      background: "none", border: `1px solid rgba(201,169,110,0.3)`,
+                      borderRadius: 6, padding: "6px 14px", cursor: "pointer",
+                    }}
+                  >
+                    Request a new reset link
+                  </button>
+                )}
               </div>
             )}
 

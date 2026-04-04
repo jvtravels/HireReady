@@ -111,7 +111,11 @@ Be honest but constructive. Reference specific moments from the transcript.`;
 
     return new Response(JSON.stringify(evaluation), { status: 200, headers });
   } catch (err) {
+    const isTimeout = err instanceof Error && (err.name === "AbortError" || err.message.includes("abort"));
     console.error("Evaluation error:", err);
-    return new Response(JSON.stringify({ error: "Internal error" }), { status: 500, headers });
+    return new Response(
+      JSON.stringify({ error: isTimeout ? "Evaluation timed out — please try again" : "Internal error" }),
+      { status: isTimeout ? 504 : 500, headers },
+    );
   }
 }

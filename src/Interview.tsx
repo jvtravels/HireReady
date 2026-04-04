@@ -670,7 +670,7 @@ export default function Interview() {
       type: interviewType,
       focus: interviewFocus,
       difficulty: interviewDifficulty,
-      role: user?.targetRole || "senior leader",
+      role: user?.targetRole || "the role",
       company: targetCompany || user?.targetCompany,
       industry: user?.industry,
       resumeText: user?.resumeText,
@@ -838,12 +838,25 @@ export default function Interview() {
           setMicError("Could not start speech recognition. Try refreshing.");
         }
         recognitionRef.current = recognition;
+
+        // Safety timeout: if listening phase lasts > 2 minutes, auto-fallback to text input
+        const safetyTimer = setTimeout(() => {
+          if (!stopped && phase === "listening") {
+            console.warn("[interview] Listening safety timeout — enabling text fallback");
+            setSpeechUnavailable(true);
+            setMicError("Speech recognition timed out. Type your answer below.");
+            setTimeout(() => textareaRef.current?.focus(), 100);
+          }
+        }, 120_000);
+
+        return () => {
+          clearTimeout(safetyTimer);
+          stopped = true;
+          recognition?.stop();
+          recognitionRef.current = null;
+        };
       }
-      return () => {
-        stopped = true;
-        recognition?.stop();
-        recognitionRef.current = null;
-      };
+      return;
     } else {
       recognitionRef.current?.stop();
       recognitionRef.current = null;
@@ -1036,7 +1049,7 @@ export default function Interview() {
           transcript,
           type: interviewType,
           difficulty: interviewDifficulty,
-          role: user?.targetRole || "senior leader",
+          role: user?.targetRole || "the role",
           company: user?.targetCompany,
         });
         if (evaluation) {

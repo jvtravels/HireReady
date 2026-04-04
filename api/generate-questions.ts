@@ -52,7 +52,7 @@ export default async function handler(req: Request): Promise<Response> {
     const interviewType = sanitizeForLLM(type, 50) || "behavioral";
     const interviewFocus = sanitizeForLLM(focus, 50) || "general";
     const diff = sanitizeForLLM(difficulty, 20) || "standard";
-    const targetRole = sanitizeForLLM(role, 100) || "senior engineering leader";
+    const targetRole = sanitizeForLLM(role, 100) || "the target role";
 
     const companyContext = company ? `The candidate is interviewing at ${sanitizeForLLM(company, 100)}.` : "";
     const industryContext = industry ? `The industry is ${sanitizeForLLM(industry, 100)}.` : "";
@@ -103,7 +103,11 @@ Respond with ONLY the JSON array, no markdown or explanation.`;
 
     return new Response(JSON.stringify({ questions }), { status: 200, headers });
   } catch (err) {
+    const isTimeout = err instanceof Error && (err.name === "AbortError" || err.message.includes("abort"));
     console.error("Question generation error:", err);
-    return new Response(JSON.stringify({ error: "Internal error" }), { status: 500, headers });
+    return new Response(
+      JSON.stringify({ error: isTimeout ? "Request timed out — please try again" : "Internal error" }),
+      { status: isTimeout ? 504 : 500, headers },
+    );
   }
 }

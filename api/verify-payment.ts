@@ -44,7 +44,7 @@ const RESEND_API_KEY = (process.env.RESEND_API_KEY || "").trim();
 const FROM_EMAIL = process.env.FROM_EMAIL || "HireReady <onboarding@resend.dev>";
 const APP_URL = (process.env.APP_URL || "https://levelup-taupe.vercel.app").replace(/\/$/, "");
 
-const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || "").split(",").filter(Boolean);
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || "").split(",").map(s => s.trim()).filter(Boolean);
 
 function getAllowedOrigin(origin: string): string {
   if (ALLOWED_ORIGINS.length > 0 && ALLOWED_ORIGINS.includes(origin)) return origin;
@@ -326,34 +326,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     end.setDate(end.getDate() + PLAN_DURATION[plan]);
     const tier = PLAN_TIER[plan];
 
-    // 5. Update profile (service role key bypasses RLS)
-    // Duplicate protection is handled above (profile + payments table checks)
-    const updateRes = await fetch(
-      `${SUPABASE_URL}/rest/v1/profiles?id=eq.${encodeURIComponent(userId)}`,
-      {
-        method: "PATCH",
-        headers: {
-          apikey: SUPABASE_SERVICE_ROLE_KEY,
-          Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-          "Content-Type": "application/json",
-          Prefer: "return=minimal",
-        },
-        body: JSON.stringify({
-          subscription_tier: tier,
-          subscription_start: now.toISOString(),
-          subscription_end: end.toISOString(),
-          razorpay_payment_id,
-        }),
-      },
-    );
-
-    if (!updateRes.ok) {
-      const errText = await updateRes.text().catch(() => "");
-      console.error("Supabase update error:", updateRes.status, errText);
-      return res.status(500).json({ error: "Failed to activate subscription" });
-    }
-
-    // 6b. Store payment record first (critical — must succeed)
+    // 5. Store payment record FIRST (critical — must succeed before activating subscription)
     const paymentRecordRes = await fetch(`${SUPABASE_URL}/rest/v1/payments`, {
       method: "POST",
       headers: {
@@ -381,6 +354,32 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const errText = await paymentRecordRes.text().catch(() => "");
       console.error("Payment record save failed:", paymentRecordRes.status, errText);
       return res.status(500).json({ error: "Failed to save payment record" });
+    }
+
+    // 6. Update profile (service role key bypasses RLS)
+    const updateRes = await fetch(
+      `${SUPABASE_URL}/rest/v1/profiles?id=eq.${encodeURIComponent(userId)}`,
+      {
+        method: "PATCH",
+        headers: {
+          apikey: SUPABASE_SERVICE_ROLE_KEY,
+          Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+          "Content-Type": "application/json",
+          Prefer: "return=minimal",
+        },
+        body: JSON.stringify({
+          subscription_tier: tier,
+          subscription_start: now.toISOString(),
+          subscription_end: end.toISOString(),
+          razorpay_payment_id,
+        }),
+      },
+    );
+
+    if (!updateRes.ok) {
+      const errText = await updateRes.text().catch(() => "");
+      console.error("Supabase update error:", updateRes.status, errText);
+      return res.status(500).json({ error: "Failed to activate subscription" });
     }
 
     // 6c. Send confirmation email (non-critical — don't fail payment if email fails)

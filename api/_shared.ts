@@ -8,7 +8,7 @@ const STARTER_WEEKLY_LIMIT = 10;
 
 /* ─── CORS ─── */
 
-const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || "").split(",").filter(Boolean);
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || "").split(",").map(s => s.trim()).filter(Boolean);
 
 export function getAllowedOrigin(req: Request): string {
   const origin = req.headers.get("origin") || "";

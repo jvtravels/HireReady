@@ -336,7 +336,7 @@ function Hero() {
   const parallaxOffset = useParallax(0.1);
   const mouse = useMouse();
   const [wordsVisible, setWordsVisible] = useState<number[]>([]);
-  const heroWords = ["Practice", "for", "the", "room", "you're", "walking", "into."];
+  const heroWords = ["Nail", "your", "next", "interview.", "Every", "single", "time."];
 
   useEffect(() => {
     heroWords.forEach((_, i) => {
@@ -385,7 +385,7 @@ function Hero() {
         }}>
           <span style={{ width: 6, height: 6, borderRadius: "50%", background: c.sage, display: "inline-block", animation: "giltPulse 2s ease-in-out infinite" }} />
           <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: c.chalk, letterSpacing: "0.02em" }}>
-            Trusted by 5,000+ professionals
+            Used by 5,000+ job seekers worldwide
           </span>
         </div>
 
@@ -401,7 +401,7 @@ function Hero() {
               transform: wordsVisible.includes(i) ? "translateY(0)" : "translateY(24px)",
               filter: wordsVisible.includes(i) ? "blur(0)" : "blur(6px)",
               transition: "all 0.7s cubic-bezier(0.16, 1, 0.3, 1)",
-              color: word === "room" ? c.gilt : "inherit",
+              color: word === "interview." ? c.gilt : "inherit",
             }}>
               {word}
             </span>
@@ -413,8 +413,8 @@ function Hero() {
           lineHeight: 1.65, color: c.chalk, maxWidth: 460, margin: "0 0 36px",
           animation: "fadeInUp 0.8s ease 1.8s both",
         }}>
-          AI-driven mock interviews tailored to your resume, your role, and your level.
-          Scored in real time. Private by design.
+          AI mock interviews that adapt to your resume and target role — whether you're
+          landing your first job or leveling up to your dream company. Free to start.
         </p>
 
         {/* CTAs */}
@@ -438,9 +438,9 @@ function Hero() {
             ))}
           </div>
           {[
-            { value: "5,000+", label: "Professionals" },
+            { value: "5,000+", label: "Users" },
             { value: "4.9", label: "Avg Rating" },
-            { value: "92%", label: "Improvement" },
+            { value: "92%", label: "Get Better" },
           ].map((s) => (
             <div key={s.label}>
               <span style={{ fontFamily: font.mono, fontSize: 20, fontWeight: 600, color: c.ivory, display: "block" }}>{s.value}</span>
@@ -508,7 +508,7 @@ function HeroMockup() {
           {[0.15, 0.1, 0.1].map((o, i) => <div key={i} style={{ width: 8, height: 8, borderRadius: "50%", background: `rgba(240,237,232,${o})` }} />)}
           <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
             <span style={{ width: 6, height: 6, borderRadius: "50%", background: c.sage, animation: "giltPulse 1.5s ease-in-out infinite" }} />
-            <span style={{ fontFamily: font.ui, fontSize: 10, color: c.stone }}>Live Session — VP Engineering</span>
+            <span style={{ fontFamily: font.ui, fontSize: 10, color: c.stone }}>Live Session — Software Engineer</span>
           </div>
           <span style={{ fontFamily: font.mono, fontSize: 10, color: c.stone }}>12:34</span>
         </div>
@@ -527,7 +527,7 @@ function HeroMockup() {
             </div>
             <div style={{ background: `rgba(201,169,110,0.05)`, border: `1px solid rgba(201,169,110,0.1)`, borderRadius: "2px 12px 12px 12px", padding: "12px 16px", marginLeft: 32 }}>
               <p style={{ fontFamily: font.ui, fontSize: 13, lineHeight: 1.6, color: c.ivory }}>
-                You scaled the engineering team from 20 to 80. Walk me through how you restructured without losing velocity.
+                Tell me about a challenging project you worked on. What was your role and how did you approach the problem?
               </p>
             </div>
           </div>
@@ -545,7 +545,7 @@ function HeroMockup() {
             </div>
             <div style={{ background: c.obsidian, border: `1px solid ${c.border}`, borderRadius: "12px 2px 12px 12px", padding: "12px 16px", marginRight: 32 }}>
               <p style={{ fontFamily: font.ui, fontSize: 13, lineHeight: 1.6, color: c.chalk }}>
-                We moved to a pod model — each pod owned a full vertical. I started by identifying the three product pillars and...
+                We had a tight deadline to migrate our payment system. I broke it into phases — first the API layer, then the frontend...
               </p>
             </div>
           </div>
@@ -607,7 +607,7 @@ function HeroMockup() {
           <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, color: c.gilt, letterSpacing: "0.06em", textTransform: "uppercase" }}>AI Insight</span>
         </div>
         <p style={{ fontFamily: font.ui, fontSize: 11, lineHeight: 1.5, color: c.chalk }}>
-          Quantify the velocity metric — mention sprint completion rates before & after.
+          Add a specific metric — mention the timeline saved or error rate reduced.
         </p>
       </div>
     </div>
@@ -708,7 +708,7 @@ function LogoMarquee() {
   return (
     <section ref={ref} className="reveal" style={{ padding: "60px 40px", borderTop: `1px solid ${c.border}`, borderBottom: `1px solid ${c.border}` }}>
       <p style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 500, letterSpacing: "0.1em", textTransform: "uppercase", color: c.stone, textAlign: "center", marginBottom: 36 }}>
-        Professionals from these companies practice with HireReady
+        Our users have landed roles at
       </p>
       <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 44, flexWrap: "wrap", maxWidth: 1000, margin: "0 auto" }}>
         {companyLogos.map((logo) => (
@@ -848,7 +848,7 @@ function ProblemSection() {
             border: `1px solid ${c.border}`,
           }}>
             <p style={{ fontFamily: font.ui, fontSize: 13, color: c.chalk, lineHeight: 1.6, fontStyle: "italic" }}>
-              "I've been a VP for 8 years. When I started interviewing again, I realized I had no idea how to talk about my work concisely."
+              "I knew the technical stuff but kept freezing in behavioral rounds. After 10 practice sessions, I finally felt ready."
             </p>
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 12 }}>
               <img
@@ -856,7 +856,7 @@ function ProblemSection() {
                 alt=""
                 style={{ width: 28, height: 28, borderRadius: "50%", objectFit: "cover" }}
               />
-              <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>Senior Executive, Tech</span>
+              <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>Software Engineer, Career Changer</span>
             </div>
           </div>
         </div>
@@ -864,13 +864,13 @@ function ProblemSection() {
         {/* Text side */}
         <div>
           <p style={{ fontFamily: font.display, fontSize: "clamp(28px, 4vw, 46px)", fontWeight: 400, lineHeight: 1.25, letterSpacing: "-0.02em", color: c.ivory, marginBottom: 24 }}>
-            You've led teams. Closed deals.{" "}
-            <span style={{ color: c.gilt }}>Driven results.</span>
+            You know your stuff. But interviews are{" "}
+            <span style={{ color: c.gilt }}>a different skill.</span>
           </p>
           <p style={{ fontFamily: font.ui, fontSize: 17, fontWeight: 400, lineHeight: 1.7, color: c.stone, marginBottom: 32 }}>
-            But when it comes to interviewing for your next role, you're practicing
-            with tools built for entry-level candidates. Generic questions.
-            Surface-level feedback. No understanding of executive-level conversations.
+            Reading interview tips online doesn't prepare you for the real thing.
+            Generic question banks don't match your experience. And practicing alone
+            means you never know what you're getting wrong — until it's too late.
           </p>
           <div style={{ width: 80, height: 1, background: `linear-gradient(90deg, transparent, ${c.gilt}, transparent)`, opacity: 0.5 }} />
         </div>
@@ -883,9 +883,9 @@ function ProblemSection() {
    HOW IT WORKS — with product mockups
    ═══════════════════════════════════════════════ */
 const steps = [
-  { number: "01", title: "Upload your resume", description: "Share your experience and target role. Our AI builds a custom interview tailored to your specific background.", mockup: "upload" as const },
-  { number: "02", title: "Practice in real time", description: "A conversational AI interviewer asks questions, listens, and follows up — just like a real executive interview.", mockup: "interview" as const },
-  { number: "03", title: "Review scored feedback", description: "Receive precise, role-specific scores. See exactly where to improve — not vague platitudes.", mockup: "feedback" as const },
+  { number: "01", title: "Upload your resume", description: "Add your experience and target role. Our AI creates a personalized interview matched to your background and goals.", mockup: "upload" as const },
+  { number: "02", title: "Practice in real time", description: "A conversational AI interviewer asks questions, listens, and follows up — just like a real interview at a top company.", mockup: "interview" as const },
+  { number: "03", title: "Review scored feedback", description: "Get specific scores and actionable tips after every session. Know exactly what to improve before your real interview.", mockup: "feedback" as const },
 ];
 
 function HowItWorks() {
@@ -1049,7 +1049,7 @@ function MockupUpload() {
       </div>
       <div>
         <label style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 500, color: c.stone, letterSpacing: "0.04em", textTransform: "uppercase", display: "block", marginBottom: 6 }}>Target Role</label>
-        <div style={{ background: c.obsidian, border: `1px solid ${c.border}`, borderRadius: 6, padding: "10px 14px", fontFamily: font.ui, fontSize: 13, color: c.chalk }}>VP of Engineering, Series B Startup</div>
+        <div style={{ background: c.obsidian, border: `1px solid ${c.border}`, borderRadius: 6, padding: "10px 14px", fontFamily: font.ui, fontSize: 13, color: c.chalk }}>Software Engineer, Google</div>
       </div>
       <div style={{ background: c.gilt, borderRadius: 8, padding: "10px 0", textAlign: "center", fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.obsidian }}>Generate Interview</div>
     </div>
@@ -1068,7 +1068,7 @@ function MockupInterview() {
       </div>
       <div style={{ background: "rgba(201,169,110,0.05)", border: `1px solid rgba(201,169,110,0.1)`, borderRadius: "12px 12px 12px 2px", padding: "14px 16px" }}>
         <p style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.gilt, marginBottom: 6, letterSpacing: "0.04em", textTransform: "uppercase" }}>Interviewer</p>
-        <p style={{ fontFamily: font.ui, fontSize: 13, lineHeight: 1.6, color: c.ivory }}>Tell me about a time you navigated a significant organizational change. What was your role, and how did you align stakeholders?</p>
+        <p style={{ fontFamily: font.ui, fontSize: 13, lineHeight: 1.6, color: c.ivory }}>Tell me about a time you had to learn a new technology quickly to complete a project. How did you approach it?</p>
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 0" }}>
         <div style={{ width: 8, height: 8, borderRadius: "50%", background: c.ember, animation: "giltPulse 1.5s ease-in-out infinite" }} />
@@ -1081,7 +1081,7 @@ function MockupInterview() {
       </div>
       <div style={{ background: c.obsidian, border: `1px solid ${c.border}`, borderRadius: "12px 12px 2px 12px", padding: "14px 16px" }}>
         <p style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.sage, marginBottom: 6, letterSpacing: "0.04em", textTransform: "uppercase" }}>You</p>
-        <p style={{ fontFamily: font.ui, fontSize: 13, lineHeight: 1.6, color: c.chalk }}>When we restructured the engineering org from 45 to 120 people, I led the transition to a pod-based model...</p>
+        <p style={{ fontFamily: font.ui, fontSize: 13, lineHeight: 1.6, color: c.chalk }}>I had a week to pick up GraphQL for a client migration. I started with the docs, built a small prototype, then...</p>
       </div>
     </div>
   );
@@ -1090,8 +1090,8 @@ function MockupInterview() {
 function MockupFeedback() {
   const scores = [
     { label: "Communication", value: 87, color: c.gilt },
-    { label: "Strategic Thinking", value: 92, color: c.sage },
-    { label: "Leadership", value: 78, color: c.ember },
+    { label: "Problem Solving", value: 92, color: c.sage },
+    { label: "Structure & Clarity", value: 78, color: c.ember },
   ];
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -1110,7 +1110,7 @@ function MockupFeedback() {
         </div>
       ))}
       <div style={{ background: c.obsidian, borderRadius: 8, padding: "12px 14px", border: `1px solid ${c.border}` }}>
-        <p style={{ fontFamily: font.ui, fontSize: 12, color: c.chalk, lineHeight: 1.5, fontStyle: "italic" }}>"Lead with the $12M revenue number. Your restructuring story was strong but undersold impact."</p>
+        <p style={{ fontFamily: font.ui, fontSize: 12, color: c.chalk, lineHeight: 1.5, fontStyle: "italic" }}>"Your STAR structure was strong but you forgot to mention the outcome. Add the metric — '40% faster deploys' makes it memorable."</p>
       </div>
     </div>
   );
@@ -1143,7 +1143,7 @@ function DemoVideoSection() {
               <div style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: c.ivory, marginBottom: 12 }}>Live Session</div>
               <div style={{ background: "rgba(201,169,110,0.06)", borderRadius: 8, padding: "10px 14px", marginBottom: 10 }}>
                 <p style={{ fontFamily: font.ui, fontSize: 11, color: c.gilt, marginBottom: 4 }}>Interviewer</p>
-                <p style={{ fontFamily: font.ui, fontSize: 12, color: c.ivory, lineHeight: 1.5 }}>Tell me about your leadership philosophy...</p>
+                <p style={{ fontFamily: font.ui, fontSize: 12, color: c.ivory, lineHeight: 1.5 }}>Walk me through a project you're proud of...</p>
               </div>
               <div style={{ display: "flex", gap: 2, height: 20 }}>
                 {Array.from({ length: 30 }).map((_, i) => (
@@ -1175,9 +1175,9 @@ function DemoVideoSection() {
    FEATURES — gradient border cards with icons
    ═══════════════════════════════════════════════ */
 const features = [
-  { label: "Adaptive", title: "Questions from your resume", description: "No recycled question banks. Every session is generated from your actual experience, targeting the role and level you're interviewing for.", accent: c.gilt, accentClass: "", icon: <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg> },
-  { label: "Real-Time", title: "Conversational AI that listens", description: "The interviewer responds to what you say — asking follow-ups, probing deeper — exactly like a senior hiring manager.", accent: c.sage, accentClass: "accent-sage", icon: <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg> },
-  { label: "Precise", title: "Feedback that's specific", description: '"Your answer undersold revenue impact by 40%." Not "try to be more specific."', accent: c.ember, accentClass: "accent-ember", icon: <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg> },
+  { label: "Adaptive", title: "Questions from your resume", description: "No recycled question banks. Every session is generated from your actual experience, targeting the exact role you're applying for.", accent: c.gilt, accentClass: "", icon: <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg> },
+  { label: "Real-Time", title: "Conversational AI that listens", description: "The interviewer responds to what you actually say — asking follow-ups and probing deeper, just like a real hiring manager would.", accent: c.sage, accentClass: "accent-sage", icon: <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg> },
+  { label: "Precise", title: "Feedback that's specific", description: '"You forgot to mention the outcome — add the 40% improvement metric." Not "try to be more specific."', accent: c.ember, accentClass: "accent-ember", icon: <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg> },
   { label: "Private", title: "Your data stays yours", description: "GDPR-ready from day one. Export or delete anytime. No social features, no tracking beyond what you control.", accent: c.slate, accentClass: "accent-slate", icon: <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> },
 ];
 
@@ -1188,7 +1188,7 @@ function FeaturesSection() {
       <div style={{ textAlign: "center", marginBottom: 80 }}>
         <p style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: c.gilt, marginBottom: 16 }}>Why HireReady</p>
         <h2 className="text-glow" style={{ fontFamily: font.display, fontSize: "clamp(32px, 4vw, 48px)", fontWeight: 400, letterSpacing: "-0.02em", color: c.ivory, lineHeight: 1.15 }}>
-          Built for professionals who are already good
+          Everything you need to ace the interview
         </h2>
       </div>
       {features.map((f, i) => <FeatureRow key={f.label} feature={f} index={i} />)}
@@ -1231,7 +1231,7 @@ function FeatureVisual({ type, accent }: { type: string; accent: string }) {
     return (
       <div className="gradient-border-card" style={{ padding: "28px 24px", zIndex: 0 }}>
         <div style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: c.ivory, marginBottom: 16 }}>Generated Questions</div>
-        {["Tell me about scaling your team from 20 to 80 engineers.", "How did you handle the $15M budget reallocation?", "Describe your approach to cross-functional alignment."].map((q, i) => (
+        {["Walk me through a project where you solved a difficult technical problem.", "How do you prioritize tasks when you have competing deadlines?", "Tell me about a time you disagreed with a teammate. What happened?"].map((q, i) => (
           <div key={i} style={{
             padding: "12px 16px", marginBottom: 8, borderRadius: 8,
             background: i === 0 ? `${accent}08` : c.obsidian,
@@ -1258,7 +1258,7 @@ function FeatureVisual({ type, accent }: { type: string; accent: string }) {
         </div>
         <div style={{ background: `${accent}08`, border: `1px solid ${accent}15`, borderRadius: "10px 10px 10px 2px", padding: "12px 14px", marginBottom: 10 }}>
           <p style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, color: accent, marginBottom: 4, letterSpacing: "0.04em", textTransform: "uppercase" }}>Follow-up</p>
-          <p style={{ fontFamily: font.ui, fontSize: 12, lineHeight: 1.5, color: c.ivory }}>You mentioned a 30% reduction in churn. Can you walk me through the specific initiatives that drove that?</p>
+          <p style={{ fontFamily: font.ui, fontSize: 12, lineHeight: 1.5, color: c.ivory }}>You mentioned improving test coverage. Can you walk me through the specific approach and what results you saw?</p>
         </div>
         <div style={{ display: "flex", gap: 2, height: 24, padding: "0 4px" }}>
           {Array.from({ length: 32 }).map((_, i) => (
@@ -1273,9 +1273,9 @@ function FeatureVisual({ type, accent }: { type: string; accent: string }) {
       <div className="gradient-border-card" style={{ padding: "24px", zIndex: 0 }}>
         <div style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: c.ivory, marginBottom: 16 }}>Feedback Analysis</div>
         {[
-          { label: "Impact Quantification", score: 42, note: "Missing revenue figures", color: c.ember },
+          { label: "Impact & Metrics", score: 42, note: "Missing specific numbers", color: c.ember },
           { label: "STAR Structure", score: 88, note: "Strong framework", color: c.sage },
-          { label: "Executive Presence", score: 71, note: "Needs confidence cues", color: c.gilt },
+          { label: "Confidence & Clarity", score: 71, note: "Reduce filler words", color: c.gilt },
         ].map((item) => (
           <div key={item.label} style={{ marginBottom: 14 }}>
             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
@@ -1336,8 +1336,8 @@ function ScorePreview() {
 
   const scores = [
     { label: "Communication", value: 87, color: c.gilt },
-    { label: "Strategic Thinking", value: 92, color: c.sage },
-    { label: "Leadership Presence", value: 78, color: c.ember },
+    { label: "Problem Solving", value: 92, color: c.sage },
+    { label: "Structure & Clarity", value: 78, color: c.ember },
   ];
 
   return (
@@ -1367,7 +1367,7 @@ function ScorePreview() {
         ))}
         <div style={{ marginTop: 8, padding: "16px 20px", background: c.obsidian, borderRadius: 8, border: `1px solid ${c.border}` }}>
           <p style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.chalk, lineHeight: 1.6, fontStyle: "italic" }}>
-            "Your answer about cross-functional leadership was strong on structure but undersold the $12M revenue impact. Lead with the number, then tell the story."
+            "Your answer about the migration project was well-structured but lacked a clear outcome. Lead with the result — '40% faster deploys' — then tell the story."
           </p>
         </div>
       </div>
@@ -1379,9 +1379,9 @@ function ScorePreview() {
    TESTIMONIALS — gradient-border cards + images
    ═══════════════════════════════════════════════ */
 const testimonials = [
-  { quote: "I've done 200 interviews as a hiring manager. This is the first tool that practices at the level my candidates need to perform.", name: "Marcus T.", role: "VP of Engineering, Fortune 500", image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=500&fit=crop&crop=face", result: "Hired at target company" },
-  { quote: "My $8K coaching clients need serious prep, not flashcard apps. HireReady is the only platform I trust to send them to.", name: "Dana R.", role: "Executive Career Coach", image: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&h=500&fit=crop&crop=face", result: "Recommends to all clients" },
-  { quote: "The feedback told me I was underselling my impact by 40%. No human coach had ever caught that. I got the offer.", name: "Priya K.", role: "Director of Product, FAANG", image: "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=400&h=500&fit=crop&crop=face", result: "Landed Director role" },
+  { quote: "I was mass-applying and getting nowhere. After a week of practice on HireReady, I started getting callbacks — and landed an offer at my top choice.", name: "Marcus T.", role: "Software Engineer", image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=500&fit=crop&crop=face", result: "Landed dream job at Google" },
+  { quote: "Switching careers from teaching to product management felt impossible. The AI caught gaps I didn't know I had. Three weeks later, I had two offers.", name: "Dana R.", role: "Career Changer → PM", image: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&h=500&fit=crop&crop=face", result: "Career switch success" },
+  { quote: "The feedback was brutally specific — told me I was using filler words 15 times per answer. Fixed that, and my next interview felt completely different.", name: "Priya K.", role: "Data Analyst, Recent Grad", image: "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=400&h=500&fit=crop&crop=face", result: "First job out of college" },
 ];
 
 function TestimonialsSection() {
@@ -1400,8 +1400,8 @@ function TestimonialsSection() {
   return (
     <section ref={ref} className="reveal" style={{ padding: "140px 40px", maxWidth: 1100, margin: "0 auto" }}>
       <div style={{ textAlign: "center", marginBottom: 64 }}>
-        <p style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: c.gilt, marginBottom: 16 }}>Trusted By Leaders</p>
-        <h2 className="text-glow" style={{ fontFamily: font.display, fontSize: "clamp(32px, 4vw, 48px)", fontWeight: 400, letterSpacing: "-0.02em", color: c.ivory, lineHeight: 1.15 }}>What professionals say</h2>
+        <p style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: c.gilt, marginBottom: 16 }}>Real Results</p>
+        <h2 className="text-glow" style={{ fontFamily: font.display, fontSize: "clamp(32px, 4vw, 48px)", fontWeight: 400, letterSpacing: "-0.02em", color: c.ivory, lineHeight: 1.15 }}>People who practiced here got hired</h2>
       </div>
 
       <div
@@ -1669,9 +1669,9 @@ function ForTeamsBanner() {
       <div className="gradient-border-card" style={{ padding: "52px 56px", display: "flex", alignItems: "center", justifyContent: "space-between", position: "relative", overflow: "hidden", zIndex: 0 }}>
         <div style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: "40%", background: "url(https://images.unsplash.com/photo-1497366216548-37526070297c?w=600&q=80) center/cover no-repeat", maskImage: "linear-gradient(to right, transparent, black 40%)", WebkitMaskImage: "linear-gradient(to right, transparent, black 40%)", opacity: 0.12 }} />
         <div style={{ position: "relative", zIndex: 1 }}>
-          <p style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: c.gilt, marginBottom: 12 }}>For Coaches & Firms</p>
-          <h3 style={{ fontFamily: font.display, fontSize: 28, fontWeight: 400, color: c.ivory, letterSpacing: "-0.01em", lineHeight: 1.25, marginBottom: 8 }}>Elevate your coaching practice</h3>
-          <p style={{ fontFamily: font.ui, fontSize: 14, color: c.stone, lineHeight: 1.6, maxWidth: 440 }}>Per-seat annual licensing. Client management dashboard. Aggregate analytics. Built for career coaches and outplacement firms.</p>
+          <p style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: c.gilt, marginBottom: 12 }}>Coming Soon</p>
+          <h3 style={{ fontFamily: font.display, fontSize: 28, fontWeight: 400, color: c.ivory, letterSpacing: "-0.01em", lineHeight: 1.25, marginBottom: 8 }}>HireReady for Teams</h3>
+          <p style={{ fontFamily: font.ui, fontSize: 14, color: c.stone, lineHeight: 1.6, maxWidth: 440 }}>Career coaches, bootcamps, and universities — we're building team plans with client management and analytics. Interested? Let us know.</p>
         </div>
         <button className="shimmer-btn" style={{
           fontFamily: font.ui, fontSize: 14, fontWeight: 500, padding: "14px 32px",
@@ -1680,7 +1680,7 @@ function ForTeamsBanner() {
         }}
           onMouseEnter={(e) => { e.currentTarget.style.background = c.ivory; e.currentTarget.style.color = c.obsidian; e.currentTarget.style.borderColor = c.ivory; }}
           onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = c.ivory; e.currentTarget.style.borderColor = c.borderHover; }}>
-          Learn About Teams
+          Get Early Access
         </button>
       </div>
     </section>
@@ -1787,7 +1787,7 @@ function FinalCTA() {
                   }} />
                 ))}
               </div>
-              <span style={{ fontFamily: font.ui, fontSize: 12, color: c.chalk }}>Join 5,000+ pros</span>
+              <span style={{ fontFamily: font.ui, fontSize: 12, color: c.chalk }}>Join 5,000+ users</span>
             </div>
           </div>
         </div>
@@ -1832,7 +1832,7 @@ function Footer() {
         <div>
           <span style={{ fontFamily: font.ui, fontSize: 18, fontWeight: 600, color: c.ivory, letterSpacing: "0.04em", display: "block", marginBottom: 12 }}>HireReady</span>
           <p style={{ fontFamily: font.ui, fontSize: 13, color: c.stone, lineHeight: 1.6, marginBottom: 20, maxWidth: 220 }}>
-            AI-powered mock interviews for experienced professionals. A Silva Vitalis LLC product.
+            AI-powered mock interviews for job seekers at every level. A Silva Vitalis LLC product.
           </p>
           {/* Social icons */}
           <div style={{ display: "flex", gap: 12 }}>

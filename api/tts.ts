@@ -45,7 +45,10 @@ export default async function handler(req: Request): Promise<Response> {
     }
 
     // Cap text length to prevent abuse
-    const trimmedText = text.slice(0, 2000);
+    const trimmedText = text.trim().slice(0, 2000);
+    if (trimmedText.length === 0) {
+      return new Response(JSON.stringify({ error: "Text is empty" }), { status: 400, headers });
+    }
 
     // Whitelist allowed voices
     const ALLOWED_VOICES = [

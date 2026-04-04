@@ -31,7 +31,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     threeDaysLater.setDate(threeDaysLater.getDate() + 3);
 
     const profilesRes = await fetch(
-      `${SUPABASE_URL}/rest/v1/profiles?subscription_tier=neq.free&subscription_end=gte.${now.toISOString()}&subscription_end=lte.${threeDaysLater.toISOString()}&select=id,name,email,subscription_tier,subscription_end`,
+      `${SUPABASE_URL}/rest/v1/profiles?subscription_tier=neq.free&subscription_end=gte.${now.toISOString()}&subscription_end=lte.${threeDaysLater.toISOString()}&select=id,name,email,subscription_tier,subscription_end&limit=200`,
       {
         headers: {
           apikey: SUPABASE_SERVICE_ROLE_KEY,

@@ -92,7 +92,11 @@ Respond with ONLY the JSON object, no markdown or explanation.`;
     const truncated = resumeText.length > 3000;
     return new Response(JSON.stringify({ profile, truncated }), { status: 200, headers });
   } catch (err) {
+    const isTimeout = err instanceof Error && (err.name === "AbortError" || err.message.includes("abort"));
     console.error("Resume analysis error:", err);
-    return new Response(JSON.stringify({ error: "Internal error" }), { status: 500, headers });
+    return new Response(
+      JSON.stringify({ error: isTimeout ? "Analysis timed out — please try again" : "Internal error" }),
+      { status: isTimeout ? 504 : 500, headers },
+    );
   }
 }
