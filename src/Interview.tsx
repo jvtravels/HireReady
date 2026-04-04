@@ -1136,7 +1136,7 @@ export default function Interview() {
             border: `1px solid rgba(201,169,110,0.12)`,
           }}>
             <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 500, color: c.gilt, letterSpacing: "0.02em" }}>
-              {interviewType.charAt(0).toUpperCase() + interviewType.slice(1)}{user?.targetRole ? ` · ${user.targetRole}` : ""}
+              {interviewFocus.charAt(0).toUpperCase() + interviewFocus.slice(1)}{user?.targetRole ? ` · ${user.targetRole}` : ""}
             </span>
           </div>
         </div>
