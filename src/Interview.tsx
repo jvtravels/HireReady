@@ -685,6 +685,7 @@ export default function Interview() {
   const [phase, setPhase] = useState<"thinking" | "speaking" | "listening" | "done">("thinking");
   const [elapsed, setElapsed] = useState(draftRef.current?.elapsed || 0);
   const [isRecording, setIsRecording] = useState(false);
+  const [speechUnavailable, setSpeechUnavailable] = useState(false);
 
   // Controls
   const [isMuted, setIsMuted] = useState(false);
@@ -763,6 +764,9 @@ export default function Interview() {
     if (phase === "listening" && !isMuted) {
       let stopped = false;
       const recognition = createSpeechRecognition();
+      if (!recognition) {
+        setSpeechUnavailable(true);
+      }
       if (recognition) {
         let finalText = "";
         recognition.onresult = (event: SpeechRecognitionEvent) => {
@@ -781,12 +785,15 @@ export default function Interview() {
           const error = event?.error || "unknown";
           if (error === "not-allowed") {
             setMicError("Microphone access denied. Check browser permissions.");
+            setSpeechUnavailable(true);
           } else if (error === "no-speech") {
             // Silence — auto-restarts, no need to alert
           } else if (error === "network") {
-            setMicError("Speech recognition network error. Your answers are still being recorded via text.");
+            setMicError("Speech recognition network error. Type your answer below.");
+            setSpeechUnavailable(true);
           } else if (error !== "aborted") {
             setMicError("Microphone issue detected. Try unmuting or refreshing.");
+            setSpeechUnavailable(true);
           }
         };
         recognition.onend = () => {
@@ -1304,15 +1311,34 @@ export default function Interview() {
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                     <div style={{ width: 6, height: 6, borderRadius: "50%", background: c.sage, animation: "recordPulse 1s ease-in-out infinite" }} />
-                    <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: c.sage }}>Your answer</span>
+                    <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: c.sage }}>{speechUnavailable ? "Type your answer" : "Your answer"}</span>
                     <span style={{ fontFamily: font.mono, fontSize: 11, color: answerTimer >= 180 ? c.ember : answerTimer >= 120 ? c.gilt : c.stone }}>{formatTime(answerTimer)}</span>
                   </div>
                   <WaveformVisualizer active={!isMuted} color={c.sage} barCount={12} />
                 </div>
 
-                {/* Live transcript */}
+                {/* Live transcript or text input fallback */}
                 <div style={{ flex: 1, overflowY: "auto", marginBottom: 12 }}>
-                  {currentTranscript ? (
+                  {speechUnavailable ? (
+                    <textarea
+                      value={currentTranscript}
+                      onChange={(e) => setCurrentTranscript(e.target.value)}
+                      placeholder="Type your answer here..."
+                      autoFocus
+                      style={{
+                        width: "100%", height: "100%", minHeight: 80,
+                        fontFamily: font.ui, fontSize: 13, color: c.ivory, lineHeight: 1.7,
+                        background: "transparent", border: "none", outline: "none", resize: "none",
+                        padding: 0, margin: 0,
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !e.shiftKey) {
+                          e.preventDefault();
+                          handleNextQuestion();
+                        }
+                      }}
+                    />
+                  ) : currentTranscript ? (
                     <p style={{ fontFamily: font.ui, fontSize: 13, color: c.ivory, lineHeight: 1.7, margin: 0, opacity: 0.9 }}>
                       {currentTranscript}
                       <span style={{ display: "inline-block", width: 2, height: 14, background: c.sage, marginLeft: 2, verticalAlign: "text-bottom", animation: "blink 0.8s ease-in-out infinite" }} />
