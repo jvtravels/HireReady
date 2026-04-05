@@ -595,20 +595,15 @@ body {
   .shimmer-btn:hover { transform: none; }
 }
 
-/* ─── Settings Grid ─── */
-.settings-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-}
-.settings-grid > :first-child { grid-row: 1 / 4; }
-.settings-sub-grid { grid-template-columns: 1fr 1fr; }
+/* ─── Settings ─── */
+.settings-pills { scrollbar-width: none; }
+.settings-pills::-webkit-scrollbar { display: none; }
+.settings-form-grid { grid-template-columns: 1fr 1fr; }
+.settings-chip-grid { grid-template-columns: 1fr 1fr 1fr; }
 
-@media (max-width: 740px) {
-  .settings-grid { grid-template-columns: 1fr; }
-  .settings-grid > :first-child { grid-row: auto; }
-  .settings-grid > * { grid-column: 1 !important; }
-  .settings-sub-grid { grid-template-columns: 1fr !important; }
+@media (max-width: 600px) {
+  .settings-form-grid { grid-template-columns: 1fr !important; }
+  .settings-chip-grid { grid-template-columns: 1fr !important; }
 }
 
 /* ─── Print Stylesheet ─── */
