@@ -219,19 +219,33 @@ export default function DashboardHome() {
         </div>
       )}
 
-      {/* ─── Daily Challenge (compact banner) ─── */}
-      {dailyChallenge && !dailyChallenge.completed && (
-        <div style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 20px", borderRadius: radius.md, background: "rgba(201,169,110,0.03)", border: "1px solid rgba(201,169,110,0.08)", marginBottom: sp.xl, cursor: "pointer", transition: "all 0.2s ease" }}
-          onClick={() => nav(`/session/new?type=${dailyChallenge.type}${dailyChallenge.focus ? `&focus=${dailyChallenge.focus}` : ""}`)}
-          onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(201,169,110,0.06)"; e.currentTarget.style.borderColor = "rgba(201,169,110,0.15)"; }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(201,169,110,0.03)"; e.currentTarget.style.borderColor = "rgba(201,169,110,0.08)"; }}>
-          <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="2" strokeLinecap="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" /></svg>
-          <div style={{ flex: 1 }}>
-            <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: c.ivory }}>Daily Challenge: {dailyChallenge.label}</span>
-            <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, marginLeft: 8 }}>{dailyChallenge.description}</span>
-          </div>
-          <span style={{ fontFamily: font.mono, fontSize: 9, fontWeight: 600, padding: "2px 8px", borderRadius: radius.pill, background: dailyChallenge.difficulty === "hard" ? "rgba(196,112,90,0.08)" : "rgba(201,169,110,0.08)", color: dailyChallenge.difficulty === "hard" ? c.ember : c.gilt, textTransform: "uppercase" as const, flexShrink: 0 }}>{dailyChallenge.difficulty}</span>
-          <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="2" strokeLinecap="round" style={{ flexShrink: 0 }}><polyline points="9 18 15 12 9 6"/></svg>
+      {/* ─── Daily Challenge (full-width gradient banner) ─── */}
+      {dailyChallenge && !dailyChallenge.completed && !persisted.dismissedNotifs.includes(`challenge-${dailyChallenge.id}`) && (
+        <div style={{
+          display: "flex", alignItems: "center", justifyContent: "center", gap: 16,
+          padding: "12px 48px",
+          margin: `0 -48px ${sp.xl}px`,
+          background: "linear-gradient(90deg, rgba(184,146,62,0.18) 0%, rgba(201,169,110,0.10) 50%, rgba(184,146,62,0.18) 100%)",
+          borderTop: "1px solid rgba(201,169,110,0.12)", borderBottom: "1px solid rgba(201,169,110,0.12)",
+          position: "relative" as const,
+        }}>
+          <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="2" strokeLinecap="round" style={{ flexShrink: 0 }}><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" /></svg>
+          <span style={{ fontFamily: font.ui, fontSize: 13, color: c.ivory }}>
+            <strong>Daily Challenge:</strong> {dailyChallenge.label} — {dailyChallenge.description}
+          </span>
+          <button onClick={() => nav(`/session/new?type=${dailyChallenge.type}${dailyChallenge.focus ? `&focus=${dailyChallenge.focus}` : ""}`)}
+            style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.ivory, background: "transparent", border: `1px solid rgba(240,237,232,0.25)`, borderRadius: radius.pill, padding: "5px 16px", cursor: "pointer", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 5, transition: "all 0.2s ease", flexShrink: 0 }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(240,237,232,0.08)"; e.currentTarget.style.borderColor = "rgba(240,237,232,0.4)"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.borderColor = "rgba(240,237,232,0.25)"; }}>
+            Start Challenge
+            <svg aria-hidden="true" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+          </button>
+          <button onClick={() => updatePersisted({ dismissedNotifs: [...persisted.dismissedNotifs, `challenge-${dailyChallenge.id}`] })} aria-label="Dismiss challenge"
+            style={{ position: "absolute", right: 16, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: c.stone, cursor: "pointer", padding: 4, display: "flex", alignItems: "center", transition: "color 0.2s" }}
+            onMouseEnter={(e) => { e.currentTarget.style.color = c.ivory; }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = c.stone; }}>
+            <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
         </div>
       )}
 
