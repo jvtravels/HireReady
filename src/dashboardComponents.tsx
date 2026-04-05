@@ -397,6 +397,25 @@ export function EmptyState({ onStart, userName, targetRole, isMobile }: { onStar
         ))}
       </div>
 
+      {/* What you'll unlock preview */}
+      <div style={{ background: c.graphite, borderRadius: 12, border: `1px solid ${c.border}`, padding: "20px 24px", marginBottom: 28 }}>
+        <p style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.gilt, letterSpacing: "0.06em", textTransform: "uppercase" as const, marginBottom: 14 }}>What you'll unlock after your first session</p>
+        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(4, 1fr)", gap: 12 }}>
+          {[
+            { label: "Readiness Score", preview: "85", sub: "Overall readiness" },
+            { label: "Skill Breakdown", preview: "5 skills", sub: "Radar chart" },
+            { label: "Score Trend", preview: "📈", sub: "Track progress" },
+            { label: "AI Coaching", preview: "Tips", sub: "Personalized feedback" },
+          ].map(item => (
+            <div key={item.label} style={{ padding: "14px 12px", borderRadius: 8, background: c.obsidian, textAlign: "center", opacity: 0.6 }}>
+              <span style={{ fontFamily: font.mono, fontSize: 18, fontWeight: 600, color: c.ivory, display: "block", marginBottom: 2 }}>{item.preview}</span>
+              <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 500, color: c.chalk, display: "block" }}>{item.label}</span>
+              <span style={{ fontFamily: font.ui, fontSize: 9, color: c.stone }}>{item.sub}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
       <div className="quick-stats-bar" style={{ display: "flex", justifyContent: "center", gap: isMobile ? 24 : 48, padding: "20px 0", borderTop: `1px solid ${c.border}`, borderBottom: `1px solid ${c.border}` }}>
         {[
           { value: "~15 min", label: "Per session" },

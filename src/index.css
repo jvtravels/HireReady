@@ -461,8 +461,8 @@ body {
     display: none !important;
   }
 
-  /* Dashboard grid fixes */
-  .stat-grid { grid-template-columns: repeat(2, 1fr) !important; }
+  /* Dashboard grid fixes — 3+2 layout so 5th card isn't orphaned */
+  .stat-grid { grid-template-columns: repeat(3, 1fr) !important; }
   .main-grid { grid-template-columns: 1fr !important; }
   .session-setup-grid { grid-template-columns: 1fr !important; }
 
@@ -488,6 +488,8 @@ body {
   .mobile-nav-toggle { display: none !important; }
 }
 @media (max-width: 600px) {
+  .stat-grid { grid-template-columns: repeat(2, 1fr) !important; }
+  .stat-grid > :last-child { grid-column: span 2; }
   .session-setup-types { grid-template-columns: 1fr !important; }
   .difficulty-grid { flex-direction: column !important; }
 }
@@ -526,6 +528,24 @@ body {
 @keyframes spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
+}
+
+/* ─── Badge Earned Animation ─── */
+@keyframes badgeGlow {
+  0%, 100% { box-shadow: 0 0 0 rgba(201,169,110,0); }
+  50% { box-shadow: 0 0 16px rgba(201,169,110,0.15); }
+}
+.badge-earned {
+  animation: badgeGlow 2s ease-in-out 0.5s 1;
+}
+.badge-earned:hover .badge-icon-glow {
+  filter: drop-shadow(0 0 8px rgba(201,169,110,0.4));
+}
+
+/* ─── Session Expand Animation ─── */
+@keyframes slideDown {
+  from { opacity: 0; max-height: 0; }
+  to { opacity: 1; max-height: 400px; }
 }
 
 /* ─── Focus Within for Cards ─── */

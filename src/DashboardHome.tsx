@@ -55,6 +55,7 @@ const dashboardStyles = `
   @media (prefers-reduced-motion: reduce) {
     .dash-card, .dash-card * { transition: none !important; animation: none !important; }
   }
+  @keyframes slideDown { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
 `;
 
 export default function DashboardHome() {
@@ -79,10 +80,14 @@ export default function DashboardHome() {
   const [sortBy, setSortBy] = useState<"date" | "score">("date");
   const [searchQuery, setSearchQuery] = useState("");
   const [dateRange, setDateRange] = useState<"all" | "week" | "month">("all");
-  const [prepPlanOpen, setPrepPlanOpen] = useState(true);
+  const [prepPlanOpen, setPrepPlanOpen] = useState(() => prepPlan ? prepPlan.some(s => !s.done) : true);
   const [rightTab, setRightTab] = useState<"insights" | "goals">("insights");
   const [shareTooltip, setShareTooltip] = useState(false);
   const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [sessionsToShow, setSessionsToShow] = useState(5);
+  const [headerMenuOpen, setHeaderMenuOpen] = useState(false);
+  const headerMenuRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleSearch = (val: string) => {
@@ -94,6 +99,26 @@ export default function DashboardHome() {
   useEffect(() => {
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
   }, []);
+
+  // Close header menu on outside click
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (headerMenuRef.current && !headerMenuRef.current.contains(e.target as Node)) setHeaderMenuOpen(false);
+    };
+    if (headerMenuOpen) document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [headerMenuOpen]);
+
+  // Keyboard shortcuts: N = new session, / = focus search
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (e.key === "n" || e.key === "N") { e.preventDefault(); handleStartSession(); }
+      if (e.key === "/") { e.preventDefault(); searchInputRef.current?.focus(); }
+    };
+    document.addEventListener("keydown", handleKey);
+    return () => document.removeEventListener("keydown", handleKey);
+  }, [handleStartSession]);
 
   // useMemo must be called before any early returns to satisfy Rules of Hooks
   const filteredSessions = useMemo(() => recentSessions
@@ -144,25 +169,43 @@ export default function DashboardHome() {
           {smartSchedule && <p style={{ fontFamily: font.ui, fontSize: 12, color: c.gilt, fontStyle: "italic", opacity: 0.8 }}>{smartSchedule}</p>}
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <div style={{ position: "relative" }}>
-            <button onClick={() => { handleExport(); setShareTooltip(true); setTimeout(() => setShareTooltip(false), 2000); }} title="Copy progress report" style={utilBtn} onMouseEnter={utilBtnEnter} onMouseLeave={utilBtnLeave}>
-              <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
-              Share
+          <button className="shimmer-btn dash-focus" onClick={handleStartSession} style={{
+            fontFamily: font.ui, fontSize: 12, fontWeight: 600, padding: "8px 18px", borderRadius: radius.md,
+            border: "none", background: `linear-gradient(135deg, ${c.gilt}, ${c.giltDark})`,
+            color: c.obsidian, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, whiteSpace: "nowrap",
+          }}>
+            <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            New Session
+          </button>
+          <div ref={headerMenuRef} style={{ position: "relative" }}>
+            <button onClick={() => setHeaderMenuOpen(!headerMenuOpen)} title="More actions" style={utilBtn} onMouseEnter={utilBtnEnter} onMouseLeave={utilBtnLeave} aria-expanded={headerMenuOpen} aria-label="More actions">
+              <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg>
             </button>
+            {headerMenuOpen && (
+              <div style={{ position: "absolute", top: "calc(100% + 6px)", right: 0, minWidth: 200, background: c.graphite, border: `1px solid ${c.borderHover}`, borderRadius: radius.md, padding: "6px 0", zIndex: 50, boxShadow: "0 8px 32px rgba(0,0,0,0.4)" }}>
+                {[
+                  { label: "Share Progress", icon: <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>, action: () => { handleExport(); setShareTooltip(true); setTimeout(() => setShareTooltip(false), 2000); } },
+                  { label: "Download Report", icon: <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>, action: handleDownload },
+                  { label: "Quick Behavioral", icon: <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>, action: () => nav("/session/new?type=behavioral") },
+                  { label: "Quick Case Study", icon: <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>, action: () => nav("/session/new?type=case-study") },
+                  { label: "Export PDF", icon: <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>, action: handleExportPDF },
+                ].map((item) => (
+                  <button key={item.label} onClick={() => { item.action(); setHeaderMenuOpen(false); }}
+                    style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", padding: "10px 16px", fontFamily: font.ui, fontSize: 12, color: c.chalk, background: "transparent", border: "none", cursor: "pointer", transition: "background 0.15s" }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = "rgba(240,237,232,0.04)"}
+                    onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}>
+                    <span style={{ opacity: 0.6 }}>{item.icon}</span>
+                    {item.label}
+                  </button>
+                ))}
+                <div style={{ height: 1, background: c.border, margin: "4px 0" }} />
+                <div style={{ padding: "8px 16px" }}>
+                  <span style={{ fontFamily: font.mono, fontSize: 9, color: c.stone }}>Shortcuts: N new session · / search</span>
+                </div>
+              </div>
+            )}
             {shareTooltip && <div style={{ position: "absolute", top: -32, left: "50%", transform: "translateX(-50%)", background: c.sage, color: c.obsidian, fontFamily: font.ui, fontSize: 11, fontWeight: 600, padding: "4px 10px", borderRadius: 4, whiteSpace: "nowrap", animation: "fadeIn 0.2s ease" }}>Copied to clipboard!</div>}
           </div>
-          <button onClick={handleDownload} title="Download progress report" style={utilBtn} onMouseEnter={utilBtnEnter} onMouseLeave={utilBtnLeave}>
-            <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            Download
-          </button>
-          <button onClick={() => nav("/session/new?type=behavioral")} title="Quick Behavioral session" style={utilBtn} onMouseEnter={utilBtnEnter} onMouseLeave={utilBtnLeave}>
-            <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-            Quick Behavioral
-          </button>
-          <button onClick={() => nav("/session/new?type=case-study")} title="Quick Case Study session" style={utilBtn} onMouseEnter={utilBtnEnter} onMouseLeave={utilBtnLeave}>
-            <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
-            Quick Case Study
-          </button>
         </div>
       </div>
 
@@ -320,7 +363,7 @@ export default function DashboardHome() {
       </div>
 
       {/* ─── Stats Grid (all 5 in one row) ─── */}
-      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(5, 1fr)", gap: sp.lg, marginBottom: sp["3xl"] }}>
+      <div className="stat-grid" style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(5, 1fr)", gap: sp.lg, marginBottom: sp["3xl"] }}>
         {[
           { label: "Readiness", value: hasData ? (readinessScore > 0 ? readinessScore.toString() : "\u2014") : "\u2014", icon: <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>, sub: !hasData ? "Complete a session" : readinessScore > 0 ? scoreLabel(readinessScore) : "Need more sessions", subColor: !hasData ? c.stone : readinessScore > 0 ? scoreLabelColor(readinessScore) : c.stone },
           { label: "Sessions", value: overallStats.sessionsCompleted.toString(), icon: <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>, sub: hasData ? `${weekActivity.filter(Boolean).length} this week` : "Get started", subColor: c.stone },
@@ -398,13 +441,18 @@ export default function DashboardHome() {
               </div>
             </>
           ) : (
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "48px 20px", textAlign: "center" }}>
-              <svg aria-hidden="true" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="rgba(240,237,232,0.08)" strokeWidth="1.5" strokeLinecap="round" style={{ marginBottom: 14 }}><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
-              <p style={{ fontFamily: font.ui, fontSize: 13, color: c.stone, marginBottom: 12 }}>Your score trend will appear here after your first session</p>
-              <button onClick={handleStartSession} style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: c.gilt, background: "rgba(201,169,110,0.06)", border: `1px solid rgba(201,169,110,0.12)`, borderRadius: radius.sm, padding: "8px 18px", cursor: "pointer", transition: "all 0.2s ease" }}
-                onMouseEnter={(e) => e.currentTarget.style.background = "rgba(201,169,110,0.12)"}
-                onMouseLeave={(e) => e.currentTarget.style.background = "rgba(201,169,110,0.06)"}
-              >Start a Session</button>
+            <div style={{ position: "relative", padding: "12px 0" }}>
+              {/* Sample chart preview */}
+              <svg width="100%" height="120" viewBox="0 0 400 120" preserveAspectRatio="none" style={{ opacity: 0.15 }}>
+                <polyline points="0,100 60,85 120,90 180,70 240,55 300,40 360,35 400,20" fill="none" stroke={c.gilt} strokeWidth="2"/>
+                <polygon points="0,120 0,100 60,85 120,90 180,70 240,55 300,40 360,35 400,20 400,120" fill="url(#sampleGrad)" opacity="0.3"/>
+                <defs><linearGradient id="sampleGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={c.gilt}/><stop offset="100%" stopColor="transparent"/></linearGradient></defs>
+              </svg>
+              {/* Frosted overlay */}
+              <div style={{ position: "absolute", inset: 0, background: "rgba(22,22,24,0.75)", backdropFilter: "blur(4px)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", borderRadius: radius.md }}>
+                <p style={{ fontFamily: font.ui, fontSize: 13, color: c.chalk, marginBottom: 12 }}>Complete your first session to see your trend</p>
+                <button onClick={handleStartSession} style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: c.obsidian, background: `linear-gradient(135deg, ${c.gilt}, ${c.giltDark})`, border: "none", borderRadius: radius.sm, padding: "8px 18px", cursor: "pointer", transition: "all 0.2s ease" }}>Start a Session</button>
+              </div>
             </div>
           )}
         </div>
@@ -435,9 +483,23 @@ export default function DashboardHome() {
               </div>
             </>
           ) : (
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 16px", textAlign: "center" }}>
-              <svg aria-hidden="true" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="rgba(240,237,232,0.08)" strokeWidth="1.5" strokeLinecap="round" style={{ marginBottom: 12 }}><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-              <p style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, lineHeight: 1.5 }}>Complete your first session to see your skill breakdown across communication, leadership, and more.</p>
+            <div style={{ position: "relative", padding: "16px 0" }}>
+              {/* Sample skill bars preview */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 14, opacity: 0.15, padding: "0 4px" }}>
+                {["Communication", "Leadership", "Problem Solving", "Teamwork", "Adaptability"].map((skill, i) => (
+                  <div key={skill} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <span style={{ fontFamily: font.ui, fontSize: 11, color: c.chalk, width: 100 }}>{skill}</span>
+                    <div style={{ flex: 1, height: 3, background: "rgba(240,237,232,0.06)", borderRadius: 2, overflow: "hidden" }}>
+                      <div style={{ height: "100%", width: `${75 - i * 8}%`, background: c.gilt, borderRadius: 2 }} />
+                    </div>
+                    <span style={{ fontFamily: font.mono, fontSize: 11, color: c.ivory, width: 22, textAlign: "right" }}>{75 - i * 8}</span>
+                  </div>
+                ))}
+              </div>
+              <div style={{ position: "absolute", inset: 0, background: "rgba(22,22,24,0.75)", backdropFilter: "blur(4px)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", borderRadius: radius.md }}>
+                <p style={{ fontFamily: font.ui, fontSize: 12, color: c.chalk, lineHeight: 1.5, textAlign: "center", maxWidth: 200, marginBottom: 10 }}>Complete a session to unlock your skill breakdown</p>
+                <button onClick={handleStartSession} style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.obsidian, background: `linear-gradient(135deg, ${c.gilt}, ${c.giltDark})`, border: "none", borderRadius: radius.sm, padding: "6px 14px", cursor: "pointer" }}>Get Started</button>
+              </div>
             </div>
           )}
         </div>
@@ -462,7 +524,7 @@ export default function DashboardHome() {
         <div style={{ display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
           <div style={{ flex: 1, minWidth: 160, position: "relative" }}>
             <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.stone} strokeWidth="2" strokeLinecap="round" style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)" }}><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            <input type="text" placeholder="Search sessions..." aria-label="Search sessions" value={searchQuery} onChange={(e) => handleSearch(e.target.value)}
+            <input ref={searchInputRef} type="text" placeholder="Search sessions... (press /)" aria-label="Search sessions" value={searchQuery} onChange={(e) => handleSearch(e.target.value)}
               style={{ width: "100%", padding: "8px 10px 8px 32px", fontFamily: font.ui, fontSize: 12, color: c.ivory, background: c.obsidian, border: `1px solid rgba(240,237,232,0.06)`, borderRadius: radius.sm, outline: "none", boxSizing: "border-box", transition: "border-color 0.2s" }}
               onFocus={(e) => e.currentTarget.style.borderColor = "rgba(201,169,110,0.3)"}
               onBlur={(e) => e.currentTarget.style.borderColor = "rgba(240,237,232,0.06)"}
@@ -497,7 +559,7 @@ export default function DashboardHome() {
               {searchQuery ? `No sessions matching "${searchQuery}"` : "No sessions match this filter."}
             </p>
           ) : (
-            filteredSessions.map((session) => (
+            filteredSessions.slice(0, sessionsToShow).map((session) => (
               <div key={session.id}>
                 <button className="dash-focus" onClick={() => setExpandedSession(expandedSession === session.id ? null : session.id)} aria-expanded={expandedSession === session.id}
                   style={{ width: "100%", padding: "16px 18px", borderRadius: radius.md, background: expandedSession === session.id ? "rgba(201,169,110,0.03)" : c.obsidian, border: "none", boxShadow: expandedSession === session.id ? "0 0 0 1px rgba(201,169,110,0.1)" : "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 16, transition: "all 0.25s cubic-bezier(0.16,1,0.3,1)", textAlign: "left" }}
@@ -566,6 +628,14 @@ export default function DashboardHome() {
               </div>
             ))
           )}
+          {filteredSessions.length > sessionsToShow && (
+            <button onClick={() => setSessionsToShow(s => s + 5)}
+              style={{ width: "100%", padding: "10px 0", marginTop: 8, fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: c.gilt, background: "rgba(201,169,110,0.04)", border: `1px solid rgba(201,169,110,0.1)`, borderRadius: radius.sm, cursor: "pointer", transition: "all 0.2s ease" }}
+              onMouseEnter={(e) => e.currentTarget.style.background = "rgba(201,169,110,0.08)"}
+              onMouseLeave={(e) => e.currentTarget.style.background = "rgba(201,169,110,0.04)"}>
+              Show more ({filteredSessions.length - sessionsToShow} remaining)
+            </button>
+          )}
         </div>
       </div>
 
@@ -600,6 +670,17 @@ export default function DashboardHome() {
               )
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                {(() => {
+                  const now = new Date();
+                  const dayOfWeek = now.getDay();
+                  const daysRemaining = dayOfWeek === 0 ? 0 : 7 - dayOfWeek;
+                  return (
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+                      <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={c.stone} strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                      <span style={{ fontFamily: font.mono, fontSize: 10, color: daysRemaining <= 2 ? c.ember : c.stone }}>{daysRemaining === 0 ? "Resets today" : `${daysRemaining}d left this week`}</span>
+                    </div>
+                  );
+                })()}
                 {upcomingGoals.map((goal, i) => (
                   <div key={i}>
                     <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
@@ -623,10 +704,11 @@ export default function DashboardHome() {
           {sectionTitle("Achievements")}
           <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : `repeat(${Math.min(badges.length, 4)}, 1fr)`, gap: 12, marginTop: 16 }}>
             {badges.map((badge) => (
-              <div key={badge.id} style={{ padding: "16px", borderRadius: radius.md, background: badge.earned ? "rgba(201,169,110,0.03)" : c.obsidian, textAlign: "center", opacity: badge.earned ? 1 : 0.45, transition: "opacity 0.3s ease" }}
-                onMouseEnter={(e) => { if (!badge.earned) e.currentTarget.style.opacity = "0.7"; }}
-                onMouseLeave={(e) => { if (!badge.earned) e.currentTarget.style.opacity = "0.45"; }}>
-                <div style={{ marginBottom: 8, display: "flex", justifyContent: "center" }}>{(badgeIcons[badge.icon] || badgeIcons.star)(badge.earned ? c.gilt : c.stone)}</div>
+              <div key={badge.id} className={badge.earned ? "badge-earned" : ""} style={{ padding: "16px", borderRadius: radius.md, background: badge.earned ? "rgba(201,169,110,0.03)" : c.obsidian, textAlign: "center", opacity: badge.earned ? 1 : 0.45, transition: "all 0.3s ease", position: "relative", overflow: "hidden" }}
+                onMouseEnter={(e) => { if (!badge.earned) e.currentTarget.style.opacity = "0.7"; if (badge.earned) e.currentTarget.style.boxShadow = "0 0 20px rgba(201,169,110,0.12)"; }}
+                onMouseLeave={(e) => { if (!badge.earned) e.currentTarget.style.opacity = "0.45"; e.currentTarget.style.boxShadow = "none"; }}>
+                {badge.earned && <div style={{ position: "absolute", inset: 0, background: "radial-gradient(circle at 50% 30%, rgba(201,169,110,0.08) 0%, transparent 60%)", pointerEvents: "none" }} />}
+                <div style={{ marginBottom: 8, display: "flex", justifyContent: "center", position: "relative" }}>{(badgeIcons[badge.icon] || badgeIcons.star)(badge.earned ? c.gilt : c.stone)}</div>
                 <p style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: badge.earned ? c.ivory : c.stone, marginBottom: 2 }}>{badge.label}</p>
                 <p style={{ fontFamily: font.ui, fontSize: 9, color: c.stone, lineHeight: 1.4, marginBottom: badge.earned ? 0 : 8 }}>{badge.description}</p>
                 {!badge.earned && (
