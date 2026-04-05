@@ -21,6 +21,8 @@ export default function DashboardResume() {
   const [needsReupload, setNeedsReupload] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [reanalyzeDone, setReanalyzeDone] = useState(false);
+  const [analysisSource, setAnalysisSource] = useState<"ai" | "fallback" | null>(null);
+  const [truncated, setTruncated] = useState(false);
   const analyzingRef = useRef(false);
   const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -40,6 +42,7 @@ export default function DashboardResume() {
         (!stored.seniorityLevel && (!stored.topSkills || stored.topSkills.length === 0) && (!stored.interviewStrengths || stored.interviewStrengths.length === 0));
       if (stored.headline && !isFallback) {
         setProfile(stored);
+        setAnalysisSource("ai");
         setPhase("done");
       } else if (isFallback && user?.resumeText && !analyzingRef.current) {
         // Fallback profile stored — auto-trigger AI re-analysis
@@ -68,6 +71,7 @@ export default function DashboardResume() {
           industries: [], interviewStrengths: [], interviewGaps: [], careerTrajectory: "",
         };
         setProfile(fallback);
+        setAnalysisSource("fallback");
         setPhase("done");
       }
     } else if (user?.resumeText && user?.resumeFileName) {
@@ -107,6 +111,8 @@ export default function DashboardResume() {
     setErrorMsg("");
     setProfile(null);
     setNeedsReupload(false);
+    setAnalysisSource(null);
+    setTruncated(false);
 
     setPhase("extracting");
     let text: string;
@@ -131,8 +137,9 @@ export default function DashboardResume() {
     } catch { /* timeout or network error — fall through to fallback */ }
     if (result?.profile) {
       setProfile(result.profile);
+      setAnalysisSource("ai");
+      setTruncated(!!result.truncated);
       updateUser({ resumeData: result.profile as unknown as ParsedResume });
-      if (result.truncated) setErrorMsg("Note: Only the first 3,000 characters of your resume were analyzed.");
       setPhase("done");
     } else {
       const parsed = parseResumeData(text);
@@ -145,6 +152,7 @@ export default function DashboardResume() {
         industries: [], interviewStrengths: [], interviewGaps: [], careerTrajectory: "",
       };
       setProfile(fallback);
+      setAnalysisSource("fallback");
       updateUser({ resumeData: fallback as unknown as ParsedResume });
       setPhase("done");
     }
@@ -172,17 +180,18 @@ export default function DashboardResume() {
       ]);
       if (result?.profile) {
         setProfile(result.profile);
+        setAnalysisSource("ai");
+        setTruncated(!!result.truncated);
         updateUser({ resumeData: result.profile as unknown as ParsedResume });
-        if (result.truncated) setErrorMsg("Note: Only the first 3,000 characters of your resume were analyzed.");
       } else {
-        setErrorMsg("Analysis returned no results. Try again.");
+        setErrorMsg("AI couldn't extract structured data. Try re-uploading a cleaner PDF or DOCX.");
       }
     } catch {
-      setErrorMsg("Analysis timed out. Please try again.");
+      setErrorMsg("Analysis timed out after 30s. Check your connection and try again.");
     }
     setPhase("done");
     setReanalyzeDone(true);
-    setTimeout(() => setReanalyzeDone(false), 3000);
+    setTimeout(() => setReanalyzeDone(false), 5000);
   };
 
   const triggerUpload = () => {
@@ -204,7 +213,7 @@ export default function DashboardResume() {
             {phase === "extracting" ? "Reading your resume" : "Building your profile"}
           </h2>
           <p style={{ fontFamily: font.ui, fontSize: 14, color: c.stone, lineHeight: 1.6, maxWidth: 380, margin: "0 auto" }}>
-            {phase === "extracting" ? "Extracting text from your document..." : "AI is analyzing your experience, skills, and achievements to create a personalized candidate profile..."}
+            {phase === "extracting" ? `Extracting text from ${fileName || "your document"}...` : "AI is analyzing your experience, skills, and achievements to create a personalized candidate profile..."}
           </p>
           {phase === "analyzing" && (
             <p style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, marginTop: 12 }}>This usually takes 10–20 seconds.</p>
@@ -254,7 +263,7 @@ export default function DashboardResume() {
     return (
       <div style={{ margin: "0 auto", padding: "20px 0" }}>
         <h2 style={{ fontFamily: font.display, fontSize: 28, fontWeight: 400, color: c.ivory, marginBottom: 6, letterSpacing: "-0.02em" }}>Resume Intelligence</h2>
-        <div style={{ background: c.graphite, borderRadius: 14, border: "1px solid rgba(196,112,90,0.15)", padding: "32px", textAlign: "center", marginTop: 20 }}>
+        <div role="alert" style={{ background: c.graphite, borderRadius: 14, border: "1px solid rgba(196,112,90,0.15)", padding: "32px", textAlign: "center", marginTop: 20 }}>
           <div style={{ width: 48, height: 48, borderRadius: 12, margin: "0 auto 16px", background: "rgba(196,112,90,0.08)", border: "1px solid rgba(196,112,90,0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}>
             <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c.ember} strokeWidth="1.5"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
           </div>
@@ -277,9 +286,14 @@ export default function DashboardResume() {
           <div style={{ flex: 1 }}>
             {profile?.headline ? <h2 style={{ fontFamily: font.display, fontSize: 24, color: c.ivory, marginBottom: 6, letterSpacing: "-0.02em", lineHeight: 1.3 }}>{profile.headline}</h2> : <h2 style={{ fontFamily: font.display, fontSize: 24, color: c.ivory, marginBottom: 6, letterSpacing: "-0.02em", lineHeight: 1.3 }}>Resume uploaded</h2>}
             <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-              {profile?.seniorityLevel && <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.gilt, background: "rgba(201,169,110,0.08)", border: "1px solid rgba(201,169,110,0.15)", borderRadius: 5, padding: "3px 10px" }}>{profile.seniorityLevel}</span>}
-              {profile?.yearsExperience && <span style={{ fontFamily: font.ui, fontSize: 11, color: c.chalk }}>{profile.yearsExperience}+ years experience</span>}
+              {profile?.seniorityLevel ? <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.gilt, background: "rgba(201,169,110,0.08)", border: "1px solid rgba(201,169,110,0.15)", borderRadius: 5, padding: "3px 10px" }}>{profile.seniorityLevel}</span> : null}
+              {profile?.yearsExperience != null && profile.yearsExperience > 0 && <span style={{ fontFamily: font.ui, fontSize: 11, color: c.chalk }}>{profile.yearsExperience}+ years experience</span>}
               {profile?.industries && profile.industries.length > 0 && <span style={{ fontFamily: font.ui, fontSize: 11, color: c.chalk }}>{profile.industries.join(", ")}</span>}
+              {analysisSource && (
+                <span style={{ fontFamily: font.ui, fontSize: 10, color: analysisSource === "ai" ? c.sage : c.stone, background: analysisSource === "ai" ? "rgba(122,158,126,0.08)" : "rgba(240,237,232,0.04)", border: `1px solid ${analysisSource === "ai" ? "rgba(122,158,126,0.15)" : c.border}`, borderRadius: 5, padding: "2px 8px" }}>
+                  {analysisSource === "ai" ? "AI Profile" : "Basic Extract"}
+                </span>
+              )}
             </div>
           </div>
           <div style={{ display: "flex", gap: 6, flexShrink: 0, marginLeft: 16, alignItems: "center" }}>
@@ -305,6 +319,18 @@ export default function DashboardResume() {
           </div>
         </div>
         {profile?.summary && <p style={{ fontFamily: font.ui, fontSize: 13.5, color: c.chalk, lineHeight: 1.7, margin: 0 }}>{profile.summary}</p>}
+        {truncated && (
+          <p style={{ fontFamily: font.ui, fontSize: 11, color: c.gilt, marginTop: 8, display: "flex", alignItems: "center", gap: 6 }}>
+            <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            Only the first 3,000 characters were analyzed. For best results, keep your resume concise.
+          </p>
+        )}
+        {analysisSource === "fallback" && resumeText && (
+          <div style={{ marginTop: 12, padding: "10px 14px", borderRadius: 8, background: "rgba(201,169,110,0.04)", border: "1px solid rgba(201,169,110,0.1)", display: "flex", alignItems: "center", gap: 8 }}>
+            <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            <span style={{ fontFamily: font.ui, fontSize: 11, color: c.chalk, flex: 1 }}>AI analysis wasn't available — showing basic extraction. Click re-analyze for a full profile.</span>
+          </div>
+        )}
         {needsReupload && !profile && (
           <div style={{ marginTop: 14, padding: "16px 20px", borderRadius: 10, background: "rgba(201,169,110,0.06)", border: `1px solid rgba(201,169,110,0.12)` }}>
             <p style={{ fontFamily: font.ui, fontSize: 13, color: c.chalk, lineHeight: 1.6, margin: "0 0 12px" }}>
@@ -389,8 +415,9 @@ export default function DashboardResume() {
           {profile?.interviewGaps && profile.interviewGaps.length > 0 && (
             <div style={{ background: c.graphite, borderRadius: 14, border: `1px solid ${c.border}`, padding: "20px 20px" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
-                <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-                <h3 style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: c.ivory }}>Areas to Prepare</h3>
+                <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+                <h3 style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: c.ivory }}>Focus Areas</h3>
+                <span title="Topics the AI suggests you practice — not weaknesses, just areas where extra prep will boost your confidence" style={{ fontFamily: font.ui, fontSize: 10, color: c.stone, cursor: "help", borderBottom: `1px dotted ${c.stone}` }}>Why these?</span>
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 {profile.interviewGaps.map((g, i) => (
