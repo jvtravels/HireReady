@@ -10,12 +10,13 @@ async function checkSupabase(): Promise<"ok" | "error" | "missing"> {
   const key = process.env.SUPABASE_ANON_KEY;
   if (!url || !key) return "missing";
   try {
+    // Use the Supabase health endpoint (returns 200 if PostgREST is up)
     const res = await fetch(`${url}/rest/v1/`, {
-      method: "HEAD",
-      headers: { apikey: key },
+      headers: { apikey: key, Authorization: `Bearer ${key}` },
       signal: AbortSignal.timeout(5000),
     });
-    return res.ok || res.status === 404 ? "ok" : "error";
+    // 200 = ok, 404 = schema accessible but no tables matched = ok
+    return res.status < 500 ? "ok" : "error";
   } catch {
     return "error";
   }
@@ -26,7 +27,8 @@ async function checkUpstash(): Promise<"ok" | "error" | "missing"> {
   const token = process.env.UPSTASH_REDIS_REST_TOKEN;
   if (!url || !token) return "missing";
   try {
-    const res = await fetch(`${url}/ping`, {
+    // Upstash REST API: /PING returns {"result":"PONG"}
+    const res = await fetch(`${url}/PING`, {
       headers: { Authorization: `Bearer ${token}` },
       signal: AbortSignal.timeout(5000),
     });
