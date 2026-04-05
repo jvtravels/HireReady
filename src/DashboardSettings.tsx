@@ -561,6 +561,34 @@ export default function SettingsPage() {
         </div>
         {cancelMsg && <p style={{ fontFamily: font.ui, fontSize: 12, color: cancelMsg.includes("ancelled") ? c.sage : c.ember, marginTop: -16, marginBottom: 16 }}>{cancelMsg}</p>}
 
+        {/* Payment History */}
+        <label style={{ ...labelStyle, marginBottom: 12, fontSize: 13, fontWeight: 600, color: c.ivory }}>Payment History</label>
+        <div style={{ borderRadius: 10, background: c.obsidian, border: `1px solid ${c.border}`, overflow: "hidden", marginBottom: 28 }}>
+          {authUser?.subscriptionTier && authUser.subscriptionTier !== "free" && authUser.subscriptionStart ? (
+            <div style={{ padding: "14px 18px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <div style={{ width: 32, height: 32, borderRadius: 8, background: "rgba(122,158,126,0.08)", border: `1px solid rgba(122,158,126,0.15)`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="2" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+                </div>
+                <div>
+                  <span style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.ivory, display: "block", marginBottom: 2 }}>
+                    {authUser.subscriptionTier.charAt(0).toUpperCase() + authUser.subscriptionTier.slice(1)} Plan
+                  </span>
+                  <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>
+                    {new Date(authUser.subscriptionStart).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                    {authUser.subscriptionEnd && ` — ${new Date(authUser.subscriptionEnd).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}`}
+                  </span>
+                </div>
+              </div>
+              <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 500, color: c.sage, background: "rgba(122,158,126,0.08)", padding: "3px 10px", borderRadius: 5 }}>Paid</span>
+            </div>
+          ) : (
+            <div style={{ padding: "20px 18px", textAlign: "center" }}>
+              <span style={{ fontFamily: font.ui, fontSize: 12, color: c.stone }}>No payments yet. Upgrade your plan to see billing history here.</span>
+            </div>
+          )}
+        </div>
+
         {/* Data & Privacy */}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 28 }} className="settings-form-grid">
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 16px", borderRadius: 8, background: c.obsidian, border: `1px solid ${c.border}` }}>
