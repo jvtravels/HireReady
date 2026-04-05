@@ -64,7 +64,7 @@ const PlaceholderPage = lazy(() => import("./PlaceholderPage"));
 const BlogPage = lazy(() => import("./BlogPage"));
 
 function LoadingFallback() {
-  return <div style={{ minHeight: "100vh", background: "#0A0A0B" }} />;
+  return <div style={{ minHeight: "100vh", background: "#060607" }} />;
 }
 
 function ScrollToTop() {

@@ -208,7 +208,7 @@ export function UpgradeModal({ onClose, sessionsUsed, user, currentTier, onPayme
         description: data.description,
         order_id: data.orderId,
         prefill: { email: user?.email || "", name: user?.name || "" },
-        theme: { color: "#C9A96E" },
+        theme: { color: "#D4B37F" },
         handler: function (response: { razorpay_payment_id: string; razorpay_order_id: string; razorpay_signature: string }) {
           setPendingVerification({
             razorpay_order_id: response.razorpay_order_id,
@@ -252,7 +252,7 @@ export function UpgradeModal({ onClose, sessionsUsed, user, currentTier, onPayme
 
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(5,5,6,0.88)", backdropFilter: "blur(8px)" }} onClick={onClose} role="dialog" aria-modal="true" aria-label="Choose your plan">
-      <div ref={modalRef} onClick={(e) => e.stopPropagation()} className="upgrade-modal-inner" style={{ background: c.graphite, border: `1px solid ${c.border}`, borderRadius: 18, padding: "36px 32px 32px", maxWidth: 680, width: "94%", position: "relative" }}>
+      <div ref={modalRef} onClick={(e) => e.stopPropagation()} className="upgrade-modal-inner" style={{ background: "linear-gradient(180deg, rgba(30,30,32,0.85) 0%, rgba(17,17,19,0.9) 100%)", backdropFilter: "blur(32px)", WebkitBackdropFilter: "blur(32px)", border: `1px solid rgba(255,255,255,0.08)`, borderRadius: 20, padding: "36px 32px 32px", maxWidth: 680, width: "94%", position: "relative", boxShadow: "0 20px 60px rgba(0,0,0,0.5)" }}>
         <button onClick={onClose} aria-label="Close dialog" style={{ position: "absolute", top: 14, right: 14, background: "none", border: "none", color: c.stone, cursor: "pointer", padding: 4 }}>
           <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </button>
@@ -269,9 +269,9 @@ export function UpgradeModal({ onClose, sessionsUsed, user, currentTier, onPayme
             <span style={{ fontFamily: font.ui, fontSize: 12, color: c.ember, display: "block", marginBottom: 8 }}>{error}</span>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
               {verifyRetries > 0 && (
-                <button onClick={retryVerification} style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.ivory, background: c.ember, border: "none", borderRadius: 6, padding: "5px 14px", cursor: "pointer" }}>Retry Verification</button>
+                <button onClick={retryVerification} style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.ivory, background: c.ember, border: "none", borderRadius: 10, padding: "5px 14px", cursor: "pointer" }}>Retry Verification</button>
               )}
-              <button onClick={() => { setError(null); setVerifyRetries(0); }} style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.gilt, background: "none", border: `1px solid rgba(201,169,110,0.3)`, borderRadius: 6, padding: "4px 12px", cursor: "pointer" }}>Dismiss</button>
+              <button onClick={() => { setError(null); setVerifyRetries(0); }} style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.gilt, background: "none", border: `1px solid rgba(212,179,127,0.3)`, borderRadius: 10, padding: "4px 12px", cursor: "pointer" }}>Dismiss</button>
             </div>
           </div>
         )}
@@ -282,8 +282,8 @@ export function UpgradeModal({ onClose, sessionsUsed, user, currentTier, onPayme
             return (
             <div key={plan.id} style={{
               padding: "24px 20px", borderRadius: 14, position: "relative",
-              background: isCurrent ? "rgba(122,158,126,0.06)" : plan.featured ? "rgba(201,169,110,0.04)" : c.obsidian,
-              border: `1.5px solid ${isCurrent ? "rgba(122,158,126,0.35)" : plan.featured ? "rgba(201,169,110,0.25)" : c.border}`,
+              background: isCurrent ? "rgba(122,158,126,0.06)" : plan.featured ? "rgba(212,179,127,0.04)" : c.obsidian,
+              border: `1.5px solid ${isCurrent ? "rgba(122,158,126,0.35)" : plan.featured ? "rgba(212,179,127,0.25)" : c.border}`,
               display: "flex", flexDirection: "column",
             }}>
               {isCurrent && <div style={{ position: "absolute", top: -1, left: 0, right: 0, height: 2, borderRadius: "14px 14px 0 0", background: `linear-gradient(90deg, transparent, ${c.sage}, transparent)` }} />}
@@ -315,7 +315,7 @@ export function UpgradeModal({ onClose, sessionsUsed, user, currentTier, onPayme
               ) : (
                 <button onClick={() => handleCheckout(plan.id)} disabled={!!loading}
                   style={{ width: "100%", padding: "10px 16px", borderRadius: 8, border: plan.featured ? "none" : `1px solid ${c.borderHover}`, background: plan.featured ? `linear-gradient(135deg, ${c.gilt}, ${c.giltDark})` : "transparent", color: plan.featured ? c.obsidian : c.chalk, fontFamily: font.ui, fontSize: 13, fontWeight: 600, cursor: loading ? "wait" : "pointer", opacity: loading && loading !== plan.id ? 0.5 : 1, transition: "all 0.2s" }}
-                  onMouseEnter={(e) => { if (!loading) { if (plan.featured) e.currentTarget.style.filter = "brightness(1.15)"; else { e.currentTarget.style.borderColor = c.chalk; e.currentTarget.style.background = "rgba(240,237,232,0.03)"; } } }}
+                  onMouseEnter={(e) => { if (!loading) { if (plan.featured) e.currentTarget.style.filter = "brightness(1.15)"; else { e.currentTarget.style.borderColor = c.chalk; e.currentTarget.style.background = "rgba(245,242,237,0.03)"; } } }}
                   onMouseLeave={(e) => { if (plan.featured) e.currentTarget.style.filter = "brightness(1)"; else { e.currentTarget.style.borderColor = c.borderHover; e.currentTarget.style.background = "transparent"; } }}
                 >
                   {loading === "verifying" ? "Verifying..." : loading === plan.id ? "Opening Razorpay..." : plan.featured ? "Go Pro" : "Get Started"}
@@ -338,7 +338,7 @@ export function UpgradeModal({ onClose, sessionsUsed, user, currentTier, onPayme
 export function ProGate({ feature, onUpgrade }: { feature: string; onUpgrade: () => void }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: 400, textAlign: "center", padding: 40 }}>
-      <div style={{ width: 64, height: 64, borderRadius: "50%", background: "rgba(201,169,110,0.06)", border: `1.5px solid rgba(201,169,110,0.15)`, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 20 }}>
+      <div style={{ width: 64, height: 64, borderRadius: "50%", background: "rgba(212,179,127,0.06)", border: `1.5px solid rgba(212,179,127,0.15)`, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 20 }}>
         <svg aria-hidden="true" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
       </div>
       <h3 style={{ fontFamily: font.display, fontSize: 22, fontWeight: 400, color: c.ivory, marginBottom: 8 }}>{feature}</h3>
@@ -370,8 +370,8 @@ export function EmptyState({ onStart, userName, targetRole, isMobile }: { onStar
         {targetRole ? `Let's get you ready for your ${targetRole} interview.` : "Let's get you interview-ready."}
       </p>
 
-      <div style={{ background: `linear-gradient(135deg, rgba(201,169,110,0.1) 0%, ${c.graphite} 100%)`, borderRadius: 16, border: `1px solid rgba(201,169,110,0.15)`, padding: isMobile ? "32px 24px" : "48px 40px", textAlign: "center", marginBottom: 28 }}>
-        <div style={{ width: 72, height: 72, borderRadius: 18, margin: "0 auto 24px", background: "rgba(201,169,110,0.08)", border: `1px solid rgba(201,169,110,0.2)`, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 0 60px rgba(201,169,110,0.08)" }}>
+      <div style={{ background: `linear-gradient(135deg, rgba(212,179,127,0.1) 0%, ${c.graphite} 100%)`, borderRadius: 16, border: `1px solid rgba(212,179,127,0.15)`, padding: isMobile ? "32px 24px" : "48px 40px", textAlign: "center", marginBottom: 28 }}>
+        <div style={{ width: 72, height: 72, borderRadius: 18, margin: "0 auto 24px", background: "rgba(212,179,127,0.08)", border: `1px solid rgba(212,179,127,0.2)`, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 0 60px rgba(212,179,127,0.08)" }}>
           <svg aria-hidden="true" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5" strokeLinecap="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg>
         </div>
         <h2 style={{ fontFamily: font.display, fontSize: isMobile ? 22 : 28, fontWeight: 400, color: c.ivory, marginBottom: 10, letterSpacing: "-0.02em" }}>Start your first mock interview</h2>
@@ -379,7 +379,7 @@ export function EmptyState({ onStart, userName, targetRole, isMobile }: { onStar
           Our AI interviewer will ask you real questions, listen to your answers, and give you detailed feedback — just like a real interview, but without the pressure.
         </p>
         <button className="shimmer-btn" onClick={onStart}
-          style={{ fontFamily: font.ui, fontSize: 15, fontWeight: 500, padding: "14px 36px", borderRadius: 8, border: "none", background: c.gilt, color: c.obsidian, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 10, boxShadow: "0 8px 32px rgba(201,169,110,0.15)" }}
+          style={{ fontFamily: font.ui, fontSize: 15, fontWeight: 500, padding: "14px 36px", borderRadius: 8, border: "none", background: c.gilt, color: c.obsidian, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 10, boxShadow: "0 8px 32px rgba(212,179,127,0.15)" }}
           onMouseEnter={(e) => { e.currentTarget.style.filter = "brightness(1.15)"; }}
           onMouseLeave={(e) => { e.currentTarget.style.filter = "brightness(1)"; }}
         >
@@ -457,7 +457,7 @@ export function SessionDetailView({ session, onBack }: { session: DashboardSessi
         <div className="session-detail-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20, flexWrap: "wrap", gap: 16 }}>
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8 }}>
-              <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: c.gilt, background: "rgba(201,169,110,0.08)", padding: "4px 10px", borderRadius: 4 }}>{session.type}</span>
+              <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: c.gilt, background: "rgba(212,179,127,0.08)", padding: "4px 10px", borderRadius: 4 }}>{session.type}</span>
               <span style={{ fontFamily: font.ui, fontSize: 13, color: c.stone }}>{session.dateLabel} · {session.duration}</span>
             </div>
             <h2 style={{ fontFamily: font.ui, fontSize: 22, fontWeight: 600, color: c.ivory, marginBottom: 4 }}>{session.role}</h2>
@@ -465,7 +465,7 @@ export function SessionDetailView({ session, onBack }: { session: DashboardSessi
           <div style={{ textAlign: "center" }}>
             <div style={{ width: 72, height: 72, position: "relative", display: "flex", alignItems: "center", justifyContent: "center" }}>
               <svg width="72" height="72" viewBox="0 0 72 72" style={{ position: "absolute", transform: "rotate(-90deg)" }}>
-                <circle cx="36" cy="36" r="33" fill="none" stroke="rgba(240,237,232,0.06)" strokeWidth="3" />
+                <circle cx="36" cy="36" r="33" fill="none" stroke="rgba(245,242,237,0.06)" strokeWidth="3" />
                 <circle cx="36" cy="36" r="33" fill="none" stroke={scoreLabelColor(session.score)} strokeWidth="3"
                   strokeDasharray={`${(session.score / 100) * 2 * Math.PI * 33} ${2 * Math.PI * 33}`}
                   strokeLinecap="round" className="score-ring" />
@@ -500,7 +500,7 @@ export function SessionDetailView({ session, onBack }: { session: DashboardSessi
             <div key={i} style={{ display: "flex", alignItems: "center", gap: 16, padding: "12px 16px", borderRadius: 10, background: c.obsidian, border: `1px solid ${c.border}` }}>
               <div style={{ width: 40, height: 40, position: "relative", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                 <svg width="40" height="40" viewBox="0 0 40 40" style={{ position: "absolute", transform: "rotate(-90deg)" }}>
-                  <circle cx="20" cy="20" r="17" fill="none" stroke="rgba(240,237,232,0.06)" strokeWidth="2" />
+                  <circle cx="20" cy="20" r="17" fill="none" stroke="rgba(245,242,237,0.06)" strokeWidth="2" />
                   <circle cx="20" cy="20" r="17" fill="none" stroke={scoreLabelColor(q.score)} strokeWidth="2"
                     strokeDasharray={`${(q.score / 100) * 2 * Math.PI * 17} ${2 * Math.PI * 17}`}
                     strokeLinecap="round" className="score-ring" />
@@ -521,7 +521,7 @@ export function SessionDetailView({ session, onBack }: { session: DashboardSessi
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           {session.transcript.map((msg, i) => (
             <div key={i} style={{ display: "flex", gap: 12, flexDirection: msg.speaker === "user" ? "row-reverse" : "row" }}>
-              <div style={{ width: 32, height: 32, borderRadius: "50%", flexShrink: 0, background: msg.speaker === "ai" ? "rgba(201,169,110,0.1)" : "rgba(122,158,126,0.1)", border: `1px solid ${msg.speaker === "ai" ? "rgba(201,169,110,0.2)" : "rgba(122,158,126,0.2)"}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <div style={{ width: 32, height: 32, borderRadius: "50%", flexShrink: 0, background: msg.speaker === "ai" ? "rgba(212,179,127,0.1)" : "rgba(122,158,126,0.1)", border: `1px solid ${msg.speaker === "ai" ? "rgba(212,179,127,0.2)" : "rgba(122,158,126,0.2)"}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
                 {msg.speaker === "ai" ? (
                   <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v2m0 18v2m-9-11h2m18 0h2M5.6 5.6l1.4 1.4m9.9 9.9l1.4 1.4M5.6 18.4l1.4-1.4m9.9-9.9l1.4-1.4"/></svg>
                 ) : (

@@ -244,7 +244,7 @@ export default function CalendarPage() {
                   <button key={t} onClick={() => setFormType(t)} style={{
                     fontFamily: font.ui, fontSize: 11, fontWeight: 500, padding: "5px 12px",
                     borderRadius: 100, cursor: "pointer",
-                    background: formType === t ? "rgba(201,169,110,0.1)" : "transparent",
+                    background: formType === t ? "rgba(212,179,127,0.1)" : "transparent",
                     border: `1px solid ${formType === t ? c.gilt : c.border}`,
                     color: formType === t ? c.gilt : c.stone,
                     transition: "all 0.2s ease",
@@ -304,7 +304,7 @@ export default function CalendarPage() {
         </h3>
 
         {upcoming.length === 0 ? (
-          <div style={{ background: c.graphite, borderRadius: 12, border: `1px solid ${c.border}`, padding: "40px 28px", textAlign: "center" }}>
+          <div style={{ background: "linear-gradient(180deg, rgba(30,30,32,0.5) 0%, rgba(17,17,19,0.5) 100%)", backdropFilter: "blur(16px)", borderRadius: 14, border: `1px solid ${c.border}`, padding: "40px 28px", textAlign: "center" }}>
             <svg aria-hidden="true" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke={c.stone} strokeWidth="1.5" strokeLinecap="round" style={{ marginBottom: 12, opacity: 0.4 }}>
               <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
             </svg>
@@ -312,8 +312,8 @@ export default function CalendarPage() {
             <p style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, opacity: 0.7, marginBottom: 16 }}>Add your interview schedule to get countdown reminders and prep suggestions.</p>
             <button onClick={openNewForm} style={{
               fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: c.gilt,
-              background: "rgba(201,169,110,0.06)", border: `1px solid rgba(201,169,110,0.15)`,
-              borderRadius: 6, padding: "8px 20px", cursor: "pointer",
+              background: "rgba(212,179,127,0.06)", border: `1px solid rgba(212,179,127,0.15)`,
+              borderRadius: 10, padding: "8px 20px", cursor: "pointer",
             }}>Add Your First Interview</button>
           </div>
         ) : (
@@ -324,7 +324,7 @@ export default function CalendarPage() {
               const isToday = days === 0;
               return (
                 <div key={ev.id} style={{
-                  background: c.graphite, borderRadius: 12,
+                  background: "linear-gradient(180deg, rgba(30,30,32,0.5) 0%, rgba(17,17,19,0.5) 100%)", backdropFilter: "blur(16px)", borderRadius: 14,
                   border: `1px solid ${urgent ? "rgba(196,112,90,0.2)" : c.border}`,
                   borderLeft: `4px solid ${isToday ? c.ember : urgent ? c.gilt : c.sage}`,
                   padding: "20px 24px", transition: "border-color 0.2s",
@@ -339,9 +339,9 @@ export default function CalendarPage() {
                         <span style={{
                           fontFamily: font.ui, fontSize: 10, fontWeight: 600, padding: "3px 10px",
                           borderRadius: 100,
-                          background: isToday ? "rgba(196,112,90,0.12)" : urgent ? "rgba(201,169,110,0.1)" : "rgba(122,158,126,0.08)",
+                          background: isToday ? "rgba(196,112,90,0.12)" : urgent ? "rgba(212,179,127,0.1)" : "rgba(122,158,126,0.08)",
                           color: isToday ? c.ember : urgent ? c.gilt : c.sage,
-                          border: `1px solid ${isToday ? "rgba(196,112,90,0.2)" : urgent ? "rgba(201,169,110,0.15)" : "rgba(122,158,126,0.15)"}`,
+                          border: `1px solid ${isToday ? "rgba(196,112,90,0.2)" : urgent ? "rgba(212,179,127,0.15)" : "rgba(122,158,126,0.15)"}`,
                         }}>
                           {isToday ? "TODAY" : days === 1 ? "TOMORROW" : `${days} days`}
                         </span>
@@ -359,7 +359,7 @@ export default function CalendarPage() {
                           <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={c.stone} strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
                           {ev.company}
                         </span>
-                        <span style={{ fontFamily: font.mono, fontSize: 10, fontWeight: 600, padding: "2px 8px", borderRadius: 4, background: "rgba(201,169,110,0.06)", color: c.gilt, border: `1px solid rgba(201,169,110,0.1)` }}>
+                        <span style={{ fontFamily: font.mono, fontSize: 10, fontWeight: 600, padding: "2px 8px", borderRadius: 4, background: "rgba(212,179,127,0.06)", color: c.gilt, border: `1px solid rgba(212,179,127,0.1)` }}>
                           {ev.type}
                         </span>
                       </div>
@@ -379,7 +379,7 @@ export default function CalendarPage() {
                   <div style={{ display: "flex", gap: 8, flexWrap: "wrap", borderTop: `1px solid ${c.border}`, paddingTop: 12 }}>
                     <button onClick={() => onStartSession()} style={{
                       fontFamily: font.ui, fontSize: 11, fontWeight: 500, color: c.obsidian,
-                      background: c.gilt, border: "none", borderRadius: 6, padding: "7px 16px",
+                      background: c.gilt, border: "none", borderRadius: 10, padding: "7px 16px",
                       cursor: "pointer", display: "flex", alignItems: "center", gap: 5,
                     }}>
                       <svg aria-hidden="true" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="5,3 19,12 5,21"/></svg>
@@ -388,7 +388,7 @@ export default function CalendarPage() {
                     <div style={{ position: "relative" }}>
                       <button onClick={() => handleExportICS(ev)} style={{
                         fontFamily: font.ui, fontSize: 11, fontWeight: 500, color: c.chalk,
-                        background: "rgba(240,237,232,0.04)", border: `1px solid ${c.border}`, borderRadius: 6,
+                        background: "rgba(245,242,237,0.04)", border: `1px solid ${c.border}`, borderRadius: 10,
                         padding: "7px 14px", cursor: "pointer", display: "flex", alignItems: "center", gap: 5,
                       }}>
                         <svg aria-hidden="true" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
@@ -400,7 +400,7 @@ export default function CalendarPage() {
                     </div>
                     <a href={generateGoogleCalendarURL(ev)} target="_blank" rel="noopener noreferrer" style={{
                       fontFamily: font.ui, fontSize: 11, fontWeight: 500, color: c.chalk,
-                      background: "rgba(240,237,232,0.04)", border: `1px solid ${c.border}`, borderRadius: 6,
+                      background: "rgba(245,242,237,0.04)", border: `1px solid ${c.border}`, borderRadius: 10,
                       padding: "7px 14px", cursor: "pointer", display: "flex", alignItems: "center", gap: 5,
                       textDecoration: "none",
                     }}>
@@ -409,12 +409,12 @@ export default function CalendarPage() {
                     </a>
                     <button onClick={() => openEditForm(ev)} style={{
                       fontFamily: font.ui, fontSize: 11, fontWeight: 500, color: c.stone,
-                      background: "transparent", border: `1px solid ${c.border}`, borderRadius: 6,
+                      background: "transparent", border: `1px solid ${c.border}`, borderRadius: 10,
                       padding: "7px 14px", cursor: "pointer",
                     }}>Edit</button>
                     <button onClick={() => handleCancel(ev.id)} style={{
                       fontFamily: font.ui, fontSize: 11, fontWeight: 500, color: c.ember,
-                      background: "transparent", border: `1px solid rgba(196,112,90,0.15)`, borderRadius: 6,
+                      background: "transparent", border: `1px solid rgba(196,112,90,0.15)`, borderRadius: 10,
                       padding: "7px 14px", cursor: "pointer",
                     }}>Cancel</button>
                   </div>

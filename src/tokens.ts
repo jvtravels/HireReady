@@ -1,20 +1,39 @@
 /* ─── Hirloop Design Tokens ─── */
-/* Single source of truth for colors, fonts, and spacing across all screens */
+/* Premium dark luxury design system */
 
 export const c = {
-  obsidian: "#0A0A0B",
-  graphite: "#161618",
-  ivory: "#F0EDE8",
-  stone: "#9A9590",      // 5.3:1 on obsidian — WCAG AA compliant
-  chalk: "#C5C0BA",
-  gilt: "#C9A96E",
-  giltDark: "#B8923E",   // Darker gilt for gradients and hover states
+  /* Surfaces */
+  obsidian: "#060607",
+  graphite: "#111113",
+  carbon: "#191919",       // Elevated surface
+  onyx: "#1E1E20",         // Card hover / raised elements
+
+  /* Text */
+  ivory: "#F5F2ED",
+  chalk: "#CCC7C0",
+  stone: "#8E8983",        // 5.3:1 on obsidian — WCAG AA
+
+  /* Brand */
+  gilt: "#D4B37F",
+  giltDark: "#B8923E",
+  giltLight: "#E8D5AE",    // Soft gold for subtle accents
+
+  /* Semantic */
   sage: "#7A9E7E",
+  sageLight: "#A3C5A7",
   ember: "#C4705A",
-  slate: "#7E8D98",      // 5.1:1 on obsidian — WCAG AA (was #5B6770 at 3.4:1)
-  border: "rgba(240, 237, 232, 0.06)",
-  borderHover: "rgba(240, 237, 232, 0.12)",
-  glow: "rgba(201, 169, 110, 0.06)",
+  emberLight: "#E0917B",
+  slate: "#7E8D98",
+  slateLight: "#A0B0BC",
+
+  /* Borders & effects */
+  border: "rgba(255, 255, 255, 0.06)",
+  borderHover: "rgba(255, 255, 255, 0.10)",
+  borderSubtle: "rgba(255, 255, 255, 0.03)",
+  glass: "rgba(17, 17, 19, 0.7)",
+  glassBright: "rgba(30, 30, 32, 0.8)",
+  glow: "rgba(212, 179, 127, 0.06)",
+  glowStrong: "rgba(212, 179, 127, 0.12)",
 };
 
 export const font = {
@@ -40,9 +59,10 @@ export const sp = {
 /* ─── Shared Border Radius ─── */
 export const radius = {
   sm: 6,
-  md: 8,
-  lg: 12,
-  xl: 14,
+  md: 10,
+  lg: 14,
+  xl: 18,
+  "2xl": 24,
   pill: 100,
 } as const;
 
@@ -58,16 +78,37 @@ export const z = {
 
 /* ─── Shadows ─── */
 export const shadow = {
-  sm: "0 1px 3px rgba(0,0,0,0.2)",
-  md: "0 4px 16px rgba(0,0,0,0.3)",
-  lg: "0 8px 32px rgba(0,0,0,0.4)",
-  glow: "0 0 24px rgba(201,169,110,0.08)",
+  sm: "0 1px 2px rgba(0,0,0,0.2), 0 1px 3px rgba(0,0,0,0.1)",
+  md: "0 4px 12px rgba(0,0,0,0.25), 0 2px 4px rgba(0,0,0,0.15)",
+  lg: "0 12px 40px rgba(0,0,0,0.35), 0 4px 12px rgba(0,0,0,0.2)",
+  xl: "0 20px 60px rgba(0,0,0,0.4), 0 8px 20px rgba(0,0,0,0.25)",
+  glow: "0 0 30px rgba(212,179,127,0.08), 0 0 60px rgba(212,179,127,0.04)",
+  glowStrong: "0 0 40px rgba(212,179,127,0.15), 0 0 80px rgba(212,179,127,0.06)",
+  inner: "inset 0 1px 0 rgba(255,255,255,0.03)",
+} as const;
+
+/* ─── Gradients ─── */
+export const gradient = {
+  giltShine: "linear-gradient(135deg, #D4B37F 0%, #E8D5AE 50%, #D4B37F 100%)",
+  giltSubtle: "linear-gradient(135deg, rgba(212,179,127,0.12) 0%, rgba(212,179,127,0.04) 100%)",
+  surface: "linear-gradient(180deg, #111113 0%, #0D0D0E 100%)",
+  surfaceCard: "linear-gradient(180deg, rgba(30,30,32,0.5) 0%, rgba(17,17,19,0.5) 100%)",
+  meshBg: "radial-gradient(ellipse 80% 50% at 50% -20%, rgba(212,179,127,0.06) 0%, transparent 60%)",
+  sageBg: "radial-gradient(ellipse at center, rgba(122,158,126,0.06) 0%, transparent 70%)",
+  emberBg: "radial-gradient(ellipse at center, rgba(196,112,90,0.06) 0%, transparent 70%)",
 } as const;
 
 /* ─── Animation Durations ─── */
 export const duration = {
   fast: "0.15s",
   normal: "0.2s",
-  slow: "0.3s",
-  enter: "0.25s",
+  slow: "0.35s",
+  enter: "0.4s",
+} as const;
+
+/* ─── Easing ─── */
+export const ease = {
+  out: "cubic-bezier(0.16, 1, 0.3, 1)",
+  inOut: "cubic-bezier(0.4, 0, 0.2, 1)",
+  spring: "cubic-bezier(0.34, 1.56, 0.64, 1)",
 } as const;

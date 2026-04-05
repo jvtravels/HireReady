@@ -110,8 +110,8 @@ export default function ResetPassword() {
                     onClick={() => navigate("/login")}
                     style={{
                       fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: c.gilt,
-                      background: "none", border: `1px solid rgba(201,169,110,0.3)`,
-                      borderRadius: 6, padding: "6px 14px", cursor: "pointer",
+                      background: "none", border: `1px solid rgba(212,179,127,0.3)`,
+                      borderRadius: 10, padding: "6px 14px", cursor: "pointer",
                     }}
                   >
                     Request a new reset link

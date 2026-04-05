@@ -422,11 +422,11 @@ function BlogIndex({ navigate }: { navigate: (path: string) => void }) {
       {/* Nav */}
       <nav style={{ padding: "20px 40px", borderBottom: `1px solid ${c.border}`, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <Link to="/" style={{ textDecoration: "none" }}>
-          <span style={{ fontFamily: font.ui, fontSize: 16, fontWeight: 600, color: c.ivory, letterSpacing: "0.06em" }}>Hirloop</span>
+          <span style={{ fontFamily: font.display, fontSize: 22, fontWeight: 400, color: c.ivory, letterSpacing: "0.02em" }}>Hirloop</span>
         </Link>
         <Link to="/signup" style={{
           fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.obsidian,
-          background: c.ivory, padding: "8px 20px", borderRadius: 6, textDecoration: "none",
+          background: c.ivory, padding: "8px 20px", borderRadius: 10, textDecoration: "none",
         }}>Start Free Practice</Link>
       </nav>
 
@@ -451,7 +451,7 @@ function BlogIndex({ navigate }: { navigate: (path: string) => void }) {
               style={{
                 fontFamily: font.ui, fontSize: 12, fontWeight: 500, padding: "7px 16px",
                 borderRadius: 100, border: "none", cursor: "pointer", transition: "all 0.2s",
-                background: activeCategory === cat ? c.ivory : "rgba(240,237,232,0.05)",
+                background: activeCategory === cat ? c.ivory : "rgba(245,242,237,0.05)",
                 color: activeCategory === cat ? c.obsidian : c.stone,
               }}
             >
@@ -481,8 +481,8 @@ function BlogIndex({ navigate }: { navigate: (path: string) => void }) {
             </div>
             <div style={{ padding: "40px 36px", display: "flex", flexDirection: "column", justifyContent: "center" }}>
               <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
-                <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.gilt, letterSpacing: "0.04em", padding: "3px 10px", background: "rgba(201,169,110,0.08)", borderRadius: 100 }}>{featured.company}</span>
-                <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 500, color: c.stone, padding: "3px 10px", background: "rgba(240,237,232,0.04)", borderRadius: 100 }}>{featured.category}</span>
+                <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.gilt, letterSpacing: "0.04em", padding: "3px 10px", background: "rgba(212,179,127,0.08)", borderRadius: 100 }}>{featured.company}</span>
+                <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 500, color: c.stone, padding: "3px 10px", background: "rgba(245,242,237,0.04)", borderRadius: 100 }}>{featured.category}</span>
               </div>
               <h2 style={{ fontFamily: font.display, fontSize: "clamp(22px, 2.5vw, 30px)", fontWeight: 400, color: c.ivory, lineHeight: 1.25, letterSpacing: "-0.02em", marginBottom: 12 }}>
                 {featured.title}
@@ -522,8 +522,8 @@ function BlogIndex({ navigate }: { navigate: (path: string) => void }) {
               </div>
               <div style={{ padding: "20px 22px", flex: 1, display: "flex", flexDirection: "column" }}>
                 <div style={{ display: "flex", gap: 8, marginBottom: 10, flexWrap: "wrap" }}>
-                  <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, color: c.gilt, letterSpacing: "0.04em", padding: "2px 8px", background: "rgba(201,169,110,0.08)", borderRadius: 100 }}>{post.company}</span>
-                  <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 500, color: c.stone, padding: "2px 8px", background: "rgba(240,237,232,0.04)", borderRadius: 100 }}>{post.category}</span>
+                  <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, color: c.gilt, letterSpacing: "0.04em", padding: "2px 8px", background: "rgba(212,179,127,0.08)", borderRadius: 100 }}>{post.company}</span>
+                  <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 500, color: c.stone, padding: "2px 8px", background: "rgba(245,242,237,0.04)", borderRadius: 100 }}>{post.category}</span>
                 </div>
                 <h3 style={{ fontFamily: font.ui, fontSize: 15, fontWeight: 600, color: c.ivory, lineHeight: 1.35, marginBottom: 8, flex: 1 }}>
                   {post.title}
@@ -541,7 +541,7 @@ function BlogIndex({ navigate }: { navigate: (path: string) => void }) {
         {/* Bottom CTA */}
         <div style={{
           marginTop: 56, textAlign: "center", padding: "40px 32px",
-          background: "rgba(201,169,110,0.04)", border: `1px solid rgba(201,169,110,0.1)`,
+          background: "rgba(212,179,127,0.04)", border: `1px solid rgba(212,179,127,0.1)`,
           borderRadius: 16,
         }}>
           <p style={{ fontFamily: font.display, fontSize: "clamp(20px, 2.5vw, 28px)", fontWeight: 400, color: c.ivory, letterSpacing: "-0.02em", marginBottom: 12 }}>
@@ -589,14 +589,14 @@ function BlogPostPage({ post }: { post: BlogPost }) {
       <nav style={{ padding: "20px 40px", borderBottom: `1px solid ${c.border}`, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <Link to="/" style={{ textDecoration: "none" }}>
-            <span style={{ fontFamily: font.ui, fontSize: 16, fontWeight: 600, color: c.ivory, letterSpacing: "0.06em" }}>Hirloop</span>
+            <span style={{ fontFamily: font.display, fontSize: 22, fontWeight: 400, color: c.ivory, letterSpacing: "0.02em" }}>Hirloop</span>
           </Link>
           <span style={{ color: c.stone, fontSize: 14 }}>/</span>
           <Link to="/blog" style={{ textDecoration: "none", fontFamily: font.ui, fontSize: 13, color: c.stone }}>Blog</Link>
         </div>
         <Link to="/signup" style={{
           fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.obsidian,
-          background: c.ivory, padding: "8px 20px", borderRadius: 6, textDecoration: "none",
+          background: c.ivory, padding: "8px 20px", borderRadius: 10, textDecoration: "none",
         }}>Start Free Practice</Link>
       </nav>
 
@@ -610,8 +610,8 @@ function BlogPostPage({ post }: { post: BlogPost }) {
         <div style={{ position: "absolute", inset: 0, background: `linear-gradient(to top, ${c.obsidian} 0%, ${c.obsidian}80 40%, transparent 100%)` }} />
         <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, maxWidth: 720, margin: "0 auto", padding: "0 40px 40px" }}>
           <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
-            <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.gilt, letterSpacing: "0.04em", padding: "4px 12px", background: "rgba(201,169,110,0.12)", borderRadius: 100, backdropFilter: "blur(8px)" }}>{post.company}</span>
-            <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 500, color: c.chalk, padding: "4px 12px", background: "rgba(240,237,232,0.08)", borderRadius: 100, backdropFilter: "blur(8px)" }}>{post.category}</span>
+            <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.gilt, letterSpacing: "0.04em", padding: "4px 12px", background: "rgba(212,179,127,0.12)", borderRadius: 100, backdropFilter: "blur(8px)" }}>{post.company}</span>
+            <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 500, color: c.chalk, padding: "4px 12px", background: "rgba(245,242,237,0.08)", borderRadius: 100, backdropFilter: "blur(8px)" }}>{post.category}</span>
           </div>
           <h1 style={{ fontFamily: font.display, fontSize: "clamp(28px, 4vw, 42px)", fontWeight: 400, color: c.ivory, letterSpacing: "-0.02em", lineHeight: 1.2 }}>
             {post.title}
@@ -697,8 +697,8 @@ function BlogPostPage({ post }: { post: BlogPost }) {
 
         {/* CTA */}
         <div style={{
-          background: `linear-gradient(135deg, rgba(201,169,110,0.08), rgba(201,169,110,0.03))`,
-          border: `1px solid rgba(201,169,110,0.15)`,
+          background: `linear-gradient(135deg, rgba(212,179,127,0.08), rgba(212,179,127,0.03))`,
+          border: `1px solid rgba(212,179,127,0.15)`,
           borderRadius: 16, padding: "36px 40px", textAlign: "center", marginTop: 48,
         }}>
           <p style={{ fontFamily: font.display, fontSize: "clamp(20px, 2.5vw, 26px)", fontWeight: 400, color: c.ivory, letterSpacing: "-0.02em", marginBottom: 8 }}>

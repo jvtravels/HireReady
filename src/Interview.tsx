@@ -410,7 +410,7 @@ function AIAvatar({ isSpeaking, isThinking }: { isSpeaking: boolean; isThinking:
       {isThinking && (
         <div style={{
           position: "absolute", inset: -4, borderRadius: "50%",
-          border: `1.5px dashed rgba(201,169,110,0.3)`,
+          border: `1.5px dashed rgba(212,179,127,0.3)`,
           animation: "spin 6s linear infinite",
         }} />
       )}
@@ -418,11 +418,11 @@ function AIAvatar({ isSpeaking, isThinking }: { isSpeaking: boolean; isThinking:
       {/* Avatar circle */}
       <div style={{
         width: 56, height: 56, borderRadius: "50%",
-        background: `linear-gradient(145deg, rgba(201,169,110,0.12) 0%, rgba(201,169,110,0.04) 100%)`,
-        border: `1.5px solid ${isSpeaking ? "rgba(201,169,110,0.5)" : isThinking ? "rgba(201,169,110,0.25)" : c.border}`,
+        background: `linear-gradient(145deg, rgba(212,179,127,0.12) 0%, rgba(212,179,127,0.04) 100%)`,
+        border: `1.5px solid ${isSpeaking ? "rgba(212,179,127,0.5)" : isThinking ? "rgba(212,179,127,0.25)" : c.border}`,
         display: "flex", alignItems: "center", justifyContent: "center",
         transition: "all 0.4s ease",
-        boxShadow: isSpeaking ? "0 0 24px rgba(201,169,110,0.1)" : "none",
+        boxShadow: isSpeaking ? "0 0 24px rgba(212,179,127,0.1)" : "none",
       }}>
         <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5" strokeLinecap="round">
           <circle cx="12" cy="12" r="3" />
@@ -523,8 +523,8 @@ function UserWebcam({ isMuted, isCameraOff }: { isMuted: boolean; isCameraOff: b
         <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12 }}>
           <div style={{
             width: 64, height: 64, borderRadius: "50%",
-            background: "rgba(201,169,110,0.08)",
-            border: `1px solid rgba(201,169,110,0.2)`,
+            background: "rgba(212,179,127,0.08)",
+            border: `1px solid rgba(212,179,127,0.2)`,
             display: "flex", alignItems: "center", justifyContent: "center",
           }}>
             <svg aria-hidden="true" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={c.stone} strokeWidth="1.5" strokeLinecap="round">
@@ -559,8 +559,8 @@ function UserWebcam({ isMuted, isCameraOff }: { isMuted: boolean; isCameraOff: b
       {/* Name tag */}
       <div style={{
         position: "absolute", bottom: 12, left: 12,
-        padding: "4px 10px", borderRadius: 6,
-        background: "rgba(10,10,11,0.7)",
+        padding: "4px 10px", borderRadius: 10,
+        background: "rgba(6,6,7,0.7)",
         backdropFilter: "blur(8px)",
       }}>
         <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 500, color: c.ivory }}>You</span>
@@ -588,8 +588,8 @@ function ControlButton({ icon, label, active, danger, onClick }: {
       aria-label={label}
       style={{
         width: 48, height: 48, borderRadius: "50%",
-        background: danger ? c.ember : active ? "rgba(240,237,232,0.08)" : "rgba(240,237,232,0.04)",
-        border: `1px solid ${danger ? "rgba(196,112,90,0.3)" : active ? "rgba(240,237,232,0.15)" : c.border}`,
+        background: danger ? c.ember : active ? "rgba(245,242,237,0.08)" : "rgba(245,242,237,0.04)",
+        border: `1px solid ${danger ? "rgba(196,112,90,0.3)" : active ? "rgba(245,242,237,0.15)" : c.border}`,
         color: danger ? c.ivory : active ? c.ivory : c.stone,
         cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
         transition: "all 0.2s ease", outline: "none",
@@ -597,11 +597,11 @@ function ControlButton({ icon, label, active, danger, onClick }: {
       onFocus={(e) => e.currentTarget.style.boxShadow = `0 0 0 2px ${danger ? c.ember : c.gilt}40`}
       onBlur={(e) => e.currentTarget.style.boxShadow = "none"}
       onMouseEnter={(e) => {
-        e.currentTarget.style.background = danger ? "#d4614a" : "rgba(240,237,232,0.1)";
+        e.currentTarget.style.background = danger ? "#d4614a" : "rgba(245,242,237,0.1)";
         e.currentTarget.style.transform = "scale(1.05)";
       }}
       onMouseLeave={(e) => {
-        e.currentTarget.style.background = danger ? c.ember : active ? "rgba(240,237,232,0.08)" : "rgba(240,237,232,0.04)";
+        e.currentTarget.style.background = danger ? c.ember : active ? "rgba(245,242,237,0.08)" : "rgba(245,242,237,0.04)";
         e.currentTarget.style.transform = "scale(1)";
       }}
     >
@@ -1158,11 +1158,11 @@ export default function Interview() {
         @media (max-width: 800px) {
           .interview-split { flex-direction: column !important; }
           .interview-left { flex: 1 1 auto !important; min-height: 0 !important; }
-          .interview-right { width: 100% !important; max-width: none !important; min-width: 0 !important; height: 160px !important; flex: 0 0 160px !important; border-left: none !important; border-top: 1px solid rgba(240,237,232,0.06) !important; flex-direction: row !important; }
+          .interview-right { width: 100% !important; max-width: none !important; min-width: 0 !important; height: 160px !important; flex: 0 0 160px !important; border-left: none !important; border-top: 1px solid rgba(245,242,237,0.06) !important; flex-direction: row !important; }
           .interview-right > div:first-child { margin: 8px !important; flex: 0 0 140px !important; }
           .interview-right .interview-stats { display: flex !important; flex: 1 !important; padding: 8px !important; }
           .interview-right .interview-stats > div { padding: 10px 12px !important; }
-          .interview-transcript-panel { width: 100% !important; max-width: none !important; min-width: 0 !important; height: 50% !important; flex: 0 0 50% !important; border-left: none !important; border-top: 1px solid rgba(240,237,232,0.06) !important; }
+          .interview-transcript-panel { width: 100% !important; max-width: none !important; min-width: 0 !important; height: 50% !important; flex: 0 0 50% !important; border-left: none !important; border-top: 1px solid rgba(245,242,237,0.06) !important; }
           .interview-avatar-row { padding: 16px 16px 0 !important; gap: 12px !important; }
           .interview-avatar-row .ai-avatar-wrap { display: none; }
           .interview-qcard { padding: 12px 16px !important; }
@@ -1231,8 +1231,8 @@ export default function Interview() {
           </div>
           <div className="interview-type-badge" style={{
             padding: "3px 10px", borderRadius: 100,
-            background: "rgba(201,169,110,0.06)",
-            border: `1px solid rgba(201,169,110,0.12)`,
+            background: "rgba(212,179,127,0.06)",
+            border: `1px solid rgba(212,179,127,0.12)`,
           }}>
             <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 500, color: c.gilt, letterSpacing: "0.02em" }}>
               {interviewType.split("-").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ")}{interviewFocus !== "general" ? ` · ${interviewFocus.split("-").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ")}` : ""}{user?.targetRole ? ` · ${user.targetRole}` : ""}
@@ -1248,7 +1248,7 @@ export default function Interview() {
               {interviewScript.filter(s => s.type === "question" || s.type === "closing").map((_, i) => (
                 <div key={i} style={{
                   width: i < currentQuestionNum ? 18 : 10, height: 3, borderRadius: 2,
-                  background: i < currentQuestionNum ? c.gilt : i === currentQuestionNum ? "rgba(201,169,110,0.4)" : "rgba(240,237,232,0.08)",
+                  background: i < currentQuestionNum ? c.gilt : i === currentQuestionNum ? "rgba(212,179,127,0.4)" : "rgba(245,242,237,0.08)",
                   transition: "all 0.3s ease",
                 }} />
               ))}
@@ -1258,7 +1258,7 @@ export default function Interview() {
           {/* LLM loading indicator */}
           {llmLoading && currentStep <= 1 && (
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <div style={{ width: 10, height: 10, border: "1.5px solid rgba(201,169,110,0.3)", borderTopColor: c.gilt, borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
+              <div style={{ width: 10, height: 10, border: "1.5px solid rgba(212,179,127,0.3)", borderTopColor: c.gilt, borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
               <span style={{ fontFamily: font.ui, fontSize: 10, color: c.stone }}>Generating questions...</span>
             </div>
           )}
@@ -1305,7 +1305,7 @@ export default function Interview() {
               onClick={() => setShowTranscript(!showTranscript)}
               title="Toggle transcript"
               aria-label="Toggle transcript"
-              style={{ width: 32, height: 32, borderRadius: 8, background: showTranscript ? "rgba(201,169,110,0.1)" : "transparent", border: `1px solid ${showTranscript ? "rgba(201,169,110,0.2)" : "transparent"}`, color: showTranscript ? c.gilt : c.stone, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s" }}
+              style={{ width: 32, height: 32, borderRadius: 8, background: showTranscript ? "rgba(212,179,127,0.1)" : "transparent", border: `1px solid ${showTranscript ? "rgba(212,179,127,0.2)" : "transparent"}`, color: showTranscript ? c.gilt : c.stone, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s" }}
             >
               <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
             </button>
@@ -1343,7 +1343,7 @@ export default function Interview() {
                     fontFamily: font.ui, fontSize: 10, fontWeight: 500,
                     color: phase === "speaking" ? c.gilt : phase === "listening" ? c.sage : c.stone,
                     padding: "2px 8px", borderRadius: 100,
-                    background: phase === "speaking" ? "rgba(201,169,110,0.08)" : phase === "listening" ? "rgba(122,158,126,0.08)" : "rgba(240,237,232,0.03)",
+                    background: phase === "speaking" ? "rgba(212,179,127,0.08)" : phase === "listening" ? "rgba(122,158,126,0.08)" : "rgba(245,242,237,0.03)",
                   }}>
                     {phase === "thinking" ? "Preparing..." :
                      phase === "speaking" ? "Speaking" :
@@ -1361,18 +1361,18 @@ export default function Interview() {
             {/* Question Card */}
             <div style={{
               background: c.graphite, borderRadius: 14,
-              border: `1px solid ${phase === "speaking" ? "rgba(201,169,110,0.12)" : c.border}`,
+              border: `1px solid ${phase === "speaking" ? "rgba(212,179,127,0.12)" : c.border}`,
               padding: "24px 28px",
               transition: "all 0.4s ease",
             }}>
               {/* Score note */}
               {step?.scoreNote && phase !== "done" && (
                 <p style={{
-                  fontFamily: font.ui, fontSize: 11, color: "rgba(201,169,110,0.6)",
+                  fontFamily: font.ui, fontSize: 11, color: "rgba(212,179,127,0.6)",
                   letterSpacing: "0.02em", margin: "0 0 12px",
                   display: "flex", alignItems: "center", gap: 5,
                 }}>
-                  <svg aria-hidden="true" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="rgba(201,169,110,0.5)" strokeWidth="1.5" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4m0-4h.01"/></svg>
+                  <svg aria-hidden="true" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="rgba(212,179,127,0.5)" strokeWidth="1.5" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4m0-4h.01"/></svg>
                   {step.scoreNote}
                 </p>
               )}
@@ -1441,7 +1441,7 @@ export default function Interview() {
                       style={{
                         fontFamily: font.ui, fontSize: 11, fontWeight: 500, color: c.sage,
                         background: "rgba(122,158,126,0.06)", border: `1px solid rgba(122,158,126,0.15)`,
-                        borderRadius: 6, padding: "4px 12px", cursor: "pointer", marginTop: 4,
+                        borderRadius: 10, padding: "4px 12px", cursor: "pointer", marginTop: 4,
                         display: "inline-flex", alignItems: "center", gap: 5,
                         transition: "all 0.2s",
                       }}
@@ -1490,8 +1490,8 @@ export default function Interview() {
                   <div role="status" style={{
                     display: "flex", alignItems: "center", gap: 8,
                     padding: "6px 12px", borderRadius: 8, marginBottom: 12,
-                    background: answerTimer >= 180 ? "rgba(196,112,90,0.08)" : "rgba(201,169,110,0.06)",
-                    border: `1px solid ${answerTimer >= 180 ? "rgba(196,112,90,0.15)" : "rgba(201,169,110,0.12)"}`,
+                    background: answerTimer >= 180 ? "rgba(196,112,90,0.08)" : "rgba(212,179,127,0.06)",
+                    border: `1px solid ${answerTimer >= 180 ? "rgba(196,112,90,0.15)" : "rgba(212,179,127,0.12)"}`,
                   }}>
                     <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={answerTimer >= 180 ? c.ember : c.gilt} strokeWidth="1.5" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                     <span style={{ fontFamily: font.ui, fontSize: 11, color: answerTimer >= 240 ? c.ember : answerTimer >= 180 ? c.ember : c.gilt }}>
@@ -1511,10 +1511,10 @@ export default function Interview() {
                       border: "none", color: c.obsidian, cursor: "pointer",
                       display: "flex", alignItems: "center", gap: 8,
                       transition: "all 0.2s ease",
-                      boxShadow: "0 4px 16px rgba(201,169,110,0.2)",
+                      boxShadow: "0 4px 16px rgba(212,179,127,0.2)",
                     }}
-                    onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 6px 20px rgba(201,169,110,0.3)"; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 4px 16px rgba(201,169,110,0.2)"; }}
+                    onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 6px 20px rgba(212,179,127,0.3)"; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 4px 16px rgba(212,179,127,0.2)"; }}
                   >
                     {currentStep < interviewScript.length - 1 ? "Next Question" : "Finish"}
                     <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
@@ -1539,7 +1539,7 @@ export default function Interview() {
                 <p style={{ fontFamily: font.ui, fontSize: 16, fontWeight: 600, color: c.ivory, margin: 0 }}>Session complete</p>
                 <p style={{ fontFamily: font.ui, fontSize: 13, color: c.stone, margin: 0 }}>{currentQuestionNum} questions answered · {formatTime(elapsed)}</p>
                 {(usedFallbackScore || evalTimedOut) && (
-                  <p style={{ fontFamily: font.ui, fontSize: 11, color: c.gilt, margin: 0, padding: "6px 12px", borderRadius: 6, background: "rgba(201,169,110,0.06)", border: "1px solid rgba(201,169,110,0.1)" }}>
+                  <p style={{ fontFamily: font.ui, fontSize: 11, color: c.gilt, margin: 0, padding: "6px 12px", borderRadius: 10, background: "rgba(212,179,127,0.06)", border: "1px solid rgba(212,179,127,0.1)" }}>
                     {evalTimedOut ? "AI evaluation timed out" : "AI evaluation unavailable"} — score is estimated from session metrics
                   </p>
                 )}
@@ -1604,8 +1604,8 @@ export default function Interview() {
                   </span>
                   <div style={{
                     padding: "2px 10px", borderRadius: 100,
-                    background: phase === "listening" ? "rgba(122,158,126,0.1)" : phase === "speaking" ? "rgba(201,169,110,0.06)" : "rgba(240,237,232,0.04)",
-                    border: `1px solid ${phase === "listening" ? "rgba(122,158,126,0.2)" : phase === "speaking" ? "rgba(201,169,110,0.12)" : c.border}`,
+                    background: phase === "listening" ? "rgba(122,158,126,0.1)" : phase === "speaking" ? "rgba(212,179,127,0.06)" : "rgba(245,242,237,0.04)",
+                    border: `1px solid ${phase === "listening" ? "rgba(122,158,126,0.2)" : phase === "speaking" ? "rgba(212,179,127,0.12)" : c.border}`,
                   }}>
                     <span style={{
                       fontFamily: font.ui, fontSize: 10, fontWeight: 500,
@@ -1674,7 +1674,7 @@ export default function Interview() {
                 <div key={i} style={{ display: "flex", gap: 10 }}>
                   <div style={{
                     width: 20, height: 20, borderRadius: "50%", flexShrink: 0, marginTop: 2,
-                    background: msg.speaker === "ai" ? "rgba(201,169,110,0.08)" : "rgba(122,158,126,0.08)",
+                    background: msg.speaker === "ai" ? "rgba(212,179,127,0.08)" : "rgba(122,158,126,0.08)",
                     display: "flex", alignItems: "center", justifyContent: "center",
                   }}>
                     {msg.speaker === "ai" ? (
@@ -1712,11 +1712,11 @@ export default function Interview() {
           <div style={{
             display: "inline-flex", alignItems: "center", gap: 6,
             padding: "4px 12px", borderRadius: 100,
-            background: phase === "listening" ? "rgba(122,158,126,0.06)" : phase === "speaking" ? "rgba(201,169,110,0.05)" : "transparent",
-            border: `1px solid ${phase === "listening" ? "rgba(122,158,126,0.12)" : phase === "speaking" ? "rgba(201,169,110,0.1)" : c.border}`,
+            background: phase === "listening" ? "rgba(122,158,126,0.06)" : phase === "speaking" ? "rgba(212,179,127,0.05)" : "transparent",
+            border: `1px solid ${phase === "listening" ? "rgba(122,158,126,0.12)" : phase === "speaking" ? "rgba(212,179,127,0.1)" : c.border}`,
           }}>
             {phase === "thinking" ? (
-              <div style={{ width: 8, height: 8, border: "1.5px solid rgba(201,169,110,0.3)", borderTopColor: c.gilt, borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
+              <div style={{ width: 8, height: 8, border: "1.5px solid rgba(212,179,127,0.3)", borderTopColor: c.gilt, borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
             ) : phase === "done" ? (
               <svg aria-hidden="true" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="2.5" strokeLinecap="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
             ) : (
@@ -1732,7 +1732,7 @@ export default function Interview() {
         <div style={{ flex: 1, textAlign: "center" }}>
           {phase === "listening" && (
             <span style={{ fontFamily: font.ui, fontSize: 10, color: c.stone, letterSpacing: "0.02em" }}>
-              <kbd style={{ fontFamily: font.mono, fontSize: 9, padding: "1px 5px", borderRadius: 3, background: "rgba(240,237,232,0.04)", border: `1px solid ${c.border}`, color: c.chalk }}>Enter</kbd> to advance
+              <kbd style={{ fontFamily: font.mono, fontSize: 9, padding: "1px 5px", borderRadius: 3, background: "rgba(245,242,237,0.04)", border: `1px solid ${c.border}`, color: c.chalk }}>Enter</kbd> to advance
             </span>
           )}
         </div>
@@ -1747,7 +1747,7 @@ export default function Interview() {
               fontFamily: font.ui, fontSize: 11, fontWeight: 500,
               padding: "6px 16px", borderRadius: 8,
               background: phase === "done" ? `linear-gradient(135deg, ${c.gilt}, ${c.giltDark})` : "transparent",
-              border: phase === "done" ? "none" : `1px solid rgba(240,237,232,0.08)`,
+              border: phase === "done" ? "none" : `1px solid rgba(245,242,237,0.08)`,
               color: phase === "done" ? c.obsidian : c.stone,
               cursor: "pointer", transition: "all 0.25s",
               display: "flex", alignItems: "center", gap: 5,
@@ -1758,7 +1758,7 @@ export default function Interview() {
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.filter = "brightness(1)";
-              if (phase !== "done") { e.currentTarget.style.color = c.stone; e.currentTarget.style.borderColor = "rgba(240,237,232,0.08)"; }
+              if (phase !== "done") { e.currentTarget.style.color = c.stone; e.currentTarget.style.borderColor = "rgba(245,242,237,0.08)"; }
             }}
           >
             {phase === "done" ? (
@@ -1834,11 +1834,11 @@ export default function Interview() {
               <button onClick={() => { setShowEndModal(false); endModalTriggerRef.current?.focus(); }}
                 style={{
                   fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.ivory,
-                  background: "rgba(240,237,232,0.04)", border: `1px solid ${c.border}`,
+                  background: "rgba(245,242,237,0.04)", border: `1px solid ${c.border}`,
                   borderRadius: 8, padding: "10px 24px", cursor: "pointer",
                 }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(240,237,232,0.08)"; }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(240,237,232,0.04)"; }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(245,242,237,0.08)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(245,242,237,0.04)"; }}
               >
                 Continue
               </button>
@@ -1875,7 +1875,7 @@ export default function Interview() {
             <div style={{ height: "100%", borderRadius: 2, background: c.gilt, transition: "width 1s ease", width: `${Math.min(95, (evalElapsed / 30) * 100)}%` }} />
           </div>
           {usedFallbackScore && (
-            <div style={{ marginTop: 16, padding: "10px 16px", borderRadius: 8, background: "rgba(201,169,110,0.06)", border: "1px solid rgba(201,169,110,0.12)", maxWidth: 400 }}>
+            <div style={{ marginTop: 16, padding: "10px 16px", borderRadius: 8, background: "rgba(212,179,127,0.06)", border: "1px solid rgba(212,179,127,0.12)", maxWidth: 400 }}>
               <p style={{ fontFamily: font.ui, fontSize: 12, color: c.gilt, margin: 0 }}>AI evaluation unavailable — using estimated score based on your session metrics.</p>
             </div>
           )}

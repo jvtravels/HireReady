@@ -121,7 +121,7 @@ export default function CommandPalette({ onStartSession, onExport, sessions = []
             placeholder="Search commands, pages, sessions..."
             style={{ flex: 1, background: "none", border: "none", outline: "none", fontFamily: font.ui, fontSize: 15, color: c.ivory }}
           />
-          <kbd style={{ fontFamily: font.mono, fontSize: 10, color: c.stone, background: "rgba(240,237,232,0.04)", border: `1px solid ${c.border}`, borderRadius: 4, padding: "2px 6px" }}>esc</kbd>
+          <kbd style={{ fontFamily: font.mono, fontSize: 10, color: c.stone, background: "rgba(245,242,237,0.04)", border: `1px solid ${c.border}`, borderRadius: 4, padding: "2px 6px" }}>esc</kbd>
         </div>
         <div style={{ maxHeight: 360, overflowY: "auto", padding: "6px 0" }}>
           {filtered.length === 0 && (
@@ -140,7 +140,7 @@ export default function CommandPalette({ onStartSession, onExport, sessions = []
                       style={{
                         display: "flex", alignItems: "center", gap: 12, width: "100%", padding: "10px 18px",
                         fontFamily: font.ui, fontSize: 14, color: selected === idx ? c.ivory : c.chalk,
-                        background: selected === idx ? "rgba(201,169,110,0.08)" : "transparent",
+                        background: selected === idx ? "rgba(212,179,127,0.08)" : "transparent",
                         border: "none", cursor: "pointer", transition: "background 0.1s", textAlign: "left",
                       }}>
                       <span style={{ opacity: 0.5 }}>{cmd.icon}</span>
@@ -157,10 +157,10 @@ export default function CommandPalette({ onStartSession, onExport, sessions = []
         </div>
         <div style={{ padding: "10px 18px", borderTop: `1px solid ${c.border}`, display: "flex", gap: 16, alignItems: "center" }}>
           <span style={{ fontFamily: font.mono, fontSize: 10, color: c.stone }}>
-            <kbd style={{ fontFamily: font.mono, fontSize: 10, color: c.stone, background: "rgba(240,237,232,0.04)", border: `1px solid ${c.border}`, borderRadius: 3, padding: "1px 4px" }}>↑↓</kbd> navigate
+            <kbd style={{ fontFamily: font.mono, fontSize: 10, color: c.stone, background: "rgba(245,242,237,0.04)", border: `1px solid ${c.border}`, borderRadius: 3, padding: "1px 4px" }}>↑↓</kbd> navigate
           </span>
           <span style={{ fontFamily: font.mono, fontSize: 10, color: c.stone }}>
-            <kbd style={{ fontFamily: font.mono, fontSize: 10, color: c.stone, background: "rgba(240,237,232,0.04)", border: `1px solid ${c.border}`, borderRadius: 3, padding: "1px 4px" }}>↵</kbd> select
+            <kbd style={{ fontFamily: font.mono, fontSize: 10, color: c.stone, background: "rgba(245,242,237,0.04)", border: `1px solid ${c.border}`, borderRadius: 3, padding: "1px 4px" }}>↵</kbd> select
           </span>
         </div>
       </div>

@@ -312,7 +312,7 @@ export default function SessionDetail() {
               cursor: "pointer", display: "flex", alignItems: "center", gap: 6,
               transition: "all 0.2s ease",
             }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(240,237,232,0.06)"; }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(245,242,237,0.06)"; }}
               onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}>
               <svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
               Download
@@ -322,7 +322,7 @@ export default function SessionDetail() {
 
         {/* Score celebration + upgrade trigger */}
         {session.score >= 85 && (
-          <div style={{ background: "linear-gradient(135deg, rgba(122,158,126,0.08) 0%, rgba(201,169,110,0.06) 100%)", borderRadius: 14, border: `1px solid rgba(122,158,126,0.2)`, padding: "20px 28px", marginBottom: 20, display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
+          <div style={{ background: "linear-gradient(135deg, rgba(122,158,126,0.08) 0%, rgba(212,179,127,0.06) 100%)", borderRadius: 14, border: `1px solid rgba(122,158,126,0.2)`, padding: "20px 28px", marginBottom: 20, display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
             <div style={{ fontSize: 28 }}>🎉</div>
             <div style={{ flex: 1, minWidth: 200 }}>
               <p style={{ fontFamily: font.ui, fontSize: 15, fontWeight: 600, color: c.sage, marginBottom: 2 }}>Outstanding Performance!</p>
@@ -344,7 +344,7 @@ export default function SessionDetail() {
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20, flexWrap: "wrap", gap: 16 }}>
             <div>
               <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8 }}>
-                <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: c.gilt, background: "rgba(201,169,110,0.08)", padding: "4px 10px", borderRadius: 4 }}>{type}</span>
+                <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: c.gilt, background: "rgba(212,179,127,0.08)", padding: "4px 10px", borderRadius: 4 }}>{type}</span>
                 <span style={{ fontSize: 13, color: c.stone }}>{dateLabel} · {durationMin} min</span>
               </div>
               <h2 style={{ fontSize: 22, fontWeight: 600, color: c.ivory, marginBottom: 4 }}>{session.focus || type} Interview</h2>
@@ -386,7 +386,7 @@ export default function SessionDetail() {
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
               {session.ideal_answers.map((item, i) => (
                 <div key={i} style={{ borderRadius: 10, border: `1px solid ${c.border}`, overflow: "hidden" }}>
-                  <div style={{ padding: "12px 16px", background: "rgba(201,169,110,0.04)", borderBottom: `1px solid ${c.border}` }}>
+                  <div style={{ padding: "12px 16px", background: "rgba(212,179,127,0.04)", borderBottom: `1px solid ${c.border}` }}>
                     <span style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: c.ivory }}>{item.question}</span>
                   </div>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 0 }}>
@@ -414,8 +414,8 @@ export default function SessionDetail() {
                 <div key={i} style={{ display: "flex", gap: 12, flexDirection: msg.speaker === "user" ? "row-reverse" : "row" }}>
                   <div style={{
                     width: 32, height: 32, borderRadius: "50%", flexShrink: 0,
-                    background: msg.speaker === "ai" ? "rgba(201,169,110,0.1)" : "rgba(122,158,126,0.1)",
-                    border: `1px solid ${msg.speaker === "ai" ? "rgba(201,169,110,0.2)" : "rgba(122,158,126,0.2)"}`,
+                    background: msg.speaker === "ai" ? "rgba(212,179,127,0.1)" : "rgba(122,158,126,0.1)",
+                    border: `1px solid ${msg.speaker === "ai" ? "rgba(212,179,127,0.2)" : "rgba(122,158,126,0.2)"}`,
                     display: "flex", alignItems: "center", justifyContent: "center",
                   }}>
                     {msg.speaker === "ai" ? (
@@ -484,7 +484,7 @@ export default function SessionDetail() {
                     </div>
                   )}
                   {tips.length > 0 && (
-                    <div style={{ padding: "14px 16px", borderRadius: 10, background: "rgba(201,169,110,0.04)", border: `1px solid rgba(201,169,110,0.12)`, borderLeft: `3px solid ${c.gilt}` }}>
+                    <div style={{ padding: "14px 16px", borderRadius: 10, background: "rgba(212,179,127,0.04)", border: `1px solid rgba(212,179,127,0.12)`, borderLeft: `3px solid ${c.gilt}` }}>
                       <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", color: c.gilt, display: "block", marginBottom: 6 }}>Tips</span>
                       {tips.map((s, i) => <p key={i} style={{ fontSize: 13, color: c.chalk, lineHeight: 1.6, margin: i > 0 ? "4px 0 0" : 0 }}>{s}</p>)}
                     </div>
@@ -519,9 +519,9 @@ export default function SessionDetail() {
                       aria-pressed={isSelected}
                       style={{
                         fontFamily: font.ui, fontSize: 11, fontWeight: 500, padding: "6px 12px",
-                        borderRadius: 6, cursor: "pointer", display: "flex", alignItems: "center", gap: 4,
-                        border: `1px solid ${isSelected ? "rgba(201,169,110,0.3)" : c.border}`,
-                        background: isSelected ? "rgba(201,169,110,0.08)" : "transparent",
+                        borderRadius: 10, cursor: "pointer", display: "flex", alignItems: "center", gap: 4,
+                        border: `1px solid ${isSelected ? "rgba(212,179,127,0.3)" : c.border}`,
+                        background: isSelected ? "rgba(212,179,127,0.08)" : "transparent",
                         color: isSelected ? c.gilt : c.stone,
                         transition: "all 0.15s ease",
                       }}
@@ -543,10 +543,10 @@ export default function SessionDetail() {
                   maxLength={500}
                   style={{
                     flex: 1, fontFamily: font.ui, fontSize: 12, color: c.chalk,
-                    background: c.obsidian, border: `1px solid ${c.border}`, borderRadius: 6,
+                    background: c.obsidian, border: `1px solid ${c.border}`, borderRadius: 10,
                     padding: "8px 12px", outline: "none",
                   }}
-                  onFocus={(e) => { e.currentTarget.style.borderColor = "rgba(201,169,110,0.3)"; }}
+                  onFocus={(e) => { e.currentTarget.style.borderColor = "rgba(212,179,127,0.3)"; }}
                   onBlur={(e) => { e.currentTarget.style.borderColor = c.border; }}
                   onKeyDown={(e) => { if (e.key === "Enter") submitComment(); }}
                 />
@@ -554,7 +554,7 @@ export default function SessionDetail() {
                   onClick={submitComment}
                   style={{
                     fontFamily: font.ui, fontSize: 11, fontWeight: 600, padding: "8px 16px",
-                    borderRadius: 6, border: "none", background: c.gilt, color: c.obsidian,
+                    borderRadius: 10, border: "none", background: c.gilt, color: c.obsidian,
                     cursor: "pointer", whiteSpace: "nowrap",
                   }}
                 >
@@ -619,7 +619,7 @@ export default function SessionDetail() {
           const nextType = session.type === "behavioral" ? "case-study" : session.type === "case-study" ? "technical" : "behavioral";
           const nextDifficulty = session.score >= 85 ? "intense" : session.score < 70 ? "warmup" : "standard";
           return (
-            <div style={{ background: `linear-gradient(135deg, rgba(201,169,110,0.06) 0%, ${c.graphite} 100%)`, borderRadius: 14, border: `1px solid rgba(201,169,110,0.12)`, padding: "24px 32px", marginBottom: 20 }}>
+            <div style={{ background: `linear-gradient(135deg, rgba(212,179,127,0.06) 0%, ${c.graphite} 100%)`, borderRadius: 14, border: `1px solid rgba(212,179,127,0.12)`, padding: "24px 32px", marginBottom: 20 }}>
               <h3 style={{ fontSize: 14, fontWeight: 600, color: c.ivory, marginBottom: 8 }}>What's Next?</h3>
               {weakest && (
                 <p style={{ fontSize: 13, color: c.stone, lineHeight: 1.5, marginBottom: 16 }}>
@@ -649,7 +649,7 @@ export default function SessionDetail() {
 
         {/* Upgrade CTA for free users */}
         {user && (!user.subscriptionTier || user.subscriptionTier === "free") && (
-          <div style={{ background: c.graphite, borderRadius: 14, border: `1px solid rgba(201,169,110,0.15)`, padding: "20px 28px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
+          <div style={{ background: c.graphite, borderRadius: 14, border: `1px solid rgba(212,179,127,0.15)`, padding: "20px 28px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
             <div>
               <p style={{ fontFamily: font.ui, fontSize: 14, fontWeight: 600, color: c.ivory, marginBottom: 4 }}>Unlock Unlimited Practice</p>
               <p style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, margin: 0 }}>Get unlimited sessions, detailed analytics, and priority AI feedback.</p>

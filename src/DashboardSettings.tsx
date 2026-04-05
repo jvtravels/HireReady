@@ -40,7 +40,7 @@ const focusOut = (e: React.FocusEvent<HTMLInputElement>) => { e.currentTarget.st
 
 const chipBtn = (active: boolean): React.CSSProperties => ({
   padding: "10px 14px", borderRadius: 8, cursor: "pointer",
-  background: active ? "rgba(201,169,110,0.08)" : c.obsidian,
+  background: active ? "rgba(212,179,127,0.08)" : c.obsidian,
   border: `1.5px solid ${active ? c.gilt : c.border}`,
   textAlign: "left", transition: "all 0.15s ease",
 });
@@ -208,8 +208,8 @@ export default function SettingsPage() {
             style={{
               fontFamily: font.ui, fontSize: 12, fontWeight: 500, whiteSpace: "nowrap",
               padding: "7px 16px", borderRadius: 20, cursor: "pointer", transition: "all 0.15s",
-              background: activeSection === s.id ? "rgba(201,169,110,0.1)" : "transparent",
-              border: `1px solid ${activeSection === s.id ? "rgba(201,169,110,0.25)" : c.border}`,
+              background: activeSection === s.id ? "rgba(212,179,127,0.1)" : "transparent",
+              border: `1px solid ${activeSection === s.id ? "rgba(212,179,127,0.25)" : c.border}`,
               color: activeSection === s.id ? c.gilt : c.stone,
             }}>
             {s.label}
@@ -228,7 +228,7 @@ export default function SettingsPage() {
             {authUser?.avatarUrl ? (
               <img src={authUser.avatarUrl} alt="Profile" style={{ width: 64, height: 64, borderRadius: "50%", objectFit: "cover", border: `2px solid ${c.border}`, opacity: avatarUploading ? 0.4 : 1, transition: "opacity 0.2s" }} />
             ) : (
-              <div style={{ width: 64, height: 64, borderRadius: "50%", background: "rgba(201,169,110,0.08)", border: `2px solid ${c.border}`, display: "flex", alignItems: "center", justifyContent: "center", opacity: avatarUploading ? 0.4 : 1, transition: "opacity 0.2s" }}>
+              <div style={{ width: 64, height: 64, borderRadius: "50%", background: "rgba(212,179,127,0.08)", border: `2px solid ${c.border}`, display: "flex", alignItems: "center", justifyContent: "center", opacity: avatarUploading ? 0.4 : 1, transition: "opacity 0.2s" }}>
                 <span style={{ fontFamily: font.display, fontSize: 26, color: c.gilt }}>{(persisted.userName || "?")[0].toUpperCase()}</span>
               </div>
             )}
@@ -296,7 +296,7 @@ export default function SettingsPage() {
           {saved && <span style={{ fontFamily: font.ui, fontSize: 11, color: c.sage, display: "flex", alignItems: "center", gap: 4 }}>
             <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>Saved
           </span>}
-          <kbd style={{ marginLeft: "auto", fontFamily: font.mono, fontSize: 10, color: c.stone, background: "rgba(240,237,232,0.04)", border: `1px solid ${c.border}`, borderRadius: 4, padding: "2px 6px" }}>⌘S</kbd>
+          <kbd style={{ marginLeft: "auto", fontFamily: font.mono, fontSize: 10, color: c.stone, background: "rgba(245,242,237,0.04)", border: `1px solid ${c.border}`, borderRadius: 4, padding: "2px 6px" }}>⌘S</kbd>
         </div>
 
         {/* Password */}
@@ -306,7 +306,7 @@ export default function SettingsPage() {
             <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>Reset via email link</span>
           </div>
           <button onClick={handlePasswordReset} disabled={resetLoading || resetSent}
-            style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: resetSent ? c.sage : c.gilt, background: resetSent ? "rgba(122,158,126,0.06)" : "rgba(201,169,110,0.06)", border: `1px solid ${resetSent ? "rgba(122,158,126,0.15)" : "rgba(201,169,110,0.15)"}`, borderRadius: 6, padding: "8px 18px", cursor: (resetLoading || resetSent) ? "default" : "pointer", opacity: resetLoading ? 0.6 : 1 }}>
+            style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: resetSent ? c.sage : c.gilt, background: resetSent ? "rgba(122,158,126,0.06)" : "rgba(212,179,127,0.06)", border: `1px solid ${resetSent ? "rgba(122,158,126,0.15)" : "rgba(212,179,127,0.15)"}`, borderRadius: 10, padding: "8px 18px", cursor: (resetLoading || resetSent) ? "default" : "pointer", opacity: resetLoading ? 0.6 : 1 }}>
             {resetLoading ? "Sending..." : resetSent ? "Email Sent ✓" : "Reset Password"}
           </button>
         </div>
@@ -417,14 +417,14 @@ export default function SettingsPage() {
                 <div key={v.id} style={{
                   display: "flex", alignItems: "center", gap: 10,
                   padding: "10px 14px", borderRadius: 8,
-                  background: sel ? "rgba(201,169,110,0.08)" : c.obsidian,
+                  background: sel ? "rgba(212,179,127,0.08)" : c.obsidian,
                   border: `1px solid ${sel ? c.gilt : c.border}`,
                   transition: "all 0.15s",
                 }}>
                   <button onClick={() => handlePreviewVoice(v.id)} aria-label={playing ? `Stop ${v.name}` : `Preview ${v.name}`}
                     style={{
                       width: 30, height: 30, borderRadius: "50%", border: "none", cursor: "pointer", flexShrink: 0,
-                      background: playing ? "rgba(201,169,110,0.15)" : "rgba(240,237,232,0.04)",
+                      background: playing ? "rgba(212,179,127,0.15)" : "rgba(245,242,237,0.04)",
                       display: "flex", alignItems: "center", justifyContent: "center", transition: "background 0.15s",
                     }}>
                     {playing
@@ -486,8 +486,8 @@ export default function SettingsPage() {
                   <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 500, padding: "3px 8px", borderRadius: 5, background: "rgba(196,112,90,0.1)", color: c.ember }}>Cancelling</span>
                 )}
                 <span style={{
-                  fontFamily: font.ui, fontSize: 11, fontWeight: 600, padding: "4px 10px", borderRadius: 6,
-                  background: authUser?.subscriptionTier === "pro" ? "rgba(122,158,126,0.12)" : authUser?.subscriptionTier === "starter" ? "rgba(201,169,110,0.12)" : "rgba(240,237,232,0.06)",
+                  fontFamily: font.ui, fontSize: 11, fontWeight: 600, padding: "4px 10px", borderRadius: 10,
+                  background: authUser?.subscriptionTier === "pro" ? "rgba(122,158,126,0.12)" : authUser?.subscriptionTier === "starter" ? "rgba(212,179,127,0.12)" : "rgba(245,242,237,0.06)",
                   color: authUser?.subscriptionTier === "pro" ? c.sage : authUser?.subscriptionTier === "starter" ? c.gilt : c.stone,
                 }}>
                   {(authUser?.subscriptionTier || "free").charAt(0).toUpperCase() + (authUser?.subscriptionTier || "free").slice(1)}
@@ -554,7 +554,7 @@ export default function SettingsPage() {
                       else { const d = await res.json().catch(() => ({})); showToast(d.error || `Failed (${res.status})`); }
                     } catch (err) { const msg = err instanceof DOMException && err.name === "AbortError" ? "Request timed out." : (err instanceof Error ? err.message : "Network error."); setCancelMsg(msg); showToast(msg); } finally { setCancelLoading(false); }
                   }}
-                    style={{ padding: "8px 20px", borderRadius: 6, border: "none", cursor: "pointer", background: c.sage, color: "#fff", fontFamily: font.ui, fontSize: 12, fontWeight: 600, opacity: cancelLoading ? 0.6 : 1 }}>
+                    style={{ padding: "8px 20px", borderRadius: 10, border: "none", cursor: "pointer", background: c.sage, color: "#fff", fontFamily: font.ui, fontSize: 12, fontWeight: 600, opacity: cancelLoading ? 0.6 : 1 }}>
                     {cancelLoading ? "Reactivating..." : "Reactivate Plan"}
                   </button>
                 </div>
@@ -580,12 +580,12 @@ export default function SettingsPage() {
                       else { const d = await res.json().catch(() => ({})); setCancelMsg(d.error || `Error (${res.status}).`); showToast(d.error || "Cancellation failed"); }
                     } catch (err) { const msg = err instanceof DOMException && err.name === "AbortError" ? "Request timed out." : "Network error."; setCancelMsg(msg); showToast(msg); } finally { setCancelLoading(false); }
                   }}
-                    style={{ padding: "6px 14px", borderRadius: 6, border: "none", cursor: "pointer", background: c.ember, color: "#fff", fontFamily: font.ui, fontSize: 11, fontWeight: 600, opacity: cancelLoading ? 0.6 : 1 }}>
+                    style={{ padding: "6px 14px", borderRadius: 10, border: "none", cursor: "pointer", background: c.ember, color: "#fff", fontFamily: font.ui, fontSize: 11, fontWeight: 600, opacity: cancelLoading ? 0.6 : 1 }}>
                     {cancelLoading ? "Cancelling..." : "Yes, Cancel"}
                   </button>
                   <button onClick={() => setConfirmCancel(false)}
-                    style={{ padding: "6px 14px", borderRadius: 6, cursor: "pointer", background: "transparent", border: `1px solid ${c.border}`, color: c.stone, fontFamily: font.ui, fontSize: 11, transition: "background 0.15s" }}
-                    onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(240,237,232,0.06)"; }}
+                    style={{ padding: "6px 14px", borderRadius: 10, cursor: "pointer", background: "transparent", border: `1px solid ${c.border}`, color: c.stone, fontFamily: font.ui, fontSize: 11, transition: "background 0.15s" }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(245,242,237,0.06)"; }}
                     onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}>
                     Keep Plan
                   </button>
@@ -645,9 +645,9 @@ export default function SettingsPage() {
               </div>
             </div>
             <button disabled={exporting} onClick={async () => { setExporting(true); try { await onExportCSV(); } finally { setExporting(false); } }}
-              style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 500, color: c.gilt, background: "rgba(201,169,110,0.06)", border: `1px solid rgba(201,169,110,0.15)`, borderRadius: 6, padding: "6px 14px", cursor: exporting ? "default" : "pointer", opacity: exporting ? 0.6 : 1 }}
-              onMouseEnter={(e) => { if (!exporting) e.currentTarget.style.background = "rgba(201,169,110,0.12)"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(201,169,110,0.06)"; }}>
+              style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 500, color: c.gilt, background: "rgba(212,179,127,0.06)", border: `1px solid rgba(212,179,127,0.15)`, borderRadius: 10, padding: "6px 14px", cursor: exporting ? "default" : "pointer", opacity: exporting ? 0.6 : 1 }}
+              onMouseEnter={(e) => { if (!exporting) e.currentTarget.style.background = "rgba(212,179,127,0.12)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(212,179,127,0.06)"; }}>
               {exporting ? "Exporting..." : "Export CSV"}
             </button>
           </div>
@@ -660,7 +660,7 @@ export default function SettingsPage() {
               <span style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.ivory, display: "block", marginBottom: 2 }}>Log out</span>
               <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>Sign out on this device</span>
             </div>
-            <button onClick={onLogout} style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: c.ember, background: "transparent", border: `1px solid rgba(196,112,90,0.18)`, borderRadius: 6, padding: "8px 20px", cursor: "pointer", transition: "background 0.15s" }}
+            <button onClick={onLogout} style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: c.ember, background: "transparent", border: `1px solid rgba(196,112,90,0.18)`, borderRadius: 10, padding: "8px 20px", cursor: "pointer", transition: "background 0.15s" }}
               onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(196,112,90,0.08)"; }}
               onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}>
               Log out
@@ -674,7 +674,7 @@ export default function SettingsPage() {
             </div>
             {!confirmDelete ? (
               <button onClick={() => { setConfirmDelete(true); setDeleteEmailInput(""); setDeleteMsg(""); }}
-                style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: c.ember, background: "transparent", border: `1px solid rgba(196,112,90,0.18)`, borderRadius: 6, padding: "8px 20px", cursor: "pointer", transition: "background 0.15s" }}
+                style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: c.ember, background: "transparent", border: `1px solid rgba(196,112,90,0.18)`, borderRadius: 10, padding: "8px 20px", cursor: "pointer", transition: "background 0.15s" }}
                 onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(196,112,90,0.08)"; }}
                 onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}>
                 Delete Account
@@ -683,13 +683,13 @@ export default function SettingsPage() {
               <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "flex-end" }}>
                 <input type="email" value={deleteEmailInput} onChange={(e) => setDeleteEmailInput(e.target.value)}
                   placeholder="Type your email to confirm" aria-label="Confirm email for account deletion"
-                  style={{ fontFamily: font.ui, fontSize: 12, color: c.chalk, background: c.obsidian, border: `1px solid rgba(196,112,90,0.2)`, borderRadius: 6, padding: "8px 12px", outline: "none", minWidth: 200 }}
+                  style={{ fontFamily: font.ui, fontSize: 12, color: c.chalk, background: c.obsidian, border: `1px solid rgba(196,112,90,0.2)`, borderRadius: 10, padding: "8px 12px", outline: "none", minWidth: 200 }}
                   onFocus={(e) => { e.currentTarget.style.borderColor = c.ember; }}
                   onBlur={(e) => { e.currentTarget.style.borderColor = "rgba(196,112,90,0.2)"; }} />
                 <div style={{ display: "flex", gap: 8 }}>
                   <button onClick={() => { setConfirmDelete(false); setDeleteEmailInput(""); }}
-                    style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, background: "transparent", border: `1px solid ${c.border}`, borderRadius: 6, padding: "8px 14px", cursor: "pointer", transition: "background 0.15s" }}
-                    onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(240,237,232,0.06)"; }}
+                    style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, background: "transparent", border: `1px solid ${c.border}`, borderRadius: 10, padding: "8px 14px", cursor: "pointer", transition: "background 0.15s" }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(245,242,237,0.06)"; }}
                     onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}>
                     Cancel
                   </button>
@@ -708,7 +708,7 @@ export default function SettingsPage() {
                       setDeleteLoading(false);
                     }
                   }}
-                    style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: "#fff", background: c.ember, border: "none", borderRadius: 6, padding: "8px 20px", cursor: "pointer", opacity: (deleteLoading || deleteEmailInput.toLowerCase() !== (authUser?.email || "").toLowerCase()) ? 0.4 : 1 }}>
+                    style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: "#fff", background: c.ember, border: "none", borderRadius: 10, padding: "8px 20px", cursor: "pointer", opacity: (deleteLoading || deleteEmailInput.toLowerCase() !== (authUser?.email || "").toLowerCase()) ? 0.4 : 1 }}>
                     {deleteLoading ? "Deleting..." : "Confirm Delete"}
                   </button>
                 </div>

@@ -83,8 +83,8 @@ export const SkillRadar = memo(function SkillRadar({ skills: s }: { skills: Skil
         <polygon key={v} points={Array.from({ length: n }).map((_, i) => getPoint(i, v)).map(p => `${p.x},${p.y}`).join(" ")} fill="none" stroke={c.border} strokeWidth="1" />
       ))}
       {s.map((_, i) => { const p = getPoint(i, 100); return <line key={i} x1={cx} y1={cy} x2={p.x} y2={p.y} stroke={c.border} strokeWidth="1" />; })}
-      <polygon points={prevPolygon} fill="rgba(201,169,110,0.05)" stroke={c.stone} strokeWidth="1" strokeDasharray="3 3" />
-      <polygon points={polygon} fill="rgba(201,169,110,0.1)" stroke={c.gilt} strokeWidth="1.5" />
+      <polygon points={prevPolygon} fill="rgba(212,179,127,0.05)" stroke={c.stone} strokeWidth="1" strokeDasharray="3 3" />
+      <polygon points={polygon} fill="rgba(212,179,127,0.1)" stroke={c.gilt} strokeWidth="1.5" />
       {s.map((sk, i) => {
         const p = getPoint(i, sk.score);
         const lp = getPoint(i, 115);

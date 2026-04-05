@@ -209,8 +209,8 @@ export default function DashboardResume() {
     return (
       <div style={{ margin: "0 auto", padding: "20px 0" }}>
         <div style={{ background: c.graphite, borderRadius: 16, border: `1px solid ${c.border}`, padding: "60px 40px", textAlign: "center" }}>
-          <div style={{ width: 64, height: 64, borderRadius: 16, margin: "0 auto 24px", background: "rgba(201,169,110,0.06)", border: "1px solid rgba(201,169,110,0.12)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <div style={{ width: 24, height: 24, border: "2.5px solid rgba(201,169,110,0.2)", borderTopColor: c.gilt, borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
+          <div style={{ width: 64, height: 64, borderRadius: 16, margin: "0 auto 24px", background: "rgba(212,179,127,0.06)", border: "1px solid rgba(212,179,127,0.12)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <div style={{ width: 24, height: 24, border: "2.5px solid rgba(212,179,127,0.2)", borderTopColor: c.gilt, borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
           </div>
           <h2 style={{ fontFamily: font.display, fontSize: 24, color: c.ivory, marginBottom: 8, letterSpacing: "-0.02em" }}>
             {phase === "extracting" ? "Reading your resume" : "Building your profile"}
@@ -242,8 +242,8 @@ export default function DashboardResume() {
         <div onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }} onDragLeave={() => setIsDragging(false)}
           onDrop={(e) => { e.preventDefault(); setIsDragging(false); handleFile(e.dataTransfer.files[0]); }}
           onClick={triggerUpload}
-          style={{ border: `2px dashed ${isDragging ? c.gilt : "rgba(201,169,110,0.2)"}`, borderRadius: 16, padding: "64px 32px", textAlign: "center", background: isDragging ? "rgba(201,169,110,0.04)" : "transparent", transition: "all 0.2s ease", cursor: "pointer" }}>
-          <div style={{ width: 64, height: 64, borderRadius: 16, margin: "0 auto 20px", background: "rgba(201,169,110,0.06)", border: "1px solid rgba(201,169,110,0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          style={{ border: `2px dashed ${isDragging ? c.gilt : "rgba(212,179,127,0.2)"}`, borderRadius: 16, padding: "64px 32px", textAlign: "center", background: isDragging ? "rgba(212,179,127,0.04)" : "transparent", transition: "all 0.2s ease", cursor: "pointer" }}>
+          <div style={{ width: 64, height: 64, borderRadius: 16, margin: "0 auto 20px", background: "rgba(212,179,127,0.06)", border: "1px solid rgba(212,179,127,0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}>
             <svg aria-hidden="true" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
           </div>
           <p style={{ fontFamily: font.ui, fontSize: 16, fontWeight: 500, color: c.ivory, marginBottom: 6 }}>Drop your resume here</p>
@@ -254,7 +254,7 @@ export default function DashboardResume() {
             ))}
           </div>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 20, padding: "12px 16px", borderRadius: 8, background: "rgba(201,169,110,0.03)", border: `1px solid ${c.border}` }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 20, padding: "12px 16px", borderRadius: 8, background: "rgba(212,179,127,0.03)", border: `1px solid ${c.border}` }}>
           <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
           <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>Your resume is analyzed securely and never shared. Delete anytime.</span>
         </div>
@@ -277,7 +277,7 @@ export default function DashboardResume() {
               onMouseEnter={(e) => { e.currentTarget.style.filter = "brightness(1.1)"; }}
               onMouseLeave={(e) => { e.currentTarget.style.filter = "brightness(1)"; }}>Try another file</button>
             <button onClick={() => { setPhase("idle"); setErrorMsg(""); }} style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.stone, background: "transparent", border: `1px solid ${c.border}`, borderRadius: 8, padding: "10px 24px", cursor: "pointer", transition: "background 0.15s" }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(240,237,232,0.06)"; }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(245,242,237,0.06)"; }}
               onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}>Dismiss</button>
           </div>
         </div>
@@ -288,16 +288,16 @@ export default function DashboardResume() {
   // Profile view (done state)
   return (
     <div style={{ margin: "0 auto", padding: "20px 0" }}>
-      <div style={{ background: `linear-gradient(135deg, ${c.graphite} 0%, rgba(201,169,110,0.04) 100%)`, borderRadius: 16, border: `1px solid ${c.border}`, padding: "28px 28px 24px", marginBottom: 14 }}>
+      <div style={{ background: `linear-gradient(135deg, ${c.graphite} 0%, rgba(212,179,127,0.04) 100%)`, borderRadius: 16, border: `1px solid ${c.border}`, padding: "28px 28px 24px", marginBottom: 14 }}>
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 12 }}>
           <div style={{ flex: 1 }}>
             {profile?.headline ? <h2 style={{ fontFamily: font.display, fontSize: 24, color: c.ivory, marginBottom: 6, letterSpacing: "-0.02em", lineHeight: 1.3 }}>{profile.headline}</h2> : <h2 style={{ fontFamily: font.display, fontSize: 24, color: c.ivory, marginBottom: 6, letterSpacing: "-0.02em", lineHeight: 1.3 }}>Resume uploaded</h2>}
             <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-              {profile?.seniorityLevel ? <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.gilt, background: "rgba(201,169,110,0.08)", border: "1px solid rgba(201,169,110,0.15)", borderRadius: 5, padding: "3px 10px" }}>{profile.seniorityLevel}</span> : null}
+              {profile?.seniorityLevel ? <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.gilt, background: "rgba(212,179,127,0.08)", border: "1px solid rgba(212,179,127,0.15)", borderRadius: 5, padding: "3px 10px" }}>{profile.seniorityLevel}</span> : null}
               {profile?.yearsExperience != null && profile.yearsExperience > 0 && <span style={{ fontFamily: font.ui, fontSize: 11, color: c.chalk }}>{profile.yearsExperience}+ years experience</span>}
               {profile?.industries && profile.industries.length > 0 && <span style={{ fontFamily: font.ui, fontSize: 11, color: c.chalk }}>{profile.industries.join(", ")}</span>}
               {analysisSource && (
-                <span style={{ fontFamily: font.ui, fontSize: 10, color: analysisSource === "ai" ? c.sage : c.stone, background: analysisSource === "ai" ? "rgba(122,158,126,0.08)" : "rgba(240,237,232,0.04)", border: `1px solid ${analysisSource === "ai" ? "rgba(122,158,126,0.15)" : c.border}`, borderRadius: 5, padding: "2px 8px" }}>
+                <span style={{ fontFamily: font.ui, fontSize: 10, color: analysisSource === "ai" ? c.sage : c.stone, background: analysisSource === "ai" ? "rgba(122,158,126,0.08)" : "rgba(245,242,237,0.04)", border: `1px solid ${analysisSource === "ai" ? "rgba(122,158,126,0.15)" : c.border}`, borderRadius: 5, padding: "2px 8px" }}>
                   {analysisSource === "ai" ? "AI Profile" : "Basic Extract"}
                 </span>
               )}
@@ -306,19 +306,19 @@ export default function DashboardResume() {
           <div style={{ display: "flex", gap: 6, flexShrink: 0, marginLeft: 16, alignItems: "center" }}>
             {reanalyzeDone && <span style={{ fontFamily: font.ui, fontSize: 11, color: c.sage, marginRight: 4 }}>Updated ✓</span>}
             {reanalyzing && <span style={{ fontFamily: font.ui, fontSize: 11, color: c.gilt, marginRight: 4 }}>Analyzing...</span>}
-            <button onClick={handleReanalyze} disabled={reanalyzing} aria-label="Re-analyze resume" title="Re-analyze" style={{ width: 32, height: 32, borderRadius: 8, background: "rgba(240,237,232,0.04)", border: `1px solid ${c.border}`, display: "flex", alignItems: "center", justifyContent: "center", cursor: reanalyzing ? "default" : "pointer", opacity: reanalyzing ? 0.5 : 1, transition: "opacity 0.15s" }}
-              onMouseEnter={(e) => { if (!reanalyzing) e.currentTarget.style.background = "rgba(240,237,232,0.08)"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(240,237,232,0.04)"; }}>
+            <button onClick={handleReanalyze} disabled={reanalyzing} aria-label="Re-analyze resume" title="Re-analyze" style={{ width: 32, height: 32, borderRadius: 8, background: "rgba(245,242,237,0.04)", border: `1px solid ${c.border}`, display: "flex", alignItems: "center", justifyContent: "center", cursor: reanalyzing ? "default" : "pointer", opacity: reanalyzing ? 0.5 : 1, transition: "opacity 0.15s" }}
+              onMouseEnter={(e) => { if (!reanalyzing) e.currentTarget.style.background = "rgba(245,242,237,0.08)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(245,242,237,0.04)"; }}>
               {reanalyzing
-                ? <div style={{ width: 14, height: 14, border: "2px solid rgba(201,169,110,0.2)", borderTopColor: c.gilt, borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
+                ? <div style={{ width: 14, height: 14, border: "2px solid rgba(212,179,127,0.2)", borderTopColor: c.gilt, borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
                 : <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.stone} strokeWidth="1.5"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
               }
             </button>
             {confirmDelete ? (
               <div style={{ display: "flex", gap: 4, alignItems: "center" }} onKeyDown={(e) => { if (e.key === "Escape") setConfirmDelete(false); }}>
                 <span style={{ fontFamily: font.ui, fontSize: 11, color: c.ember }}>Delete?</span>
-                <button autoFocus onClick={() => { handleRemove(); setConfirmDelete(false); }} aria-label="Confirm delete resume" style={{ padding: "4px 10px", borderRadius: 6, border: "none", background: c.ember, color: "#fff", fontFamily: font.ui, fontSize: 11, fontWeight: 600, cursor: "pointer" }}>Yes</button>
-                <button onClick={() => setConfirmDelete(false)} aria-label="Cancel delete" style={{ padding: "4px 10px", borderRadius: 6, border: `1px solid ${c.border}`, background: "transparent", color: c.stone, fontFamily: font.ui, fontSize: 11, cursor: "pointer" }}>No</button>
+                <button autoFocus onClick={() => { handleRemove(); setConfirmDelete(false); }} aria-label="Confirm delete resume" style={{ padding: "4px 10px", borderRadius: 10, border: "none", background: c.ember, color: "#fff", fontFamily: font.ui, fontSize: 11, fontWeight: 600, cursor: "pointer" }}>Yes</button>
+                <button onClick={() => setConfirmDelete(false)} aria-label="Cancel delete" style={{ padding: "4px 10px", borderRadius: 10, border: `1px solid ${c.border}`, background: "transparent", color: c.stone, fontFamily: font.ui, fontSize: 11, cursor: "pointer" }}>No</button>
               </div>
             ) : (
               <button onClick={() => setConfirmDelete(true)} aria-label="Delete resume" title="Remove resume" style={{ width: 32, height: 32, borderRadius: 8, background: "rgba(196,112,90,0.04)", border: "1px solid rgba(196,112,90,0.1)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
@@ -337,13 +337,13 @@ export default function DashboardResume() {
           </p>
         )}
         {analysisSource === "fallback" && resumeText && (
-          <div style={{ marginTop: 12, padding: "10px 14px", borderRadius: 8, background: "rgba(201,169,110,0.04)", border: "1px solid rgba(201,169,110,0.1)", display: "flex", alignItems: "center", gap: 8 }}>
+          <div style={{ marginTop: 12, padding: "10px 14px", borderRadius: 8, background: "rgba(212,179,127,0.04)", border: "1px solid rgba(212,179,127,0.1)", display: "flex", alignItems: "center", gap: 8 }}>
             <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
             <span style={{ fontFamily: font.ui, fontSize: 11, color: c.chalk, flex: 1 }}>AI analysis wasn't available — showing basic extraction. Click re-analyze for a full profile.</span>
           </div>
         )}
         {needsReupload && !profile && (
-          <div style={{ marginTop: 14, padding: "16px 20px", borderRadius: 10, background: "rgba(201,169,110,0.06)", border: `1px solid rgba(201,169,110,0.12)` }}>
+          <div style={{ marginTop: 14, padding: "16px 20px", borderRadius: 10, background: "rgba(212,179,127,0.06)", border: `1px solid rgba(212,179,127,0.12)` }}>
             <p style={{ fontFamily: font.ui, fontSize: 13, color: c.chalk, lineHeight: 1.6, margin: "0 0 12px" }}>
               Your resume was uploaded but the AI summary wasn't generated. Re-upload it to get a detailed profile analysis with strengths, skills, and interview preparation insights.
             </p>
@@ -387,7 +387,7 @@ export default function DashboardResume() {
           </div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
             {profile.topSkills.map((skill, i) => (
-              <span key={i} style={{ fontFamily: font.ui, fontSize: 12.5, color: i < 3 ? c.ivory : c.chalk, background: i < 3 ? "rgba(201,169,110,0.1)" : "rgba(240,237,232,0.04)", border: `1px solid ${i < 3 ? "rgba(201,169,110,0.18)" : c.border}`, borderRadius: 8, padding: "6px 14px", fontWeight: i < 3 ? 500 : 400 }}>{skill}</span>
+              <span key={i} style={{ fontFamily: font.ui, fontSize: 12.5, color: i < 3 ? c.ivory : c.chalk, background: i < 3 ? "rgba(212,179,127,0.1)" : "rgba(245,242,237,0.04)", border: `1px solid ${i < 3 ? "rgba(212,179,127,0.18)" : c.border}`, borderRadius: 8, padding: "6px 14px", fontWeight: i < 3 ? 500 : 400 }}>{skill}</span>
             ))}
           </div>
         </div>
@@ -402,7 +402,7 @@ export default function DashboardResume() {
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {profile.keyAchievements.map((item, i) => (
               <div key={i} style={{ display: "flex", gap: 12, padding: "12px 16px", borderRadius: 10, background: c.obsidian, border: `1px solid ${c.border}` }}>
-                <div style={{ width: 24, height: 24, borderRadius: 6, background: "rgba(201,169,110,0.08)", border: "1px solid rgba(201,169,110,0.12)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 1 }}>
+                <div style={{ width: 24, height: 24, borderRadius: 10, background: "rgba(212,179,127,0.08)", border: "1px solid rgba(212,179,127,0.12)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 1 }}>
                   <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg>
                 </div>
                 <p style={{ fontFamily: font.ui, fontSize: 13, color: c.chalk, lineHeight: 1.5, margin: 0 }}>{item}</p>
@@ -458,7 +458,7 @@ export default function DashboardResume() {
         </div>
       )}
 
-      <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "12px 16px", borderRadius: 8, background: "rgba(201,169,110,0.03)", border: `1px solid ${c.border}` }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "12px 16px", borderRadius: 8, background: "rgba(212,179,127,0.03)", border: `1px solid ${c.border}` }}>
         <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
         <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>Your resume is analyzed securely and never shared. Delete anytime.</span>
       </div>

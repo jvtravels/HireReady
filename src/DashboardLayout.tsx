@@ -131,14 +131,16 @@ export default function DashboardLayout() {
 
       {/* Sidebar */}
       <aside role="complementary" aria-label="Navigation sidebar" style={{
-        width: 240, borderRight: "none", boxShadow: "1px 0 3px rgba(0,0,0,0.2), 1px 0 0 rgba(240,237,232,0.04)", padding: "24px 16px 0",
+        width: 260, borderRight: `1px solid ${c.border}`, padding: "28px 18px 0",
         display: "flex", flexDirection: "column", position: "fixed", top: 0, bottom: 0,
-        background: c.obsidian, zIndex: 20, overflow: "hidden",
+        background: "linear-gradient(180deg, rgba(17,17,19,0.95) 0%, rgba(6,6,7,0.98) 100%)",
+        backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)",
+        zIndex: 20, overflow: "hidden",
         transform: isMobile ? (sidebarOpen ? "translateX(0)" : "translateX(-100%)") : "translateX(0)",
-        transition: "transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)",
+        transition: "transform 0.35s cubic-bezier(0.16, 1, 0.3, 1)",
       }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 36, padding: "0 12px" }}>
-          <Link to="/" style={{ textDecoration: "none" }}><span style={{ fontFamily: font.ui, fontSize: 16, fontWeight: 600, color: c.ivory, letterSpacing: "0.06em" }}>Hirloop</span></Link>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 40, padding: "0 12px" }}>
+          <Link to="/" style={{ textDecoration: "none" }}><span style={{ fontFamily: font.display, fontSize: 22, fontWeight: 400, color: c.ivory, letterSpacing: "0.02em" }}>Hirloop</span></Link>
           {isMobile && <button onClick={() => setSidebarOpen(false)} style={{ background: "none", border: "none", color: c.stone, cursor: "pointer", padding: 4 }}><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>}
         </div>
         <nav aria-label="Main navigation" style={{ display: "flex", flexDirection: "column", gap: 4, flex: "1 1 auto", overflow: "hidden" }}>
@@ -148,16 +150,16 @@ export default function DashboardLayout() {
               aria-label={item.label}
               onClick={() => { nav(item.path); if (isMobile) setSidebarOpen(false); }}
               style={{
-                display: "flex", alignItems: "center", gap: 12, padding: "10px 12px",
-                borderRadius: 8, border: "none", cursor: "pointer",
-                background: activeNav === item.id ? "rgba(201,169,110,0.08)" : "transparent",
+                display: "flex", alignItems: "center", gap: 12, padding: "11px 14px",
+                borderRadius: 10, border: "none", cursor: "pointer",
+                background: activeNav === item.id ? "rgba(212,179,127,0.08)" : "transparent",
                 color: activeNav === item.id ? c.ivory : c.stone,
-                fontFamily: font.ui, fontSize: 13, fontWeight: 500,
-                transition: "all 0.2s ease", textAlign: "left", outline: "none",
+                fontFamily: font.ui, fontSize: 13, fontWeight: activeNav === item.id ? 600 : 500,
+                transition: "all 0.25s cubic-bezier(0.16, 1, 0.3, 1)", textAlign: "left", outline: "none",
               }}
               onFocus={(e) => e.currentTarget.style.boxShadow = `0 0 0 2px ${c.gilt}40`}
               onBlur={(e) => e.currentTarget.style.boxShadow = "none"}
-              onMouseEnter={(e) => { if (activeNav !== item.id) e.currentTarget.style.background = "rgba(240,237,232,0.03)"; }}
+              onMouseEnter={(e) => { if (activeNav !== item.id) e.currentTarget.style.background = "rgba(245,242,237,0.03)"; }}
               onMouseLeave={(e) => { if (activeNav !== item.id) e.currentTarget.style.background = "transparent"; }}
             >
               {item.icon}
@@ -171,15 +173,15 @@ export default function DashboardLayout() {
             </button>
           ))}
           {!isMobile && (
-            <div style={{ margin: "16px 12px 0", padding: "8px 12px", borderRadius: 8, background: "rgba(240,237,232,0.02)", display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "default" }}>
+            <div style={{ margin: "16px 12px 0", padding: "8px 12px", borderRadius: 8, background: "rgba(245,242,237,0.02)", display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "default" }}>
               <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>Command palette</span>
-              <kbd style={{ fontFamily: font.mono, fontSize: 10, color: c.stone, background: "rgba(240,237,232,0.04)", border: `1px solid ${c.border}`, borderRadius: 4, padding: "2px 6px" }}>{modKey}K</kbd>
+              <kbd style={{ fontFamily: font.mono, fontSize: 10, color: c.stone, background: "rgba(245,242,237,0.04)", border: `1px solid ${c.border}`, borderRadius: 4, padding: "2px 6px" }}>{modKey}K</kbd>
             </div>
           )}
         </nav>
 
         {/* Plan Status */}
-        <div style={{ margin: "0 8px 12px", padding: "14px 14px", borderRadius: 10, background: isPro ? "rgba(122,158,126,0.04)" : "rgba(201,169,110,0.04)", border: `1px solid ${isPro ? "rgba(122,158,126,0.12)" : "rgba(201,169,110,0.12)"}`, flexShrink: 0 }}>
+        <div style={{ margin: "0 8px 12px", padding: "14px 14px", borderRadius: 10, background: isPro ? "rgba(122,158,126,0.04)" : "rgba(212,179,127,0.04)", border: `1px solid ${isPro ? "rgba(122,158,126,0.12)" : "rgba(212,179,127,0.12)"}`, flexShrink: 0 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
             {isPro ? (
               <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
@@ -228,7 +230,7 @@ export default function DashboardLayout() {
             {user?.avatarUrl ? (
               <img src={user.avatarUrl} alt={displayName} style={{ width: 34, height: 34, borderRadius: "50%", objectFit: "cover" }} />
             ) : (
-              <div style={{ width: 34, height: 34, borderRadius: "50%", background: "rgba(201,169,110,0.12)", border: `1px solid rgba(201,169,110,0.2)`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <div style={{ width: 34, height: 34, borderRadius: "50%", background: "rgba(212,179,127,0.12)", border: `1px solid rgba(212,179,127,0.2)`, display: "flex", alignItems: "center", justifyContent: "center" }}>
                 <span style={{ fontFamily: font.ui, fontSize: 14, fontWeight: 600, color: c.gilt }}>{(displayName || "?")[0].toUpperCase()}</span>
               </div>
             )}
@@ -248,7 +250,7 @@ export default function DashboardLayout() {
       </aside>
 
       {/* Main Content */}
-      <main id="dashboard-main" style={{ flex: 1, marginLeft: isMobile ? 0 : 240, padding: isMobile ? "20px 16px 60px" : "40px 48px 80px", overflowY: "auto", height: "100vh" }}>
+      <main id="dashboard-main" style={{ flex: 1, marginLeft: isMobile ? 0 : 260, padding: isMobile ? "20px 16px 60px" : "44px 52px 80px", overflowY: "auto", height: "100vh" }}>
         {isMobile && (
           <button onClick={() => setSidebarOpen(true)} aria-label="Open navigation menu" aria-expanded={sidebarOpen}
             style={{ background: c.graphite, border: `1px solid ${c.border}`, borderRadius: 8, padding: "8px 10px", cursor: "pointer", marginBottom: 20, color: c.ivory, display: "flex", alignItems: "center", gap: 8 }}>
@@ -335,11 +337,11 @@ export default function DashboardLayout() {
             ].map(([key, desc]) => (
               <div key={key} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 0" }}>
                 <span style={{ fontFamily: font.ui, fontSize: 13, color: c.chalk }}>{desc}</span>
-                <kbd style={{ fontFamily: font.mono, fontSize: 11, fontWeight: 600, color: c.gilt, background: "rgba(201,169,110,0.08)", border: `1px solid rgba(201,169,110,0.15)`, borderRadius: 4, padding: "2px 8px" }}>{key}</kbd>
+                <kbd style={{ fontFamily: font.mono, fontSize: 11, fontWeight: 600, color: c.gilt, background: "rgba(212,179,127,0.08)", border: `1px solid rgba(212,179,127,0.15)`, borderRadius: 4, padding: "2px 8px" }}>{key}</kbd>
               </div>
             ))}
             <button onClick={() => setShowShortcuts(false)} style={{ marginTop: 16, width: "100%", padding: "8px 0", borderRadius: 8, border: `1px solid ${c.border}`, background: "transparent", color: c.stone, fontFamily: font.ui, fontSize: 12, cursor: "pointer", transition: "background 0.15s" }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(240,237,232,0.06)"; }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(245,242,237,0.06)"; }}
               onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}>Close</button>
           </div>
         </>

@@ -104,7 +104,7 @@ function AutocompleteInput({
               style={{
                 display: "block", width: "100%", padding: "10px 16px", border: "none", textAlign: "left",
                 fontFamily: font.ui, fontSize: 13, cursor: "pointer",
-                background: i === selectedIdx ? "rgba(201,169,110,0.08)" : "transparent",
+                background: i === selectedIdx ? "rgba(212,179,127,0.08)" : "transparent",
                 color: i === selectedIdx ? c.ivory : c.chalk,
               }}>
               {s}
@@ -393,9 +393,9 @@ export default function Onboarding() {
   const isContinueDisabled = isStep1Busy || isStep2Disabled;
 
   return (
-    <div style={{ minHeight: "100vh", background: `radial-gradient(ellipse 80% 50% at 50% 0%, rgba(201,169,110,0.03) 0%, ${c.obsidian} 70%)`, display: "flex", flexDirection: "column", position: "relative" }}>
+    <div style={{ minHeight: "100vh", background: `radial-gradient(ellipse 80% 50% at 50% 0%, rgba(212,179,127,0.03) 0%, ${c.obsidian} 70%)`, display: "flex", flexDirection: "column", position: "relative" }}>
       {user && !user.emailVerified && (
-        <div style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 50, padding: "12px 24px", background: "rgba(201,169,110,0.1)", borderBottom: "1px solid rgba(201,169,110,0.2)", textAlign: "center", backdropFilter: "blur(8px)" }}>
+        <div style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 50, padding: "12px 24px", background: "rgba(212,179,127,0.1)", borderBottom: "1px solid rgba(212,179,127,0.2)", textAlign: "center", backdropFilter: "blur(8px)" }}>
           <span style={{ fontFamily: font.ui, fontSize: 13, color: c.chalk }}>
             Please verify your email to save your progress. Check your inbox for a confirmation link.
           </span>
@@ -411,16 +411,16 @@ export default function Onboarding() {
         @keyframes popIn { from { opacity: 0; transform: scale(0.92); } to { opacity: 1; transform: scale(1); } }
         @keyframes fadeUp { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
-        .skeleton-line { background: linear-gradient(90deg, rgba(240,237,232,0.03) 25%, rgba(240,237,232,0.07) 50%, rgba(240,237,232,0.03) 75%); background-size: 200% 100%; animation: shimmer 1.5s ease-in-out infinite; border-radius: 6px; }
+        .skeleton-line { background: linear-gradient(90deg, rgba(245,242,237,0.03) 25%, rgba(245,242,237,0.07) 50%, rgba(245,242,237,0.03) 75%); background-size: 200% 100%; animation: shimmer 1.5s ease-in-out infinite; border-radius: 6px; }
         .fade-up-1 { animation: fadeUp 0.35s ease-out 0ms both; }
         .fade-up-2 { animation: fadeUp 0.35s ease-out 80ms both; }
         .fade-up-3 { animation: fadeUp 0.35s ease-out 160ms both; }
         @keyframes toastIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
-        .ob-card { background: rgba(22,22,24,0.7); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid rgba(240,237,232,0.06); }
-        .ob-card-gold { background: linear-gradient(135deg, rgba(22,22,24,0.8) 0%, rgba(201,169,110,0.06) 100%); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid rgba(201,169,110,0.1); }
-        .ob-drop:hover { border-color: rgba(201,169,110,0.35) !important; background: rgba(201,169,110,0.02) !important; }
-        .ob-focus-card:hover { transform: translateY(-2px); box-shadow: 0 4px 20px rgba(0,0,0,0.3) !important; border-color: rgba(201,169,110,0.3) !important; }
-        @keyframes micPulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(201,169,110,0); } 50% { box-shadow: 0 0 0 8px rgba(201,169,110,0.12); } }
+        .ob-card { background: rgba(17,17,19,0.7); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid rgba(245,242,237,0.06); }
+        .ob-card-gold { background: linear-gradient(135deg, rgba(17,17,19,0.8) 0%, rgba(212,179,127,0.06) 100%); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid rgba(212,179,127,0.1); }
+        .ob-drop:hover { border-color: rgba(212,179,127,0.35) !important; background: rgba(212,179,127,0.02) !important; }
+        .ob-focus-card:hover { transform: translateY(-2px); box-shadow: 0 4px 20px rgba(0,0,0,0.3) !important; border-color: rgba(212,179,127,0.3) !important; }
+        @keyframes micPulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(212,179,127,0); } 50% { box-shadow: 0 0 0 8px rgba(212,179,127,0.12); } }
         .ob-mic-pulse { animation: micPulse 2s ease-in-out infinite; }
         @media (max-width: 768px) {
           .ob-s1-split { flex-direction: column !important; }
@@ -441,10 +441,10 @@ export default function Onboarding() {
       `}</style>
 
       {/* ─── Top Bar ─── */}
-      <div style={{ padding: "18px 40px", display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", borderBottom: `1px solid rgba(240,237,232,0.04)`, background: "rgba(10,10,11,0.6)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)", zIndex: 10 }}>
+      <div style={{ padding: "18px 40px", display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", borderBottom: `1px solid rgba(245,242,237,0.04)`, background: "rgba(6,6,7,0.6)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)", zIndex: 10 }}>
         {/* Logo — left */}
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <div style={{ width: 6, height: 6, borderRadius: 2, background: `linear-gradient(135deg, ${c.gilt}, ${c.giltDark})`, boxShadow: "0 0 8px rgba(201,169,110,0.3)" }} />
+          <div style={{ width: 6, height: 6, borderRadius: 2, background: `linear-gradient(135deg, ${c.gilt}, ${c.giltDark})`, boxShadow: "0 0 8px rgba(212,179,127,0.3)" }} />
           <span style={{ fontFamily: font.display, fontSize: 17, fontWeight: 400, color: c.ivory, letterSpacing: "0.02em" }}>Hirloop</span>
         </div>
         {/* Stepper — center */}
@@ -453,11 +453,11 @@ export default function Onboarding() {
             <div key={i} style={{ display: "flex", alignItems: "center", gap: 6 }}>
               <div style={{
                 width: 26, height: 26, borderRadius: "50%",
-                background: step > i + 1 ? `linear-gradient(135deg, ${c.gilt}, ${c.giltDark})` : step === i + 1 ? "rgba(201,169,110,0.1)" : "transparent",
-                border: `1.5px solid ${step >= i + 1 ? c.gilt : "rgba(240,237,232,0.08)"}`,
+                background: step > i + 1 ? `linear-gradient(135deg, ${c.gilt}, ${c.giltDark})` : step === i + 1 ? "rgba(212,179,127,0.1)" : "transparent",
+                border: `1.5px solid ${step >= i + 1 ? c.gilt : "rgba(245,242,237,0.08)"}`,
                 display: "flex", alignItems: "center", justifyContent: "center",
                 transition: "all 0.4s cubic-bezier(0.16, 1, 0.3, 1)",
-                boxShadow: step === i + 1 ? "0 0 12px rgba(201,169,110,0.15)" : "none",
+                boxShadow: step === i + 1 ? "0 0 12px rgba(212,179,127,0.15)" : "none",
               }}>
                 {step > i + 1 ? (
                   <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={c.obsidian} strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
@@ -466,7 +466,7 @@ export default function Onboarding() {
                 )}
               </div>
               <span style={{ fontFamily: font.ui, fontSize: 11, color: step === i + 1 ? c.ivory : c.stone, fontWeight: step === i + 1 ? 500 : 400 }}>{label}</span>
-              {i < 2 && <div style={{ width: 24, height: 1, background: step > i + 1 ? `linear-gradient(90deg, ${c.gilt}, rgba(201,169,110,0.2))` : "rgba(240,237,232,0.06)", transition: "background 0.4s", borderRadius: 1 }} />}
+              {i < 2 && <div style={{ width: 24, height: 1, background: step > i + 1 ? `linear-gradient(90deg, ${c.gilt}, rgba(212,179,127,0.2))` : "rgba(245,242,237,0.06)", transition: "background 0.4s", borderRadius: 1 }} />}
             </div>
           ))}
         </div>
@@ -505,12 +505,12 @@ export default function Onboarding() {
                     onClick={() => fileInputRef.current?.click()}
                     className={!resumeError && !isDragging ? "ob-drop" : undefined}
                     style={{
-                      border: `1.5px dashed ${isDragging ? c.gilt : resumeError ? c.ember : "rgba(201,169,110,0.18)"}`,
+                      border: `1.5px dashed ${isDragging ? c.gilt : resumeError ? c.ember : "rgba(212,179,127,0.18)"}`,
                       borderRadius: 16, padding: isDragging ? "48px 24px" : "56px 24px",
                       textAlign: "center", cursor: "pointer",
                       transition: "all 0.3s cubic-bezier(0.16, 1, 0.3, 1)",
-                      background: isDragging ? "rgba(201,169,110,0.04)" : c.graphite,
-                      boxShadow: isDragging ? "0 0 30px rgba(201,169,110,0.08), inset 0 0 30px rgba(201,169,110,0.03)" : "none",
+                      background: isDragging ? "rgba(212,179,127,0.04)" : c.graphite,
+                      boxShadow: isDragging ? "0 0 30px rgba(212,179,127,0.08), inset 0 0 30px rgba(212,179,127,0.03)" : "none",
                       marginBottom: 16,
                     }}
                   >
@@ -523,7 +523,7 @@ export default function Onboarding() {
                       </div>
                     ) : isDragging ? (
                       <>
-                        <div style={{ width: 52, height: 52, borderRadius: 14, margin: "0 auto 14px", background: "rgba(201,169,110,0.1)", border: "1px solid rgba(201,169,110,0.25)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        <div style={{ width: 52, height: 52, borderRadius: 14, margin: "0 auto 14px", background: "rgba(212,179,127,0.1)", border: "1px solid rgba(212,179,127,0.25)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                           <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
                         </div>
                         <p style={{ fontFamily: font.ui, fontSize: 16, fontWeight: 600, color: c.gilt }}>Release to upload</p>
@@ -531,14 +531,14 @@ export default function Onboarding() {
                       </>
                     ) : (
                       <>
-                        <div style={{ width: 52, height: 52, borderRadius: 14, margin: "0 auto 16px", background: "rgba(201,169,110,0.05)", border: "1px solid rgba(201,169,110,0.12)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        <div style={{ width: 52, height: 52, borderRadius: 14, margin: "0 auto 16px", background: "rgba(212,179,127,0.05)", border: "1px solid rgba(212,179,127,0.12)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                           <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
                         </div>
                         <p style={{ fontFamily: font.ui, fontSize: 16, fontWeight: 500, color: c.ivory, marginBottom: 6 }}>Drop your resume here</p>
                         <p style={{ fontFamily: font.ui, fontSize: 14, color: c.stone, marginBottom: 16 }}>or click to browse</p>
                         <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 10 }}>
                           {["PDF", "DOCX", "TXT"].map((t) => (
-                            <span key={t} style={{ fontFamily: font.mono, fontSize: 11, fontWeight: 500, color: c.stone, background: "rgba(240,237,232,0.03)", padding: "6px 14px", borderRadius: 6, border: `1px solid rgba(240,237,232,0.06)`, letterSpacing: "0.05em" }}>{t}</span>
+                            <span key={t} style={{ fontFamily: font.mono, fontSize: 11, fontWeight: 500, color: c.stone, background: "rgba(245,242,237,0.03)", padding: "6px 14px", borderRadius: 10, border: `1px solid rgba(245,242,237,0.06)`, letterSpacing: "0.05em" }}>{t}</span>
                           ))}
                           <span style={{ fontFamily: font.ui, fontSize: 11, color: "rgba(154,149,144,0.5)" }}>Max 10 MB</span>
                         </div>
@@ -585,16 +585,16 @@ export default function Onboarding() {
                   </p>
 
                   {/* Loading card — replaces the drop zone */}
-                  <div className="ob-card" style={{ borderRadius: 16, padding: "64px 32px", textAlign: "center", border: `1px solid rgba(240,237,232,0.06)` }}>
-                    <div style={{ width: 60, height: 60, borderRadius: 16, margin: "0 auto 24px", background: "rgba(201,169,110,0.06)", border: "1px solid rgba(201,169,110,0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                      <div style={{ width: 24, height: 24, border: "2.5px solid rgba(201,169,110,0.2)", borderTopColor: c.gilt, borderRadius: "50%", animation: "spin 1s linear infinite" }} />
+                  <div className="ob-card" style={{ borderRadius: 16, padding: "64px 32px", textAlign: "center", border: `1px solid rgba(245,242,237,0.06)` }}>
+                    <div style={{ width: 60, height: 60, borderRadius: 16, margin: "0 auto 24px", background: "rgba(212,179,127,0.06)", border: "1px solid rgba(212,179,127,0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <div style={{ width: 24, height: 24, border: "2.5px solid rgba(212,179,127,0.2)", borderTopColor: c.gilt, borderRadius: "50%", animation: "spin 1s linear infinite" }} />
                     </div>
                     <h3 style={{ fontFamily: font.display, fontSize: 28, fontWeight: 400, color: c.ivory, marginBottom: 14, letterSpacing: "-0.02em" }}>Building your profile</h3>
                     <p style={{ fontFamily: font.ui, fontSize: 15, color: c.stone, lineHeight: 1.7, maxWidth: 440, margin: "0 auto 8px" }}>
                       AI is analyzing your experience, skills, and achievements to create a personalized candidate profile...
                     </p>
                     {/* Progress bar */}
-                    <div style={{ maxWidth: 320, margin: "20px auto 0", height: 4, borderRadius: 2, background: "rgba(240,237,232,0.06)", overflow: "hidden" }}>
+                    <div style={{ maxWidth: 320, margin: "20px auto 0", height: 4, borderRadius: 2, background: "rgba(245,242,237,0.06)", overflow: "hidden" }}>
                       <div className="ob-progress-bar" style={{ height: "100%", borderRadius: 2, background: `linear-gradient(90deg, ${c.gilt}, ${c.giltDark})` }} />
                     </div>
                     <p style={{ fontFamily: font.ui, fontSize: 12, color: "rgba(154,149,144,0.5)", marginTop: 8 }}>Usually 10–20 seconds</p>
@@ -623,13 +623,13 @@ export default function Onboarding() {
                   </div>
 
                   {/* Header: headline + badges + actions — compact row */}
-                  <div className="ob-card ob-s1-header" style={{ borderRadius: 14, padding: "20px 24px", border: `1px solid rgba(240,237,232,0.06)`, display: "flex", alignItems: "flex-start", gap: 20 }}>
+                  <div className="ob-card ob-s1-header" style={{ borderRadius: 14, padding: "20px 24px", border: `1px solid rgba(245,242,237,0.06)`, display: "flex", alignItems: "flex-start", gap: 20 }}>
                     <div className="ob-s1-header-text" style={{ flex: 1, minWidth: 0 }}>
                       <h3 style={{ fontFamily: font.display, fontSize: 22, color: c.ivory, letterSpacing: "-0.025em", lineHeight: 1.2, marginBottom: 8 }}>
                         {aiProfile.headline || resumeParsed.name}
                       </h3>
                       <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
-                        {aiProfile.seniorityLevel && <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, color: c.gilt, background: "rgba(201,169,110,0.08)", border: "1px solid rgba(201,169,110,0.18)", borderRadius: 4, padding: "2px 10px" }}>{aiProfile.seniorityLevel}</span>}
+                        {aiProfile.seniorityLevel && <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, color: c.gilt, background: "rgba(212,179,127,0.08)", border: "1px solid rgba(212,179,127,0.18)", borderRadius: 4, padding: "2px 10px" }}>{aiProfile.seniorityLevel}</span>}
                         {aiProfile.yearsExperience && <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>{aiProfile.yearsExperience}+ yrs</span>}
                         {aiProfile.industries && aiProfile.industries.length > 0 && <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>{aiProfile.industries.slice(0, 2).join(", ")}</span>}
                       </div>
@@ -645,7 +645,7 @@ export default function Onboarding() {
                     <div className="ob-s1-header-actions" style={{ display: "flex", gap: 6, flexShrink: 0 }}>
                       <button onClick={() => { setAiPhase("analyzing"); Promise.race([analyzeResumeWithAI(resumeText, targetRole), new Promise<null>((_, rej) => setTimeout(() => rej(new Error("timeout")), 30000))]).then(r => { if (r && typeof r === "object" && "profile" in r) setAiProfile(r.profile); setAiPhase("done"); }).catch(() => setAiPhase("done")); }}
                         style={{ display: "flex", alignItems: "center", gap: 5, padding: "6px 12px", borderRadius: 7, background: c.graphite, border: `1px solid ${c.border}`, cursor: "pointer", fontFamily: font.ui, fontSize: 11, color: c.stone, transition: "all 0.2s" }}
-                        onMouseEnter={(e) => { e.currentTarget.style.borderColor = "rgba(240,237,232,0.15)"; e.currentTarget.style.color = c.ivory; }}
+                        onMouseEnter={(e) => { e.currentTarget.style.borderColor = "rgba(245,242,237,0.15)"; e.currentTarget.style.color = c.ivory; }}
                         onMouseLeave={(e) => { e.currentTarget.style.borderColor = c.border; e.currentTarget.style.color = c.stone; }}>
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
                         Re-analyze
@@ -657,7 +657,7 @@ export default function Onboarding() {
                         undoTimerRef.current = window.setTimeout(() => { setShowUndo(false); undoRef.current = null; }, 8000);
                       }}
                         style={{ display: "flex", alignItems: "center", gap: 5, padding: "6px 12px", borderRadius: 7, background: c.graphite, border: `1px solid ${c.border}`, cursor: "pointer", fontFamily: font.ui, fontSize: 11, color: c.stone, transition: "all 0.2s" }}
-                        onMouseEnter={(e) => { e.currentTarget.style.borderColor = "rgba(240,237,232,0.15)"; e.currentTarget.style.color = c.ivory; }}
+                        onMouseEnter={(e) => { e.currentTarget.style.borderColor = "rgba(245,242,237,0.15)"; e.currentTarget.style.color = c.ivory; }}
                         onMouseLeave={(e) => { e.currentTarget.style.borderColor = c.border; e.currentTarget.style.color = c.stone; }}>
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
                         Remove
@@ -676,7 +676,7 @@ export default function Onboarding() {
                         </div>
                         <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                           {aiProfile.topSkills.slice(0, 6).map((skill, i) => (
-                            <span key={i} style={{ fontFamily: font.ui, fontSize: 11, color: i < 3 ? c.ivory : c.chalk, background: i < 3 ? "linear-gradient(135deg, rgba(201,169,110,0.12), rgba(201,169,110,0.05))" : "rgba(240,237,232,0.03)", border: `1px solid ${i < 3 ? "rgba(201,169,110,0.2)" : "rgba(240,237,232,0.06)"}`, borderRadius: 6, padding: "5px 10px", fontWeight: i < 3 ? 500 : 400 }}>{skill}</span>
+                            <span key={i} style={{ fontFamily: font.ui, fontSize: 11, color: i < 3 ? c.ivory : c.chalk, background: i < 3 ? "linear-gradient(135deg, rgba(212,179,127,0.12), rgba(212,179,127,0.05))" : "rgba(245,242,237,0.03)", border: `1px solid ${i < 3 ? "rgba(212,179,127,0.2)" : "rgba(245,242,237,0.06)"}`, borderRadius: 10, padding: "5px 10px", fontWeight: i < 3 ? 500 : 400 }}>{skill}</span>
                           ))}
                         </div>
                       </div>
@@ -691,7 +691,7 @@ export default function Onboarding() {
                         </div>
                         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                           {aiProfile.keyAchievements.slice(0, 2).map((a, i) => (
-                            <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 8, padding: "8px 10px", borderRadius: 8, background: "rgba(240,237,232,0.02)", border: `1px solid rgba(240,237,232,0.04)` }}>
+                            <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 8, padding: "8px 10px", borderRadius: 8, background: "rgba(245,242,237,0.02)", border: `1px solid rgba(245,242,237,0.04)` }}>
                               <div style={{ width: 18, height: 18, borderRadius: 5, background: "rgba(122,158,126,0.08)", border: `1px solid rgba(122,158,126,0.15)`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 1 }}>
                                 <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
                               </div>
@@ -737,7 +737,7 @@ export default function Onboarding() {
 
                   {/* Career trajectory + privacy — compact row */}
                   {aiProfile.careerTrajectory && (
-                    <div className="ob-card fade-up-3" style={{ borderRadius: 12, padding: "12px 18px", display: "flex", alignItems: "center", gap: 10, border: `1px solid rgba(240,237,232,0.04)` }}>
+                    <div className="ob-card fade-up-3" style={{ borderRadius: 12, padding: "12px 18px", display: "flex", alignItems: "center", gap: 10, border: `1px solid rgba(245,242,237,0.04)` }}>
                       <svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="1.5" style={{ flexShrink: 0 }}><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
                       <span style={{ fontFamily: font.ui, fontSize: 12, color: c.chalk, lineHeight: 1.4 }}>{aiProfile.careerTrajectory}</span>
                     </div>
@@ -765,7 +765,7 @@ export default function Onboarding() {
                 {/* ── Section 1: Role & Company ── */}
                 <div className="ob-card fade-up-1" style={{ borderRadius: 16, padding: "24px 28px" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 20 }}>
-                    <div style={{ width: 28, height: 28, borderRadius: 7, background: "rgba(201,169,110,0.06)", border: "1px solid rgba(201,169,110,0.12)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <div style={{ width: 28, height: 28, borderRadius: 7, background: "rgba(212,179,127,0.06)", border: "1px solid rgba(212,179,127,0.12)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
                     </div>
                     <span style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: c.ivory }}>Target Role</span>
@@ -790,7 +790,7 @@ export default function Onboarding() {
                 {/* ── Section 2: Interview Focus ── */}
                 <div className="ob-card fade-up-2" style={{ borderRadius: 16, padding: "24px 28px" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                    <div style={{ width: 28, height: 28, borderRadius: 7, background: "rgba(201,169,110,0.06)", border: "1px solid rgba(201,169,110,0.12)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <div style={{ width: 28, height: 28, borderRadius: 7, background: "rgba(212,179,127,0.06)", border: "1px solid rgba(212,179,127,0.12)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5" strokeLinecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
                     </div>
                     <span style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: c.ivory }}>Interview Focus <span style={{ color: c.ember, fontWeight: 400 }}>*</span></span>
@@ -808,12 +808,12 @@ export default function Onboarding() {
                         <button key={opt.value} className="ob-focus-card" onClick={() => setInterviewFocus(prev => prev.includes(opt.value) ? prev.filter(v => v !== opt.value) : [...prev, opt.value])}
                           style={{
                             padding: "14px 18px", borderRadius: 12, cursor: "pointer", transition: "all 0.2s ease", textAlign: "left",
-                            background: sel ? "rgba(201,169,110,0.08)" : "transparent",
+                            background: sel ? "rgba(212,179,127,0.08)" : "transparent",
                             border: `1.5px solid ${sel ? c.gilt : c.border}`,
-                            boxShadow: sel ? "0 0 16px rgba(201,169,110,0.06)" : "none",
+                            boxShadow: sel ? "0 0 16px rgba(212,179,127,0.06)" : "none",
                             display: "flex", alignItems: "center", gap: 12, color: sel ? c.gilt : c.stone,
                           }}>
-                          <div style={{ width: 36, height: 36, borderRadius: 9, background: sel ? "rgba(201,169,110,0.1)" : "rgba(240,237,232,0.03)", border: `1px solid ${sel ? "rgba(201,169,110,0.2)" : "rgba(240,237,232,0.06)"}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                          <div style={{ width: 36, height: 36, borderRadius: 9, background: sel ? "rgba(212,179,127,0.1)" : "rgba(245,242,237,0.03)", border: `1px solid ${sel ? "rgba(212,179,127,0.2)" : "rgba(245,242,237,0.06)"}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                             {opt.icon}
                           </div>
                           <div>
@@ -832,7 +832,7 @@ export default function Onboarding() {
                 {/* ── Section 3: Session Length ── */}
                 <div className="ob-card fade-up-3" style={{ borderRadius: 16, padding: "24px 28px" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 18 }}>
-                    <div style={{ width: 28, height: 28, borderRadius: 7, background: "rgba(201,169,110,0.06)", border: "1px solid rgba(201,169,110,0.12)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <div style={{ width: 28, height: 28, borderRadius: 7, background: "rgba(212,179,127,0.06)", border: "1px solid rgba(212,179,127,0.12)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                     </div>
                     <span style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: c.ivory }}>Session Length</span>
@@ -848,9 +848,9 @@ export default function Onboarding() {
                         <button key={opt.value} onClick={() => setSessionLength(opt.value)}
                           style={{
                             padding: "16px 14px", borderRadius: 12, cursor: "pointer", textAlign: "center", position: "relative",
-                            background: sel ? "rgba(201,169,110,0.08)" : "transparent",
+                            background: sel ? "rgba(212,179,127,0.08)" : "transparent",
                             border: `1.5px solid ${sel ? c.gilt : c.border}`,
-                            boxShadow: sel ? "0 0 16px rgba(201,169,110,0.06)" : "none",
+                            boxShadow: sel ? "0 0 16px rgba(212,179,127,0.06)" : "none",
                             transition: "all 0.2s",
                           }}>
                           {opt.recommended && (
@@ -886,7 +886,7 @@ export default function Onboarding() {
                 {/* ── Permissions Card ── */}
                 <div className="ob-card fade-up-1" style={{ borderRadius: 16, padding: "24px 28px" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 20 }}>
-                    <div style={{ width: 28, height: 28, borderRadius: 7, background: "rgba(201,169,110,0.06)", border: "1px solid rgba(201,169,110,0.12)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <div style={{ width: 28, height: 28, borderRadius: 7, background: "rgba(212,179,127,0.06)", border: "1px solid rgba(212,179,127,0.12)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5" strokeLinecap="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>
                     </div>
                     <span style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: c.ivory }}>Permissions</span>
@@ -894,9 +894,9 @@ export default function Onboarding() {
 
                   <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                     {/* Mic */}
-                    <div className={micStatus !== "granted" ? "ob-mic-pulse ob-s3-perm-row" : "ob-s3-perm-row"} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", borderRadius: 10, background: micStatus === "granted" ? "rgba(122,158,126,0.04)" : "rgba(240,237,232,0.02)", border: `1px solid ${micStatus === "granted" ? "rgba(122,158,126,0.12)" : "rgba(201,169,110,0.2)"}` }}>
+                    <div className={micStatus !== "granted" ? "ob-mic-pulse ob-s3-perm-row" : "ob-s3-perm-row"} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", borderRadius: 10, background: micStatus === "granted" ? "rgba(122,158,126,0.04)" : "rgba(245,242,237,0.02)", border: `1px solid ${micStatus === "granted" ? "rgba(122,158,126,0.12)" : "rgba(212,179,127,0.2)"}` }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                        <div style={{ width: 38, height: 38, borderRadius: 10, background: micStatus === "granted" ? `${c.sage}12` : "rgba(240,237,232,0.03)", border: `1px solid ${micStatus === "granted" ? `${c.sage}25` : "rgba(240,237,232,0.06)"}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        <div style={{ width: 38, height: 38, borderRadius: 10, background: micStatus === "granted" ? `${c.sage}12` : "rgba(245,242,237,0.03)", border: `1px solid ${micStatus === "granted" ? `${c.sage}25` : "rgba(245,242,237,0.06)"}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
                           <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={micStatus === "granted" ? c.sage : c.stone} strokeWidth="1.5" strokeLinecap="round">
                             <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
                           </svg>
@@ -910,25 +910,25 @@ export default function Onboarding() {
                       </div>
                       {micStatus === "granted" ? (
                         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                          <div style={{ width: 60, height: 4, borderRadius: 2, background: "rgba(240,237,232,0.06)", overflow: "hidden" }}>
+                          <div style={{ width: 60, height: 4, borderRadius: 2, background: "rgba(245,242,237,0.06)", overflow: "hidden" }}>
                             <div style={{ height: "100%", borderRadius: 2, background: c.sage, width: `${Math.max(5, micLevel)}%`, transition: "width 0.1s" }} />
                           </div>
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
                         </div>
                       ) : (
                         <button onClick={requestMic}
-                          style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: c.gilt, background: "rgba(201,169,110,0.08)", border: `1px solid rgba(201,169,110,0.2)`, borderRadius: 8, padding: "8px 18px", cursor: "pointer", transition: "all 0.2s" }}
-                          onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(201,169,110,0.15)"; }}
-                          onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(201,169,110,0.08)"; }}>
+                          style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: c.gilt, background: "rgba(212,179,127,0.08)", border: `1px solid rgba(212,179,127,0.2)`, borderRadius: 8, padding: "8px 18px", cursor: "pointer", transition: "all 0.2s" }}
+                          onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(212,179,127,0.15)"; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(212,179,127,0.08)"; }}>
                           {micStatus === "denied" ? "Retry" : "Allow Microphone"}
                         </button>
                       )}
                     </div>
 
                     {/* Camera */}
-                    <div className="ob-s3-perm-row" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", borderRadius: 10, background: camStatus === "granted" ? "rgba(122,158,126,0.04)" : "rgba(240,237,232,0.02)", border: `1px solid ${camStatus === "granted" ? "rgba(122,158,126,0.12)" : "rgba(240,237,232,0.06)"}` }}>
+                    <div className="ob-s3-perm-row" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", borderRadius: 10, background: camStatus === "granted" ? "rgba(122,158,126,0.04)" : "rgba(245,242,237,0.02)", border: `1px solid ${camStatus === "granted" ? "rgba(122,158,126,0.12)" : "rgba(245,242,237,0.06)"}` }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                        <div style={{ width: 38, height: 38, borderRadius: 10, background: camStatus === "granted" ? `${c.sage}12` : "rgba(240,237,232,0.03)", border: `1px solid ${camStatus === "granted" ? `${c.sage}25` : "rgba(240,237,232,0.06)"}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        <div style={{ width: 38, height: 38, borderRadius: 10, background: camStatus === "granted" ? `${c.sage}12` : "rgba(245,242,237,0.03)", border: `1px solid ${camStatus === "granted" ? `${c.sage}25` : "rgba(245,242,237,0.06)"}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
                           <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={camStatus === "granted" ? c.sage : c.stone} strokeWidth="1.5" strokeLinecap="round">
                             <path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
                           </svg>
@@ -944,9 +944,9 @@ export default function Onboarding() {
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
                       ) : (
                         <button onClick={requestCamera}
-                          style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: c.stone, background: "rgba(240,237,232,0.03)", border: `1px solid rgba(240,237,232,0.06)`, borderRadius: 8, padding: "8px 18px", cursor: "pointer", transition: "all 0.2s" }}
-                          onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(240,237,232,0.06)"; }}
-                          onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(240,237,232,0.03)"; }}>
+                          style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: c.stone, background: "rgba(245,242,237,0.03)", border: `1px solid rgba(245,242,237,0.06)`, borderRadius: 8, padding: "8px 18px", cursor: "pointer", transition: "all 0.2s" }}
+                          onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(245,242,237,0.06)"; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(245,242,237,0.03)"; }}>
                           {camStatus === "denied" ? "Retry" : "Enable"}
                         </button>
                       )}
@@ -964,7 +964,7 @@ export default function Onboarding() {
                 {/* ── Your Profile Card ── */}
                 <div className="ob-card fade-up-2" style={{ borderRadius: 16, padding: "24px 28px" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 20 }}>
-                    <div style={{ width: 28, height: 28, borderRadius: 7, background: "rgba(201,169,110,0.06)", border: "1px solid rgba(201,169,110,0.12)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <div style={{ width: 28, height: 28, borderRadius: 7, background: "rgba(212,179,127,0.06)", border: "1px solid rgba(212,179,127,0.12)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5" strokeLinecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                     </div>
                     <span style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: c.ivory }}>Your Profile</span>
@@ -997,7 +997,7 @@ export default function Onboarding() {
                             </button>
                           </div>
                         </div>
-                        {i < arr.length - 1 && <div style={{ height: 1, background: "rgba(240,237,232,0.04)" }} />}
+                        {i < arr.length - 1 && <div style={{ height: 1, background: "rgba(245,242,237,0.04)" }} />}
                       </div>
                     ))}
                   </div>
@@ -1028,14 +1028,14 @@ export default function Onboarding() {
                 <button onClick={goNext} disabled={isContinueDisabled}
                   style={{
                     fontFamily: font.ui, fontSize: 15, fontWeight: 600, padding: "14px 40px", borderRadius: 10, border: "none",
-                    background: isContinueDisabled ? "rgba(201,169,110,0.15)" : `linear-gradient(135deg, ${c.gilt}, ${c.giltDark})`,
-                    color: isContinueDisabled ? "rgba(201,169,110,0.4)" : c.obsidian,
+                    background: isContinueDisabled ? "rgba(212,179,127,0.15)" : `linear-gradient(135deg, ${c.gilt}, ${c.giltDark})`,
+                    color: isContinueDisabled ? "rgba(212,179,127,0.4)" : c.obsidian,
                     cursor: isContinueDisabled ? "not-allowed" : "pointer",
                     transition: "all 0.25s ease", display: "inline-flex", alignItems: "center", gap: 8,
-                    boxShadow: isContinueDisabled ? "none" : "0 8px 24px rgba(201,169,110,0.2)",
+                    boxShadow: isContinueDisabled ? "none" : "0 8px 24px rgba(212,179,127,0.2)",
                   }}
-                  onMouseEnter={(e) => { if (!isContinueDisabled) { e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 12px 32px rgba(201,169,110,0.3)"; } }}
-                  onMouseLeave={(e) => { if (!isContinueDisabled) { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 8px 24px rgba(201,169,110,0.2)"; } }}>
+                  onMouseEnter={(e) => { if (!isContinueDisabled) { e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 12px 32px rgba(212,179,127,0.3)"; } }}
+                  onMouseLeave={(e) => { if (!isContinueDisabled) { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 8px 24px rgba(212,179,127,0.2)"; } }}>
                   Continue
                   <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
                 </button>
@@ -1048,10 +1048,10 @@ export default function Onboarding() {
                     color: c.obsidian,
                     cursor: "pointer",
                     transition: "all 0.25s ease", display: "inline-flex", alignItems: "center", gap: 8,
-                    boxShadow: "0 8px 24px rgba(201,169,110,0.2)",
+                    boxShadow: "0 8px 24px rgba(212,179,127,0.2)",
                   }}
-                  onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 12px 32px rgba(201,169,110,0.3)"; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 8px 24px rgba(201,169,110,0.2)"; }}>
+                  onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 12px 32px rgba(212,179,127,0.3)"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 8px 24px rgba(212,179,127,0.2)"; }}>
                   <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polygon points="5,3 19,12 5,21"/></svg>
                   {micStatus === "granted" ? "Start Practice Interview" : "Start Without Mic"}
                 </button>

@@ -18,7 +18,7 @@ export default function PlaceholderPage() {
     <div style={{ minHeight: "100vh", background: c.obsidian, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 40, textAlign: "center" }}>
       <div style={{
         width: 56, height: 56, borderRadius: 14,
-        background: "rgba(201,169,110,0.06)", border: "1px solid rgba(201,169,110,0.12)",
+        background: "rgba(212,179,127,0.06)", border: "1px solid rgba(212,179,127,0.12)",
         display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 24,
       }}>
         <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5" strokeLinecap="round">

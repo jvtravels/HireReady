@@ -61,8 +61,8 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
         >
           {toasts.map((t) => {
             const color = t.type === "success" ? c.sage : t.type === "error" ? c.ember : c.gilt;
-            const bg = t.type === "success" ? "rgba(122,158,126,0.12)" : t.type === "error" ? "rgba(196,112,90,0.12)" : "rgba(201,169,110,0.12)";
-            const borderColor = t.type === "success" ? "rgba(122,158,126,0.25)" : t.type === "error" ? "rgba(196,112,90,0.25)" : "rgba(201,169,110,0.25)";
+            const bg = t.type === "success" ? "rgba(122,158,126,0.12)" : t.type === "error" ? "rgba(196,112,90,0.12)" : "rgba(212,179,127,0.12)";
+            const borderColor = t.type === "success" ? "rgba(122,158,126,0.25)" : t.type === "error" ? "rgba(196,112,90,0.25)" : "rgba(212,179,127,0.25)";
             return (
               <div
                 key={t.id}

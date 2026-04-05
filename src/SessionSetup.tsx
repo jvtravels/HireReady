@@ -162,7 +162,7 @@ function MicTestWaveform({ stream }: { stream: MediaStream | null }) {
 
   return (
     <canvas ref={canvasRef} width={240} height={48}
-      style={{ display: "block", borderRadius: 8, background: "rgba(201,169,110,0.03)", border: `1px solid ${c.border}` }}
+      style={{ display: "block", borderRadius: 8, background: "rgba(212,179,127,0.03)", border: `1px solid ${c.border}` }}
     />
   );
 }
@@ -304,8 +304,8 @@ export default function SessionSetup() {
       {showDraftBanner && draft && (
         <div style={{
           position: "fixed", top: 0, left: 0, right: 0, zIndex: 50,
-          padding: "14px 24px", background: "rgba(201,169,110,0.1)",
-          borderBottom: `1px solid rgba(201,169,110,0.2)`,
+          padding: "14px 24px", background: "rgba(212,179,127,0.1)",
+          borderBottom: `1px solid rgba(212,179,127,0.2)`,
           display: "flex", alignItems: "center", justifyContent: "center", gap: 16,
           backdropFilter: "blur(8px)",
         }}>
@@ -315,7 +315,7 @@ export default function SessionSetup() {
           <button onClick={() => {
             navigate(`/interview?type=${draft.type}&difficulty=${draft.difficulty}&focus=${draft.focus || "general"}&resume=true`);
           }} style={{
-            padding: "6px 16px", borderRadius: 6, border: "none", cursor: "pointer",
+            padding: "6px 16px", borderRadius: 10, border: "none", cursor: "pointer",
             background: `linear-gradient(135deg, ${c.gilt}, ${c.giltDark})`, color: c.obsidian,
             fontFamily: font.ui, fontSize: 12, fontWeight: 600,
           }}>Resume</button>
@@ -323,7 +323,7 @@ export default function SessionSetup() {
             localStorage.removeItem(`hirloop_interview_draft_${user?.id || "anon"}`);
             setShowDraftBanner(false);
           }} style={{
-            padding: "6px 16px", borderRadius: 6, cursor: "pointer",
+            padding: "6px 16px", borderRadius: 10, cursor: "pointer",
             background: "transparent", border: `1px solid ${c.border}`, color: c.stone,
             fontFamily: font.ui, fontSize: 12, fontWeight: 500,
           }}>Discard</button>
@@ -341,7 +341,7 @@ export default function SessionSetup() {
             <span style={{
               fontFamily: font.display, fontSize: 120, fontWeight: 400, color: c.gilt,
               lineHeight: 1, display: "block", textAlign: "center",
-              textShadow: "0 0 60px rgba(201,169,110,0.3)",
+              textShadow: "0 0 60px rgba(212,179,127,0.3)",
             }}>
               {countdown === 0 ? "" : countdown}
             </span>
@@ -471,7 +471,7 @@ export default function SessionSetup() {
                   onClick={() => setSelectedFocus(area.id)}
                   style={{
                     padding: "8px 16px", borderRadius: 100, cursor: "pointer",
-                    background: selectedFocus === area.id ? "rgba(201,169,110,0.1)" : "transparent",
+                    background: selectedFocus === area.id ? "rgba(212,179,127,0.1)" : "transparent",
                     border: `1px solid ${selectedFocus === area.id ? c.gilt : c.border}`,
                     color: selectedFocus === area.id ? c.gilt : c.stone,
                     fontFamily: font.ui, fontSize: 12, fontWeight: 500,
@@ -519,7 +519,7 @@ export default function SessionSetup() {
             </p>
 
             {/* Adaptive suggestion */}
-            <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 16px", borderRadius: 10, background: "rgba(201,169,110,0.04)", border: `1px solid rgba(201,169,110,0.12)`, marginBottom: 24 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 16px", borderRadius: 10, background: "rgba(212,179,127,0.04)", border: `1px solid rgba(212,179,127,0.12)`, marginBottom: 24 }}>
               <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="2"><path d="M12 2a10 10 0 1 0 10 10"/><path d="M12 6v6l4 2"/></svg>
               <span style={{ fontFamily: font.ui, fontSize: 12, color: c.chalk }}>
                 <span style={{ fontWeight: 600, color: c.gilt }}>Recommended: {difficulties.find(d => d.id === suggested.id)?.label}</span>
@@ -605,8 +605,8 @@ export default function SessionSetup() {
                 <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
                   <div style={{
                     width: 40, height: 40, borderRadius: 10,
-                    background: micStatus === "ready" ? "rgba(122,158,126,0.08)" : micStatus === "error" ? "rgba(196,112,90,0.08)" : "rgba(201,169,110,0.06)",
-                    border: `1px solid ${micStatus === "ready" ? "rgba(122,158,126,0.2)" : micStatus === "error" ? "rgba(196,112,90,0.2)" : "rgba(201,169,110,0.12)"}`,
+                    background: micStatus === "ready" ? "rgba(122,158,126,0.08)" : micStatus === "error" ? "rgba(196,112,90,0.08)" : "rgba(212,179,127,0.06)",
+                    border: `1px solid ${micStatus === "ready" ? "rgba(122,158,126,0.2)" : micStatus === "error" ? "rgba(196,112,90,0.2)" : "rgba(212,179,127,0.12)"}`,
                     display: "flex", alignItems: "center", justifyContent: "center",
                   }}>
                     <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={micStatus === "ready" ? c.sage : micStatus === "error" ? c.ember : c.gilt} strokeWidth="1.5" strokeLinecap="round">
@@ -630,11 +630,11 @@ export default function SessionSetup() {
                     style={{
                       width: "100%", padding: "10px", borderRadius: 8, cursor: "pointer",
                       fontFamily: font.ui, fontSize: 13, fontWeight: 500,
-                      background: "rgba(201,169,110,0.06)", border: `1px solid rgba(201,169,110,0.15)`,
+                      background: "rgba(212,179,127,0.06)", border: `1px solid rgba(212,179,127,0.15)`,
                       color: c.gilt, transition: "all 0.2s ease", outline: "none",
                     }}
-                    onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(201,169,110,0.12)"; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(201,169,110,0.06)"; }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(212,179,127,0.12)"; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(212,179,127,0.06)"; }}
                   >
                     {micStatus === "error" ? "Retry Microphone" : "Test Microphone"}
                   </button>
@@ -642,7 +642,7 @@ export default function SessionSetup() {
 
                 {micStatus === "error" && (
                   <>
-                  <p style={{ fontFamily: font.ui, fontSize: 11, color: c.ember, marginTop: 10, lineHeight: 1.5, padding: "8px 12px", borderRadius: 6, background: "rgba(196,112,90,0.06)", border: "1px solid rgba(196,112,90,0.12)" }}>
+                  <p style={{ fontFamily: font.ui, fontSize: 11, color: c.ember, marginTop: 10, lineHeight: 1.5, padding: "8px 12px", borderRadius: 10, background: "rgba(196,112,90,0.06)", border: "1px solid rgba(196,112,90,0.12)" }}>
                     {micError || "Microphone access was denied. You can still practice by typing your answers."}
                   </p>
                   <button
@@ -667,8 +667,8 @@ export default function SessionSetup() {
                 <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
                   <div style={{
                     width: 40, height: 40, borderRadius: 10,
-                    background: camStatus === "ready" ? "rgba(122,158,126,0.08)" : camStatus === "error" ? "rgba(196,112,90,0.08)" : "rgba(201,169,110,0.06)",
-                    border: `1px solid ${camStatus === "ready" ? "rgba(122,158,126,0.2)" : camStatus === "error" ? "rgba(196,112,90,0.2)" : "rgba(201,169,110,0.12)"}`,
+                    background: camStatus === "ready" ? "rgba(122,158,126,0.08)" : camStatus === "error" ? "rgba(196,112,90,0.08)" : "rgba(212,179,127,0.06)",
+                    border: `1px solid ${camStatus === "ready" ? "rgba(122,158,126,0.2)" : camStatus === "error" ? "rgba(196,112,90,0.2)" : "rgba(212,179,127,0.12)"}`,
                     display: "flex", alignItems: "center", justifyContent: "center",
                   }}>
                     <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={camStatus === "ready" ? c.sage : camStatus === "error" ? c.ember : c.gilt} strokeWidth="1.5" strokeLinecap="round">
@@ -692,18 +692,18 @@ export default function SessionSetup() {
                     style={{
                       width: "100%", padding: "10px", borderRadius: 8, cursor: "pointer",
                       fontFamily: font.ui, fontSize: 13, fontWeight: 500,
-                      background: "rgba(201,169,110,0.06)", border: `1px solid rgba(201,169,110,0.15)`,
+                      background: "rgba(212,179,127,0.06)", border: `1px solid rgba(212,179,127,0.15)`,
                       color: c.gilt, transition: "all 0.2s ease", outline: "none",
                     }}
-                    onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(201,169,110,0.12)"; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(201,169,110,0.06)"; }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(212,179,127,0.12)"; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(212,179,127,0.06)"; }}
                   >
                     {camStatus === "error" ? "Retry Camera" : "Test Camera"}
                   </button>
                 )}
 
                 {camStatus === "error" && (
-                  <p style={{ fontFamily: font.ui, fontSize: 11, color: c.ember, marginTop: 10, lineHeight: 1.5, padding: "8px 12px", borderRadius: 6, background: "rgba(196,112,90,0.06)", border: "1px solid rgba(196,112,90,0.12)" }}>
+                  <p style={{ fontFamily: font.ui, fontSize: 11, color: c.ember, marginTop: 10, lineHeight: 1.5, padding: "8px 12px", borderRadius: 10, background: "rgba(196,112,90,0.06)", border: "1px solid rgba(196,112,90,0.12)" }}>
                     {camError || "Camera access was denied. The interview will work without video."}
                   </p>
                 )}
@@ -735,7 +735,7 @@ export default function SessionSetup() {
       <footer style={{
         position: "fixed", bottom: 0, left: 0, right: 0,
         padding: "16px 32px",
-        background: "rgba(10,10,11,0.9)", backdropFilter: "blur(12px)",
+        background: "rgba(6,6,7,0.9)", backdropFilter: "blur(12px)",
         borderTop: `1px solid ${c.border}`,
         display: "flex", justifyContent: "space-between", alignItems: "center",
         zIndex: 10,
@@ -767,7 +767,7 @@ export default function SessionSetup() {
             style={{
               fontFamily: font.ui, fontSize: 13, fontWeight: 500,
               padding: "10px 28px", borderRadius: 8, cursor: canProceedStep1 || step > 1 ? "pointer" : "not-allowed",
-              background: (step === 1 ? canProceedStep1 : canProceedStep2) ? c.gilt : "rgba(201,169,110,0.15)",
+              background: (step === 1 ? canProceedStep1 : canProceedStep2) ? c.gilt : "rgba(212,179,127,0.15)",
               color: (step === 1 ? canProceedStep1 : canProceedStep2) ? c.obsidian : c.stone,
               border: "none",
               display: "flex", alignItems: "center", gap: 8,
@@ -789,7 +789,7 @@ export default function SessionSetup() {
               padding: "12px 32px", borderRadius: 8,
               background: c.gilt, color: c.obsidian, border: "none",
               cursor: "pointer", display: "flex", alignItems: "center", gap: 8,
-              boxShadow: "0 8px 32px rgba(201,169,110,0.15)",
+              boxShadow: "0 8px 32px rgba(212,179,127,0.15)",
               transition: "all 0.2s ease", outline: "none",
             }}
             onMouseEnter={(e) => { e.currentTarget.style.filter = "brightness(1.15)"; }}

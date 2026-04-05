@@ -12,9 +12,12 @@ import { useDocTitle } from "./useDocTitle";
 
 /* ─── Shared premium card style ─── */
 const card = {
-  background: c.graphite,
-  borderRadius: 12,
-  border: "1px solid rgba(240,237,232,0.06)",
+  background: "linear-gradient(180deg, rgba(30,30,32,0.5) 0%, rgba(17,17,19,0.5) 100%)",
+  backdropFilter: "blur(16px)",
+  WebkitBackdropFilter: "blur(16px)",
+  borderRadius: 14,
+  border: "1px solid rgba(255,255,255,0.06)",
+  boxShadow: "0 1px 2px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.03)",
   position: "relative" as const,
 } as const;
 
@@ -25,7 +28,7 @@ const utilBtn = {
   padding: "8px 14px", cursor: "pointer" as const, display: "flex" as const, alignItems: "center" as const,
   gap: 6, transition: "all 0.25s cubic-bezier(0.16,1,0.3,1)", outline: "none" as const,
 };
-const utilBtnEnter = (e: React.MouseEvent<HTMLButtonElement>) => { e.currentTarget.style.borderColor = "rgba(201,169,110,0.3)"; e.currentTarget.style.color = c.ivory; };
+const utilBtnEnter = (e: React.MouseEvent<HTMLButtonElement>) => { e.currentTarget.style.borderColor = "rgba(212,179,127,0.3)"; e.currentTarget.style.color = c.ivory; };
 const utilBtnLeave = (e: React.MouseEvent<HTMLButtonElement>) => { e.currentTarget.style.borderColor = c.border; e.currentTarget.style.color = c.stone; };
 
 /* ─── Section heading (serif) ─── */
@@ -89,7 +92,7 @@ function CountUp({ value, suffix = "" }: { value: string; suffix?: string }) {
 /* ─── Focus-visible + reduced-motion styles ─── */
 const dashboardStyles = `
   .dash-focus:focus-visible {
-    outline: 2px solid rgba(201,169,110,0.5) !important;
+    outline: 2px solid rgba(212,179,127,0.5) !important;
     outline-offset: 2px;
   }
   @media (prefers-reduced-motion: reduce) {
@@ -230,7 +233,7 @@ export default function DashboardHome() {
               {getPersonalizedGreeting(displayName.split(" ")[0], currentStreak, recentSessions.length)}
             </h1>
             {latestBadge && (
-              <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "4px 12px", borderRadius: radius.pill, background: "rgba(201,169,110,0.06)", border: "1px solid rgba(201,169,110,0.15)" }} title={latestBadge.description}>
+              <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "4px 12px", borderRadius: radius.pill, background: "rgba(212,179,127,0.06)", border: "1px solid rgba(212,179,127,0.15)" }} title={latestBadge.description}>
                 <span style={{ display: "flex", transform: "scale(0.65)", transformOrigin: "center" }}>{(badgeIcons[latestBadge.icon] || badgeIcons.star)(c.gilt)}</span>
                 <span style={{ fontFamily: font.mono, fontSize: 11, fontWeight: 600, color: c.gilt }}>{latestBadge.label}</span>
               </div>
@@ -272,7 +275,7 @@ export default function DashboardHome() {
                 ].map((item) => (
                   <button key={item.label} role="menuitem" onClick={() => { item.action(); setHeaderMenuOpen(false); }}
                     style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", padding: "10px 16px", fontFamily: font.ui, fontSize: 13, color: c.chalk, background: "transparent", border: "none", cursor: "pointer", transition: "background 0.15s" }}
-                    onMouseEnter={(e) => e.currentTarget.style.background = "rgba(240,237,232,0.04)"}
+                    onMouseEnter={(e) => e.currentTarget.style.background = "rgba(245,242,237,0.04)"}
                     onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}>
                     <span style={{ opacity: 0.6 }}>{item.icon}</span>
                     {item.label}
@@ -291,8 +294,8 @@ export default function DashboardHome() {
 
       {/* ─── Resume Draft Banner ─── */}
       {hasDraft && (
-        <div style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 20px", borderRadius: radius.md, background: "rgba(201,169,110,0.04)", border: `1px solid rgba(201,169,110,0.15)`, marginBottom: sp.xl, flexWrap: "wrap" }}>
-          <div style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(201,169,110,0.08)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 20px", borderRadius: radius.md, background: "rgba(212,179,127,0.04)", border: `1px solid rgba(212,179,127,0.15)`, marginBottom: sp.xl, flexWrap: "wrap" }}>
+          <div style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(212,179,127,0.08)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
             <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
@@ -325,7 +328,7 @@ export default function DashboardHome() {
                   if (notif.action === "View Report") nav("/analytics");
                   else if (notif.action === "Quick Practice" || notif.action === "Practice Now") handleStartSession();
                   else if (notif.action === "Renew") nav("/#pricing");
-                }} style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: c.sage, background: "rgba(122,158,126,0.08)", border: `1px solid rgba(122,158,126,0.2)`, borderRadius: 6, padding: "6px 14px", cursor: "pointer", whiteSpace: "nowrap" }}
+                }} style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: c.sage, background: "rgba(122,158,126,0.08)", border: `1px solid rgba(122,158,126,0.2)`, borderRadius: 10, padding: "6px 14px", cursor: "pointer", whiteSpace: "nowrap" }}
                   onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(122,158,126,0.15)"; }}
                   onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(122,158,126,0.08)"; }}
                 >{notif.action}</button>
@@ -342,12 +345,12 @@ export default function DashboardHome() {
 
       {/* ─── Practice Reminder ─── */}
       {practiceReminder && (
-        <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 20px", borderRadius: radius.md, background: "rgba(201,169,110,0.03)", borderLeft: `3px solid ${c.gilt}`, marginBottom: sp.xl }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 20px", borderRadius: radius.md, background: "rgba(212,179,127,0.03)", borderLeft: `3px solid ${c.gilt}`, marginBottom: sp.xl }}>
           <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
           <span style={{ fontFamily: font.ui, fontSize: 14, color: c.chalk, flex: 1, lineHeight: 1.5 }}>{practiceReminder}</span>
-          <button onClick={handleStartSession} style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: c.gilt, background: "rgba(201,169,110,0.08)", border: `1px solid rgba(201,169,110,0.2)`, borderRadius: 6, padding: "6px 14px", cursor: "pointer", whiteSpace: "nowrap" }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(201,169,110,0.15)"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(201,169,110,0.08)"; }}
+          <button onClick={handleStartSession} style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: c.gilt, background: "rgba(212,179,127,0.08)", border: `1px solid rgba(212,179,127,0.2)`, borderRadius: 10, padding: "6px 14px", cursor: "pointer", whiteSpace: "nowrap" }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(212,179,127,0.15)"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(212,179,127,0.08)"; }}
           >Practice Now</button>
         </div>
       )}
@@ -356,16 +359,16 @@ export default function DashboardHome() {
       {dailyChallenge && !dailyChallenge.completed && (
         <div role="button" tabIndex={0} aria-label={`Daily Challenge: ${dailyChallenge.label}`}
           onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); nav(`/session/new?type=${dailyChallenge.type}${dailyChallenge.focus ? `&focus=${dailyChallenge.focus}` : ""}`); } }}
-          style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 20px", borderRadius: radius.md, background: "rgba(201,169,110,0.03)", border: "1px solid rgba(201,169,110,0.08)", marginBottom: sp.xl, cursor: "pointer", transition: "all 0.2s ease" }}
+          style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 20px", borderRadius: radius.md, background: "rgba(212,179,127,0.03)", border: "1px solid rgba(212,179,127,0.08)", marginBottom: sp.xl, cursor: "pointer", transition: "all 0.2s ease" }}
           onClick={() => nav(`/session/new?type=${dailyChallenge.type}${dailyChallenge.focus ? `&focus=${dailyChallenge.focus}` : ""}`)}
-          onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(201,169,110,0.06)"; e.currentTarget.style.borderColor = "rgba(201,169,110,0.15)"; }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(201,169,110,0.03)"; e.currentTarget.style.borderColor = "rgba(201,169,110,0.08)"; }}>
+          onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(212,179,127,0.06)"; e.currentTarget.style.borderColor = "rgba(212,179,127,0.15)"; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(212,179,127,0.03)"; e.currentTarget.style.borderColor = "rgba(212,179,127,0.08)"; }}>
           <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="2" strokeLinecap="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" /></svg>
           <div style={{ flex: 1 }}>
             <span style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: c.ivory }}>Daily Challenge: {dailyChallenge.label}</span>
             <span style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, marginLeft: 8 }}>{dailyChallenge.description}</span>
           </div>
-          <span style={{ fontFamily: font.mono, fontSize: 10, fontWeight: 600, padding: "3px 10px", borderRadius: radius.pill, background: dailyChallenge.difficulty === "hard" ? "rgba(196,112,90,0.08)" : "rgba(201,169,110,0.08)", color: dailyChallenge.difficulty === "hard" ? c.ember : c.gilt, textTransform: "uppercase" as const, flexShrink: 0 }}>{dailyChallenge.difficulty}</span>
+          <span style={{ fontFamily: font.mono, fontSize: 10, fontWeight: 600, padding: "3px 10px", borderRadius: radius.pill, background: dailyChallenge.difficulty === "hard" ? "rgba(196,112,90,0.08)" : "rgba(212,179,127,0.08)", color: dailyChallenge.difficulty === "hard" ? c.ember : c.gilt, textTransform: "uppercase" as const, flexShrink: 0 }}>{dailyChallenge.difficulty}</span>
           <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="2" strokeLinecap="round" style={{ flexShrink: 0 }}><polyline points="9 18 15 12 9 6"/></svg>
         </div>
       )}
@@ -385,10 +388,10 @@ export default function DashboardHome() {
               {prepPlan.map((step, i) => (
                 <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 12, position: "relative" }}>
                   <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0 }}>
-                    <div style={{ width: 20, height: 20, borderRadius: "50%", background: step.done ? c.sage : c.obsidian, border: `2px solid ${step.done ? c.sage : "rgba(240,237,232,0.1)"}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <div style={{ width: 20, height: 20, borderRadius: "50%", background: step.done ? c.sage : c.obsidian, border: `2px solid ${step.done ? c.sage : "rgba(245,242,237,0.1)"}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
                       {step.done && <svg aria-hidden="true" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={c.obsidian} strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>}
                     </div>
-                    {i < prepPlan.length - 1 && <div style={{ width: 2, height: 24, background: step.done ? c.sage : "rgba(240,237,232,0.06)", opacity: 0.4 }} />}
+                    {i < prepPlan.length - 1 && <div style={{ width: 2, height: 24, background: step.done ? c.sage : "rgba(245,242,237,0.06)", opacity: 0.4 }} />}
                   </div>
                   <span style={{ fontFamily: font.ui, fontSize: 13, color: step.done ? c.stone : c.chalk, paddingTop: 2, textDecoration: step.done ? "line-through" : "none", opacity: step.done ? 0.6 : 1 }}>{step.label}</span>
                 </div>
@@ -402,7 +405,7 @@ export default function DashboardHome() {
       <div style={{
         ...card, padding: isMobile ? "24px" : "28px 32px", marginBottom: sp["2xl"], overflow: "hidden",
       }} className="gradient-border-card">
-        <div style={{ position: "absolute", top: "-30%", right: "-5%", width: "45%", height: "160%", background: "radial-gradient(ellipse at center, rgba(201,169,110,0.06) 0%, rgba(201,169,110,0.02) 45%, transparent 70%)", pointerEvents: "none" }} />
+        <div style={{ position: "absolute", top: "-30%", right: "-5%", width: "45%", height: "160%", background: "radial-gradient(ellipse at center, rgba(212,179,127,0.06) 0%, rgba(212,179,127,0.02) 45%, transparent 70%)", pointerEvents: "none" }} />
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: isMobile ? 16 : 24, position: "relative" }}>
           <div style={{ flex: 1, minWidth: 260 }}>
             <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "5px 14px", borderRadius: radius.pill, background: "rgba(122,158,126,0.06)", border: "1px solid rgba(122,158,126,0.18)", marginBottom: 14 }}>
@@ -427,22 +430,22 @@ export default function DashboardHome() {
               fontFamily: font.ui, fontSize: 15, fontWeight: 600, padding: "12px 30px", borderRadius: radius.md,
               border: "none", background: `linear-gradient(135deg, ${c.gilt}, ${c.giltDark})`,
               color: c.obsidian, cursor: "pointer", display: "flex", alignItems: "center", gap: 8, whiteSpace: "nowrap",
-              boxShadow: "0 2px 12px rgba(201,169,110,0.2)",
+              boxShadow: "0 2px 12px rgba(212,179,127,0.2)",
               transition: "all 0.3s cubic-bezier(0.16,1,0.3,1)",
             }}
-              onMouseEnter={(e) => { e.currentTarget.style.boxShadow = "0 4px 20px rgba(201,169,110,0.3)"; e.currentTarget.style.transform = "translateY(-1px)"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.boxShadow = "0 2px 12px rgba(201,169,110,0.2)"; e.currentTarget.style.transform = "translateY(0)"; }}
+              onMouseEnter={(e) => { e.currentTarget.style.boxShadow = "0 4px 20px rgba(212,179,127,0.3)"; e.currentTarget.style.transform = "translateY(-1px)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.boxShadow = "0 2px 12px rgba(212,179,127,0.2)"; e.currentTarget.style.transform = "translateY(0)"; }}
             >
               <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polygon points="5,3 19,12 5,21" /></svg>
               {atSessionLimit ? "Upgrade to Continue" : "Start Session"}
             </button>
             {/* ─── Streak widget ─── */}
             <div className="streak-widget" style={{ display: "flex", alignItems: "center", gap: 0, flexWrap: "wrap" }}>
-              <div className="streak-label" style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 14px", borderRadius: `${radius.pill}px 0 0 ${radius.pill}px`, background: "rgba(201,169,110,0.06)", border: "1px solid rgba(201,169,110,0.12)", borderRight: "none", whiteSpace: "nowrap" }}>
+              <div className="streak-label" style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 14px", borderRadius: `${radius.pill}px 0 0 ${radius.pill}px`, background: "rgba(212,179,127,0.06)", border: "1px solid rgba(212,179,127,0.12)", borderRight: "none", whiteSpace: "nowrap" }}>
                 <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="2" strokeLinecap="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" /></svg>
                 <span style={{ fontFamily: font.mono, fontSize: 11, fontWeight: 600, color: c.gilt }}>{currentStreak > 0 ? `${currentStreak}-day streak` : "Start a streak"}</span>
               </div>
-              <div className="streak-dots" style={{ display: "flex", alignItems: "center", gap: 2, padding: "0 4px", border: "1px solid rgba(240,237,232,0.08)", borderRadius: `0 ${radius.pill}px ${radius.pill}px 0`, height: 28 }}>
+              <div className="streak-dots" style={{ display: "flex", alignItems: "center", gap: 2, padding: "0 4px", border: "1px solid rgba(245,242,237,0.08)", borderRadius: `0 ${radius.pill}px ${radius.pill}px 0`, height: 28 }}>
                 {["M", "T", "W", "T", "F", "S", "S"].map((day, i) => {
                   const today = new Date();
                   const todayIdx = today.getDay() === 0 ? 6 : today.getDay() - 1;
@@ -453,8 +456,8 @@ export default function DashboardHome() {
                     <div key={`day-${i}`} title={`${day}: ${isFutureDay ? "Upcoming" : practiced ? "Practiced" : "Missed"}`} style={{
                       width: 24, height: 22, display: "flex", alignItems: "center", justifyContent: "center",
                       borderRadius: 4,
-                      background: practiced ? "rgba(201,169,110,0.18)" : "transparent",
-                      border: practiced ? "1px solid rgba(201,169,110,0.25)" : "1px solid transparent",
+                      background: practiced ? "rgba(212,179,127,0.18)" : "transparent",
+                      border: practiced ? "1px solid rgba(212,179,127,0.25)" : "1px solid transparent",
                       fontSize: 10, fontFamily: font.mono, fontWeight: 600,
                       color: practiced ? c.gilt : isToday ? c.ivory : c.stone,
                     }}>{day}</div>
@@ -510,11 +513,11 @@ export default function DashboardHome() {
                   <div key={ev.id} role="button" tabIndex={0} aria-label={`${ev.company} interview — ${isToday ? "Today" : `${days} days away`}`}
                     onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); nav("/calendar"); } }}
                     style={{ padding: "16px 20px", borderRadius: radius.md, background: c.obsidian, borderLeft: `3px solid ${isToday ? c.ember : urgent ? c.gilt : c.sage}`, cursor: "pointer", transition: "background 0.2s ease" }} onClick={() => nav("/calendar")}
-                    onMouseEnter={(e) => e.currentTarget.style.background = "rgba(240,237,232,0.02)"}
+                    onMouseEnter={(e) => e.currentTarget.style.background = "rgba(245,242,237,0.02)"}
                     onMouseLeave={(e) => e.currentTarget.style.background = c.obsidian}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
                       <span style={{ fontFamily: font.ui, fontSize: 14, fontWeight: 600, color: c.ivory }}>{ev.company}</span>
-                      <span style={{ fontFamily: font.mono, fontSize: 10, fontWeight: 600, padding: "3px 10px", borderRadius: radius.pill, background: isToday ? "rgba(196,112,90,0.1)" : urgent ? "rgba(201,169,110,0.08)" : "rgba(122,158,126,0.06)", color: isToday ? c.ember : urgent ? c.gilt : c.sage }}>
+                      <span style={{ fontFamily: font.mono, fontSize: 10, fontWeight: 600, padding: "3px 10px", borderRadius: radius.pill, background: isToday ? "rgba(196,112,90,0.1)" : urgent ? "rgba(212,179,127,0.08)" : "rgba(122,158,126,0.06)", color: isToday ? c.ember : urgent ? c.gilt : c.sage }}>
                         {isToday ? "TODAY" : days === 1 ? "TOMORROW" : `${days}d`}
                       </span>
                     </div>
@@ -554,7 +557,7 @@ export default function DashboardHome() {
                 <defs><linearGradient id="sampleGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={c.gilt}/><stop offset="100%" stopColor="transparent"/></linearGradient></defs>
               </svg>
               {/* Frosted overlay */}
-              <div style={{ position: "absolute", inset: 0, background: "rgba(22,22,24,0.75)", backdropFilter: "blur(4px)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", borderRadius: radius.md }}>
+              <div style={{ position: "absolute", inset: 0, background: "rgba(17,17,19,0.75)", backdropFilter: "blur(4px)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", borderRadius: radius.md }}>
                 <p style={{ fontFamily: font.ui, fontSize: 14, color: c.chalk, marginBottom: 12 }}>Complete your first session to see your trend</p>
                 <button onClick={handleStartSession} style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: c.obsidian, background: `linear-gradient(135deg, ${c.gilt}, ${c.giltDark})`, border: "none", borderRadius: radius.sm, padding: "8px 20px", cursor: "pointer", transition: "all 0.2s ease" }}>Start a Session</button>
               </div>
@@ -578,10 +581,10 @@ export default function DashboardHome() {
                     onClick={() => nav(`/session/new?type=behavioral&focus=${sk.name.toLowerCase().replace(/\s+/g, "-")}`)}
                     onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); nav(`/session/new?type=behavioral&focus=${sk.name.toLowerCase().replace(/\s+/g, "-")}`); } }}
                     style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", padding: "6px 8px", margin: "-6px -8px", borderRadius: radius.sm, transition: "background 0.15s ease" }}
-                    onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(240,237,232,0.03)"; }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(245,242,237,0.03)"; }}
                     onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}>
                     <span style={{ fontFamily: font.ui, fontSize: 13, color: c.chalk, flex: 1 }}>{sk.name}</span>
-                    <div style={{ width: 60, height: 3, background: "rgba(240,237,232,0.06)", borderRadius: 2, overflow: "hidden" }}><div style={{ height: "100%", width: `${sk.score}%`, background: sk.color, borderRadius: 2, transition: "width 0.4s cubic-bezier(0.16,1,0.3,1)" }} /></div>
+                    <div style={{ width: 60, height: 3, background: "rgba(245,242,237,0.06)", borderRadius: 2, overflow: "hidden" }}><div style={{ height: "100%", width: `${sk.score}%`, background: sk.color, borderRadius: 2, transition: "width 0.4s cubic-bezier(0.16,1,0.3,1)" }} /></div>
                     <span style={{ fontFamily: font.mono, fontSize: 12, fontWeight: 600, color: c.ivory, width: 24, textAlign: "right" }}>{sk.score}</span>
                     <span style={{ fontFamily: font.mono, fontSize: 11, color: c.sage, width: 30, textAlign: "right" }}>+{sk.score - sk.prev}</span>
                   </div>
@@ -595,14 +598,14 @@ export default function DashboardHome() {
                 {["Communication", "Leadership", "Problem Solving", "Teamwork", "Adaptability"].map((skill, i) => (
                   <div key={skill} style={{ display: "flex", alignItems: "center", gap: 10 }}>
                     <span style={{ fontFamily: font.ui, fontSize: 11, color: c.chalk, width: 100 }}>{skill}</span>
-                    <div style={{ flex: 1, height: 3, background: "rgba(240,237,232,0.06)", borderRadius: 2, overflow: "hidden" }}>
+                    <div style={{ flex: 1, height: 3, background: "rgba(245,242,237,0.06)", borderRadius: 2, overflow: "hidden" }}>
                       <div style={{ height: "100%", width: `${75 - i * 8}%`, background: c.gilt, borderRadius: 2 }} />
                     </div>
                     <span style={{ fontFamily: font.mono, fontSize: 11, color: c.ivory, width: 22, textAlign: "right" }}>{75 - i * 8}</span>
                   </div>
                 ))}
               </div>
-              <div style={{ position: "absolute", inset: 0, background: "rgba(22,22,24,0.75)", backdropFilter: "blur(4px)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", borderRadius: radius.md }}>
+              <div style={{ position: "absolute", inset: 0, background: "rgba(17,17,19,0.75)", backdropFilter: "blur(4px)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", borderRadius: radius.md }}>
                 <p style={{ fontFamily: font.ui, fontSize: 13, color: c.chalk, lineHeight: 1.5, textAlign: "center", maxWidth: 220, marginBottom: 10 }}>Complete a session to unlock your skill breakdown</p>
                 <button onClick={handleStartSession} style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: c.obsidian, background: `linear-gradient(135deg, ${c.gilt}, ${c.giltDark})`, border: "none", borderRadius: radius.sm, padding: "7px 16px", cursor: "pointer" }}>Get Started</button>
               </div>
@@ -617,7 +620,7 @@ export default function DashboardHome() {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
           {sectionTitle("Recent Sessions")}
           <button aria-label={`Sort sessions by ${sortBy === "date" ? "score" : "date"}`} onClick={() => setSortBy(sortBy === "date" ? "score" : "date")}
-            style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, background: "rgba(240,237,232,0.03)", border: "none", borderRadius: radius.sm, padding: "6px 14px", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, transition: "color 0.2s" }}
+            style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, background: "rgba(245,242,237,0.03)", border: "none", borderRadius: radius.sm, padding: "6px 14px", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, transition: "color 0.2s" }}
             onMouseEnter={(e) => e.currentTarget.style.color = c.ivory}
             onMouseLeave={(e) => e.currentTarget.style.color = c.stone}>
             <svg aria-hidden="true" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -631,15 +634,15 @@ export default function DashboardHome() {
           <div style={{ flex: 1, minWidth: 160, position: "relative" }}>
             <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.stone} strokeWidth="2" strokeLinecap="round" style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)" }}><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
             <input ref={searchInputRef} type="text" placeholder="Search sessions... (press /)" aria-label="Search sessions" value={searchQuery} onChange={(e) => handleSearch(e.target.value)}
-              style={{ width: "100%", padding: "9px 10px 9px 32px", fontFamily: font.ui, fontSize: 13, color: c.ivory, background: c.obsidian, border: `1px solid rgba(240,237,232,0.06)`, borderRadius: radius.sm, outline: "none", boxSizing: "border-box", transition: "border-color 0.2s" }}
-              onFocus={(e) => e.currentTarget.style.borderColor = "rgba(201,169,110,0.3)"}
-              onBlur={(e) => e.currentTarget.style.borderColor = "rgba(240,237,232,0.06)"}
+              style={{ width: "100%", padding: "9px 10px 9px 32px", fontFamily: font.ui, fontSize: 13, color: c.ivory, background: c.obsidian, border: `1px solid rgba(245,242,237,0.06)`, borderRadius: radius.sm, outline: "none", boxSizing: "border-box", transition: "border-color 0.2s" }}
+              onFocus={(e) => e.currentTarget.style.borderColor = "rgba(212,179,127,0.3)"}
+              onBlur={(e) => e.currentTarget.style.borderColor = "rgba(245,242,237,0.06)"}
             />
           </div>
           <div style={{ display: "flex", gap: 4 }}>
             {(["all", "month", "week"] as const).map((range) => (
               <button key={range} aria-pressed={dateRange === range} onClick={() => setDateRange(range)}
-                style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, padding: "6px 12px", borderRadius: radius.sm, cursor: "pointer", background: dateRange === range ? "rgba(201,169,110,0.08)" : "transparent", border: "none", color: dateRange === range ? c.gilt : c.stone, transition: "all 0.2s ease" }}
+                style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, padding: "6px 12px", borderRadius: radius.sm, cursor: "pointer", background: dateRange === range ? "rgba(212,179,127,0.08)" : "transparent", border: "none", color: dateRange === range ? c.gilt : c.stone, transition: "all 0.2s ease" }}
                 onMouseEnter={(e) => { if (dateRange !== range) e.currentTarget.style.color = c.ivory; }}
                 onMouseLeave={(e) => { if (dateRange !== range) e.currentTarget.style.color = c.stone; }}>
                 {range === "all" ? "All time" : range === "month" ? "30 days" : "7 days"}
@@ -651,7 +654,7 @@ export default function DashboardHome() {
         <div style={{ display: "flex", gap: 6, marginBottom: 18, flexWrap: "wrap" }}>
           {sessionTypes.map((type) => (
             <button key={type} aria-pressed={filterType === type} onClick={() => setFilterType(type)}
-              style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, padding: "6px 14px", borderRadius: radius.pill, cursor: "pointer", background: filterType === type ? "rgba(201,169,110,0.08)" : "transparent", border: "none", color: filterType === type ? c.gilt : c.stone, transition: "all 0.2s ease" }}
+              style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, padding: "6px 14px", borderRadius: radius.pill, cursor: "pointer", background: filterType === type ? "rgba(212,179,127,0.08)" : "transparent", border: "none", color: filterType === type ? c.gilt : c.stone, transition: "all 0.2s ease" }}
               onMouseEnter={(e) => { if (filterType !== type) e.currentTarget.style.color = c.chalk; }}
               onMouseLeave={(e) => { if (filterType !== type) e.currentTarget.style.color = c.stone; }}>
               {type}
@@ -673,9 +676,9 @@ export default function DashboardHome() {
               </p>
               {(searchQuery || filterType !== "All" || dateRange !== "all") && (
                 <button onClick={() => { setSearchQuery(""); setDebouncedSearch(""); setFilterType("All"); setDateRange("all"); }}
-                  style={{ marginTop: 14, fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.gilt, background: "rgba(201,169,110,0.06)", border: `1px solid rgba(201,169,110,0.15)`, borderRadius: radius.sm, padding: "8px 18px", cursor: "pointer", transition: "background 0.2s" }}
-                  onMouseEnter={(e) => e.currentTarget.style.background = "rgba(201,169,110,0.12)"}
-                  onMouseLeave={(e) => e.currentTarget.style.background = "rgba(201,169,110,0.06)"}>
+                  style={{ marginTop: 14, fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.gilt, background: "rgba(212,179,127,0.06)", border: `1px solid rgba(212,179,127,0.15)`, borderRadius: radius.sm, padding: "8px 18px", cursor: "pointer", transition: "background 0.2s" }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = "rgba(212,179,127,0.12)"}
+                  onMouseLeave={(e) => e.currentTarget.style.background = "rgba(212,179,127,0.06)"}>
                   Clear all filters
                 </button>
               )}
@@ -684,12 +687,12 @@ export default function DashboardHome() {
             filteredSessions.slice(0, sessionsToShow).map((session) => (
               <div key={session.id}>
                 <button className="dash-focus" onClick={() => setExpandedSession(expandedSession === session.id ? null : session.id)} aria-expanded={expandedSession === session.id}
-                  style={{ width: "100%", padding: "16px 18px", borderRadius: radius.md, background: expandedSession === session.id ? "rgba(201,169,110,0.03)" : c.obsidian, border: "none", boxShadow: expandedSession === session.id ? "0 0 0 1px rgba(201,169,110,0.1)" : "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 16, transition: "all 0.25s cubic-bezier(0.16,1,0.3,1)", textAlign: "left" }}
-                  onMouseEnter={(e) => { if (expandedSession !== session.id) e.currentTarget.style.background = "rgba(240,237,232,0.02)"; }}
+                  style={{ width: "100%", padding: "16px 18px", borderRadius: radius.md, background: expandedSession === session.id ? "rgba(212,179,127,0.03)" : c.obsidian, border: "none", boxShadow: expandedSession === session.id ? "0 0 0 1px rgba(212,179,127,0.1)" : "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 16, transition: "all 0.25s cubic-bezier(0.16,1,0.3,1)", textAlign: "left" }}
+                  onMouseEnter={(e) => { if (expandedSession !== session.id) e.currentTarget.style.background = "rgba(245,242,237,0.02)"; }}
                   onMouseLeave={(e) => { if (expandedSession !== session.id) e.currentTarget.style.background = c.obsidian; }}>
                   <div style={{ width: 48, height: 48, flexShrink: 0, position: "relative", display: "flex", alignItems: "center", justifyContent: "center" }}>
                     <svg width="48" height="48" viewBox="0 0 48 48" style={{ position: "absolute", transform: "rotate(-90deg)" }}>
-                      <circle cx="24" cy="24" r="21" fill="none" stroke="rgba(240,237,232,0.06)" strokeWidth="2.5" />
+                      <circle cx="24" cy="24" r="21" fill="none" stroke="rgba(245,242,237,0.06)" strokeWidth="2.5" />
                       <circle cx="24" cy="24" r="21" fill="none" stroke={scoreLabelColor(session.score)} strokeWidth="2.5"
                         strokeDasharray={`${(session.score / 100) * 2 * Math.PI * 21} ${2 * Math.PI * 21}`}
                         strokeLinecap="round" className="score-ring" />
@@ -726,22 +729,22 @@ export default function DashboardHome() {
                       </div>
                     </div>
                     {feedbackSession === session.id && (
-                      <div style={{ padding: "16px 18px", borderRadius: radius.sm, background: "rgba(201,169,110,0.02)", borderLeft: `3px solid rgba(201,169,110,0.15)`, marginBottom: 14 }}>
+                      <div style={{ padding: "16px 18px", borderRadius: radius.sm, background: "rgba(212,179,127,0.02)", borderLeft: `3px solid rgba(212,179,127,0.15)`, marginBottom: 14 }}>
                         <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.gilt, letterSpacing: "0.06em", textTransform: "uppercase", display: "block", marginBottom: 8 }}>AI Feedback</span>
                         <p style={{ fontFamily: font.ui, fontSize: 14, color: c.chalk, lineHeight: 1.7, margin: 0 }}>{session.feedback}</p>
                       </div>
                     )}
                     <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                       <button onClick={() => setFeedbackSession(feedbackSession === session.id ? null : session.id)}
-                        style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.gilt, background: "rgba(201,169,110,0.06)", border: "none", borderRadius: radius.sm, padding: "8px 16px", cursor: "pointer", transition: "background 0.2s" }}
-                        onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(201,169,110,0.12)"; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(201,169,110,0.06)"; }}>
+                        style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.gilt, background: "rgba(212,179,127,0.06)", border: "none", borderRadius: radius.sm, padding: "8px 16px", cursor: "pointer", transition: "background 0.2s" }}
+                        onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(212,179,127,0.12)"; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(212,179,127,0.06)"; }}>
                         {feedbackSession === session.id ? "Hide Feedback" : "View Feedback"}
                       </button>
                       <button onClick={() => setViewingSession(session.id)}
-                        style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.ivory, background: "rgba(240,237,232,0.04)", border: "none", borderRadius: radius.sm, padding: "8px 16px", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, transition: "background 0.2s" }}
-                        onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(240,237,232,0.08)"; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(240,237,232,0.04)"; }}>
+                        style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.ivory, background: "rgba(245,242,237,0.04)", border: "none", borderRadius: radius.sm, padding: "8px 16px", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, transition: "background 0.2s" }}
+                        onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(245,242,237,0.08)"; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(245,242,237,0.04)"; }}>
                         <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
                         Full Transcript
                       </button>
@@ -760,9 +763,9 @@ export default function DashboardHome() {
           )}
           {filteredSessions.length > sessionsToShow && (
             <button onClick={() => setSessionsToShow(s => s + 5)}
-              style={{ width: "100%", padding: "10px 0", marginTop: 8, fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.gilt, background: "rgba(201,169,110,0.04)", border: `1px solid rgba(201,169,110,0.1)`, borderRadius: radius.sm, cursor: "pointer", transition: "all 0.2s ease" }}
-              onMouseEnter={(e) => e.currentTarget.style.background = "rgba(201,169,110,0.08)"}
-              onMouseLeave={(e) => e.currentTarget.style.background = "rgba(201,169,110,0.04)"}>
+              style={{ width: "100%", padding: "10px 0", marginTop: 8, fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.gilt, background: "rgba(212,179,127,0.04)", border: `1px solid rgba(212,179,127,0.1)`, borderRadius: radius.sm, cursor: "pointer", transition: "all 0.2s ease" }}
+              onMouseEnter={(e) => e.currentTarget.style.background = "rgba(212,179,127,0.08)"}
+              onMouseLeave={(e) => e.currentTarget.style.background = "rgba(212,179,127,0.04)"}>
               Show more ({filteredSessions.length - sessionsToShow} remaining)
             </button>
           )}
@@ -771,12 +774,12 @@ export default function DashboardHome() {
 
         {/* Tabbed Insights & Goals (in same grid row as Recent Sessions) */}
         <div style={{ ...card, overflow: "hidden" }} className="gradient-border-card">
-          <div style={{ display: "flex", borderBottom: "1px solid rgba(240,237,232,0.04)" }}>
+          <div style={{ display: "flex", borderBottom: "1px solid rgba(245,242,237,0.04)" }}>
             {([["insights", "AI Insights"], ["goals", "Weekly Goals"]] as const).map(([key, label]) => (
               <button key={key} onClick={() => setRightTab(key)}
                 style={{ flex: 1, padding: "16px 16px", fontFamily: font.ui, fontSize: 14, fontWeight: rightTab === key ? 600 : 400, color: rightTab === key ? c.ivory : c.stone, background: "transparent", border: "none", cursor: "pointer", borderBottom: rightTab === key ? `2px solid ${c.gilt}` : "2px solid transparent", transition: "all 0.2s ease", outline: "none" }}>
                 {label}
-                {key === "goals" && <span style={{ marginLeft: 6, fontFamily: font.mono, fontSize: 11, fontWeight: 600, color: c.gilt, background: "rgba(201,169,110,0.08)", padding: "2px 7px", borderRadius: 4 }}>{upcomingGoals.filter(g => g.progress < g.total).length}</span>}
+                {key === "goals" && <span style={{ marginLeft: 6, fontFamily: font.mono, fontSize: 11, fontWeight: 600, color: c.gilt, background: "rgba(212,179,127,0.08)", padding: "2px 7px", borderRadius: 4 }}>{upcomingGoals.filter(g => g.progress < g.total).length}</span>}
               </button>
             ))}
           </div>
@@ -822,7 +825,7 @@ export default function DashboardHome() {
                         </span>
                         <span style={{ fontFamily: font.mono, fontSize: 12, color: done ? c.sage : c.stone }}>{goal.progress}/{goal.total}</span>
                       </div>
-                      <div style={{ height: 4, background: "rgba(240,237,232,0.06)", borderRadius: 2, overflow: "hidden", marginBottom: done ? 0 : 8 }}>
+                      <div style={{ height: 4, background: "rgba(245,242,237,0.06)", borderRadius: 2, overflow: "hidden", marginBottom: done ? 0 : 8 }}>
                         <div style={{ height: "100%", width: `${(goal.progress / goal.total) * 100}%`, background: done ? c.sage : c.gilt, borderRadius: 2, transition: "width 0.4s cubic-bezier(0.16,1,0.3,1)" }} />
                       </div>
                       {!done && (
@@ -848,15 +851,15 @@ export default function DashboardHome() {
           {sectionTitle("Achievements")}
           <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : `repeat(${Math.min(badges.length, 4)}, 1fr)`, gap: 12, marginTop: 16 }}>
             {badges.map((badge) => (
-              <div key={badge.id} className={badge.earned ? "badge-earned" : ""} style={{ padding: "16px", borderRadius: radius.md, background: badge.earned ? "rgba(201,169,110,0.03)" : c.obsidian, textAlign: "center", opacity: badge.earned ? 1 : 0.45, transition: "all 0.3s ease", position: "relative", overflow: "hidden" }}
-                onMouseEnter={(e) => { if (!badge.earned) e.currentTarget.style.opacity = "0.7"; if (badge.earned) e.currentTarget.style.boxShadow = "0 0 20px rgba(201,169,110,0.12)"; }}
+              <div key={badge.id} className={badge.earned ? "badge-earned" : ""} style={{ padding: "16px", borderRadius: radius.md, background: badge.earned ? "rgba(212,179,127,0.03)" : c.obsidian, textAlign: "center", opacity: badge.earned ? 1 : 0.45, transition: "all 0.3s ease", position: "relative", overflow: "hidden" }}
+                onMouseEnter={(e) => { if (!badge.earned) e.currentTarget.style.opacity = "0.7"; if (badge.earned) e.currentTarget.style.boxShadow = "0 0 20px rgba(212,179,127,0.12)"; }}
                 onMouseLeave={(e) => { if (!badge.earned) e.currentTarget.style.opacity = "0.45"; e.currentTarget.style.boxShadow = "none"; }}>
-                {badge.earned && <div style={{ position: "absolute", inset: 0, background: "radial-gradient(circle at 50% 30%, rgba(201,169,110,0.08) 0%, transparent 60%)", pointerEvents: "none" }} />}
+                {badge.earned && <div style={{ position: "absolute", inset: 0, background: "radial-gradient(circle at 50% 30%, rgba(212,179,127,0.08) 0%, transparent 60%)", pointerEvents: "none" }} />}
                 <div style={{ marginBottom: 8, display: "flex", justifyContent: "center", position: "relative" }}>{(badgeIcons[badge.icon] || badgeIcons.star)(badge.earned ? c.gilt : c.stone)}</div>
                 <p style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: badge.earned ? c.ivory : c.stone, marginBottom: 2 }}>{badge.label}</p>
                 <p style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, lineHeight: 1.4, marginBottom: badge.earned ? 0 : 8 }}>{badge.description}</p>
                 {!badge.earned && (
-                  <div style={{ height: 3, background: "rgba(240,237,232,0.06)", borderRadius: 2, overflow: "hidden" }}>
+                  <div style={{ height: 3, background: "rgba(245,242,237,0.06)", borderRadius: 2, overflow: "hidden" }}>
                     <div style={{ height: "100%", width: `${Math.min(100, badge.progress)}%`, background: c.gilt, borderRadius: 2, transition: "width 0.4s cubic-bezier(0.16,1,0.3,1)" }} />
                   </div>
                 )}

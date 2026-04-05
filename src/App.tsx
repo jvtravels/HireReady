@@ -86,7 +86,7 @@ function ParticleCanvas() {
     const ps: P[] = [];
     const w = () => cachedW;
     const h = () => cachedH;
-    const cols = ["rgba(201,169,110,", "rgba(240,237,232,", "rgba(197,192,186,"];
+    const cols = ["rgba(212,179,127,", "rgba(245,242,237,", "rgba(197,192,186,"];
 
     for (let i = 0; i < COUNT; i++) {
       ps.push({ x: Math.random() * w(), y: Math.random() * h(), vx: (Math.random() - 0.5) * 0.25, vy: -Math.random() * 0.35 - 0.08, r: Math.random() * 2.2 + 0.4, o: Math.random() * 0.45 + 0.08, od: (Math.random() - 0.5) * 0.004, c: cols[Math.floor(Math.random() * cols.length)] });
@@ -95,7 +95,7 @@ function ParticleCanvas() {
     const draw = () => {
       ctx.clearRect(0, 0, w(), h());
       const g = ctx.createRadialGradient(w() / 2, h() * 0.3, 0, w() / 2, h() * 0.3, w() * 0.45);
-      g.addColorStop(0, "rgba(201,169,110,0.035)");
+      g.addColorStop(0, "rgba(212,179,127,0.035)");
       g.addColorStop(1, "transparent");
       ctx.fillStyle = g;
       ctx.fillRect(0, 0, w(), h());
@@ -118,7 +118,7 @@ function ParticleCanvas() {
             const d = Math.sqrt(dx * dx + dy * dy);
             if (d < 100) {
               ctx.beginPath(); ctx.moveTo(ps[i].x, ps[i].y); ctx.lineTo(ps[j].x, ps[j].y);
-              ctx.strokeStyle = `rgba(201,169,110,${0.025 * (1 - d / 100)})`; ctx.lineWidth = 0.5; ctx.stroke();
+              ctx.strokeStyle = `rgba(212,179,127,${0.025 * (1 - d / 100)})`; ctx.lineWidth = 0.5; ctx.stroke();
             }
           }
         }
@@ -158,17 +158,17 @@ function Nav() {
     <header>
     <a href="#main-content" className="skip-to-content">Skip to main content</a>
     <nav aria-label="Main navigation" style={{
-      position: "fixed", top: 0, left: 0, right: 0, zIndex: 100, padding: "0 40px", height: 64,
+      position: "fixed", top: 0, left: 0, right: 0, zIndex: 100, padding: "0 48px", height: 72,
       display: "flex", alignItems: "center", justifyContent: "space-between",
-      background: scrolled ? "rgba(10,10,11,0.8)" : "transparent",
-      backdropFilter: scrolled ? "blur(24px) saturate(180%)" : "none",
-      WebkitBackdropFilter: scrolled ? "blur(24px) saturate(180%)" : "none",
+      background: scrolled ? "rgba(6,6,7,0.72)" : "transparent",
+      backdropFilter: scrolled ? "blur(32px) saturate(180%)" : "none",
+      WebkitBackdropFilter: scrolled ? "blur(32px) saturate(180%)" : "none",
       borderBottom: scrolled ? `1px solid ${c.border}` : "1px solid transparent",
       transition: "all 0.5s cubic-bezier(0.16, 1, 0.3, 1)",
       animation: "navSlideDown 0.6s cubic-bezier(0.16, 1, 0.3, 1) both",
     }}>
       <style>{`@keyframes navSlideDown { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }`}</style>
-      <div style={{ fontFamily: font.ui, fontSize: 15, fontWeight: 600, letterSpacing: "0.06em", color: c.ivory, cursor: "pointer" }}>
+      <div style={{ fontFamily: font.display, fontSize: 22, fontWeight: 400, letterSpacing: "0.02em", color: c.ivory, cursor: "pointer" }}>
         Hirloop
       </div>
 
@@ -202,13 +202,11 @@ function Nav() {
         ))}
         {isLoggedIn ? (
           <>
-            <Link to="/dashboard" style={{
-              fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.obsidian,
-              background: c.gilt, border: "none", borderRadius: 6, padding: "8px 20px",
-              cursor: "pointer", letterSpacing: "0.01em", textDecoration: "none",
-            }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = c.ivory; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = c.gilt; }}>
+            <Link to="/dashboard" className="premium-btn" style={{
+              fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: c.obsidian,
+              borderRadius: 10, padding: "9px 22px",
+              cursor: "pointer", letterSpacing: "0.02em", textDecoration: "none",
+            }}>
               Dashboard
             </Link>
             <button onClick={logout} style={{
@@ -233,13 +231,11 @@ function Nav() {
               onMouseLeave={(e) => { e.currentTarget.style.color = c.chalk; }}>
               Log in
             </Link>
-            <Link to="/signup" className="shimmer-btn" style={{
-              fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.obsidian,
-              background: c.ivory, border: "none", borderRadius: 6, padding: "8px 20px",
-              cursor: "pointer", letterSpacing: "0.01em", textDecoration: "none",
-            }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = c.gilt; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = c.ivory; }}>
+            <Link to="/signup" className="shimmer-btn premium-btn" style={{
+              fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: c.obsidian,
+              borderRadius: 10, padding: "9px 22px",
+              cursor: "pointer", letterSpacing: "0.02em", textDecoration: "none",
+            }}>
               Sign up
             </Link>
           </>
@@ -265,7 +261,7 @@ function Nav() {
             }
           }}
           style={{
-          position: "fixed", inset: 0, background: "rgba(10,10,11,0.95)", backdropFilter: "blur(20px)",
+          position: "fixed", inset: 0, background: "rgba(6,6,7,0.95)", backdropFilter: "blur(20px)",
           zIndex: 101, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 28,
           outline: "none",
         }} onClick={() => setMobileOpen(false)}>
@@ -300,25 +296,23 @@ function HeroCTA() {
   const { isLoggedIn } = useAuth();
   return (
     <div className="hero-cta" style={{ display: "flex", gap: 16, animation: "fadeInUp 0.8s ease 2.2s both", marginBottom: 40 }}>
-      <Link to={isLoggedIn ? "/dashboard" : "/signup"} className="shimmer-btn" style={{
-        fontFamily: font.ui, fontSize: 14, fontWeight: 500, padding: "14px 32px",
-        borderRadius: 8, border: "none", background: c.ivory, color: c.obsidian,
-        cursor: "pointer", letterSpacing: "0.01em", textDecoration: "none",
+      <Link to={isLoggedIn ? "/dashboard" : "/signup"} className="shimmer-btn premium-btn" style={{
+        fontFamily: font.ui, fontSize: 15, fontWeight: 600, padding: "16px 36px",
+        borderRadius: 12, cursor: "pointer", letterSpacing: "0.02em", textDecoration: "none",
         display: "inline-flex", alignItems: "center", gap: 8,
       }}
-        onClick={() => { track("cta_click", { cta: isLoggedIn ? "hero_go_to_dashboard" : "hero_get_started" }); capture("cta_click", { cta: isLoggedIn ? "hero_go_to_dashboard" : "hero_get_started" }); }}
-        onMouseEnter={(e) => { e.currentTarget.style.background = c.gilt; e.currentTarget.style.boxShadow = "0 8px 40px rgba(201,169,110,0.2)"; }}
-        onMouseLeave={(e) => { e.currentTarget.style.background = c.ivory; e.currentTarget.style.boxShadow = "none"; }}>
+        onClick={() => { track("cta_click", { cta: isLoggedIn ? "hero_go_to_dashboard" : "hero_get_started" }); capture("cta_click", { cta: isLoggedIn ? "hero_go_to_dashboard" : "hero_get_started" }); }}>
         {isLoggedIn ? "Go to Dashboard" : "Get Started Free"}
       </Link>
       <button onClick={() => { document.getElementById("how-it-works")?.scrollIntoView({ behavior: "smooth" }); }}
         style={{
-        fontFamily: font.ui, fontSize: 14, fontWeight: 500, padding: "14px 32px",
-        borderRadius: 8, border: `1px solid ${c.borderHover}`, background: "transparent",
-        color: c.chalk, cursor: "pointer", transition: "all 0.25s ease",
+        fontFamily: font.ui, fontSize: 15, fontWeight: 500, padding: "16px 36px",
+        borderRadius: 12, border: `1px solid rgba(255,255,255,0.10)`, background: "rgba(255,255,255,0.03)",
+        color: c.chalk, cursor: "pointer", transition: "all 0.35s cubic-bezier(0.16, 1, 0.3, 1)",
+        backdropFilter: "blur(12px)",
       }}
-        onMouseEnter={(e) => { e.currentTarget.style.borderColor = c.chalk; e.currentTarget.style.color = c.ivory; e.currentTarget.style.background = "rgba(240,237,232,0.03)"; }}
-        onMouseLeave={(e) => { e.currentTarget.style.borderColor = c.borderHover; e.currentTarget.style.color = c.chalk; e.currentTarget.style.background = "transparent"; }}>
+        onMouseEnter={(e) => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.18)"; e.currentTarget.style.color = c.ivory; e.currentTarget.style.background = "rgba(255,255,255,0.06)"; }}
+        onMouseLeave={(e) => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.10)"; e.currentTarget.style.color = c.chalk; e.currentTarget.style.background = "rgba(255,255,255,0.03)"; }}>
         See How It Works
       </button>
     </div>
@@ -328,15 +322,12 @@ function HeroCTA() {
 function BottomCTA() {
   const { isLoggedIn } = useAuth();
   return (
-    <Link to={isLoggedIn ? "/dashboard" : "/signup"} className="shimmer-btn" style={{
-      fontFamily: font.ui, fontSize: 15, fontWeight: 500, padding: "16px 36px",
-      borderRadius: 8, border: "none", background: c.ivory, color: c.obsidian,
-      cursor: "pointer", letterSpacing: "0.01em", textDecoration: "none",
+    <Link to={isLoggedIn ? "/dashboard" : "/signup"} className="shimmer-btn premium-btn" style={{
+      fontFamily: font.ui, fontSize: 16, fontWeight: 600, padding: "18px 44px",
+      borderRadius: 14, cursor: "pointer", letterSpacing: "0.02em", textDecoration: "none",
       display: "inline-flex", alignItems: "center",
     }}
-      onClick={() => { track("cta_click", { cta: isLoggedIn ? "final_go_to_dashboard" : "final_get_started" }); capture("cta_click", { cta: isLoggedIn ? "final_go_to_dashboard" : "final_get_started" }); }}
-      onMouseEnter={(e) => { e.currentTarget.style.background = c.gilt; e.currentTarget.style.boxShadow = "0 8px 48px rgba(201,169,110,0.2)"; }}
-      onMouseLeave={(e) => { e.currentTarget.style.background = c.ivory; e.currentTarget.style.boxShadow = "none"; }}>
+      onClick={() => { track("cta_click", { cta: isLoggedIn ? "final_go_to_dashboard" : "final_get_started" }); capture("cta_click", { cta: isLoggedIn ? "final_go_to_dashboard" : "final_get_started" }); }}>
       {isLoggedIn ? "Go to Dashboard" : "Get Started Free"}
     </Link>
   );
@@ -367,14 +358,14 @@ function Hero() {
       justifyContent: "center", overflow: "hidden",
     }}>
       <ParticleCanvas />
-      <div style={{ display: "flex", alignItems: "center", maxWidth: 1200, width: "100%", padding: "120px 40px 80px", position: "relative" }}>
+      <div style={{ display: "flex", alignItems: "center", maxWidth: 1200, width: "100%", padding: "140px 48px 100px", position: "relative" }}>
 
       {/* Mesh gradient */}
       <div style={{
         position: "absolute", top: "40%", left: "50%",
         transform: `translate(calc(-50% + ${mx}px), calc(-50% + ${my}px))`,
         width: 900, height: 900, borderRadius: "50%",
-        background: `conic-gradient(from 180deg, rgba(201,169,110,0.06), rgba(122,158,126,0.03), rgba(196,112,90,0.02), rgba(201,169,110,0.06))`,
+        background: `conic-gradient(from 180deg, rgba(212,179,127,0.06), rgba(122,158,126,0.03), rgba(196,112,90,0.02), rgba(212,179,127,0.06))`,
         filter: "blur(80px)", pointerEvents: "none",
         animation: "meshRotate 30s linear infinite",
       }} />
@@ -384,7 +375,7 @@ function Hero() {
         <div key={size} style={{
           position: "absolute", top: "50%", left: "60%",
           transform: `translate(-50%, -50%) translateY(${parallaxOffset * (0.5 - i * 0.15)}px)`,
-          width: size, height: size, border: `1px solid rgba(240,237,232,${0.04 - i * 0.01})`,
+          width: size, height: size, border: `1px solid rgba(245,242,237,${0.04 - i * 0.01})`,
           borderRadius: "50%", pointerEvents: "none",
         }} />
       ))}
@@ -394,7 +385,7 @@ function Hero() {
         {/* Social proof badge */}
         <div style={{
           display: "inline-flex", alignItems: "center", gap: 10, padding: "8px 16px",
-          background: "rgba(201,169,110,0.06)", border: `1px solid rgba(201,169,110,0.15)`,
+          background: "rgba(212,179,127,0.06)", border: `1px solid rgba(212,179,127,0.15)`,
           borderRadius: 100, marginBottom: 28, animation: "fadeIn 0.8s ease 0.2s both",
         }}>
           <span style={{ width: 6, height: 6, borderRadius: "50%", background: c.sage, display: "inline-block", animation: "giltPulse 2s ease-in-out infinite" }} />
@@ -459,7 +450,7 @@ function Hero() {
           <div style={{
             position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)",
             width: "80%", height: "80%", borderRadius: "50%",
-            background: "radial-gradient(ellipse at center, rgba(201,169,110,0.08) 0%, transparent 70%)",
+            background: "radial-gradient(ellipse at center, rgba(212,179,127,0.08) 0%, transparent 70%)",
             pointerEvents: "none", filter: "blur(40px)",
           }} />
           <HeroMockup />
@@ -499,12 +490,12 @@ function HeroMockup() {
       {/* Main card */}
       <div className="mockup-window" style={{
         background: c.graphite, borderRadius: 16, border: `1px solid ${c.border}`,
-        overflow: "hidden", boxShadow: "0 32px 80px rgba(0,0,0,0.5), 0 0 60px rgba(201,169,110,0.04)",
+        overflow: "hidden", boxShadow: "0 32px 80px rgba(0,0,0,0.5), 0 0 60px rgba(212,179,127,0.04)",
         animation: "floatSlow 6s ease-in-out infinite",
       }}>
         {/* Window chrome */}
         <div style={{ height: 38, background: c.obsidian, borderBottom: `1px solid ${c.border}`, display: "flex", alignItems: "center", padding: "0 14px", gap: 6 }}>
-          {[0.15, 0.1, 0.1].map((o, i) => <div key={i} style={{ width: 8, height: 8, borderRadius: "50%", background: `rgba(240,237,232,${o})` }} />)}
+          {[0.15, 0.1, 0.1].map((o, i) => <div key={i} style={{ width: 8, height: 8, borderRadius: "50%", background: `rgba(245,242,237,${o})` }} />)}
           <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
             <span style={{ width: 6, height: 6, borderRadius: "50%", background: c.sage, animation: "giltPulse 1.5s ease-in-out infinite" }} />
             <span style={{ fontFamily: font.ui, fontSize: 10, color: c.stone }}>Live Session — Software Engineer</span>
@@ -524,7 +515,7 @@ function HeroMockup() {
               </div>
               <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, color: c.gilt, letterSpacing: "0.06em", textTransform: "uppercase" }}>Interviewer</span>
             </div>
-            <div style={{ background: `rgba(201,169,110,0.05)`, border: `1px solid rgba(201,169,110,0.1)`, borderRadius: "2px 12px 12px 12px", padding: "12px 16px", marginLeft: 32 }}>
+            <div style={{ background: `rgba(212,179,127,0.05)`, border: `1px solid rgba(212,179,127,0.1)`, borderRadius: "2px 12px 12px 12px", padding: "12px 16px", marginLeft: 32 }}>
               <p style={{ fontFamily: font.ui, fontSize: 13, lineHeight: 1.6, color: c.ivory }}>
                 Tell me about a challenging project you worked on. What was your role and how did you approach the problem?
               </p>
@@ -542,7 +533,7 @@ function HeroMockup() {
                 <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
               </div>
             </div>
-            <div style={{ background: c.obsidian, border: `1px solid ${c.border}`, borderRadius: "12px 2px 12px 12px", padding: "12px 16px", marginRight: 32 }}>
+            <div style={{ background: c.obsidian, border: `1px solid ${c.border}`, borderRadius: "14px 2px 12px 12px", padding: "12px 16px", marginRight: 32 }}>
               <p style={{ fontFamily: font.ui, fontSize: 13, lineHeight: 1.6, color: c.chalk }}>
                 We had a tight deadline to migrate our payment system. I broke it into phases — first the API layer, then the frontend...
               </p>
@@ -574,8 +565,8 @@ function HeroMockup() {
               opacity: step >= 3 ? 1 : 0, transform: step >= 3 ? "translateY(0)" : "translateY(8px)",
               transition: "all 0.5s ease",
               display: "flex", alignItems: "center", gap: 8, marginLeft: 32,
-              padding: "10px 16px", background: `rgba(201,169,110,0.03)`,
-              border: `1px solid rgba(201,169,110,0.08)`, borderRadius: "2px 12px 12px 12px",
+              padding: "10px 16px", background: `rgba(212,179,127,0.03)`,
+              border: `1px solid rgba(212,179,127,0.08)`, borderRadius: "2px 12px 12px 12px",
             }}>
               <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, color: c.gilt, letterSpacing: "0.04em", textTransform: "uppercase", marginRight: 4 }}>Follow-up</span>
               <div style={{ display: "flex", gap: 4 }}>
@@ -594,9 +585,9 @@ function HeroMockup() {
       {/* Floating insight card — overlaps bottom-right */}
       <div style={{
         position: "absolute", bottom: -20, right: -16,
-        background: c.graphite, borderRadius: 12, border: `1px solid rgba(201,169,110,0.15)`,
+        background: c.graphite, borderRadius: 12, border: `1px solid rgba(212,179,127,0.15)`,
         padding: "14px 18px", maxWidth: 220,
-        boxShadow: "0 16px 48px rgba(0,0,0,0.5), 0 0 24px rgba(201,169,110,0.06)",
+        boxShadow: "0 16px 48px rgba(0,0,0,0.5), 0 0 24px rgba(212,179,127,0.06)",
         opacity: step >= 4 ? 1 : 0, transform: step >= 4 ? "translateY(0) scale(1)" : "translateY(8px) scale(0.95)",
         transition: "all 0.6s cubic-bezier(0.16, 1, 0.3, 1)",
         zIndex: 2,
@@ -841,7 +832,7 @@ function ProblemSection() {
           {/* Floating quote card on the image */}
           <div style={{
             position: "absolute", bottom: 24, left: 24, right: 24,
-            background: "rgba(22,22,24,0.85)", backdropFilter: "blur(16px)",
+            background: "rgba(17,17,19,0.85)", backdropFilter: "blur(16px)",
             WebkitBackdropFilter: "blur(16px)",
             borderRadius: 12, padding: "16px 20px",
             border: `1px solid ${c.border}`,
@@ -950,8 +941,8 @@ function HowItWorks() {
                     border: `1.5px solid ${isActive ? c.gilt : c.border}`,
                     display: "flex", alignItems: "center", justifyContent: "center",
                     transition: "all 0.4s ease",
-                    background: isActive ? `rgba(201,169,110,0.08)` : "transparent",
-                    boxShadow: isActive ? `0 0 20px rgba(201,169,110,0.12)` : "none",
+                    background: isActive ? `rgba(212,179,127,0.08)` : "transparent",
+                    boxShadow: isActive ? `0 0 20px rgba(212,179,127,0.12)` : "none",
                   }}>
                     {step.number}
                   </span>
@@ -1025,7 +1016,7 @@ function ProductMockup({ type, showChrome = false }: { type: "upload" | "intervi
   return (
     <div className="mockup-window" style={{ background: c.graphite, borderRadius: 14, border: `1px solid ${c.border}`, overflow: "hidden", boxShadow: "0 24px 80px rgba(0,0,0,0.4)" }}>
       <div style={{ height: 38, background: c.obsidian, borderBottom: `1px solid ${c.border}`, display: "flex", alignItems: "center", padding: "0 14px", gap: 6 }}>
-        {[0.15, 0.1, 0.1].map((o, i) => <div key={i} style={{ width: 8, height: 8, borderRadius: "50%", background: `rgba(240,237,232,${o})` }} />)}
+        {[0.15, 0.1, 0.1].map((o, i) => <div key={i} style={{ width: 8, height: 8, borderRadius: "50%", background: `rgba(245,242,237,${o})` }} />)}
         <div style={{ flex: 1, textAlign: "center" }}>
           <span style={{ fontFamily: font.ui, fontSize: 10, color: c.stone, letterSpacing: "0.02em" }}>hirloop.com</span>
         </div>
@@ -1039,7 +1030,7 @@ function MockupUpload() {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <div style={{ fontFamily: font.ui, fontSize: 14, fontWeight: 600, color: c.ivory }}>New Session</div>
-      <div style={{ border: `1.5px dashed rgba(201,169,110,0.25)`, borderRadius: 10, padding: "32px 20px", textAlign: "center", background: "rgba(201,169,110,0.02)", transition: "all 0.3s ease" }}>
+      <div style={{ border: `1.5px dashed rgba(212,179,127,0.25)`, borderRadius: 10, padding: "32px 20px", textAlign: "center", background: "rgba(212,179,127,0.02)", transition: "all 0.3s ease" }}>
         <svg aria-hidden="true" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5" style={{ margin: "0 auto 12px", display: "block" }}>
           <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" />
         </svg>
@@ -1048,7 +1039,7 @@ function MockupUpload() {
       </div>
       <div>
         <label style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 500, color: c.stone, letterSpacing: "0.04em", textTransform: "uppercase", display: "block", marginBottom: 6 }}>Target Role</label>
-        <div style={{ background: c.obsidian, border: `1px solid ${c.border}`, borderRadius: 6, padding: "10px 14px", fontFamily: font.ui, fontSize: 13, color: c.chalk }}>Software Engineer, Google</div>
+        <div style={{ background: c.obsidian, border: `1px solid ${c.border}`, borderRadius: 10, padding: "10px 14px", fontFamily: font.ui, fontSize: 13, color: c.chalk }}>Software Engineer, Google</div>
       </div>
       <div style={{ background: c.gilt, borderRadius: 8, padding: "10px 0", textAlign: "center", fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.obsidian }}>Generate Interview</div>
     </div>
@@ -1065,7 +1056,7 @@ function MockupInterview() {
           Recording
         </span>
       </div>
-      <div style={{ background: "rgba(201,169,110,0.05)", border: `1px solid rgba(201,169,110,0.1)`, borderRadius: "12px 12px 12px 2px", padding: "14px 16px" }}>
+      <div style={{ background: "rgba(212,179,127,0.05)", border: `1px solid rgba(212,179,127,0.1)`, borderRadius: "14px 12px 12px 2px", padding: "14px 16px" }}>
         <p style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.gilt, marginBottom: 6, letterSpacing: "0.04em", textTransform: "uppercase" }}>Interviewer</p>
         <p style={{ fontFamily: font.ui, fontSize: 13, lineHeight: 1.6, color: c.ivory }}>Tell me about a time you had to learn a new technology quickly to complete a project. How did you approach it?</p>
       </div>
@@ -1078,7 +1069,7 @@ function MockupInterview() {
         </div>
         <span style={{ fontFamily: font.mono, fontSize: 11, color: c.stone }}>2:34</span>
       </div>
-      <div style={{ background: c.obsidian, border: `1px solid ${c.border}`, borderRadius: "12px 12px 2px 12px", padding: "14px 16px" }}>
+      <div style={{ background: c.obsidian, border: `1px solid ${c.border}`, borderRadius: "14px 12px 2px 12px", padding: "14px 16px" }}>
         <p style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.sage, marginBottom: 6, letterSpacing: "0.04em", textTransform: "uppercase" }}>You</p>
         <p style={{ fontFamily: font.ui, fontSize: 13, lineHeight: 1.6, color: c.chalk }}>I had a week to pick up GraphQL for a client migration. I started with the docs, built a small prototype, then...</p>
       </div>
@@ -1131,16 +1122,16 @@ function DemoVideoSection() {
       </div>
 
       <div className="video-player" style={{ position: "relative", width: "100%", aspectRatio: "16 / 9", borderRadius: 16, overflow: "hidden", cursor: "pointer", border: `1px solid ${c.border}`, background: c.graphite, transition: "border-color 0.3s ease, box-shadow 0.3s ease" }}
-        onMouseEnter={(e) => { e.currentTarget.style.borderColor = c.borderHover; e.currentTarget.style.boxShadow = "0 32px 80px rgba(0,0,0,0.5), 0 0 80px rgba(201,169,110,0.04)"; }}
+        onMouseEnter={(e) => { e.currentTarget.style.borderColor = c.borderHover; e.currentTarget.style.boxShadow = "0 32px 80px rgba(0,0,0,0.5), 0 0 80px rgba(212,179,127,0.04)"; }}
         onMouseLeave={(e) => { e.currentTarget.style.borderColor = c.border; e.currentTarget.style.boxShadow = "none"; }}>
         {/* Video preview */}
         <div style={{ position: "absolute", inset: 0, background: `linear-gradient(135deg, ${c.obsidian} 0%, ${c.graphite} 50%, ${c.obsidian} 100%)`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <div style={{ position: "absolute", top: "20%", left: "10%", width: 300, height: 300, borderRadius: "50%", background: "radial-gradient(circle, rgba(201,169,110,0.04) 0%, transparent 70%)", pointerEvents: "none" }} />
+          <div style={{ position: "absolute", top: "20%", left: "10%", width: 300, height: 300, borderRadius: "50%", background: "radial-gradient(circle, rgba(212,179,127,0.04) 0%, transparent 70%)", pointerEvents: "none" }} />
           <div style={{ position: "absolute", bottom: "15%", right: "15%", width: 200, height: 200, borderRadius: "50%", background: "radial-gradient(circle, rgba(122,158,126,0.04) 0%, transparent 70%)", pointerEvents: "none" }} />
           <div style={{ position: "absolute", inset: 40, display: "flex", alignItems: "center", justifyContent: "center", opacity: 0.25 }}>
             <div style={{ width: "70%", maxWidth: 500, background: c.graphite, borderRadius: 10, border: `1px solid ${c.border}`, padding: 24, textAlign: "left" }}>
               <div style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: c.ivory, marginBottom: 12 }}>Live Session</div>
-              <div style={{ background: "rgba(201,169,110,0.06)", borderRadius: 8, padding: "10px 14px", marginBottom: 10 }}>
+              <div style={{ background: "rgba(212,179,127,0.06)", borderRadius: 8, padding: "10px 14px", marginBottom: 10 }}>
                 <p style={{ fontFamily: font.ui, fontSize: 11, color: c.gilt, marginBottom: 4 }}>Interviewer</p>
                 <p style={{ fontFamily: font.ui, fontSize: 12, color: c.ivory, lineHeight: 1.5 }}>Walk me through a project you're proud of...</p>
               </div>
@@ -1154,17 +1145,17 @@ function DemoVideoSection() {
         </div>
 
         {/* Play button */}
-        <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(10,10,11,0.2)", zIndex: 2 }}>
+        <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(6,6,7,0.2)", zIndex: 2 }}>
           <div className="video-play-btn" style={{
-            width: 80, height: 80, borderRadius: "50%", background: "rgba(240,237,232,0.08)",
+            width: 80, height: 80, borderRadius: "50%", background: "rgba(245,242,237,0.08)",
             backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)",
-            border: "1px solid rgba(240,237,232,0.15)", display: "flex", alignItems: "center", justifyContent: "center",
+            border: "1px solid rgba(245,242,237,0.15)", display: "flex", alignItems: "center", justifyContent: "center",
           }}>
             <svg aria-hidden="true" width="28" height="28" viewBox="0 0 24 24" fill={c.ivory} style={{ marginLeft: 3 }}><polygon points="5,3 19,12 5,21" /></svg>
           </div>
         </div>
 
-        <div style={{ position: "absolute", bottom: 16, right: 16, fontFamily: font.mono, fontSize: 11, color: c.ivory, background: "rgba(10,10,11,0.7)", backdropFilter: "blur(8px)", padding: "4px 10px", borderRadius: 4, zIndex: 3 }}>1:32</div>
+        <div style={{ position: "absolute", bottom: 16, right: 16, fontFamily: font.mono, fontSize: 11, color: c.ivory, background: "rgba(6,6,7,0.7)", backdropFilter: "blur(8px)", padding: "4px 10px", borderRadius: 4, zIndex: 3 }}>1:32</div>
       </div>
     </section>
   );
@@ -1572,7 +1563,7 @@ function PricingCard({ plan, delay }: { plan: (typeof plans)[0]; delay: number }
           description: data.description,
           order_id: data.orderId,
           prefill: { email: user?.email || "", name: user?.name || "" },
-          theme: { color: "#C9A96E" },
+          theme: { color: "#D4B37F" },
           handler: async (response: { razorpay_payment_id: string; razorpay_order_id: string; razorpay_signature: string }) => {
             try {
               const authHeaders = await import("./supabase").then(m => m.authHeaders());
@@ -1614,7 +1605,7 @@ function PricingCard({ plan, delay }: { plan: (typeof plans)[0]; delay: number }
   return (
     <div ref={ref} className={`reveal reveal-delay-${delay + 1} gradient-border-card ${plan.featured ? "pricing-featured" : ""}`} style={{
       padding: "36px 32px", position: "relative", overflow: "hidden", zIndex: 0,
-      borderColor: plan.featured ? `rgba(201,169,110,0.2)` : undefined,
+      borderColor: plan.featured ? `rgba(212,179,127,0.2)` : undefined,
     }}>
       {plan.featured && <div style={{ position: "absolute", top: -1, left: 0, right: 0, height: 2, background: `linear-gradient(90deg, transparent, ${c.gilt}, transparent)` }} />}
       {plan.featured && <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: c.gilt, display: "block", marginBottom: 16 }}>Most Popular</span>}
@@ -1632,16 +1623,16 @@ function PricingCard({ plan, delay }: { plan: (typeof plans)[0]; delay: number }
           </li>
         ))}
       </ul>
-      <button onClick={handleClick} disabled={loading} className={plan.featured ? "shimmer-btn" : ""} style={{
-        width: "100%", fontFamily: font.ui, fontSize: 14, fontWeight: 500, padding: "12px 24px",
-        borderRadius: 8, border: plan.featured ? "none" : `1px solid ${c.borderHover}`,
-        background: plan.featured ? c.gilt : "transparent", color: plan.featured ? c.obsidian : c.chalk,
-        cursor: loading ? "wait" : "pointer", transition: "all 0.25s ease", position: "relative",
+      <button onClick={handleClick} disabled={loading} className={plan.featured ? "shimmer-btn premium-btn" : ""} style={{
+        width: "100%", fontFamily: font.ui, fontSize: 14, fontWeight: 600, padding: "14px 24px",
+        borderRadius: 12, border: plan.featured ? "none" : `1px solid rgba(255,255,255,0.08)`,
+        background: plan.featured ? undefined : "rgba(255,255,255,0.03)", color: plan.featured ? c.obsidian : c.chalk,
+        cursor: loading ? "wait" : "pointer", transition: "all 0.35s cubic-bezier(0.16, 1, 0.3, 1)", position: "relative",
         opacity: loading ? 0.7 : 1,
       }}
         onMouseEnter={(e) => {
           if (plan.featured) { e.currentTarget.style.filter = "brightness(1.15)"; }
-          else { e.currentTarget.style.borderColor = c.chalk; e.currentTarget.style.color = c.ivory; e.currentTarget.style.background = "rgba(240,237,232,0.03)"; }
+          else { e.currentTarget.style.borderColor = c.chalk; e.currentTarget.style.color = c.ivory; e.currentTarget.style.background = "rgba(245,242,237,0.03)"; }
         }}
         onMouseLeave={(e) => {
           if (plan.featured) { e.currentTarget.style.filter = "brightness(1)"; }
@@ -1652,7 +1643,7 @@ function PricingCard({ plan, delay }: { plan: (typeof plans)[0]; delay: number }
       {error && (
         <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginTop: 8 }}>
           <p style={{ fontFamily: font.ui, fontSize: 11, color: c.ember, margin: 0 }}>{error}</p>
-          <button onClick={() => setError("")} style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, color: c.gilt, background: "none", border: `1px solid rgba(201,169,110,0.3)`, borderRadius: 4, padding: "2px 8px", cursor: "pointer" }}>Dismiss</button>
+          <button onClick={() => setError("")} style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, color: c.gilt, background: "none", border: `1px solid rgba(212,179,127,0.3)`, borderRadius: 4, padding: "2px 8px", cursor: "pointer" }}>Dismiss</button>
         </div>
       )}
     </div>
@@ -1828,7 +1819,7 @@ function FinalCTA() {
         {/* Dark overlay */}
         <div style={{ position: "absolute", inset: 0, background: `linear-gradient(90deg, ${c.obsidian}E6 0%, ${c.obsidian}99 50%, transparent 100%)` }} />
         {/* Gilt glow */}
-        <div style={{ position: "absolute", top: "50%", right: "20%", transform: "translateY(-50%)", width: 400, height: 400, borderRadius: "50%", background: "radial-gradient(ellipse at center, rgba(201,169,110,0.08) 0%, transparent 70%)", pointerEvents: "none" }} />
+        <div style={{ position: "absolute", top: "50%", right: "20%", transform: "translateY(-50%)", width: 400, height: 400, borderRadius: "50%", background: "radial-gradient(ellipse at center, rgba(212,179,127,0.08) 0%, transparent 70%)", pointerEvents: "none" }} />
 
         <div style={{ position: "relative", zIndex: 1, padding: "64px 60px", maxWidth: 560 }}>
           <p className="text-glow" style={{ fontFamily: font.display, fontSize: "clamp(32px, 4vw, 52px)", fontWeight: 400, lineHeight: 1.15, letterSpacing: "-0.03em", color: c.ivory, marginBottom: 20 }}>
@@ -1901,7 +1892,7 @@ function EmailCapture() {
         background: c.graphite, borderRadius: 16, border: `1px solid ${c.border}`,
         padding: "48px 40px", position: "relative", overflow: "hidden",
       }}>
-        <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: 400, height: 400, borderRadius: "50%", background: "radial-gradient(ellipse, rgba(201,169,110,0.06), transparent 70%)", pointerEvents: "none" }} />
+        <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: 400, height: 400, borderRadius: "50%", background: "radial-gradient(ellipse, rgba(212,179,127,0.06), transparent 70%)", pointerEvents: "none" }} />
         <div style={{ position: "relative", zIndex: 1 }}>
           <p style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: c.gilt, marginBottom: 12 }}>Stay Updated</p>
           <h3 style={{ fontFamily: font.display, fontSize: "clamp(24px, 3vw, 32px)", fontWeight: 400, color: c.ivory, letterSpacing: "-0.02em", lineHeight: 1.2, marginBottom: 8 }}>
