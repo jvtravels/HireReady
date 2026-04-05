@@ -670,7 +670,7 @@ describe("Flow 11: Edge Cases", () => {
     });
     await act(async () => { fireEvent.click(screen.getByText("Plan & Data")); });
     expect(screen.getByText("Pro")).toBeInTheDocument();
-    expect(screen.getByText(/day.*remaining/i)).toBeInTheDocument();
+    expect(screen.getByText(/day.*left/i)).toBeInTheDocument();
   });
 
   it("resume parser handles empty text", async () => {

@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
 import { c, font } from "./tokens";
 import { useAuth } from "./AuthContext";
 import { useDocTitle } from "./useDocTitle";
@@ -64,7 +63,6 @@ const SECTIONS = [
 
 export default function SettingsPage() {
   useDocTitle("Settings");
-  const nav = useNavigate();
   const { user: authUser, logout: authLogout, updateUser: authUpdateUser, resetPassword } = useAuth();
   const { persisted, updatePersisted: onUpdate, handleExportCSV: onExportCSV, dataLoading, showToast, setShowUpgradeModal } = useDashboard();
   const onLogout = () => { authLogout(); };
@@ -274,7 +272,7 @@ export default function SettingsPage() {
             <label style={labelStyle}>Email</label>
             <input type="email" value={authUser?.email || ""} readOnly
               style={{ ...inputStyle, color: c.stone, cursor: "default" }} />
-            <span style={{ fontFamily: font.ui, fontSize: 10, color: c.stone, marginTop: 4, display: "block" }}>Contact support to change email</span>
+            <span style={{ fontFamily: font.ui, fontSize: 10, color: c.stone, marginTop: 4, display: "block" }}>Contact <a href="mailto:support@hireready.ai" style={{ color: c.gilt, textDecoration: "none" }}>support@hireready.ai</a> to change email</span>
           </div>
           <div>
             <label style={labelStyle}>Target Company</label>
@@ -320,7 +318,7 @@ export default function SettingsPage() {
         <p style={sectionDesc}>Configure your target role, difficulty, and session format. Changes save automatically.</p>
 
         {/* Target role + date */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 28 }} className="settings-form-grid">
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }} className="settings-form-grid">
           <div>
             <label style={labelStyle}>Target Role</label>
             <input type="text" value={editRole} onChange={(e) => setEditRole(e.target.value)} maxLength={80}
@@ -332,6 +330,16 @@ export default function SettingsPage() {
               style={{ ...inputStyle, colorScheme: "dark" }} onFocus={focusIn} onBlur={focusOut} />
           </div>
         </div>
+        {isDirty && (
+          <div style={{ display: "flex", gap: 12, marginTop: 16, marginBottom: 28, alignItems: "center" }}>
+            <button onClick={handleSave} disabled={saving}
+              style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, padding: "10px 28px", borderRadius: 8, border: "none", background: c.gilt, color: c.obsidian, cursor: saving ? "not-allowed" : "pointer", opacity: saving ? 0.45 : 1, transition: "opacity 0.15s" }}>
+              {saving ? "Saving..." : "Save Changes"}
+            </button>
+            <span style={{ fontFamily: font.ui, fontSize: 11, color: c.gilt }}>Unsaved changes</span>
+          </div>
+        )}
+        {!isDirty && <div style={{ marginBottom: 28 }} />}
 
         {/* Difficulty */}
         <label style={{ ...labelStyle, marginBottom: 10 }}>Default Difficulty</label>
@@ -341,7 +349,7 @@ export default function SettingsPage() {
             { id: "standard", label: "Standard", desc: "Realistic pacing" },
             { id: "intense", label: "Intense", desc: "High pressure" },
           ].map(d => (
-            <button key={d.id} onClick={() => autoSave({ defaultDifficulty: d.id })} style={chipBtn(difficultyVal === d.id)}>
+            <button key={d.id} onClick={() => { autoSave({ defaultDifficulty: d.id }); showToast("Difficulty updated"); }} style={chipBtn(difficultyVal === d.id)}>
               <span style={chipLabel(difficultyVal === d.id)}>{d.label}</span>
               <span style={chipDesc}>{d.desc}</span>
             </button>
@@ -424,7 +432,7 @@ export default function SettingsPage() {
                       : <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill={c.chalk}><polygon points="5 3 19 12 5 21 5 3"/></svg>
                     }
                   </button>
-                  <button onClick={() => { const u = { ...ttsSettings, voiceId: v.id, voiceName: v.name }; setTtsSettings(u); saveTTSSettings(u); }}
+                  <button onClick={() => { const u = { ...ttsSettings, voiceId: v.id, voiceName: v.name }; setTtsSettings(u); saveTTSSettings(u); showToast(`Voice: ${v.name}`); }}
                     style={{ flex: 1, background: "none", border: "none", cursor: "pointer", textAlign: "left", padding: 0 }}>
                     <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: sel ? c.ivory : c.chalk, display: "block", marginBottom: 1 }}>{v.name}</span>
                     <span style={chipDesc}>{v.desc}</span>
@@ -457,7 +465,7 @@ export default function SettingsPage() {
               <span style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.ivory, display: "block", marginBottom: 2 }}>{item.label}</span>
               <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>{item.desc}</span>
             </div>
-            <Toggle on={item.on} onToggle={() => autoSave({ [item.key]: !item.on })} />
+            <Toggle on={item.on} onToggle={() => { autoSave({ [item.key]: !item.on }); showToast(`${item.label} ${item.on ? "off" : "on"}`); }} />
           </div>
         ))}
 
@@ -503,12 +511,15 @@ export default function SettingsPage() {
                     <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>Expires</span>
                     <span style={{ fontFamily: font.ui, fontSize: 11, color: c.chalk }}>{new Date(authUser.subscriptionEnd!).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</span>
                   </div>
-                  <div style={{ height: 4, borderRadius: 2, background: c.border, marginBottom: 6 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+                    <span style={{ fontFamily: font.ui, fontSize: 10, color: c.stone }}>Billing period</span>
+                    <span style={{ fontFamily: font.ui, fontSize: 10, color: daysLeft <= 3 ? c.ember : c.stone }}>
+                      {daysLeft > 0 ? `${daysLeft} day${daysLeft !== 1 ? "s" : ""} left` : "Expired"}
+                    </span>
+                  </div>
+                  <div style={{ height: 4, borderRadius: 2, background: c.border }}>
                     <div style={{ height: "100%", borderRadius: 2, background: daysLeft <= 3 ? c.ember : c.gilt, width: `${progress}%`, transition: "width 0.3s" }} />
                   </div>
-                  <span style={{ fontFamily: font.ui, fontSize: 10, color: daysLeft <= 3 ? c.ember : c.stone }}>
-                    {daysLeft > 0 ? `${daysLeft} day${daysLeft !== 1 ? "s" : ""} remaining` : "Expired"}
-                  </span>
                 </>
               );
             })()}
@@ -600,7 +611,7 @@ export default function SettingsPage() {
                   </span>
                 </div>
               </div>
-              <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 500, color: c.sage, background: "rgba(122,158,126,0.08)", padding: "3px 10px", borderRadius: 5 }}>Paid</span>
+              <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 500, color: authUser.cancelAtPeriodEnd ? c.ember : c.sage, background: authUser.cancelAtPeriodEnd ? "rgba(196,112,90,0.08)" : "rgba(122,158,126,0.08)", padding: "3px 10px", borderRadius: 5 }}>{authUser.cancelAtPeriodEnd ? "Cancelled" : "Paid"}</span>
             </div>
           ) : (
             <div style={{ padding: "20px 18px", textAlign: "center" }}>
@@ -638,23 +649,24 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        {/* Danger zone — inline, not a separate card */}
+        {/* Log out */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 28, padding: "14px 16px", borderRadius: 8, background: c.obsidian, border: `1px solid ${c.border}` }}>
+          <div>
+            <span style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.ivory, display: "block", marginBottom: 2 }}>Log out</span>
+            <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>Sign out on this device</span>
+          </div>
+          <button onClick={onLogout} style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: c.chalk, background: "rgba(240,237,232,0.04)", border: `1px solid ${c.border}`, borderRadius: 6, padding: "8px 20px", cursor: "pointer" }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(240,237,232,0.08)"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(240,237,232,0.04)"; }}>
+            Log out
+          </button>
+        </div>
+
+        {/* Danger zone */}
         <div style={{ paddingTop: 20, borderTop: `1px solid rgba(196,112,90,0.15)` }}>
           <span style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: c.ember, display: "block", marginBottom: 16 }}>Danger Zone</span>
 
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-            <div>
-              <span style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.ivory, display: "block", marginBottom: 2 }}>Log out</span>
-              <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>Sign out on this device</span>
-            </div>
-            <button onClick={onLogout} style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: c.ember, background: "rgba(196,112,90,0.06)", border: `1px solid rgba(196,112,90,0.15)`, borderRadius: 6, padding: "8px 20px", cursor: "pointer" }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(196,112,90,0.12)"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(196,112,90,0.06)"; }}>
-              Log out
-            </button>
-          </div>
-
-          <div style={{ borderTop: `1px solid ${c.border}`, paddingTop: 16, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <div>
               <span style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.ivory, display: "block", marginBottom: 2 }}>Delete account</span>
               <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>Permanently remove all data</span>
@@ -679,7 +691,7 @@ export default function SettingsPage() {
                   <button disabled={deleteLoading || deleteEmailInput.toLowerCase() !== (authUser?.email || "").toLowerCase()} onClick={async () => {
                     setDeleteLoading(true); setDeleteMsg("");
                     try {
-                      const hdrs = await authHeaders();
+                      const hdrs = await Promise.race([authHeaders(), new Promise<never>((_, rej) => setTimeout(() => rej(new Error("Auth timeout")), 5000))]);
                       const ctrl = new AbortController();
                       const t = setTimeout(() => ctrl.abort(), 15000);
                       const res = await fetch("/api/delete-account", { method: "POST", headers: hdrs, signal: ctrl.signal });
