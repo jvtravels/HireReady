@@ -19,7 +19,7 @@ const card = {
 
 /* ─── Utility button style (hoisted for perf) ─── */
 const utilBtn = {
-  fontFamily: font.ui, fontSize: 11, fontWeight: 500 as const, color: c.stone,
+  fontFamily: font.ui, fontSize: 13, fontWeight: 500 as const, color: c.stone,
   background: "transparent", border: `1px solid ${c.border}`, borderRadius: radius.sm,
   padding: "8px 14px", cursor: "pointer" as const, display: "flex" as const, alignItems: "center" as const,
   gap: 6, transition: "all 0.25s cubic-bezier(0.16,1,0.3,1)", outline: "none" as const,
@@ -28,7 +28,7 @@ const utilBtnEnter = (e: React.MouseEvent<HTMLButtonElement>) => { e.currentTarg
 const utilBtnLeave = (e: React.MouseEvent<HTMLButtonElement>) => { e.currentTarget.style.borderColor = c.border; e.currentTarget.style.color = c.stone; };
 
 /* ─── Section heading (serif) ─── */
-const sectionTitle = (text: string, size = 16, tag: "h2" | "h3" = "h3") => {
+const sectionTitle = (text: string, size = 18, tag: "h2" | "h3" = "h3") => {
   const Tag = tag;
   return <Tag style={{ fontFamily: font.display, fontSize: size, fontWeight: 400, color: c.ivory, letterSpacing: "0.01em", margin: 0 }}>{text}</Tag>;
 };
@@ -165,16 +165,16 @@ export default function DashboardHome() {
           <h1 style={{ fontFamily: font.display, fontSize: isMobile ? 26 : 32, fontWeight: 400, color: c.ivory, marginBottom: 6, letterSpacing: "-0.01em" }}>
             {getPersonalizedGreeting(displayName.split(" ")[0], currentStreak, recentSessions.length)}
           </h1>
-          {returnContext && <p style={{ fontFamily: font.ui, fontSize: 13, color: c.stone, marginBottom: 2 }}>{returnContext}</p>}
-          {smartSchedule && <p style={{ fontFamily: font.ui, fontSize: 12, color: c.gilt, fontStyle: "italic", opacity: 0.8 }}>{smartSchedule}</p>}
+          {returnContext && <p style={{ fontFamily: font.ui, fontSize: 14, color: c.stone, marginBottom: 2 }}>{returnContext}</p>}
+          {smartSchedule && <p style={{ fontFamily: font.ui, fontSize: 13, color: c.gilt, fontStyle: "italic", opacity: 0.8 }}>{smartSchedule}</p>}
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
           <button className="shimmer-btn dash-focus" onClick={handleStartSession} style={{
-            fontFamily: font.ui, fontSize: 12, fontWeight: 600, padding: "8px 18px", borderRadius: radius.md,
+            fontFamily: font.ui, fontSize: 13, fontWeight: 600, padding: "9px 20px", borderRadius: radius.md,
             border: "none", background: `linear-gradient(135deg, ${c.gilt}, ${c.giltDark})`,
             color: c.obsidian, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, whiteSpace: "nowrap",
           }}>
-            <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            <svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             New Session
           </button>
           <div ref={headerMenuRef} style={{ position: "relative" }}>
@@ -191,7 +191,7 @@ export default function DashboardHome() {
                   { label: "Export PDF", icon: <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>, action: handleExportPDF },
                 ].map((item) => (
                   <button key={item.label} onClick={() => { item.action(); setHeaderMenuOpen(false); }}
-                    style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", padding: "10px 16px", fontFamily: font.ui, fontSize: 12, color: c.chalk, background: "transparent", border: "none", cursor: "pointer", transition: "background 0.15s" }}
+                    style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", padding: "10px 16px", fontFamily: font.ui, fontSize: 13, color: c.chalk, background: "transparent", border: "none", cursor: "pointer", transition: "background 0.15s" }}
                     onMouseEnter={(e) => e.currentTarget.style.background = "rgba(240,237,232,0.04)"}
                     onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}>
                     <span style={{ opacity: 0.6 }}>{item.icon}</span>
@@ -200,7 +200,7 @@ export default function DashboardHome() {
                 ))}
                 <div style={{ height: 1, background: c.border, margin: "4px 0" }} />
                 <div style={{ padding: "8px 16px" }}>
-                  <span style={{ fontFamily: font.mono, fontSize: 9, color: c.stone }}>Shortcuts: N new session · / search</span>
+                  <span style={{ fontFamily: font.mono, fontSize: 10, color: c.stone }}>Shortcuts: N new session · / search</span>
                 </div>
               </div>
             )}
@@ -217,13 +217,13 @@ export default function DashboardHome() {
               <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={notif.type === "streak" ? c.ember : c.sage} strokeWidth="2" strokeLinecap="round">
                 {notif.type === "streak" ? <><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></> : <><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></>}
               </svg>
-              <span style={{ fontFamily: font.ui, fontSize: 13, color: c.chalk, flex: 1 }}>{notif.text}</span>
+              <span style={{ fontFamily: font.ui, fontSize: 14, color: c.chalk, flex: 1 }}>{notif.text}</span>
               {notif.action && (
                 <button onClick={() => {
                   if (notif.action === "View Report") nav("/dashboard/analytics");
                   else if (notif.action === "Quick Practice" || notif.action === "Practice Now") handleStartSession();
                   else if (notif.action === "Renew") nav("/#pricing");
-                }} style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.sage, background: "rgba(122,158,126,0.08)", border: `1px solid rgba(122,158,126,0.2)`, borderRadius: 6, padding: "5px 12px", cursor: "pointer", whiteSpace: "nowrap" }}
+                }} style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: c.sage, background: "rgba(122,158,126,0.08)", border: `1px solid rgba(122,158,126,0.2)`, borderRadius: 6, padding: "6px 14px", cursor: "pointer", whiteSpace: "nowrap" }}
                   onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(122,158,126,0.15)"; }}
                   onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(122,158,126,0.08)"; }}
                 >{notif.action}</button>
@@ -242,8 +242,8 @@ export default function DashboardHome() {
       {practiceReminder && (
         <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 20px", borderRadius: radius.md, background: "rgba(201,169,110,0.03)", borderLeft: `3px solid ${c.gilt}`, marginBottom: sp.xl }}>
           <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-          <span style={{ fontFamily: font.ui, fontSize: 13, color: c.chalk, flex: 1 }}>{practiceReminder}</span>
-          <button onClick={handleStartSession} style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.gilt, background: "rgba(201,169,110,0.08)", border: `1px solid rgba(201,169,110,0.2)`, borderRadius: 6, padding: "5px 12px", cursor: "pointer", whiteSpace: "nowrap" }}
+          <span style={{ fontFamily: font.ui, fontSize: 14, color: c.chalk, flex: 1 }}>{practiceReminder}</span>
+          <button onClick={handleStartSession} style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: c.gilt, background: "rgba(201,169,110,0.08)", border: `1px solid rgba(201,169,110,0.2)`, borderRadius: 6, padding: "6px 14px", cursor: "pointer", whiteSpace: "nowrap" }}
             onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(201,169,110,0.15)"; }}
             onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(201,169,110,0.08)"; }}
           >Practice Now</button>
@@ -258,10 +258,10 @@ export default function DashboardHome() {
           onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(201,169,110,0.03)"; e.currentTarget.style.borderColor = "rgba(201,169,110,0.08)"; }}>
           <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="2" strokeLinecap="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" /></svg>
           <div style={{ flex: 1 }}>
-            <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: c.ivory }}>Daily Challenge: {dailyChallenge.label}</span>
-            <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, marginLeft: 8 }}>{dailyChallenge.description}</span>
+            <span style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: c.ivory }}>Daily Challenge: {dailyChallenge.label}</span>
+            <span style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, marginLeft: 8 }}>{dailyChallenge.description}</span>
           </div>
-          <span style={{ fontFamily: font.mono, fontSize: 9, fontWeight: 600, padding: "2px 8px", borderRadius: radius.pill, background: dailyChallenge.difficulty === "hard" ? "rgba(196,112,90,0.08)" : "rgba(201,169,110,0.08)", color: dailyChallenge.difficulty === "hard" ? c.ember : c.gilt, textTransform: "uppercase" as const, flexShrink: 0 }}>{dailyChallenge.difficulty}</span>
+          <span style={{ fontFamily: font.mono, fontSize: 10, fontWeight: 600, padding: "3px 10px", borderRadius: radius.pill, background: dailyChallenge.difficulty === "hard" ? "rgba(196,112,90,0.08)" : "rgba(201,169,110,0.08)", color: dailyChallenge.difficulty === "hard" ? c.ember : c.gilt, textTransform: "uppercase" as const, flexShrink: 0 }}>{dailyChallenge.difficulty}</span>
           <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="2" strokeLinecap="round" style={{ flexShrink: 0 }}><polyline points="9 18 15 12 9 6"/></svg>
         </div>
       )}
@@ -270,9 +270,9 @@ export default function DashboardHome() {
       {prepPlan && (
         <div style={{ ...card, padding: "24px 28px", marginBottom: sp["2xl"] }} className="gradient-border-card">
           <button onClick={() => setPrepPlanOpen(!prepPlanOpen)} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", background: "none", border: "none", cursor: "pointer", padding: 0, outline: "none" }} aria-expanded={prepPlanOpen} aria-label="Toggle Interview Prep Plan">
-            {sectionTitle("Interview Prep Plan", 15)}
+            {sectionTitle("Interview Prep Plan", 17)}
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <span style={{ fontFamily: font.mono, fontSize: 11, color: c.gilt }}>{prepPlan.filter(s => s.done).length}/{prepPlan.length} complete</span>
+              <span style={{ fontFamily: font.mono, fontSize: 12, color: c.gilt }}>{prepPlan.filter(s => s.done).length}/{prepPlan.length} complete</span>
               <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.stone} strokeWidth="2" strokeLinecap="round" style={{ transition: "transform 0.2s ease", transform: prepPlanOpen ? "rotate(180deg)" : "rotate(0deg)" }}><polyline points="6 9 12 15 18 9"/></svg>
             </div>
           </button>
@@ -286,7 +286,7 @@ export default function DashboardHome() {
                     </div>
                     {i < prepPlan.length - 1 && <div style={{ width: 2, height: 24, background: step.done ? c.sage : "rgba(240,237,232,0.06)", opacity: 0.4 }} />}
                   </div>
-                  <span style={{ fontFamily: font.ui, fontSize: 12, color: step.done ? c.stone : c.chalk, paddingTop: 2, textDecoration: step.done ? "line-through" : "none", opacity: step.done ? 0.6 : 1 }}>{step.label}</span>
+                  <span style={{ fontFamily: font.ui, fontSize: 13, color: step.done ? c.stone : c.chalk, paddingTop: 2, textDecoration: step.done ? "line-through" : "none", opacity: step.done ? 0.6 : 1 }}>{step.label}</span>
                 </div>
               ))}
             </div>
@@ -303,14 +303,14 @@ export default function DashboardHome() {
           <div style={{ flex: 1, minWidth: 260 }}>
             <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "5px 14px", borderRadius: radius.pill, background: "rgba(122,158,126,0.06)", border: "1px solid rgba(122,158,126,0.18)", marginBottom: 14 }}>
               <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-              <span style={{ fontFamily: font.mono, fontSize: 11, fontWeight: 600, color: c.sage }}>
+              <span style={{ fontFamily: font.mono, fontSize: 12, fontWeight: 600, color: c.sage }}>
                 {daysLeft > 0 && persisted.interviewDate ? `${daysLeft} days until interview` : "Set your interview date"}
               </span>
             </div>
-            <h2 style={{ fontFamily: font.ui, fontSize: isMobile ? 16 : 17, fontWeight: 700, color: c.ivory, marginBottom: 8, letterSpacing: "-0.01em" }}>
+            <h2 style={{ fontFamily: font.ui, fontSize: isMobile ? 18 : 20, fontWeight: 700, color: c.ivory, marginBottom: 8, letterSpacing: "-0.01em" }}>
               {hasData ? `Ready for session #${overallStats.sessionsCompleted + 1}?` : "Start practicing to ace your next interview"}
             </h2>
-            <p style={{ fontFamily: font.ui, fontSize: 13, color: c.stone, lineHeight: 1.6, maxWidth: 560 }}>
+            <p style={{ fontFamily: font.ui, fontSize: 14, color: c.stone, lineHeight: 1.6, maxWidth: 560 }}>
               {weakestSkill ? (
                 <>Your <strong style={{ color: c.ivory, fontWeight: 700 }}>{weakestSkill.name}</strong> score is {weakestSkill.score}{user?.targetCompany ? ` — ${user.targetCompany} interviews test this heavily` : ""}. Try a focused session to boost it.</>
               ) : (
@@ -320,7 +320,7 @@ export default function DashboardHome() {
           </div>
           <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 14 }}>
             <button className="shimmer-btn dash-focus" onClick={handleStartSession} style={{
-              fontFamily: font.ui, fontSize: 14, fontWeight: 600, padding: "12px 28px", borderRadius: radius.md,
+              fontFamily: font.ui, fontSize: 15, fontWeight: 600, padding: "12px 30px", borderRadius: radius.md,
               border: "none", background: `linear-gradient(135deg, ${c.gilt}, ${c.giltDark})`,
               color: c.obsidian, cursor: "pointer", display: "flex", alignItems: "center", gap: 8, whiteSpace: "nowrap",
               boxShadow: "0 2px 12px rgba(201,169,110,0.2)",
@@ -336,7 +336,7 @@ export default function DashboardHome() {
             <div style={{ display: "flex", alignItems: "center", gap: 0 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 14px", borderRadius: `${radius.pill}px 0 0 ${radius.pill}px`, background: "rgba(201,169,110,0.06)", border: "1px solid rgba(201,169,110,0.12)", borderRight: "none" }}>
                 <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="2" strokeLinecap="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" /></svg>
-                <span style={{ fontFamily: font.mono, fontSize: 10, fontWeight: 600, color: c.gilt }}>{currentStreak > 0 ? `${currentStreak}-day streak` : "Start a streak"}</span>
+                <span style={{ fontFamily: font.mono, fontSize: 11, fontWeight: 600, color: c.gilt }}>{currentStreak > 0 ? `${currentStreak}-day streak` : "Start a streak"}</span>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 2, padding: "0 4px", border: "1px solid rgba(240,237,232,0.08)", borderRadius: `0 ${radius.pill}px ${radius.pill}px 0`, height: 28 }}>
                 {["M", "T", "W", "T", "F", "S", "S"].map((day, i) => {
@@ -351,7 +351,7 @@ export default function DashboardHome() {
                       borderRadius: 4,
                       background: practiced ? "rgba(201,169,110,0.18)" : "transparent",
                       border: practiced ? "1px solid rgba(201,169,110,0.25)" : "1px solid transparent",
-                      fontSize: 9, fontFamily: font.mono, fontWeight: 600,
+                      fontSize: 10, fontFamily: font.mono, fontWeight: 600,
                       color: practiced ? c.gilt : isToday ? c.ivory : c.stone,
                     }}>{day}</div>
                   );
@@ -373,11 +373,11 @@ export default function DashboardHome() {
         ].map((stat, i) => (
           <div key={i} style={{ ...card, padding: "24px", cursor: "default" }} className="gradient-border-card">
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
-              <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 500, color: c.stone, letterSpacing: "0.04em", textTransform: "uppercase" as const }}>{stat.label}</span>
+              <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: c.stone, letterSpacing: "0.04em", textTransform: "uppercase" as const }}>{stat.label}</span>
               <div style={{ opacity: 0.7 }}>{stat.icon}</div>
             </div>
-            <span style={{ fontFamily: font.mono, fontSize: 28, fontWeight: 600, color: c.ivory, display: "block", marginBottom: 4, letterSpacing: "-0.03em" }}>{stat.value}</span>
-            <span style={{ fontFamily: font.ui, fontSize: 11, color: stat.subColor, fontWeight: stat.subColor !== c.stone ? 600 : 400 }}>{stat.sub}</span>
+            <span style={{ fontFamily: font.mono, fontSize: 30, fontWeight: 600, color: c.ivory, display: "block", marginBottom: 4, letterSpacing: "-0.03em" }}>{stat.value}</span>
+            <span style={{ fontFamily: font.ui, fontSize: 12, color: stat.subColor, fontWeight: stat.subColor !== c.stone ? 600 : 400 }}>{stat.sub}</span>
           </div>
         ))}
       </div>
@@ -392,8 +392,8 @@ export default function DashboardHome() {
         return (
           <div style={{ ...card, padding: "24px 28px", marginBottom: sp["3xl"] }} className="gradient-border-card">
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-              {sectionTitle("Upcoming Interviews", 16)}
-              <button onClick={() => nav("/dashboard/calendar")} style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 500, color: c.gilt, background: "none", border: "none", cursor: "pointer", opacity: 0.8 }}
+              {sectionTitle("Upcoming Interviews", 18)}
+              <button onClick={() => nav("/dashboard/calendar")} style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.gilt, background: "none", border: "none", cursor: "pointer", opacity: 0.8 }}
                 onMouseEnter={(e) => e.currentTarget.style.opacity = "1"}
                 onMouseLeave={(e) => e.currentTarget.style.opacity = "0.8"}
               >View all</button>
@@ -408,12 +408,12 @@ export default function DashboardHome() {
                     onMouseEnter={(e) => e.currentTarget.style.background = "rgba(240,237,232,0.02)"}
                     onMouseLeave={(e) => e.currentTarget.style.background = c.obsidian}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                      <span style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: c.ivory }}>{ev.company}</span>
-                      <span style={{ fontFamily: font.mono, fontSize: 9, fontWeight: 600, padding: "2px 8px", borderRadius: radius.pill, background: isToday ? "rgba(196,112,90,0.1)" : urgent ? "rgba(201,169,110,0.08)" : "rgba(122,158,126,0.06)", color: isToday ? c.ember : urgent ? c.gilt : c.sage }}>
+                      <span style={{ fontFamily: font.ui, fontSize: 14, fontWeight: 600, color: c.ivory }}>{ev.company}</span>
+                      <span style={{ fontFamily: font.mono, fontSize: 10, fontWeight: 600, padding: "3px 10px", borderRadius: radius.pill, background: isToday ? "rgba(196,112,90,0.1)" : urgent ? "rgba(201,169,110,0.08)" : "rgba(122,158,126,0.06)", color: isToday ? c.ember : urgent ? c.gilt : c.sage }}>
                         {isToday ? "TODAY" : days === 1 ? "TOMORROW" : `${days}d`}
                       </span>
                     </div>
-                    <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>{ev.type} · {formatEventDate(ev.date)} · {formatEventTime(ev.time)}</span>
+                    <span style={{ fontFamily: font.ui, fontSize: 13, color: c.stone }}>{ev.type} · {formatEventDate(ev.date)} · {formatEventTime(ev.time)}</span>
                   </div>
                 );
               })}
@@ -429,15 +429,15 @@ export default function DashboardHome() {
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
             <div>
               {sectionTitle("Score Trend")}
-              <p style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, marginTop: 4 }}>{scoreTrend.length > 0 ? "Hover for details" : "Complete sessions to see your progress"}</p>
+              <p style={{ fontFamily: font.ui, fontSize: 13, color: c.stone, marginTop: 4 }}>{scoreTrend.length > 0 ? "Hover for details" : "Complete sessions to see your progress"}</p>
             </div>
           </div>
           {scoreTrend.length >= 2 ? (
             <>
               <ScoreTrendChart data={scoreTrend} />
               <div style={{ display: "flex", justifyContent: "space-between", marginTop: 10, padding: "0 24px" }}>
-                <span style={{ fontFamily: font.mono, fontSize: 10, color: c.stone }}>{scoreTrend[0].date}</span>
-                <span style={{ fontFamily: font.mono, fontSize: 10, color: c.stone }}>{scoreTrend[scoreTrend.length - 1].date}</span>
+                <span style={{ fontFamily: font.mono, fontSize: 11, color: c.stone }}>{scoreTrend[0].date}</span>
+                <span style={{ fontFamily: font.mono, fontSize: 11, color: c.stone }}>{scoreTrend[scoreTrend.length - 1].date}</span>
               </div>
             </>
           ) : (
@@ -450,8 +450,8 @@ export default function DashboardHome() {
               </svg>
               {/* Frosted overlay */}
               <div style={{ position: "absolute", inset: 0, background: "rgba(22,22,24,0.75)", backdropFilter: "blur(4px)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", borderRadius: radius.md }}>
-                <p style={{ fontFamily: font.ui, fontSize: 13, color: c.chalk, marginBottom: 12 }}>Complete your first session to see your trend</p>
-                <button onClick={handleStartSession} style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: c.obsidian, background: `linear-gradient(135deg, ${c.gilt}, ${c.giltDark})`, border: "none", borderRadius: radius.sm, padding: "8px 18px", cursor: "pointer", transition: "all 0.2s ease" }}>Start a Session</button>
+                <p style={{ fontFamily: font.ui, fontSize: 14, color: c.chalk, marginBottom: 12 }}>Complete your first session to see your trend</p>
+                <button onClick={handleStartSession} style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: c.obsidian, background: `linear-gradient(135deg, ${c.gilt}, ${c.giltDark})`, border: "none", borderRadius: radius.sm, padding: "8px 20px", cursor: "pointer", transition: "all 0.2s ease" }}>Start a Session</button>
               </div>
             </div>
           )}
@@ -463,8 +463,8 @@ export default function DashboardHome() {
           {skills.length > 0 ? (
             <>
               <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 8, marginBottom: 8 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 4 }}><div style={{ width: 8, height: 2, background: c.gilt, borderRadius: 1 }} /><span style={{ fontFamily: font.ui, fontSize: 9, color: c.stone }}>Current</span></div>
-                <div style={{ display: "flex", alignItems: "center", gap: 4 }}><div style={{ width: 8, height: 2, background: c.stone, borderRadius: 1, opacity: 0.5 }} /><span style={{ fontFamily: font.ui, fontSize: 9, color: c.stone }}>First session</span></div>
+                <div style={{ display: "flex", alignItems: "center", gap: 4 }}><div style={{ width: 8, height: 2, background: c.gilt, borderRadius: 1 }} /><span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>Current</span></div>
+                <div style={{ display: "flex", alignItems: "center", gap: 4 }}><div style={{ width: 8, height: 2, background: c.stone, borderRadius: 1, opacity: 0.5 }} /><span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>First session</span></div>
               </div>
               <SkillRadar skills={skills} />
               <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 14 }}>
@@ -474,10 +474,10 @@ export default function DashboardHome() {
                     onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(240,237,232,0.03)"; }}
                     onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
                     title={`Practice ${sk.name}`}>
-                    <span style={{ fontFamily: font.ui, fontSize: 11, color: c.chalk, flex: 1 }}>{sk.name}</span>
+                    <span style={{ fontFamily: font.ui, fontSize: 13, color: c.chalk, flex: 1 }}>{sk.name}</span>
                     <div style={{ width: 60, height: 3, background: "rgba(240,237,232,0.06)", borderRadius: 2, overflow: "hidden" }}><div style={{ height: "100%", width: `${sk.score}%`, background: sk.color, borderRadius: 2, transition: "width 0.4s cubic-bezier(0.16,1,0.3,1)" }} /></div>
-                    <span style={{ fontFamily: font.mono, fontSize: 11, fontWeight: 600, color: c.ivory, width: 22, textAlign: "right" }}>{sk.score}</span>
-                    <span style={{ fontFamily: font.mono, fontSize: 10, color: c.sage, width: 28, textAlign: "right" }}>+{sk.score - sk.prev}</span>
+                    <span style={{ fontFamily: font.mono, fontSize: 12, fontWeight: 600, color: c.ivory, width: 24, textAlign: "right" }}>{sk.score}</span>
+                    <span style={{ fontFamily: font.mono, fontSize: 11, color: c.sage, width: 30, textAlign: "right" }}>+{sk.score - sk.prev}</span>
                   </div>
                 ))}
               </div>
@@ -497,8 +497,8 @@ export default function DashboardHome() {
                 ))}
               </div>
               <div style={{ position: "absolute", inset: 0, background: "rgba(22,22,24,0.75)", backdropFilter: "blur(4px)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", borderRadius: radius.md }}>
-                <p style={{ fontFamily: font.ui, fontSize: 12, color: c.chalk, lineHeight: 1.5, textAlign: "center", maxWidth: 200, marginBottom: 10 }}>Complete a session to unlock your skill breakdown</p>
-                <button onClick={handleStartSession} style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.obsidian, background: `linear-gradient(135deg, ${c.gilt}, ${c.giltDark})`, border: "none", borderRadius: radius.sm, padding: "6px 14px", cursor: "pointer" }}>Get Started</button>
+                <p style={{ fontFamily: font.ui, fontSize: 13, color: c.chalk, lineHeight: 1.5, textAlign: "center", maxWidth: 220, marginBottom: 10 }}>Complete a session to unlock your skill breakdown</p>
+                <button onClick={handleStartSession} style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: c.obsidian, background: `linear-gradient(135deg, ${c.gilt}, ${c.giltDark})`, border: "none", borderRadius: radius.sm, padding: "7px 16px", cursor: "pointer" }}>Get Started</button>
               </div>
             </div>
           )}
@@ -511,7 +511,7 @@ export default function DashboardHome() {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
           {sectionTitle("Recent Sessions")}
           <button onClick={() => setSortBy(sortBy === "date" ? "score" : "date")}
-            style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, background: "rgba(240,237,232,0.03)", border: "none", borderRadius: radius.sm, padding: "5px 12px", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, outline: "none", transition: "color 0.2s" }}
+            style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, background: "rgba(240,237,232,0.03)", border: "none", borderRadius: radius.sm, padding: "6px 14px", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, outline: "none", transition: "color 0.2s" }}
             onMouseEnter={(e) => e.currentTarget.style.color = c.ivory}
             onMouseLeave={(e) => e.currentTarget.style.color = c.stone}>
             <svg aria-hidden="true" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -525,7 +525,7 @@ export default function DashboardHome() {
           <div style={{ flex: 1, minWidth: 160, position: "relative" }}>
             <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.stone} strokeWidth="2" strokeLinecap="round" style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)" }}><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
             <input ref={searchInputRef} type="text" placeholder="Search sessions... (press /)" aria-label="Search sessions" value={searchQuery} onChange={(e) => handleSearch(e.target.value)}
-              style={{ width: "100%", padding: "8px 10px 8px 32px", fontFamily: font.ui, fontSize: 12, color: c.ivory, background: c.obsidian, border: `1px solid rgba(240,237,232,0.06)`, borderRadius: radius.sm, outline: "none", boxSizing: "border-box", transition: "border-color 0.2s" }}
+              style={{ width: "100%", padding: "9px 10px 9px 32px", fontFamily: font.ui, fontSize: 13, color: c.ivory, background: c.obsidian, border: `1px solid rgba(240,237,232,0.06)`, borderRadius: radius.sm, outline: "none", boxSizing: "border-box", transition: "border-color 0.2s" }}
               onFocus={(e) => e.currentTarget.style.borderColor = "rgba(201,169,110,0.3)"}
               onBlur={(e) => e.currentTarget.style.borderColor = "rgba(240,237,232,0.06)"}
             />
@@ -533,7 +533,7 @@ export default function DashboardHome() {
           <div style={{ display: "flex", gap: 4 }}>
             {(["all", "month", "week"] as const).map((range) => (
               <button key={range} onClick={() => setDateRange(range)}
-                style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 500, padding: "6px 12px", borderRadius: radius.sm, cursor: "pointer", background: dateRange === range ? "rgba(201,169,110,0.08)" : "transparent", border: "none", color: dateRange === range ? c.gilt : c.stone, transition: "all 0.2s ease", outline: "none" }}
+                style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, padding: "6px 12px", borderRadius: radius.sm, cursor: "pointer", background: dateRange === range ? "rgba(201,169,110,0.08)" : "transparent", border: "none", color: dateRange === range ? c.gilt : c.stone, transition: "all 0.2s ease", outline: "none" }}
                 onMouseEnter={(e) => { if (dateRange !== range) e.currentTarget.style.color = c.ivory; }}
                 onMouseLeave={(e) => { if (dateRange !== range) e.currentTarget.style.color = c.stone; }}>
                 {range === "all" ? "All time" : range === "month" ? "30 days" : "7 days"}
@@ -545,7 +545,7 @@ export default function DashboardHome() {
         <div style={{ display: "flex", gap: 6, marginBottom: 18, flexWrap: "wrap" }}>
           {sessionTypes.map((type) => (
             <button key={type} onClick={() => setFilterType(type)}
-              style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 500, padding: "5px 14px", borderRadius: radius.pill, cursor: "pointer", background: filterType === type ? "rgba(201,169,110,0.08)" : "transparent", border: "none", color: filterType === type ? c.gilt : c.stone, transition: "all 0.2s ease", outline: "none" }}
+              style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, padding: "6px 14px", borderRadius: radius.pill, cursor: "pointer", background: filterType === type ? "rgba(201,169,110,0.08)" : "transparent", border: "none", color: filterType === type ? c.gilt : c.stone, transition: "all 0.2s ease", outline: "none" }}
               onMouseEnter={(e) => { if (filterType !== type) e.currentTarget.style.color = c.chalk; }}
               onMouseLeave={(e) => { if (filterType !== type) e.currentTarget.style.color = c.stone; }}>
               {type}
@@ -555,7 +555,7 @@ export default function DashboardHome() {
 
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {filteredSessions.length === 0 ? (
-            <p style={{ fontFamily: font.ui, fontSize: 13, color: c.stone, textAlign: "center", padding: "32px 0" }}>
+            <p style={{ fontFamily: font.ui, fontSize: 14, color: c.stone, textAlign: "center", padding: "32px 0" }}>
               {searchQuery ? `No sessions matching "${searchQuery}"` : "No sessions match this filter."}
             </p>
           ) : (
@@ -565,20 +565,20 @@ export default function DashboardHome() {
                   style={{ width: "100%", padding: "16px 18px", borderRadius: radius.md, background: expandedSession === session.id ? "rgba(201,169,110,0.03)" : c.obsidian, border: "none", boxShadow: expandedSession === session.id ? "0 0 0 1px rgba(201,169,110,0.1)" : "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 16, transition: "all 0.25s cubic-bezier(0.16,1,0.3,1)", textAlign: "left" }}
                   onMouseEnter={(e) => { if (expandedSession !== session.id) e.currentTarget.style.background = "rgba(240,237,232,0.02)"; }}
                   onMouseLeave={(e) => { if (expandedSession !== session.id) e.currentTarget.style.background = c.obsidian; }}>
-                  <div style={{ width: 44, height: 44, borderRadius: "50%", flexShrink: 0, border: `2px solid ${scoreLabelColor(session.score)}`, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
-                    <span style={{ fontFamily: font.mono, fontSize: 14, fontWeight: 600, color: c.ivory, lineHeight: 1 }}>{session.score}</span>
-                    <span style={{ fontFamily: font.ui, fontSize: 7, color: scoreLabelColor(session.score), fontWeight: 600, lineHeight: 1, marginTop: 1 }}>{scoreLabel(session.score)}</span>
+                  <div style={{ width: 48, height: 48, borderRadius: "50%", flexShrink: 0, border: `2px solid ${scoreLabelColor(session.score)}`, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+                    <span style={{ fontFamily: font.mono, fontSize: 15, fontWeight: 600, color: c.ivory, lineHeight: 1 }}>{session.score}</span>
+                    <span style={{ fontFamily: font.ui, fontSize: 8, color: scoreLabelColor(session.score), fontWeight: 600, lineHeight: 1, marginTop: 1 }}>{scoreLabel(session.score)}</span>
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
-                      <span style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: c.ivory }}>{session.type}</span>
-                      <span style={{ fontFamily: font.mono, fontSize: 11, fontWeight: 600, color: session.change > 0 ? c.sage : c.ember }}>{session.change > 0 ? "+" : ""}{session.change}</span>
+                      <span style={{ fontFamily: font.ui, fontSize: 14, fontWeight: 600, color: c.ivory }}>{session.type}</span>
+                      <span style={{ fontFamily: font.mono, fontSize: 12, fontWeight: 600, color: session.change > 0 ? c.sage : c.ember }}>{session.change > 0 ? "+" : ""}{session.change}</span>
                     </div>
-                    <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "block" }}>{session.role}</span>
+                    <span style={{ fontFamily: font.ui, fontSize: 13, color: c.stone, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "block" }}>{session.role}</span>
                   </div>
                   <div style={{ textAlign: "right", flexShrink: 0 }}>
-                    <span style={{ fontFamily: font.ui, fontSize: 12, color: c.chalk, display: "block" }}>{session.dateLabel}</span>
-                    <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>{session.duration}</span>
+                    <span style={{ fontFamily: font.ui, fontSize: 13, color: c.chalk, display: "block" }}>{session.dateLabel}</span>
+                    <span style={{ fontFamily: font.ui, fontSize: 12, color: c.stone }}>{session.duration}</span>
                   </div>
                   <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.stone} strokeWidth="2" strokeLinecap="round" style={{ transform: expandedSession === session.id ? "rotate(180deg)" : "rotate(0)", transition: "transform 0.2s", flexShrink: 0 }}><polyline points="6 9 12 15 18 9"/></svg>
                 </button>
@@ -587,36 +587,36 @@ export default function DashboardHome() {
                   <div style={{ padding: "18px 22px", margin: "6px 0", background: c.obsidian, borderRadius: radius.md, animation: "slideDown 0.2s ease" }}>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: feedbackSession === session.id ? 16 : 0 }}>
                       <div>
-                        <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, color: c.sage, letterSpacing: "0.06em", textTransform: "uppercase", display: "block", marginBottom: 4 }}>Top Strength</span>
-                        <span style={{ fontFamily: font.ui, fontSize: 13, color: c.ivory }}>{session.topStrength}</span>
+                        <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.sage, letterSpacing: "0.06em", textTransform: "uppercase", display: "block", marginBottom: 4 }}>Top Strength</span>
+                        <span style={{ fontFamily: font.ui, fontSize: 14, color: c.ivory }}>{session.topStrength}</span>
                       </div>
                       <div>
-                        <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, color: c.ember, letterSpacing: "0.06em", textTransform: "uppercase", display: "block", marginBottom: 4 }}>To Improve</span>
-                        <span style={{ fontFamily: font.ui, fontSize: 13, color: c.ivory }}>{session.topWeakness}</span>
+                        <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.ember, letterSpacing: "0.06em", textTransform: "uppercase", display: "block", marginBottom: 4 }}>To Improve</span>
+                        <span style={{ fontFamily: font.ui, fontSize: 14, color: c.ivory }}>{session.topWeakness}</span>
                       </div>
                     </div>
                     {feedbackSession === session.id && (
                       <div style={{ padding: "16px 18px", borderRadius: radius.sm, background: "rgba(201,169,110,0.02)", borderLeft: `3px solid rgba(201,169,110,0.15)`, marginBottom: 14 }}>
-                        <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, color: c.gilt, letterSpacing: "0.06em", textTransform: "uppercase", display: "block", marginBottom: 8 }}>AI Feedback</span>
-                        <p style={{ fontFamily: font.ui, fontSize: 13, color: c.chalk, lineHeight: 1.7, margin: 0 }}>{session.feedback}</p>
+                        <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.gilt, letterSpacing: "0.06em", textTransform: "uppercase", display: "block", marginBottom: 8 }}>AI Feedback</span>
+                        <p style={{ fontFamily: font.ui, fontSize: 14, color: c.chalk, lineHeight: 1.7, margin: 0 }}>{session.feedback}</p>
                       </div>
                     )}
                     <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                       <button onClick={() => setFeedbackSession(feedbackSession === session.id ? null : session.id)}
-                        style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: c.gilt, background: "rgba(201,169,110,0.06)", border: "none", borderRadius: radius.sm, padding: "8px 16px", cursor: "pointer", transition: "background 0.2s" }}
+                        style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.gilt, background: "rgba(201,169,110,0.06)", border: "none", borderRadius: radius.sm, padding: "8px 16px", cursor: "pointer", transition: "background 0.2s" }}
                         onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(201,169,110,0.12)"; }}
                         onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(201,169,110,0.06)"; }}>
                         {feedbackSession === session.id ? "Hide Feedback" : "View Feedback"}
                       </button>
                       <button onClick={() => setViewingSession(session.id)}
-                        style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: c.ivory, background: "rgba(240,237,232,0.04)", border: "none", borderRadius: radius.sm, padding: "8px 16px", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, transition: "background 0.2s" }}
+                        style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.ivory, background: "rgba(240,237,232,0.04)", border: "none", borderRadius: radius.sm, padding: "8px 16px", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, transition: "background 0.2s" }}
                         onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(240,237,232,0.08)"; }}
                         onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(240,237,232,0.04)"; }}>
                         <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
                         Full Transcript
                       </button>
                       <button onClick={() => nav(`/session/new?type=${session.type.toLowerCase().replace(" ", "-")}`)}
-                        style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: c.stone, background: "transparent", border: "none", borderRadius: radius.sm, padding: "8px 16px", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, transition: "color 0.2s" }}
+                        style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.stone, background: "transparent", border: "none", borderRadius: radius.sm, padding: "8px 16px", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, transition: "color 0.2s" }}
                         onMouseEnter={(e) => { e.currentTarget.style.color = c.ivory; }}
                         onMouseLeave={(e) => { e.currentTarget.style.color = c.stone; }}>
                         <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
@@ -630,7 +630,7 @@ export default function DashboardHome() {
           )}
           {filteredSessions.length > sessionsToShow && (
             <button onClick={() => setSessionsToShow(s => s + 5)}
-              style={{ width: "100%", padding: "10px 0", marginTop: 8, fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: c.gilt, background: "rgba(201,169,110,0.04)", border: `1px solid rgba(201,169,110,0.1)`, borderRadius: radius.sm, cursor: "pointer", transition: "all 0.2s ease" }}
+              style={{ width: "100%", padding: "10px 0", marginTop: 8, fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.gilt, background: "rgba(201,169,110,0.04)", border: `1px solid rgba(201,169,110,0.1)`, borderRadius: radius.sm, cursor: "pointer", transition: "all 0.2s ease" }}
               onMouseEnter={(e) => e.currentTarget.style.background = "rgba(201,169,110,0.08)"}
               onMouseLeave={(e) => e.currentTarget.style.background = "rgba(201,169,110,0.04)"}>
               Show more ({filteredSessions.length - sessionsToShow} remaining)
@@ -644,9 +644,9 @@ export default function DashboardHome() {
           <div style={{ display: "flex", borderBottom: "1px solid rgba(240,237,232,0.04)" }}>
             {([["insights", "AI Insights"], ["goals", "Weekly Goals"]] as const).map(([key, label]) => (
               <button key={key} onClick={() => setRightTab(key)}
-                style={{ flex: 1, padding: "16px 16px", fontFamily: font.ui, fontSize: 13, fontWeight: rightTab === key ? 600 : 400, color: rightTab === key ? c.ivory : c.stone, background: "transparent", border: "none", cursor: "pointer", borderBottom: rightTab === key ? `2px solid ${c.gilt}` : "2px solid transparent", transition: "all 0.2s ease", outline: "none" }}>
+                style={{ flex: 1, padding: "16px 16px", fontFamily: font.ui, fontSize: 14, fontWeight: rightTab === key ? 600 : 400, color: rightTab === key ? c.ivory : c.stone, background: "transparent", border: "none", cursor: "pointer", borderBottom: rightTab === key ? `2px solid ${c.gilt}` : "2px solid transparent", transition: "all 0.2s ease", outline: "none" }}>
                 {label}
-                {key === "goals" && <span style={{ marginLeft: 6, fontFamily: font.mono, fontSize: 10, fontWeight: 600, color: c.gilt, background: "rgba(201,169,110,0.08)", padding: "1px 6px", borderRadius: 4 }}>{upcomingGoals.filter(g => g.progress < g.total).length}</span>}
+                {key === "goals" && <span style={{ marginLeft: 6, fontFamily: font.mono, fontSize: 11, fontWeight: 600, color: c.gilt, background: "rgba(201,169,110,0.08)", padding: "2px 7px", borderRadius: 4 }}>{upcomingGoals.filter(g => g.progress < g.total).length}</span>}
               </button>
             ))}
           </div>
@@ -654,16 +654,16 @@ export default function DashboardHome() {
             {rightTab === "insights" ? (
               aiInsights.length === 0 ? (
                 <div style={{ textAlign: "center", padding: "24px 0" }}>
-                  <p style={{ fontFamily: font.ui, fontSize: 12, color: c.stone }}>Complete more sessions to unlock AI insights.</p>
+                  <p style={{ fontFamily: font.ui, fontSize: 13, color: c.stone }}>Complete more sessions to unlock AI insights.</p>
                 </div>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                   {aiInsights.map((insight, i) => (
                     <div key={i} style={{ padding: "14px 16px", borderRadius: radius.sm, background: c.obsidian, borderLeft: `3px solid ${insight.type === "strength" ? c.sage : insight.type === "weakness" ? c.ember : c.gilt}` }}>
-                      <span style={{ fontFamily: font.ui, fontSize: 9, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", color: insight.type === "strength" ? c.sage : insight.type === "weakness" ? c.ember : c.gilt, display: "block", marginBottom: 4 }}>
+                      <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", color: insight.type === "strength" ? c.sage : insight.type === "weakness" ? c.ember : c.gilt, display: "block", marginBottom: 4 }}>
                         {insight.type === "strength" ? "Strength" : insight.type === "weakness" ? "Improve" : "Tip"}
                       </span>
-                      <p style={{ fontFamily: font.ui, fontSize: 12, color: c.chalk, lineHeight: 1.6 }}>{insight.text}</p>
+                      <p style={{ fontFamily: font.ui, fontSize: 13, color: c.chalk, lineHeight: 1.6 }}>{insight.text}</p>
                     </div>
                   ))}
                 </div>
@@ -677,15 +677,15 @@ export default function DashboardHome() {
                   return (
                     <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
                       <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={c.stone} strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                      <span style={{ fontFamily: font.mono, fontSize: 10, color: daysRemaining <= 2 ? c.ember : c.stone }}>{daysRemaining === 0 ? "Resets today" : `${daysRemaining}d left this week`}</span>
+                      <span style={{ fontFamily: font.mono, fontSize: 11, color: daysRemaining <= 2 ? c.ember : c.stone }}>{daysRemaining === 0 ? "Resets today" : `${daysRemaining}d left this week`}</span>
                     </div>
                   );
                 })()}
                 {upcomingGoals.map((goal, i) => (
                   <div key={i}>
                     <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
-                      <span style={{ fontFamily: font.ui, fontSize: 12, color: c.chalk }}>{goal.label}</span>
-                      <span style={{ fontFamily: font.mono, fontSize: 11, color: goal.progress >= goal.total ? c.sage : c.stone }}>{goal.progress}/{goal.total}</span>
+                      <span style={{ fontFamily: font.ui, fontSize: 13, color: c.chalk }}>{goal.label}</span>
+                      <span style={{ fontFamily: font.mono, fontSize: 12, color: goal.progress >= goal.total ? c.sage : c.stone }}>{goal.progress}/{goal.total}</span>
                     </div>
                     <div style={{ height: 4, background: "rgba(240,237,232,0.06)", borderRadius: 2, overflow: "hidden" }}>
                       <div style={{ height: "100%", width: `${(goal.progress / goal.total) * 100}%`, background: goal.progress >= goal.total ? c.sage : c.gilt, borderRadius: 2, transition: "width 0.4s cubic-bezier(0.16,1,0.3,1)" }} />
@@ -709,8 +709,8 @@ export default function DashboardHome() {
                 onMouseLeave={(e) => { if (!badge.earned) e.currentTarget.style.opacity = "0.45"; e.currentTarget.style.boxShadow = "none"; }}>
                 {badge.earned && <div style={{ position: "absolute", inset: 0, background: "radial-gradient(circle at 50% 30%, rgba(201,169,110,0.08) 0%, transparent 60%)", pointerEvents: "none" }} />}
                 <div style={{ marginBottom: 8, display: "flex", justifyContent: "center", position: "relative" }}>{(badgeIcons[badge.icon] || badgeIcons.star)(badge.earned ? c.gilt : c.stone)}</div>
-                <p style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: badge.earned ? c.ivory : c.stone, marginBottom: 2 }}>{badge.label}</p>
-                <p style={{ fontFamily: font.ui, fontSize: 9, color: c.stone, lineHeight: 1.4, marginBottom: badge.earned ? 0 : 8 }}>{badge.description}</p>
+                <p style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: badge.earned ? c.ivory : c.stone, marginBottom: 2 }}>{badge.label}</p>
+                <p style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, lineHeight: 1.4, marginBottom: badge.earned ? 0 : 8 }}>{badge.description}</p>
                 {!badge.earned && (
                   <div style={{ height: 3, background: "rgba(240,237,232,0.06)", borderRadius: 2, overflow: "hidden" }}>
                     <div style={{ height: "100%", width: `${Math.min(100, badge.progress)}%`, background: c.gilt, borderRadius: 2, transition: "width 0.4s cubic-bezier(0.16,1,0.3,1)" }} />
