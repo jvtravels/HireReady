@@ -1426,26 +1426,51 @@ export default function Interview() {
                         setMicError("");
                         noSpeechCountRef.current = 0;
                       }}
-                      aria-label="Retry microphone"
+                      aria-label="Switch to speaking"
                       style={{
-                        fontFamily: font.ui, fontSize: 11, fontWeight: 500, color: c.gilt,
-                        background: "rgba(201,169,110,0.06)", border: `1px solid rgba(201,169,110,0.15)`,
+                        fontFamily: font.ui, fontSize: 11, fontWeight: 500, color: c.sage,
+                        background: "rgba(122,158,126,0.06)", border: `1px solid rgba(122,158,126,0.15)`,
                         borderRadius: 6, padding: "4px 12px", cursor: "pointer", marginTop: 4,
+                        display: "inline-flex", alignItems: "center", gap: 5,
                         transition: "all 0.2s",
                       }}
                     >
-                      Retry Mic
+                      <svg aria-hidden="true" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg>
+                      Switch to speaking
                     </button>
                     </>
-                  ) : currentTranscript ? (
-                    <p style={{ fontFamily: font.ui, fontSize: 13, color: c.ivory, lineHeight: 1.7, margin: 0, opacity: 0.9 }}>
-                      {currentTranscript}
-                      <span style={{ display: "inline-block", width: 2, height: 14, background: c.sage, marginLeft: 2, verticalAlign: "text-bottom", animation: "blink 0.8s ease-in-out infinite" }} />
-                    </p>
                   ) : (
-                    <p style={{ fontFamily: font.ui, fontSize: 13, color: c.stone, lineHeight: 1.7, margin: 0, fontStyle: "italic" }}>
-                      Start speaking — your answer will appear here...
-                    </p>
+                    <>
+                    {currentTranscript ? (
+                      <p style={{ fontFamily: font.ui, fontSize: 13, color: c.ivory, lineHeight: 1.7, margin: 0, opacity: 0.9 }}>
+                        {currentTranscript}
+                        <span style={{ display: "inline-block", width: 2, height: 14, background: c.sage, marginLeft: 2, verticalAlign: "text-bottom", animation: "blink 0.8s ease-in-out infinite" }} />
+                      </p>
+                    ) : (
+                      <p style={{ fontFamily: font.ui, fontSize: 13, color: c.stone, lineHeight: 1.7, margin: 0, fontStyle: "italic" }}>
+                        Start speaking — your answer will appear here...
+                      </p>
+                    )}
+                    <button
+                      onClick={() => {
+                        setSpeechUnavailable(true);
+                        setMicError("");
+                      }}
+                      aria-label="Type instead"
+                      style={{
+                        fontFamily: font.ui, fontSize: 11, fontWeight: 500, color: c.stone,
+                        background: "transparent", border: "none",
+                        padding: "4px 0", cursor: "pointer", marginTop: 6,
+                        display: "inline-flex", alignItems: "center", gap: 5,
+                        transition: "color 0.2s",
+                      }}
+                      onMouseEnter={(e) => { e.currentTarget.style.color = c.chalk; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.color = c.stone; }}
+                    >
+                      <svg aria-hidden="true" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M6 8h.01"/><path d="M10 8h.01"/><path d="M14 8h.01"/><path d="M18 8h.01"/><path d="M6 12h.01"/><path d="M18 12h.01"/><path d="M8 16h8"/></svg>
+                      Prefer typing? Switch to text
+                    </button>
+                    </>
                   )}
                 </div>
 
