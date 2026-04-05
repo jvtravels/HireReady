@@ -187,6 +187,14 @@ export default function Onboarding() {
       setResumeError("File is too large. Please upload a file under 10 MB.");
       return;
     }
+    // Validate file type by extension and MIME
+    const ext = file.name.split(".").pop()?.toLowerCase();
+    const allowedExts = ["pdf", "docx", "doc", "txt"];
+    const allowedMimes = ["application/pdf", "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "text/plain"];
+    if (!ext || !allowedExts.includes(ext) || (file.type && !allowedMimes.includes(file.type))) {
+      setResumeError("Unsupported file type. Please upload a PDF, DOCX, or TXT file.");
+      return;
+    }
     setFileName(file.name);
     setResumeError("");
     setResumeParsing(true);

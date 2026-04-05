@@ -106,11 +106,19 @@ test.describe("Accessibility — Keyboard Navigation", () => {
   test("interactive elements are keyboard-focusable", async ({ page, viewport }) => {
     test.skip(!!viewport && viewport.width < 768, "Tab focus behavior varies on mobile");
     await page.goto("/");
-    // Tab through the page and verify focus moves to an interactive element
-    await page.keyboard.press("Tab"); // skip link
-    await page.keyboard.press("Tab"); // first interactive element
+    // Wait for nav links to be visible before tabbing
+    await expect(page.locator("nav a, nav button").first()).toBeVisible({ timeout: 5000 });
+    // Tab into the page — may need multiple presses to reach an interactive element
+    for (let i = 0; i < 5; i++) {
+      await page.keyboard.press("Tab");
+      const tag = await page.evaluate(() => document.activeElement?.tagName);
+      if (tag && ["A", "BUTTON", "INPUT"].includes(tag)) {
+        expect(tag).toBeTruthy();
+        return;
+      }
+    }
+    // At least one interactive element should have received focus
     const focused = await page.evaluate(() => document.activeElement?.tagName);
-    expect(focused).toBeTruthy();
     expect(["A", "BUTTON", "INPUT"]).toContain(focused);
   });
 

@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { c, font } from "./tokens";
 import { useAuth } from "./AuthContext";
 import { getSessionById, saveFeedback, getSessionFeedback, type SessionRecord } from "./supabase";
+import { useToast } from "./Toast";
 
 const RESULTS_KEY = "hireready_sessions";
 
@@ -76,6 +77,7 @@ export default function SessionDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const toast = useToast();
   const [session, setSession] = useState<LocalSession | null>(null);
   const [prevSession, setPrevSession] = useState<LocalSession | null>(null);
   const [loading, setLoading] = useState(true);
@@ -126,7 +128,8 @@ export default function SessionDetail() {
       try { await saveFeedback(feedbackData); } catch { /* localStorage fallback already saved above */ }
     }
     setFeedbackSaved(true);
-  }, [id, session, user?.id, feedbackComment]);
+    toast("Feedback saved — thank you!", "success");
+  }, [id, session, user?.id, feedbackComment, toast]);
 
   const submitComment = useCallback(async () => {
     if (!id || !session || !feedbackRating) return;

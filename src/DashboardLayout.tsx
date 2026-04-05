@@ -8,6 +8,8 @@ import { FREE_SESSION_LIMIT, STARTER_WEEKLY_LIMIT } from "./dashboardData";
 import { daysUntilEvent } from "./dashboardHelpers";
 import CommandPalette from "./CommandPalette";
 
+const modKey = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform) ? "⌘" : "Ctrl+";
+
 /* ─── Sidebar Nav Items ─── */
 const navItems = [
   { id: "dashboard", path: "/dashboard", label: "Dashboard", icon: <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg> },
@@ -171,7 +173,7 @@ export default function DashboardLayout() {
           {!isMobile && (
             <div style={{ margin: "16px 12px 0", padding: "8px 12px", borderRadius: 8, background: "rgba(240,237,232,0.02)", display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "default" }}>
               <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>Command palette</span>
-              <kbd style={{ fontFamily: font.mono, fontSize: 10, color: c.stone, background: "rgba(240,237,232,0.04)", border: `1px solid ${c.border}`, borderRadius: 4, padding: "2px 6px" }}>⌘K</kbd>
+              <kbd style={{ fontFamily: font.mono, fontSize: 10, color: c.stone, background: "rgba(240,237,232,0.04)", border: `1px solid ${c.border}`, borderRadius: 4, padding: "2px 6px" }}>{modKey}K</kbd>
             </div>
           )}
         </nav>
@@ -326,7 +328,7 @@ export default function DashboardLayout() {
             <h3 style={{ fontFamily: font.ui, fontSize: 15, fontWeight: 600, color: c.ivory, marginBottom: 16 }}>Keyboard Shortcuts</h3>
             {[
               ["N", "New session"],
-              ["⌘K", "Command palette"],
+              [`${modKey}K`, "Command palette"],
               ["/", "Search sessions"],
               ["?", "Toggle this help"],
               ["Esc", "Close dialogs"],

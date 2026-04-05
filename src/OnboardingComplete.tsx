@@ -26,15 +26,10 @@ export default function OnboardingComplete() {
 
   const [redirecting, setRedirecting] = useState(false);
 
-  // Guard: if accessed directly without coming from onboarding, redirect
+  // Guard: if accessed directly without coming from onboarding, redirect immediately
   useEffect(() => {
     if (!state.score && !state.aiFeedback) {
-      // No score data passed — user likely navigated here directly
-      setRedirecting(true);
-      const timer = setTimeout(() => {
-        navigate(user?.hasCompletedOnboarding ? "/dashboard" : "/onboarding", { replace: true });
-      }, 1500);
-      return () => clearTimeout(timer);
+      navigate(user?.hasCompletedOnboarding ? "/dashboard" : "/onboarding", { replace: true });
     }
   }, []);
 
