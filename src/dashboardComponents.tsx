@@ -194,6 +194,11 @@ export function UpgradeModal({ onClose, sessionsUsed, user, currentTier, onPayme
         }
       }
 
+      if (!(window as any).Razorpay) {
+        setError("Payment system not available. Please refresh and try again.");
+        setLoading(null);
+        return;
+      }
       const rzp = new (window as any).Razorpay({
         key: data.keyId,
         amount: data.amount,
@@ -204,7 +209,6 @@ export function UpgradeModal({ onClose, sessionsUsed, user, currentTier, onPayme
         prefill: { email: user?.email || "", name: user?.name || "" },
         theme: { color: "#C9A96E" },
         handler: function (response: { razorpay_payment_id: string; razorpay_order_id: string; razorpay_signature: string }) {
-          // Just store the response — useEffect handles verification
           setPendingVerification({
             razorpay_order_id: response.razorpay_order_id,
             razorpay_payment_id: response.razorpay_payment_id,
@@ -216,7 +220,10 @@ export function UpgradeModal({ onClose, sessionsUsed, user, currentTier, onPayme
       });
       rzp.on("payment.failed", function () { setError("Payment failed. Please try again."); setLoading(null); });
       rzp.open();
-    } catch {
+      // Safety timeout: if Razorpay doesn't open within 8s, reset state
+      setTimeout(() => { setLoading(prev => prev === planId ? null : prev); }, 8000);
+    } catch (err) {
+      console.error("Checkout error:", err);
       setError("Something went wrong. Please try again or contact support@hireready.ai");
       setLoading(null);
     }
@@ -310,7 +317,7 @@ export function UpgradeModal({ onClose, sessionsUsed, user, currentTier, onPayme
                   onMouseEnter={(e) => { if (!loading) { if (plan.featured) e.currentTarget.style.filter = "brightness(1.15)"; else { e.currentTarget.style.borderColor = c.chalk; e.currentTarget.style.background = "rgba(240,237,232,0.03)"; } } }}
                   onMouseLeave={(e) => { if (plan.featured) e.currentTarget.style.filter = "brightness(1)"; else { e.currentTarget.style.borderColor = c.borderHover; e.currentTarget.style.background = "transparent"; } }}
                 >
-                  {loading === "verifying" ? "Verifying..." : loading === plan.id ? "Redirecting..." : plan.featured ? "Go Pro" : "Get Started"}
+                  {loading === "verifying" ? "Verifying..." : loading === plan.id ? "Opening Razorpay..." : plan.featured ? "Go Pro" : "Get Started"}
                 </button>
               )}
             </div>
