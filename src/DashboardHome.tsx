@@ -257,12 +257,12 @@ export default function DashboardHome() {
       }} className="gradient-border-card">
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: isMobile ? 16 : 24 }}>
           <div style={{ flex: 1, minWidth: 260 }}>
-            {daysLeft > 0 && persisted.interviewDate && (
-              <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "5px 14px", borderRadius: radius.pill, background: "rgba(122,158,126,0.06)", border: "1px solid rgba(122,158,126,0.18)", marginBottom: 14 }}>
-                <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                <span style={{ fontFamily: font.mono, fontSize: 11, fontWeight: 600, color: c.sage }}>{daysLeft} days until interview</span>
-              </div>
-            )}
+            <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "5px 14px", borderRadius: radius.pill, background: "rgba(122,158,126,0.06)", border: "1px solid rgba(122,158,126,0.18)", marginBottom: 14 }}>
+              <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              <span style={{ fontFamily: font.mono, fontSize: 11, fontWeight: 600, color: c.sage }}>
+                {daysLeft > 0 && persisted.interviewDate ? `${daysLeft} days until interview` : "Set your interview date"}
+              </span>
+            </div>
             <h2 style={{ fontFamily: font.ui, fontSize: isMobile ? 16 : 17, fontWeight: 700, color: c.ivory, marginBottom: 8, letterSpacing: "-0.01em" }}>
               {hasData ? `Ready for session #${overallStats.sessionsCompleted + 1}?` : "Start practicing to ace your next interview"}
             </h2>
@@ -277,12 +277,12 @@ export default function DashboardHome() {
           <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 14 }}>
             <button className="shimmer-btn dash-focus" onClick={handleStartSession} style={{
               fontFamily: font.ui, fontSize: 14, fontWeight: 600, padding: "12px 28px", borderRadius: radius.md,
-              border: `1px solid rgba(201,169,110,0.25)`, background: "rgba(201,169,110,0.08)", color: c.ivory,
-              cursor: "pointer", display: "flex", alignItems: "center", gap: 8, whiteSpace: "nowrap",
+              border: "1px solid rgba(201,169,110,0.3)", background: `linear-gradient(135deg, rgba(201,169,110,0.15), rgba(201,169,110,0.08))`,
+              color: c.ivory, cursor: "pointer", display: "flex", alignItems: "center", gap: 8, whiteSpace: "nowrap",
               transition: "all 0.3s cubic-bezier(0.16,1,0.3,1)",
             }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(201,169,110,0.14)"; e.currentTarget.style.borderColor = "rgba(201,169,110,0.4)"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(201,169,110,0.08)"; e.currentTarget.style.borderColor = "rgba(201,169,110,0.25)"; }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = "linear-gradient(135deg, rgba(201,169,110,0.22), rgba(201,169,110,0.12))"; e.currentTarget.style.borderColor = "rgba(201,169,110,0.45)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = "linear-gradient(135deg, rgba(201,169,110,0.15), rgba(201,169,110,0.08))"; e.currentTarget.style.borderColor = "rgba(201,169,110,0.3)"; }}
             >
               <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polygon points="5,3 19,12 5,21" /></svg>
               {atSessionLimit ? "Upgrade to Continue" : "Start Session"}
@@ -293,7 +293,7 @@ export default function DashboardHome() {
                 <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="2" strokeLinecap="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" /></svg>
                 <span style={{ fontFamily: font.mono, fontSize: 10, fontWeight: 600, color: c.gilt }}>{currentStreak > 0 ? `${currentStreak}-day streak` : "Start a streak"}</span>
               </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 0, border: "1px solid rgba(240,237,232,0.08)", borderRadius: `0 ${radius.pill}px ${radius.pill}px 0`, overflow: "hidden" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 2, padding: "0 4px", border: "1px solid rgba(240,237,232,0.08)", borderRadius: `0 ${radius.pill}px ${radius.pill}px 0`, height: 28 }}>
                 {["M", "T", "W", "T", "F", "S", "S"].map((day, i) => {
                   const today = new Date();
                   const todayIdx = today.getDay() === 0 ? 6 : today.getDay() - 1;
@@ -302,9 +302,10 @@ export default function DashboardHome() {
                   const practiced = weekActivity[i];
                   return (
                     <div key={`day-${i}`} title={`${day}: ${isFutureDay ? "Upcoming" : practiced ? "Practiced" : "Missed"}`} style={{
-                      width: 26, height: 28, display: "flex", alignItems: "center", justifyContent: "center",
-                      background: practiced ? "rgba(201,169,110,0.1)" : "transparent",
-                      borderRight: i < 6 ? "1px solid rgba(240,237,232,0.06)" : "none",
+                      width: 24, height: 22, display: "flex", alignItems: "center", justifyContent: "center",
+                      borderRadius: 4,
+                      background: practiced ? "rgba(201,169,110,0.18)" : "transparent",
+                      border: practiced ? "1px solid rgba(201,169,110,0.25)" : "1px solid transparent",
                       fontSize: 9, fontFamily: font.mono, fontWeight: 600,
                       color: practiced ? c.gilt : isToday ? c.ivory : c.stone,
                     }}>{day}</div>
