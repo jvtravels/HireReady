@@ -263,12 +263,12 @@ export default function DashboardHome() {
                 <span style={{ fontFamily: font.mono, fontSize: 11, fontWeight: 600, color: c.sage }}>{daysLeft} days until interview</span>
               </div>
             )}
-            <h2 style={{ fontFamily: font.display, fontSize: isMobile ? 18 : 20, fontWeight: 600, color: c.ivory, marginBottom: 6, letterSpacing: "-0.01em" }}>
+            <h2 style={{ fontFamily: font.ui, fontSize: isMobile ? 16 : 17, fontWeight: 700, color: c.ivory, marginBottom: 8, letterSpacing: "-0.01em" }}>
               {hasData ? `Ready for session #${overallStats.sessionsCompleted + 1}?` : "Start practicing to ace your next interview"}
             </h2>
             <p style={{ fontFamily: font.ui, fontSize: 13, color: c.stone, lineHeight: 1.6, maxWidth: 560 }}>
               {weakestSkill ? (
-                <>Your <strong style={{ color: c.ivory, fontWeight: 600 }}>{weakestSkill.name}</strong> score is {weakestSkill.score}{user?.targetCompany ? ` — ${user.targetCompany} interviews test this heavily` : ""}. Try a focused session to boost it.</>
+                <>Your <strong style={{ color: c.ivory, fontWeight: 700 }}>{weakestSkill.name}</strong> score is {weakestSkill.score}{user?.targetCompany ? ` — ${user.targetCompany} interviews test this heavily` : ""}. Try a focused session to boost it.</>
               ) : (
                 <>Each session is tailored to your target role{user?.targetCompany ? ` at ${user.targetCompany}` : ""}. Complete your first session to get personalized insights.</>
               )}
