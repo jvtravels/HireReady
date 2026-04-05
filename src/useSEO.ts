@@ -133,11 +133,5 @@ export function webAppJsonLd(): Record<string, unknown> {
       priceCurrency: "INR",
       description: "Free plan with 3 interview sessions",
     },
-    aggregateRating: {
-      "@type": "AggregateRating",
-      ratingValue: "4.9",
-      ratingCount: "5000",
-      bestRating: "5",
-    },
   };
 }

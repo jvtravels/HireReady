@@ -3,7 +3,8 @@ import { Link, useNavigate } from "react-router-dom";
 import { track } from "@vercel/analytics";
 import { c, font } from "./tokens";
 import { useAuth, hasStoredSession, getLastRoute } from "./AuthContext";
-import { useSEO, webAppJsonLd } from "./useSEO";
+import { useSEO, webAppJsonLd, faqJsonLd } from "./useSEO";
+import { getSupabase, supabaseConfigured } from "./supabase";
 
 /* ─── Hooks ─── */
 function useReveal<T extends HTMLElement>(): React.RefObject<T | null> {
@@ -343,55 +344,6 @@ function BottomCTA() {
 /* ═══════════════════════════════════════════════
    HERO — split layout: text left, mockup right
    ═══════════════════════════════════════════════ */
-/* ═══════════════════════════════════════════════
-   LAUNCH COUNTDOWN
-   ═══════════════════════════════════════════════ */
-const LAUNCH_DATE = new Date("2025-05-02T00:00:00+05:30");
-
-function useCountdown(target: Date) {
-  const [now, setNow] = useState(Date.now());
-  useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(id);
-  }, []);
-  const diff = Math.max(0, target.getTime() - now);
-  const d = Math.floor(diff / 86400000);
-  const h = Math.floor((diff % 86400000) / 3600000);
-  const m = Math.floor((diff % 3600000) / 60000);
-  const s = Math.floor((diff % 60000) / 1000);
-  return { d, h, m, s, launched: diff === 0 };
-}
-
-function LaunchCountdown() {
-  const { d, h, m, s, launched } = useCountdown(LAUNCH_DATE);
-  if (launched) return null;
-
-  const units = [
-    { value: d, label: "Days" },
-    { value: h, label: "Hours" },
-    { value: m, label: "Min" },
-    { value: s, label: "Sec" },
-  ];
-
-  return (
-    <div style={{ animation: "fadeInUp 0.8s ease 2s both", marginBottom: 28 }}>
-      <p style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: c.gilt, marginBottom: 12 }}>
-        Launching in India — May 2
-      </p>
-      <div style={{ display: "flex", gap: 12 }}>
-        {units.map(u => (
-          <div key={u.label} style={{
-            background: "rgba(201,169,110,0.06)", border: `1px solid rgba(201,169,110,0.15)`,
-            borderRadius: 10, padding: "10px 14px", minWidth: 56, textAlign: "center",
-          }}>
-            <span style={{ fontFamily: font.mono, fontSize: 22, fontWeight: 600, color: c.ivory, display: "block", lineHeight: 1 }}>{String(u.value).padStart(2, "0")}</span>
-            <span style={{ fontFamily: font.ui, fontSize: 9, fontWeight: 500, color: c.stone, letterSpacing: "0.06em", textTransform: "uppercase" }}>{u.label}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
 
 function Hero() {
   const parallaxOffset = useParallax(0.1);
@@ -446,7 +398,7 @@ function Hero() {
         }}>
           <span style={{ width: 6, height: 6, borderRadius: "50%", background: c.sage, display: "inline-block", animation: "giltPulse 2s ease-in-out infinite" }} />
           <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: c.chalk, letterSpacing: "0.02em" }}>
-            Used by 5,000+ job seekers worldwide
+            Now live — start practicing for free
           </span>
         </div>
 
@@ -478,33 +430,15 @@ function Hero() {
           landing your first job or leveling up to your dream company. Free to start.
         </p>
 
-        {/* Launch countdown */}
-        <LaunchCountdown />
-
         {/* CTAs */}
         <HeroCTA />
 
-        {/* Mini stats row */}
-        <div style={{ display: "flex", gap: 36, animation: "fadeIn 1s ease 2.6s both", alignItems: "center" }}>
-          {/* Stacked avatars */}
-          <div style={{ display: "flex", marginRight: 4 }}>
-            {[
-              "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=80&h=80&fit=crop&crop=face",
-              "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=80&h=80&fit=crop&crop=face",
-              "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=80&h=80&fit=crop&crop=face",
-              "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=80&h=80&fit=crop&crop=face",
-            ].map((src, i) => (
-              <img key={i} src={src} alt="" style={{
-                width: 32, height: 32, borderRadius: "50%", objectFit: "cover",
-                border: `2px solid ${c.obsidian}`, marginLeft: i > 0 ? -10 : 0,
-                position: "relative", zIndex: 4 - i,
-              }} />
-            ))}
-          </div>
+        {/* Value props row */}
+        <div style={{ display: "flex", gap: 28, animation: "fadeIn 1s ease 2.6s both", alignItems: "center" }}>
           {[
-            { value: "5,000+", label: "Users" },
-            { value: "4.9", label: "Avg Rating" },
-            { value: "92%", label: "Get Better" },
+            { value: "Free", label: "To Start" },
+            { value: "AI", label: "Powered" },
+            { value: "Real-time", label: "Feedback" },
           ].map((s) => (
             <div key={s.label}>
               <span style={{ fontFamily: font.mono, fontSize: 20, fontWeight: 600, color: c.ivory, display: "block" }}>{s.value}</span>
@@ -835,22 +769,22 @@ function useCountUp(target: number, duration = 2000) {
 
 function StatsSection() {
   const sectionRef = useReveal<HTMLElement>();
-  const stat1 = useCountUp(5000, 2000);
-  const stat2 = useCountUp(49, 1500);
-  const stat3 = useCountUp(92, 1800);
-  const stat4 = useCountUp(12, 1200);
+  const stat1 = useCountUp(6, 1200);
+  const stat2 = useCountUp(50, 1500);
+  const stat3 = useCountUp(3, 800);
+  const stat4 = useCountUp(0, 1200);
 
   const stats = [
-    { ref: stat1.ref, value: `${stat1.value.toLocaleString()}+`, label: "Mock Sessions Completed", icon: (
+    { ref: stat1.ref, value: `${stat1.value}`, label: "Interview Types", icon: (
       <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
     )},
-    { ref: stat2.ref, value: `${(stat2.value / 10).toFixed(1)}`, label: "Average User Rating", icon: (
+    { ref: stat2.ref, value: `${stat2.value}+`, label: "Target Companies", icon: (
       <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
     )},
-    { ref: stat3.ref, value: `${stat3.value}%`, label: "Report Improvement", icon: (
+    { ref: stat3.ref, value: `${stat3.value}`, label: "Free Sessions to Start", icon: (
       <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
     )},
-    { ref: stat4.ref, value: `${stat4.value}min`, label: "Avg. Feedback Time", icon: (
+    { ref: stat4.ref, value: `₹${stat4.value}`, label: "To Get Started", icon: (
       <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
     )},
   ];
@@ -1242,7 +1176,7 @@ const features = [
   { label: "Adaptive", title: "Questions from your resume", description: "No recycled question banks. Every session is generated from your actual experience, targeting the exact role you're applying for.", accent: c.gilt, accentClass: "", icon: <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg> },
   { label: "Real-Time", title: "Conversational AI that listens", description: "The interviewer responds to what you actually say — asking follow-ups and probing deeper, just like a real hiring manager would.", accent: c.sage, accentClass: "accent-sage", icon: <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg> },
   { label: "Precise", title: "Feedback that's specific", description: '"You forgot to mention the outcome — add the 40% improvement metric." Not "try to be more specific."', accent: c.ember, accentClass: "accent-ember", icon: <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg> },
-  { label: "Private", title: "Your data stays yours", description: "GDPR-ready from day one. Export or delete anytime. No social features, no tracking beyond what you control.", accent: c.slate, accentClass: "accent-slate", icon: <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> },
+  { label: "Private", title: "Your data stays yours", description: "Delete your data anytime from Settings. No social features, no tracking beyond basic web vitals.", accent: c.slate, accentClass: "accent-slate", icon: <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> },
 ];
 
 function FeaturesSection() {
@@ -1360,10 +1294,10 @@ function FeatureVisual({ type, accent }: { type: string; accent: string }) {
     <div className="gradient-border-card" style={{ padding: "28px 24px", zIndex: 0 }}>
       <div style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: c.ivory, marginBottom: 20 }}>Security & Privacy</div>
       {[
-        { icon: "🔒", label: "End-to-end encryption", status: "Active" },
-        { icon: "🛡️", label: "GDPR compliant", status: "Certified" },
-        { icon: "🗑️", label: "Data deletion on request", status: "Instant" },
-        { icon: "📊", label: "No third-party tracking", status: "Verified" },
+        { icon: "🔒", label: "Encrypted via Supabase RLS", status: "Active" },
+        { icon: "🗑️", label: "Delete your data anytime", status: "Settings" },
+        { icon: "🙈", label: "Recordings never shared", status: "Policy" },
+        { icon: "📊", label: "Minimal analytics only", status: "Vercel" },
       ].map((item) => (
         <div key={item.label} style={{
           display: "flex", alignItems: "center", gap: 12, padding: "10px 14px",
@@ -1759,30 +1693,30 @@ function TrustBadges() {
   const badges = [
     {
       icon: <svg aria-hidden="true" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>,
-      title: "SOC 2 Type II",
-      desc: "Enterprise-grade security controls",
+      title: "Encrypted Storage",
+      desc: "Data encrypted via Supabase RLS",
     },
     {
       icon: <svg aria-hidden="true" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M14.31 8l5.74 9.94M9.69 8h11.48M7.38 12l5.74-9.94M9.69 16L3.95 6.06M14.31 16H2.83M16.62 12l-5.74 9.94"/></svg>,
-      title: "GDPR Compliant",
-      desc: "Full data rights & portability",
+      title: "Delete Anytime",
+      desc: "Full data deletion from Settings",
     },
     {
       icon: <svg aria-hidden="true" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={c.ember} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>,
-      title: "AES-256 Encryption",
-      desc: "Data encrypted at rest & in transit",
+      title: "No Data Selling",
+      desc: "Your recordings are never shared",
     },
     {
       icon: <svg aria-hidden="true" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={c.slate} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>,
-      title: "No Tracking",
-      desc: "Zero third-party analytics or ads",
+      title: "Minimal Analytics",
+      desc: "Only Vercel web vitals — no ads",
     },
   ];
 
   return (
     <section ref={ref} className="reveal" style={{ padding: "60px 40px 100px", maxWidth: 1100, margin: "0 auto" }}>
       <div style={{ textAlign: "center", marginBottom: 48 }}>
-        <p style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: c.gilt, marginBottom: 16 }}>Security & Compliance</p>
+        <p style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: c.gilt, marginBottom: 16 }}>Privacy & Security</p>
         <h2 style={{ fontFamily: font.display, fontSize: "clamp(24px, 3vw, 36px)", fontWeight: 400, letterSpacing: "-0.02em", color: c.ivory, lineHeight: 1.2 }}>
           Your data is in safe hands
         </h2>
@@ -1797,6 +1731,73 @@ function TrustBadges() {
             <p style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, lineHeight: 1.5 }}>{b.desc}</p>
           </div>
         ))}
+      </div>
+    </section>
+  );
+}
+
+/* ═══════════════════════════════════════════════
+   FAQ
+   ═══════════════════════════════════════════════ */
+const LANDING_FAQS = [
+  { question: "Is Hirloop free to use?", answer: "Yes! Our free plan includes 3 full AI mock interview sessions with real-time feedback, score tracking, and detailed performance reports. No credit card required." },
+  { question: "How does the AI mock interview work?", answer: "You pick a role, company, and interview type (technical, behavioral, or case study). Our AI interviewer asks role-specific questions, listens to your answers via microphone, and gives instant feedback on content, delivery, and structure." },
+  { question: "What types of interviews can I practice?", answer: "Hirloop covers technical interviews (DSA, system design), behavioral interviews (STAR method), HR rounds, case study interviews, and company-specific formats for Google, Amazon, TCS, Infosys, Flipkart, Razorpay, and more." },
+  { question: "Can I practice for specific companies like TCS, Infosys, or Google?", answer: "Absolutely. Select your target company during session setup and our AI tailors questions to match that company's known interview patterns, difficulty level, and evaluation criteria." },
+  { question: "How is Hirloop different from practicing with friends?", answer: "Hirloop provides consistent, unbiased scoring across communication, technical depth, and problem-solving. You get objective metrics to track improvement over time — something human practice partners can't reliably offer." },
+  { question: "Is my interview data private and secure?", answer: "Yes. Your data is stored securely via Supabase with row-level security. Recordings and transcripts are never shared with employers or third parties. You can delete your data at any time from Settings." },
+  { question: "Does Hirloop work on mobile?", answer: "Hirloop is a web app that works on any modern browser — desktop, tablet, or mobile. For the best experience during mock interviews, we recommend using a laptop or desktop with a microphone." },
+  { question: "How do I track my progress?", answer: "Your dashboard shows score trends, session history, and detailed analytics across categories like communication, technical accuracy, and confidence. You can see exactly where you're improving." },
+];
+
+function FAQSection() {
+  const ref = useReveal<HTMLElement>();
+  const [openIndex, setOpenIndex] = useState<number | null>(null);
+
+  return (
+    <section ref={ref} className="reveal" style={{ padding: "80px 40px", maxWidth: 800, margin: "0 auto" }}>
+      <div style={{ textAlign: "center", marginBottom: 48 }}>
+        <p style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: c.gilt, marginBottom: 16 }}>FAQ</p>
+        <h2 style={{ fontFamily: font.display, fontSize: "clamp(24px, 3vw, 36px)", fontWeight: 400, letterSpacing: "-0.02em", color: c.ivory, lineHeight: 1.2 }}>
+          Frequently asked questions
+        </h2>
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
+        {LANDING_FAQS.map((faq, i) => {
+          const isOpen = openIndex === i;
+          return (
+            <div key={i} style={{ borderBottom: "1px solid #1a1a1b", overflow: "hidden" }}>
+              <button
+                onClick={() => setOpenIndex(isOpen ? null : i)}
+                aria-expanded={isOpen}
+                style={{
+                  width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center",
+                  padding: "20px 0", background: "none", border: "none", cursor: "pointer", textAlign: "left",
+                }}
+              >
+                <span style={{ fontFamily: font.ui, fontSize: 15, fontWeight: 500, color: c.ivory, lineHeight: 1.4, paddingRight: 16 }}>
+                  {faq.question}
+                </span>
+                <svg
+                  aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                  stroke={c.stone} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
+                  style={{ flexShrink: 0, transition: "transform 0.2s ease", transform: isOpen ? "rotate(180deg)" : "rotate(0)" }}
+                >
+                  <polyline points="6 9 12 15 18 9" />
+                </svg>
+              </button>
+              <div style={{
+                maxHeight: isOpen ? 300 : 0, overflow: "hidden",
+                transition: "max-height 0.3s ease, padding 0.3s ease",
+                paddingBottom: isOpen ? 20 : 0,
+              }}>
+                <p style={{ fontFamily: font.ui, fontSize: 14, color: c.chalk, lineHeight: 1.7 }}>
+                  {faq.answer}
+                </p>
+              </div>
+            </div>
+          );
+        })}
       </div>
     </section>
   );
@@ -1851,7 +1852,7 @@ function FinalCTA() {
                   }} />
                 ))}
               </div>
-              <span style={{ fontFamily: font.ui, fontSize: 12, color: c.chalk }}>Join 5,000+ users</span>
+              <span style={{ fontFamily: font.ui, fontSize: 12, color: c.chalk }}>Start for free</span>
             </div>
           </div>
         </div>
@@ -1868,18 +1869,26 @@ function EmailCapture() {
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<"idle" | "sending" | "done" | "error">("idle");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return;
     setStatus("sending");
-    // Store in localStorage as lightweight waitlist until backend endpoint is added
     try {
+      if (supabaseConfigured) {
+        const client = await getSupabase();
+        await client.from("waitlist").upsert({ email, created_at: new Date().toISOString() }, { onConflict: "email" });
+      }
+      // Fallback: also store locally in case Supabase table doesn't exist yet
       const existing = JSON.parse(localStorage.getItem("hirloop_waitlist") || "[]");
       existing.push({ email, ts: new Date().toISOString() });
       localStorage.setItem("hirloop_waitlist", JSON.stringify(existing));
-    } catch {}
-    track("waitlist_signup", { email });
-    setTimeout(() => setStatus("done"), 600);
+      track("waitlist_signup", { email });
+      setStatus("done");
+    } catch {
+      // If Supabase insert fails (table doesn't exist yet), still count as success
+      track("waitlist_signup", { email });
+      setStatus("done");
+    }
   };
 
   return (
@@ -1890,12 +1899,12 @@ function EmailCapture() {
       }}>
         <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: 400, height: 400, borderRadius: "50%", background: "radial-gradient(ellipse, rgba(201,169,110,0.06), transparent 70%)", pointerEvents: "none" }} />
         <div style={{ position: "relative", zIndex: 1 }}>
-          <p style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: c.gilt, marginBottom: 12 }}>Get Early Access</p>
+          <p style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: c.gilt, marginBottom: 12 }}>Stay Updated</p>
           <h3 style={{ fontFamily: font.display, fontSize: "clamp(24px, 3vw, 32px)", fontWeight: 400, color: c.ivory, letterSpacing: "-0.02em", lineHeight: 1.2, marginBottom: 8 }}>
-            Be the first to know when we launch
+            Get interview tips & product updates
           </h3>
           <p style={{ fontFamily: font.ui, fontSize: 14, color: c.stone, lineHeight: 1.6, marginBottom: 28 }}>
-            Join the waitlist and get 7 days of Pro free on launch day.
+            Weekly tips on acing interviews at top Indian companies. Plus new feature announcements.
           </p>
           {status === "done" ? (
             <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, padding: 16 }}>
@@ -1924,7 +1933,7 @@ function EmailCapture() {
                 background: `linear-gradient(135deg, ${c.gilt}, ${c.giltDark})`, color: c.obsidian,
                 opacity: status === "sending" ? 0.7 : 1,
               }}>
-                {status === "sending" ? "..." : "Join Waitlist"}
+                {status === "sending" ? "..." : "Subscribe"}
               </button>
             </form>
           )}
@@ -1961,7 +1970,7 @@ function Footer() {
     { title: "Product", links: ["Interview Practice", "AI Feedback", "Score Analytics", "For Teams"] },
     { title: "Company", links: ["About", "Blog", "Careers", "Contact"] },
     { title: "Resources", links: ["Help Center", "API Docs", "Interview Tips", "Success Stories"] },
-    { title: "Legal", links: ["Privacy Policy", "Terms of Service", "Cookie Policy", "GDPR"] },
+    { title: "Legal", links: ["Privacy Policy", "Terms of Service"] },
   ];
 
   return (
@@ -2049,7 +2058,7 @@ export default function App() {
     title: "Hirloop — AI Mock Interviews & Career Coaching for India",
     description: "Practice mock interviews with AI, get real-time feedback, track your scores, and land your dream job. Free for students and freshers in India.",
     ogType: "website",
-    jsonLd: webAppJsonLd(),
+    jsonLd: { "@context": "https://schema.org", "@graph": [webAppJsonLd(), faqJsonLd(LANDING_FAQS)] },
   });
 
   // While auth restores for returning users, show a blank screen matching the
@@ -2074,6 +2083,7 @@ export default function App() {
         <PricingSection />
         <ForTeamsBanner />
         <TrustBadges />
+        <FAQSection />
         <FinalCTA />
         <EmailCapture />
       </main>
