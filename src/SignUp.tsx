@@ -3,7 +3,7 @@ import { Link, useNavigate, useLocation } from "react-router-dom";
 import { track } from "@vercel/analytics";
 import { c, font } from "./tokens";
 import { useAuth } from "./AuthContext";
-import { supabase, supabaseConfigured } from "./supabase";
+import { getSupabase, supabaseConfigured } from "./supabase";
 
 // Remember me preference
 const REMEMBER_ME_KEY = "hireready_remember_me";
@@ -153,7 +153,8 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
           return;
         }
         // Check if session was created (no email confirmation required)
-        const { data: { session } } = await supabase.auth.getSession();
+        const client = await getSupabase();
+        const { data: { session } } = await client.auth.getSession();
         if (session) {
           // Auto-logged in — useEffect redirect will handle navigation
           return;
@@ -265,7 +266,7 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
               {supabaseConfigured && (
                 <button onClick={async () => {
                   try {
-                    await supabase.auth.resend({ type: "signup", email });
+                    const c = await getSupabase(); await c.auth.resend({ type: "signup", email });
                     setError("");
                     setResendMsg("Confirmation email resent!");
                     setTimeout(() => setResendMsg(""), 3000);

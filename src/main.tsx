@@ -5,14 +5,20 @@ import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { AuthProvider, RequireAuth } from "./AuthContext";
 import { DashboardProvider } from "./DashboardContext";
 import { ToastProvider } from "./Toast";
-import { Analytics } from "@vercel/analytics/react";
-import { SpeedInsights } from "@vercel/speed-insights/react";
-import { initErrorReporter } from "./errorReporter";
-const App = lazy(() => import("./App"));
 import NotFound from "./NotFound";
 import ErrorBoundary, { RouteErrorBoundary } from "./ErrorBoundary";
 
-initErrorReporter();
+// Lazy-load non-critical modules
+const App = lazy(() => import("./App"));
+const Analytics = lazy(() => import("@vercel/analytics/react").then(m => ({ default: m.Analytics })));
+const SpeedInsights = lazy(() => import("@vercel/speed-insights/react").then(m => ({ default: m.SpeedInsights })));
+
+// Defer error reporter init to after first paint
+if (typeof requestIdleCallback !== "undefined") {
+  requestIdleCallback(() => import("./errorReporter").then(m => m.initErrorReporter()));
+} else {
+  setTimeout(() => import("./errorReporter").then(m => m.initErrorReporter()), 100);
+}
 
 const TempoHost = lazy(() => {
   if (typeof window !== "undefined" && window.location.pathname.startsWith("/tempo-host")) {
@@ -102,7 +108,7 @@ createRoot(document.getElementById("root")!).render(
       </BrowserRouter>
       </ErrorBoundary>
     )}
-    <Analytics />
-    <SpeedInsights />
+    <Suspense fallback={null}><Analytics /></Suspense>
+    <Suspense fallback={null}><SpeedInsights /></Suspense>
   </StrictMode>,
 );

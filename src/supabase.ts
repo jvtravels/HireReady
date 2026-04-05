@@ -1,20 +1,50 @@
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "";
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || "";
 
 export const supabaseConfigured = !!(supabaseUrl && supabaseAnonKey);
 
-// Create client only if configured; otherwise create a dummy that won't crash
-export const supabase: SupabaseClient = supabaseConfigured
-  ? createClient(supabaseUrl, supabaseAnonKey)
-  : createClient("https://placeholder.supabase.co", "placeholder-key");
+// Lazy-initialize the Supabase client so the SDK (~191KB) doesn't block
+// the initial page load. The client is created on first access.
+let _client: SupabaseClient | null = null;
+let _clientPromise: Promise<SupabaseClient> | null = null;
+
+async function initClient(): Promise<SupabaseClient> {
+  if (_client) return _client;
+  if (!_clientPromise) {
+    _clientPromise = import("@supabase/supabase-js").then(({ createClient }) => {
+      _client = supabaseConfigured
+        ? createClient(supabaseUrl, supabaseAnonKey)
+        : createClient("https://placeholder.supabase.co", "placeholder-key");
+      return _client;
+    });
+  }
+  return _clientPromise;
+}
+
+/** Get the Supabase client (initializes on first call) */
+export async function getSupabase(): Promise<SupabaseClient> {
+  return initClient();
+}
+
+// Eagerly start loading Supabase when AuthProvider mounts (called from AuthContext)
+export function preloadSupabase() {
+  initClient();
+}
+
+// Synchronous access for code that runs after init (backwards compat)
+export function getSupabaseSync(): SupabaseClient {
+  if (!_client) throw new Error("Supabase not initialized — call getSupabase() first");
+  return _client;
+}
 
 /* ─── Auth Token Helper ─── */
 
 export async function getAuthToken(): Promise<string | null> {
   if (!supabaseConfigured) return null;
-  const { data: { session } } = await supabase.auth.getSession();
+  const client = await getSupabase();
+  const { data: { session } } = await client.auth.getSession();
   return session?.access_token || null;
 }
 
@@ -82,7 +112,8 @@ export interface CalendarEvent {
 /* ─── Profile helpers ─── */
 
 export async function getProfile(userId: string): Promise<Profile | null> {
-  const { data, error } = await supabase
+  const client = await getSupabase();
+  const { data, error } = await client
     .from("profiles")
     .select("*")
     .eq("id", userId)
@@ -94,16 +125,15 @@ export async function getProfile(userId: string): Promise<Profile | null> {
 }
 
 export async function upsertProfile(profile: Partial<Profile> & { id: string }) {
+  const client = await getSupabase();
   const { id, ...updates } = profile;
-  // Use UPDATE for existing rows — upsert can be silently blocked by RLS
-  const result = await supabase
+  const result = await client
     .from("profiles")
     .update(updates)
     .eq("id", id);
   if (result.error) {
     console.warn("[supabase] update failed, trying upsert:", result.error.message);
-    // Fallback to upsert (for new rows)
-    const upsertResult = await supabase.from("profiles").upsert(profile, { onConflict: "id" });
+    const upsertResult = await client.from("profiles").upsert(profile, { onConflict: "id" });
     if (upsertResult.error) {
       console.error("[supabase] upsert also failed:", upsertResult.error.message, upsertResult.error.code);
     }
@@ -115,11 +145,13 @@ export async function upsertProfile(profile: Partial<Profile> & { id: string }) 
 /* ─── Session helpers ─── */
 
 export async function saveSession(session: Omit<SessionRecord, "created_at">) {
-  return supabase.from("sessions").insert(session);
+  const client = await getSupabase();
+  return client.from("sessions").insert(session);
 }
 
 export async function getUserSessions(userId: string): Promise<SessionRecord[]> {
-  const { data } = await supabase
+  const client = await getSupabase();
+  const { data } = await client
     .from("sessions")
     .select("*")
     .eq("user_id", userId)
@@ -128,7 +160,8 @@ export async function getUserSessions(userId: string): Promise<SessionRecord[]> 
 }
 
 export async function getSessionById(sessionId: string, userId: string): Promise<SessionRecord | null> {
-  const { data } = await supabase
+  const client = await getSupabase();
+  const { data } = await client
     .from("sessions")
     .select("*")
     .eq("id", sessionId)
@@ -152,12 +185,14 @@ export interface FeedbackRecord {
 
 export async function saveFeedback(feedback: Omit<FeedbackRecord, "created_at">) {
   if (!supabaseConfigured) return { error: null };
-  return supabase.from("feedback").upsert(feedback, { onConflict: "id" });
+  const client = await getSupabase();
+  return client.from("feedback").upsert(feedback, { onConflict: "id" });
 }
 
 export async function getSessionFeedback(sessionId: string, userId: string): Promise<FeedbackRecord | null> {
   if (!supabaseConfigured) return null;
-  const { data } = await supabase
+  const client = await getSupabase();
+  const { data } = await client
     .from("feedback")
     .select("*")
     .eq("session_id", sessionId)
@@ -169,7 +204,8 @@ export async function getSessionFeedback(sessionId: string, userId: string): Pro
 /* ─── Calendar helpers ─── */
 
 export async function getCalendarEvents(userId: string): Promise<CalendarEvent[]> {
-  const { data } = await supabase
+  const client = await getSupabase();
+  const { data } = await client
     .from("calendar_events")
     .select("*")
     .eq("user_id", userId)
@@ -178,9 +214,11 @@ export async function getCalendarEvents(userId: string): Promise<CalendarEvent[]
 }
 
 export async function saveCalendarEvent(event: Omit<CalendarEvent, "created_at">) {
-  return supabase.from("calendar_events").insert(event);
+  const client = await getSupabase();
+  return client.from("calendar_events").insert(event);
 }
 
 export async function deleteCalendarEvent(id: string, userId: string) {
-  return supabase.from("calendar_events").delete().eq("id", id).eq("user_id", userId);
+  const client = await getSupabase();
+  return client.from("calendar_events").delete().eq("id", id).eq("user_id", userId);
 }

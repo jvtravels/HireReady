@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useCallback, useEffect, useRef, type ReactNode } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { supabase, supabaseConfigured, getProfile, upsertProfile, type Profile } from "./supabase";
+import { getSupabase, preloadSupabase, supabaseConfigured, getProfile, upsertProfile, type Profile } from "./supabase";
 import type { Session } from "@supabase/supabase-js";
 import type { ParsedResume } from "./resumeParser";
 
@@ -143,8 +143,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!supabaseConfigured) return;
 
+    // Start loading the Supabase SDK in the background
+    preloadSupabase();
+
     // Helper: build a new user from session metadata and seed the profiles table
     async function ensureProfile(session: Session) {
+      const client = await getSupabase();
       const meta = session.user.user_metadata || {};
       const newProfile: Partial<Profile> & { id: string } = {
         id: session.user.id,
@@ -156,8 +160,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { error } = await upsertProfile(newProfile);
       if (error) {
         console.error("[auth] ensureProfile failed, trying insert:", error.message);
-        // Fallback: try plain insert in case upsert has RLS issues
-        const { error: insertErr } = await supabase
+        const { error: insertErr } = await client
           .from("profiles")
           .insert(newProfile);
         if (insertErr) {
@@ -183,72 +186,81 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false);
     }, 5000);
 
-    // Fast restore: read the cached session from localStorage via getSession(),
-    // load the profile, and stop the loading spinner quickly.
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (session) {
-        console.log("[auth] session restore from local JWT");
-        try {
-          const profile = await getProfile(session.user.id);
-          if (profile) {
-            console.log("[auth] profile loaded");
-            setUser(profileToUser(profile, session));
-          } else {
-            console.log("[auth] no profile found on load, signing out");
-            setUser(null);
-            await supabase.auth.signOut().catch(() => {});
-          }
-        } catch {
-          console.error("[auth] getProfile threw");
-          setUser(null);
-          await supabase.auth.signOut().catch(() => {});
-        }
-      } else {
-        console.log("[auth] no local session found");
-        setUser(null);
-      }
-      clearTimeout(safetyTimer);
-      setLoading(false);
+    let unsubscribe: (() => void) | null = null;
 
-      // Background server validation — confirm the JWT is still valid.
-      // If the account was deleted or token revoked, sign out.
-      supabase.auth.getUser().then(async ({ data: { user: authUser }, error: userError }) => {
-        if (session && (userError || !authUser)) {
-          console.warn("[auth] background validation failed — signing out");
+    // Initialize auth asynchronously — Supabase SDK loads in background
+    getSupabase().then(async (client) => {
+      // Restore session from local JWT
+      try {
+        const { data: { session } } = await client.auth.getSession();
+        if (session) {
+          console.log("[auth] session restore from local JWT");
+          try {
+            const profile = await getProfile(session.user.id);
+            if (profile) {
+              console.log("[auth] profile loaded");
+              setUser(profileToUser(profile, session));
+            } else {
+              console.log("[auth] no profile found on load, signing out");
+              setUser(null);
+              await client.auth.signOut().catch(() => {});
+            }
+          } catch {
+            console.error("[auth] getProfile threw");
+            setUser(null);
+            await client.auth.signOut().catch(() => {});
+          }
+        } else {
+          console.log("[auth] no local session found");
           setUser(null);
-          await supabase.auth.signOut().catch(() => {});
         }
-      }).catch(() => {});
+        clearTimeout(safetyTimer);
+        setLoading(false);
+
+        // Background server validation
+        client.auth.getUser().then(async ({ data: { user: authUser }, error: userError }) => {
+          if (session && (userError || !authUser)) {
+            console.warn("[auth] background validation failed — signing out");
+            setUser(null);
+            await client.auth.signOut().catch(() => {});
+          }
+        }).catch(() => {});
+      } catch (err) {
+        console.error("[auth] getSession failed:", err);
+        setUser(null);
+        clearTimeout(safetyTimer);
+        setLoading(false);
+      }
+
+      // Listen for auth state changes
+      const { data: { subscription } } = client.auth.onAuthStateChange(async (event, session) => {
+        console.log("[auth] onAuthStateChange:", event);
+        if (event === "INITIAL_SESSION") return;
+        if ((event === "SIGNED_IN" || event === "TOKEN_REFRESHED") && session) {
+          try {
+            const profile = await getProfile(session.user.id);
+            if (profile) {
+              setUser(profileToUser(profile, session));
+            } else {
+              await ensureProfile(session);
+            }
+          } catch {
+            await ensureProfile(session);
+          }
+          setLoading(false);
+        } else if (event === "SIGNED_OUT") {
+          setUser(null);
+        }
+      });
+      unsubscribe = () => subscription.unsubscribe();
     }).catch((err) => {
-      console.error("[auth] getSession failed:", err);
+      console.error("[auth] Supabase init failed:", err);
       setUser(null);
       clearTimeout(safetyTimer);
       setLoading(false);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log("[auth] onAuthStateChange:", event);
-      // Skip INITIAL_SESSION — the explicit getSession() call above handles initial load.
-      if (event === "INITIAL_SESSION") return;
-      if ((event === "SIGNED_IN" || event === "TOKEN_REFRESHED") && session) {
-        try {
-          const profile = await getProfile(session.user.id);
-          if (profile) {
-            setUser(profileToUser(profile, session));
-          } else {
-            await ensureProfile(session);
-          }
-        } catch {
-          await ensureProfile(session);
-        }
-        setLoading(false);
-      } else if (event === "SIGNED_OUT") {
-        setUser(null);
-
-      }
-    });
-
-    return () => subscription.unsubscribe();
+    return () => { unsubscribe?.(); };
   }, []);
 
   const signup = useCallback(async (email: string, name: string, password: string, referralCode?: string): Promise<{ success: boolean; error?: string }> => {
@@ -258,9 +270,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(newUser);
       return { success: true };
     }
+    const client = await getSupabase();
     const metadata: Record<string, string> = { name };
     if (referralCode) metadata.referred_by = referralCode;
-    const { error } = await supabase.auth.signUp({
+    const { error } = await client.auth.signUp({
       email,
       password,
       options: { data: metadata, emailRedirectTo: `${window.location.origin}/dashboard` },
@@ -275,14 +288,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(newUser);
       return { success: true };
     }
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const client = await getSupabase();
+    const { error } = await client.auth.signInWithPassword({ email, password });
     if (error) return { success: false, error: error.message };
     return { success: true };
   }, []);
 
   const loginWithGoogle = useCallback(async (): Promise<{ success: boolean; error?: string }> => {
     if (!supabaseConfigured) return { success: false, error: "Google login requires Supabase configuration" };
-    const { error } = await supabase.auth.signInWithOAuth({
+    const client = await getSupabase();
+    const { error } = await client.auth.signInWithOAuth({
       provider: "google",
       options: { redirectTo: `${window.location.origin}/dashboard` },
     });
@@ -291,7 +306,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const logout = useCallback(async () => {
-    if (supabaseConfigured) await supabase.auth.signOut();
+    if (supabaseConfigured) { const client = await getSupabase(); await client.auth.signOut(); }
     setUser(null);
     clearLastRoute();
   }, []);
@@ -331,7 +346,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const resetPassword = useCallback(async (email: string): Promise<{ success: boolean; error?: string }> => {
     if (!supabaseConfigured) return { success: false, error: "Password reset requires Supabase configuration" };
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    const client = await getSupabase();
+    const { error } = await client.auth.resetPasswordForEmail(email, {
       redirectTo: `${window.location.origin}/reset-password`,
     });
     if (error) return { success: false, error: error.message };
@@ -374,7 +390,7 @@ export function RequireAuth({ children }: { children: ReactNode }) {
         retryCount.current++;
         console.log("[auth] session token exists in storage, retrying...", retryCount.current);
         // Trigger a re-check by getting the session again
-        supabase.auth.getSession().then(({ data: { session } }) => {
+        getSupabase().then(c => c.auth.getSession()).then(({ data: { session } }) => {
           if (!session) {
             console.log("[auth] retry: still no session after re-check");
           }

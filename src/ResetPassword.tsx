@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { c, font } from "./tokens";
-import { supabase, supabaseConfigured } from "./supabase";
+import { getSupabase, supabaseConfigured } from "./supabase";
 
 function getPasswordStrength(pw: string): { score: number; label: string; color: string } {
   let score = 0;
@@ -32,7 +32,7 @@ export default function ResetPassword() {
       return;
     }
     // Supabase automatically picks up the recovery token from the URL hash
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    getSupabase().then(c => c.auth.getSession()).then(({ data: { session } }) => {
       if (session) setHasSession(true);
       else setError("Invalid or expired reset link. Please request a new one.");
     }).catch(() => {
@@ -54,7 +54,8 @@ export default function ResetPassword() {
     }
 
     setLoading(true);
-    const { error: updateError } = await supabase.auth.updateUser({ password });
+    const client = await getSupabase();
+    const { error: updateError } = await client.auth.updateUser({ password });
     setLoading(false);
 
     if (updateError) {
