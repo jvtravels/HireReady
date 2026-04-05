@@ -365,7 +365,7 @@ export interface Badge {
   id: string;
   label: string;
   description: string;
-  icon: string; // emoji
+  icon: string;
   earned: boolean;
   progress: number; // 0-100
 }
@@ -381,14 +381,14 @@ export function computeBadges(sessions: DashboardSession[], sk: SkillData[], str
   })();
 
   return [
-    { id: "first-session", label: "First Steps", description: "Complete your first session", icon: "🎯", earned: sessionCount >= 1, progress: Math.min(100, sessionCount * 100) },
-    { id: "five-sessions", label: "Committed", description: "Complete 5 sessions", icon: "💪", earned: sessionCount >= 5, progress: Math.min(100, (sessionCount / 5) * 100) },
-    { id: "ten-sessions", label: "Dedicated", description: "Complete 10 sessions", icon: "🏆", earned: sessionCount >= 10, progress: Math.min(100, (sessionCount / 10) * 100) },
-    { id: "high-scorer", label: "High Performer", description: "Score 85+ three times", icon: "⭐", earned: highScores >= 3, progress: Math.min(100, (highScores / 3) * 100) },
-    { id: "streak-7", label: "Week Warrior", description: "7-day practice streak", icon: "🔥", earned: streak >= 7, progress: Math.min(100, (streak / 7) * 100) },
-    { id: "versatile", label: "Versatile", description: "Try 3+ interview types", icon: "🎭", earned: types.size >= 3, progress: Math.min(100, (types.size / 3) * 100) },
-    { id: "consistent", label: "Consistent", description: "Score 85+ three times in a row", icon: "💎", earned: consecutiveHigh >= 3, progress: Math.min(100, (consecutiveHigh / 3) * 100) },
-    { id: "mastery", label: "Interview Ready", description: "All skills above 80", icon: "👑", earned: sk.length > 0 && sk.every(s => s.score >= 80), progress: sk.length > 0 ? Math.min(100, (sk.filter(s => s.score >= 80).length / sk.length) * 100) : 0 },
+    { id: "first-session", label: "First Steps", description: "Complete your first session", icon: "target", earned: sessionCount >= 1, progress: Math.min(100, sessionCount * 100) },
+    { id: "five-sessions", label: "Committed", description: "Complete 5 sessions", icon: "layers", earned: sessionCount >= 5, progress: Math.min(100, (sessionCount / 5) * 100) },
+    { id: "ten-sessions", label: "Dedicated", description: "Complete 10 sessions", icon: "award", earned: sessionCount >= 10, progress: Math.min(100, (sessionCount / 10) * 100) },
+    { id: "high-scorer", label: "High Performer", description: "Score 85+ three times", icon: "star", earned: highScores >= 3, progress: Math.min(100, (highScores / 3) * 100) },
+    { id: "streak-7", label: "Week Warrior", description: "7-day practice streak", icon: "flame", earned: streak >= 7, progress: Math.min(100, (streak / 7) * 100) },
+    { id: "versatile", label: "Versatile", description: "Try 3+ interview types", icon: "compass", earned: types.size >= 3, progress: Math.min(100, (types.size / 3) * 100) },
+    { id: "consistent", label: "Consistent", description: "Score 85+ three times in a row", icon: "gem", earned: consecutiveHigh >= 3, progress: Math.min(100, (consecutiveHigh / 3) * 100) },
+    { id: "mastery", label: "Interview Ready", description: "All skills above 80", icon: "crown", earned: sk.length > 0 && sk.every(s => s.score >= 80), progress: sk.length > 0 ? Math.min(100, (sk.filter(s => s.score >= 80).length / sk.length) * 100) : 0 },
   ];
 }
 
