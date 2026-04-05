@@ -43,7 +43,7 @@
     },
     {
       "path": "/api/uptime-check",
-      "schedule": "*/15 * * * *"
+      "schedule": "0 6 * * *"
     }
   ]
 }
