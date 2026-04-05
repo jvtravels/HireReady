@@ -66,7 +66,7 @@ export default function SettingsPage() {
   useDocTitle("Settings");
   const nav = useNavigate();
   const { user: authUser, logout: authLogout, updateUser: authUpdateUser, resetPassword } = useAuth();
-  const { persisted, updatePersisted: onUpdate, handleExportCSV: onExportCSV, dataLoading, showToast } = useDashboard();
+  const { persisted, updatePersisted: onUpdate, handleExportCSV: onExportCSV, dataLoading, showToast, setShowUpgradeModal } = useDashboard();
   const onLogout = () => { authLogout(); };
 
   // Profile
@@ -520,7 +520,7 @@ export default function SettingsPage() {
 
           <div style={{ display: "flex", flexDirection: "column", gap: 8, minWidth: 140 }}>
             {(!authUser?.subscriptionTier || authUser.subscriptionTier !== "pro") && !confirmCancel && (
-              <button onClick={() => nav("/dashboard?plan=monthly")}
+              <button onClick={() => setShowUpgradeModal(true)}
                 style={{ padding: "11px 20px", borderRadius: 8, border: "none", cursor: "pointer", background: `linear-gradient(135deg, ${c.gilt}, ${c.giltDark})`, color: c.obsidian, fontFamily: font.ui, fontSize: 13, fontWeight: 600 }}>
                 {authUser?.subscriptionTier === "starter" ? "Upgrade to Pro" : "Upgrade Plan"}
               </button>
