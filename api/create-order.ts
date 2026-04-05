@@ -85,7 +85,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   if (!RAZORPAY_KEY_ID || !RAZORPAY_KEY_SECRET) {
-    return res.status(503).json({ error: "Payments not configured" });
+    console.error("Missing Razorpay env vars:", { hasKeyId: !!RAZORPAY_KEY_ID, hasKeySecret: !!RAZORPAY_KEY_SECRET });
+    return res.status(503).json({ error: "Payments not configured. Please contact support@hireready.ai" });
   }
 
   // Verify auth
@@ -139,7 +140,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!response.ok) {
       const errText = await response.text().catch(() => "");
       console.error("Razorpay error:", response.status, errText);
-      return res.status(502).json({ error: "Could not create payment order" });
+      const detail = response.status === 401
+        ? "Payment gateway credentials are invalid. Please contact support."
+        : "Could not create payment order. Please try again or contact support@hireready.ai";
+      return res.status(502).json({ error: detail });
     }
 
     const order = await response.json();
