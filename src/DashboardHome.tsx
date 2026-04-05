@@ -83,6 +83,23 @@ export default function DashboardHome() {
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
   }, []);
 
+  // useMemo must be called before any early returns to satisfy Rules of Hooks
+  const filteredSessions = useMemo(() => recentSessions
+    .filter(s => filterType === "All" || s.type === filterType)
+    .filter(s => {
+      if (!debouncedSearch) return true;
+      const q = debouncedSearch.toLowerCase();
+      return (s.type || "").toLowerCase().includes(q) || (s.topStrength || "").toLowerCase().includes(q) || (s.topWeakness || "").toLowerCase().includes(q) || (s.feedback || "").toLowerCase().includes(q);
+    })
+    .filter(s => {
+      if (dateRange === "all") return true;
+      const sessionDate = new Date(s.date);
+      const now = new Date();
+      if (dateRange === "week") return sessionDate >= new Date(now.getTime() - 7 * 86400000);
+      return sessionDate >= new Date(now.getTime() - 30 * 86400000);
+    })
+    .sort((a, b) => sortBy === "score" ? b.score - a.score : new Date(b.date).getTime() - new Date(a.date).getTime()), [recentSessions, filterType, debouncedSearch, dateRange, sortBy]);
+
   if (dataLoading) return <DataLoadingSkeleton />;
 
   const detailSession = viewingSession ? recentSessions.find(s => s.id === viewingSession) : null;
@@ -101,22 +118,6 @@ export default function DashboardHome() {
 
   const weakestSkill = skills.length > 0 ? [...skills].sort((a, b) => a.score - b.score)[0] : null;
   const activeNotifs = notifications.filter(n => !persisted.dismissedNotifs.includes(n.id));
-
-  const filteredSessions = useMemo(() => recentSessions
-    .filter(s => filterType === "All" || s.type === filterType)
-    .filter(s => {
-      if (!debouncedSearch) return true;
-      const q = debouncedSearch.toLowerCase();
-      return (s.type || "").toLowerCase().includes(q) || (s.topStrength || "").toLowerCase().includes(q) || (s.topWeakness || "").toLowerCase().includes(q) || (s.feedback || "").toLowerCase().includes(q);
-    })
-    .filter(s => {
-      if (dateRange === "all") return true;
-      const sessionDate = new Date(s.date);
-      const now = new Date();
-      if (dateRange === "week") return sessionDate >= new Date(now.getTime() - 7 * 86400000);
-      return sessionDate >= new Date(now.getTime() - 30 * 86400000);
-    })
-    .sort((a, b) => sortBy === "score" ? b.score - a.score : new Date(b.date).getTime() - new Date(a.date).getTime()), [recentSessions, filterType, debouncedSearch, dateRange, sortBy]);
 
   return (
     <div style={{ maxWidth: 1200, margin: "0 auto" }} className="dash-card">
