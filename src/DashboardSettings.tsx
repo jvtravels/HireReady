@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { c, font } from "./tokens";
 import { useAuth } from "./AuthContext";
 import { useDocTitle } from "./useDocTitle";
 import { authHeaders } from "./supabase";
-import { loadTTSSettings, saveTTSSettings, GOOGLE_VOICES, type TTSSettings } from "./tts";
+import { loadTTSSettings, saveTTSSettings, GOOGLE_VOICES, speak, type TTSSettings } from "./tts";
 import type { PersistedState } from "./dashboardTypes";
 import { useDashboard } from "./DashboardContext";
 import { DataLoadingSkeleton } from "./dashboardComponents";
@@ -22,6 +22,13 @@ const cardTitle = {
   fontSize: 14,
   fontWeight: 600,
   color: c.ivory,
+  marginBottom: 4,
+} as const;
+
+const cardDesc = {
+  fontFamily: font.ui,
+  fontSize: 12,
+  color: c.stone,
   marginBottom: 20,
 } as const;
 
@@ -50,22 +57,23 @@ const inputStyle = {
 const focusIn = (e: React.FocusEvent<HTMLInputElement>) => { e.currentTarget.style.borderColor = c.gilt; };
 const focusOut = (e: React.FocusEvent<HTMLInputElement>) => { e.currentTarget.style.borderColor = c.border; };
 
+const PREVIEW_TEXT = "Tell me about a time you led a cross-functional team through a challenging project.";
+
 export default function SettingsPage() {
   useDocTitle("Settings");
   const nav = useNavigate();
-  const { user: authUser, logout: authLogout, updateUser: authUpdateUser } = useAuth();
+  const { user: authUser, logout: authLogout, updateUser: authUpdateUser, resetPassword } = useAuth();
   const { persisted, updatePersisted: onUpdate, handleExportCSV: onExportCSV, dataLoading, showToast } = useDashboard();
   const onLogout = () => { authLogout(); };
-  const onSyncToSupabase = (updates: { name?: string; targetRole?: string; interviewDate?: string }) => authUpdateUser(updates);
 
+  // Profile fields
   const [editName, setEditName] = useState(persisted.userName);
   const [editRole, setEditRole] = useState(persisted.targetRole);
   const [editDate, setEditDate] = useState(persisted.interviewDate);
   const [saved, setSaved] = useState(false);
-  const [difficulty, setDifficulty] = useState(persisted.defaultDifficulty || "standard");
-  const [emailNotifs, setEmailNotifs] = useState(persisted.emailNotifs !== false);
-  const [streakReminder, setStreakReminder] = useState(persisted.streakReminder !== false);
-  const [weeklyDigest, setWeeklyDigest] = useState(persisted.weeklyDigest || false);
+  const [saving, setSaving] = useState(false);
+
+  // Danger zone
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleteEmailInput, setDeleteEmailInput] = useState("");
   const [confirmCancel, setConfirmCancel] = useState(false);
@@ -73,26 +81,98 @@ export default function SettingsPage() {
   const [cancelMsg, setCancelMsg] = useState("");
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [deleteMsg, setDeleteMsg] = useState("");
+
+  // TTS
   const [ttsSettings, setTtsSettings] = useState<TTSSettings>(loadTTSSettings);
-  const [saving, setSaving] = useState(false);
+  const [previewVoice, setPreviewVoice] = useState<string | null>(null);
+  const [previewCancel, setPreviewCancel] = useState<{ cancel: () => void } | null>(null);
+
+  // Referral
+  const [copied, setCopied] = useState(false);
+
+  // Password reset
+  const [resetSent, setResetSent] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
+
+  // Dirty state tracking for profile
+  const isDirty = editName !== persisted.userName || editRole !== persisted.targetRole || editDate !== persisted.interviewDate;
+
+  // Warn on navigation with unsaved changes
+  useEffect(() => {
+    if (!isDirty) return;
+    const handler = (e: BeforeUnloadEvent) => { e.preventDefault(); };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [isDirty]);
+
+  // Cmd+S to save profile
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "s") {
+        e.preventDefault();
+        if (isDirty) handleSave();
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [isDirty, editName, editRole, editDate]);
+
+  // Cleanup voice preview on unmount
+  useEffect(() => {
+    return () => { previewCancel?.cancel(); };
+  }, [previewCancel]);
 
   if (dataLoading) return <DataLoadingSkeleton />;
 
   const handleSave = async () => {
     setSaving(true);
     setSaved(false);
-    onUpdate({
-      userName: editName, targetRole: editRole, interviewDate: editDate,
-      defaultDifficulty: difficulty, emailNotifs, streakReminder, weeklyDigest,
-    });
-    await onSyncToSupabase({ name: editName, targetRole: editRole, interviewDate: editDate });
+    onUpdate({ userName: editName, targetRole: editRole, interviewDate: editDate });
+    await authUpdateUser({ name: editName, targetRole: editRole, interviewDate: editDate });
     setSaving(false);
     setSaved(true);
+    showToast("Settings saved");
     setTimeout(() => setSaved(false), 3000);
   };
 
+  // Auto-save helpers for toggles and selectors
+  const autoSave = (updates: Partial<PersistedState>) => {
+    onUpdate(updates);
+  };
+
+  const handlePreviewVoice = async (voiceId: string) => {
+    // Cancel any playing preview
+    previewCancel?.cancel();
+    if (previewVoice === voiceId) {
+      setPreviewVoice(null);
+      setPreviewCancel(null);
+      return;
+    }
+    setPreviewVoice(voiceId);
+    // Temporarily override settings for preview
+    const original = loadTTSSettings();
+    saveTTSSettings({ ...original, provider: "google", voiceId });
+    const handle = await speak(PREVIEW_TEXT, () => { setPreviewVoice(null); setPreviewCancel(null); }, () => { setPreviewVoice(null); setPreviewCancel(null); });
+    saveTTSSettings(original);
+    setPreviewCancel(handle);
+  };
+
+  const handlePasswordReset = async () => {
+    if (!authUser?.email) return;
+    setResetLoading(true);
+    const result = await resetPassword(authUser.email);
+    setResetLoading(false);
+    if (result.success) {
+      setResetSent(true);
+      showToast("Password reset email sent");
+      setTimeout(() => setResetSent(false), 10000);
+    } else {
+      showToast(result.error || "Failed to send reset email");
+    }
+  };
+
   const Toggle = ({ on, onToggle }: { on: boolean; onToggle: () => void }) => (
-    <button onClick={onToggle} style={{
+    <button onClick={onToggle} aria-pressed={on} style={{
       width: 40, height: 22, borderRadius: 11, border: "none", cursor: "pointer",
       background: on ? c.gilt : c.border, padding: 2,
       transition: "background 0.2s ease", position: "relative",
@@ -115,6 +195,7 @@ export default function SettingsPage() {
         {/* ─── Profile (left column) ─── */}
         <div style={card}>
           <h3 style={cardTitle}>Profile</h3>
+          <p style={cardDesc}>Your personal information and interview target</p>
 
           <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 24 }}>
             {authUser?.avatarUrl ? (
@@ -126,7 +207,8 @@ export default function SettingsPage() {
             )}
             <div>
               <p style={{ fontFamily: font.ui, fontSize: 15, fontWeight: 600, color: c.ivory }}>{persisted.userName}</p>
-              <p style={{ fontFamily: font.ui, fontSize: 12, color: c.stone }}>{authUser?.email || persisted.targetRole}</p>
+              <p style={{ fontFamily: font.ui, fontSize: 12, color: c.stone }}>{authUser?.email}</p>
+              {persisted.targetRole && <p style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, marginTop: 2 }}>{persisted.targetRole}</p>}
             </div>
           </div>
 
@@ -153,15 +235,33 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          <div style={{ display: "flex", gap: 12, marginTop: 20 }}>
-            <button onClick={handleSave} disabled={saving} className="shimmer-btn"
-              style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, padding: "10px 24px", borderRadius: 8, border: "none", background: c.gilt, color: c.obsidian, cursor: saving ? "not-allowed" : "pointer", opacity: saving ? 0.6 : 1 }}>
+          <div style={{ display: "flex", gap: 12, marginTop: 20, alignItems: "center" }}>
+            <button onClick={handleSave} disabled={saving || !isDirty} className="shimmer-btn"
+              style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, padding: "10px 24px", borderRadius: 8, border: "none", background: c.gilt, color: c.obsidian, cursor: (saving || !isDirty) ? "not-allowed" : "pointer", opacity: (saving || !isDirty) ? 0.5 : 1 }}>
               {saving ? "Saving..." : saved ? "Saved ✓" : "Save Changes"}
             </button>
+            {isDirty && <span style={{ fontFamily: font.ui, fontSize: 11, color: c.gilt }}>Unsaved changes</span>}
             {saved && <span style={{ fontFamily: font.ui, fontSize: 12, color: c.sage, display: "flex", alignItems: "center", gap: 4 }}>
               <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg>
-              Changes saved
+              Saved
             </span>}
+            <span style={{ fontFamily: font.mono, fontSize: 10, color: c.stone, marginLeft: "auto" }}>
+              <kbd style={{ fontFamily: font.mono, fontSize: 10, color: c.stone, background: "rgba(240,237,232,0.04)", border: `1px solid ${c.border}`, borderRadius: 3, padding: "1px 4px" }}>⌘S</kbd>
+            </span>
+          </div>
+
+          {/* Password reset */}
+          <div style={{ marginTop: 20, paddingTop: 16, borderTop: `1px solid ${c.border}` }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div>
+                <span style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.ivory, display: "block", marginBottom: 2 }}>Password</span>
+                <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>Reset via email link</span>
+              </div>
+              <button onClick={handlePasswordReset} disabled={resetLoading || resetSent}
+                style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: resetSent ? c.sage : c.gilt, background: resetSent ? "rgba(122,158,126,0.06)" : "rgba(201,169,110,0.06)", border: `1px solid ${resetSent ? "rgba(122,158,126,0.15)" : "rgba(201,169,110,0.15)"}`, borderRadius: 6, padding: "8px 16px", cursor: (resetLoading || resetSent) ? "default" : "pointer", opacity: resetLoading ? 0.6 : 1 }}>
+                {resetLoading ? "Sending..." : resetSent ? "Email Sent ✓" : "Reset Password"}
+              </button>
+            </div>
           </div>
         </div>
 
@@ -171,6 +271,7 @@ export default function SettingsPage() {
           {/* Interview Preferences */}
           <div style={card}>
             <h3 style={cardTitle}>Interview Preferences</h3>
+            <p style={cardDesc}>Auto-saved when you make changes</p>
             <label style={{ ...labelStyle, marginBottom: 10 }}>Default Difficulty</label>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {[
@@ -178,14 +279,14 @@ export default function SettingsPage() {
                 { id: "standard", label: "Standard", desc: "Realistic interview pacing" },
                 { id: "intense", label: "Intense", desc: "Rapid-fire, high pressure" },
               ].map(d => (
-                <button key={d.id} onClick={() => setDifficulty(d.id)}
+                <button key={d.id} onClick={() => { autoSave({ defaultDifficulty: d.id }); }}
                   style={{
                     padding: "10px 14px", borderRadius: 8, cursor: "pointer",
-                    background: difficulty === d.id ? "rgba(201,169,110,0.08)" : c.obsidian,
-                    border: `1.5px solid ${difficulty === d.id ? c.gilt : c.border}`,
+                    background: persisted.defaultDifficulty === d.id || (!persisted.defaultDifficulty && d.id === "standard") ? "rgba(201,169,110,0.08)" : c.obsidian,
+                    border: `1.5px solid ${persisted.defaultDifficulty === d.id || (!persisted.defaultDifficulty && d.id === "standard") ? c.gilt : c.border}`,
                     textAlign: "left", transition: "all 0.2s ease",
                   }}>
-                  <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: difficulty === d.id ? c.ivory : c.chalk, display: "block", marginBottom: 2 }}>{d.label}</span>
+                  <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: (persisted.defaultDifficulty === d.id || (!persisted.defaultDifficulty && d.id === "standard")) ? c.ivory : c.chalk, display: "block", marginBottom: 2 }}>{d.label}</span>
                   <span style={{ fontFamily: font.ui, fontSize: 10, color: c.stone }}>{d.desc}</span>
                 </button>
               ))}
@@ -195,17 +296,18 @@ export default function SettingsPage() {
           {/* Notifications */}
           <div style={card}>
             <h3 style={cardTitle}>Notifications</h3>
+            <p style={cardDesc}>Toggle preferences are saved instantly</p>
             {[
-              { label: "Email notifications", desc: "Session reminders and updates", on: emailNotifs, toggle: () => setEmailNotifs(!emailNotifs) },
-              { label: "Streak reminders", desc: "Nudge before losing your streak", on: streakReminder, toggle: () => setStreakReminder(!streakReminder) },
-              { label: "Weekly digest", desc: "Progress summary every Monday", on: weeklyDigest, toggle: () => setWeeklyDigest(!weeklyDigest) },
+              { label: "Email notifications", desc: "Session reminders and updates", key: "emailNotifs" as const, on: persisted.emailNotifs !== false },
+              { label: "Streak reminders", desc: "Nudge before losing your streak", key: "streakReminder" as const, on: persisted.streakReminder !== false },
+              { label: "Weekly digest", desc: "Progress summary every Monday", key: "weeklyDigest" as const, on: persisted.weeklyDigest || false },
             ].map((item, i) => (
               <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 0", borderBottom: i < 2 ? `1px solid ${c.border}` : "none" }}>
                 <div>
                   <span style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.ivory, display: "block", marginBottom: 2 }}>{item.label}</span>
                   <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>{item.desc}</span>
                 </div>
-                <Toggle on={item.on} onToggle={item.toggle} />
+                <Toggle on={item.on} onToggle={() => { autoSave({ [item.key]: !item.on }); }} />
               </div>
             ))}
           </div>
@@ -223,11 +325,16 @@ export default function SettingsPage() {
               return (
                 <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                   <input readOnly value={link} style={{ flex: 1, fontFamily: font.mono, fontSize: 11, color: c.chalk, background: c.obsidian, border: `1px solid ${c.border}`, borderRadius: 6, padding: "10px 12px", outline: "none", minWidth: 0 }} onClick={(e) => (e.target as HTMLInputElement).select()} />
-                  <button onClick={() => { navigator.clipboard.writeText(link); showToast("Referral link copied"); }}
-                    style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: c.obsidian, background: c.gilt, border: "none", borderRadius: 6, padding: "10px 16px", cursor: "pointer", whiteSpace: "nowrap" }}
-                    onMouseEnter={(e) => { e.currentTarget.style.filter = "brightness(1.1)"; }}
+                  <button onClick={() => {
+                    navigator.clipboard.writeText(link);
+                    setCopied(true);
+                    showToast("Referral link copied");
+                    setTimeout(() => setCopied(false), 2000);
+                  }}
+                    style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: copied ? c.sage : c.obsidian, background: copied ? "rgba(122,158,126,0.12)" : c.gilt, border: copied ? `1px solid rgba(122,158,126,0.2)` : "none", borderRadius: 6, padding: "10px 16px", cursor: "pointer", whiteSpace: "nowrap", transition: "all 0.2s" }}
+                    onMouseEnter={(e) => { if (!copied) e.currentTarget.style.filter = "brightness(1.1)"; }}
                     onMouseLeave={(e) => { e.currentTarget.style.filter = "brightness(1)"; }}>
-                    Copy Link
+                    {copied ? "Copied ✓" : "Copy Link"}
                   </button>
                 </div>
               );
@@ -238,6 +345,7 @@ export default function SettingsPage() {
         {/* ─── Subscription (full width) ─── */}
         <div style={{ ...card, gridColumn: "1 / -1" }}>
           <h3 style={cardTitle}>Subscription</h3>
+          <p style={cardDesc}>Manage your plan and billing</p>
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }} className="settings-sub-grid">
             <div style={{ padding: "16px 20px", borderRadius: 10, background: c.obsidian, border: `1px solid ${c.border}` }}>
@@ -349,9 +457,9 @@ export default function SettingsPage() {
 
         {/* ─── AI Voice (full width) ─── */}
         <div style={{ ...card, gridColumn: "1 / -1" }}>
-          <h3 style={{ ...cardTitle, marginBottom: 6 }}>AI Interviewer Voice</h3>
-          <p style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, marginBottom: 20 }}>
-            Premium Neural2 AI voices are included for all users. You can also switch to your browser's built-in voice.
+          <h3 style={{ ...cardTitle, marginBottom: 4 }}>AI Interviewer Voice</h3>
+          <p style={cardDesc}>
+            Premium Neural2 AI voices included for all users. Click the play button to preview.
           </p>
 
           <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
@@ -379,23 +487,45 @@ export default function SettingsPage() {
           {ttsSettings.provider === "google" && (
             <div style={{ padding: "16px 20px", borderRadius: 10, background: c.obsidian, border: `1px solid ${c.border}` }}>
               <label style={{ ...labelStyle, marginBottom: 10 }}>Choose Your Interviewer Voice</label>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 8 }}>
-                {GOOGLE_VOICES.map(v => (
-                  <button key={v.id} onClick={() => {
-                    const updated = { ...ttsSettings, voiceId: v.id, voiceName: v.name };
-                    setTtsSettings(updated);
-                    saveTTSSettings(updated);
-                  }}
-                    style={{
-                      padding: "10px 14px", borderRadius: 8, cursor: "pointer",
-                      background: ttsSettings.voiceId === v.id ? "rgba(201,169,110,0.08)" : "transparent",
-                      border: `1px solid ${ttsSettings.voiceId === v.id ? c.gilt : c.border}`,
-                      textAlign: "left", transition: "all 0.2s ease",
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 8 }}>
+                {GOOGLE_VOICES.map(v => {
+                  const isSelected = ttsSettings.voiceId === v.id;
+                  const isPreviewing = previewVoice === v.id;
+                  return (
+                    <div key={v.id} style={{
+                      display: "flex", alignItems: "center", gap: 10,
+                      padding: "10px 14px", borderRadius: 8,
+                      background: isSelected ? "rgba(201,169,110,0.08)" : "transparent",
+                      border: `1px solid ${isSelected ? c.gilt : c.border}`,
+                      transition: "all 0.2s ease",
                     }}>
-                    <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: ttsSettings.voiceId === v.id ? c.ivory : c.chalk, display: "block", marginBottom: 2 }}>{v.name}</span>
-                    <span style={{ fontFamily: font.ui, fontSize: 10, color: c.stone }}>{v.desc}</span>
-                  </button>
-                ))}
+                      {/* Play/stop button */}
+                      <button onClick={() => handlePreviewVoice(v.id)} aria-label={isPreviewing ? `Stop ${v.name} preview` : `Preview ${v.name}`}
+                        style={{
+                          width: 28, height: 28, borderRadius: "50%", border: "none", cursor: "pointer", flexShrink: 0,
+                          background: isPreviewing ? "rgba(201,169,110,0.15)" : "rgba(240,237,232,0.04)",
+                          display: "flex", alignItems: "center", justifyContent: "center",
+                          transition: "background 0.15s",
+                        }}>
+                        {isPreviewing ? (
+                          <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill={c.gilt}><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>
+                        ) : (
+                          <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill={c.chalk}><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                        )}
+                      </button>
+                      {/* Voice info (clickable to select) */}
+                      <button onClick={() => {
+                        const updated = { ...ttsSettings, voiceId: v.id, voiceName: v.name };
+                        setTtsSettings(updated);
+                        saveTTSSettings(updated);
+                      }}
+                        style={{ flex: 1, background: "none", border: "none", cursor: "pointer", textAlign: "left", padding: 0 }}>
+                        <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: isSelected ? c.ivory : c.chalk, display: "block", marginBottom: 2 }}>{v.name}</span>
+                        <span style={{ fontFamily: font.ui, fontSize: 10, color: c.stone }}>{v.desc}</span>
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -410,6 +540,7 @@ export default function SettingsPage() {
         {/* ─── Data & Privacy ─── */}
         <div style={{ ...card, gridColumn: "1 / -1" }}>
           <h3 style={cardTitle}>Data & Privacy</h3>
+          <p style={cardDesc}>Your data is encrypted and under your control</p>
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }} className="settings-sub-grid">
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", borderRadius: 8, background: c.obsidian, border: `1px solid ${c.border}` }}>
