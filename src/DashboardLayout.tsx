@@ -29,7 +29,7 @@ export default function DashboardLayout() {
     showUpgradeModal, setShowUpgradeModal,
     paymentBanner, setPaymentBanner,
     syncError, setSyncError,
-    toast, calendarEvents,
+    toast, calendarEvents, recentSessions,
     handleStartSession, handleExport,
   } = useDashboard();
 
@@ -63,6 +63,19 @@ export default function DashboardLayout() {
     window.addEventListener("keydown", handleKeydown);
     return () => window.removeEventListener("keydown", handleKeydown);
   }, [handleKeydown]);
+
+  // Haptic feedback on mobile button taps
+  useEffect(() => {
+    if (!isMobile) return;
+    const handler = (e: TouchEvent) => {
+      const el = e.target as HTMLElement;
+      if (el.closest("button, a, [role='button'], [role='menuitem']")) {
+        try { navigator.vibrate?.(8); } catch {}
+      }
+    };
+    document.addEventListener("touchstart", handler, { passive: true });
+    return () => document.removeEventListener("touchstart", handler);
+  }, [isMobile]);
 
   // Prevent body scroll when mobile sidebar is open
   useEffect(() => {
@@ -325,7 +338,7 @@ export default function DashboardLayout() {
       )}
 
       {/* Command palette */}
-      <CommandPalette onStartSession={handleStartSession} onExport={handleExport} />
+      <CommandPalette onStartSession={handleStartSession} onExport={handleExport} sessions={recentSessions} />
     </div>
   );
 }

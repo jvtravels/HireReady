@@ -46,6 +46,67 @@ const badgeIcons: Record<string, (color: string) => JSX.Element> = {
   crown: (color) => <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M2 4l3 12h14l3-12-6 7-4-9-4 9-6-7z"/><path d="M3 20h18"/></svg>,
 };
 
+/* ─── Haptic feedback for mobile ─── */
+function haptic(ms = 10) { try { navigator.vibrate?.(ms); } catch {} }
+
+/* ─── Onboarding Tour ─── */
+const tourSteps = [
+  { title: "Your Performance at a Glance", desc: "These stats show your readiness score, session count, average score, improvement trend, and total practice time.", target: "stat-grid" },
+  { title: "Score Trend & Skills", desc: "Track how your scores improve over time and see which skills need the most practice.", target: "trend-skills" },
+  { title: "Quick Actions", desc: "Press N to start a new session, ⌘K to open the command palette, or / to search your sessions.", target: "header-actions" },
+];
+
+function OnboardingTour({ onComplete }: { onComplete: () => void }) {
+  const [step, setStep] = useState(0);
+  const current = tourSteps[step];
+  const isLast = step === tourSteps.length - 1;
+  return (
+    <>
+      <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 300, backdropFilter: "blur(2px)" }} onClick={onComplete} />
+      <div role="dialog" aria-modal="true" aria-label="Dashboard tour" style={{
+        position: "fixed", top: "50%", left: "50%", transform: "translate(-50%, -50%)",
+        width: "100%", maxWidth: 400, background: c.graphite, border: `1px solid ${c.borderHover}`,
+        borderRadius: 16, padding: "32px 28px 24px", zIndex: 301,
+        boxShadow: "0 16px 64px rgba(0,0,0,0.5)", textAlign: "center",
+      }}>
+        <div style={{ display: "flex", justifyContent: "center", gap: 6, marginBottom: 20 }}>
+          {tourSteps.map((_, i) => (
+            <div key={i} style={{ width: i === step ? 20 : 6, height: 6, borderRadius: 3, background: i === step ? c.gilt : "rgba(240,237,232,0.1)", transition: "all 0.3s ease" }} />
+          ))}
+        </div>
+        <div style={{ width: 48, height: 48, borderRadius: 12, margin: "0 auto 16px", background: "rgba(201,169,110,0.06)", border: `1px solid rgba(201,169,110,0.15)`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          {step === 0 && <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>}
+          {step === 1 && <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>}
+          {step === 2 && <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>}
+        </div>
+        <h3 style={{ fontFamily: font.ui, fontSize: 17, fontWeight: 600, color: c.ivory, marginBottom: 8 }}>{current.title}</h3>
+        <p style={{ fontFamily: font.ui, fontSize: 14, color: c.stone, lineHeight: 1.6, marginBottom: 24, maxWidth: 320, margin: "0 auto 24px" }}>{current.desc}</p>
+        <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
+          {step > 0 && (
+            <button onClick={() => setStep(s => s - 1)}
+              style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.stone, background: "none", border: `1px solid ${c.border}`, borderRadius: 8, padding: "9px 20px", cursor: "pointer", transition: "color 0.2s" }}
+              onMouseEnter={(e) => e.currentTarget.style.color = c.ivory}
+              onMouseLeave={(e) => e.currentTarget.style.color = c.stone}>
+              Back
+            </button>
+          )}
+          <button onClick={() => isLast ? onComplete() : setStep(s => s + 1)}
+            style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: c.obsidian, background: `linear-gradient(135deg, ${c.gilt}, ${c.giltDark})`, border: "none", borderRadius: 8, padding: "9px 24px", cursor: "pointer", transition: "opacity 0.2s" }}
+            onMouseEnter={(e) => e.currentTarget.style.opacity = "0.9"}
+            onMouseLeave={(e) => e.currentTarget.style.opacity = "1"}>
+            {isLast ? "Get Started" : "Next"}
+          </button>
+        </div>
+        <button onClick={onComplete}
+          style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, background: "none", border: "none", cursor: "pointer", marginTop: 14, padding: "4px 0", transition: "color 0.2s" }}
+          onMouseEnter={(e) => e.currentTarget.style.color = c.ivory}
+          onMouseLeave={(e) => e.currentTarget.style.color = c.stone}>
+          Skip tour
+        </button>
+      </div>
+    </>
+  );
+}
 
 /* ─── Relative time formatter ─── */
 function relativeTime(dateStr: string): string {
@@ -200,6 +261,10 @@ export default function DashboardHome() {
   return (
     <div style={{ margin: "0 auto", lineHeight: 1.5 }} className="dash-card">
       <style>{dashboardStyles}</style>
+      {/* ─── Onboarding Tour ─── */}
+      {hasData && !persisted.tourCompleted && (
+        <OnboardingTour onComplete={() => updatePersisted({ tourCompleted: true })} />
+      )}
       {/* ─── Header ─── */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: sp["3xl"], flexWrap: "wrap", gap: sp.lg }}>
         <div style={{ flex: 1, minWidth: 0 }}>

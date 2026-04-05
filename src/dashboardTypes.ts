@@ -56,6 +56,7 @@ export interface PersistedState {
   emailNotifs?: boolean;
   streakReminder?: boolean;
   weeklyDigest?: boolean;
+  tourCompleted?: boolean;
 }
 
 export const sessionTypes = ["All", "Behavioral", "Strategic", "Technical Leadership", "Case Study"];
