@@ -177,62 +177,47 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(newUser);
     }
 
-    // Safety timeout: ensure loading never hangs (8s)
-    const safetyTimer = setTimeout(() => {
-      console.warn("[auth] safety timeout: forcing loading=false");
-      setLoading(false);
-    }, 8000);
-
-    // Check current session — use getUser() to validate server-side,
-    // not just getSession() which only reads the local JWT cache.
-    // A deleted user's JWT can still appear valid locally until it expires.
-    supabase.auth.getUser().then(async ({ data: { user: authUser }, error: userError }) => {
-      if (userError || !authUser) {
-        // Token is invalid server-side — user was deleted or session expired
-        console.log("[auth] getUser failed (account deleted or token invalid)");
-        setUser(null);
-
-        // Clean up the stale session
-        await supabase.auth.signOut().catch(() => {});
-        clearTimeout(safetyTimer);
-        setLoading(false);
-        return;
-      }
-
-      // Valid auth user — now get session and profile
-      const { data: { session } } = await supabase.auth.getSession();
+    // Phase 1: Instant restore from local JWT (no network request).
+    // Read the cached session from localStorage via getSession(), load the
+    // profile, and stop the loading spinner immediately. This gives users a
+    // near-instant render instead of waiting for a server round-trip.
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session) {
-        console.log("[auth] session found");
+        console.log("[auth] instant session restore from local JWT");
         try {
           const profile = await getProfile(session.user.id);
           if (profile) {
-            console.log("[auth] existing profile loaded");
+            console.log("[auth] profile loaded (instant path)");
             setUser(profileToUser(profile, session));
           } else {
-            // No profile on page load = profile was deleted or never created.
-            // Don't auto-create — sign out so user goes to login.
-            // Profile creation only happens on fresh SIGNED_IN (signup/login).
             console.log("[auth] no profile found on load, signing out");
             setUser(null);
-    
             await supabase.auth.signOut().catch(() => {});
           }
-        } catch (err) {
-          console.error("[auth] getProfile threw");
+        } catch {
+          console.error("[auth] getProfile threw (instant path)");
           setUser(null);
-  
           await supabase.auth.signOut().catch(() => {});
         }
       } else {
-        console.log("[auth] no session found, clearing cached user");
+        console.log("[auth] no local session found");
         setUser(null);
       }
-      clearTimeout(safetyTimer);
       setLoading(false);
+
+      // Phase 2: Background server validation — confirm the JWT is still
+      // valid server-side. If the account was deleted or token revoked,
+      // sign the user out without blocking the initial render.
+      supabase.auth.getUser().then(async ({ data: { user: authUser }, error: userError }) => {
+        if (session && (userError || !authUser)) {
+          console.warn("[auth] background validation failed — signing out");
+          setUser(null);
+          await supabase.auth.signOut().catch(() => {});
+        }
+      }).catch(() => {});
     }).catch((err) => {
-      console.error("[auth] getUser failed");
+      console.error("[auth] getSession failed:", err);
       setUser(null);
-      clearTimeout(safetyTimer);
       setLoading(false);
     });
 

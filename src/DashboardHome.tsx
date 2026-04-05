@@ -136,7 +136,7 @@ export default function DashboardHome() {
       <style>{dashboardStyles}</style>
       {/* ─── Header ─── */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: sp["3xl"], flexWrap: "wrap", gap: sp.lg }}>
-        <div>
+        <div style={{ flex: 1, minWidth: 0 }}>
           <h1 style={{ fontFamily: font.display, fontSize: isMobile ? 26 : 32, fontWeight: 400, color: c.ivory, marginBottom: 6, letterSpacing: "-0.01em" }}>
             {getPersonalizedGreeting(displayName.split(" ")[0], currentStreak, recentSessions.length)}
           </h1>
@@ -509,7 +509,7 @@ export default function DashboardHome() {
                       <span style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: c.ivory }}>{session.type}</span>
                       <span style={{ fontFamily: font.mono, fontSize: 11, fontWeight: 600, color: session.change > 0 ? c.sage : c.ember }}>{session.change > 0 ? "+" : ""}{session.change}</span>
                     </div>
-                    <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>{session.role}</span>
+                    <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "block" }}>{session.role}</span>
                   </div>
                   <div style={{ textAlign: "right", flexShrink: 0 }}>
                     <span style={{ fontFamily: font.ui, fontSize: 12, color: c.chalk, display: "block" }}>{session.dateLabel}</span>
