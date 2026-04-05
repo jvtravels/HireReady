@@ -193,7 +193,7 @@ export default function DashboardResume() {
 
   if (phase === "extracting" || phase === "analyzing") {
     return (
-      <div style={{ maxWidth: 680, margin: "0 auto", padding: "20px 0" }}>
+      <div style={{ margin: "0 auto", padding: "20px 0" }}>
         <div style={{ background: c.graphite, borderRadius: 16, border: `1px solid ${c.border}`, padding: "60px 40px", textAlign: "center" }}>
           <div style={{ width: 64, height: 64, borderRadius: 16, margin: "0 auto 24px", background: "rgba(201,169,110,0.06)", border: "1px solid rgba(201,169,110,0.12)", display: "flex", alignItems: "center", justifyContent: "center" }}>
             <div style={{ width: 24, height: 24, border: "2.5px solid rgba(201,169,110,0.2)", borderTopColor: c.gilt, borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
@@ -220,7 +220,7 @@ export default function DashboardResume() {
 
   if (phase === "idle") {
     return (
-      <div style={{ maxWidth: 680, margin: "0 auto", padding: "20px 0" }}>
+      <div style={{ margin: "0 auto", padding: "20px 0" }}>
         <h2 style={{ fontFamily: font.display, fontSize: 28, fontWeight: 400, color: c.ivory, marginBottom: 6, letterSpacing: "-0.02em" }}>Resume Intelligence</h2>
         <p style={{ fontFamily: font.ui, fontSize: 14, color: c.stone, marginBottom: 28, lineHeight: 1.6 }}>
           Upload your resume and our AI will build a candidate profile — identifying your strengths, key achievements, and areas to prepare for interviews.
@@ -250,7 +250,7 @@ export default function DashboardResume() {
 
   if (phase === "error") {
     return (
-      <div style={{ maxWidth: 680, margin: "0 auto", padding: "20px 0" }}>
+      <div style={{ margin: "0 auto", padding: "20px 0" }}>
         <h2 style={{ fontFamily: font.display, fontSize: 28, fontWeight: 400, color: c.ivory, marginBottom: 6, letterSpacing: "-0.02em" }}>Resume Intelligence</h2>
         <div style={{ background: c.graphite, borderRadius: 14, border: "1px solid rgba(196,112,90,0.15)", padding: "32px", textAlign: "center", marginTop: 20 }}>
           <div style={{ width: 48, height: 48, borderRadius: 12, margin: "0 auto 16px", background: "rgba(196,112,90,0.08)", border: "1px solid rgba(196,112,90,0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -269,7 +269,7 @@ export default function DashboardResume() {
 
   // Profile view (done state)
   return (
-    <div style={{ maxWidth: 680, margin: "0 auto", padding: "20px 0" }}>
+    <div style={{ margin: "0 auto", padding: "20px 0" }}>
       <div style={{ background: `linear-gradient(135deg, ${c.graphite} 0%, rgba(201,169,110,0.04) 100%)`, borderRadius: 16, border: `1px solid ${c.border}`, padding: "28px 28px 24px", marginBottom: 14 }}>
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 12 }}>
           <div style={{ flex: 1 }}>

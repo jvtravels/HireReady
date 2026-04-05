@@ -74,7 +74,7 @@ export default function AnalyticsPage() {
   const maxWeeklySessions = Math.max(...weeklyData.map(w => w.sessions), 1);
 
   return (
-    <div style={{ maxWidth: 900, margin: "0 auto" }}>
+    <div style={{ margin: "0 auto" }}>
       <h2 style={{ fontFamily: font.ui, fontSize: 22, fontWeight: 600, color: c.ivory, marginBottom: 4 }}>Analytics</h2>
       <p style={{ fontFamily: font.ui, fontSize: 13, color: c.stone, marginBottom: 28 }}>Deep performance insights across all your sessions</p>
 

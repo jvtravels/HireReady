@@ -24,7 +24,7 @@ export default function DashboardSessions() {
 
   if (sessions.length === 0) {
     return (
-      <div style={{ maxWidth: 560, margin: "0 auto", textAlign: "center", padding: "60px 20px" }}>
+      <div style={{ margin: "0 auto", textAlign: "center", padding: "60px 20px" }}>
         <div style={{ width: 64, height: 64, borderRadius: 16, margin: "0 auto 24px", background: "rgba(201,169,110,0.06)", border: `1px solid rgba(201,169,110,0.15)`, display: "flex", alignItems: "center", justifyContent: "center" }}>
           <svg aria-hidden="true" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5" strokeLinecap="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg>
         </div>
@@ -45,7 +45,7 @@ export default function DashboardSessions() {
   }
 
   return (
-    <div style={{ maxWidth: 800, margin: "0 auto" }}>
+    <div style={{ margin: "0 auto" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 28 }}>
         <div>
           <h2 style={{ fontFamily: font.ui, fontSize: 22, fontWeight: 600, color: c.ivory, marginBottom: 4 }}>Sessions</h2>
