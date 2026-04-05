@@ -3,6 +3,7 @@
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { createHmac } from "crypto";
+import { getPostHog } from "./_posthog";
 
 /* ─── Inline rate limiting (Node.js ESM can't resolve extensionless imports) ─── */
 const UPSTASH_URL = (process.env.UPSTASH_REDIS_REST_URL || "").trim();
@@ -269,6 +270,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (expectedSignature !== razorpay_signature) {
       console.error("Payment signature mismatch for order", razorpay_order_id.slice(0, 8) + "...");
+      getPostHog()?.capture({ distinctId: userId, event: "payment_failed", properties: { plan, reason: "signature_mismatch" } });
       return res.status(400).json({ error: "Payment verification failed" });
     }
 
@@ -283,6 +285,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const orderData = await orderRes.json();
     if (orderData.amount !== PLAN_AMOUNT[plan]) {
       console.error("Plan/amount mismatch for order", razorpay_order_id.slice(0, 8) + "...");
+      getPostHog()?.capture({ distinctId: userId, event: "payment_failed", properties: { plan, reason: "amount_mismatch" } });
       return res.status(400).json({ error: "Plan does not match payment amount" });
     }
 
@@ -393,6 +396,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
+    getPostHog()?.capture({
+      distinctId: userId,
+      event: "payment_verified",
+      properties: {
+        plan,
+        tier,
+        amount: PLAN_AMOUNT[plan],
+        currency: "INR",
+        razorpay_payment_id,
+        subscription_end: end.toISOString(),
+      },
+    });
+
     return res.status(200).json({
       success: true,
       subscriptionTier: tier,
@@ -402,6 +418,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
   } catch (err) {
     console.error("Payment verification error:", err);
+    getPostHog()?.captureException(err, userId);
     return res.status(500).json({ error: "Internal error" });
   }
 }

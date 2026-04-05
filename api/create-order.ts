@@ -1,6 +1,7 @@
 /* Vercel Serverless Function — Razorpay Order Creation */
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
+import { getPostHog } from "./_posthog";
 
 /* ─── Inline rate limiting (Node.js ESM can't resolve extensionless imports) ─── */
 const UPSTASH_URL = (process.env.UPSTASH_REDIS_REST_URL || "").trim();
@@ -148,6 +149,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const order = await response.json();
 
+    if (resolvedUserId) {
+      getPostHog()?.capture({
+        distinctId: resolvedUserId,
+        event: "order_created",
+        properties: {
+          plan,
+          amount: price.amount,
+          currency: "INR",
+          order_id: order.id,
+        },
+      });
+    }
+
     return res.status(200).json({
       orderId: order.id,
       amount: order.amount,
@@ -158,6 +172,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
   } catch (err) {
     console.error("Order creation error:", err);
+    getPostHog()?.captureException(err, authenticatedUserId || "unknown");
     return res.status(500).json({ error: "Internal error" });
   }
 }

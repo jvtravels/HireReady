@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { track } from "@vercel/analytics";
+import { capture } from "./analytics";
 import { c, font } from "./tokens";
 import { useAuth } from "./AuthContext";
 
@@ -270,6 +271,7 @@ export default function SessionSetup() {
   // Launch interview with countdown
   const handleLaunch = () => {
     track("session_start", { type: selectedType, difficulty, focus: selectedFocus });
+    capture("session_start", { type: selectedType, difficulty, focus: selectedFocus });
     // Stop test streams before navigating
     micStream?.getTracks().forEach(t => t.stop());
     videoStream?.getTracks().forEach(t => t.stop());

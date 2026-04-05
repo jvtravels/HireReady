@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { c, font } from "./tokens";
 import { useSEO, articleJsonLd, faqJsonLd } from "./useSEO";
@@ -399,58 +400,163 @@ function getRelatedPosts(slugs: string[]): BlogPost[] {
   return slugs.map(s => posts.find(p => p.slug === s)).filter((p): p is BlogPost => !!p);
 }
 
+/* ─── Category filters ─── */
+const CATEGORIES = ["All", ...Array.from(new Set(posts.map(p => p.category)))];
+
 /* ─── Blog index (list of all posts) ─── */
 function BlogIndex({ navigate }: { navigate: (path: string) => void }) {
+  const [activeCategory, setActiveCategory] = useState("All");
+
   useSEO({
     title: "Interview Prep Blog — Hirloop",
     description: "Company-specific interview preparation guides, question banks, and career strategies for Indian job seekers. Google, Amazon, TCS, Infosys, Flipkart, and more.",
     ogType: "website",
   });
 
+  const filtered = activeCategory === "All" ? posts : posts.filter(p => p.category === activeCategory);
+  const featured = filtered[0];
+  const rest = filtered.slice(1);
+
   return (
     <div style={{ minHeight: "100vh", background: c.obsidian }}>
-      <nav style={{ padding: "20px 40px", borderBottom: `1px solid ${c.border}` }}>
+      {/* Nav */}
+      <nav style={{ padding: "20px 40px", borderBottom: `1px solid ${c.border}`, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <Link to="/" style={{ textDecoration: "none" }}>
           <span style={{ fontFamily: font.ui, fontSize: 16, fontWeight: 600, color: c.ivory, letterSpacing: "0.06em" }}>Hirloop</span>
         </Link>
+        <Link to="/signup" style={{
+          fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.obsidian,
+          background: c.ivory, padding: "8px 20px", borderRadius: 6, textDecoration: "none",
+        }}>Start Free Practice</Link>
       </nav>
-      <div style={{ maxWidth: 800, margin: "0 auto", padding: "60px 40px" }}>
-        <h1 style={{ fontFamily: font.display, fontSize: "clamp(32px, 4vw, 48px)", fontWeight: 400, color: c.ivory, letterSpacing: "-0.02em", marginBottom: 12 }}>
-          Interview Prep Blog
-        </h1>
-        <p style={{ fontFamily: font.ui, fontSize: 16, color: c.stone, lineHeight: 1.6, marginBottom: 48 }}>
-          Company-specific guides, question banks, and strategies to help you land your dream role.
-        </p>
-        <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-          {posts.map(post => (
+
+      <div style={{ maxWidth: 1100, margin: "0 auto", padding: "48px 40px 80px" }}>
+        {/* Header */}
+        <div style={{ marginBottom: 40 }}>
+          <p style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: c.gilt, marginBottom: 12 }}>Blog</p>
+          <h1 style={{ fontFamily: font.display, fontSize: "clamp(32px, 4vw, 52px)", fontWeight: 400, color: c.ivory, letterSpacing: "-0.02em", lineHeight: 1.15, marginBottom: 12 }}>
+            Interview prep that actually helps
+          </h1>
+          <p style={{ fontFamily: font.ui, fontSize: 16, color: c.stone, lineHeight: 1.6, maxWidth: 560 }}>
+            Company-specific guides, question banks, and strategies from real interview patterns.
+          </p>
+        </div>
+
+        {/* Category filters */}
+        <div style={{ display: "flex", gap: 8, marginBottom: 40, flexWrap: "wrap" }}>
+          {CATEGORIES.map(cat => (
+            <button
+              key={cat}
+              onClick={() => setActiveCategory(cat)}
+              style={{
+                fontFamily: font.ui, fontSize: 12, fontWeight: 500, padding: "7px 16px",
+                borderRadius: 100, border: "none", cursor: "pointer", transition: "all 0.2s",
+                background: activeCategory === cat ? c.ivory : "rgba(240,237,232,0.05)",
+                color: activeCategory === cat ? c.obsidian : c.stone,
+              }}
+            >
+              {cat}
+            </button>
+          ))}
+        </div>
+
+        {/* Featured post */}
+        {featured && (
+          <article
+            onClick={() => navigate(`/blog/${featured.slug}`)}
+            style={{
+              display: "grid", gridTemplateColumns: "1fr 1fr", gap: 0,
+              background: c.graphite, borderRadius: 16, border: `1px solid ${c.border}`,
+              overflow: "hidden", cursor: "pointer", transition: "border-color 0.2s", marginBottom: 32,
+            }}
+            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = c.borderHover; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = c.border; }}
+          >
+            <div style={{ position: "relative", minHeight: 320 }}>
+              <img
+                src={featured.heroImage} alt={featured.heroAlt} loading="eager"
+                onError={e => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+                style={{ width: "100%", height: "100%", objectFit: "cover", position: "absolute", inset: 0 }}
+              />
+            </div>
+            <div style={{ padding: "40px 36px", display: "flex", flexDirection: "column", justifyContent: "center" }}>
+              <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
+                <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.gilt, letterSpacing: "0.04em", padding: "3px 10px", background: "rgba(201,169,110,0.08)", borderRadius: 100 }}>{featured.company}</span>
+                <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 500, color: c.stone, padding: "3px 10px", background: "rgba(240,237,232,0.04)", borderRadius: 100 }}>{featured.category}</span>
+              </div>
+              <h2 style={{ fontFamily: font.display, fontSize: "clamp(22px, 2.5vw, 30px)", fontWeight: 400, color: c.ivory, lineHeight: 1.25, letterSpacing: "-0.02em", marginBottom: 12 }}>
+                {featured.title}
+              </h2>
+              <p style={{ fontFamily: font.ui, fontSize: 14, color: c.stone, lineHeight: 1.6, marginBottom: 16 }}>
+                {featured.metaDescription}
+              </p>
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <span style={{ fontFamily: font.ui, fontSize: 12, color: c.chalk }}>{featured.readTime} read</span>
+                <span style={{ color: c.stone }}>·</span>
+                <span style={{ fontFamily: font.ui, fontSize: 12, color: c.stone }}>{new Date(featured.datePublished).toLocaleDateString("en-IN", { month: "short", day: "numeric", year: "numeric" })}</span>
+              </div>
+            </div>
+          </article>
+        )}
+
+        {/* Post grid */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20 }}>
+          {rest.map(post => (
             <article
               key={post.slug}
               onClick={() => navigate(`/blog/${post.slug}`)}
               style={{
                 background: c.graphite, borderRadius: 14, border: `1px solid ${c.border}`,
                 overflow: "hidden", cursor: "pointer", transition: "border-color 0.2s",
+                display: "flex", flexDirection: "column",
               }}
               onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = c.borderHover; }}
               onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = c.border; }}
             >
-              <img
-                src={post.heroImage}
-                alt={post.heroAlt}
-                loading="lazy"
-                onError={e => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
-                style={{ width: "100%", height: 180, objectFit: "cover" }}
-              />
-              <div style={{ padding: "24px 28px" }}>
-                <div style={{ display: "flex", gap: 10, marginBottom: 12, flexWrap: "wrap" }}>
-                  <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.gilt, letterSpacing: "0.04em", padding: "3px 10px", background: "rgba(201,169,110,0.08)", borderRadius: 100 }}>{post.company}</span>
-                  <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 500, color: c.stone, padding: "3px 10px", background: "rgba(240,237,232,0.04)", borderRadius: 100 }}>{post.category}</span>
-                  <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>{post.readTime} read</span>
+              <div style={{ position: "relative", height: 160 }}>
+                <img
+                  src={post.heroImage} alt={post.heroAlt} loading="lazy"
+                  onError={e => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+                  style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                />
+              </div>
+              <div style={{ padding: "20px 22px", flex: 1, display: "flex", flexDirection: "column" }}>
+                <div style={{ display: "flex", gap: 8, marginBottom: 10, flexWrap: "wrap" }}>
+                  <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, color: c.gilt, letterSpacing: "0.04em", padding: "2px 8px", background: "rgba(201,169,110,0.08)", borderRadius: 100 }}>{post.company}</span>
+                  <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 500, color: c.stone, padding: "2px 8px", background: "rgba(240,237,232,0.04)", borderRadius: 100 }}>{post.category}</span>
                 </div>
-                <h2 style={{ fontFamily: font.ui, fontSize: 18, fontWeight: 600, color: c.ivory, lineHeight: 1.35, marginBottom: 8 }}>{post.title}</h2>
-                <p style={{ fontFamily: font.ui, fontSize: 14, color: c.stone, lineHeight: 1.5 }}>{post.metaDescription}</p>
+                <h3 style={{ fontFamily: font.ui, fontSize: 15, fontWeight: 600, color: c.ivory, lineHeight: 1.35, marginBottom: 8, flex: 1 }}>
+                  {post.title}
+                </h3>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>{post.readTime} read</span>
+                  <span style={{ color: c.stone, fontSize: 11 }}>·</span>
+                  <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>{new Date(post.datePublished).toLocaleDateString("en-IN", { month: "short", day: "numeric" })}</span>
+                </div>
               </div>
             </article>
           ))}
+        </div>
+
+        {/* Bottom CTA */}
+        <div style={{
+          marginTop: 56, textAlign: "center", padding: "40px 32px",
+          background: "rgba(201,169,110,0.04)", border: `1px solid rgba(201,169,110,0.1)`,
+          borderRadius: 16,
+        }}>
+          <p style={{ fontFamily: font.display, fontSize: "clamp(20px, 2.5vw, 28px)", fontWeight: 400, color: c.ivory, letterSpacing: "-0.02em", marginBottom: 12 }}>
+            Stop reading, start practicing
+          </p>
+          <p style={{ fontFamily: font.ui, fontSize: 14, color: c.stone, marginBottom: 24 }}>
+            AI mock interviews with instant feedback — 3 sessions free.
+          </p>
+          <Link to="/signup" style={{
+            display: "inline-block", fontFamily: font.ui, fontSize: 14, fontWeight: 600,
+            padding: "12px 32px", borderRadius: 8, textDecoration: "none",
+            background: c.ivory, color: c.obsidian,
+          }}>
+            Get Started Free
+          </Link>
         </div>
       </div>
     </div>
@@ -461,6 +567,7 @@ function BlogIndex({ navigate }: { navigate: (path: string) => void }) {
 function BlogPostPage({ post }: { post: BlogPost }) {
   const url = `https://hirloop.com/blog/${post.slug}`;
   const related = getRelatedPosts(post.relatedSlugs);
+  const [openFaq, setOpenFaq] = useState<number | null>(null);
 
   // Combine article + FAQ JSON-LD
   const articleLd = articleJsonLd({ title: post.title, description: post.metaDescription, url, image: post.heroImage, datePublished: post.datePublished });
@@ -478,82 +585,132 @@ function BlogPostPage({ post }: { post: BlogPost }) {
 
   return (
     <div style={{ minHeight: "100vh", background: c.obsidian }}>
-      <nav style={{ padding: "20px 40px", borderBottom: `1px solid ${c.border}`, display: "flex", alignItems: "center", gap: 16 }}>
-        <Link to="/" style={{ textDecoration: "none" }}>
-          <span style={{ fontFamily: font.ui, fontSize: 16, fontWeight: 600, color: c.ivory, letterSpacing: "0.06em" }}>Hirloop</span>
-        </Link>
-        <span style={{ color: c.stone }}>/</span>
-        <Link to="/blog" style={{ textDecoration: "none", fontFamily: font.ui, fontSize: 13, color: c.stone }}>Blog</Link>
+      {/* Nav */}
+      <nav style={{ padding: "20px 40px", borderBottom: `1px solid ${c.border}`, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <Link to="/" style={{ textDecoration: "none" }}>
+            <span style={{ fontFamily: font.ui, fontSize: 16, fontWeight: 600, color: c.ivory, letterSpacing: "0.06em" }}>Hirloop</span>
+          </Link>
+          <span style={{ color: c.stone, fontSize: 14 }}>/</span>
+          <Link to="/blog" style={{ textDecoration: "none", fontFamily: font.ui, fontSize: 13, color: c.stone }}>Blog</Link>
+        </div>
+        <Link to="/signup" style={{
+          fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.obsidian,
+          background: c.ivory, padding: "8px 20px", borderRadius: 6, textDecoration: "none",
+        }}>Start Free Practice</Link>
       </nav>
 
       {/* Hero */}
-      <div style={{ position: "relative", height: 300, overflow: "hidden" }}>
+      <div style={{ position: "relative", height: 360, overflow: "hidden" }}>
         <img
-          src={post.heroImage}
-          alt={post.heroAlt}
+          src={post.heroImage} alt={post.heroAlt}
           onError={e => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
-          style={{ width: "100%", height: "100%", objectFit: "cover", filter: "brightness(0.4)" }}
+          style={{ width: "100%", height: "100%", objectFit: "cover", filter: "brightness(0.35)" }}
         />
-        <div style={{ position: "absolute", inset: 0, background: `linear-gradient(to top, ${c.obsidian}, transparent)` }} />
+        <div style={{ position: "absolute", inset: 0, background: `linear-gradient(to top, ${c.obsidian} 0%, ${c.obsidian}80 40%, transparent 100%)` }} />
+        <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, maxWidth: 720, margin: "0 auto", padding: "0 40px 40px" }}>
+          <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
+            <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.gilt, letterSpacing: "0.04em", padding: "4px 12px", background: "rgba(201,169,110,0.12)", borderRadius: 100, backdropFilter: "blur(8px)" }}>{post.company}</span>
+            <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 500, color: c.chalk, padding: "4px 12px", background: "rgba(240,237,232,0.08)", borderRadius: 100, backdropFilter: "blur(8px)" }}>{post.category}</span>
+          </div>
+          <h1 style={{ fontFamily: font.display, fontSize: "clamp(28px, 4vw, 42px)", fontWeight: 400, color: c.ivory, letterSpacing: "-0.02em", lineHeight: 1.2 }}>
+            {post.title}
+          </h1>
+        </div>
       </div>
 
-      <article style={{ maxWidth: 720, margin: "-80px auto 0", padding: "0 40px 80px", position: "relative", zIndex: 1 }}>
-        <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
-          <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.gilt, letterSpacing: "0.04em", padding: "3px 10px", background: "rgba(201,169,110,0.08)", borderRadius: 100 }}>{post.company}</span>
-          <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.stone, letterSpacing: "0.04em", padding: "3px 10px", background: "rgba(240,237,232,0.04)", borderRadius: 100 }}>{post.category}</span>
-          <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, padding: "3px 0" }}>{post.readTime} read</span>
-        </div>
+      {/* Article meta bar */}
+      <div style={{ maxWidth: 720, margin: "0 auto", padding: "20px 40px", display: "flex", alignItems: "center", gap: 16, borderBottom: `1px solid ${c.border}`, marginBottom: 40 }}>
+        <span style={{ fontFamily: font.ui, fontSize: 12, color: c.stone }}>{post.readTime} read</span>
+        <span style={{ color: c.stone, fontSize: 10 }}>·</span>
+        <span style={{ fontFamily: font.ui, fontSize: 12, color: c.stone }}>{new Date(post.datePublished).toLocaleDateString("en-IN", { month: "long", day: "numeric", year: "numeric" })}</span>
+        <span style={{ color: c.stone, fontSize: 10 }}>·</span>
+        <span style={{ fontFamily: font.ui, fontSize: 12, color: c.gilt }}>Hirloop Team</span>
+      </div>
 
-        <h1 style={{ fontFamily: font.display, fontSize: "clamp(28px, 4vw, 40px)", fontWeight: 400, color: c.ivory, letterSpacing: "-0.02em", lineHeight: 1.2, marginBottom: 24 }}>
-          {post.title}
-        </h1>
-
-        <p style={{ fontFamily: font.ui, fontSize: 16, color: c.chalk, lineHeight: 1.7, marginBottom: 40 }}>
+      <article style={{ maxWidth: 720, margin: "0 auto", padding: "0 40px 80px" }}>
+        {/* Intro */}
+        <p style={{ fontFamily: font.ui, fontSize: 17, color: c.chalk, lineHeight: 1.75, marginBottom: 48, borderLeft: `3px solid ${c.gilt}`, paddingLeft: 20 }}>
           {post.intro}
         </p>
 
+        {/* Sections */}
         {post.sections.map((section, i) => (
-          <section key={i} style={{ marginBottom: 36 }}>
-            <h2 style={{ fontFamily: font.ui, fontSize: 20, fontWeight: 600, color: c.ivory, marginBottom: 12, lineHeight: 1.3 }}>
+          <section key={i} style={{ marginBottom: 40 }}>
+            <h2 style={{ fontFamily: font.ui, fontSize: 20, fontWeight: 600, color: c.ivory, marginBottom: 14, lineHeight: 1.3 }}>
               {section.heading}
             </h2>
-            <div style={{ fontFamily: font.ui, fontSize: 15, color: c.chalk, lineHeight: 1.75, whiteSpace: "pre-line" }}>
+            <div style={{ fontFamily: font.ui, fontSize: 15, color: c.chalk, lineHeight: 1.8, whiteSpace: "pre-line" }}>
               {section.content}
             </div>
+            {i < post.sections.length - 1 && (
+              <div style={{ width: 40, height: 1, background: c.border, margin: "40px 0 0" }} />
+            )}
           </section>
         ))}
 
-        {/* FAQ Section */}
+        {/* FAQ Section — accordion */}
         {post.faqs.length > 0 && (
-          <section style={{ marginTop: 48, marginBottom: 48 }}>
-            <h2 style={{ fontFamily: font.ui, fontSize: 22, fontWeight: 600, color: c.ivory, marginBottom: 20 }}>
+          <section style={{ marginTop: 56, marginBottom: 48 }}>
+            <h2 style={{ fontFamily: font.display, fontSize: "clamp(22px, 3vw, 28px)", fontWeight: 400, color: c.ivory, marginBottom: 24, letterSpacing: "-0.02em" }}>
               Frequently Asked Questions
             </h2>
-            {post.faqs.map((faq, i) => (
-              <div key={i} style={{ marginBottom: 20, padding: "20px 24px", background: c.graphite, borderRadius: 12, border: `1px solid ${c.border}` }}>
-                <h3 style={{ fontFamily: font.ui, fontSize: 15, fontWeight: 600, color: c.ivory, marginBottom: 8, lineHeight: 1.4 }}>
-                  {faq.question}
-                </h3>
-                <p style={{ fontFamily: font.ui, fontSize: 14, color: c.chalk, lineHeight: 1.65 }}>
-                  {faq.answer}
-                </p>
-              </div>
-            ))}
+            <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
+              {post.faqs.map((faq, i) => {
+                const isOpen = openFaq === i;
+                return (
+                  <div key={i} style={{ borderBottom: "1px solid #1a1a1b" }}>
+                    <button
+                      onClick={() => setOpenFaq(isOpen ? null : i)}
+                      aria-expanded={isOpen}
+                      style={{
+                        width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center",
+                        padding: "18px 0", background: "none", border: "none", cursor: "pointer", textAlign: "left",
+                      }}
+                    >
+                      <span style={{ fontFamily: font.ui, fontSize: 15, fontWeight: 500, color: c.ivory, lineHeight: 1.4, paddingRight: 16 }}>
+                        {faq.question}
+                      </span>
+                      <svg
+                        aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                        stroke={c.stone} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
+                        style={{ flexShrink: 0, transition: "transform 0.2s ease", transform: isOpen ? "rotate(180deg)" : "rotate(0)" }}
+                      >
+                        <polyline points="6 9 12 15 18 9" />
+                      </svg>
+                    </button>
+                    <div style={{
+                      maxHeight: isOpen ? 300 : 0, overflow: "hidden",
+                      transition: "max-height 0.3s ease, padding 0.3s ease",
+                      paddingBottom: isOpen ? 18 : 0,
+                    }}>
+                      <p style={{ fontFamily: font.ui, fontSize: 14, color: c.chalk, lineHeight: 1.7 }}>
+                        {faq.answer}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </section>
         )}
 
         {/* CTA */}
         <div style={{
-          background: "rgba(201,169,110,0.06)", border: `1px solid rgba(201,169,110,0.15)`,
-          borderRadius: 14, padding: "32px 36px", textAlign: "center", marginTop: 48,
+          background: `linear-gradient(135deg, rgba(201,169,110,0.08), rgba(201,169,110,0.03))`,
+          border: `1px solid rgba(201,169,110,0.15)`,
+          borderRadius: 16, padding: "36px 40px", textAlign: "center", marginTop: 48,
         }}>
-          <p style={{ fontFamily: font.ui, fontSize: 15, color: c.chalk, lineHeight: 1.6, marginBottom: 20 }}>
+          <p style={{ fontFamily: font.display, fontSize: "clamp(20px, 2.5vw, 26px)", fontWeight: 400, color: c.ivory, letterSpacing: "-0.02em", marginBottom: 8 }}>
+            Ready to practice?
+          </p>
+          <p style={{ fontFamily: font.ui, fontSize: 14, color: c.stone, lineHeight: 1.6, marginBottom: 24, maxWidth: 400, margin: "0 auto 24px" }}>
             {post.cta}
           </p>
           <Link to="/signup" style={{
             display: "inline-block", fontFamily: font.ui, fontSize: 14, fontWeight: 600,
             padding: "12px 32px", borderRadius: 8, textDecoration: "none",
-            background: `linear-gradient(135deg, ${c.gilt}, ${c.giltDark})`, color: c.obsidian,
+            background: c.ivory, color: c.obsidian,
           }}>
             Start Free Practice
           </Link>
@@ -562,23 +719,22 @@ function BlogPostPage({ post }: { post: BlogPost }) {
         {/* Related Posts */}
         {related.length > 0 && (
           <section style={{ marginTop: 56 }}>
-            <h2 style={{ fontFamily: font.ui, fontSize: 18, fontWeight: 600, color: c.ivory, marginBottom: 20 }}>
-              Related Articles
+            <h2 style={{ fontFamily: font.ui, fontSize: 16, fontWeight: 600, color: c.ivory, marginBottom: 20, letterSpacing: "0.02em" }}>
+              Continue Reading
             </h2>
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.min(related.length, 3)}, 1fr)`, gap: 16 }}>
               {related.map(r => (
                 <Link key={r.slug} to={`/blog/${r.slug}`} style={{
-                  display: "flex", alignItems: "center", gap: 16, padding: "14px 18px",
-                  background: c.graphite, borderRadius: 10, border: `1px solid ${c.border}`,
-                  textDecoration: "none", transition: "border-color 0.2s",
+                  background: c.graphite, borderRadius: 12, border: `1px solid ${c.border}`,
+                  textDecoration: "none", transition: "border-color 0.2s", overflow: "hidden",
                 }}
                   onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = c.borderHover; }}
                   onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = c.border; }}
                 >
                   <img src={r.heroImage} alt={r.heroAlt} loading="lazy" onError={e => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
-                    style={{ width: 60, height: 42, objectFit: "cover", borderRadius: 6, flexShrink: 0 }} />
-                  <div>
-                    <span style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: c.ivory, lineHeight: 1.3, display: "block" }}>{r.title}</span>
+                    style={{ width: "100%", height: 100, objectFit: "cover" }} />
+                  <div style={{ padding: "14px 16px" }}>
+                    <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: c.ivory, lineHeight: 1.35, display: "block", marginBottom: 6 }}>{r.title}</span>
                     <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>{r.readTime} read</span>
                   </div>
                 </Link>

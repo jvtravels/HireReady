@@ -1,6 +1,7 @@
 /* Vercel Serverless Function — Reactivate Subscription (undo cancel-at-period-end) */
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
+import { getPostHog } from "./_posthog";
 
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || "";
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
@@ -70,9 +71,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(500).json({ error: "Failed to reactivate subscription" });
     }
 
+    getPostHog()?.capture({ distinctId: userId, event: "subscription_reactivated" });
+
     return res.status(200).json({ success: true });
   } catch (err) {
     console.error("Reactivate subscription error:", err);
+    getPostHog()?.captureException(err, userId);
     return res.status(500).json({ error: "Internal error" });
   }
 }

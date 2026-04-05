@@ -13,11 +13,17 @@ const App = lazy(() => import("./App"));
 const Analytics = lazy(() => import("@vercel/analytics/react").then(m => ({ default: m.Analytics })));
 const SpeedInsights = lazy(() => import("@vercel/speed-insights/react").then(m => ({ default: m.SpeedInsights })));
 
-// Defer error reporter init to after first paint
+// Defer error reporter + PostHog init to after first paint
 if (typeof requestIdleCallback !== "undefined") {
-  requestIdleCallback(() => import("./errorReporter").then(m => m.initErrorReporter()));
+  requestIdleCallback(() => {
+    import("./errorReporter").then(m => m.initErrorReporter());
+    import("./analytics").then(m => m.initPosthog());
+  });
 } else {
-  setTimeout(() => import("./errorReporter").then(m => m.initErrorReporter()), 100);
+  setTimeout(() => {
+    import("./errorReporter").then(m => m.initErrorReporter());
+    import("./analytics").then(m => m.initPosthog());
+  }, 100);
 }
 
 const TempoHost = lazy(() => {
