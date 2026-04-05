@@ -1,9 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { c, font } from "./tokens";
 import { useAuth } from "./AuthContext";
 import { useDocTitle } from "./useDocTitle";
-import { authHeaders } from "./supabase";
+import { authHeaders, supabaseConfigured, getSupabase } from "./supabase";
 import { loadTTSSettings, saveTTSSettings, GOOGLE_VOICES, speak, type TTSSettings } from "./tts";
 import type { PersistedState } from "./dashboardTypes";
 import { useDashboard } from "./DashboardContext";
@@ -96,10 +96,39 @@ export default function SettingsPage() {
   const [resetSent, setResetSent] = useState(false);
   const [resetLoading, setResetLoading] = useState(false);
 
+  // Avatar upload
+  const [avatarUploading, setAvatarUploading] = useState(false);
+
+  // Export
+  const [exporting, setExporting] = useState(false);
+
   // Section nav
+  const pillsRef = useRef<HTMLDivElement>(null);
   const [activeSection, setActiveSection] = useState<string>("account");
 
   const isDirty = editName !== persisted.userName || editRole !== persisted.targetRole || editDate !== persisted.interviewDate || editCompany !== (authUser?.targetCompany || "") || editIndustry !== (authUser?.industry || "");
+
+  // Auto-save dirty profile fields when switching tabs
+  const switchSection = useCallback((id: string) => {
+    if (isDirty) {
+      onUpdate({ userName: editName, targetRole: editRole, interviewDate: editDate });
+      authUpdateUser({ name: editName, targetRole: editRole, interviewDate: editDate, targetCompany: editCompany, industry: editIndustry });
+      showToast("Profile saved");
+    }
+    setActiveSection(id);
+  }, [isDirty, editName, editRole, editDate, editCompany, editIndustry, onUpdate, authUpdateUser, showToast]);
+
+  // Keyboard navigation for pills
+  const handlePillKeyDown = (e: React.KeyboardEvent, idx: number) => {
+    let next = -1;
+    if (e.key === "ArrowRight" || e.key === "ArrowDown") { e.preventDefault(); next = (idx + 1) % SECTIONS.length; }
+    else if (e.key === "ArrowLeft" || e.key === "ArrowUp") { e.preventDefault(); next = (idx - 1 + SECTIONS.length) % SECTIONS.length; }
+    if (next >= 0) {
+      switchSection(SECTIONS[next].id);
+      const buttons = pillsRef.current?.querySelectorAll<HTMLButtonElement>("button");
+      buttons?.[next]?.focus();
+    }
+  };
 
   // beforeunload guard
   useEffect(() => {
@@ -174,9 +203,10 @@ export default function SettingsPage() {
       <p style={{ fontFamily: font.ui, fontSize: 13, color: c.stone, marginBottom: 20 }}>Manage your account, preferences, and subscription</p>
 
       {/* Section pills */}
-      <div className="settings-pills" style={{ display: "flex", gap: 6, marginBottom: 28, overflowX: "auto", paddingBottom: 2 }}>
-        {SECTIONS.map(s => (
-          <button key={s.id} onClick={() => setActiveSection(s.id)}
+      <div ref={pillsRef} role="tablist" aria-label="Settings sections" className="settings-pills" style={{ display: "flex", gap: 6, marginBottom: 28, overflowX: "auto", paddingBottom: 2 }}>
+        {SECTIONS.map((s, i) => (
+          <button key={s.id} role="tab" aria-selected={activeSection === s.id} tabIndex={activeSection === s.id ? 0 : -1}
+            onClick={() => switchSection(s.id)} onKeyDown={(e) => handlePillKeyDown(e, i)}
             style={{
               fontFamily: font.ui, fontSize: 12, fontWeight: 500, whiteSpace: "nowrap",
               padding: "7px 16px", borderRadius: 20, cursor: "pointer", transition: "all 0.15s",
@@ -198,12 +228,13 @@ export default function SettingsPage() {
         <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 28 }}>
           <div style={{ position: "relative", flexShrink: 0 }}>
             {authUser?.avatarUrl ? (
-              <img src={authUser.avatarUrl} alt="Profile" style={{ width: 64, height: 64, borderRadius: "50%", objectFit: "cover", border: `2px solid ${c.border}` }} />
+              <img src={authUser.avatarUrl} alt="Profile" style={{ width: 64, height: 64, borderRadius: "50%", objectFit: "cover", border: `2px solid ${c.border}`, opacity: avatarUploading ? 0.4 : 1, transition: "opacity 0.2s" }} />
             ) : (
-              <div style={{ width: 64, height: 64, borderRadius: "50%", background: "rgba(201,169,110,0.08)", border: `2px solid ${c.border}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <div style={{ width: 64, height: 64, borderRadius: "50%", background: "rgba(201,169,110,0.08)", border: `2px solid ${c.border}`, display: "flex", alignItems: "center", justifyContent: "center", opacity: avatarUploading ? 0.4 : 1, transition: "opacity 0.2s" }}>
                 <span style={{ fontFamily: font.display, fontSize: 26, color: c.gilt }}>{(persisted.userName || "?")[0].toUpperCase()}</span>
               </div>
             )}
+            {avatarUploading && <div style={{ position: "absolute", inset: 0, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center" }}><span style={{ fontFamily: font.ui, fontSize: 9, color: c.gilt }}>...</span></div>}
             <label title="Upload avatar" style={{
               position: "absolute", bottom: -2, right: -2, width: 24, height: 24, borderRadius: "50%",
               background: c.graphite, border: `1.5px solid ${c.border}`, cursor: "pointer",
@@ -214,8 +245,14 @@ export default function SettingsPage() {
                 const file = e.target.files?.[0];
                 if (!file) return;
                 if (file.size > 2 * 1024 * 1024) { showToast("Image must be under 2 MB"); return; }
+                setAvatarUploading(true);
                 const reader = new FileReader();
-                reader.onload = () => { authUpdateUser({ avatarUrl: reader.result as string }); showToast("Avatar updated"); };
+                reader.onload = async () => {
+                  try { await authUpdateUser({ avatarUrl: reader.result as string }); showToast("Avatar updated"); }
+                  catch { showToast("Avatar upload failed"); }
+                  finally { setAvatarUploading(false); }
+                };
+                reader.onerror = () => { showToast("Failed to read image"); setAvatarUploading(false); };
                 reader.readAsDataURL(file);
               }} />
             </label>
@@ -237,6 +274,7 @@ export default function SettingsPage() {
             <label style={labelStyle}>Email</label>
             <input type="email" value={authUser?.email || ""} readOnly
               style={{ ...inputStyle, color: c.stone, cursor: "default" }} />
+            <span style={{ fontFamily: font.ui, fontSize: 10, color: c.stone, marginTop: 4, display: "block" }}>Contact support to change email</span>
           </div>
           <div>
             <label style={labelStyle}>Target Company</label>
@@ -319,7 +357,7 @@ export default function SettingsPage() {
                 { id: "direct" as const, label: "Direct", desc: "Straightforward critique" },
                 { id: "encouraging" as const, label: "Encouraging", desc: "Supportive framing" },
               ]).map(s => (
-                <button key={s.id} onClick={() => authUpdateUser({ learningStyle: s.id })} style={chipBtn(learningVal === s.id)}>
+                <button key={s.id} onClick={() => { authUpdateUser({ learningStyle: s.id }); showToast("Feedback style updated"); }} style={chipBtn(learningVal === s.id)}>
                   <span style={chipLabel(learningVal === s.id)}>{s.label}</span>
                   <span style={chipDesc}>{s.desc}</span>
                 </button>
@@ -334,7 +372,7 @@ export default function SettingsPage() {
                 { id: 15 as const, label: "15 min", desc: "Standard session" },
                 { id: 25 as const, label: "25 min", desc: "Deep dive" },
               ]).map(s => (
-                <button key={s.id} onClick={() => authUpdateUser({ preferredSessionLength: s.id })} style={chipBtn(sessionLenVal === s.id)}>
+                <button key={s.id} onClick={() => { authUpdateUser({ preferredSessionLength: s.id }); showToast("Session length updated"); }} style={chipBtn(sessionLenVal === s.id)}>
                   <span style={chipLabel(sessionLenVal === s.id)}>{s.label}</span>
                   <span style={chipDesc}>{s.desc}</span>
                 </button>
@@ -494,13 +532,12 @@ export default function SettingsPage() {
                   <button disabled={cancelLoading} onClick={async () => {
                     setCancelLoading(true); setCancelMsg("");
                     try {
-                      const { supabase, supabaseConfigured } = await import("./supabase");
-                      if (supabaseConfigured) await supabase.auth.getSession();
+                      if (supabaseConfigured) { const client = await getSupabase(); await client.auth.getSession(); }
                       const hdrs = await authHeaders();
                       const res = await fetch("/api/cancel-subscription", { method: "POST", headers: hdrs });
-                      if (res.ok) { const data = await res.json(); if (data.success) { authUpdateUser({ subscriptionTier: "free", subscriptionEnd: new Date().toISOString() }); setCancelMsg("Cancelled."); setConfirmCancel(false); } else setCancelMsg(data.error || "Failed."); }
-                      else { const d = await res.json().catch(() => ({})); setCancelMsg(d.error || `Error (${res.status}).`); }
-                    } catch { setCancelMsg("Network error."); } finally { setCancelLoading(false); }
+                      if (res.ok) { const data = await res.json(); if (data.success) { authUpdateUser({ subscriptionTier: "free", subscriptionEnd: new Date().toISOString() }); setCancelMsg("Cancelled."); setConfirmCancel(false); showToast("Plan cancelled"); } else { setCancelMsg(data.error || "Failed."); showToast(data.error || "Cancellation failed"); } }
+                      else { const d = await res.json().catch(() => ({})); setCancelMsg(d.error || `Error (${res.status}).`); showToast(d.error || "Cancellation failed"); }
+                    } catch { setCancelMsg("Network error."); showToast("Network error"); } finally { setCancelLoading(false); }
                   }}
                     style={{ padding: "6px 14px", borderRadius: 6, border: "none", cursor: "pointer", background: c.ember, color: "#fff", fontFamily: font.ui, fontSize: 11, fontWeight: 600, opacity: cancelLoading ? 0.6 : 1 }}>
                     {cancelLoading ? "Cancelling..." : "Yes, Cancel"}
@@ -516,8 +553,8 @@ export default function SettingsPage() {
         </div>
         {cancelMsg && <p style={{ fontFamily: font.ui, fontSize: 12, color: cancelMsg.includes("ancelled") ? c.sage : c.ember, marginTop: -16, marginBottom: 16 }}>{cancelMsg}</p>}
 
-        {/* Payment History */}
-        <label style={{ ...labelStyle, marginBottom: 12, fontSize: 13, fontWeight: 600, color: c.ivory }}>Payment History</label>
+        {/* Recent Subscription */}
+        <label style={{ ...labelStyle, marginBottom: 12, fontSize: 13, fontWeight: 600, color: c.ivory }}>Recent Subscription</label>
         <div style={{ borderRadius: 10, background: c.obsidian, border: `1px solid ${c.border}`, overflow: "hidden", marginBottom: 28 }}>
           {authUser?.subscriptionTier && authUser.subscriptionTier !== "free" && authUser.subscriptionStart ? (
             <div style={{ padding: "14px 18px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
@@ -564,10 +601,11 @@ export default function SettingsPage() {
                 <span style={{ fontFamily: font.ui, fontSize: 10, color: c.stone }}>Sessions & transcripts</span>
               </div>
             </div>
-            <button onClick={onExportCSV} style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 500, color: c.gilt, background: "rgba(201,169,110,0.06)", border: `1px solid rgba(201,169,110,0.15)`, borderRadius: 6, padding: "6px 14px", cursor: "pointer" }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(201,169,110,0.12)"; }}
+            <button disabled={exporting} onClick={async () => { setExporting(true); try { await onExportCSV(); } finally { setExporting(false); } }}
+              style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 500, color: c.gilt, background: "rgba(201,169,110,0.06)", border: `1px solid rgba(201,169,110,0.15)`, borderRadius: 6, padding: "6px 14px", cursor: exporting ? "default" : "pointer", opacity: exporting ? 0.6 : 1 }}
+              onMouseEnter={(e) => { if (!exporting) e.currentTarget.style.background = "rgba(201,169,110,0.12)"; }}
               onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(201,169,110,0.06)"; }}>
-              Export CSV
+              {exporting ? "Exporting..." : "Export CSV"}
             </button>
           </div>
         </div>
