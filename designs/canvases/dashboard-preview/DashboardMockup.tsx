@@ -74,7 +74,7 @@ export default function DashboardMockup() {
       {/* Sidebar */}
       <div style={{ width: 200, flexShrink: 0, background: c.graphite, boxShadow: "1px 0 3px rgba(0,0,0,0.2), 1px 0 0 rgba(240,237,232,0.04)", padding: "28px 0", display: "flex", flexDirection: "column" }}>
         <div style={{ padding: "0 24px", marginBottom: 36 }}>
-          <span style={{ fontFamily: font.display, fontSize: 18, color: c.ivory, letterSpacing: "-0.01em" }}>HireReady</span>
+          <span style={{ fontFamily: font.display, fontSize: 18, color: c.ivory, letterSpacing: "-0.01em" }}>Hirloop</span>
         </div>
         {["Dashboard", "Sessions", "Calendar", "Analytics", "Resume", "Settings"].map((item, i) => (
           <div key={item} style={{

@@ -272,7 +272,7 @@ export default function SettingsPage() {
             <label style={labelStyle}>Email</label>
             <input type="email" value={authUser?.email || ""} readOnly
               style={{ ...inputStyle, color: c.stone, cursor: "default" }} />
-            <span style={{ fontFamily: font.ui, fontSize: 10, color: c.stone, marginTop: 4, display: "block" }}>Contact <a href="mailto:support@hireready.ai" style={{ color: c.gilt, textDecoration: "none" }}>support@hireready.ai</a> to change email</span>
+            <span style={{ fontFamily: font.ui, fontSize: 10, color: c.stone, marginTop: 4, display: "block" }}>Contact <a href="mailto:support@hirloop.com" style={{ color: c.gilt, textDecoration: "none" }}>support@hirloop.com</a> to change email</span>
           </div>
           <div>
             <label style={labelStyle}>Target Company</label>
@@ -453,7 +453,7 @@ export default function SettingsPage() {
       {/* ═══════════════════ NOTIFICATIONS ═══════════════════ */}
       {activeSection === "notifications" && <div style={sectionStyle}>
         <h3 style={sectionTitle}>Notifications</h3>
-        <p style={sectionDesc}>Control how and when HireReady reaches out to you</p>
+        <p style={sectionDesc}>Control how and when Hirloop reaches out to you</p>
 
         {[
           { label: "Email notifications", desc: "Session reminders and progress updates", key: "emailNotifs" as const, on: persisted.emailNotifs !== false },

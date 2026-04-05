@@ -15,7 +15,7 @@ export interface InterviewEvent {
   reminders: boolean;
 }
 
-export const EVENTS_KEY = "hireready_events";
+export const EVENTS_KEY = "hirloop_events";
 
 export function loadEvents(): InterviewEvent[] {
   try {
@@ -57,7 +57,7 @@ export function generateICS(event: InterviewEvent): string {
   return [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//HireReady//EN",
+    "PRODID:-//Hirloop//EN",
     "BEGIN:VEVENT",
     `DTSTART:${fmt(start)}`,
     `DTEND:${fmt(end)}`,

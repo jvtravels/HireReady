@@ -7,7 +7,7 @@ import { useAuth } from "./AuthContext";
 /* ─── Adaptive difficulty helper ─── */
 function getSuggestedDifficulty(): { id: string; reason: string } {
   try {
-    const raw = localStorage.getItem("hireready_sessions");
+    const raw = localStorage.getItem("hirloop_sessions");
     if (!raw) return { id: "standard", reason: "Default for first session" };
     const sessions = JSON.parse(raw);
     if (!sessions.length) return { id: "standard", reason: "Default for first session" };
@@ -172,7 +172,7 @@ function MicTestWaveform({ stream }: { stream: MediaStream | null }) {
 // Check for a saved interview draft (less than 2 hours old)
 function loadDraft(userId?: string): { type: string; difficulty: string; focus: string; elapsed: number; savedAt: number } | null {
   try {
-    const key = `hireready_interview_draft_${userId || "anon"}`;
+    const key = `hirloop_interview_draft_${userId || "anon"}`;
     const raw = localStorage.getItem(key);
     if (!raw) return null;
     const draft = JSON.parse(raw);
@@ -318,7 +318,7 @@ export default function SessionSetup() {
             fontFamily: font.ui, fontSize: 12, fontWeight: 600,
           }}>Resume</button>
           <button onClick={() => {
-            localStorage.removeItem(`hireready_interview_draft_${user?.id || "anon"}`);
+            localStorage.removeItem(`hirloop_interview_draft_${user?.id || "anon"}`);
             setShowDraftBanner(false);
           }} style={{
             padding: "6px 16px", borderRadius: 6, cursor: "pointer",

@@ -41,8 +41,8 @@ const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL |
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || "";
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 const RESEND_API_KEY = (process.env.RESEND_API_KEY || "").trim();
-const FROM_EMAIL = process.env.FROM_EMAIL || "HireReady <onboarding@resend.dev>";
-const APP_URL = (process.env.APP_URL || "https://levelup-taupe.vercel.app").replace(/\/$/, "");
+const FROM_EMAIL = process.env.FROM_EMAIL || "Hirloop <onboarding@resend.dev>";
+const APP_URL = (process.env.APP_URL || "https://hirloop.vercel.app").replace(/\/$/, "");
 
 const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || "").split(",").map(s => s.trim()).filter(Boolean);
 
@@ -107,7 +107,7 @@ async function sendPaymentEmail(
 
         <!-- Header -->
         <tr><td style="padding:32px 40px 24px;border-bottom:1px solid #2A2A2C;">
-          <span style="font-size:18px;font-weight:600;color:#F0EDE8;letter-spacing:0.06em;">HireReady</span>
+          <span style="font-size:18px;font-weight:600;color:#F0EDE8;letter-spacing:0.06em;">Hirloop</span>
         </td></tr>
 
         <!-- Body -->
@@ -162,7 +162,7 @@ async function sendPaymentEmail(
         <!-- Footer -->
         <tr><td style="padding:20px 40px;border-top:1px solid #2A2A2C;">
           <p style="margin:0;font-size:11px;color:#6B6560;line-height:1.5;">
-            This is a payment confirmation from HireReady. If you did not make this purchase, please contact us immediately by replying to this email.
+            This is a payment confirmation from Hirloop. If you did not make this purchase, please contact us immediately by replying to this email.
           </p>
         </td></tr>
 

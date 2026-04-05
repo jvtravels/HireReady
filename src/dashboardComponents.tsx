@@ -131,7 +131,7 @@ export function UpgradeModal({ onClose, sessionsUsed, user, currentTier, onPayme
           if (verifyData.success) {
             onPaymentSuccess(verifyData.subscriptionTier, verifyData.subscriptionStart, verifyData.subscriptionEnd);
           } else {
-            setError(verifyData.error || "Payment verification failed. Please try again or contact support@hireready.ai");
+            setError(verifyData.error || "Payment verification failed. Please try again or contact support@hirloop.com");
             setLoading(null);
           }
         })
@@ -142,7 +142,7 @@ export function UpgradeModal({ onClose, sessionsUsed, user, currentTier, onPayme
             setError("Verification taking longer than expected — retrying...");
             setTimeout(() => { if (!cancelled) attemptVerify(attempt + 1); }, 2000);
           } else {
-            setError("Payment verification failed. Your payment was received — try refreshing, or contact support@hireready.ai for help.");
+            setError("Payment verification failed. Your payment was received — try refreshing, or contact support@hirloop.com for help.");
             setVerifyRetries(attempt + 1);
             setLoading(null);
           }
@@ -189,7 +189,7 @@ export function UpgradeModal({ onClose, sessionsUsed, user, currentTier, onPayme
             document.head.appendChild(s);
           });
         } catch {
-          setError("Payment system failed to load. Check your connection and try again, or contact support@hireready.ai");
+          setError("Payment system failed to load. Check your connection and try again, or contact support@hirloop.com");
           setLoading(null);
           return;
         }
@@ -204,7 +204,7 @@ export function UpgradeModal({ onClose, sessionsUsed, user, currentTier, onPayme
         key: data.keyId,
         amount: data.amount,
         currency: data.currency,
-        name: "HireReady",
+        name: "Hirloop",
         description: data.description,
         order_id: data.orderId,
         prefill: { email: user?.email || "", name: user?.name || "" },
@@ -225,7 +225,7 @@ export function UpgradeModal({ onClose, sessionsUsed, user, currentTier, onPayme
       setTimeout(() => { setLoading(prev => prev === planId ? null : prev); }, 8000);
     } catch (err) {
       console.error("Checkout error:", err);
-      setError("Something went wrong. Please try again or contact support@hireready.ai");
+      setError("Something went wrong. Please try again or contact support@hirloop.com");
       setLoading(null);
     }
   };

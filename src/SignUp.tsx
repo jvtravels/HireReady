@@ -6,7 +6,7 @@ import { useAuth } from "./AuthContext";
 import { getSupabase, supabaseConfigured } from "./supabase";
 
 // Remember me preference
-const REMEMBER_ME_KEY = "hireready_remember_me";
+const REMEMBER_ME_KEY = "hirloop_remember_me";
 function saveRememberMe(val: boolean) {
   try { localStorage.setItem(REMEMBER_ME_KEY, val ? "1" : "0"); } catch {}
 }
@@ -15,7 +15,7 @@ function getRememberMe(): boolean {
 }
 
 // Track last login method for returning users
-const LOGIN_METHOD_KEY = "hireready_login_method";
+const LOGIN_METHOD_KEY = "hirloop_login_method";
 function saveLoginMethod(method: "email" | "google") {
   try { localStorage.setItem(LOGIN_METHOD_KEY, method); } catch {}
 }
@@ -133,7 +133,7 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
         saveRememberMe(rememberMe);
         if (!rememberMe) {
           // Mark session as ephemeral — will be cleared on tab close
-          try { sessionStorage.setItem("hireready_ephemeral", "1"); } catch {}
+          try { sessionStorage.setItem("hirloop_ephemeral", "1"); } catch {}
         }
         // Navigation handled by useEffect when isLoggedIn changes
         // This avoids double-redirect since useEffect checks onboarding status
@@ -195,7 +195,7 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
       if (result.success) {
         setResetSent(true);
       } else {
-        setError(result.error || "Failed to send reset email. Try again or contact support@hireready.ai");
+        setError(result.error || "Failed to send reset email. Try again or contact support@hirloop.com");
       }
     } finally {
       setLoading(false);
@@ -218,7 +218,7 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
             fontFamily: font.ui, fontSize: 16, fontWeight: 600,
             color: c.ivory, letterSpacing: "0.06em",
           }}>
-            HireReady
+            Hirloop
           </span>
         </Link>
 

@@ -9,7 +9,7 @@ import { saveSession, getAuthToken } from "./supabase";
 import { useToast } from "./Toast";
 
 /* ─── IndexedDB transcript backup ─── */
-const IDB_NAME = "hireready";
+const IDB_NAME = "hirloop";
 const IDB_STORE = "drafts";
 function openIDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -124,7 +124,7 @@ function getMiniScript(user: User | null): InterviewStep[] {
     : `If you joined a new team tomorrow as a ${role} and found that velocity had dropped 40% over the last quarter, what would be your first three steps?`;
 
   return [
-    { type: "intro", aiText: `Hi${name ? ` ${name}` : ""}! Welcome to HireReady. This is a quick 3-question practice round for the ${role} position.${resumeContext} I'll ask you real interview questions and give you a score at the end. Ready? Let's go.`, thinkingDuration: 800, speakingDuration: 5000, waitForUser: true },
+    { type: "intro", aiText: `Hi${name ? ` ${name}` : ""}! Welcome to Hirloop. This is a quick 3-question practice round for the ${role} position.${resumeContext} I'll ask you real interview questions and give you a score at the end. Ready? Let's go.`, thinkingDuration: 800, speakingDuration: 5000, waitForUser: true },
     { type: "question", aiText: q1, thinkingDuration: 1200, speakingDuration: 4000, waitForUser: true, scoreNote: "STAR structure, decision-making clarity, outcome" },
     { type: "question", aiText: q2, thinkingDuration: 1200, speakingDuration: 3500, waitForUser: true, scoreNote: "Collaboration, communication, conflict resolution" },
     { type: "question", aiText: q3, thinkingDuration: 1200, speakingDuration: 4000, waitForUser: true, scoreNote: "Analytical thinking, prioritization, leadership approach" },
@@ -185,7 +185,7 @@ function getScript(type: string | null, difficulty: string | null, user: User | 
 }
 
 /* ─── Result persistence (Supabase + localStorage fallback) ─── */
-const RESULTS_KEY = "hireready_sessions";
+const RESULTS_KEY = "hirloop_sessions";
 
 interface SessionResult {
   id: string;
@@ -624,7 +624,7 @@ export default function Interview() {
   const targetCompany = searchParams.get("company") || "";
   const isMiniMode = searchParams.get("mini") === "true";
   // Restore draft if resuming
-  const draftKey = `hireready_interview_draft_${user?.id || "anon"}`;
+  const draftKey = `hirloop_interview_draft_${user?.id || "anon"}`;
   const isResuming = searchParams.get("resume") === "true";
   const draftRef = useRef<{ transcript: any[]; currentStep: number; elapsed: number } | null>(null);
   if (isResuming && !draftRef.current) {
@@ -1214,7 +1214,7 @@ export default function Interview() {
       }}>
         <div className="interview-header-left" style={{ display: "flex", alignItems: "center", gap: 14 }}>
           <span style={{ fontFamily: font.ui, fontSize: 14, fontWeight: 600, color: c.ivory, letterSpacing: "0.04em" }}>
-            HireReady
+            Hirloop
           </span>
           <div style={{ width: 1, height: 18, background: c.border }} />
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>

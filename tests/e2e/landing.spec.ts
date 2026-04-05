@@ -68,7 +68,7 @@ test.describe("Landing Page", () => {
   test("footer renders with brand and legal links", async ({ page }) => {
     const footer = page.locator("footer");
     await footer.scrollIntoViewIfNeeded();
-    await expect(footer.getByText("HireReady")).toBeVisible();
+    await expect(footer.getByText("Hirloop")).toBeVisible();
     await expect(footer.getByText("Privacy Policy")).toBeVisible();
     await expect(footer.getByText("Terms of Service")).toBeVisible();
   });

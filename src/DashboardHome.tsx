@@ -199,7 +199,7 @@ export default function DashboardHome() {
   const latestBadge = badges.filter(b => b.earned).slice(-1)[0] || null;
 
   // Check for interrupted interview draft
-  const draftKey = `hireready_interview_draft_${user?.id || "anon"}`;
+  const draftKey = `hirloop_interview_draft_${user?.id || "anon"}`;
   const [hasDraft, setHasDraft] = useState<{ type: string; savedAt: number } | null>(() => {
     try {
       const raw = localStorage.getItem(draftKey);

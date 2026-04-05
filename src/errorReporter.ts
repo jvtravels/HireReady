@@ -16,7 +16,7 @@ interface ErrorReport {
 
 function getSessionId(): string | undefined {
   try {
-    return localStorage.getItem("hireready_session_id") ?? undefined;
+    return localStorage.getItem("hirloop_session_id") ?? undefined;
   } catch {
     return undefined;
   }

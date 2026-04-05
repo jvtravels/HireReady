@@ -1,7 +1,7 @@
 /* ─── Text-to-Speech Service ─── */
 /* Uses server-side Google Cloud TTS proxy (free for users) with Web Speech API fallback */
 
-const TTS_SETTINGS_KEY = "hireready_tts";
+const TTS_SETTINGS_KEY = "hirloop_tts";
 
 export interface TTSSettings {
   provider: "google" | "browser";

@@ -19,7 +19,7 @@ export function hasStoredSession(): boolean {
 }
 
 /** Save/restore the last authenticated route so users return where they left off */
-const LAST_ROUTE_KEY = "hireready_last_route";
+const LAST_ROUTE_KEY = "hirloop_last_route";
 export function saveLastRoute(path: string) {
   try {
     // Only save persistent app routes — not transient screens like /interview
@@ -117,14 +117,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Clean up legacy localStorage cache from previous versions
   useEffect(() => {
-    try { localStorage.removeItem("hireready_auth"); } catch {}
+    try { localStorage.removeItem("hirloop_auth"); } catch {}
   }, []);
 
   // "Remember me" — clear session on tab/browser close if ephemeral
   useEffect(() => {
     const handleUnload = () => {
       try {
-        if (sessionStorage.getItem("hireready_ephemeral") === "1") {
+        if (sessionStorage.getItem("hirloop_ephemeral") === "1") {
           // Clear auth data so session doesn't persist
           clearLastRoute();
           // Remove Supabase session tokens from localStorage

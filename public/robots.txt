@@ -6,4 +6,4 @@ Disallow: /interview
 Disallow: /session/
 Disallow: /reset-password
 
-Sitemap: https://levelupinterviews.com/sitemap.xml
+Sitemap: https://hirloop.com/sitemap.xml

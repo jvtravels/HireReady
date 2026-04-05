@@ -39,11 +39,11 @@ describe("CORS Origin Validation", () => {
   });
 
   describe("With explicit allowlist (production mode)", () => {
-    const allowList = ["https://levelup-taupe.vercel.app", "https://hireready.app"];
+    const allowList = ["https://hirloop.vercel.app", "https://hirloop.com"];
 
     it("allows listed origins", () => {
-      expect(getAllowedOrigin("https://levelup-taupe.vercel.app", allowList)).toBe("https://levelup-taupe.vercel.app");
-      expect(getAllowedOrigin("https://hireready.app", allowList)).toBe("https://hireready.app");
+      expect(getAllowedOrigin("https://hirloop.vercel.app", allowList)).toBe("https://hirloop.vercel.app");
+      expect(getAllowedOrigin("https://hirloop.com", allowList)).toBe("https://hirloop.com");
     });
 
     it("blocks unlisted Vercel preview URLs when allowlist is set", () => {

@@ -16,7 +16,7 @@ export default async function handler(req: Request): Promise<Response> {
 
   const baseUrl = process.env.VERCEL_URL
     ? `https://${process.env.VERCEL_URL}`
-    : "https://levelup-taupe.vercel.app";
+    : "https://hirloop.vercel.app";
 
   try {
     const res = await fetch(`${baseUrl}/api/health`, {
@@ -49,9 +49,9 @@ export default async function handler(req: Request): Promise<Response> {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            from: "HireReady Alerts <alerts@hireready.ai>",
-            to: ["support@hireready.ai"],
-            subject: `[ALERT] HireReady services degraded: ${degradedServices}`,
+            from: "Hirloop Alerts <alerts@hirloop.com>",
+            to: ["support@hirloop.com"],
+            subject: `[ALERT] Hirloop services degraded: ${degradedServices}`,
             text: `Health check at ${data.timestamp} returned status: ${data.status}\n\nServices:\n${JSON.stringify(data.services, null, 2)}\n\nCheck: ${baseUrl}/api/health`,
           }),
         }).catch((err) => {

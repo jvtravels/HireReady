@@ -117,8 +117,8 @@ function AutocompleteInput({
   );
 }
 
-const OB_STEP_KEY = "hireready_ob_step";
-const OB_FORM_KEY = "hireready_ob_form";
+const OB_STEP_KEY = "hirloop_ob_step";
+const OB_FORM_KEY = "hirloop_ob_form";
 function saveObStep(step: number) { try { localStorage.setItem(OB_STEP_KEY, String(step)); } catch {} }
 function loadObStep(): number { try { const v = localStorage.getItem(OB_STEP_KEY); return v ? Math.min(Math.max(parseInt(v), 1), TOTAL_STEPS) : 1; } catch { return 1; } }
 function clearObStep() { try { localStorage.removeItem(OB_STEP_KEY); localStorage.removeItem(OB_FORM_KEY); } catch {} }
@@ -445,7 +445,7 @@ export default function Onboarding() {
         {/* Logo — left */}
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <div style={{ width: 6, height: 6, borderRadius: 2, background: `linear-gradient(135deg, ${c.gilt}, ${c.giltDark})`, boxShadow: "0 0 8px rgba(201,169,110,0.3)" }} />
-          <span style={{ fontFamily: font.display, fontSize: 17, fontWeight: 400, color: c.ivory, letterSpacing: "0.02em" }}>HireReady</span>
+          <span style={{ fontFamily: font.display, fontSize: 17, fontWeight: 400, color: c.ivory, letterSpacing: "0.02em" }}>Hirloop</span>
         </div>
         {/* Stepper — center */}
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>

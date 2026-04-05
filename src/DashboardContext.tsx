@@ -131,8 +131,8 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!user?.id) { setDataLoading(false); return; }
 
-    const sessionsCacheKey = `hireready_cache_sessions_${user.id}`;
-    const eventsCacheKey = `hireready_cache_events_${user.id}`;
+    const sessionsCacheKey = `hirloop_cache_sessions_${user.id}`;
+    const eventsCacheKey = `hirloop_cache_events_${user.id}`;
 
     let cancelled = false;
 
@@ -200,7 +200,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
           ai_feedback: s.ai_feedback, skill_scores: s.skill_scores,
         }));
         setSupabaseSessions(mapped);
-        try { localStorage.setItem(`hireready_cache_sessions_${user.id}`, JSON.stringify(mapped)); } catch {}
+        try { localStorage.setItem(`hirloop_cache_sessions_${user.id}`, JSON.stringify(mapped)); } catch {}
       }).catch(() => {});
     };
     document.addEventListener("visibilitychange", handleVisibility);
@@ -305,7 +305,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `HireReady_Progress_${new Date().toISOString().split("T")[0]}.txt`;
+    a.download = `Hirloop_Progress_${new Date().toISOString().split("T")[0]}.txt`;
     a.click();
     URL.revokeObjectURL(url);
     showToast("Report downloaded");
@@ -323,7 +323,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `HireReady_Sessions_${new Date().toISOString().split("T")[0]}.csv`;
+    a.download = `Hirloop_Sessions_${new Date().toISOString().split("T")[0]}.csv`;
     a.click();
     URL.revokeObjectURL(url);
     showToast("CSV exported");
@@ -334,13 +334,13 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     const rows = recentSessions.slice(0, 20).map(s =>
       `<tr><td>${s.date}</td><td>${s.type}</td><td>${s.score}</td><td>${s.topStrength || "-"}</td><td>${s.topWeakness || "-"}</td></tr>`
     ).join("");
-    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>HireReady Progress Report</title>
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Hirloop Progress Report</title>
 <style>body{font-family:Inter,Helvetica,Arial,sans-serif;color:#1a1a1a;max-width:720px;margin:0 auto;padding:40px 24px;line-height:1.6}
 h1{font-size:22px;margin-bottom:4px}h2{font-size:16px;margin-top:32px;border-bottom:1px solid #ddd;padding-bottom:6px}
 table{width:100%;border-collapse:collapse;font-size:13px;margin-top:12px}th,td{text-align:left;padding:8px 10px;border-bottom:1px solid #eee}
 th{background:#f5f5f5;font-weight:600}.meta{color:#666;font-size:13px}pre{white-space:pre-wrap;font-size:12px;background:#f9f9f9;padding:16px;border-radius:8px}
 @media print{body{padding:20px}}</style></head><body>
-<h1>HireReady Progress Report</h1>
+<h1>Hirloop Progress Report</h1>
 <p class="meta">${persisted.userName || "User"} · Generated ${new Date().toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}</p>
 <h2>Overview</h2>
 <p>Sessions: ${overallStats.sessionsCompleted} · Average Score: ${overallStats.avgScore} · Improvement: ${overallStats.improvement > 0 ? "+" : ""}${overallStats.improvement}%</p>

@@ -1,4 +1,4 @@
-/* ─── HireReady Design Tokens ─── */
+/* ─── Hirloop Design Tokens ─── */
 /* Single source of truth for colors, fonts, and spacing across all screens */
 
 export const c = {

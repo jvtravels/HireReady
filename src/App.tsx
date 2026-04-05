@@ -166,7 +166,7 @@ function Nav() {
     }}>
       <style>{`@keyframes navSlideDown { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }`}</style>
       <div style={{ fontFamily: font.ui, fontSize: 15, fontWeight: 600, letterSpacing: "0.06em", color: c.ivory, cursor: "pointer" }}>
-        HireReady
+        Hirloop
       </div>
 
       {/* Mobile hamburger */}
@@ -1038,7 +1038,7 @@ function ProductMockup({ type, showChrome = false }: { type: "upload" | "intervi
       <div style={{ height: 38, background: c.obsidian, borderBottom: `1px solid ${c.border}`, display: "flex", alignItems: "center", padding: "0 14px", gap: 6 }}>
         {[0.15, 0.1, 0.1].map((o, i) => <div key={i} style={{ width: 8, height: 8, borderRadius: "50%", background: `rgba(240,237,232,${o})` }} />)}
         <div style={{ flex: 1, textAlign: "center" }}>
-          <span style={{ fontFamily: font.ui, fontSize: 10, color: c.stone, letterSpacing: "0.02em" }}>hireready.com</span>
+          <span style={{ fontFamily: font.ui, fontSize: 10, color: c.stone, letterSpacing: "0.02em" }}>hirloop.com</span>
         </div>
       </div>
       <div style={{ padding: 24 }}>{content}</div>
@@ -1196,7 +1196,7 @@ function FeaturesSection() {
   return (
     <section id="features" ref={ref} className="reveal" style={{ padding: "140px 40px 80px", maxWidth: 1100, margin: "0 auto" }}>
       <div style={{ textAlign: "center", marginBottom: 80 }}>
-        <p style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: c.gilt, marginBottom: 16 }}>Why HireReady</p>
+        <p style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: c.gilt, marginBottom: 16 }}>Why Hirloop</p>
         <h2 className="text-glow" style={{ fontFamily: font.display, fontSize: "clamp(32px, 4vw, 48px)", fontWeight: 400, letterSpacing: "-0.02em", color: c.ivory, lineHeight: 1.15 }}>
           Everything you need to ace the interview
         </h2>
@@ -1389,7 +1389,7 @@ function ScorePreview() {
    TESTIMONIALS — gradient-border cards + images
    ═══════════════════════════════════════════════ */
 const testimonials = [
-  { quote: "I was mass-applying and getting nowhere. After a week of practice on HireReady, I started getting callbacks — and landed an offer at my top choice.", name: "Marcus T.", role: "Software Engineer", image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=500&fit=crop&crop=face", result: "Landed dream job at Google" },
+  { quote: "I was mass-applying and getting nowhere. After a week of practice on Hirloop, I started getting callbacks — and landed an offer at my top choice.", name: "Marcus T.", role: "Software Engineer", image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=500&fit=crop&crop=face", result: "Landed dream job at Google" },
   { quote: "Switching careers from teaching to product management felt impossible. The AI caught gaps I didn't know I had. Three weeks later, I had two offers.", name: "Dana R.", role: "Career Changer → PM", image: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&h=500&fit=crop&crop=face", result: "Career switch success" },
   { quote: "The feedback was brutally specific — told me I was using filler words 15 times per answer. Fixed that, and my next interview felt completely different.", name: "Priya K.", role: "Data Analyst, Recent Grad", image: "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=400&h=500&fit=crop&crop=face", result: "First job out of college" },
 ];
@@ -1578,7 +1578,7 @@ function PricingCard({ plan, delay }: { plan: (typeof plans)[0]; delay: number }
           key: data.keyId,
           amount: data.amount,
           currency: data.currency,
-          name: "HireReady",
+          name: "Hirloop",
           description: data.description,
           order_id: data.orderId,
           prefill: { email: user?.email || "", name: user?.name || "" },
@@ -1680,7 +1680,7 @@ function ForTeamsBanner() {
         <div style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: "40%", background: "url(https://images.unsplash.com/photo-1497366216548-37526070297c?w=600&q=80) center/cover no-repeat", maskImage: "linear-gradient(to right, transparent, black 40%)", WebkitMaskImage: "linear-gradient(to right, transparent, black 40%)", opacity: 0.12 }} />
         <div style={{ position: "relative", zIndex: 1 }}>
           <p style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: c.gilt, marginBottom: 12 }}>Coming Soon</p>
-          <h3 style={{ fontFamily: font.display, fontSize: 28, fontWeight: 400, color: c.ivory, letterSpacing: "-0.01em", lineHeight: 1.25, marginBottom: 8 }}>HireReady for Teams</h3>
+          <h3 style={{ fontFamily: font.display, fontSize: 28, fontWeight: 400, color: c.ivory, letterSpacing: "-0.01em", lineHeight: 1.25, marginBottom: 8 }}>Hirloop for Teams</h3>
           <p style={{ fontFamily: font.ui, fontSize: 14, color: c.stone, lineHeight: 1.6, maxWidth: 440 }}>Career coaches, bootcamps, and universities — we're building team plans with client management and analytics. Interested? Let us know.</p>
         </div>
         <button className="shimmer-btn" style={{
@@ -1840,7 +1840,7 @@ function Footer() {
       <div className="footer-grid" style={{ display: "grid", gridTemplateColumns: "1.5fr repeat(4, 1fr)", gap: 48, marginBottom: 48 }}>
         {/* Brand column */}
         <div>
-          <span style={{ fontFamily: font.ui, fontSize: 18, fontWeight: 600, color: c.ivory, letterSpacing: "0.04em", display: "block", marginBottom: 12 }}>HireReady</span>
+          <span style={{ fontFamily: font.ui, fontSize: 18, fontWeight: 600, color: c.ivory, letterSpacing: "0.04em", display: "block", marginBottom: 12 }}>Hirloop</span>
           <p style={{ fontFamily: font.ui, fontSize: 13, color: c.stone, lineHeight: 1.6, marginBottom: 20, maxWidth: 220 }}>
             AI-powered mock interviews for job seekers at every level. A Silva Vitalis LLC product.
           </p>

@@ -19,7 +19,7 @@ vi.mock("../supabase", () => ({
   supabaseConfigured: false,
 }));
 
-const RESULTS_KEY = "hireready_sessions";
+const RESULTS_KEY = "hirloop_sessions";
 
 // Mock localStorage since jsdom can be unreliable
 const localStorageData: Record<string, string> = {};

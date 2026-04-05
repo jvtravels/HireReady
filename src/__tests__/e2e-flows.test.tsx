@@ -1,5 +1,5 @@
 /**
- * E2E Integration Tests — HireReady
+ * E2E Integration Tests — Hirloop
  * Tests all major user flows end-to-end using component rendering.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
@@ -225,7 +225,7 @@ describe("Flow 4: Interview Lifecycle", () => {
         </MemoryRouter>,
       );
     });
-    expect(screen.getByText("HireReady")).toBeInTheDocument();
+    expect(screen.getByText("Hirloop")).toBeInTheDocument();
     expect(screen.getAllByText("00:00").length).toBeGreaterThanOrEqual(1);
     expect(screen.getByLabelText("Mute")).toBeInTheDocument();
     expect(screen.getByLabelText("Turn camera off")).toBeInTheDocument();
@@ -631,7 +631,7 @@ describe("Flow 11: Edge Cases", () => {
       );
     });
     // Should still render without crashing
-    expect(screen.getByText("HireReady")).toBeInTheDocument();
+    expect(screen.getByText("Hirloop")).toBeInTheDocument();
   });
 
   it("dashboard handles user with no practice history", async () => {

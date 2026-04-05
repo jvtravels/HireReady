@@ -52,8 +52,8 @@ describe("Interview", () => {
       );
     });
 
-    // Should show HireReady branding
-    expect(screen.getByText("HireReady")).toBeInTheDocument();
+    // Should show Hirloop branding
+    expect(screen.getByText("Hirloop")).toBeInTheDocument();
     // Should show timer starting at 00:00
     expect(screen.getAllByText("00:00").length).toBeGreaterThanOrEqual(1);
   });
