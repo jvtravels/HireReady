@@ -28,6 +28,8 @@
     { "source": "/api/razorpay-webhook", "destination": "/api/razorpay-webhook" },
     { "source": "/api/reset-expired-subscriptions", "destination": "/api/reset-expired-subscriptions" },
     { "source": "/api/health", "destination": "/api/health" },
+    { "source": "/api/log-error", "destination": "/api/log-error" },
+    { "source": "/api/uptime-check", "destination": "/api/uptime-check" },
     { "source": "/(.*)", "destination": "/index.html" }
   ],
   "crons": [
@@ -38,6 +40,10 @@
     {
       "path": "/api/reset-expired-subscriptions",
       "schedule": "0 0 * * *"
+    },
+    {
+      "path": "/api/uptime-check",
+      "schedule": "*/15 * * * *"
     }
   ]
 }

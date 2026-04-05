@@ -7,9 +7,12 @@ import { DashboardProvider } from "./DashboardContext";
 import { ToastProvider } from "./Toast";
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/react";
+import { initErrorReporter } from "./errorReporter";
 import App from "./App";
 import NotFound from "./NotFound";
 import ErrorBoundary, { RouteErrorBoundary } from "./ErrorBoundary";
+
+initErrorReporter();
 
 const TempoHost = lazy(() => {
   if (typeof window !== "undefined" && window.location.pathname.startsWith("/tempo-host")) {

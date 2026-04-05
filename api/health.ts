@@ -1,11 +1,42 @@
 /* Vercel Edge Function — Health Check Endpoint */
+/* Verifies service dependencies are reachable, not just configured */
 
 export const config = { runtime: "edge" };
 
 declare const process: { env: Record<string, string | undefined> };
 
+async function checkSupabase(): Promise<"ok" | "error" | "missing"> {
+  const url = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_ANON_KEY;
+  if (!url || !key) return "missing";
+  try {
+    const res = await fetch(`${url}/rest/v1/`, {
+      method: "HEAD",
+      headers: { apikey: key },
+      signal: AbortSignal.timeout(5000),
+    });
+    return res.ok || res.status === 404 ? "ok" : "error";
+  } catch {
+    return "error";
+  }
+}
+
+async function checkUpstash(): Promise<"ok" | "error" | "missing"> {
+  const url = process.env.UPSTASH_REDIS_REST_URL;
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+  if (!url || !token) return "missing";
+  try {
+    const res = await fetch(`${url}/ping`, {
+      headers: { Authorization: `Bearer ${token}` },
+      signal: AbortSignal.timeout(5000),
+    });
+    return res.ok ? "ok" : "error";
+  } catch {
+    return "error";
+  }
+}
+
 export default async function handler(req: Request): Promise<Response> {
-  // Only allow GET
   if (req.method !== "GET") {
     return new Response(JSON.stringify({ error: "Method not allowed" }), {
       status: 405,
@@ -13,11 +44,19 @@ export default async function handler(req: Request): Promise<Response> {
     });
   }
 
-  const checks: Record<string, "ok" | "missing"> = {
-    supabase: process.env.SUPABASE_URL ? "ok" : "missing",
+  // Run live checks in parallel
+  const [supabase, upstash] = await Promise.all([
+    checkSupabase(),
+    checkUpstash(),
+  ]);
+
+  const checks: Record<string, string> = {
+    supabase,
+    upstash,
     llm: (process.env.GROQ_API_KEY || process.env.GEMINI_API_KEY) ? "ok" : "missing",
     tts: process.env.GCP_TTS_API_KEY ? "ok" : "missing",
     payments: process.env.RAZORPAY_KEY_ID ? "ok" : "missing",
+    email: process.env.RESEND_API_KEY ? "ok" : "missing",
   };
 
   const allOk = Object.values(checks).every(v => v === "ok");
