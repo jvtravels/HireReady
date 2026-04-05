@@ -21,8 +21,10 @@ export default function DashboardResume() {
   const [needsReupload, setNeedsReupload] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [reanalyzeDone, setReanalyzeDone] = useState(false);
+  const [reanalyzing, setReanalyzing] = useState(false);
   const [analysisSource, setAnalysisSource] = useState<"ai" | "fallback" | null>(null);
   const [truncated, setTruncated] = useState(false);
+  const [tooltipVisible, setTooltipVisible] = useState(false);
   const analyzingRef = useRef(false);
   const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -169,10 +171,10 @@ export default function DashboardResume() {
   };
 
   const handleReanalyze = async () => {
-    if (!resumeText) return;
+    if (!resumeText || reanalyzing) return;
+    setReanalyzing(true);
     setReanalyzeDone(false);
     setErrorMsg("");
-    setPhase("analyzing");
     try {
       const result = await Promise.race([
         analyzeResumeWithAI(resumeText, user?.targetRole),
@@ -189,7 +191,7 @@ export default function DashboardResume() {
     } catch {
       setErrorMsg("Analysis timed out after 30s. Check your connection and try again.");
     }
-    setPhase("done");
+    setReanalyzing(false);
     setReanalyzeDone(true);
     setTimeout(() => setReanalyzeDone(false), 5000);
   };
@@ -270,7 +272,9 @@ export default function DashboardResume() {
           <p style={{ fontFamily: font.ui, fontSize: 14, fontWeight: 500, color: c.ivory, marginBottom: 4 }}>Couldn't process this file</p>
           <p style={{ fontFamily: font.ui, fontSize: 13, color: c.stone, marginBottom: 20 }}>{errorMsg}</p>
           <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
-            <button onClick={triggerUpload} style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: c.obsidian, background: c.gilt, border: "none", borderRadius: 8, padding: "10px 24px", cursor: "pointer" }}>Try another file</button>
+            <button onClick={triggerUpload} style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: c.obsidian, background: c.gilt, border: "none", borderRadius: 8, padding: "10px 24px", cursor: "pointer", transition: "filter 0.15s" }}
+              onMouseEnter={(e) => { e.currentTarget.style.filter = "brightness(1.1)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.filter = "brightness(1)"; }}>Try another file</button>
             <button onClick={() => { setPhase("idle"); setErrorMsg(""); }} style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.stone, background: "transparent", border: `1px solid ${c.border}`, borderRadius: 8, padding: "10px 24px", cursor: "pointer", transition: "background 0.15s" }}
               onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(240,237,232,0.06)"; }}
               onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}>Dismiss</button>
@@ -300,15 +304,19 @@ export default function DashboardResume() {
           </div>
           <div style={{ display: "flex", gap: 6, flexShrink: 0, marginLeft: 16, alignItems: "center" }}>
             {reanalyzeDone && <span style={{ fontFamily: font.ui, fontSize: 11, color: c.sage, marginRight: 4 }}>Updated ✓</span>}
-            <button onClick={handleReanalyze} aria-label="Re-analyze resume" title="Re-analyze" style={{ width: 32, height: 32, borderRadius: 8, background: "rgba(240,237,232,0.04)", border: `1px solid ${c.border}`, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(240,237,232,0.08)"; }}
+            {reanalyzing && <span style={{ fontFamily: font.ui, fontSize: 11, color: c.gilt, marginRight: 4 }}>Analyzing...</span>}
+            <button onClick={handleReanalyze} disabled={reanalyzing} aria-label="Re-analyze resume" title="Re-analyze" style={{ width: 32, height: 32, borderRadius: 8, background: "rgba(240,237,232,0.04)", border: `1px solid ${c.border}`, display: "flex", alignItems: "center", justifyContent: "center", cursor: reanalyzing ? "default" : "pointer", opacity: reanalyzing ? 0.5 : 1, transition: "opacity 0.15s" }}
+              onMouseEnter={(e) => { if (!reanalyzing) e.currentTarget.style.background = "rgba(240,237,232,0.08)"; }}
               onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(240,237,232,0.04)"; }}>
-              <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.stone} strokeWidth="1.5"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+              {reanalyzing
+                ? <div style={{ width: 14, height: 14, border: "2px solid rgba(201,169,110,0.2)", borderTopColor: c.gilt, borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
+                : <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.stone} strokeWidth="1.5"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+              }
             </button>
             {confirmDelete ? (
-              <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+              <div style={{ display: "flex", gap: 4, alignItems: "center" }} onKeyDown={(e) => { if (e.key === "Escape") setConfirmDelete(false); }}>
                 <span style={{ fontFamily: font.ui, fontSize: 11, color: c.ember }}>Delete?</span>
-                <button onClick={() => { handleRemove(); setConfirmDelete(false); }} aria-label="Confirm delete resume" style={{ padding: "4px 10px", borderRadius: 6, border: "none", background: c.ember, color: "#fff", fontFamily: font.ui, fontSize: 11, fontWeight: 600, cursor: "pointer" }}>Yes</button>
+                <button autoFocus onClick={() => { handleRemove(); setConfirmDelete(false); }} aria-label="Confirm delete resume" style={{ padding: "4px 10px", borderRadius: 6, border: "none", background: c.ember, color: "#fff", fontFamily: font.ui, fontSize: 11, fontWeight: 600, cursor: "pointer" }}>Yes</button>
                 <button onClick={() => setConfirmDelete(false)} aria-label="Cancel delete" style={{ padding: "4px 10px", borderRadius: 6, border: `1px solid ${c.border}`, background: "transparent", color: c.stone, fontFamily: font.ui, fontSize: 11, cursor: "pointer" }}>No</button>
               </div>
             ) : (
@@ -341,16 +349,21 @@ export default function DashboardResume() {
             <button onClick={triggerUpload} style={{
               padding: "8px 20px", borderRadius: 8, border: "none", cursor: "pointer",
               background: `linear-gradient(135deg, ${c.gilt}, ${c.giltDark})`, color: c.obsidian,
-              fontFamily: font.ui, fontSize: 12, fontWeight: 600,
-            }}>
+              fontFamily: font.ui, fontSize: 12, fontWeight: 600, transition: "filter 0.15s",
+            }}
+              onMouseEnter={(e) => { e.currentTarget.style.filter = "brightness(1.1)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.filter = "brightness(1)"; }}>
               Re-upload for AI Analysis
             </button>
           </div>
         )}
         {profile?.careerTrajectory && (
-          <div style={{ marginTop: 14, display: "flex", alignItems: "center", gap: 8, padding: "10px 14px", borderRadius: 8, background: "rgba(122,158,126,0.04)", border: "1px solid rgba(122,158,126,0.1)" }}>
-            <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="1.5"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
-            <span style={{ fontFamily: font.ui, fontSize: 12, color: c.sage }}>{profile.careerTrajectory}</span>
+          <div style={{ marginTop: 14, padding: "10px 14px", borderRadius: 8, background: "rgba(122,158,126,0.04)", border: "1px solid rgba(122,158,126,0.1)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+              <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="1.5"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+              <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, color: c.sage, textTransform: "uppercase", letterSpacing: "0.05em" }}>Career Trajectory</span>
+            </div>
+            <span style={{ fontFamily: font.ui, fontSize: 12, color: c.chalk, lineHeight: 1.5 }}>{profile.careerTrajectory}</span>
           </div>
         )}
         {fileName && (
@@ -358,7 +371,9 @@ export default function DashboardResume() {
             <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={c.stone} strokeWidth="1.5"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
             <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>{fileName}</span>
             <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, opacity: 0.5 }}>·</span>
-            <button onClick={triggerUpload} style={{ fontFamily: font.ui, fontSize: 11, color: c.gilt, background: "none", border: "none", cursor: "pointer", padding: 0, textDecoration: "underline", textUnderlineOffset: 2 }}>Replace</button>
+            <button onClick={triggerUpload} style={{ fontFamily: font.ui, fontSize: 11, color: c.gilt, background: "none", border: "none", cursor: "pointer", padding: 0, textDecoration: "underline", textUnderlineOffset: 2, transition: "opacity 0.15s" }}
+              onMouseEnter={(e) => { e.currentTarget.style.opacity = "0.7"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.opacity = "1"; }}>Replace</button>
           </div>
         )}
       </div>
@@ -397,7 +412,7 @@ export default function DashboardResume() {
       )}
 
       {((profile?.interviewStrengths && profile.interviewStrengths.length > 0) || (profile?.interviewGaps && profile.interviewGaps.length > 0)) && (
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 14, marginBottom: 14 }}>
           {profile?.interviewStrengths && profile.interviewStrengths.length > 0 && (
             <div style={{ background: c.graphite, borderRadius: 14, border: `1px solid ${c.border}`, padding: "20px 20px" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
@@ -419,7 +434,15 @@ export default function DashboardResume() {
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
                 <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
                 <h3 style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: c.ivory }}>Focus Areas</h3>
-                <span title="Topics the AI suggests you practice — not weaknesses, just areas where extra prep will boost your confidence" style={{ fontFamily: font.ui, fontSize: 10, color: c.stone, cursor: "help", borderBottom: `1px dotted ${c.stone}` }}>Why these?</span>
+                <span style={{ position: "relative", display: "inline-block" }}
+                  onMouseEnter={() => setTooltipVisible(true)} onMouseLeave={() => setTooltipVisible(false)}>
+                  <span style={{ fontFamily: font.ui, fontSize: 10, color: c.stone, cursor: "help", borderBottom: `1px dotted ${c.stone}` }}>Why these?</span>
+                  {tooltipVisible && (
+                    <span style={{ position: "absolute", bottom: "calc(100% + 8px)", left: "50%", transform: "translateX(-50%)", whiteSpace: "normal", width: 240, padding: "10px 12px", borderRadius: 8, background: c.obsidian, border: `1px solid ${c.border}`, boxShadow: "0 8px 24px rgba(0,0,0,0.4)", fontFamily: font.ui, fontSize: 11, color: c.chalk, lineHeight: 1.5, zIndex: 10, pointerEvents: "none" }}>
+                      Topics the AI suggests you practice — not weaknesses, just areas where extra prep will boost your confidence.
+                    </span>
+                  )}
+                </span>
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 {profile.interviewGaps.map((g, i) => (
