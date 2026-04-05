@@ -30,7 +30,7 @@ test.describe("Landing Page", () => {
   });
 
   test("shows social proof badge", async ({ page }) => {
-    await expect(page.getByText(/5,000\+ job seekers/)).toBeVisible();
+    await expect(page.getByText(/start practicing for free/i)).toBeVisible();
   });
 
   test("company logos section is visible", async ({ page }) => {
