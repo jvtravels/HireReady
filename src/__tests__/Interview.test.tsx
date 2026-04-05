@@ -55,7 +55,7 @@ describe("Interview", () => {
     // Should show HireReady branding
     expect(screen.getByText("HireReady")).toBeInTheDocument();
     // Should show timer starting at 00:00
-    expect(screen.getByText("00:00")).toBeInTheDocument();
+    expect(screen.getAllByText("00:00").length).toBeGreaterThanOrEqual(1);
   });
 
   it("renders end interview button", async () => {

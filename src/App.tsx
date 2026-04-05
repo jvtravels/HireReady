@@ -249,8 +249,18 @@ function Nav() {
           ref={mobileMenuRef}
           role="dialog"
           aria-modal="true"
+          aria-label="Navigation menu"
           tabIndex={-1}
-          onKeyDown={(e) => { if (e.key === "Escape") setMobileOpen(false); }}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") { setMobileOpen(false); return; }
+            if (e.key === "Tab") {
+              const focusable = e.currentTarget.querySelectorAll<HTMLElement>("a, button, [tabindex]:not([tabindex='-1'])");
+              if (focusable.length === 0) return;
+              const first = focusable[0], last = focusable[focusable.length - 1];
+              if (e.shiftKey) { if (document.activeElement === first) { e.preventDefault(); last.focus(); } }
+              else { if (document.activeElement === last) { e.preventDefault(); first.focus(); } }
+            }
+          }}
           style={{
           position: "fixed", inset: 0, background: "rgba(10,10,11,0.95)", backdropFilter: "blur(20px)",
           zIndex: 101, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 28,

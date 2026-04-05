@@ -33,6 +33,7 @@ export default defineConfig(async () => {
       globals: true,
       setupFiles: ["./src/__tests__/setup.ts"],
       pool: "forks",
+      exclude: ["tests/e2e/**", "tests/example.spec.ts", "node_modules/**"],
     },
   };
 });

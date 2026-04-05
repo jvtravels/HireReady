@@ -6,6 +6,7 @@ import { useAuth } from "./AuthContext";
 import type { User } from "./AuthContext";
 import { speak } from "./tts";
 import { saveSession, getAuthToken } from "./supabase";
+import { useToast } from "./Toast";
 
 /* ─── IndexedDB transcript backup ─── */
 const IDB_NAME = "hireready";
@@ -610,6 +611,7 @@ function ControlButton({ icon, label, active, danger, onClick }: {
 export default function Interview() {
   const navigate = useNavigate();
   const { user, updateUser } = useAuth();
+  const { toast } = useToast();
   const [searchParams] = useSearchParams();
   const rawType = searchParams.get("type");
   const interviewType = (rawType && rawType !== "undefined" && rawType !== "null") ? rawType : "behavioral";
@@ -1089,8 +1091,12 @@ export default function Interview() {
 
     if (!cloudOk && localOk) {
       setSaveWarning("Session saved locally but could not sync to cloud.");
+      toast("Session saved locally — will sync when online.", "info");
     } else if (!localOk && !cloudOk) {
       setSaveWarning("Warning: Session could not be saved. Please check your connection.");
+      toast("Could not save session. Check your connection.", "error");
+    } else {
+      toast("Session saved successfully!", "success");
     }
 
     track("session_complete", { type: interviewType, score, difficulty: interviewDifficulty });
@@ -1696,6 +1702,7 @@ export default function Interview() {
         <div style={{ width: 140, display: "flex", justifyContent: "flex-end" }}>
           <button
             onClick={() => phase === "done" ? handleEnd() : setShowEndModal(true)}
+            aria-label={phase === "done" ? "View feedback" : "End interview"}
             style={{
               fontFamily: font.ui, fontSize: 11, fontWeight: 500,
               padding: "6px 16px", borderRadius: 8,

@@ -4,6 +4,7 @@ import { createRoot } from "react-dom/client";
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { AuthProvider, RequireAuth } from "./AuthContext";
 import { DashboardProvider } from "./DashboardContext";
+import { ToastProvider } from "./Toast";
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/react";
 import App from "./App";
@@ -64,6 +65,7 @@ createRoot(document.getElementById("root")!).render(
       <BrowserRouter>
         <ScrollToTop />
         <AuthProvider>
+        <ToastProvider>
           <Suspense fallback={<LoadingFallback />}>
             <Routes>
               <Route path="/" element={<div className="page-enter"><App /></div>} />
@@ -89,6 +91,7 @@ createRoot(document.getElementById("root")!).render(
               <Route path="*" element={<div className="page-enter"><NotFound /></div>} />
             </Routes>
           </Suspense>
+        </ToastProvider>
         </AuthProvider>
       </BrowserRouter>
       </ErrorBoundary>

@@ -502,6 +502,7 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
                       onClick={() => setRememberMe(!rememberMe)}
                       role="checkbox"
                       aria-checked={rememberMe}
+                      aria-label="Remember me"
                       tabIndex={0}
                       onKeyDown={(e) => { if (e.key === " " || e.key === "Enter") { e.preventDefault(); setRememberMe(!rememberMe); } }}
                       style={{

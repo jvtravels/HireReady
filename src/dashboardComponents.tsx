@@ -227,7 +227,7 @@ export function UpgradeModal({ onClose, sessionsUsed, user, currentTier, onPayme
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(5,5,6,0.88)", backdropFilter: "blur(8px)" }} onClick={onClose} role="dialog" aria-modal="true" aria-label="Choose your plan">
       <div ref={modalRef} onClick={(e) => e.stopPropagation()} className="upgrade-modal-inner" style={{ background: c.graphite, border: `1px solid ${c.border}`, borderRadius: 18, padding: "36px 32px 32px", maxWidth: 680, width: "94%", position: "relative" }}>
-        <button onClick={onClose} style={{ position: "absolute", top: 14, right: 14, background: "none", border: "none", color: c.stone, cursor: "pointer", padding: 4 }}>
+        <button onClick={onClose} aria-label="Close dialog" style={{ position: "absolute", top: 14, right: 14, background: "none", border: "none", color: c.stone, cursor: "pointer", padding: 4 }}>
           <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </button>
 

@@ -15,6 +15,7 @@ vi.mock("../AuthContext", () => ({
 // Mock supabase
 vi.mock("../supabase", () => ({
   getSessionById: vi.fn().mockResolvedValue(null),
+  getSessionFeedback: vi.fn().mockResolvedValue(null),
   supabaseConfigured: false,
 }));
 
