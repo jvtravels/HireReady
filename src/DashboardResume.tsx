@@ -1,12 +1,14 @@
 import { useState, useEffect, useRef } from "react";
 import { c, font } from "./tokens";
 import { useAuth } from "./AuthContext";
+import { useDocTitle } from "./useDocTitle";
 import { useDashboard } from "./DashboardContext";
 import { extractResumeText, parseResumeData, type ParsedResume } from "./resumeParser";
 import { type ResumeProfile, analyzeResumeWithAI } from "./dashboardData";
 import { DataLoadingSkeleton } from "./dashboardComponents";
 
 export default function DashboardResume() {
+  useDocTitle("Resume");
   const { user, updateUser } = useAuth();
   const { persisted, updatePersisted, dataLoading } = useDashboard();
 

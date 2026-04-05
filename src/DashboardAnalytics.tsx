@@ -1,4 +1,5 @@
 import { c, font } from "./tokens";
+import { useDocTitle } from "./useDocTitle";
 import { sessionTypes, scoreLabel, scoreLabelColor } from "./dashboardTypes";
 import type { DashboardSession, SkillData, TrendPoint } from "./dashboardTypes";
 import { ScoreTrendChart, SkillRadar } from "./DashboardCharts";
@@ -6,6 +7,7 @@ import { useDashboard } from "./DashboardContext";
 import { DataLoadingSkeleton, ProGate } from "./dashboardComponents";
 
 export default function AnalyticsPage() {
+  useDocTitle("Analytics");
   const { recentSessions: sessions, skills: sk, scoreTrend: trend, handleStartSession, dataLoading, isFree, isStarter, setShowUpgradeModal } = useDashboard();
 
   if (dataLoading) return <DataLoadingSkeleton />;

@@ -4,8 +4,10 @@ import { c, font } from "./tokens";
 import { scoreLabel, scoreLabelColor, sessionTypes } from "./dashboardTypes";
 import { useDashboard } from "./DashboardContext";
 import { DataLoadingSkeleton } from "./dashboardComponents";
+import { useDocTitle } from "./useDocTitle";
 
 export default function DashboardSessions() {
+  useDocTitle("Sessions");
   const sessionNav = useNavigate();
   const { recentSessions, handleStartSession, dataLoading } = useDashboard();
   const [filter, setFilter] = useState("All");

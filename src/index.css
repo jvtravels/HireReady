@@ -461,8 +461,11 @@ body {
     display: none !important;
   }
 
-  /* Dashboard grid fixes — 3+2 layout so 5th card isn't orphaned */
-  .stat-grid { grid-template-columns: repeat(3, 1fr) !important; }
+  /* Dashboard grid fixes — 6-col grid so 5 stats can center: 3 top, 2 bottom centered */
+  .stat-grid { grid-template-columns: repeat(6, 1fr) !important; }
+  .stat-grid > * { grid-column: span 2; }
+  .stat-grid > :nth-child(4) { grid-column: 2 / 4; }
+  .stat-grid > :nth-child(5) { grid-column: 4 / 6; }
   .main-grid { grid-template-columns: 1fr !important; }
   .session-setup-grid { grid-template-columns: 1fr !important; }
 
@@ -483,13 +486,19 @@ body {
 
   /* Quick stats bar */
   .quick-stats-bar { gap: 16px !important; flex-wrap: wrap !important; }
+
+  /* Streak widget — stack label and dots when they'd wrap mid-word */
+  .streak-widget { flex-wrap: wrap !important; gap: 0 !important; }
+  .streak-label { border-radius: 100px !important; border-right: 1px solid rgba(201,169,110,0.12) !important; }
+  .streak-dots { border-radius: 100px !important; margin-top: 6px; }
 }
 @media (min-width: 769px) {
   .mobile-nav-toggle { display: none !important; }
 }
 @media (max-width: 600px) {
-  .stat-grid { grid-template-columns: repeat(2, 1fr) !important; }
-  .stat-grid > :last-child { grid-column: span 2; }
+  .stat-grid { grid-template-columns: repeat(4, 1fr) !important; }
+  .stat-grid > * { grid-column: span 2; }
+  .stat-grid > :last-child { grid-column: 2 / 4; }
   .session-setup-types { grid-template-columns: 1fr !important; }
   .difficulty-grid { flex-direction: column !important; }
 }

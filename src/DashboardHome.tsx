@@ -8,6 +8,7 @@ import { scoreLabel, scoreLabelColor, sessionTypes } from "./dashboardTypes";
 import { daysUntilEvent, formatEventDate, formatEventTime } from "./dashboardHelpers";
 import { getPersonalizedGreeting } from "./dashboardData";
 import { ScoreTrendChart, SkillRadar } from "./DashboardCharts";
+import { useDocTitle } from "./useDocTitle";
 
 /* ─── Shared premium card style ─── */
 const card = {
@@ -46,6 +47,27 @@ const badgeIcons: Record<string, (color: string) => JSX.Element> = {
 };
 
 
+/* ─── Animated counter for stats ─── */
+function CountUp({ value, suffix = "" }: { value: string; suffix?: string }) {
+  const num = parseInt(value, 10);
+  const [display, setDisplay] = useState(0);
+  const isNum = !isNaN(num) && num > 0;
+  useEffect(() => {
+    if (!isNum) return;
+    let start = 0;
+    const duration = 600;
+    const step = Math.ceil(num / (duration / 16));
+    const id = setInterval(() => {
+      start = Math.min(start + step, num);
+      setDisplay(start);
+      if (start >= num) clearInterval(id);
+    }, 16);
+    return () => clearInterval(id);
+  }, [num, isNum]);
+  if (!isNum) return <>{value}</>;
+  return <>{display}{suffix}</>;
+}
+
 /* ─── Focus-visible + reduced-motion styles ─── */
 const dashboardStyles = `
   .dash-focus:focus-visible {
@@ -73,6 +95,7 @@ export default function DashboardHome() {
     setShowUpgradeModal,
   } = useDashboard();
 
+  useDocTitle("Dashboard");
   const [expandedSession, setExpandedSession] = useState<string | null>(null);
   const [feedbackSession, setFeedbackSession] = useState<string | null>(null);
   const [viewingSession, setViewingSession] = useState<string | null>(null);
@@ -155,6 +178,7 @@ export default function DashboardHome() {
 
   const weakestSkill = skills.length > 0 ? [...skills].sort((a, b) => a.score - b.score)[0] : null;
   const activeNotifs = notifications.filter(n => !persisted.dismissedNotifs.includes(n.id));
+  const latestBadge = badges.filter(b => b.earned).slice(-1)[0] || null;
 
   return (
     <div style={{ margin: "0 auto", lineHeight: 1.5 }} className="dash-card">
@@ -162,14 +186,22 @@ export default function DashboardHome() {
       {/* ─── Header ─── */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: sp["3xl"], flexWrap: "wrap", gap: sp.lg }}>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <h1 style={{ fontFamily: font.display, fontSize: isMobile ? 26 : 32, fontWeight: 400, color: c.ivory, marginBottom: 6, letterSpacing: "-0.01em" }}>
-            {getPersonalizedGreeting(displayName.split(" ")[0], currentStreak, recentSessions.length)}
-          </h1>
-          {returnContext && <p style={{ fontFamily: font.ui, fontSize: 14, color: c.stone, lineHeight: 1.5, marginBottom: 2 }}>{returnContext}</p>}
+          <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+            <h1 style={{ fontFamily: font.display, fontSize: isMobile ? 26 : 32, fontWeight: 400, color: c.ivory, marginBottom: 0, letterSpacing: "-0.01em" }}>
+              {getPersonalizedGreeting(displayName.split(" ")[0], currentStreak, recentSessions.length)}
+            </h1>
+            {latestBadge && (
+              <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "4px 12px", borderRadius: radius.pill, background: "rgba(201,169,110,0.06)", border: "1px solid rgba(201,169,110,0.15)" }} title={latestBadge.description}>
+                <span style={{ display: "flex", transform: "scale(0.65)", transformOrigin: "center" }}>{(badgeIcons[latestBadge.icon] || badgeIcons.star)(c.gilt)}</span>
+                <span style={{ fontFamily: font.mono, fontSize: 11, fontWeight: 600, color: c.gilt }}>{latestBadge.label}</span>
+              </div>
+            )}
+          </div>
+          {returnContext && <p style={{ fontFamily: font.ui, fontSize: 14, color: c.stone, lineHeight: 1.5, marginBottom: 2, marginTop: 6 }}>{returnContext}</p>}
           {smartSchedule && <p style={{ fontFamily: font.ui, fontSize: 13, color: c.gilt, fontStyle: "italic" }}>{smartSchedule}</p>}
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <button className="shimmer-btn dash-focus" onClick={handleStartSession} style={{
+          <button className="shimmer-btn dash-focus" onClick={handleStartSession} title="New Session (N)" style={{
             fontFamily: font.ui, fontSize: 13, fontWeight: 600, padding: "9px 20px", borderRadius: radius.md,
             border: "none", background: `linear-gradient(135deg, ${c.gilt}, ${c.giltDark})`,
             color: c.obsidian, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, whiteSpace: "nowrap",
@@ -178,7 +210,7 @@ export default function DashboardHome() {
             New Session
           </button>
           <div ref={headerMenuRef} style={{ position: "relative" }}>
-            <button onClick={() => setHeaderMenuOpen(!headerMenuOpen)} title="More actions" style={utilBtn} onMouseEnter={utilBtnEnter} onMouseLeave={utilBtnLeave} aria-expanded={headerMenuOpen} aria-label="More actions">
+            <button onClick={() => setHeaderMenuOpen(!headerMenuOpen)} title="More actions (press ? for shortcuts)" style={utilBtn} onMouseEnter={utilBtnEnter} onMouseLeave={utilBtnLeave} aria-expanded={headerMenuOpen} aria-label="More actions">
               <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg>
             </button>
             {headerMenuOpen && (
@@ -194,8 +226,10 @@ export default function DashboardHome() {
               }} style={{ position: "absolute", top: "calc(100% + 6px)", right: 0, minWidth: 200, background: c.graphite, border: `1px solid ${c.borderHover}`, borderRadius: radius.md, padding: "6px 0", zIndex: 50, boxShadow: "0 8px 32px rgba(0,0,0,0.4)" }}>
                 {[
                   { label: "Share Progress", icon: <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>, action: () => { handleExport(); setShareTooltip(true); setTimeout(() => setShareTooltip(false), 2000); } },
-                  { label: "Download Report", icon: <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>, action: handleDownload },
-                  { label: "Export PDF", icon: <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>, action: handleExportPDF },
+                  { label: "Export as JSON", icon: <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>, action: handleDownload },
+                  { label: "Export as PDF", icon: <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>, action: handleExportPDF },
+                  { label: "Set Interview Date", icon: <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>, action: () => nav("/settings") },
+                  { label: "View Full Report", icon: <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>, action: () => nav("/analytics") },
                 ].map((item) => (
                   <button key={item.label} role="menuitem" onClick={() => { item.action(); setHeaderMenuOpen(false); }}
                     style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", padding: "10px 16px", fontFamily: font.ui, fontSize: 13, color: c.chalk, background: "transparent", border: "none", cursor: "pointer", transition: "background 0.15s" }}
@@ -207,7 +241,7 @@ export default function DashboardHome() {
                 ))}
                 <div style={{ height: 1, background: c.border, margin: "4px 0" }} />
                 <div style={{ padding: "8px 16px" }}>
-                  <span style={{ fontFamily: font.mono, fontSize: 10, color: c.stone }}>Shortcuts: N new session · / search</span>
+                  <span style={{ fontFamily: font.mono, fontSize: 10, color: c.stone }}>N new session · / search · ? shortcuts</span>
                 </div>
               </div>
             )}
@@ -328,7 +362,7 @@ export default function DashboardHome() {
             </p>
           </div>
           <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 14 }}>
-            <button className="shimmer-btn dash-focus" onClick={handleStartSession} style={{
+            <button className="shimmer-btn dash-focus" onClick={handleStartSession} title="Start Session (N)" style={{
               fontFamily: font.ui, fontSize: 15, fontWeight: 600, padding: "12px 30px", borderRadius: radius.md,
               border: "none", background: `linear-gradient(135deg, ${c.gilt}, ${c.giltDark})`,
               color: c.obsidian, cursor: "pointer", display: "flex", alignItems: "center", gap: 8, whiteSpace: "nowrap",
@@ -342,12 +376,12 @@ export default function DashboardHome() {
               {atSessionLimit ? "Upgrade to Continue" : "Start Session"}
             </button>
             {/* ─── Streak widget ─── */}
-            <div style={{ display: "flex", alignItems: "center", gap: 0 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 14px", borderRadius: `${radius.pill}px 0 0 ${radius.pill}px`, background: "rgba(201,169,110,0.06)", border: "1px solid rgba(201,169,110,0.12)", borderRight: "none" }}>
+            <div className="streak-widget" style={{ display: "flex", alignItems: "center", gap: 0, flexWrap: "wrap" }}>
+              <div className="streak-label" style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 14px", borderRadius: `${radius.pill}px 0 0 ${radius.pill}px`, background: "rgba(201,169,110,0.06)", border: "1px solid rgba(201,169,110,0.12)", borderRight: "none", whiteSpace: "nowrap" }}>
                 <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="2" strokeLinecap="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" /></svg>
                 <span style={{ fontFamily: font.mono, fontSize: 11, fontWeight: 600, color: c.gilt }}>{currentStreak > 0 ? `${currentStreak}-day streak` : "Start a streak"}</span>
               </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 2, padding: "0 4px", border: "1px solid rgba(240,237,232,0.08)", borderRadius: `0 ${radius.pill}px ${radius.pill}px 0`, height: 28 }}>
+              <div className="streak-dots" style={{ display: "flex", alignItems: "center", gap: 2, padding: "0 4px", border: "1px solid rgba(240,237,232,0.08)", borderRadius: `0 ${radius.pill}px ${radius.pill}px 0`, height: 28 }}>
                 {["M", "T", "W", "T", "F", "S", "S"].map((day, i) => {
                   const today = new Date();
                   const todayIdx = today.getDay() === 0 ? 6 : today.getDay() - 1;
@@ -385,7 +419,9 @@ export default function DashboardHome() {
               <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: c.stone, letterSpacing: "0.04em", textTransform: "uppercase" as const }}>{stat.label}</span>
               <div style={{ opacity: 0.7 }}>{stat.icon}</div>
             </div>
-            <span style={{ fontFamily: font.mono, fontSize: 30, fontWeight: 600, color: c.ivory, display: "block", marginBottom: 4, letterSpacing: "-0.03em" }}>{stat.value}</span>
+            <span style={{ fontFamily: font.mono, fontSize: 30, fontWeight: 600, color: c.ivory, display: "block", marginBottom: 4, letterSpacing: "-0.03em" }}>
+              <CountUp value={stat.value.replace(/[^0-9]/g, "")} suffix={stat.value.replace(/[0-9]/g, "")} />
+            </span>
             <span style={{ fontFamily: font.ui, fontSize: 12, color: stat.subColor, fontWeight: stat.subColor !== c.stone ? 600 : 400 }}>{stat.sub}</span>
           </div>
         ))}
@@ -564,9 +600,25 @@ export default function DashboardHome() {
 
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {filteredSessions.length === 0 ? (
-            <p style={{ fontFamily: font.ui, fontSize: 14, color: c.stone, textAlign: "center", padding: "32px 0" }}>
-              {searchQuery ? `No sessions matching "${searchQuery}"` : "No sessions match this filter."}
-            </p>
+            <div style={{ textAlign: "center", padding: "40px 20px" }}>
+              <svg aria-hidden="true" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke={c.stone} strokeWidth="1" strokeLinecap="round" style={{ opacity: 0.4, marginBottom: 16 }}>
+                <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="8" y1="11" x2="14" y2="11"/>
+              </svg>
+              <p style={{ fontFamily: font.ui, fontSize: 15, fontWeight: 500, color: c.chalk, marginBottom: 6 }}>
+                {searchQuery ? `No results for "${searchQuery}"` : "No sessions match this filter"}
+              </p>
+              <p style={{ fontFamily: font.ui, fontSize: 13, color: c.stone }}>
+                {searchQuery ? "Try a different search term or clear filters" : "Adjust your filters or date range"}
+              </p>
+              {(searchQuery || filterType !== "All" || dateRange !== "all") && (
+                <button onClick={() => { setSearchQuery(""); setDebouncedSearch(""); setFilterType("All"); setDateRange("all"); }}
+                  style={{ marginTop: 14, fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.gilt, background: "rgba(201,169,110,0.06)", border: `1px solid rgba(201,169,110,0.15)`, borderRadius: radius.sm, padding: "8px 18px", cursor: "pointer", transition: "background 0.2s" }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = "rgba(201,169,110,0.12)"}
+                  onMouseLeave={(e) => e.currentTarget.style.background = "rgba(201,169,110,0.06)"}>
+                  Clear all filters
+                </button>
+              )}
+            </div>
           ) : (
             filteredSessions.slice(0, sessionsToShow).map((session) => (
               <div key={session.id}>
@@ -690,17 +742,31 @@ export default function DashboardHome() {
                     </div>
                   );
                 })()}
-                {upcomingGoals.map((goal, i) => (
-                  <div key={i}>
-                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
-                      <span style={{ fontFamily: font.ui, fontSize: 13, color: c.chalk }}>{goal.label}</span>
-                      <span style={{ fontFamily: font.mono, fontSize: 12, color: goal.progress >= goal.total ? c.sage : c.stone }}>{goal.progress}/{goal.total}</span>
+                {upcomingGoals.map((goal, i) => {
+                  const done = goal.progress >= goal.total;
+                  return (
+                    <div key={i}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                        <span style={{ fontFamily: font.ui, fontSize: 13, color: c.chalk, display: "flex", alignItems: "center", gap: 6 }}>
+                          {done && <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>}
+                          {goal.label}
+                        </span>
+                        <span style={{ fontFamily: font.mono, fontSize: 12, color: done ? c.sage : c.stone }}>{goal.progress}/{goal.total}</span>
+                      </div>
+                      <div style={{ height: 4, background: "rgba(240,237,232,0.06)", borderRadius: 2, overflow: "hidden", marginBottom: done ? 0 : 8 }}>
+                        <div style={{ height: "100%", width: `${(goal.progress / goal.total) * 100}%`, background: done ? c.sage : c.gilt, borderRadius: 2, transition: "width 0.4s cubic-bezier(0.16,1,0.3,1)" }} />
+                      </div>
+                      {!done && (
+                        <button onClick={handleStartSession}
+                          style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 500, color: c.gilt, background: "none", border: "none", cursor: "pointer", padding: 0, transition: "color 0.2s" }}
+                          onMouseEnter={(e) => e.currentTarget.style.color = c.ivory}
+                          onMouseLeave={(e) => e.currentTarget.style.color = c.gilt}>
+                          Start a session →
+                        </button>
+                      )}
                     </div>
-                    <div style={{ height: 4, background: "rgba(240,237,232,0.06)", borderRadius: 2, overflow: "hidden" }}>
-                      <div style={{ height: "100%", width: `${(goal.progress / goal.total) * 100}%`, background: goal.progress >= goal.total ? c.sage : c.gilt, borderRadius: 2, transition: "width 0.4s cubic-bezier(0.16,1,0.3,1)" }} />
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

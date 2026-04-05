@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { c, font } from "./tokens";
 import { useAuth } from "./AuthContext";
+import { useDocTitle } from "./useDocTitle";
 import { authHeaders } from "./supabase";
 import { loadTTSSettings, saveTTSSettings, GOOGLE_VOICES, type TTSSettings } from "./tts";
 import type { PersistedState } from "./dashboardTypes";
@@ -9,6 +10,7 @@ import { useDashboard } from "./DashboardContext";
 import { DataLoadingSkeleton } from "./dashboardComponents";
 
 export default function SettingsPage() {
+  useDocTitle("Settings");
   const nav = useNavigate();
   const { user: authUser, logout: authLogout, updateUser: authUpdateUser } = useAuth();
   const { persisted, updatePersisted: onUpdate, handleExportCSV: onExportCSV, dataLoading, showToast } = useDashboard();

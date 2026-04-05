@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { c, font } from "./tokens";
 import { useAuth } from "./AuthContext";
+import { useDocTitle } from "./useDocTitle";
 import { getCalendarEvents, saveCalendarEvent, deleteCalendarEvent } from "./supabase";
 import {
   type InterviewEvent, loadEvents, saveEvents, generateEventId,
@@ -11,6 +12,7 @@ import { useDashboard } from "./DashboardContext";
 import { DataLoadingSkeleton, ProGate } from "./dashboardComponents";
 
 export default function CalendarPage() {
+  useDocTitle("Calendar");
   const { handleStartSession: onStartSession, dataLoading, isFree, isStarter, setShowUpgradeModal } = useDashboard();
 
   const { user } = useAuth();

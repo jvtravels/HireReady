@@ -1,10 +1,11 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Link, Outlet, useNavigate, useLocation } from "react-router-dom";
 import { c, font } from "./tokens";
 import { useAuth } from "./AuthContext";
 import { useDashboard } from "./DashboardContext";
 import { UpgradeModal } from "./dashboardComponents";
 import { FREE_SESSION_LIMIT, STARTER_WEEKLY_LIMIT } from "./dashboardData";
+import { daysUntilEvent } from "./dashboardHelpers";
 
 /* ─── Sidebar Nav Items ─── */
 const navItems = [
@@ -27,8 +28,13 @@ export default function DashboardLayout() {
     showUpgradeModal, setShowUpgradeModal,
     paymentBanner, setPaymentBanner,
     syncError, setSyncError,
-    toast,
+    toast, calendarEvents,
   } = useDashboard();
+
+  const hasUrgentInterview = useMemo(() =>
+    calendarEvents.some(e => e.status === "upcoming" && daysUntilEvent(e.date, e.time) >= 0 && daysUntilEvent(e.date, e.time) <= 3),
+    [calendarEvents]
+  );
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
@@ -112,7 +118,13 @@ export default function DashboardLayout() {
               onMouseEnter={(e) => { if (activeNav !== item.id) e.currentTarget.style.background = "rgba(240,237,232,0.03)"; }}
               onMouseLeave={(e) => { if (activeNav !== item.id) e.currentTarget.style.background = "transparent"; }}
             >
-              {item.icon}{item.label}
+              {item.icon}
+              <span style={{ position: "relative" }}>
+                {item.label}
+                {item.id === "calendar" && hasUrgentInterview && (
+                  <span style={{ position: "absolute", top: -2, right: -10, width: 7, height: 7, borderRadius: "50%", background: c.ember, border: `2px solid ${c.obsidian}` }} />
+                )}
+              </span>
               {activeNav === item.id && <div style={{ width: 3, height: 16, borderRadius: 2, background: c.gilt, marginLeft: "auto" }} />}
             </button>
           ))}
