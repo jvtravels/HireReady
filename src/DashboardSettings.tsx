@@ -560,7 +560,9 @@ export default function SettingsPage() {
                 </div>
               ) : !confirmCancel ? (
                 <button onClick={() => setConfirmCancel(true)}
-                  style={{ padding: "10px 20px", borderRadius: 8, cursor: "pointer", background: "transparent", border: `1px solid rgba(196,112,90,0.2)`, color: c.ember, fontFamily: font.ui, fontSize: 12, fontWeight: 500 }}>
+                  style={{ padding: "10px 20px", borderRadius: 8, cursor: "pointer", background: "transparent", border: `1px solid rgba(196,112,90,0.18)`, color: c.ember, fontFamily: font.ui, fontSize: 12, fontWeight: 500, transition: "background 0.15s" }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(196,112,90,0.08)"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}>
                   Cancel Plan
                 </button>
               ) : (
@@ -582,7 +584,9 @@ export default function SettingsPage() {
                     {cancelLoading ? "Cancelling..." : "Yes, Cancel"}
                   </button>
                   <button onClick={() => setConfirmCancel(false)}
-                    style={{ padding: "6px 14px", borderRadius: 6, cursor: "pointer", background: "transparent", border: `1px solid ${c.border}`, color: c.stone, fontFamily: font.ui, fontSize: 11 }}>
+                    style={{ padding: "6px 14px", borderRadius: 6, cursor: "pointer", background: "transparent", border: `1px solid ${c.border}`, color: c.stone, fontFamily: font.ui, fontSize: 11, transition: "background 0.15s" }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(240,237,232,0.06)"; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}>
                     Keep Plan
                   </button>
                 </div>
@@ -656,9 +660,9 @@ export default function SettingsPage() {
               <span style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.ivory, display: "block", marginBottom: 2 }}>Log out</span>
               <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>Sign out on this device</span>
             </div>
-            <button onClick={onLogout} style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: c.ember, background: "rgba(196,112,90,0.06)", border: `1px solid rgba(196,112,90,0.15)`, borderRadius: 6, padding: "8px 20px", cursor: "pointer" }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(196,112,90,0.12)"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(196,112,90,0.06)"; }}>
+            <button onClick={onLogout} style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: c.ember, background: "transparent", border: `1px solid rgba(196,112,90,0.18)`, borderRadius: 6, padding: "8px 20px", cursor: "pointer", transition: "background 0.15s" }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(196,112,90,0.08)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}>
               Log out
             </button>
           </div>
@@ -670,7 +674,9 @@ export default function SettingsPage() {
             </div>
             {!confirmDelete ? (
               <button onClick={() => { setConfirmDelete(true); setDeleteEmailInput(""); setDeleteMsg(""); }}
-                style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: c.ember, background: "transparent", border: `1px solid rgba(196,112,90,0.2)`, borderRadius: 6, padding: "8px 20px", cursor: "pointer" }}>
+                style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: c.ember, background: "transparent", border: `1px solid rgba(196,112,90,0.18)`, borderRadius: 6, padding: "8px 20px", cursor: "pointer", transition: "background 0.15s" }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(196,112,90,0.08)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}>
                 Delete Account
               </button>
             ) : (
@@ -682,7 +688,9 @@ export default function SettingsPage() {
                   onBlur={(e) => { e.currentTarget.style.borderColor = "rgba(196,112,90,0.2)"; }} />
                 <div style={{ display: "flex", gap: 8 }}>
                   <button onClick={() => { setConfirmDelete(false); setDeleteEmailInput(""); }}
-                    style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, background: "transparent", border: `1px solid ${c.border}`, borderRadius: 6, padding: "8px 14px", cursor: "pointer" }}>
+                    style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, background: "transparent", border: `1px solid ${c.border}`, borderRadius: 6, padding: "8px 14px", cursor: "pointer", transition: "background 0.15s" }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(240,237,232,0.06)"; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}>
                     Cancel
                   </button>
                   <button disabled={deleteLoading || deleteEmailInput.toLowerCase() !== (authUser?.email || "").toLowerCase()} onClick={async () => {

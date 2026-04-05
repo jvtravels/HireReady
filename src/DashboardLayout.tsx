@@ -320,7 +320,9 @@ export default function DashboardLayout() {
                 <kbd style={{ fontFamily: font.mono, fontSize: 11, fontWeight: 600, color: c.gilt, background: "rgba(201,169,110,0.08)", border: `1px solid rgba(201,169,110,0.15)`, borderRadius: 4, padding: "2px 8px" }}>{key}</kbd>
               </div>
             ))}
-            <button onClick={() => setShowShortcuts(false)} style={{ marginTop: 16, width: "100%", padding: "8px 0", borderRadius: 8, border: `1px solid ${c.border}`, background: "transparent", color: c.stone, fontFamily: font.ui, fontSize: 12, cursor: "pointer" }}>Close</button>
+            <button onClick={() => setShowShortcuts(false)} style={{ marginTop: 16, width: "100%", padding: "8px 0", borderRadius: 8, border: `1px solid ${c.border}`, background: "transparent", color: c.stone, fontFamily: font.ui, fontSize: 12, cursor: "pointer", transition: "background 0.15s" }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(240,237,232,0.06)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}>Close</button>
           </div>
         </>
       )}

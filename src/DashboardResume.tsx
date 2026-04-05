@@ -271,7 +271,9 @@ export default function DashboardResume() {
           <p style={{ fontFamily: font.ui, fontSize: 13, color: c.stone, marginBottom: 20 }}>{errorMsg}</p>
           <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
             <button onClick={triggerUpload} style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: c.obsidian, background: c.gilt, border: "none", borderRadius: 8, padding: "10px 24px", cursor: "pointer" }}>Try another file</button>
-            <button onClick={() => { setPhase("idle"); setErrorMsg(""); }} style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.stone, background: "transparent", border: `1px solid ${c.border}`, borderRadius: 8, padding: "10px 24px", cursor: "pointer" }}>Dismiss</button>
+            <button onClick={() => { setPhase("idle"); setErrorMsg(""); }} style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.stone, background: "transparent", border: `1px solid ${c.border}`, borderRadius: 8, padding: "10px 24px", cursor: "pointer", transition: "background 0.15s" }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(240,237,232,0.06)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}>Dismiss</button>
           </div>
         </div>
       </div>
