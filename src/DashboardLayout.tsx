@@ -6,6 +6,7 @@ import { useDashboard } from "./DashboardContext";
 import { UpgradeModal } from "./dashboardComponents";
 import { FREE_SESSION_LIMIT, STARTER_WEEKLY_LIMIT } from "./dashboardData";
 import { daysUntilEvent } from "./dashboardHelpers";
+import CommandPalette from "./CommandPalette";
 
 /* ─── Sidebar Nav Items ─── */
 const navItems = [
@@ -29,6 +30,7 @@ export default function DashboardLayout() {
     paymentBanner, setPaymentBanner,
     syncError, setSyncError,
     toast, calendarEvents,
+    handleStartSession, handleExport,
   } = useDashboard();
 
   const hasUrgentInterview = useMemo(() =>
@@ -38,6 +40,15 @@ export default function DashboardLayout() {
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const [isOffline, setIsOffline] = useState(!navigator.onLine);
+
+  useEffect(() => {
+    const goOffline = () => setIsOffline(true);
+    const goOnline = () => setIsOffline(false);
+    window.addEventListener("offline", goOffline);
+    window.addEventListener("online", goOnline);
+    return () => { window.removeEventListener("offline", goOffline); window.removeEventListener("online", goOnline); };
+  }, []);
 
   // Keyboard shortcuts
   const handleKeydown = useCallback((e: KeyboardEvent) => {
@@ -241,7 +252,15 @@ export default function DashboardLayout() {
           </div>
         )}
 
-        <Outlet />
+        {isOffline && (
+          <div role="alert" style={{ padding: "10px 16px", marginBottom: 16, borderRadius: 8, background: "rgba(126,141,152,0.08)", border: "1px solid rgba(126,141,152,0.2)", display: "flex", alignItems: "center", gap: 8 }}>
+            <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.slate} strokeWidth="2" strokeLinecap="round"><line x1="1" y1="1" x2="23" y2="23"/><path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"/><path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"/><path d="M10.71 5.05A16 16 0 0 1 22.56 9"/><path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>
+            <span style={{ fontFamily: font.ui, fontSize: 12, color: c.slate }}>You're offline — some features may be unavailable</span>
+          </div>
+        )}
+        <div key={location.pathname} className="dash-page-enter">
+          <Outlet />
+        </div>
       </main>
 
       {/* Upgrade modal */}
@@ -296,6 +315,9 @@ export default function DashboardLayout() {
           <span style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.ivory }}>{toast}</span>
         </div>
       )}
+
+      {/* Command palette */}
+      <CommandPalette onStartSession={handleStartSession} onExport={handleExport} />
     </div>
   );
 }

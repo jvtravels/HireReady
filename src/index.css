@@ -511,6 +511,16 @@ body {
 .page-enter {
   animation: pageEnter 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
+@keyframes dashPageEnter {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.dash-page-enter {
+  animation: dashPageEnter 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  .dash-page-enter { animation: none; }
+}
 
 /* ─── Skeleton Loading ─── */
 @keyframes skeletonShimmer {
@@ -551,6 +561,18 @@ body {
   filter: drop-shadow(0 0 8px rgba(201,169,110,0.4));
 }
 
+/* ─── Score Ring Animation ─── */
+@keyframes scoreRingDraw {
+  from { stroke-dashoffset: 132; }
+  to { stroke-dashoffset: 0; }
+}
+.score-ring {
+  animation: scoreRingDraw 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  .score-ring { animation: none; }
+}
+
 /* ─── Session Expand Animation ─── */
 @keyframes slideDown {
   from { opacity: 0; max-height: 0; }
@@ -575,4 +597,42 @@ body {
   .gradient-border-card:hover { transform: none; }
   .mockup-window:hover { transform: none; }
   .shimmer-btn:hover { transform: none; }
+}
+
+/* ─── Print Stylesheet ─── */
+@media print {
+  body { background: #fff !important; color: #111 !important; }
+
+  /* Hide sidebar, mobile nav, modals, tooltips, banners */
+  aside, .mobile-nav-toggle, [role="dialog"], [role="status"],
+  .shimmer-btn::after, .gradient-border-card::before, .gradient-border-card::after { display: none !important; }
+
+  /* Make main content full width */
+  main { margin-left: 0 !important; padding: 20px !important; height: auto !important; overflow: visible !important; }
+
+  /* Reset card styles for print */
+  .gradient-border-card {
+    background: #fff !important;
+    border: 1px solid #ddd !important;
+    box-shadow: none !important;
+    transform: none !important;
+    break-inside: avoid;
+  }
+
+  /* Clean typography for print */
+  h1, h2, h3 { color: #111 !important; }
+  p, span, button { color: #333 !important; }
+
+  /* Hide interactive elements */
+  button:not([aria-expanded]) { opacity: 0.6; }
+  input, select, textarea { border: 1px solid #ccc !important; }
+
+  /* Ensure stat grid prints well */
+  .stat-grid { grid-template-columns: repeat(5, 1fr) !important; gap: 8px !important; }
+
+  /* Score ring prints in color */
+  .score-ring { animation: none !important; }
+
+  /* Page breaks */
+  .dash-card > div { break-inside: avoid; }
 }

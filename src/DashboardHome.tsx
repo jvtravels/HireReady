@@ -47,6 +47,23 @@ const badgeIcons: Record<string, (color: string) => JSX.Element> = {
 };
 
 
+/* ─── Relative time formatter ─── */
+function relativeTime(dateStr: string): string {
+  const now = Date.now();
+  const then = new Date(dateStr).getTime();
+  const diff = now - then;
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "Just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  if (days === 1) return "Yesterday";
+  if (days < 7) return `${days}d ago`;
+  if (days < 30) return `${Math.floor(days / 7)}w ago`;
+  return new Date(dateStr).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
 /* ─── Animated counter for stats ─── */
 function CountUp({ value, suffix = "" }: { value: string; suffix?: string }) {
   const num = parseInt(value, 10);
@@ -408,13 +425,13 @@ export default function DashboardHome() {
       {/* ─── Stats Grid (all 5 in one row) ─── */}
       <div className="stat-grid" style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(5, 1fr)", gap: sp.lg, marginBottom: sp["3xl"] }}>
         {[
-          { label: "Readiness", value: hasData ? (readinessScore > 0 ? readinessScore.toString() : "\u2014") : "\u2014", icon: <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>, sub: !hasData ? "Complete a session" : readinessScore > 0 ? scoreLabel(readinessScore) : "Need more sessions", subColor: !hasData ? c.stone : readinessScore > 0 ? scoreLabelColor(readinessScore) : c.stone },
-          { label: "Sessions", value: overallStats.sessionsCompleted.toString(), icon: <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>, sub: hasData ? `${weekActivity.filter(Boolean).length} this week` : "Get started", subColor: c.stone },
-          { label: "Avg Score", value: hasData ? overallStats.avgScore.toString() : "\u2014", icon: <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="1.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>, sub: hasData ? `+${overallStats.improvement} pts` : "No data yet", subColor: hasData ? c.sage : c.stone },
-          { label: "Improvement", value: hasData ? `+${overallStats.improvement}%` : "\u2014", icon: <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="1.5"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>, sub: hasData ? "All skills" : "Practice to improve", subColor: c.stone },
-          { label: "Time Logged", value: hasData ? `${overallStats.hoursLogged}h` : "0h", icon: <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>, sub: "Total", subColor: c.stone },
+          { label: "Readiness", value: hasData ? (readinessScore > 0 ? readinessScore.toString() : "\u2014") : "\u2014", icon: <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>, sub: !hasData ? "Complete a session" : readinessScore > 0 ? scoreLabel(readinessScore) : "Need more sessions", subColor: !hasData ? c.stone : readinessScore > 0 ? scoreLabelColor(readinessScore) : c.stone, tip: "Composite score based on your last 5 sessions, weighted by recency" },
+          { label: "Sessions", value: overallStats.sessionsCompleted.toString(), icon: <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>, sub: hasData ? `${weekActivity.filter(Boolean).length} this week` : "Get started", subColor: c.stone, tip: "Total practice sessions completed across all interview types" },
+          { label: "Avg Score", value: hasData ? overallStats.avgScore.toString() : "\u2014", icon: <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="1.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>, sub: hasData ? `+${overallStats.improvement} pts` : "No data yet", subColor: hasData ? c.sage : c.stone, tip: "Average score across all sessions — higher means more consistent performance" },
+          { label: "Improvement", value: hasData ? `+${overallStats.improvement}%` : "\u2014", icon: <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="1.5"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>, sub: hasData ? "All skills" : "Practice to improve", subColor: c.stone, tip: "Score improvement from your first session to your most recent" },
+          { label: "Time Logged", value: hasData ? `${overallStats.hoursLogged}h` : "0h", icon: <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>, sub: "Total", subColor: c.stone, tip: "Total hours spent in practice sessions" },
         ].map((stat, i) => (
-          <div key={i} style={{ ...card, padding: "24px", cursor: "default" }} className="gradient-border-card">
+          <div key={i} title={stat.tip} style={{ ...card, padding: "24px", cursor: "default" }} className="gradient-border-card">
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
               <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: c.stone, letterSpacing: "0.04em", textTransform: "uppercase" as const }}>{stat.label}</span>
               <div style={{ opacity: 0.7 }}>{stat.icon}</div>
@@ -626,9 +643,17 @@ export default function DashboardHome() {
                   style={{ width: "100%", padding: "16px 18px", borderRadius: radius.md, background: expandedSession === session.id ? "rgba(201,169,110,0.03)" : c.obsidian, border: "none", boxShadow: expandedSession === session.id ? "0 0 0 1px rgba(201,169,110,0.1)" : "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 16, transition: "all 0.25s cubic-bezier(0.16,1,0.3,1)", textAlign: "left" }}
                   onMouseEnter={(e) => { if (expandedSession !== session.id) e.currentTarget.style.background = "rgba(240,237,232,0.02)"; }}
                   onMouseLeave={(e) => { if (expandedSession !== session.id) e.currentTarget.style.background = c.obsidian; }}>
-                  <div style={{ width: 48, height: 48, borderRadius: "50%", flexShrink: 0, border: `2px solid ${scoreLabelColor(session.score)}`, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
-                    <span style={{ fontFamily: font.mono, fontSize: 15, fontWeight: 600, color: c.ivory, lineHeight: 1 }}>{session.score}</span>
-                    <span style={{ fontFamily: font.ui, fontSize: 8, color: scoreLabelColor(session.score), fontWeight: 600, lineHeight: 1, marginTop: 1 }}>{scoreLabel(session.score)}</span>
+                  <div style={{ width: 48, height: 48, flexShrink: 0, position: "relative", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <svg width="48" height="48" viewBox="0 0 48 48" style={{ position: "absolute", transform: "rotate(-90deg)" }}>
+                      <circle cx="24" cy="24" r="21" fill="none" stroke="rgba(240,237,232,0.06)" strokeWidth="2.5" />
+                      <circle cx="24" cy="24" r="21" fill="none" stroke={scoreLabelColor(session.score)} strokeWidth="2.5"
+                        strokeDasharray={`${(session.score / 100) * 2 * Math.PI * 21} ${2 * Math.PI * 21}`}
+                        strokeLinecap="round" className="score-ring" />
+                    </svg>
+                    <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+                      <span style={{ fontFamily: font.mono, fontSize: 15, fontWeight: 600, color: c.ivory, lineHeight: 1 }}>{session.score}</span>
+                      <span style={{ fontFamily: font.ui, fontSize: 8, color: scoreLabelColor(session.score), fontWeight: 600, lineHeight: 1, marginTop: 1 }}>{scoreLabel(session.score)}</span>
+                    </div>
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
@@ -637,8 +662,8 @@ export default function DashboardHome() {
                     </div>
                     <span style={{ fontFamily: font.ui, fontSize: 13, color: c.stone, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "block" }}>{session.role}</span>
                   </div>
-                  <div style={{ textAlign: "right", flexShrink: 0 }}>
-                    <span style={{ fontFamily: font.ui, fontSize: 13, color: c.chalk, display: "block" }}>{session.dateLabel}</span>
+                  <div style={{ textAlign: "right", flexShrink: 0 }} title={session.dateLabel}>
+                    <span style={{ fontFamily: font.ui, fontSize: 13, color: c.chalk, display: "block" }}>{relativeTime(session.date)}</span>
                     <span style={{ fontFamily: font.ui, fontSize: 12, color: c.stone }}>{session.duration}</span>
                   </div>
                   <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.stone} strokeWidth="2" strokeLinecap="round" style={{ transform: expandedSession === session.id ? "rotate(180deg)" : "rotate(0)", transition: "transform 0.2s", flexShrink: 0 }}><polyline points="6 9 12 15 18 9"/></svg>
