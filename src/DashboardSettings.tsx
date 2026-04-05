@@ -126,11 +126,16 @@ export default function SettingsPage() {
             )}
             <div>
               <p style={{ fontFamily: font.ui, fontSize: 15, fontWeight: 600, color: c.ivory }}>{persisted.userName}</p>
-              <p style={{ fontFamily: font.ui, fontSize: 12, color: c.stone }}>{persisted.targetRole}</p>
+              <p style={{ fontFamily: font.ui, fontSize: 12, color: c.stone }}>{authUser?.email || persisted.targetRole}</p>
             </div>
           </div>
 
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            <div>
+              <label style={labelStyle}>Email</label>
+              <input type="email" value={authUser?.email || ""} readOnly
+                style={{ ...inputStyle, color: c.stone, cursor: "default" }} />
+            </div>
             <div>
               <label style={labelStyle}>Full Name</label>
               <input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} maxLength={60}
