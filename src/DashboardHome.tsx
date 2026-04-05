@@ -18,19 +18,32 @@ const card = {
   transition: "box-shadow 0.3s cubic-bezier(0.16,1,0.3,1), transform 0.3s cubic-bezier(0.16,1,0.3,1)",
 } as const;
 
-const cardHover = (e: React.MouseEvent<HTMLDivElement>) => {
-  e.currentTarget.style.boxShadow = "0 4px 16px rgba(0,0,0,0.32), 0 0 0 1px rgba(240,237,232,0.06)";
-  e.currentTarget.style.transform = "translateY(-1px)";
+/* ─── Utility button style (hoisted for perf) ─── */
+const utilBtn = {
+  fontFamily: font.ui, fontSize: 11, fontWeight: 500 as const, color: c.stone,
+  background: "transparent", border: `1px solid ${c.border}`, borderRadius: radius.sm,
+  padding: "8px 14px", cursor: "pointer" as const, display: "flex" as const, alignItems: "center" as const,
+  gap: 6, transition: "all 0.25s cubic-bezier(0.16,1,0.3,1)", outline: "none" as const,
 };
-const cardLeave = (e: React.MouseEvent<HTMLDivElement>) => {
-  e.currentTarget.style.boxShadow = card.boxShadow;
-  e.currentTarget.style.transform = "translateY(0)";
-};
+const utilBtnEnter = (e: React.MouseEvent<HTMLButtonElement>) => { e.currentTarget.style.borderColor = "rgba(201,169,110,0.3)"; e.currentTarget.style.color = c.ivory; };
+const utilBtnLeave = (e: React.MouseEvent<HTMLButtonElement>) => { e.currentTarget.style.borderColor = c.border; e.currentTarget.style.color = c.stone; };
 
 /* ─── Section heading (serif) ─── */
-const sectionTitle = (text: string, size = 16) => (
-  <h3 style={{ fontFamily: font.display, fontSize: size, fontWeight: 400, color: c.ivory, letterSpacing: "0.01em", margin: 0 }}>{text}</h3>
-);
+const sectionTitle = (text: string, size = 16, tag: "h2" | "h3" = "h3") => {
+  const Tag = tag;
+  return <Tag style={{ fontFamily: font.display, fontSize: size, fontWeight: 400, color: c.ivory, letterSpacing: "0.01em", margin: 0 }}>{text}</Tag>;
+};
+
+/* ─── Focus-visible + reduced-motion styles ─── */
+const dashboardStyles = `
+  .dash-focus:focus-visible {
+    outline: 2px solid rgba(201,169,110,0.5) !important;
+    outline-offset: 2px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .dash-card, .dash-card * { transition: none !important; animation: none !important; }
+  }
+`;
 
 export default function DashboardHome() {
   const nav = useNavigate();
@@ -105,18 +118,9 @@ export default function DashboardHome() {
     })
     .sort((a, b) => sortBy === "score" ? b.score - a.score : new Date(b.date).getTime() - new Date(a.date).getTime()), [recentSessions, filterType, debouncedSearch, dateRange, sortBy]);
 
-  /* ─── Utility button style ─── */
-  const utilBtn = {
-    fontFamily: font.ui, fontSize: 11, fontWeight: 500 as const, color: c.stone,
-    background: "transparent", border: `1px solid ${c.border}`, borderRadius: radius.sm,
-    padding: "8px 14px", cursor: "pointer" as const, display: "flex" as const, alignItems: "center" as const,
-    gap: 6, transition: "all 0.25s cubic-bezier(0.16,1,0.3,1)", outline: "none" as const,
-  };
-  const utilBtnEnter = (e: React.MouseEvent<HTMLButtonElement>) => { e.currentTarget.style.borderColor = "rgba(201,169,110,0.3)"; e.currentTarget.style.color = c.ivory; };
-  const utilBtnLeave = (e: React.MouseEvent<HTMLButtonElement>) => { e.currentTarget.style.borderColor = c.border; e.currentTarget.style.color = c.stone; };
-
   return (
-    <div style={{ maxWidth: 1200, margin: "0 auto" }}>
+    <div style={{ maxWidth: 1200, margin: "0 auto" }} className="dash-card">
+      <style>{dashboardStyles}</style>
       {/* ─── Header ─── */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: sp["3xl"], flexWrap: "wrap", gap: sp.lg }}>
         <div>
@@ -215,8 +219,7 @@ export default function DashboardHome() {
       )}
 
       {/* ─── Hero CTA ─── */}
-      <div style={{ ...card, background: c.graphite, padding: isMobile ? "24px" : "32px 36px", marginBottom: sp["3xl"], position: "relative" as const, overflow: "hidden" as const }}>
-        {/* Subtle gradient accent */}
+      <div style={{ ...card, background: c.graphite, padding: isMobile ? "24px" : "32px 36px", marginBottom: sp["2xl"], position: "relative" as const, overflow: "hidden" as const }}>
         <div style={{ position: "absolute", top: 0, right: 0, width: "40%", height: "100%", background: `linear-gradient(135deg, transparent 0%, rgba(201,169,110,0.04) 100%)`, pointerEvents: "none" }} />
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: isMobile ? 16 : 24, position: "relative" as const }}>
           <div style={{ flex: 1, minWidth: 260 }}>
@@ -251,8 +254,8 @@ export default function DashboardHome() {
               </p>
             )}
           </div>
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 14 }}>
-            <button className="shimmer-btn" onClick={handleStartSession} style={{
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 12 }}>
+            <button className="shimmer-btn dash-focus" onClick={handleStartSession} style={{
               fontFamily: font.ui, fontSize: 14, fontWeight: 600, padding: "14px 32px", borderRadius: radius.md,
               border: "none", background: `linear-gradient(135deg, ${c.gilt}, ${c.giltDark})`, color: c.obsidian,
               cursor: "pointer", display: "flex", alignItems: "center", gap: 8, whiteSpace: "nowrap",
@@ -266,7 +269,7 @@ export default function DashboardHome() {
               {atSessionLimit ? "Upgrade to Continue" : "Start Session"}
             </button>
             {weakestSkill && !atSessionLimit && (
-              <button onClick={() => nav(`/session/new?type=behavioral&focus=${weakestSkill.name.toLowerCase().replace(/\s+/g, "-")}`)}
+              <button className="dash-focus" onClick={() => nav(`/session/new?type=behavioral&focus=${weakestSkill.name.toLowerCase().replace(/\s+/g, "-")}`)}
                 style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, padding: "9px 20px", borderRadius: radius.md, border: `1px solid rgba(196,112,90,0.15)`, background: "rgba(196,112,90,0.04)", color: c.ember, cursor: "pointer", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 6, transition: "all 0.25s cubic-bezier(0.16,1,0.3,1)" }}
                 onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(196,112,90,0.1)"; }}
                 onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(196,112,90,0.04)"; }}>
@@ -274,30 +277,6 @@ export default function DashboardHome() {
                 Focus: {weakestSkill.name} ({weakestSkill.score})
               </button>
             )}
-            {/* Streak + week activity */}
-            <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 14px", borderRadius: radius.md, background: "rgba(240,237,232,0.02)" }}>
-              <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="2" strokeLinecap="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" /></svg>
-              <span style={{ fontFamily: font.mono, fontSize: 11, fontWeight: 600, color: c.gilt }}>{currentStreak > 0 ? `${currentStreak}-day streak` : "Start a streak"}</span>
-              <div style={{ width: 1, height: 14, background: "rgba(240,237,232,0.08)", margin: "0 4px" }} />
-              {["M", "T", "W", "T", "F", "S", "S"].map((day, i) => {
-                const today = new Date();
-                const todayIdx = today.getDay() === 0 ? 6 : today.getDay() - 1;
-                const isToday = i === todayIdx;
-                const isFutureDay = i > todayIdx;
-                const practiced = weekActivity[i];
-                return (
-                  <div key={i} title={`${day}: ${isFutureDay ? "Upcoming" : practiced ? "Practiced" : "Missed"}`} style={{
-                    width: 22, height: 22, borderRadius: 4,
-                    background: practiced ? "rgba(201,169,110,0.12)" : "transparent",
-                    border: `1px solid ${practiced ? "rgba(201,169,110,0.25)" : isToday ? "rgba(201,169,110,0.2)" : "rgba(240,237,232,0.06)"}`,
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    fontSize: 9, fontFamily: font.mono, fontWeight: 600,
-                    color: practiced ? c.gilt : isToday ? c.ivory : c.stone,
-                    transition: "all 0.15s ease",
-                  }}>{day}</div>
-                );
-              })}
-            </div>
             {isFree && sessionsRemaining > 0 && (
               <span style={{ fontFamily: font.mono, fontSize: 10, color: sessionsRemaining === 1 ? c.ember : c.stone }}>{sessionsRemaining} free session{sessionsRemaining !== 1 ? "s" : ""} left</span>
             )}
@@ -305,17 +284,59 @@ export default function DashboardHome() {
         </div>
       </div>
 
-      {/* ─── Stats Grid ─── */}
-      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(5, 1fr)", gap: sp.lg, marginBottom: sp["3xl"] }}>
+      {/* ─── Streak & Activity (separated from CTA for balance) ─── */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, padding: "10px 0", marginBottom: sp["2xl"] }}>
+        <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="2" strokeLinecap="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" /></svg>
+        <span style={{ fontFamily: font.mono, fontSize: 11, fontWeight: 600, color: c.gilt }}>{currentStreak > 0 ? `${currentStreak}-day streak` : "Start a streak"}</span>
+        <div style={{ width: 1, height: 14, background: "rgba(240,237,232,0.08)", margin: "0 4px" }} />
+        {["M", "T", "W", "T", "F", "S", "S"].map((day, i) => {
+          const today = new Date();
+          const todayIdx = today.getDay() === 0 ? 6 : today.getDay() - 1;
+          const isToday = i === todayIdx;
+          const isFutureDay = i > todayIdx;
+          const practiced = weekActivity[i];
+          return (
+            <div key={`day-${i}`} title={`${day}: ${isFutureDay ? "Upcoming" : practiced ? "Practiced" : "Missed"}`} style={{
+              width: 24, height: 24, borderRadius: 4,
+              background: practiced ? "rgba(201,169,110,0.12)" : "transparent",
+              border: `1px solid ${practiced ? "rgba(201,169,110,0.25)" : isToday ? "rgba(201,169,110,0.2)" : "rgba(240,237,232,0.06)"}`,
+              display: "flex", alignItems: "center", justifyContent: "center",
+              fontSize: 9, fontFamily: font.mono, fontWeight: 600,
+              color: practiced ? c.gilt : isToday ? c.ivory : c.stone,
+            }}>{day}</div>
+          );
+        })}
+      </div>
+
+      {/* ─── Stats Grid (3+2 for breathing room) ─── */}
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(3, 1fr)", gap: sp.lg, marginBottom: sp.lg }}>
         {[
           { label: "Readiness", value: hasData ? (readinessScore > 0 ? readinessScore.toString() : "\u2014") : "\u2014", icon: <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>, sub: !hasData ? "Complete a session" : readinessScore > 0 ? scoreLabel(readinessScore) : "Need more sessions", subColor: !hasData ? c.stone : readinessScore > 0 ? scoreLabelColor(readinessScore) : c.stone },
           { label: "Sessions", value: overallStats.sessionsCompleted.toString(), icon: <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>, sub: hasData ? `${weekActivity.filter(Boolean).length} this week` : "Get started", subColor: c.stone },
           { label: "Avg Score", value: hasData ? overallStats.avgScore.toString() : "\u2014", icon: <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="1.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>, sub: hasData ? `+${overallStats.improvement} pts` : "No data yet", subColor: hasData ? c.sage : c.stone },
           { label: "Improvement", value: hasData ? `+${overallStats.improvement}%` : "\u2014", icon: <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="1.5"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>, sub: hasData ? "All skills" : "Practice to improve", subColor: c.stone },
           { label: "Time Logged", value: hasData ? `${overallStats.hoursLogged}h` : "0h", icon: <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>, sub: "Total", subColor: c.stone },
+        ].map((stat, i) => {
+          // First 3 in top row, last 2 in bottom row
+          if (i >= 3) return null;
+          return (
+            <div key={i} style={{ ...card, padding: "24px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
+                <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 500, color: c.stone, letterSpacing: "0.04em", textTransform: "uppercase" as const }}>{stat.label}</span>
+                <div style={{ opacity: 0.7 }}>{stat.icon}</div>
+              </div>
+              <span style={{ fontFamily: font.mono, fontSize: 28, fontWeight: 600, color: c.ivory, display: "block", marginBottom: 4, letterSpacing: "-0.03em" }}>{stat.value}</span>
+              <span style={{ fontFamily: font.ui, fontSize: 11, color: stat.subColor, fontWeight: stat.subColor !== c.stone ? 600 : 400 }}>{stat.sub}</span>
+            </div>
+          );
+        })}
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(2, 1fr)", gap: sp.lg, marginBottom: sp["3xl"], maxWidth: isMobile ? "100%" : "66.66%" }}>
+        {[
+          { label: "Improvement", value: hasData ? `+${overallStats.improvement}%` : "\u2014", icon: <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="1.5"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>, sub: hasData ? "All skills" : "Practice to improve", subColor: c.stone },
+          { label: "Time Logged", value: hasData ? `${overallStats.hoursLogged}h` : "0h", icon: <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>, sub: "Total", subColor: c.stone },
         ].map((stat, i) => (
-          <div key={i} style={{ ...card, padding: "24px", ...(isMobile && i === 4 ? { gridColumn: "1 / -1" } : {}) }}
-            onMouseEnter={cardHover} onMouseLeave={cardLeave}>
+          <div key={`stat2-${i}`} style={{ ...card, padding: "24px" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
               <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 500, color: c.stone, letterSpacing: "0.04em", textTransform: "uppercase" as const }}>{stat.label}</span>
               <div style={{ opacity: 0.7 }}>{stat.icon}</div>
@@ -485,8 +506,8 @@ export default function DashboardHome() {
           ) : (
             filteredSessions.map((session) => (
               <div key={session.id}>
-                <button onClick={() => setExpandedSession(expandedSession === session.id ? null : session.id)} aria-expanded={expandedSession === session.id}
-                  style={{ width: "100%", padding: "16px 18px", borderRadius: radius.md, background: expandedSession === session.id ? "rgba(201,169,110,0.03)" : c.obsidian, border: "none", boxShadow: expandedSession === session.id ? "0 0 0 1px rgba(201,169,110,0.1)" : "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 16, transition: "all 0.25s cubic-bezier(0.16,1,0.3,1)", textAlign: "left", outline: "none" }}
+                <button className="dash-focus" onClick={() => setExpandedSession(expandedSession === session.id ? null : session.id)} aria-expanded={expandedSession === session.id}
+                  style={{ width: "100%", padding: "16px 18px", borderRadius: radius.md, background: expandedSession === session.id ? "rgba(201,169,110,0.03)" : c.obsidian, border: "none", boxShadow: expandedSession === session.id ? "0 0 0 1px rgba(201,169,110,0.1)" : "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 16, transition: "all 0.25s cubic-bezier(0.16,1,0.3,1)", textAlign: "left" }}
                   onMouseEnter={(e) => { if (expandedSession !== session.id) e.currentTarget.style.background = "rgba(240,237,232,0.02)"; }}
                   onMouseLeave={(e) => { if (expandedSession !== session.id) e.currentTarget.style.background = c.obsidian; }}>
                   <div style={{ width: 44, height: 44, borderRadius: "50%", flexShrink: 0, border: `2px solid ${scoreLabelColor(session.score)}`, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
@@ -570,16 +591,22 @@ export default function DashboardHome() {
           </div>
           <div style={{ padding: "22px 28px" }}>
             {rightTab === "insights" ? (
-              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                {aiInsights.map((insight, i) => (
-                  <div key={i} style={{ padding: "14px 16px", borderRadius: radius.sm, background: c.obsidian, borderLeft: `3px solid ${insight.type === "strength" ? c.sage : insight.type === "weakness" ? c.ember : c.gilt}` }}>
-                    <span style={{ fontFamily: font.ui, fontSize: 9, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", color: insight.type === "strength" ? c.sage : insight.type === "weakness" ? c.ember : c.gilt, display: "block", marginBottom: 4 }}>
-                      {insight.type === "strength" ? "Strength" : insight.type === "weakness" ? "Improve" : "Tip"}
-                    </span>
-                    <p style={{ fontFamily: font.ui, fontSize: 12, color: c.chalk, lineHeight: 1.6 }}>{insight.text}</p>
-                  </div>
-                ))}
-              </div>
+              aiInsights.length === 0 ? (
+                <div style={{ textAlign: "center", padding: "24px 0" }}>
+                  <p style={{ fontFamily: font.ui, fontSize: 12, color: c.stone }}>Complete more sessions to unlock AI insights.</p>
+                </div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                  {aiInsights.map((insight, i) => (
+                    <div key={i} style={{ padding: "14px 16px", borderRadius: radius.sm, background: c.obsidian, borderLeft: `3px solid ${insight.type === "strength" ? c.sage : insight.type === "weakness" ? c.ember : c.gilt}` }}>
+                      <span style={{ fontFamily: font.ui, fontSize: 9, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", color: insight.type === "strength" ? c.sage : insight.type === "weakness" ? c.ember : c.gilt, display: "block", marginBottom: 4 }}>
+                        {insight.type === "strength" ? "Strength" : insight.type === "weakness" ? "Improve" : "Tip"}
+                      </span>
+                      <p style={{ fontFamily: font.ui, fontSize: 12, color: c.chalk, lineHeight: 1.6 }}>{insight.text}</p>
+                    </div>
+                  ))}
+                </div>
+              )
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
                 {upcomingGoals.map((goal, i) => (

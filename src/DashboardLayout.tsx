@@ -83,7 +83,7 @@ export default function DashboardLayout() {
 
       {/* Sidebar */}
       <aside role="complementary" aria-label="Navigation sidebar" style={{
-        width: 240, borderRight: `1px solid ${c.border}`, padding: "24px 16px 0",
+        width: 240, borderRight: "none", boxShadow: "1px 0 3px rgba(0,0,0,0.2), 1px 0 0 rgba(240,237,232,0.04)", padding: "24px 16px 0",
         display: "flex", flexDirection: "column", position: "fixed", top: 0, bottom: 0,
         background: c.obsidian, zIndex: 20, overflow: "hidden",
         transform: isMobile ? (sidebarOpen ? "translateX(0)" : "translateX(-100%)") : "translateX(0)",
