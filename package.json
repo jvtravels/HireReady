@@ -3,8 +3,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "vite build && node scripts/prerender.mjs",
-    "build:quick": "vite build",
+    "build": "vite build",
+    "build:prerender": "vite build && node scripts/prerender.mjs",
     "dev": "vite",
     "preview": "vite preview --host 127.0.0.1",
     "test": "vitest run",
