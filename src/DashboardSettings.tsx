@@ -532,12 +532,14 @@ export default function SettingsPage() {
                   <button disabled={cancelLoading} onClick={async () => {
                     setCancelLoading(true); setCancelMsg("");
                     try {
-                      if (supabaseConfigured) { const client = await getSupabase(); await client.auth.getSession(); }
                       const hdrs = await authHeaders();
-                      const res = await fetch("/api/cancel-subscription", { method: "POST", headers: hdrs });
+                      const ctrl = new AbortController();
+                      const timer = setTimeout(() => ctrl.abort(), 15000);
+                      const res = await fetch("/api/cancel-subscription", { method: "POST", headers: hdrs, signal: ctrl.signal });
+                      clearTimeout(timer);
                       if (res.ok) { const data = await res.json(); if (data.success) { authUpdateUser({ subscriptionTier: "free", subscriptionEnd: new Date().toISOString() }); setCancelMsg("Cancelled."); setConfirmCancel(false); showToast("Plan cancelled"); } else { setCancelMsg(data.error || "Failed."); showToast(data.error || "Cancellation failed"); } }
                       else { const d = await res.json().catch(() => ({})); setCancelMsg(d.error || `Error (${res.status}).`); showToast(d.error || "Cancellation failed"); }
-                    } catch { setCancelMsg("Network error."); showToast("Network error"); } finally { setCancelLoading(false); }
+                    } catch (err) { const msg = err instanceof DOMException && err.name === "AbortError" ? "Request timed out." : "Network error."; setCancelMsg(msg); showToast(msg); } finally { setCancelLoading(false); }
                   }}
                     style={{ padding: "6px 14px", borderRadius: 6, border: "none", cursor: "pointer", background: c.ember, color: "#fff", fontFamily: font.ui, fontSize: 11, fontWeight: 600, opacity: cancelLoading ? 0.6 : 1 }}>
                     {cancelLoading ? "Cancelling..." : "Yes, Cancel"}
