@@ -278,12 +278,13 @@ export default function DashboardHome() {
           <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 14 }}>
             <button className="shimmer-btn dash-focus" onClick={handleStartSession} style={{
               fontFamily: font.ui, fontSize: 14, fontWeight: 600, padding: "12px 28px", borderRadius: radius.md,
-              border: "1px solid rgba(201,169,110,0.3)", background: `linear-gradient(135deg, rgba(201,169,110,0.15), rgba(201,169,110,0.08))`,
-              color: c.ivory, cursor: "pointer", display: "flex", alignItems: "center", gap: 8, whiteSpace: "nowrap",
+              border: "none", background: `linear-gradient(135deg, ${c.gilt}, ${c.giltDark})`,
+              color: c.obsidian, cursor: "pointer", display: "flex", alignItems: "center", gap: 8, whiteSpace: "nowrap",
+              boxShadow: "0 2px 12px rgba(201,169,110,0.2)",
               transition: "all 0.3s cubic-bezier(0.16,1,0.3,1)",
             }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = "linear-gradient(135deg, rgba(201,169,110,0.22), rgba(201,169,110,0.12))"; e.currentTarget.style.borderColor = "rgba(201,169,110,0.45)"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = "linear-gradient(135deg, rgba(201,169,110,0.15), rgba(201,169,110,0.08))"; e.currentTarget.style.borderColor = "rgba(201,169,110,0.3)"; }}
+              onMouseEnter={(e) => { e.currentTarget.style.boxShadow = "0 4px 20px rgba(201,169,110,0.3)"; e.currentTarget.style.transform = "translateY(-1px)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.boxShadow = "0 2px 12px rgba(201,169,110,0.2)"; e.currentTarget.style.transform = "translateY(0)"; }}
             >
               <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polygon points="5,3 19,12 5,21" /></svg>
               {atSessionLimit ? "Upgrade to Continue" : "Start Session"}
