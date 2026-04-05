@@ -278,12 +278,19 @@ export default function DashboardHome() {
       )}
 
       {/* ─── Hero CTA ─── */}
-      <div style={{ ...card, background: c.graphite, padding: isMobile ? "24px" : "32px 36px", marginBottom: sp["2xl"], position: "relative" as const, overflow: "hidden" as const }}>
-        <div style={{ position: "absolute", top: 0, right: 0, width: "40%", height: "100%", background: `linear-gradient(135deg, transparent 0%, rgba(201,169,110,0.04) 100%)`, pointerEvents: "none" }} />
+      <div style={{
+        ...card, background: c.graphite, padding: isMobile ? "24px" : "32px 36px", marginBottom: sp["2xl"],
+        position: "relative" as const, overflow: "hidden" as const,
+        border: "1px solid rgba(201,169,110,0.12)",
+        boxShadow: "0 1px 3px rgba(0,0,0,0.24), 0 0 0 1px rgba(201,169,110,0.06), 0 0 40px rgba(201,169,110,0.04)",
+      }}>
+        {/* Golden radial glow */}
+        <div style={{ position: "absolute", top: "-40%", right: "-5%", width: "50%", height: "180%", background: "radial-gradient(ellipse at center, rgba(201,169,110,0.08) 0%, rgba(201,169,110,0.03) 40%, transparent 70%)", pointerEvents: "none" }} />
+        <div style={{ position: "absolute", bottom: 0, left: 0, width: "100%", height: "1px", background: "linear-gradient(90deg, transparent, rgba(201,169,110,0.15) 30%, rgba(201,169,110,0.15) 70%, transparent)", pointerEvents: "none" }} />
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: isMobile ? 16 : 24, position: "relative" as const }}>
           <div style={{ flex: 1, minWidth: 260 }}>
             {daysLeft > 0 && persisted.interviewDate && (
-              <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "5px 12px", borderRadius: radius.pill, background: daysLeft <= 7 ? "rgba(196,112,90,0.08)" : "rgba(122,158,126,0.08)", marginBottom: 12 }}>
+              <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "5px 14px", borderRadius: radius.pill, background: daysLeft <= 7 ? "rgba(196,112,90,0.08)" : "rgba(122,158,126,0.06)", border: `1px solid ${daysLeft <= 7 ? "rgba(196,112,90,0.2)" : "rgba(122,158,126,0.18)"}`, marginBottom: 12 }}>
                 <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={daysLeft <= 7 ? c.ember : c.sage} strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                 <span style={{ fontFamily: font.mono, fontSize: 11, fontWeight: 600, color: daysLeft <= 7 ? c.ember : c.sage }}>{daysLeft} days until interview</span>
               </div>
