@@ -253,9 +253,10 @@ export default function DashboardHome() {
 
       {/* ─── Hero CTA ─── */}
       <div style={{
-        ...card, padding: isMobile ? "24px" : "28px 32px", marginBottom: sp["2xl"],
+        ...card, padding: isMobile ? "24px" : "28px 32px", marginBottom: sp["2xl"], overflow: "hidden",
       }} className="gradient-border-card">
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: isMobile ? 16 : 24 }}>
+        <div style={{ position: "absolute", top: "-30%", right: "-5%", width: "45%", height: "160%", background: "radial-gradient(ellipse at center, rgba(201,169,110,0.06) 0%, rgba(201,169,110,0.02) 45%, transparent 70%)", pointerEvents: "none" }} />
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: isMobile ? 16 : 24, position: "relative" }}>
           <div style={{ flex: 1, minWidth: 260 }}>
             <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "5px 14px", borderRadius: radius.pill, background: "rgba(122,158,126,0.06)", border: "1px solid rgba(122,158,126,0.18)", marginBottom: 14 }}>
               <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
