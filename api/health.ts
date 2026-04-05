@@ -27,9 +27,11 @@ async function checkUpstash(): Promise<"ok" | "error" | "missing"> {
   const token = process.env.UPSTASH_REDIS_REST_TOKEN;
   if (!url || !token) return "missing";
   try {
-    // Upstash REST API: /PING returns {"result":"PONG"}
-    const res = await fetch(`${url}/PING`, {
-      headers: { Authorization: `Bearer ${token}` },
+    // Use pipeline endpoint with PING command (same pattern as rest of codebase)
+    const res = await fetch(`${url}/pipeline`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify([["PING"]]),
       signal: AbortSignal.timeout(5000),
     });
     return res.ok ? "ok" : "error";
