@@ -38,8 +38,8 @@ export const ScoreTrendChart = memo(function ScoreTrendChart({ data }: { data: T
             </g>
           );
         })}
-        <path d={area} fill="url(#trendGrad)" />
-        <path d={line} fill="none" stroke={c.gilt} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        <path d={area} fill="url(#trendGrad)" style={{ pointerEvents: "none" }} />
+        <path d={line} fill="none" stroke={c.gilt} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ pointerEvents: "none" }} />
         {points.map((p, i) => (
           <g key={i}>
             <circle cx={p.x} cy={p.y} r="12" fill="transparent" onMouseEnter={() => setHovered(i)} style={{ cursor: "pointer" }} />
@@ -78,7 +78,7 @@ export const SkillRadar = memo(function SkillRadar({ skills: s }: { skills: Skil
   const prevPolygon = s.map((sk, i) => getPoint(i, sk.prev)).map(p => `${p.x},${p.y}`).join(" ");
 
   return (
-    <svg width="100%" viewBox={`0 0 ${size} ${size}`} style={{ display: "block" }} role="img" aria-label="Skill radar chart">
+    <svg width="100%" viewBox={`0 0 ${size} ${size}`} style={{ display: "block" }} role="img" aria-label={`Skill radar: ${s.map(sk => `${sk.name} ${sk.score}`).join(", ")}`}>
       {[25, 50, 75, 100].map((v) => (
         <polygon key={v} points={Array.from({ length: n }).map((_, i) => getPoint(i, v)).map(p => `${p.x},${p.y}`).join(" ")} fill="none" stroke={c.border} strokeWidth="1" />
       ))}

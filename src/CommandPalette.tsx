@@ -83,6 +83,14 @@ export default function CommandPalette({ onStartSession, onExport, sessions = []
     }
   }, [open]);
 
+  // Close palette on window resize to avoid position issues
+  useEffect(() => {
+    if (!open) return;
+    const handleResize = () => setOpen(false);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, [open]);
+
   const run = (cmd: Command) => {
     setOpen(false);
     cmd.action();

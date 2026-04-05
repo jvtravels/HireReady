@@ -184,7 +184,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     });
 
     // Safety timeout — never stay stuck on loading skeleton
-    const timeout = setTimeout(() => { if (!cancelled) setDataLoading(false); }, 5000);
+    const timeout = setTimeout(() => { if (!cancelled) setDataLoading(false); }, 10000);
     return () => { cancelled = true; clearTimeout(timeout); };
   }, [user?.id]);
 

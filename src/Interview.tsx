@@ -309,7 +309,10 @@ async function fetchLLMEvaluation(params: {
       throw new Error(data.retryAfter ? `Too many requests. Please wait ${data.retryAfter} seconds and try again.` : "Too many requests. Please wait a moment and try again.");
     }
     if (!res.ok) return null;
-    return await res.json();
+    const body = await res.json();
+    // Validate response shape
+    if (!body || typeof body.overallScore !== "number" || typeof body.feedback !== "string") return null;
+    return body;
   } catch (err) {
     if (err instanceof DOMException && err.name === "AbortError") {
       throw new Error("Evaluation timed out. Using estimated score.");
@@ -507,7 +510,7 @@ function UserWebcam({ isMuted, isCameraOff }: { isMuted: boolean; isCameraOff: b
   return (
     <div style={{
       width: "100%", height: "100%", borderRadius: 16, overflow: "hidden",
-      background: c.graphite, position: "relative",
+      background: c.graphite, position: "relative", aspectRatio: "16/9",
     }}>
       {!isCameraOff && (
         <video ref={videoRef} autoPlay muted playsInline
@@ -578,6 +581,7 @@ function ControlButton({ icon, label, active, danger, onClick }: {
 }) {
   return (
     <button
+      type="button"
       onClick={onClick}
       title={label}
       aria-label={label}

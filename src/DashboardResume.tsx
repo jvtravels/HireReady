@@ -144,6 +144,7 @@ export default function DashboardResume() {
       updateUser({ resumeData: result.profile as unknown as ParsedResume });
       setPhase("done");
     } else {
+      setErrorMsg("AI analysis unavailable — showing basic profile from your resume. You can re-analyze anytime.");
       const parsed = parseResumeData(text);
       const fallback: ResumeProfile = {
         headline: parsed.name || "Resume uploaded",

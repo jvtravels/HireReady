@@ -211,6 +211,13 @@ export default function DashboardHome() {
     return null;
   });
   const dismissDraft = () => { setHasDraft(null); try { localStorage.removeItem(draftKey); } catch {} };
+  // Refresh draft relative time every 60s
+  const [, setDraftTick] = useState(0);
+  useEffect(() => {
+    if (!hasDraft) return;
+    const timer = setInterval(() => setDraftTick(t => t + 1), 60000);
+    return () => clearInterval(timer);
+  }, [!!hasDraft]);
 
   return (
     <div style={{ margin: "0 auto", lineHeight: 1.5 }} className="dash-card">
@@ -284,7 +291,7 @@ export default function DashboardHome() {
 
       {/* ─── Resume Draft Banner ─── */}
       {hasDraft && (
-        <div style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 20px", borderRadius: radius.md, background: "rgba(201,169,110,0.04)", border: `1px solid rgba(201,169,110,0.15)`, marginBottom: sp.xl }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 20px", borderRadius: radius.md, background: "rgba(201,169,110,0.04)", border: `1px solid rgba(201,169,110,0.15)`, marginBottom: sp.xl, flexWrap: "wrap" }}>
           <div style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(201,169,110,0.08)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
             <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>
           </div>

@@ -376,7 +376,7 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
               <div>
                 <label htmlFor="signup-email" style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: c.chalk, display: "block", marginBottom: 6, letterSpacing: "0.02em" }}>Email</label>
                 <input id="signup-email" ref={isLogin ? firstInputRef : undefined} type="email" value={email}
-                  onChange={(e) => { setEmail(e.target.value); setEmailSuggestion(""); }}
+                  onChange={(e) => { setEmail(e.target.value); checkEmailTypo(e.target.value); }}
                   onBlur={(e) => { e.currentTarget.style.borderColor = c.border; checkEmailTypo(email); }}
                   placeholder="you@company.com" required
                   aria-describedby={error ? "form-error" : undefined}

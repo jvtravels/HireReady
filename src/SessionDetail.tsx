@@ -87,10 +87,12 @@ export default function SessionDetail() {
   const [feedbackSaved, setFeedbackSaved] = useState(false);
   const [showFeedbackForm, setShowFeedbackForm] = useState(false);
 
-  // Load existing feedback
+  // Load existing feedback (guard against race conditions when switching sessions)
   useEffect(() => {
     if (!id || !user?.id) return;
+    let cancelled = false;
     getSessionFeedback(id, user.id).then(fb => {
+      if (cancelled) return;
       if (fb) {
         setFeedbackRating(fb.rating);
         setFeedbackComment(fb.comment || "");
@@ -107,6 +109,7 @@ export default function SessionDetail() {
         setFeedbackSaved(true);
       }
     } catch {}
+    return () => { cancelled = true; };
   }, [id, user?.id]);
 
   const submitFeedback = useCallback(async (rating: "helpful" | "too_harsh" | "too_generous" | "inaccurate") => {
@@ -404,7 +407,7 @@ export default function SessionDetail() {
 
         {/* Transcript */}
         {session.transcript && session.transcript.length > 0 && (
-          <div style={{ background: c.graphite, borderRadius: 14, border: `1px solid ${c.border}`, padding: "28px 32px", marginBottom: 20 }}>
+          <div style={{ background: c.graphite, borderRadius: 14, border: `1px solid ${c.border}`, padding: "28px 32px", marginBottom: 20, maxWidth: "100ch" }}>
             <h3 style={{ fontSize: 15, fontWeight: 600, color: c.ivory, marginBottom: 20 }}>Full Transcript</h3>
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
               {session.transcript.map((msg, i) => (

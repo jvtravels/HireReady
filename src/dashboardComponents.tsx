@@ -137,8 +137,9 @@ export function UpgradeModal({ onClose, sessionsUsed, user, currentTier, onPayme
         })
         .catch(() => {
           if (cancelled) return;
-          // Auto-retry once after 2 seconds
+          // Auto-retry once after 2 seconds with user feedback
           if (attempt < 1) {
+            setError("Verification taking longer than expected — retrying...");
             setTimeout(() => { if (!cancelled) attemptVerify(attempt + 1); }, 2000);
           } else {
             setError("Payment verification failed. Your payment was received — try refreshing, or contact support@hireready.ai for help.");

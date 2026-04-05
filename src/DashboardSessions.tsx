@@ -171,9 +171,10 @@ export default function DashboardSessions() {
         )}
         {hasMore && (
           <button onClick={() => setShowCount(s => s + 20)}
-            style={{ width: "100%", padding: "12px", borderRadius: 10, border: `1px solid ${c.border}`, background: "transparent", color: c.stone, fontFamily: font.ui, fontSize: 13, cursor: "pointer", transition: "background 0.15s", marginTop: 4 }}
+            style={{ width: "100%", padding: "12px", borderRadius: 10, border: `1px solid ${c.border}`, background: "transparent", color: c.stone, fontFamily: font.ui, fontSize: 13, cursor: "pointer", transition: "background 0.15s", marginTop: 4, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
             onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(240,237,232,0.04)"; }}
             onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}>
+            <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="6 9 12 15 18 9"/></svg>
             Show more ({filtered.length - showCount} remaining)
           </button>
         )}
