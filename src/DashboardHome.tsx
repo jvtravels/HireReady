@@ -12,10 +12,9 @@ import { ScoreTrendChart, SkillRadar } from "./DashboardCharts";
 /* ─── Shared premium card style ─── */
 const card = {
   background: c.graphite,
-  borderRadius: radius.lg,
-  border: "none",
-  boxShadow: "0 1px 3px rgba(0,0,0,0.24), 0 0 0 1px rgba(240,237,232,0.04)",
-  transition: "box-shadow 0.3s cubic-bezier(0.16,1,0.3,1), transform 0.3s cubic-bezier(0.16,1,0.3,1)",
+  borderRadius: 12,
+  border: "1px solid rgba(240,237,232,0.06)",
+  position: "relative" as const,
 } as const;
 
 /* ─── Utility button style (hoisted for perf) ─── */
@@ -46,17 +45,6 @@ const badgeIcons: Record<string, (color: string) => JSX.Element> = {
   crown: (color) => <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M2 4l3 12h14l3-12-6 7-4-9-4 9-6-7z"/><path d="M3 20h18"/></svg>,
 };
 
-/* ─── Card hover lift helper ─── */
-const cardLift = {
-  onMouseEnter: (e: React.MouseEvent<HTMLDivElement>) => {
-    e.currentTarget.style.transform = "translateY(-2px)";
-    e.currentTarget.style.boxShadow = "0 4px 12px rgba(0,0,0,0.32), 0 0 0 1px rgba(201,169,110,0.06)";
-  },
-  onMouseLeave: (e: React.MouseEvent<HTMLDivElement>) => {
-    e.currentTarget.style.transform = "translateY(0)";
-    e.currentTarget.style.boxShadow = "0 1px 3px rgba(0,0,0,0.24), 0 0 0 1px rgba(240,237,232,0.04)";
-  },
-};
 
 /* ─── Focus-visible + reduced-motion styles ─── */
 const dashboardStyles = `
@@ -237,7 +225,7 @@ export default function DashboardHome() {
 
       {/* ─── Prep Plan Timeline ─── */}
       {prepPlan && (
-        <div style={{ ...card, padding: "24px 28px", marginBottom: sp["2xl"] }} {...cardLift}>
+        <div style={{ ...card, padding: "24px 28px", marginBottom: sp["2xl"] }} className="gradient-border-card">
           <button onClick={() => setPrepPlanOpen(!prepPlanOpen)} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", background: "none", border: "none", cursor: "pointer", padding: 0, outline: "none" }} aria-expanded={prepPlanOpen} aria-label="Toggle Interview Prep Plan">
             {sectionTitle("Interview Prep Plan", 15)}
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -358,7 +346,7 @@ export default function DashboardHome() {
           { label: "Improvement", value: hasData ? `+${overallStats.improvement}%` : "\u2014", icon: <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="1.5"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>, sub: hasData ? "All skills" : "Practice to improve", subColor: c.stone },
           { label: "Time Logged", value: hasData ? `${overallStats.hoursLogged}h` : "0h", icon: <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>, sub: "Total", subColor: c.stone },
         ].map((stat, i) => (
-          <div key={i} style={{ ...card, padding: "24px", cursor: "default" }} {...cardLift}>
+          <div key={i} style={{ ...card, padding: "24px", cursor: "default" }} className="gradient-border-card">
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
               <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 500, color: c.stone, letterSpacing: "0.04em", textTransform: "uppercase" as const }}>{stat.label}</span>
               <div style={{ opacity: 0.7 }}>{stat.icon}</div>
@@ -377,7 +365,7 @@ export default function DashboardHome() {
           .slice(0, 3);
         if (upcomingEvents.length === 0) return null;
         return (
-          <div style={{ ...card, padding: "24px 28px", marginBottom: sp["3xl"] }}>
+          <div style={{ ...card, padding: "24px 28px", marginBottom: sp["3xl"] }} className="gradient-border-card">
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
               {sectionTitle("Upcoming Interviews", 16)}
               <button onClick={() => nav("/dashboard/calendar")} style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 500, color: c.gilt, background: "none", border: "none", cursor: "pointer", opacity: 0.8 }}
@@ -412,7 +400,7 @@ export default function DashboardHome() {
       {/* ─── Row 1: Score Trend | Skill Breakdown ─── */}
       <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "2fr 1fr", gap: sp["2xl"], marginBottom: sp["2xl"] }}>
         {/* Score Trend */}
-        <div style={{ ...card, padding: "28px 32px" }} {...cardLift}>
+        <div style={{ ...card, padding: "28px 32px" }} className="gradient-border-card">
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
             <div>
               {sectionTitle("Score Trend")}
@@ -440,7 +428,7 @@ export default function DashboardHome() {
         </div>
 
         {/* Skill Radar */}
-        <div style={{ ...card, padding: "28px" }} {...cardLift}>
+        <div style={{ ...card, padding: "28px" }} className="gradient-border-card">
           {sectionTitle("Skill Breakdown")}
           {skills.length > 0 ? (
             <>
@@ -475,7 +463,7 @@ export default function DashboardHome() {
 
       {/* ─── Row 2: Recent Sessions | AI Insights (side by side) ─── */}
       <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "3fr 2fr", gap: sp["2xl"], marginBottom: sp["2xl"] }}>
-      <div style={{ ...card, padding: "28px 32px" }} {...cardLift}>
+      <div style={{ ...card, padding: "28px 32px" }} className="gradient-border-card">
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
           {sectionTitle("Recent Sessions")}
           <button onClick={() => setSortBy(sortBy === "date" ? "score" : "date")}
@@ -600,7 +588,7 @@ export default function DashboardHome() {
       </div>
 
         {/* Tabbed Insights & Goals (in same grid row as Recent Sessions) */}
-        <div style={{ ...card, overflow: "hidden" }} {...cardLift}>
+        <div style={{ ...card, overflow: "hidden" }} className="gradient-border-card">
           <div style={{ display: "flex", borderBottom: "1px solid rgba(240,237,232,0.04)" }}>
             {([["insights", "AI Insights"], ["goals", "Weekly Goals"]] as const).map(([key, label]) => (
               <button key={key} onClick={() => setRightTab(key)}
@@ -649,7 +637,7 @@ export default function DashboardHome() {
 
       {/* ─── Achievements (full-width) ─── */}
       {badges.length > 0 && (
-        <div style={{ ...card, padding: "24px 28px" }} {...cardLift}>
+        <div style={{ ...card, padding: "24px 28px" }} className="gradient-border-card">
           {sectionTitle("Achievements")}
           <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : `repeat(${Math.min(badges.length, 4)}, 1fr)`, gap: 12, marginTop: 16 }}>
             {badges.map((badge) => (
