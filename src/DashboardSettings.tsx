@@ -534,14 +534,14 @@ export default function SettingsPage() {
                   <button disabled={cancelLoading} onClick={async () => {
                     setCancelLoading(true); setCancelMsg("");
                     try {
-                      const hdrs = await authHeaders();
+                      const hdrs = await Promise.race([authHeaders(), new Promise<never>((_, rej) => setTimeout(() => rej(new Error("Auth timeout")), 5000))]);
                       const ctrl = new AbortController();
                       const timer = setTimeout(() => ctrl.abort(), 15000);
                       const res = await fetch("/api/reactivate-subscription", { method: "POST", headers: hdrs, signal: ctrl.signal });
                       clearTimeout(timer);
                       if (res.ok) { const data = await res.json(); if (data.success) { authUpdateUser({ cancelAtPeriodEnd: false }); setCancelMsg(""); showToast("Plan reactivated"); } else { showToast(data.error || "Failed"); } }
-                      else { const d = await res.json().catch(() => ({})); showToast(d.error || "Failed"); }
-                    } catch (err) { const msg = err instanceof DOMException && err.name === "AbortError" ? "Request timed out." : "Network error."; showToast(msg); } finally { setCancelLoading(false); }
+                      else { const d = await res.json().catch(() => ({})); showToast(d.error || `Failed (${res.status})`); }
+                    } catch (err) { const msg = err instanceof DOMException && err.name === "AbortError" ? "Request timed out." : (err instanceof Error ? err.message : "Network error."); setCancelMsg(msg); showToast(msg); } finally { setCancelLoading(false); }
                   }}
                     style={{ padding: "8px 20px", borderRadius: 6, border: "none", cursor: "pointer", background: c.sage, color: "#fff", fontFamily: font.ui, fontSize: 12, fontWeight: 600, opacity: cancelLoading ? 0.6 : 1 }}>
                     {cancelLoading ? "Reactivating..." : "Reactivate Plan"}
@@ -558,7 +558,7 @@ export default function SettingsPage() {
                   <button disabled={cancelLoading} onClick={async () => {
                     setCancelLoading(true); setCancelMsg("");
                     try {
-                      const hdrs = await authHeaders();
+                      const hdrs = await Promise.race([authHeaders(), new Promise<never>((_, rej) => setTimeout(() => rej(new Error("Auth timeout")), 5000))]);
                       const ctrl = new AbortController();
                       const timer = setTimeout(() => ctrl.abort(), 15000);
                       const res = await fetch("/api/cancel-subscription", { method: "POST", headers: hdrs, signal: ctrl.signal });
