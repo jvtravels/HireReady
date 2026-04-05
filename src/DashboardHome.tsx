@@ -157,7 +157,7 @@ export default function DashboardHome() {
   const activeNotifs = notifications.filter(n => !persisted.dismissedNotifs.includes(n.id));
 
   return (
-    <div style={{ margin: "0 auto" }} className="dash-card">
+    <div style={{ margin: "0 auto", lineHeight: 1.5 }} className="dash-card">
       <style>{dashboardStyles}</style>
       {/* ─── Header ─── */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: sp["3xl"], flexWrap: "wrap", gap: sp.lg }}>
@@ -165,8 +165,8 @@ export default function DashboardHome() {
           <h1 style={{ fontFamily: font.display, fontSize: isMobile ? 26 : 32, fontWeight: 400, color: c.ivory, marginBottom: 6, letterSpacing: "-0.01em" }}>
             {getPersonalizedGreeting(displayName.split(" ")[0], currentStreak, recentSessions.length)}
           </h1>
-          {returnContext && <p style={{ fontFamily: font.ui, fontSize: 14, color: c.stone, marginBottom: 2 }}>{returnContext}</p>}
-          {smartSchedule && <p style={{ fontFamily: font.ui, fontSize: 13, color: c.gilt, fontStyle: "italic", opacity: 0.8 }}>{smartSchedule}</p>}
+          {returnContext && <p style={{ fontFamily: font.ui, fontSize: 14, color: c.stone, lineHeight: 1.5, marginBottom: 2 }}>{returnContext}</p>}
+          {smartSchedule && <p style={{ fontFamily: font.ui, fontSize: 13, color: c.gilt, fontStyle: "italic" }}>{smartSchedule}</p>}
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
           <button className="shimmer-btn dash-focus" onClick={handleStartSession} style={{
@@ -182,7 +182,16 @@ export default function DashboardHome() {
               <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg>
             </button>
             {headerMenuOpen && (
-              <div style={{ position: "absolute", top: "calc(100% + 6px)", right: 0, minWidth: 200, background: c.graphite, border: `1px solid ${c.borderHover}`, borderRadius: radius.md, padding: "6px 0", zIndex: 50, boxShadow: "0 8px 32px rgba(0,0,0,0.4)" }}>
+              <div role="menu" aria-label="Dashboard actions" onKeyDown={(e) => {
+                if (e.key === "Escape") { setHeaderMenuOpen(false); return; }
+                if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+                  e.preventDefault();
+                  const items = e.currentTarget.querySelectorAll<HTMLElement>('[role="menuitem"]');
+                  const idx = Array.from(items).indexOf(document.activeElement as HTMLElement);
+                  const next = e.key === "ArrowDown" ? (idx + 1) % items.length : (idx - 1 + items.length) % items.length;
+                  items[next]?.focus();
+                }
+              }} style={{ position: "absolute", top: "calc(100% + 6px)", right: 0, minWidth: 200, background: c.graphite, border: `1px solid ${c.borderHover}`, borderRadius: radius.md, padding: "6px 0", zIndex: 50, boxShadow: "0 8px 32px rgba(0,0,0,0.4)" }}>
                 {[
                   { label: "Share Progress", icon: <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>, action: () => { handleExport(); setShareTooltip(true); setTimeout(() => setShareTooltip(false), 2000); } },
                   { label: "Download Report", icon: <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>, action: handleDownload },
@@ -190,7 +199,7 @@ export default function DashboardHome() {
                   { label: "Quick Case Study", icon: <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>, action: () => nav("/session/new?type=case-study") },
                   { label: "Export PDF", icon: <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>, action: handleExportPDF },
                 ].map((item) => (
-                  <button key={item.label} onClick={() => { item.action(); setHeaderMenuOpen(false); }}
+                  <button key={item.label} role="menuitem" onClick={() => { item.action(); setHeaderMenuOpen(false); }}
                     style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", padding: "10px 16px", fontFamily: font.ui, fontSize: 13, color: c.chalk, background: "transparent", border: "none", cursor: "pointer", transition: "background 0.15s" }}
                     onMouseEnter={(e) => e.currentTarget.style.background = "rgba(240,237,232,0.04)"}
                     onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}>
@@ -204,20 +213,20 @@ export default function DashboardHome() {
                 </div>
               </div>
             )}
-            {shareTooltip && <div style={{ position: "absolute", top: -32, left: "50%", transform: "translateX(-50%)", background: c.sage, color: c.obsidian, fontFamily: font.ui, fontSize: 11, fontWeight: 600, padding: "4px 10px", borderRadius: 4, whiteSpace: "nowrap", animation: "fadeIn 0.2s ease" }}>Copied to clipboard!</div>}
+            {shareTooltip && <div role="status" aria-live="polite" style={{ position: "absolute", top: -32, left: "50%", transform: "translateX(-50%)", background: c.sage, color: c.obsidian, fontFamily: font.ui, fontSize: 12, fontWeight: 600, padding: "4px 10px", borderRadius: 4, whiteSpace: "nowrap", animation: "fadeIn 0.2s ease" }}>Copied to clipboard!</div>}
           </div>
         </div>
       </div>
 
       {/* ─── Notifications ─── */}
       {activeNotifs.length > 0 && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: sp.xl }}>
+        <div role="region" aria-label="Notifications" style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: sp.xl }}>
           {activeNotifs.map((notif) => (
             <div key={notif.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 20px", borderRadius: radius.md, background: notif.type === "streak" ? "rgba(196,112,90,0.04)" : "rgba(122,158,126,0.04)", borderLeft: `3px solid ${notif.type === "streak" ? c.ember : c.sage}`, boxShadow: "0 1px 3px rgba(0,0,0,0.12)", transition: "background 0.2s ease" }}>
               <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={notif.type === "streak" ? c.ember : c.sage} strokeWidth="2" strokeLinecap="round">
                 {notif.type === "streak" ? <><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></> : <><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></>}
               </svg>
-              <span style={{ fontFamily: font.ui, fontSize: 14, color: c.chalk, flex: 1 }}>{notif.text}</span>
+              <span style={{ fontFamily: font.ui, fontSize: 14, color: c.chalk, flex: 1, lineHeight: 1.5 }}>{notif.text}</span>
               {notif.action && (
                 <button onClick={() => {
                   if (notif.action === "View Report") nav("/dashboard/analytics");
@@ -242,7 +251,7 @@ export default function DashboardHome() {
       {practiceReminder && (
         <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 20px", borderRadius: radius.md, background: "rgba(201,169,110,0.03)", borderLeft: `3px solid ${c.gilt}`, marginBottom: sp.xl }}>
           <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-          <span style={{ fontFamily: font.ui, fontSize: 14, color: c.chalk, flex: 1 }}>{practiceReminder}</span>
+          <span style={{ fontFamily: font.ui, fontSize: 14, color: c.chalk, flex: 1, lineHeight: 1.5 }}>{practiceReminder}</span>
           <button onClick={handleStartSession} style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: c.gilt, background: "rgba(201,169,110,0.08)", border: `1px solid rgba(201,169,110,0.2)`, borderRadius: 6, padding: "6px 14px", cursor: "pointer", whiteSpace: "nowrap" }}
             onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(201,169,110,0.15)"; }}
             onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(201,169,110,0.08)"; }}
@@ -252,7 +261,9 @@ export default function DashboardHome() {
 
       {/* ─── Daily Challenge (compact banner) ─── */}
       {dailyChallenge && !dailyChallenge.completed && (
-        <div style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 20px", borderRadius: radius.md, background: "rgba(201,169,110,0.03)", border: "1px solid rgba(201,169,110,0.08)", marginBottom: sp.xl, cursor: "pointer", transition: "all 0.2s ease" }}
+        <div role="button" tabIndex={0} aria-label={`Daily Challenge: ${dailyChallenge.label}`}
+          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); nav(`/session/new?type=${dailyChallenge.type}${dailyChallenge.focus ? `&focus=${dailyChallenge.focus}` : ""}`); } }}
+          style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 20px", borderRadius: radius.md, background: "rgba(201,169,110,0.03)", border: "1px solid rgba(201,169,110,0.08)", marginBottom: sp.xl, cursor: "pointer", transition: "all 0.2s ease" }}
           onClick={() => nav(`/session/new?type=${dailyChallenge.type}${dailyChallenge.focus ? `&focus=${dailyChallenge.focus}` : ""}`)}
           onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(201,169,110,0.06)"; e.currentTarget.style.borderColor = "rgba(201,169,110,0.15)"; }}
           onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(201,169,110,0.03)"; e.currentTarget.style.borderColor = "rgba(201,169,110,0.08)"; }}>
@@ -269,7 +280,7 @@ export default function DashboardHome() {
       {/* ─── Prep Plan Timeline ─── */}
       {prepPlan && (
         <div style={{ ...card, padding: "24px 28px", marginBottom: sp["2xl"] }} className="gradient-border-card">
-          <button onClick={() => setPrepPlanOpen(!prepPlanOpen)} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", background: "none", border: "none", cursor: "pointer", padding: 0, outline: "none" }} aria-expanded={prepPlanOpen} aria-label="Toggle Interview Prep Plan">
+          <button className="dash-focus" onClick={() => setPrepPlanOpen(!prepPlanOpen)} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", background: "none", border: "none", cursor: "pointer", padding: 0 }} aria-expanded={prepPlanOpen} aria-label="Toggle Interview Prep Plan">
             {sectionTitle("Interview Prep Plan", 17)}
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <span style={{ fontFamily: font.mono, fontSize: 12, color: c.gilt }}>{prepPlan.filter(s => s.done).length}/{prepPlan.length} complete</span>
@@ -393,10 +404,7 @@ export default function DashboardHome() {
           <div style={{ ...card, padding: "24px 28px", marginBottom: sp["3xl"] }} className="gradient-border-card">
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
               {sectionTitle("Upcoming Interviews", 18)}
-              <button onClick={() => nav("/dashboard/calendar")} style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.gilt, background: "none", border: "none", cursor: "pointer", opacity: 0.8 }}
-                onMouseEnter={(e) => e.currentTarget.style.opacity = "1"}
-                onMouseLeave={(e) => e.currentTarget.style.opacity = "0.8"}
-              >View all</button>
+              <button onClick={() => nav("/dashboard/calendar")} style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.gilt, background: "none", border: "none", cursor: "pointer", textDecoration: "underline", textUnderlineOffset: 2 }}>View all</button>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : `repeat(${Math.min(upcomingEvents.length, 3)}, 1fr)`, gap: 12 }}>
               {upcomingEvents.map(ev => {
@@ -404,7 +412,9 @@ export default function DashboardHome() {
                 const urgent = days <= 3;
                 const isToday = days === 0;
                 return (
-                  <div key={ev.id} style={{ padding: "16px 20px", borderRadius: radius.md, background: c.obsidian, borderLeft: `3px solid ${isToday ? c.ember : urgent ? c.gilt : c.sage}`, cursor: "pointer", transition: "background 0.2s ease" }} onClick={() => nav("/dashboard/calendar")}
+                  <div key={ev.id} role="button" tabIndex={0} aria-label={`${ev.company} interview — ${isToday ? "Today" : `${days} days away`}`}
+                    onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); nav("/dashboard/calendar"); } }}
+                    style={{ padding: "16px 20px", borderRadius: radius.md, background: c.obsidian, borderLeft: `3px solid ${isToday ? c.ember : urgent ? c.gilt : c.sage}`, cursor: "pointer", transition: "background 0.2s ease" }} onClick={() => nav("/dashboard/calendar")}
                     onMouseEnter={(e) => e.currentTarget.style.background = "rgba(240,237,232,0.02)"}
                     onMouseLeave={(e) => e.currentTarget.style.background = c.obsidian}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
@@ -469,11 +479,12 @@ export default function DashboardHome() {
               <SkillRadar skills={skills} />
               <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 14 }}>
                 {skills.map((sk) => (
-                  <div key={sk.name} onClick={() => nav(`/session/new?type=behavioral&focus=${sk.name.toLowerCase().replace(/\s+/g, "-")}`)}
+                  <div key={sk.name} role="button" tabIndex={0} aria-label={`Practice ${sk.name} — score ${sk.score}`}
+                    onClick={() => nav(`/session/new?type=behavioral&focus=${sk.name.toLowerCase().replace(/\s+/g, "-")}`)}
+                    onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); nav(`/session/new?type=behavioral&focus=${sk.name.toLowerCase().replace(/\s+/g, "-")}`); } }}
                     style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", padding: "6px 8px", margin: "-6px -8px", borderRadius: radius.sm, transition: "background 0.15s ease" }}
                     onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(240,237,232,0.03)"; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
-                    title={`Practice ${sk.name}`}>
+                    onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}>
                     <span style={{ fontFamily: font.ui, fontSize: 13, color: c.chalk, flex: 1 }}>{sk.name}</span>
                     <div style={{ width: 60, height: 3, background: "rgba(240,237,232,0.06)", borderRadius: 2, overflow: "hidden" }}><div style={{ height: "100%", width: `${sk.score}%`, background: sk.color, borderRadius: 2, transition: "width 0.4s cubic-bezier(0.16,1,0.3,1)" }} /></div>
                     <span style={{ fontFamily: font.mono, fontSize: 12, fontWeight: 600, color: c.ivory, width: 24, textAlign: "right" }}>{sk.score}</span>
@@ -510,8 +521,8 @@ export default function DashboardHome() {
       <div style={{ ...card, padding: "28px 32px" }} className="gradient-border-card">
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
           {sectionTitle("Recent Sessions")}
-          <button onClick={() => setSortBy(sortBy === "date" ? "score" : "date")}
-            style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, background: "rgba(240,237,232,0.03)", border: "none", borderRadius: radius.sm, padding: "6px 14px", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, outline: "none", transition: "color 0.2s" }}
+          <button aria-label={`Sort sessions by ${sortBy === "date" ? "score" : "date"}`} onClick={() => setSortBy(sortBy === "date" ? "score" : "date")}
+            style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, background: "rgba(240,237,232,0.03)", border: "none", borderRadius: radius.sm, padding: "6px 14px", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, transition: "color 0.2s" }}
             onMouseEnter={(e) => e.currentTarget.style.color = c.ivory}
             onMouseLeave={(e) => e.currentTarget.style.color = c.stone}>
             <svg aria-hidden="true" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -532,8 +543,8 @@ export default function DashboardHome() {
           </div>
           <div style={{ display: "flex", gap: 4 }}>
             {(["all", "month", "week"] as const).map((range) => (
-              <button key={range} onClick={() => setDateRange(range)}
-                style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, padding: "6px 12px", borderRadius: radius.sm, cursor: "pointer", background: dateRange === range ? "rgba(201,169,110,0.08)" : "transparent", border: "none", color: dateRange === range ? c.gilt : c.stone, transition: "all 0.2s ease", outline: "none" }}
+              <button key={range} aria-pressed={dateRange === range} onClick={() => setDateRange(range)}
+                style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, padding: "6px 12px", borderRadius: radius.sm, cursor: "pointer", background: dateRange === range ? "rgba(201,169,110,0.08)" : "transparent", border: "none", color: dateRange === range ? c.gilt : c.stone, transition: "all 0.2s ease" }}
                 onMouseEnter={(e) => { if (dateRange !== range) e.currentTarget.style.color = c.ivory; }}
                 onMouseLeave={(e) => { if (dateRange !== range) e.currentTarget.style.color = c.stone; }}>
                 {range === "all" ? "All time" : range === "month" ? "30 days" : "7 days"}
@@ -544,8 +555,8 @@ export default function DashboardHome() {
 
         <div style={{ display: "flex", gap: 6, marginBottom: 18, flexWrap: "wrap" }}>
           {sessionTypes.map((type) => (
-            <button key={type} onClick={() => setFilterType(type)}
-              style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, padding: "6px 14px", borderRadius: radius.pill, cursor: "pointer", background: filterType === type ? "rgba(201,169,110,0.08)" : "transparent", border: "none", color: filterType === type ? c.gilt : c.stone, transition: "all 0.2s ease", outline: "none" }}
+            <button key={type} aria-pressed={filterType === type} onClick={() => setFilterType(type)}
+              style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, padding: "6px 14px", borderRadius: radius.pill, cursor: "pointer", background: filterType === type ? "rgba(201,169,110,0.08)" : "transparent", border: "none", color: filterType === type ? c.gilt : c.stone, transition: "all 0.2s ease" }}
               onMouseEnter={(e) => { if (filterType !== type) e.currentTarget.style.color = c.chalk; }}
               onMouseLeave={(e) => { if (filterType !== type) e.currentTarget.style.color = c.stone; }}>
               {type}
