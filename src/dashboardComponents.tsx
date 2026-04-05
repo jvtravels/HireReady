@@ -455,9 +455,17 @@ export function SessionDetailView({ session, onBack }: { session: DashboardSessi
             <h2 style={{ fontFamily: font.ui, fontSize: 22, fontWeight: 600, color: c.ivory, marginBottom: 4 }}>{session.role}</h2>
           </div>
           <div style={{ textAlign: "center" }}>
-            <div style={{ width: 72, height: 72, borderRadius: "50%", border: `3px solid ${scoreLabelColor(session.score)}`, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
-              <span style={{ fontFamily: font.mono, fontSize: 26, fontWeight: 700, color: c.ivory, lineHeight: 1 }}>{session.score}</span>
-              <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, color: scoreLabelColor(session.score), marginTop: 2 }}>{scoreLabel(session.score)}</span>
+            <div style={{ width: 72, height: 72, position: "relative", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <svg width="72" height="72" viewBox="0 0 72 72" style={{ position: "absolute", transform: "rotate(-90deg)" }}>
+                <circle cx="36" cy="36" r="33" fill="none" stroke="rgba(240,237,232,0.06)" strokeWidth="3" />
+                <circle cx="36" cy="36" r="33" fill="none" stroke={scoreLabelColor(session.score)} strokeWidth="3"
+                  strokeDasharray={`${(session.score / 100) * 2 * Math.PI * 33} ${2 * Math.PI * 33}`}
+                  strokeLinecap="round" className="score-ring" />
+              </svg>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+                <span style={{ fontFamily: font.mono, fontSize: 26, fontWeight: 700, color: c.ivory, lineHeight: 1 }}>{session.score}</span>
+                <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, color: scoreLabelColor(session.score), marginTop: 2 }}>{scoreLabel(session.score)}</span>
+              </div>
             </div>
             <span style={{ fontFamily: font.mono, fontSize: 12, fontWeight: 600, color: session.change > 0 ? c.sage : c.ember, display: "block", marginTop: 4 }}>
               {session.change > 0 ? "+" : ""}{session.change} vs previous
@@ -482,7 +490,13 @@ export function SessionDetailView({ session, onBack }: { session: DashboardSessi
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           {session.questionScores.map((q, i) => (
             <div key={i} style={{ display: "flex", alignItems: "center", gap: 16, padding: "12px 16px", borderRadius: 10, background: c.obsidian, border: `1px solid ${c.border}` }}>
-              <div style={{ width: 40, height: 40, borderRadius: "50%", border: `2px solid ${scoreLabelColor(q.score)}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <div style={{ width: 40, height: 40, position: "relative", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <svg width="40" height="40" viewBox="0 0 40 40" style={{ position: "absolute", transform: "rotate(-90deg)" }}>
+                  <circle cx="20" cy="20" r="17" fill="none" stroke="rgba(240,237,232,0.06)" strokeWidth="2" />
+                  <circle cx="20" cy="20" r="17" fill="none" stroke={scoreLabelColor(q.score)} strokeWidth="2"
+                    strokeDasharray={`${(q.score / 100) * 2 * Math.PI * 17} ${2 * Math.PI * 17}`}
+                    strokeLinecap="round" className="score-ring" />
+                </svg>
                 <span style={{ fontFamily: font.mono, fontSize: 14, fontWeight: 600, color: c.ivory }}>{q.score}</span>
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>

@@ -54,10 +54,10 @@ export default function DashboardLayout() {
   const handleKeydown = useCallback((e: KeyboardEvent) => {
     // Ignore when typing in inputs
     if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLSelectElement) return;
-    if (e.key === "n" && !e.metaKey && !e.ctrlKey) { nav("/session/new"); }
+    if (e.key === "n" && !e.metaKey && !e.ctrlKey) { handleStartSession(); }
     if (e.key === "?" && !e.metaKey && !e.ctrlKey) { setShowShortcuts(v => !v); }
     if (e.key === "Escape" && showShortcuts) { setShowShortcuts(false); }
-  }, [nav, showShortcuts]);
+  }, [nav, showShortcuts, handleStartSession]);
 
   useEffect(() => {
     window.addEventListener("keydown", handleKeydown);
@@ -139,6 +139,12 @@ export default function DashboardLayout() {
               {activeNav === item.id && <div style={{ width: 3, height: 16, borderRadius: 2, background: c.gilt, marginLeft: "auto" }} />}
             </button>
           ))}
+          {!isMobile && (
+            <div style={{ margin: "16px 12px 0", padding: "8px 12px", borderRadius: 8, background: "rgba(240,237,232,0.02)", display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "default" }}>
+              <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>Command palette</span>
+              <kbd style={{ fontFamily: font.mono, fontSize: 10, color: c.stone, background: "rgba(240,237,232,0.04)", border: `1px solid ${c.border}`, borderRadius: 4, padding: "2px 6px" }}>⌘K</kbd>
+            </div>
+          )}
         </nav>
 
         {/* Plan Status */}
@@ -291,6 +297,8 @@ export default function DashboardLayout() {
             <h3 style={{ fontFamily: font.ui, fontSize: 15, fontWeight: 600, color: c.ivory, marginBottom: 16 }}>Keyboard Shortcuts</h3>
             {[
               ["N", "New session"],
+              ["⌘K", "Command palette"],
+              ["/", "Search sessions"],
               ["?", "Toggle this help"],
               ["Esc", "Close dialogs"],
             ].map(([key, desc]) => (

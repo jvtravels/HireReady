@@ -562,15 +562,11 @@ body {
 }
 
 /* ─── Score Ring Animation ─── */
-@keyframes scoreRingDraw {
-  from { stroke-dashoffset: 132; }
-  to { stroke-dashoffset: 0; }
-}
 .score-ring {
-  animation: scoreRingDraw 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  transition: stroke-dasharray 0.8s cubic-bezier(0.16, 1, 0.3, 1);
 }
 @media (prefers-reduced-motion: reduce) {
-  .score-ring { animation: none; }
+  .score-ring { transition: none; }
 }
 
 /* ─── Session Expand Animation ─── */

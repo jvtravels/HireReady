@@ -6,6 +6,22 @@ import { useDashboard } from "./DashboardContext";
 import { DataLoadingSkeleton } from "./dashboardComponents";
 import { useDocTitle } from "./useDocTitle";
 
+function relativeTime(dateStr: string): string {
+  const now = Date.now();
+  const then = new Date(dateStr).getTime();
+  const diff = now - then;
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "Just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  if (days === 1) return "Yesterday";
+  if (days < 7) return `${days}d ago`;
+  if (days < 30) return `${Math.floor(days / 7)}w ago`;
+  return new Date(dateStr).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
 export default function DashboardSessions() {
   useDocTitle("Sessions");
   const sessionNav = useNavigate();
@@ -109,9 +125,17 @@ export default function DashboardSessions() {
               onMouseEnter={(e) => { e.currentTarget.style.borderColor = c.borderHover; }}
               onMouseLeave={(e) => { e.currentTarget.style.borderColor = c.border; }}
             >
-              <div style={{ width: 52, height: 52, borderRadius: "50%", flexShrink: 0, border: `2.5px solid ${scoreLabelColor(session.score)}`, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
-                <span style={{ fontFamily: font.mono, fontSize: 18, fontWeight: 700, color: c.ivory, lineHeight: 1 }}>{session.score}</span>
-                <span style={{ fontFamily: font.ui, fontSize: 8, color: scoreLabelColor(session.score), fontWeight: 600, marginTop: 1 }}>{scoreLabel(session.score)}</span>
+              <div style={{ width: 52, height: 52, flexShrink: 0, position: "relative", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <svg width="52" height="52" viewBox="0 0 52 52" style={{ position: "absolute", transform: "rotate(-90deg)" }}>
+                  <circle cx="26" cy="26" r="23" fill="none" stroke="rgba(240,237,232,0.06)" strokeWidth="2.5" />
+                  <circle cx="26" cy="26" r="23" fill="none" stroke={scoreLabelColor(session.score)} strokeWidth="2.5"
+                    strokeDasharray={`${(session.score / 100) * 2 * Math.PI * 23} ${2 * Math.PI * 23}`}
+                    strokeLinecap="round" className="score-ring" />
+                </svg>
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+                  <span style={{ fontFamily: font.mono, fontSize: 18, fontWeight: 700, color: c.ivory, lineHeight: 1 }}>{session.score}</span>
+                  <span style={{ fontFamily: font.ui, fontSize: 8, color: scoreLabelColor(session.score), fontWeight: 600, marginTop: 1 }}>{scoreLabel(session.score)}</span>
+                </div>
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
@@ -123,8 +147,8 @@ export default function DashboardSessions() {
                   <span style={{ fontFamily: font.ui, fontSize: 12, color: c.stone }}>Improve: <span style={{ color: c.ember, fontWeight: 500 }}>{session.topWeakness}</span></span>
                 </div>
               </div>
-              <div style={{ textAlign: "right", flexShrink: 0 }}>
-                <span style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.chalk, display: "block", marginBottom: 2 }}>{session.dateLabel}</span>
+              <div style={{ textAlign: "right", flexShrink: 0 }} title={session.dateLabel}>
+                <span style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.chalk, display: "block", marginBottom: 2 }}>{relativeTime(session.date)}</span>
                 <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>{session.duration}</span>
               </div>
               <div style={{ padding: "4px 10px", borderRadius: 6, flexShrink: 0, background: session.change > 0 ? "rgba(122,158,126,0.08)" : "rgba(196,112,90,0.08)", border: `1px solid ${session.change > 0 ? "rgba(122,158,126,0.15)" : "rgba(196,112,90,0.15)"}` }}>
