@@ -46,6 +46,18 @@ const badgeIcons: Record<string, (color: string) => JSX.Element> = {
   crown: (color) => <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M2 4l3 12h14l3-12-6 7-4-9-4 9-6-7z"/><path d="M3 20h18"/></svg>,
 };
 
+/* ─── Card hover lift helper ─── */
+const cardLift = {
+  onMouseEnter: (e: React.MouseEvent<HTMLDivElement>) => {
+    e.currentTarget.style.transform = "translateY(-2px)";
+    e.currentTarget.style.boxShadow = "0 4px 12px rgba(0,0,0,0.32), 0 0 0 1px rgba(201,169,110,0.06)";
+  },
+  onMouseLeave: (e: React.MouseEvent<HTMLDivElement>) => {
+    e.currentTarget.style.transform = "translateY(0)";
+    e.currentTarget.style.boxShadow = "0 1px 3px rgba(0,0,0,0.24), 0 0 0 1px rgba(240,237,232,0.04)";
+  },
+};
+
 /* ─── Focus-visible + reduced-motion styles ─── */
 const dashboardStyles = `
   .dash-focus:focus-visible {
@@ -166,7 +178,7 @@ export default function DashboardHome() {
       {activeNotifs.length > 0 && (
         <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: sp.xl }}>
           {activeNotifs.map((notif) => (
-            <div key={notif.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 20px", borderRadius: radius.md, background: "rgba(240,237,232,0.02)", borderLeft: `3px solid ${notif.type === "streak" ? c.ember : c.sage}` }}>
+            <div key={notif.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 20px", borderRadius: radius.md, background: notif.type === "streak" ? "rgba(196,112,90,0.04)" : "rgba(122,158,126,0.04)", borderLeft: `3px solid ${notif.type === "streak" ? c.ember : c.sage}`, boxShadow: "0 1px 3px rgba(0,0,0,0.12)", transition: "background 0.2s ease" }}>
               <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={notif.type === "streak" ? c.ember : c.sage} strokeWidth="2" strokeLinecap="round">
                 {notif.type === "streak" ? <><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></> : <><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></>}
               </svg>
@@ -205,7 +217,7 @@ export default function DashboardHome() {
 
       {/* ─── Prep Plan Timeline ─── */}
       {prepPlan && (
-        <div style={{ ...card, padding: "24px 28px", marginBottom: sp["2xl"] }}>
+        <div style={{ ...card, padding: "24px 28px", marginBottom: sp["2xl"] }} {...cardLift}>
           <button onClick={() => setPrepPlanOpen(!prepPlanOpen)} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", background: "none", border: "none", cursor: "pointer", padding: 0, outline: "none" }} aria-expanded={prepPlanOpen} aria-label="Toggle Interview Prep Plan">
             {sectionTitle("Interview Prep Plan", 15)}
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -333,7 +345,7 @@ export default function DashboardHome() {
           // First 3 in top row, last 2 in bottom row
           if (i >= 3) return null;
           return (
-            <div key={i} style={{ ...card, padding: "24px" }}>
+            <div key={i} style={{ ...card, padding: "24px", cursor: "default" }} {...cardLift}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
                 <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 500, color: c.stone, letterSpacing: "0.04em", textTransform: "uppercase" as const }}>{stat.label}</span>
                 <div style={{ opacity: 0.7 }}>{stat.icon}</div>
@@ -349,7 +361,7 @@ export default function DashboardHome() {
           { label: "Improvement", value: hasData ? `+${overallStats.improvement}%` : "\u2014", icon: <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="1.5"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>, sub: hasData ? "All skills" : "Practice to improve", subColor: c.stone },
           { label: "Time Logged", value: hasData ? `${overallStats.hoursLogged}h` : "0h", icon: <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>, sub: "Total", subColor: c.stone },
         ].map((stat, i) => (
-          <div key={`stat2-${i}`} style={{ ...card, padding: "24px" }}>
+          <div key={`stat2-${i}`} style={{ ...card, padding: "24px", cursor: "default" }} {...cardLift}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
               <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 500, color: c.stone, letterSpacing: "0.04em", textTransform: "uppercase" as const }}>{stat.label}</span>
               <div style={{ opacity: 0.7 }}>{stat.icon}</div>
@@ -403,7 +415,7 @@ export default function DashboardHome() {
       {/* ─── Row 1: Score Trend | Skill Breakdown (equal 2-col) ─── */}
       <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: sp["2xl"], marginBottom: sp["2xl"] }}>
         {/* Score Trend */}
-        <div style={{ ...card, padding: "28px 32px" }}>
+        <div style={{ ...card, padding: "28px 32px" }} {...cardLift}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
             <div>
               {sectionTitle("Score Trend")}
@@ -431,7 +443,7 @@ export default function DashboardHome() {
         </div>
 
         {/* Skill Radar */}
-        <div style={{ ...card, padding: "28px" }}>
+        <div style={{ ...card, padding: "28px" }} {...cardLift}>
           {sectionTitle("Skill Breakdown")}
           {skills.length > 0 ? (
             <>
@@ -465,7 +477,7 @@ export default function DashboardHome() {
       </div>
 
       {/* ─── Row 2: Recent Sessions (full-width) ─── */}
-      <div style={{ ...card, padding: "28px 32px", marginBottom: sp["2xl"] }}>
+      <div style={{ ...card, padding: "28px 32px", marginBottom: sp["2xl"] }} {...cardLift}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
           {sectionTitle("Recent Sessions")}
           <button onClick={() => setSortBy(sortBy === "date" ? "score" : "date")}
@@ -592,7 +604,7 @@ export default function DashboardHome() {
       {/* ─── Row 3: AI Insights/Goals | Daily Challenge (equal 2-col) ─── */}
       <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: sp["2xl"], marginBottom: sp["2xl"] }}>
         {/* Tabbed Insights & Goals */}
-        <div style={{ ...card, overflow: "hidden" }}>
+        <div style={{ ...card, overflow: "hidden" }} {...cardLift}>
           <div style={{ display: "flex", borderBottom: "1px solid rgba(240,237,232,0.04)" }}>
             {([["insights", "AI Insights"], ["goals", "Weekly Goals"]] as const).map(([key, label]) => (
               <button key={key} onClick={() => setRightTab(key)}
@@ -640,7 +652,7 @@ export default function DashboardHome() {
 
         {/* Daily Challenge */}
         {dailyChallenge && !dailyChallenge.completed ? (
-          <div style={{ ...card, padding: "24px 28px", boxShadow: "0 1px 3px rgba(0,0,0,0.24), 0 0 0 1px rgba(201,169,110,0.08)" }}>
+          <div style={{ ...card, padding: "24px 28px", boxShadow: "0 1px 3px rgba(0,0,0,0.24), 0 0 0 1px rgba(201,169,110,0.08)" }} {...cardLift}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="2" strokeLinecap="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" /></svg>
@@ -663,7 +675,7 @@ export default function DashboardHome() {
 
       {/* ─── Row 4: Achievements (full-width, horizontal) ─── */}
       {badges.length > 0 && (
-        <div style={{ ...card, padding: "24px 28px" }}>
+        <div style={{ ...card, padding: "24px 28px" }} {...cardLift}>
           {sectionTitle("Achievements")}
           <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : `repeat(${Math.min(badges.length, 4)}, 1fr)`, gap: 12, marginTop: 16 }}>
             {badges.map((badge) => (
