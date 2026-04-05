@@ -177,17 +177,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(newUser);
     }
 
-    // Phase 1: Instant restore from local JWT (no network request).
-    // Read the cached session from localStorage via getSession(), load the
-    // profile, and stop the loading spinner immediately. This gives users a
-    // near-instant render instead of waiting for a server round-trip.
+    // Safety timeout: ensure loading never hangs
+    const safetyTimer = setTimeout(() => {
+      console.warn("[auth] safety timeout: forcing loading=false");
+      setLoading(false);
+    }, 5000);
+
+    // Fast restore: read the cached session from localStorage via getSession(),
+    // load the profile, and stop the loading spinner quickly.
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session) {
-        console.log("[auth] instant session restore from local JWT");
+        console.log("[auth] session restore from local JWT");
         try {
           const profile = await getProfile(session.user.id);
           if (profile) {
-            console.log("[auth] profile loaded (instant path)");
+            console.log("[auth] profile loaded");
             setUser(profileToUser(profile, session));
           } else {
             console.log("[auth] no profile found on load, signing out");
@@ -195,7 +199,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             await supabase.auth.signOut().catch(() => {});
           }
         } catch {
-          console.error("[auth] getProfile threw (instant path)");
+          console.error("[auth] getProfile threw");
           setUser(null);
           await supabase.auth.signOut().catch(() => {});
         }
@@ -203,11 +207,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.log("[auth] no local session found");
         setUser(null);
       }
+      clearTimeout(safetyTimer);
       setLoading(false);
 
-      // Phase 2: Background server validation — confirm the JWT is still
-      // valid server-side. If the account was deleted or token revoked,
-      // sign the user out without blocking the initial render.
+      // Background server validation — confirm the JWT is still valid.
+      // If the account was deleted or token revoked, sign out.
       supabase.auth.getUser().then(async ({ data: { user: authUser }, error: userError }) => {
         if (session && (userError || !authUser)) {
           console.warn("[auth] background validation failed — signing out");
@@ -218,14 +222,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }).catch((err) => {
       console.error("[auth] getSession failed:", err);
       setUser(null);
+      clearTimeout(safetyTimer);
       setLoading(false);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log("[auth] onAuthStateChange:", event);
-      // Skip INITIAL_SESSION — the explicit getUser() call above handles initial load
-      // with proper server-side validation. INITIAL_SESSION only reads the local JWT
-      // which can be stale (e.g. account deleted server-side).
+      // Skip INITIAL_SESSION — the explicit getSession() call above handles initial load.
       if (event === "INITIAL_SESSION") return;
       if ((event === "SIGNED_IN" || event === "TOKEN_REFRESHED") && session) {
         try {

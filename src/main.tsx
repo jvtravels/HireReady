@@ -26,24 +26,19 @@ const LegalPage = lazy(() => import("./LegalPage"));
 const SignUp = lazy(() => import("./SignUp"));
 const Onboarding = lazy(() => import("./Onboarding"));
 const OnboardingComplete = lazy(() => import("./OnboardingComplete"));
-// Preload dashboard chunks if user has a stored session (likely returning user)
-const dashboardLayoutImport = () => import("./DashboardLayout");
-const dashboardHomeImport = () => import("./DashboardHome");
-if (typeof window !== "undefined") {
-  try {
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key && key.startsWith("sb-") && key.endsWith("-auth-token")) {
-        // Returning user — prefetch dashboard chunks immediately
-        dashboardLayoutImport();
-        dashboardHomeImport();
-        break;
-      }
+const DashboardLayout = lazy(() => import("./DashboardLayout"));
+const DashboardHome = lazy(() => import("./DashboardHome"));
+// Prefetch dashboard chunks for returning users (stored auth session)
+try {
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key && key.startsWith("sb-") && key.endsWith("-auth-token")) {
+      import("./DashboardLayout");
+      import("./DashboardHome");
+      break;
     }
-  } catch {}
-}
-const DashboardLayout = lazy(dashboardLayoutImport);
-const DashboardHome = lazy(dashboardHomeImport);
+  }
+} catch {}
 const DashboardSessions = lazy(() => import("./DashboardSessions"));
 const DashboardCalendar = lazy(() => import("./DashboardCalendar"));
 const DashboardAnalytics = lazy(() => import("./DashboardAnalytics"));
