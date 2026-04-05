@@ -366,284 +366,283 @@ export default function DashboardHome() {
         );
       })()}
 
-      {/* ─── Main Grid (balanced 3:2 ratio) ─── */}
-      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "3fr 2fr", gap: sp["2xl"], alignItems: "start" }}>
-        {/* ── Left Column ── */}
-        <div style={{ display: "flex", flexDirection: "column", gap: sp["2xl"] }}>
-          {/* Score Trend */}
-          <div style={{ ...card, padding: "28px 32px" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
-              <div>
-                {sectionTitle("Score Trend")}
-                <p style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, marginTop: 4 }}>{scoreTrend.length > 0 ? "Hover for details" : "Complete sessions to see your progress"}</p>
-              </div>
-            </div>
-            {scoreTrend.length >= 2 ? (
-              <>
-                <ScoreTrendChart data={scoreTrend} />
-                <div style={{ display: "flex", justifyContent: "space-between", marginTop: 10, padding: "0 24px" }}>
-                  <span style={{ fontFamily: font.mono, fontSize: 10, color: c.stone }}>{scoreTrend[0].date}</span>
-                  <span style={{ fontFamily: font.mono, fontSize: 10, color: c.stone }}>{scoreTrend[scoreTrend.length - 1].date}</span>
-                </div>
-              </>
-            ) : (
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "48px 20px", textAlign: "center" }}>
-                <svg aria-hidden="true" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="rgba(240,237,232,0.08)" strokeWidth="1.5" strokeLinecap="round" style={{ marginBottom: 14 }}><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
-                <p style={{ fontFamily: font.ui, fontSize: 13, color: c.stone, marginBottom: 12 }}>Your score trend will appear here after your first session</p>
-                <button onClick={handleStartSession} style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: c.gilt, background: "rgba(201,169,110,0.06)", border: `1px solid rgba(201,169,110,0.12)`, borderRadius: radius.sm, padding: "8px 18px", cursor: "pointer", transition: "all 0.2s ease" }}
-                  onMouseEnter={(e) => e.currentTarget.style.background = "rgba(201,169,110,0.12)"}
-                  onMouseLeave={(e) => e.currentTarget.style.background = "rgba(201,169,110,0.06)"}
-                >Start a Session</button>
-              </div>
-            )}
-          </div>
-
-          {/* Recent Sessions */}
-          <div style={{ ...card, padding: "28px 32px" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-              {sectionTitle("Recent Sessions")}
-              <button onClick={() => setSortBy(sortBy === "date" ? "score" : "date")}
-                style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, background: "rgba(240,237,232,0.03)", border: "none", borderRadius: radius.sm, padding: "5px 12px", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, outline: "none", transition: "color 0.2s" }}
-                onMouseEnter={(e) => e.currentTarget.style.color = c.ivory}
-                onMouseLeave={(e) => e.currentTarget.style.color = c.stone}>
-                <svg aria-hidden="true" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  {sortBy === "date" ? <><polyline points="3 6 9 6"/><polyline points="3 12 15 12"/><polyline points="3 18 21 18"/></> : <><polyline points="3 6 21 6"/><polyline points="3 12 15 12"/><polyline points="3 18 9 18"/></>}
-                </svg>
-                {sortBy === "date" ? "By date" : "By score"}
-              </button>
-            </div>
-
-            <div style={{ display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
-              <div style={{ flex: 1, minWidth: 160, position: "relative" }}>
-                <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.stone} strokeWidth="2" strokeLinecap="round" style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)" }}><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                <input type="text" placeholder="Search sessions..." aria-label="Search sessions" value={searchQuery} onChange={(e) => handleSearch(e.target.value)}
-                  style={{ width: "100%", padding: "8px 10px 8px 32px", fontFamily: font.ui, fontSize: 12, color: c.ivory, background: c.obsidian, border: `1px solid rgba(240,237,232,0.06)`, borderRadius: radius.sm, outline: "none", boxSizing: "border-box", transition: "border-color 0.2s" }}
-                  onFocus={(e) => e.currentTarget.style.borderColor = "rgba(201,169,110,0.3)"}
-                  onBlur={(e) => e.currentTarget.style.borderColor = "rgba(240,237,232,0.06)"}
-                />
-              </div>
-              <div style={{ display: "flex", gap: 4 }}>
-                {(["all", "month", "week"] as const).map((range) => (
-                  <button key={range} onClick={() => setDateRange(range)}
-                    style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 500, padding: "6px 12px", borderRadius: radius.sm, cursor: "pointer", background: dateRange === range ? "rgba(201,169,110,0.08)" : "transparent", border: "none", color: dateRange === range ? c.gilt : c.stone, transition: "all 0.2s ease", outline: "none" }}
-                    onMouseEnter={(e) => { if (dateRange !== range) e.currentTarget.style.color = c.ivory; }}
-                    onMouseLeave={(e) => { if (dateRange !== range) e.currentTarget.style.color = c.stone; }}>
-                    {range === "all" ? "All time" : range === "month" ? "30 days" : "7 days"}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div style={{ display: "flex", gap: 6, marginBottom: 18, flexWrap: "wrap" }}>
-              {sessionTypes.map((type) => (
-                <button key={type} onClick={() => setFilterType(type)}
-                  style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 500, padding: "5px 14px", borderRadius: radius.pill, cursor: "pointer", background: filterType === type ? "rgba(201,169,110,0.08)" : "transparent", border: "none", color: filterType === type ? c.gilt : c.stone, transition: "all 0.2s ease", outline: "none" }}
-                  onMouseEnter={(e) => { if (filterType !== type) e.currentTarget.style.color = c.chalk; }}
-                  onMouseLeave={(e) => { if (filterType !== type) e.currentTarget.style.color = c.stone; }}>
-                  {type}
-                </button>
-              ))}
-            </div>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {filteredSessions.length === 0 ? (
-                <p style={{ fontFamily: font.ui, fontSize: 13, color: c.stone, textAlign: "center", padding: "32px 0" }}>
-                  {searchQuery ? `No sessions matching "${searchQuery}"` : "No sessions match this filter."}
-                </p>
-              ) : (
-                filteredSessions.map((session) => (
-                  <div key={session.id}>
-                    <button onClick={() => setExpandedSession(expandedSession === session.id ? null : session.id)} aria-expanded={expandedSession === session.id}
-                      style={{ width: "100%", padding: "16px 18px", borderRadius: radius.md, background: expandedSession === session.id ? "rgba(201,169,110,0.03)" : c.obsidian, border: "none", boxShadow: expandedSession === session.id ? "0 0 0 1px rgba(201,169,110,0.1)" : "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 16, transition: "all 0.25s cubic-bezier(0.16,1,0.3,1)", textAlign: "left", outline: "none" }}
-                      onMouseEnter={(e) => { if (expandedSession !== session.id) e.currentTarget.style.background = "rgba(240,237,232,0.02)"; }}
-                      onMouseLeave={(e) => { if (expandedSession !== session.id) e.currentTarget.style.background = c.obsidian; }}>
-                      <div style={{ width: 44, height: 44, borderRadius: "50%", flexShrink: 0, border: `2px solid ${scoreLabelColor(session.score)}`, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
-                        <span style={{ fontFamily: font.mono, fontSize: 14, fontWeight: 600, color: c.ivory, lineHeight: 1 }}>{session.score}</span>
-                        <span style={{ fontFamily: font.ui, fontSize: 7, color: scoreLabelColor(session.score), fontWeight: 600, lineHeight: 1, marginTop: 1 }}>{scoreLabel(session.score)}</span>
-                      </div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
-                          <span style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: c.ivory }}>{session.type}</span>
-                          <span style={{ fontFamily: font.mono, fontSize: 11, fontWeight: 600, color: session.change > 0 ? c.sage : c.ember }}>{session.change > 0 ? "+" : ""}{session.change}</span>
-                        </div>
-                        <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>{session.role}</span>
-                      </div>
-                      <div style={{ textAlign: "right", flexShrink: 0 }}>
-                        <span style={{ fontFamily: font.ui, fontSize: 12, color: c.chalk, display: "block" }}>{session.dateLabel}</span>
-                        <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>{session.duration}</span>
-                      </div>
-                      <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.stone} strokeWidth="2" strokeLinecap="round" style={{ transform: expandedSession === session.id ? "rotate(180deg)" : "rotate(0)", transition: "transform 0.2s", flexShrink: 0 }}><polyline points="6 9 12 15 18 9"/></svg>
-                    </button>
-
-                    {expandedSession === session.id && (
-                      <div style={{ padding: "18px 22px", margin: "6px 0", background: c.obsidian, borderRadius: radius.md, animation: "slideDown 0.2s ease" }}>
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: feedbackSession === session.id ? 16 : 0 }}>
-                          <div>
-                            <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, color: c.sage, letterSpacing: "0.06em", textTransform: "uppercase", display: "block", marginBottom: 4 }}>Top Strength</span>
-                            <span style={{ fontFamily: font.ui, fontSize: 13, color: c.ivory }}>{session.topStrength}</span>
-                          </div>
-                          <div>
-                            <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, color: c.ember, letterSpacing: "0.06em", textTransform: "uppercase", display: "block", marginBottom: 4 }}>To Improve</span>
-                            <span style={{ fontFamily: font.ui, fontSize: 13, color: c.ivory }}>{session.topWeakness}</span>
-                          </div>
-                        </div>
-                        {feedbackSession === session.id && (
-                          <div style={{ padding: "16px 18px", borderRadius: radius.sm, background: "rgba(201,169,110,0.02)", borderLeft: `3px solid rgba(201,169,110,0.15)`, marginBottom: 14 }}>
-                            <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, color: c.gilt, letterSpacing: "0.06em", textTransform: "uppercase", display: "block", marginBottom: 8 }}>AI Feedback</span>
-                            <p style={{ fontFamily: font.ui, fontSize: 13, color: c.chalk, lineHeight: 1.7, margin: 0 }}>{session.feedback}</p>
-                          </div>
-                        )}
-                        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                          <button onClick={() => setFeedbackSession(feedbackSession === session.id ? null : session.id)}
-                            style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: c.gilt, background: "rgba(201,169,110,0.06)", border: "none", borderRadius: radius.sm, padding: "8px 16px", cursor: "pointer", transition: "background 0.2s" }}
-                            onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(201,169,110,0.12)"; }}
-                            onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(201,169,110,0.06)"; }}>
-                            {feedbackSession === session.id ? "Hide Feedback" : "View Feedback"}
-                          </button>
-                          <button onClick={() => setViewingSession(session.id)}
-                            style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: c.ivory, background: "rgba(240,237,232,0.04)", border: "none", borderRadius: radius.sm, padding: "8px 16px", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, transition: "background 0.2s" }}
-                            onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(240,237,232,0.08)"; }}
-                            onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(240,237,232,0.04)"; }}>
-                            <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
-                            Full Transcript
-                          </button>
-                          <button onClick={() => nav(`/session/new?type=${session.type.toLowerCase().replace(" ", "-")}`)}
-                            style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: c.stone, background: "transparent", border: "none", borderRadius: radius.sm, padding: "8px 16px", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, transition: "color 0.2s" }}
-                            onMouseEnter={(e) => { e.currentTarget.style.color = c.ivory; }}
-                            onMouseLeave={(e) => { e.currentTarget.style.color = c.stone; }}>
-                            <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
-                            Redo {session.type}
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ))
-              )}
+      {/* ─── Row 1: Score Trend | Skill Breakdown (equal 2-col) ─── */}
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: sp["2xl"], marginBottom: sp["2xl"] }}>
+        {/* Score Trend */}
+        <div style={{ ...card, padding: "28px 32px" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
+            <div>
+              {sectionTitle("Score Trend")}
+              <p style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, marginTop: 4 }}>{scoreTrend.length > 0 ? "Hover for details" : "Complete sessions to see your progress"}</p>
             </div>
           </div>
-        </div>
-
-        {/* ── Right Column ── */}
-        <div style={{ display: "flex", flexDirection: "column", gap: sp["2xl"] }}>
-          {/* Skill Radar */}
-          <div style={{ ...card, padding: "28px" }} onMouseEnter={cardHover} onMouseLeave={cardLeave}>
-            {sectionTitle("Skill Breakdown")}
-            {skills.length > 0 ? (
-              <>
-                <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 8, marginBottom: 8 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 4 }}><div style={{ width: 8, height: 2, background: c.gilt, borderRadius: 1 }} /><span style={{ fontFamily: font.ui, fontSize: 9, color: c.stone }}>Current</span></div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 4 }}><div style={{ width: 8, height: 2, background: c.stone, borderRadius: 1, opacity: 0.5 }} /><span style={{ fontFamily: font.ui, fontSize: 9, color: c.stone }}>First session</span></div>
-                </div>
-                <SkillRadar skills={skills} />
-                <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 14 }}>
-                  {skills.map((sk) => (
-                    <div key={sk.name} onClick={() => nav(`/session/new?type=behavioral&focus=${sk.name.toLowerCase().replace(/\s+/g, "-")}`)}
-                      style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", padding: "6px 8px", margin: "-6px -8px", borderRadius: radius.sm, transition: "background 0.15s ease" }}
-                      onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(240,237,232,0.03)"; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
-                      title={`Practice ${sk.name}`}>
-                      <span style={{ fontFamily: font.ui, fontSize: 11, color: c.chalk, flex: 1 }}>{sk.name}</span>
-                      <div style={{ width: 60, height: 3, background: "rgba(240,237,232,0.06)", borderRadius: 2, overflow: "hidden" }}><div style={{ height: "100%", width: `${sk.score}%`, background: sk.color, borderRadius: 2, transition: "width 0.4s cubic-bezier(0.16,1,0.3,1)" }} /></div>
-                      <span style={{ fontFamily: font.mono, fontSize: 11, fontWeight: 600, color: c.ivory, width: 22, textAlign: "right" }}>{sk.score}</span>
-                      <span style={{ fontFamily: font.mono, fontSize: 10, color: c.sage, width: 28, textAlign: "right" }}>+{sk.score - sk.prev}</span>
-                    </div>
-                  ))}
-                </div>
-              </>
-            ) : (
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 16px", textAlign: "center" }}>
-                <svg aria-hidden="true" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="rgba(240,237,232,0.08)" strokeWidth="1.5" strokeLinecap="round" style={{ marginBottom: 12 }}><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-                <p style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, lineHeight: 1.5 }}>Complete your first session to see your skill breakdown across communication, leadership, and more.</p>
+          {scoreTrend.length >= 2 ? (
+            <>
+              <ScoreTrendChart data={scoreTrend} />
+              <div style={{ display: "flex", justifyContent: "space-between", marginTop: 10, padding: "0 24px" }}>
+                <span style={{ fontFamily: font.mono, fontSize: 10, color: c.stone }}>{scoreTrend[0].date}</span>
+                <span style={{ fontFamily: font.mono, fontSize: 10, color: c.stone }}>{scoreTrend[scoreTrend.length - 1].date}</span>
               </div>
-            )}
-          </div>
-
-          {/* Tabbed Insights & Goals */}
-          <div style={{ ...card, overflow: "hidden" }} onMouseEnter={cardHover} onMouseLeave={cardLeave}>
-            <div style={{ display: "flex", borderBottom: "1px solid rgba(240,237,232,0.04)" }}>
-              {([["insights", "AI Insights"], ["goals", "Weekly Goals"]] as const).map(([key, label]) => (
-                <button key={key} onClick={() => setRightTab(key)}
-                  style={{ flex: 1, padding: "16px 16px", fontFamily: font.ui, fontSize: 13, fontWeight: rightTab === key ? 600 : 400, color: rightTab === key ? c.ivory : c.stone, background: "transparent", border: "none", cursor: "pointer", borderBottom: rightTab === key ? `2px solid ${c.gilt}` : "2px solid transparent", transition: "all 0.2s ease", outline: "none" }}>
-                  {label}
-                  {key === "goals" && <span style={{ marginLeft: 6, fontFamily: font.mono, fontSize: 10, fontWeight: 600, color: c.gilt, background: "rgba(201,169,110,0.08)", padding: "1px 6px", borderRadius: 4 }}>{upcomingGoals.filter(g => g.progress < g.total).length}</span>}
-                </button>
-              ))}
-            </div>
-            <div style={{ padding: "22px 28px" }}>
-              {rightTab === "insights" ? (
-                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                  {aiInsights.map((insight, i) => (
-                    <div key={i} style={{ padding: "14px 16px", borderRadius: radius.sm, background: c.obsidian, borderLeft: `3px solid ${insight.type === "strength" ? c.sage : insight.type === "weakness" ? c.ember : c.gilt}` }}>
-                      <span style={{ fontFamily: font.ui, fontSize: 9, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", color: insight.type === "strength" ? c.sage : insight.type === "weakness" ? c.ember : c.gilt, display: "block", marginBottom: 4 }}>
-                        {insight.type === "strength" ? "Strength" : insight.type === "weakness" ? "Improve" : "Tip"}
-                      </span>
-                      <p style={{ fontFamily: font.ui, fontSize: 12, color: c.chalk, lineHeight: 1.6 }}>{insight.text}</p>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-                  {upcomingGoals.map((goal, i) => (
-                    <div key={i}>
-                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
-                        <span style={{ fontFamily: font.ui, fontSize: 12, color: c.chalk }}>{goal.label}</span>
-                        <span style={{ fontFamily: font.mono, fontSize: 11, color: goal.progress >= goal.total ? c.sage : c.stone }}>{goal.progress}/{goal.total}</span>
-                      </div>
-                      <div style={{ height: 4, background: "rgba(240,237,232,0.06)", borderRadius: 2, overflow: "hidden" }}>
-                        <div style={{ height: "100%", width: `${(goal.progress / goal.total) * 100}%`, background: goal.progress >= goal.total ? c.sage : c.gilt, borderRadius: 2, transition: "width 0.4s cubic-bezier(0.16,1,0.3,1)" }} />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Daily Challenge */}
-          {dailyChallenge && !dailyChallenge.completed && (
-            <div style={{ ...card, padding: "24px 28px", boxShadow: "0 1px 3px rgba(0,0,0,0.24), 0 0 0 1px rgba(201,169,110,0.08)" }} onMouseEnter={cardHover} onMouseLeave={cardLeave}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="2" strokeLinecap="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" /></svg>
-                  {sectionTitle("Daily Challenge", 15)}
-                </div>
-                <span style={{ fontFamily: font.mono, fontSize: 9, fontWeight: 600, padding: "2px 8px", borderRadius: radius.pill, background: dailyChallenge.difficulty === "hard" ? "rgba(196,112,90,0.08)" : "rgba(201,169,110,0.08)", color: dailyChallenge.difficulty === "hard" ? c.ember : c.gilt, textTransform: "uppercase" }}>{dailyChallenge.difficulty}</span>
-              </div>
-              <p style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: c.chalk, marginBottom: 4 }}>{dailyChallenge.label}</p>
-              <p style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, lineHeight: 1.6, marginBottom: 14 }}>{dailyChallenge.description}</p>
-              <button onClick={() => nav(`/session/new?type=${dailyChallenge.type}${dailyChallenge.focus ? `&focus=${dailyChallenge.focus}` : ""}`)}
-                style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: c.obsidian, background: `linear-gradient(135deg, ${c.gilt}, ${c.giltDark})`, border: "none", borderRadius: radius.sm, padding: "10px 18px", cursor: "pointer", width: "100%", transition: "all 0.25s cubic-bezier(0.16,1,0.3,1)", boxShadow: "0 2px 12px rgba(201,169,110,0.15)" }}
-                onMouseEnter={(e) => { e.currentTarget.style.boxShadow = "0 4px 20px rgba(201,169,110,0.25)"; e.currentTarget.style.transform = "translateY(-1px)"; }}
-                onMouseLeave={(e) => { e.currentTarget.style.boxShadow = "0 2px 12px rgba(201,169,110,0.15)"; e.currentTarget.style.transform = "translateY(0)"; }}
-              >Start Challenge</button>
+            </>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "48px 20px", textAlign: "center" }}>
+              <svg aria-hidden="true" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="rgba(240,237,232,0.08)" strokeWidth="1.5" strokeLinecap="round" style={{ marginBottom: 14 }}><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+              <p style={{ fontFamily: font.ui, fontSize: 13, color: c.stone, marginBottom: 12 }}>Your score trend will appear here after your first session</p>
+              <button onClick={handleStartSession} style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: c.gilt, background: "rgba(201,169,110,0.06)", border: `1px solid rgba(201,169,110,0.12)`, borderRadius: radius.sm, padding: "8px 18px", cursor: "pointer", transition: "all 0.2s ease" }}
+                onMouseEnter={(e) => e.currentTarget.style.background = "rgba(201,169,110,0.12)"}
+                onMouseLeave={(e) => e.currentTarget.style.background = "rgba(201,169,110,0.06)"}
+              >Start a Session</button>
             </div>
           )}
+        </div>
 
-          {/* Badges */}
-          {badges.length > 0 && (
-            <div style={{ ...card, padding: "24px 28px" }} onMouseEnter={cardHover} onMouseLeave={cardLeave}>
-              {sectionTitle("Achievements")}
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 10, marginTop: 16 }}>
-                {badges.map((badge) => (
-                  <div key={badge.id} style={{ padding: "14px", borderRadius: radius.md, background: badge.earned ? "rgba(201,169,110,0.03)" : c.obsidian, textAlign: "center", opacity: badge.earned ? 1 : 0.45, transition: "opacity 0.3s ease" }}
-                    onMouseEnter={(e) => { if (!badge.earned) e.currentTarget.style.opacity = "0.7"; }}
-                    onMouseLeave={(e) => { if (!badge.earned) e.currentTarget.style.opacity = "0.45"; }}>
-                    <div style={{ fontSize: 24, marginBottom: 6 }}>{badge.icon}</div>
-                    <p style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: badge.earned ? c.ivory : c.stone, marginBottom: 2 }}>{badge.label}</p>
-                    <p style={{ fontFamily: font.ui, fontSize: 9, color: c.stone, lineHeight: 1.4, marginBottom: badge.earned ? 0 : 8 }}>{badge.description}</p>
-                    {!badge.earned && (
-                      <div style={{ height: 3, background: "rgba(240,237,232,0.06)", borderRadius: 2, overflow: "hidden" }}>
-                        <div style={{ height: "100%", width: `${Math.min(100, badge.progress)}%`, background: c.gilt, borderRadius: 2, transition: "width 0.4s cubic-bezier(0.16,1,0.3,1)" }} />
-                      </div>
-                    )}
+        {/* Skill Radar */}
+        <div style={{ ...card, padding: "28px" }}>
+          {sectionTitle("Skill Breakdown")}
+          {skills.length > 0 ? (
+            <>
+              <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 8, marginBottom: 8 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 4 }}><div style={{ width: 8, height: 2, background: c.gilt, borderRadius: 1 }} /><span style={{ fontFamily: font.ui, fontSize: 9, color: c.stone }}>Current</span></div>
+                <div style={{ display: "flex", alignItems: "center", gap: 4 }}><div style={{ width: 8, height: 2, background: c.stone, borderRadius: 1, opacity: 0.5 }} /><span style={{ fontFamily: font.ui, fontSize: 9, color: c.stone }}>First session</span></div>
+              </div>
+              <SkillRadar skills={skills} />
+              <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 14 }}>
+                {skills.map((sk) => (
+                  <div key={sk.name} onClick={() => nav(`/session/new?type=behavioral&focus=${sk.name.toLowerCase().replace(/\s+/g, "-")}`)}
+                    style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", padding: "6px 8px", margin: "-6px -8px", borderRadius: radius.sm, transition: "background 0.15s ease" }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(240,237,232,0.03)"; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+                    title={`Practice ${sk.name}`}>
+                    <span style={{ fontFamily: font.ui, fontSize: 11, color: c.chalk, flex: 1 }}>{sk.name}</span>
+                    <div style={{ width: 60, height: 3, background: "rgba(240,237,232,0.06)", borderRadius: 2, overflow: "hidden" }}><div style={{ height: "100%", width: `${sk.score}%`, background: sk.color, borderRadius: 2, transition: "width 0.4s cubic-bezier(0.16,1,0.3,1)" }} /></div>
+                    <span style={{ fontFamily: font.mono, fontSize: 11, fontWeight: 600, color: c.ivory, width: 22, textAlign: "right" }}>{sk.score}</span>
+                    <span style={{ fontFamily: font.mono, fontSize: 10, color: c.sage, width: 28, textAlign: "right" }}>+{sk.score - sk.prev}</span>
                   </div>
                 ))}
               </div>
+            </>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 16px", textAlign: "center" }}>
+              <svg aria-hidden="true" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="rgba(240,237,232,0.08)" strokeWidth="1.5" strokeLinecap="round" style={{ marginBottom: 12 }}><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+              <p style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, lineHeight: 1.5 }}>Complete your first session to see your skill breakdown across communication, leadership, and more.</p>
             </div>
           )}
         </div>
       </div>
+
+      {/* ─── Row 2: Recent Sessions (full-width) ─── */}
+      <div style={{ ...card, padding: "28px 32px", marginBottom: sp["2xl"] }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+          {sectionTitle("Recent Sessions")}
+          <button onClick={() => setSortBy(sortBy === "date" ? "score" : "date")}
+            style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, background: "rgba(240,237,232,0.03)", border: "none", borderRadius: radius.sm, padding: "5px 12px", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, outline: "none", transition: "color 0.2s" }}
+            onMouseEnter={(e) => e.currentTarget.style.color = c.ivory}
+            onMouseLeave={(e) => e.currentTarget.style.color = c.stone}>
+            <svg aria-hidden="true" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              {sortBy === "date" ? <><polyline points="3 6 9 6"/><polyline points="3 12 15 12"/><polyline points="3 18 21 18"/></> : <><polyline points="3 6 21 6"/><polyline points="3 12 15 12"/><polyline points="3 18 9 18"/></>}
+            </svg>
+            {sortBy === "date" ? "By date" : "By score"}
+          </button>
+        </div>
+
+        <div style={{ display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
+          <div style={{ flex: 1, minWidth: 160, position: "relative" }}>
+            <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.stone} strokeWidth="2" strokeLinecap="round" style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)" }}><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" placeholder="Search sessions..." aria-label="Search sessions" value={searchQuery} onChange={(e) => handleSearch(e.target.value)}
+              style={{ width: "100%", padding: "8px 10px 8px 32px", fontFamily: font.ui, fontSize: 12, color: c.ivory, background: c.obsidian, border: `1px solid rgba(240,237,232,0.06)`, borderRadius: radius.sm, outline: "none", boxSizing: "border-box", transition: "border-color 0.2s" }}
+              onFocus={(e) => e.currentTarget.style.borderColor = "rgba(201,169,110,0.3)"}
+              onBlur={(e) => e.currentTarget.style.borderColor = "rgba(240,237,232,0.06)"}
+            />
+          </div>
+          <div style={{ display: "flex", gap: 4 }}>
+            {(["all", "month", "week"] as const).map((range) => (
+              <button key={range} onClick={() => setDateRange(range)}
+                style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 500, padding: "6px 12px", borderRadius: radius.sm, cursor: "pointer", background: dateRange === range ? "rgba(201,169,110,0.08)" : "transparent", border: "none", color: dateRange === range ? c.gilt : c.stone, transition: "all 0.2s ease", outline: "none" }}
+                onMouseEnter={(e) => { if (dateRange !== range) e.currentTarget.style.color = c.ivory; }}
+                onMouseLeave={(e) => { if (dateRange !== range) e.currentTarget.style.color = c.stone; }}>
+                {range === "all" ? "All time" : range === "month" ? "30 days" : "7 days"}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div style={{ display: "flex", gap: 6, marginBottom: 18, flexWrap: "wrap" }}>
+          {sessionTypes.map((type) => (
+            <button key={type} onClick={() => setFilterType(type)}
+              style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 500, padding: "5px 14px", borderRadius: radius.pill, cursor: "pointer", background: filterType === type ? "rgba(201,169,110,0.08)" : "transparent", border: "none", color: filterType === type ? c.gilt : c.stone, transition: "all 0.2s ease", outline: "none" }}
+              onMouseEnter={(e) => { if (filterType !== type) e.currentTarget.style.color = c.chalk; }}
+              onMouseLeave={(e) => { if (filterType !== type) e.currentTarget.style.color = c.stone; }}>
+              {type}
+            </button>
+          ))}
+        </div>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {filteredSessions.length === 0 ? (
+            <p style={{ fontFamily: font.ui, fontSize: 13, color: c.stone, textAlign: "center", padding: "32px 0" }}>
+              {searchQuery ? `No sessions matching "${searchQuery}"` : "No sessions match this filter."}
+            </p>
+          ) : (
+            filteredSessions.map((session) => (
+              <div key={session.id}>
+                <button onClick={() => setExpandedSession(expandedSession === session.id ? null : session.id)} aria-expanded={expandedSession === session.id}
+                  style={{ width: "100%", padding: "16px 18px", borderRadius: radius.md, background: expandedSession === session.id ? "rgba(201,169,110,0.03)" : c.obsidian, border: "none", boxShadow: expandedSession === session.id ? "0 0 0 1px rgba(201,169,110,0.1)" : "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 16, transition: "all 0.25s cubic-bezier(0.16,1,0.3,1)", textAlign: "left", outline: "none" }}
+                  onMouseEnter={(e) => { if (expandedSession !== session.id) e.currentTarget.style.background = "rgba(240,237,232,0.02)"; }}
+                  onMouseLeave={(e) => { if (expandedSession !== session.id) e.currentTarget.style.background = c.obsidian; }}>
+                  <div style={{ width: 44, height: 44, borderRadius: "50%", flexShrink: 0, border: `2px solid ${scoreLabelColor(session.score)}`, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+                    <span style={{ fontFamily: font.mono, fontSize: 14, fontWeight: 600, color: c.ivory, lineHeight: 1 }}>{session.score}</span>
+                    <span style={{ fontFamily: font.ui, fontSize: 7, color: scoreLabelColor(session.score), fontWeight: 600, lineHeight: 1, marginTop: 1 }}>{scoreLabel(session.score)}</span>
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
+                      <span style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: c.ivory }}>{session.type}</span>
+                      <span style={{ fontFamily: font.mono, fontSize: 11, fontWeight: 600, color: session.change > 0 ? c.sage : c.ember }}>{session.change > 0 ? "+" : ""}{session.change}</span>
+                    </div>
+                    <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>{session.role}</span>
+                  </div>
+                  <div style={{ textAlign: "right", flexShrink: 0 }}>
+                    <span style={{ fontFamily: font.ui, fontSize: 12, color: c.chalk, display: "block" }}>{session.dateLabel}</span>
+                    <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>{session.duration}</span>
+                  </div>
+                  <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.stone} strokeWidth="2" strokeLinecap="round" style={{ transform: expandedSession === session.id ? "rotate(180deg)" : "rotate(0)", transition: "transform 0.2s", flexShrink: 0 }}><polyline points="6 9 12 15 18 9"/></svg>
+                </button>
+
+                {expandedSession === session.id && (
+                  <div style={{ padding: "18px 22px", margin: "6px 0", background: c.obsidian, borderRadius: radius.md, animation: "slideDown 0.2s ease" }}>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: feedbackSession === session.id ? 16 : 0 }}>
+                      <div>
+                        <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, color: c.sage, letterSpacing: "0.06em", textTransform: "uppercase", display: "block", marginBottom: 4 }}>Top Strength</span>
+                        <span style={{ fontFamily: font.ui, fontSize: 13, color: c.ivory }}>{session.topStrength}</span>
+                      </div>
+                      <div>
+                        <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, color: c.ember, letterSpacing: "0.06em", textTransform: "uppercase", display: "block", marginBottom: 4 }}>To Improve</span>
+                        <span style={{ fontFamily: font.ui, fontSize: 13, color: c.ivory }}>{session.topWeakness}</span>
+                      </div>
+                    </div>
+                    {feedbackSession === session.id && (
+                      <div style={{ padding: "16px 18px", borderRadius: radius.sm, background: "rgba(201,169,110,0.02)", borderLeft: `3px solid rgba(201,169,110,0.15)`, marginBottom: 14 }}>
+                        <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, color: c.gilt, letterSpacing: "0.06em", textTransform: "uppercase", display: "block", marginBottom: 8 }}>AI Feedback</span>
+                        <p style={{ fontFamily: font.ui, fontSize: 13, color: c.chalk, lineHeight: 1.7, margin: 0 }}>{session.feedback}</p>
+                      </div>
+                    )}
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                      <button onClick={() => setFeedbackSession(feedbackSession === session.id ? null : session.id)}
+                        style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: c.gilt, background: "rgba(201,169,110,0.06)", border: "none", borderRadius: radius.sm, padding: "8px 16px", cursor: "pointer", transition: "background 0.2s" }}
+                        onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(201,169,110,0.12)"; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(201,169,110,0.06)"; }}>
+                        {feedbackSession === session.id ? "Hide Feedback" : "View Feedback"}
+                      </button>
+                      <button onClick={() => setViewingSession(session.id)}
+                        style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: c.ivory, background: "rgba(240,237,232,0.04)", border: "none", borderRadius: radius.sm, padding: "8px 16px", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, transition: "background 0.2s" }}
+                        onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(240,237,232,0.08)"; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(240,237,232,0.04)"; }}>
+                        <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
+                        Full Transcript
+                      </button>
+                      <button onClick={() => nav(`/session/new?type=${session.type.toLowerCase().replace(" ", "-")}`)}
+                        style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: c.stone, background: "transparent", border: "none", borderRadius: radius.sm, padding: "8px 16px", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, transition: "color 0.2s" }}
+                        onMouseEnter={(e) => { e.currentTarget.style.color = c.ivory; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.color = c.stone; }}>
+                        <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+                        Redo {session.type}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+
+      {/* ─── Row 3: AI Insights/Goals | Daily Challenge (equal 2-col) ─── */}
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: sp["2xl"], marginBottom: sp["2xl"] }}>
+        {/* Tabbed Insights & Goals */}
+        <div style={{ ...card, overflow: "hidden" }}>
+          <div style={{ display: "flex", borderBottom: "1px solid rgba(240,237,232,0.04)" }}>
+            {([["insights", "AI Insights"], ["goals", "Weekly Goals"]] as const).map(([key, label]) => (
+              <button key={key} onClick={() => setRightTab(key)}
+                style={{ flex: 1, padding: "16px 16px", fontFamily: font.ui, fontSize: 13, fontWeight: rightTab === key ? 600 : 400, color: rightTab === key ? c.ivory : c.stone, background: "transparent", border: "none", cursor: "pointer", borderBottom: rightTab === key ? `2px solid ${c.gilt}` : "2px solid transparent", transition: "all 0.2s ease", outline: "none" }}>
+                {label}
+                {key === "goals" && <span style={{ marginLeft: 6, fontFamily: font.mono, fontSize: 10, fontWeight: 600, color: c.gilt, background: "rgba(201,169,110,0.08)", padding: "1px 6px", borderRadius: 4 }}>{upcomingGoals.filter(g => g.progress < g.total).length}</span>}
+              </button>
+            ))}
+          </div>
+          <div style={{ padding: "22px 28px" }}>
+            {rightTab === "insights" ? (
+              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                {aiInsights.map((insight, i) => (
+                  <div key={i} style={{ padding: "14px 16px", borderRadius: radius.sm, background: c.obsidian, borderLeft: `3px solid ${insight.type === "strength" ? c.sage : insight.type === "weakness" ? c.ember : c.gilt}` }}>
+                    <span style={{ fontFamily: font.ui, fontSize: 9, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", color: insight.type === "strength" ? c.sage : insight.type === "weakness" ? c.ember : c.gilt, display: "block", marginBottom: 4 }}>
+                      {insight.type === "strength" ? "Strength" : insight.type === "weakness" ? "Improve" : "Tip"}
+                    </span>
+                    <p style={{ fontFamily: font.ui, fontSize: 12, color: c.chalk, lineHeight: 1.6 }}>{insight.text}</p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                {upcomingGoals.map((goal, i) => (
+                  <div key={i}>
+                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
+                      <span style={{ fontFamily: font.ui, fontSize: 12, color: c.chalk }}>{goal.label}</span>
+                      <span style={{ fontFamily: font.mono, fontSize: 11, color: goal.progress >= goal.total ? c.sage : c.stone }}>{goal.progress}/{goal.total}</span>
+                    </div>
+                    <div style={{ height: 4, background: "rgba(240,237,232,0.06)", borderRadius: 2, overflow: "hidden" }}>
+                      <div style={{ height: "100%", width: `${(goal.progress / goal.total) * 100}%`, background: goal.progress >= goal.total ? c.sage : c.gilt, borderRadius: 2, transition: "width 0.4s cubic-bezier(0.16,1,0.3,1)" }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Daily Challenge */}
+        {dailyChallenge && !dailyChallenge.completed ? (
+          <div style={{ ...card, padding: "24px 28px", boxShadow: "0 1px 3px rgba(0,0,0,0.24), 0 0 0 1px rgba(201,169,110,0.08)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="2" strokeLinecap="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" /></svg>
+                {sectionTitle("Daily Challenge", 15)}
+              </div>
+              <span style={{ fontFamily: font.mono, fontSize: 9, fontWeight: 600, padding: "2px 8px", borderRadius: radius.pill, background: dailyChallenge.difficulty === "hard" ? "rgba(196,112,90,0.08)" : "rgba(201,169,110,0.08)", color: dailyChallenge.difficulty === "hard" ? c.ember : c.gilt, textTransform: "uppercase" }}>{dailyChallenge.difficulty}</span>
+            </div>
+            <p style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: c.chalk, marginBottom: 4 }}>{dailyChallenge.label}</p>
+            <p style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, lineHeight: 1.6, marginBottom: 14 }}>{dailyChallenge.description}</p>
+            <button onClick={() => nav(`/session/new?type=${dailyChallenge.type}${dailyChallenge.focus ? `&focus=${dailyChallenge.focus}` : ""}`)}
+              style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: c.obsidian, background: `linear-gradient(135deg, ${c.gilt}, ${c.giltDark})`, border: "none", borderRadius: radius.sm, padding: "10px 18px", cursor: "pointer", width: "100%", transition: "all 0.25s cubic-bezier(0.16,1,0.3,1)", boxShadow: "0 2px 12px rgba(201,169,110,0.15)" }}
+              onMouseEnter={(e) => { e.currentTarget.style.boxShadow = "0 4px 20px rgba(201,169,110,0.25)"; e.currentTarget.style.transform = "translateY(-1px)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.boxShadow = "0 2px 12px rgba(201,169,110,0.15)"; e.currentTarget.style.transform = "translateY(0)"; }}
+            >Start Challenge</button>
+          </div>
+        ) : (
+          <div /> /* empty placeholder to maintain grid symmetry when no challenge */
+        )}
+      </div>
+
+      {/* ─── Row 4: Achievements (full-width, horizontal) ─── */}
+      {badges.length > 0 && (
+        <div style={{ ...card, padding: "24px 28px" }}>
+          {sectionTitle("Achievements")}
+          <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : `repeat(${Math.min(badges.length, 4)}, 1fr)`, gap: 12, marginTop: 16 }}>
+            {badges.map((badge) => (
+              <div key={badge.id} style={{ padding: "16px", borderRadius: radius.md, background: badge.earned ? "rgba(201,169,110,0.03)" : c.obsidian, textAlign: "center", opacity: badge.earned ? 1 : 0.45, transition: "opacity 0.3s ease" }}
+                onMouseEnter={(e) => { if (!badge.earned) e.currentTarget.style.opacity = "0.7"; }}
+                onMouseLeave={(e) => { if (!badge.earned) e.currentTarget.style.opacity = "0.45"; }}>
+                <div style={{ fontSize: 24, marginBottom: 6 }}>{badge.icon}</div>
+                <p style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: badge.earned ? c.ivory : c.stone, marginBottom: 2 }}>{badge.label}</p>
+                <p style={{ fontFamily: font.ui, fontSize: 9, color: c.stone, lineHeight: 1.4, marginBottom: badge.earned ? 0 : 8 }}>{badge.description}</p>
+                {!badge.earned && (
+                  <div style={{ height: 3, background: "rgba(240,237,232,0.06)", borderRadius: 2, overflow: "hidden" }}>
+                    <div style={{ height: "100%", width: `${Math.min(100, badge.progress)}%`, background: c.gilt, borderRadius: 2, transition: "width 0.4s cubic-bezier(0.16,1,0.3,1)" }} />
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
