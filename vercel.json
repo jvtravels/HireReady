@@ -23,6 +23,7 @@
     { "source": "/api/create-order", "destination": "/api/create-order" },
     { "source": "/api/verify-payment", "destination": "/api/verify-payment" },
     { "source": "/api/cancel-subscription", "destination": "/api/cancel-subscription" },
+    { "source": "/api/reactivate-subscription", "destination": "/api/reactivate-subscription" },
     { "source": "/api/delete-account", "destination": "/api/delete-account" },
     { "source": "/api/send-renewal-reminders", "destination": "/api/send-renewal-reminders" },
     { "source": "/api/razorpay-webhook", "destination": "/api/razorpay-webhook" },

@@ -473,13 +473,18 @@ export default function SettingsPage() {
           <div style={{ padding: "16px 20px", borderRadius: 10, background: c.obsidian, border: `1px solid ${c.border}` }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
               <span style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: c.ivory }}>Current Plan</span>
-              <span style={{
-                fontFamily: font.ui, fontSize: 11, fontWeight: 600, padding: "4px 10px", borderRadius: 6,
-                background: authUser?.subscriptionTier === "pro" ? "rgba(122,158,126,0.12)" : authUser?.subscriptionTier === "starter" ? "rgba(201,169,110,0.12)" : "rgba(240,237,232,0.06)",
-                color: authUser?.subscriptionTier === "pro" ? c.sage : authUser?.subscriptionTier === "starter" ? c.gilt : c.stone,
-              }}>
-                {(authUser?.subscriptionTier || "free").charAt(0).toUpperCase() + (authUser?.subscriptionTier || "free").slice(1)}
-              </span>
+              <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                {authUser?.cancelAtPeriodEnd && (
+                  <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 500, padding: "3px 8px", borderRadius: 5, background: "rgba(196,112,90,0.1)", color: c.ember }}>Cancelling</span>
+                )}
+                <span style={{
+                  fontFamily: font.ui, fontSize: 11, fontWeight: 600, padding: "4px 10px", borderRadius: 6,
+                  background: authUser?.subscriptionTier === "pro" ? "rgba(122,158,126,0.12)" : authUser?.subscriptionTier === "starter" ? "rgba(201,169,110,0.12)" : "rgba(240,237,232,0.06)",
+                  color: authUser?.subscriptionTier === "pro" ? c.sage : authUser?.subscriptionTier === "starter" ? c.gilt : c.stone,
+                }}>
+                  {(authUser?.subscriptionTier || "free").charAt(0).toUpperCase() + (authUser?.subscriptionTier || "free").slice(1)}
+                </span>
+              </div>
             </div>
 
             {authUser?.subscriptionTier && authUser.subscriptionTier !== "free" && authUser.subscriptionStart && authUser.subscriptionEnd && (() => {
@@ -521,14 +526,35 @@ export default function SettingsPage() {
               </button>
             )}
             {authUser?.subscriptionTier && authUser.subscriptionTier !== "free" && (
-              !confirmCancel ? (
+              authUser.cancelAtPeriodEnd ? (
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  <span style={{ fontFamily: font.ui, fontSize: 11, color: c.ember }}>
+                    Cancels {authUser.subscriptionEnd ? new Date(authUser.subscriptionEnd).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "at period end"}
+                  </span>
+                  <button disabled={cancelLoading} onClick={async () => {
+                    setCancelLoading(true); setCancelMsg("");
+                    try {
+                      const hdrs = await authHeaders();
+                      const ctrl = new AbortController();
+                      const timer = setTimeout(() => ctrl.abort(), 15000);
+                      const res = await fetch("/api/reactivate-subscription", { method: "POST", headers: hdrs, signal: ctrl.signal });
+                      clearTimeout(timer);
+                      if (res.ok) { const data = await res.json(); if (data.success) { authUpdateUser({ cancelAtPeriodEnd: false }); setCancelMsg(""); showToast("Plan reactivated"); } else { showToast(data.error || "Failed"); } }
+                      else { const d = await res.json().catch(() => ({})); showToast(d.error || "Failed"); }
+                    } catch (err) { const msg = err instanceof DOMException && err.name === "AbortError" ? "Request timed out." : "Network error."; showToast(msg); } finally { setCancelLoading(false); }
+                  }}
+                    style={{ padding: "8px 20px", borderRadius: 6, border: "none", cursor: "pointer", background: c.sage, color: "#fff", fontFamily: font.ui, fontSize: 12, fontWeight: 600, opacity: cancelLoading ? 0.6 : 1 }}>
+                    {cancelLoading ? "Reactivating..." : "Reactivate Plan"}
+                  </button>
+                </div>
+              ) : !confirmCancel ? (
                 <button onClick={() => setConfirmCancel(true)}
                   style={{ padding: "10px 20px", borderRadius: 8, cursor: "pointer", background: "transparent", border: `1px solid rgba(196,112,90,0.2)`, color: c.ember, fontFamily: font.ui, fontSize: 12, fontWeight: 500 }}>
                   Cancel Plan
                 </button>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  <span style={{ fontFamily: font.ui, fontSize: 11, color: c.ember }}>Are you sure?</span>
+                  <span style={{ fontFamily: font.ui, fontSize: 11, color: c.ember }}>You'll keep benefits until your plan expires.</span>
                   <button disabled={cancelLoading} onClick={async () => {
                     setCancelLoading(true); setCancelMsg("");
                     try {
@@ -537,7 +563,7 @@ export default function SettingsPage() {
                       const timer = setTimeout(() => ctrl.abort(), 15000);
                       const res = await fetch("/api/cancel-subscription", { method: "POST", headers: hdrs, signal: ctrl.signal });
                       clearTimeout(timer);
-                      if (res.ok) { const data = await res.json(); if (data.success) { authUpdateUser({ subscriptionTier: "free", subscriptionEnd: new Date().toISOString() }); setCancelMsg("Cancelled."); setConfirmCancel(false); showToast("Plan cancelled"); } else { setCancelMsg(data.error || "Failed."); showToast(data.error || "Cancellation failed"); } }
+                      if (res.ok) { const data = await res.json(); if (data.success) { authUpdateUser({ cancelAtPeriodEnd: true }); setCancelMsg(""); setConfirmCancel(false); showToast("Plan will cancel at end of period"); } else { setCancelMsg(data.error || "Failed."); showToast(data.error || "Cancellation failed"); } }
                       else { const d = await res.json().catch(() => ({})); setCancelMsg(d.error || `Error (${res.status}).`); showToast(d.error || "Cancellation failed"); }
                     } catch (err) { const msg = err instanceof DOMException && err.name === "AbortError" ? "Request timed out." : "Network error."; setCancelMsg(msg); showToast(msg); } finally { setCancelLoading(false); }
                   }}

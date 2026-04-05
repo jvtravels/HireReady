@@ -18,7 +18,10 @@ create table if not exists profiles (
   resume_text text default '',
   practice_timestamps jsonb default '[]'::jsonb,
   avatar_url text default '',
-  subscription_tier text default 'free' check (subscription_tier in ('free', 'pro', 'team')),
+  subscription_tier text default 'free' check (subscription_tier in ('free', 'starter', 'pro', 'team')),
+  subscription_start timestamptz,
+  subscription_end timestamptz,
+  cancel_at_period_end boolean default false,
   created_at timestamptz default now()
 );
 

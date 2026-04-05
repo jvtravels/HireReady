@@ -59,6 +59,7 @@ export interface User {
   subscriptionTier?: "free" | "starter" | "pro" | "team";
   subscriptionStart?: string;
   subscriptionEnd?: string;
+  cancelAtPeriodEnd?: boolean;
   emailVerified: boolean;
 }
 
@@ -104,6 +105,7 @@ function profileToUser(profile: Profile, session: Session): User {
     })(),
     subscriptionStart: profile.subscription_start || undefined,
     subscriptionEnd: profile.subscription_end || undefined,
+    cancelAtPeriodEnd: profile.cancel_at_period_end || false,
     emailVerified: !!session.user.email_confirmed_at,
   };
 }
@@ -338,6 +340,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (updates.interviewTypes !== undefined) profileUpdates.interview_types = updates.interviewTypes;
     if (updates.practiceTimestamps !== undefined) profileUpdates.practice_timestamps = updates.practiceTimestamps;
     if (updates.avatarUrl !== undefined) profileUpdates.avatar_url = updates.avatarUrl;
+    if (updates.cancelAtPeriodEnd !== undefined) profileUpdates.cancel_at_period_end = updates.cancelAtPeriodEnd;
 
     console.log("[updateUser] upserting profile:", Object.keys(profileUpdates));
     await upsertProfile(profileUpdates);

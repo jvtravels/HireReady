@@ -77,6 +77,7 @@ export interface Profile {
   subscription_tier: "free" | "starter" | "pro" | "team";
   subscription_start: string | null;
   subscription_end: string | null;
+  cancel_at_period_end: boolean;
   razorpay_payment_id: string | null;
   created_at: string;
 }

@@ -1,4 +1,4 @@
-/* Vercel Serverless Function — Cancel Subscription */
+/* Vercel Serverless Function — Reactivate Subscription (undo cancel-at-period-end) */
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 
@@ -23,27 +23,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
     res.setHeader("Vary", "Origin");
   }
-  res.setHeader("X-Request-ID", crypto.randomUUID());
 
   if (req.method === "OPTIONS") return res.status(204).end();
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
-  // Body size check
-  const bodyContentLength = parseInt((req.headers["content-length"] as string) || "0", 10);
-  if (bodyContentLength > 1048576) {
-    return res.status(413).json({ error: "Request too large" });
-  }
-
-  // CSRF: validate Origin header on state-changing requests
-  if (!origin) {
-    return res.status(403).json({ error: "Forbidden" });
-  }
+  if (!origin) return res.status(403).json({ error: "Forbidden" });
 
   if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
     return res.status(503).json({ error: "Not configured" });
   }
 
-  // Verify user auth
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
     return res.status(401).json({ error: "Unauthorized" });
@@ -63,7 +52,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    // Mark subscription to cancel at period end (user keeps benefits until expiry)
     const updateRes = await fetch(
       `${SUPABASE_URL}/rest/v1/profiles?id=eq.${encodeURIComponent(userId)}`,
       {
@@ -74,19 +62,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           "Content-Type": "application/json",
           Prefer: "return=minimal",
         },
-        body: JSON.stringify({
-          cancel_at_period_end: true,
-        }),
+        body: JSON.stringify({ cancel_at_period_end: false }),
       },
     );
 
     if (!updateRes.ok) {
-      return res.status(500).json({ error: "Failed to cancel subscription" });
+      return res.status(500).json({ error: "Failed to reactivate subscription" });
     }
 
     return res.status(200).json({ success: true });
   } catch (err) {
-    console.error("Cancel subscription error:", err);
+    console.error("Reactivate subscription error:", err);
     return res.status(500).json({ error: "Internal error" });
   }
 }
