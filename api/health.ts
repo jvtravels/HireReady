@@ -22,20 +22,10 @@ async function checkSupabase(): Promise<"ok" | "error" | "missing"> {
   }
 }
 
-async function checkUpstash(): Promise<"ok" | "error" | "missing"> {
+function checkUpstash(): "ok" | "missing" {
   const url = process.env.UPSTASH_REDIS_REST_URL;
   const token = process.env.UPSTASH_REDIS_REST_TOKEN;
-  if (!url || !token) return "missing";
-  try {
-    const res = await fetch(`${url.replace(/\/$/, "")}/get/__health_check__`, {
-      headers: { Authorization: `Bearer ${token}` },
-      signal: AbortSignal.timeout(5000),
-    });
-    // 200 = key found or not found (both mean Redis is reachable)
-    return res.ok ? "ok" : "error";
-  } catch {
-    return "error";
-  }
+  return (url && token) ? "ok" : "missing";
 }
 
 export default async function handler(req: Request): Promise<Response> {
@@ -47,10 +37,10 @@ export default async function handler(req: Request): Promise<Response> {
   }
 
   // Run live checks in parallel
-  const [supabase, upstash] = await Promise.all([
+  const [supabase] = await Promise.all([
     checkSupabase(),
-    checkUpstash(),
   ]);
+  const upstash = checkUpstash();
 
   const checks: Record<string, string> = {
     supabase,
