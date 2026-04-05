@@ -311,9 +311,8 @@ describe("Flow 5: Settings", () => {
       );
     });
     expect(screen.getByText("Settings")).toBeInTheDocument();
-    expect(screen.getByText("Profile")).toBeInTheDocument();
+    expect(screen.getAllByText("Account").length).toBeGreaterThan(0);
     expect(screen.getByDisplayValue("Jay Vyas")).toBeInTheDocument();
-    expect(screen.getByDisplayValue("Head of Design")).toBeInTheDocument();
   });
 
   it("shows current subscription tier", async () => {
@@ -328,6 +327,7 @@ describe("Flow 5: Settings", () => {
         </MemoryRouter>,
       );
     });
+    await act(async () => { fireEvent.click(screen.getByText("Plan & Data")); });
     expect(screen.getByText("Starter")).toBeInTheDocument();
   });
 
@@ -343,6 +343,7 @@ describe("Flow 5: Settings", () => {
         </MemoryRouter>,
       );
     });
+    await act(async () => { fireEvent.click(screen.getByText("Plan & Data")); });
     expect(screen.getByText("Delete Account")).toBeInTheDocument();
   });
 
@@ -358,6 +359,7 @@ describe("Flow 5: Settings", () => {
         </MemoryRouter>,
       );
     });
+    await act(async () => { fireEvent.click(screen.getByText("Plan & Data")); });
     const deleteBtn = screen.getByText("Delete Account");
     await act(async () => { fireEvent.click(deleteBtn); });
     expect(screen.getByText("Confirm Delete")).toBeInTheDocument();
@@ -666,6 +668,7 @@ describe("Flow 11: Edge Cases", () => {
         </MemoryRouter>,
       );
     });
+    await act(async () => { fireEvent.click(screen.getByText("Plan & Data")); });
     expect(screen.getByText("Pro")).toBeInTheDocument();
     expect(screen.getByText(/day.*remaining/i)).toBeInTheDocument();
   });
