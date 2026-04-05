@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { track } from "@vercel/analytics";
 import { c, font } from "./tokens";
 import { useAuth, hasStoredSession, getLastRoute } from "./AuthContext";
+import { useSEO, webAppJsonLd } from "./useSEO";
 
 /* ─── Hooks ─── */
 function useReveal<T extends HTMLElement>(): React.RefObject<T | null> {
@@ -2043,6 +2044,13 @@ export default function App() {
       navigate(lastRoute && lastRoute !== "/" ? lastRoute : "/dashboard", { replace: true });
     }
   }, [isLoggedIn, loading, user, navigate]);
+
+  useSEO({
+    title: "Hirloop — AI Mock Interviews & Career Coaching for India",
+    description: "Practice mock interviews with AI, get real-time feedback, track your scores, and land your dream job. Free for students and freshers in India.",
+    ogType: "website",
+    jsonLd: webAppJsonLd(),
+  });
 
   // While auth restores for returning users, show a blank screen matching the
   // app background instead of flashing the landing page.
