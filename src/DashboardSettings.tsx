@@ -70,6 +70,8 @@ export default function SettingsPage() {
   const [editName, setEditName] = useState(persisted.userName);
   const [editRole, setEditRole] = useState(persisted.targetRole);
   const [editDate, setEditDate] = useState(persisted.interviewDate);
+  const [editCompany, setEditCompany] = useState(authUser?.targetCompany || "");
+  const [editIndustry, setEditIndustry] = useState(authUser?.industry || "");
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -95,7 +97,7 @@ export default function SettingsPage() {
   const [resetLoading, setResetLoading] = useState(false);
 
   // Dirty state tracking for profile
-  const isDirty = editName !== persisted.userName || editRole !== persisted.targetRole || editDate !== persisted.interviewDate;
+  const isDirty = editName !== persisted.userName || editRole !== persisted.targetRole || editDate !== persisted.interviewDate || editCompany !== (authUser?.targetCompany || "") || editIndustry !== (authUser?.industry || "");
 
   // Warn on navigation with unsaved changes
   useEffect(() => {
@@ -128,7 +130,7 @@ export default function SettingsPage() {
     setSaving(true);
     setSaved(false);
     onUpdate({ userName: editName, targetRole: editRole, interviewDate: editDate });
-    await authUpdateUser({ name: editName, targetRole: editRole, interviewDate: editDate });
+    await authUpdateUser({ name: editName, targetRole: editRole, interviewDate: editDate, targetCompany: editCompany, industry: editIndustry });
     setSaving(false);
     setSaved(true);
     showToast("Settings saved");
@@ -198,13 +200,34 @@ export default function SettingsPage() {
           <p style={cardDesc}>Your personal information and interview target</p>
 
           <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 24 }}>
-            {authUser?.avatarUrl ? (
-              <img src={authUser.avatarUrl} alt="Profile" style={{ width: 56, height: 56, borderRadius: "50%", objectFit: "cover", border: `2px solid ${c.border}` }} />
-            ) : (
-              <div style={{ width: 56, height: 56, borderRadius: "50%", background: "rgba(201,169,110,0.1)", border: `2px solid ${c.border}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <span style={{ fontFamily: font.display, fontSize: 22, color: c.gilt }}>{(persisted.userName || "?")[0].toUpperCase()}</span>
-              </div>
-            )}
+            <div style={{ position: "relative", flexShrink: 0 }}>
+              {authUser?.avatarUrl ? (
+                <img src={authUser.avatarUrl} alt="Profile" style={{ width: 56, height: 56, borderRadius: "50%", objectFit: "cover", border: `2px solid ${c.border}` }} />
+              ) : (
+                <div style={{ width: 56, height: 56, borderRadius: "50%", background: "rgba(201,169,110,0.1)", border: `2px solid ${c.border}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <span style={{ fontFamily: font.display, fontSize: 22, color: c.gilt }}>{(persisted.userName || "?")[0].toUpperCase()}</span>
+                </div>
+              )}
+              <label title="Upload avatar" style={{
+                position: "absolute", bottom: -2, right: -2, width: 22, height: 22, borderRadius: "50%",
+                background: c.graphite, border: `1.5px solid ${c.border}`, cursor: "pointer",
+                display: "flex", alignItems: "center", justifyContent: "center",
+              }}>
+                <svg aria-hidden="true" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={c.chalk} strokeWidth="2.5" strokeLinecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                <input type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  if (file.size > 2 * 1024 * 1024) { showToast("Image must be under 2 MB"); return; }
+                  const reader = new FileReader();
+                  reader.onload = () => {
+                    const dataUrl = reader.result as string;
+                    authUpdateUser({ avatarUrl: dataUrl });
+                    showToast("Avatar updated");
+                  };
+                  reader.readAsDataURL(file);
+                }} />
+              </label>
+            </div>
             <div>
               <p style={{ fontFamily: font.ui, fontSize: 15, fontWeight: 600, color: c.ivory }}>{persisted.userName}</p>
               <p style={{ fontFamily: font.ui, fontSize: 12, color: c.stone }}>{authUser?.email}</p>
@@ -232,6 +255,18 @@ export default function SettingsPage() {
               <label style={labelStyle}>Interview Date</label>
               <input type="date" value={editDate} onChange={(e) => setEditDate(e.target.value)}
                 style={{ ...inputStyle, colorScheme: "dark" }} onFocus={focusIn} onBlur={focusOut} />
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <div>
+                <label style={labelStyle}>Target Company</label>
+                <input type="text" value={editCompany} onChange={(e) => setEditCompany(e.target.value)} maxLength={60} placeholder="e.g. Google"
+                  style={inputStyle} onFocus={focusIn} onBlur={focusOut} />
+              </div>
+              <div>
+                <label style={labelStyle}>Industry</label>
+                <input type="text" value={editIndustry} onChange={(e) => setEditIndustry(e.target.value)} maxLength={60} placeholder="e.g. FinTech"
+                  style={inputStyle} onFocus={focusIn} onBlur={focusOut} />
+              </div>
             </div>
           </div>
 
@@ -290,6 +325,55 @@ export default function SettingsPage() {
                   <span style={{ fontFamily: font.ui, fontSize: 10, color: c.stone }}>{d.desc}</span>
                 </button>
               ))}
+            </div>
+
+            {/* Feedback Style */}
+            <label style={{ ...labelStyle, marginTop: 20, marginBottom: 10 }}>Feedback Style</label>
+            <div style={{ display: "flex", gap: 8 }}>
+              {([
+                { id: "direct" as const, label: "Direct", desc: "Straightforward critique" },
+                { id: "encouraging" as const, label: "Encouraging", desc: "Positive framing" },
+              ]).map(s => {
+                const current = authUser?.learningStyle || "direct";
+                const active = current === s.id;
+                return (
+                  <button key={s.id} onClick={() => authUpdateUser({ learningStyle: s.id })}
+                    style={{
+                      flex: 1, padding: "10px 14px", borderRadius: 8, cursor: "pointer",
+                      background: active ? "rgba(201,169,110,0.08)" : c.obsidian,
+                      border: `1.5px solid ${active ? c.gilt : c.border}`,
+                      textAlign: "left", transition: "all 0.2s ease",
+                    }}>
+                    <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: active ? c.ivory : c.chalk, display: "block", marginBottom: 2 }}>{s.label}</span>
+                    <span style={{ fontFamily: font.ui, fontSize: 10, color: c.stone }}>{s.desc}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Session Length */}
+            <label style={{ ...labelStyle, marginTop: 20, marginBottom: 10 }}>Session Length</label>
+            <div style={{ display: "flex", gap: 8 }}>
+              {([
+                { id: 10 as const, label: "10 min", desc: "Quick practice" },
+                { id: 15 as const, label: "15 min", desc: "Standard" },
+                { id: 25 as const, label: "25 min", desc: "Deep dive" },
+              ]).map(s => {
+                const current = authUser?.preferredSessionLength || 15;
+                const active = current === s.id;
+                return (
+                  <button key={s.id} onClick={() => authUpdateUser({ preferredSessionLength: s.id })}
+                    style={{
+                      flex: 1, padding: "10px 14px", borderRadius: 8, cursor: "pointer",
+                      background: active ? "rgba(201,169,110,0.08)" : c.obsidian,
+                      border: `1.5px solid ${active ? c.gilt : c.border}`,
+                      textAlign: "center", transition: "all 0.2s ease",
+                    }}>
+                    <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: active ? c.ivory : c.chalk, display: "block", marginBottom: 2 }}>{s.label}</span>
+                    <span style={{ fontFamily: font.ui, fontSize: 10, color: c.stone }}>{s.desc}</span>
+                  </button>
+                );
+              })}
             </div>
           </div>
 
