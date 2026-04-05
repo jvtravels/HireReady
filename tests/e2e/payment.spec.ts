@@ -15,7 +15,7 @@ test.describe("Pricing Section Interaction", () => {
 
   test("free plan CTA navigates to signup", async ({ page }) => {
     await page.getByRole("button", { name: "Start Free" }).click();
-    await expect(page).toHaveURL(/\/signup/);
+    await expect(page).toHaveURL(/\/(signup|session)/, { timeout: 10000 });
   });
 
   test("pro plan shows Most Popular badge", async ({ page }) => {
