@@ -649,24 +649,21 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        {/* Log out */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 28, padding: "14px 16px", borderRadius: 8, background: c.obsidian, border: `1px solid ${c.border}` }}>
-          <div>
-            <span style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.ivory, display: "block", marginBottom: 2 }}>Log out</span>
-            <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>Sign out on this device</span>
+        {/* Log out & Delete */}
+        <div style={{ paddingTop: 20, borderTop: `1px solid ${c.border}` }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+            <div>
+              <span style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.ivory, display: "block", marginBottom: 2 }}>Log out</span>
+              <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>Sign out on this device</span>
+            </div>
+            <button onClick={onLogout} style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: c.ember, background: "rgba(196,112,90,0.06)", border: `1px solid rgba(196,112,90,0.15)`, borderRadius: 6, padding: "8px 20px", cursor: "pointer" }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(196,112,90,0.12)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(196,112,90,0.06)"; }}>
+              Log out
+            </button>
           </div>
-          <button onClick={onLogout} style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: c.chalk, background: "rgba(240,237,232,0.04)", border: `1px solid ${c.border}`, borderRadius: 6, padding: "8px 20px", cursor: "pointer" }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(240,237,232,0.08)"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(240,237,232,0.04)"; }}>
-            Log out
-          </button>
-        </div>
 
-        {/* Danger zone */}
-        <div style={{ paddingTop: 20, borderTop: `1px solid rgba(196,112,90,0.15)` }}>
-          <span style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: c.ember, display: "block", marginBottom: 16 }}>Danger Zone</span>
-
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div style={{ borderTop: `1px solid ${c.border}`, paddingTop: 16, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <div>
               <span style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.ivory, display: "block", marginBottom: 2 }}>Delete account</span>
               <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>Permanently remove all data</span>
