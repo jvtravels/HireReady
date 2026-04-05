@@ -188,6 +188,25 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     return () => { cancelled = true; clearTimeout(timeout); };
   }, [user?.id]);
 
+  // Auto-refresh data when user returns to tab (e.g. after completing an interview)
+  useEffect(() => {
+    if (!user?.id) return;
+    const handleVisibility = () => {
+      if (document.visibilityState !== "visible") return;
+      getUserSessions(user.id).then(sessions => {
+        const mapped = sessions.map(s => ({
+          id: s.id, date: s.date, type: s.type, difficulty: s.difficulty,
+          focus: s.focus, duration: s.duration, score: s.score, questions: s.questions,
+          ai_feedback: s.ai_feedback, skill_scores: s.skill_scores,
+        }));
+        setSupabaseSessions(mapped);
+        try { localStorage.setItem(`hireready_cache_sessions_${user.id}`, JSON.stringify(mapped)); } catch {}
+      }).catch(() => {});
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => document.removeEventListener("visibilitychange", handleVisibility);
+  }, [user?.id]);
+
   // Session data
   const { recentSessions, scoreTrend, skills, overallStats, hasData } = useMemo(
     () => getSessionData(user?.targetRole || persisted.targetRole, supabaseSessions),

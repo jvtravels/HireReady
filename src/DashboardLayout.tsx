@@ -77,6 +77,22 @@ export default function DashboardLayout() {
     return () => document.removeEventListener("touchstart", handler);
   }, [isMobile]);
 
+  // Auto-dismiss payment cancel banner after 8s
+  useEffect(() => {
+    if (paymentBanner === "cancelled") {
+      const t = setTimeout(() => setPaymentBanner(null), 8000);
+      return () => clearTimeout(t);
+    }
+  }, [paymentBanner, setPaymentBanner]);
+
+  // Auto-dismiss sync error after 8s
+  useEffect(() => {
+    if (syncError) {
+      const t = setTimeout(() => setSyncError(""), 8000);
+      return () => clearTimeout(t);
+    }
+  }, [syncError, setSyncError]);
+
   // Prevent body scroll when mobile sidebar is open
   useEffect(() => {
     if (isMobile && sidebarOpen) {
@@ -249,7 +265,7 @@ export default function DashboardLayout() {
                 <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={c.ember} strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
               )}
               <span style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: paymentBanner === "success" ? c.sage : c.ember }}>
-                {paymentBanner === "success" ? "Payment successful! Your account has been upgraded." : "Payment was cancelled. You can upgrade anytime."}
+                {paymentBanner === "success" ? "Payment successful! Your account has been upgraded." : "Payment was not completed. No charges were made — you can try again anytime."}
               </span>
             </div>
             <button onClick={() => setPaymentBanner(null)} style={{ background: "none", border: "none", color: c.stone, cursor: "pointer", padding: 2 }}>

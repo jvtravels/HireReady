@@ -13,7 +13,7 @@ import { DataLoadingSkeleton, ProGate } from "./dashboardComponents";
 
 export default function CalendarPage() {
   useDocTitle("Calendar");
-  const { handleStartSession: onStartSession, dataLoading, isFree, isStarter, setShowUpgradeModal } = useDashboard();
+  const { handleStartSession: onStartSession, dataLoading, isFree, isStarter, setShowUpgradeModal, showToast } = useDashboard();
 
   const { user } = useAuth();
   const [events, setEvents] = useState<InterviewEvent[]>(loadEvents);
@@ -125,7 +125,7 @@ export default function CalendarPage() {
       saveCalendarEvent({
         id: ev.id, user_id: user.id, title: ev.title, company: ev.company,
         date: ev.date, time: ev.time, type: ev.type, notes: ev.notes,
-      }).catch(() => {});
+      }).catch(() => { showToast("Saved locally — cloud sync failed"); });
     }
     setShowForm(false);
     resetForm();
@@ -133,13 +133,12 @@ export default function CalendarPage() {
 
   const handleDelete = (id: string) => {
     updateEvents(events.filter(e => e.id !== id));
-    if (user?.id) deleteCalendarEvent(id, user.id).catch(() => {});
+    if (user?.id) deleteCalendarEvent(id, user.id).catch(() => { showToast("Deleted locally — cloud sync failed"); });
   };
 
   const handleCancel = (id: string) => {
     updateEvents(events.map(e => e.id === id ? { ...e, status: "cancelled" as const } : e));
-    // Remove from Supabase when cancelled
-    if (user?.id) deleteCalendarEvent(id, user.id).catch(() => {});
+    if (user?.id) deleteCalendarEvent(id, user.id).catch(() => { showToast("Cancelled locally — cloud sync failed"); });
   };
 
   const handleExportICS = (ev: InterviewEvent) => {

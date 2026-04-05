@@ -123,7 +123,7 @@ export default function SessionDetail() {
     try { localStorage.setItem(`hireready_feedback_${id}`, JSON.stringify(feedbackData)); } catch {}
     // Save to Supabase if available
     if (user?.id) {
-      await saveFeedback(feedbackData).catch(() => {});
+      try { await saveFeedback(feedbackData); } catch { /* localStorage fallback already saved above */ }
     }
     setFeedbackSaved(true);
   }, [id, session, user?.id, feedbackComment]);
@@ -141,7 +141,7 @@ export default function SessionDetail() {
     };
     try { localStorage.setItem(`hireready_feedback_${id}`, JSON.stringify(feedbackData)); } catch {}
     if (user?.id) {
-      await saveFeedback(feedbackData).catch(() => {});
+      try { await saveFeedback(feedbackData); } catch { /* localStorage fallback already saved above */ }
     }
     setShowFeedbackForm(false);
   }, [id, session, user?.id, feedbackRating, feedbackComment]);

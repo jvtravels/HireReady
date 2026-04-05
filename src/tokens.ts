@@ -45,3 +45,29 @@ export const radius = {
   xl: 14,
   pill: 100,
 } as const;
+
+/* ─── Z-Index Scale ─── */
+export const z = {
+  base: 0,
+  dropdown: 10,
+  sticky: 20,
+  overlay: 50,
+  modal: 90,
+  toast: 100,
+} as const;
+
+/* ─── Shadows ─── */
+export const shadow = {
+  sm: "0 1px 3px rgba(0,0,0,0.2)",
+  md: "0 4px 16px rgba(0,0,0,0.3)",
+  lg: "0 8px 32px rgba(0,0,0,0.4)",
+  glow: "0 0 24px rgba(201,169,110,0.08)",
+} as const;
+
+/* ─── Animation Durations ─── */
+export const duration = {
+  fast: "0.15s",
+  normal: "0.2s",
+  slow: "0.3s",
+  enter: "0.25s",
+} as const;

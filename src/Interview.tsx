@@ -715,6 +715,7 @@ export default function Interview() {
 
   // End interview modal
   const [showEndModal, setShowEndModal] = useState(false);
+  const endModalTriggerRef = useRef<HTMLButtonElement>(null);
 
   // Offline + save status + mic error
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
@@ -1151,19 +1152,23 @@ export default function Interview() {
         @media (max-width: 800px) {
           .interview-split { flex-direction: column !important; }
           .interview-left { flex: 1 1 auto !important; min-height: 0 !important; }
-          .interview-right { width: 100% !important; max-width: none !important; min-width: 0 !important; height: 200px !important; flex: 0 0 200px !important; border-left: none !important; border-top: 1px solid rgba(240,237,232,0.06) !important; }
-          .interview-right > div:first-child { margin: 8px !important; }
-          .interview-right .interview-stats { display: none !important; }
+          .interview-right { width: 100% !important; max-width: none !important; min-width: 0 !important; height: 160px !important; flex: 0 0 160px !important; border-left: none !important; border-top: 1px solid rgba(240,237,232,0.06) !important; flex-direction: row !important; }
+          .interview-right > div:first-child { margin: 8px !important; flex: 0 0 140px !important; }
+          .interview-right .interview-stats { display: flex !important; flex: 1 !important; padding: 8px !important; }
+          .interview-right .interview-stats > div { padding: 10px 12px !important; }
           .interview-transcript-panel { width: 100% !important; max-width: none !important; min-width: 0 !important; height: 50% !important; flex: 0 0 50% !important; border-left: none !important; border-top: 1px solid rgba(240,237,232,0.06) !important; }
           .interview-avatar-row { padding: 16px 16px 0 !important; gap: 12px !important; }
           .interview-avatar-row .ai-avatar-wrap { display: none; }
           .interview-qcard { padding: 12px 16px !important; }
-          .interview-header-right .header-controls { display: none !important; }
+          .interview-header-right .header-controls { gap: 2px !important; }
           .interview-pip-float { width: 100px !important; height: 75px !important; bottom: 8px !important; right: 8px !important; }
         }
         @media (max-width: 480px) {
-          .interview-header-left .interview-type-badge { font-size: 9px !important; padding: 2px 6px !important; }
-          .interview-header-left .interview-type-badge span { font-size: 9px !important; }
+          .interview-header-left .interview-type-badge { display: none !important; }
+          .interview-right { height: 120px !important; flex: 0 0 120px !important; }
+          .interview-right > div:first-child { flex: 0 0 110px !important; }
+          .interview-header-right .header-controls button { width: 28px !important; height: 28px !important; }
+          .interview-header-right .header-controls button svg { width: 12px !important; height: 12px !important; }
         }
       `}</style>
 
@@ -1729,6 +1734,7 @@ export default function Interview() {
         {/* Right: End / View Feedback */}
         <div style={{ width: 140, display: "flex", justifyContent: "flex-end" }}>
           <button
+            ref={endModalTriggerRef}
             onClick={() => phase === "done" ? handleEnd() : setShowEndModal(true)}
             aria-label={phase === "done" ? "View feedback" : "End interview"}
             style={{
@@ -1766,9 +1772,9 @@ export default function Interview() {
           aria-modal="true"
           aria-labelledby="end-modal-title"
           tabIndex={-1}
-          onClick={(e) => { if (e.target === e.currentTarget) { e.stopPropagation(); setShowEndModal(false); } }}
+          onClick={(e) => { if (e.target === e.currentTarget) { e.stopPropagation(); setShowEndModal(false); endModalTriggerRef.current?.focus(); } }}
           onKeyDown={(e) => {
-            if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); setShowEndModal(false); return; }
+            if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); setShowEndModal(false); endModalTriggerRef.current?.focus(); return; }
             if (e.key === "Tab") {
               const modal = e.currentTarget.querySelector("[data-modal-content]") as HTMLElement;
               if (!modal) return;
@@ -1812,8 +1818,14 @@ export default function Interview() {
             <p style={{ fontFamily: font.ui, fontSize: 13, color: c.stone, lineHeight: 1.6, marginBottom: 24 }}>
               You've completed {currentQuestionNum} of {totalQuestions} questions. Ending now will still generate feedback based on your answers so far.
             </p>
+            {isOffline && (
+              <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 14px", borderRadius: 8, background: "rgba(196,112,90,0.08)", border: "1px solid rgba(196,112,90,0.15)", marginBottom: 16 }}>
+                <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.ember} strokeWidth="2"><line x1="1" y1="1" x2="23" y2="23"/><path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"/></svg>
+                <span style={{ fontFamily: font.ui, fontSize: 11, color: c.ember }}>You're offline — AI evaluation may fail. Your answers will be saved locally.</span>
+              </div>
+            )}
             <div style={{ display: "flex", gap: 12, justifyContent: "center" }}>
-              <button onClick={() => setShowEndModal(false)}
+              <button onClick={() => { setShowEndModal(false); endModalTriggerRef.current?.focus(); }}
                 style={{
                   fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.ivory,
                   background: "rgba(240,237,232,0.04)", border: `1px solid ${c.border}`,

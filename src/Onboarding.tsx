@@ -635,7 +635,7 @@ export default function Onboarding() {
                       </div>
                     </div>
                     <div className="ob-s1-header-actions" style={{ display: "flex", gap: 6, flexShrink: 0 }}>
-                      <button onClick={() => { setAiPhase("analyzing"); analyzeResumeWithAI(resumeText, targetRole).then(r => { if (r?.profile) setAiProfile(r.profile); setAiPhase("done"); }).catch(() => setAiPhase("done")); }}
+                      <button onClick={() => { setAiPhase("analyzing"); Promise.race([analyzeResumeWithAI(resumeText, targetRole), new Promise<null>((_, rej) => setTimeout(() => rej(new Error("timeout")), 30000))]).then(r => { if (r && typeof r === "object" && "profile" in r) setAiProfile(r.profile); setAiPhase("done"); }).catch(() => setAiPhase("done")); }}
                         style={{ display: "flex", alignItems: "center", gap: 5, padding: "6px 12px", borderRadius: 7, background: c.graphite, border: `1px solid ${c.border}`, cursor: "pointer", fontFamily: font.ui, fontSize: 11, color: c.stone, transition: "all 0.2s" }}
                         onMouseEnter={(e) => { e.currentTarget.style.borderColor = "rgba(240,237,232,0.15)"; e.currentTarget.style.color = c.ivory; }}
                         onMouseLeave={(e) => { e.currentTarget.style.borderColor = c.border; e.currentTarget.style.color = c.stone; }}>

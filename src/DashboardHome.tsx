@@ -198,6 +198,20 @@ export default function DashboardHome() {
   const activeNotifs = notifications.filter(n => !persisted.dismissedNotifs.includes(n.id));
   const latestBadge = badges.filter(b => b.earned).slice(-1)[0] || null;
 
+  // Check for interrupted interview draft
+  const draftKey = `hireready_interview_draft_${user?.id || "anon"}`;
+  const [hasDraft, setHasDraft] = useState<{ type: string; savedAt: number } | null>(() => {
+    try {
+      const raw = localStorage.getItem(draftKey);
+      if (!raw) return null;
+      const d = JSON.parse(raw);
+      // Only show if draft is less than 24 hours old
+      if (d && d.savedAt && Date.now() - d.savedAt < 86400000) return { type: d.interviewType || "behavioral", savedAt: d.savedAt };
+    } catch {}
+    return null;
+  });
+  const dismissDraft = () => { setHasDraft(null); try { localStorage.removeItem(draftKey); } catch {} };
+
   return (
     <div style={{ margin: "0 auto", lineHeight: 1.5 }} className="dash-card">
       <style>{dashboardStyles}</style>
@@ -267,6 +281,28 @@ export default function DashboardHome() {
           </div>
         </div>
       </div>
+
+      {/* ─── Resume Draft Banner ─── */}
+      {hasDraft && (
+        <div style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 20px", borderRadius: radius.md, background: "rgba(201,169,110,0.04)", border: `1px solid rgba(201,169,110,0.15)`, marginBottom: sp.xl }}>
+          <div style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(201,169,110,0.08)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <span style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: c.ivory, display: "block", marginBottom: 2 }}>You have an unfinished interview</span>
+            <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>{hasDraft.type.charAt(0).toUpperCase() + hasDraft.type.slice(1)} · saved {relativeTime(new Date(hasDraft.savedAt).toISOString())}</span>
+          </div>
+          <button onClick={() => nav(`/interview?type=${hasDraft.type}&resume=true`)}
+            style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, padding: "8px 18px", borderRadius: 8, border: "none", background: `linear-gradient(135deg, ${c.gilt}, ${c.giltDark})`, color: c.obsidian, cursor: "pointer", whiteSpace: "nowrap", transition: "filter 0.15s" }}
+            onMouseEnter={(e) => { e.currentTarget.style.filter = "brightness(1.1)"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.filter = "brightness(1)"; }}>
+            Resume
+          </button>
+          <button onClick={dismissDraft} aria-label="Dismiss draft" style={{ background: "none", border: "none", color: c.stone, cursor: "pointer", padding: 4 }}>
+            <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+      )}
 
       {/* ─── Notifications ─── */}
       {activeNotifs.length > 0 && (

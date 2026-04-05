@@ -28,6 +28,8 @@ export default function DashboardSessions() {
   const { recentSessions, handleStartSession, dataLoading } = useDashboard();
   const [filter, setFilter] = useState("All");
   const [search, setSearch] = useState("");
+  const [sortBy, setSortBy] = useState<"date" | "score">("date");
+  const [showCount, setShowCount] = useState(20);
 
   if (dataLoading) return <DataLoadingSkeleton />;
 
@@ -38,7 +40,10 @@ export default function DashboardSessions() {
       if (!search) return true;
       const q = search.toLowerCase();
       return s.type.toLowerCase().includes(q) || s.topStrength.toLowerCase().includes(q) || s.topWeakness.toLowerCase().includes(q);
-    });
+    })
+    .sort((a, b) => sortBy === "score" ? b.score - a.score : new Date(b.date).getTime() - new Date(a.date).getTime());
+  const visible = filtered.slice(0, showCount);
+  const hasMore = filtered.length > showCount;
 
   if (sessions.length === 0) {
     return (
@@ -79,11 +84,11 @@ export default function DashboardSessions() {
         </button>
       </div>
 
-      <div style={{ display: "flex", gap: 12, marginBottom: 20, flexWrap: "wrap" }}>
+      <div style={{ display: "flex", gap: 12, marginBottom: 20, flexWrap: "wrap", alignItems: "center" }}>
         <div style={{ flex: 1, minWidth: 200, position: "relative" }}>
           <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.stone} strokeWidth="2" strokeLinecap="round" style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)" }}><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
           <input type="text" placeholder="Search by type, strength, weakness..."
-            value={search} onChange={(e) => setSearch(e.target.value)}
+            value={search} onChange={(e) => { setSearch(e.target.value); setShowCount(20); }}
             style={{ width: "100%", padding: "9px 12px 9px 34px", fontFamily: font.ui, fontSize: 13, color: c.ivory, background: c.graphite, border: `1px solid ${c.border}`, borderRadius: 8, outline: "none", boxSizing: "border-box" }}
             onFocus={(e) => e.currentTarget.style.borderColor = c.gilt}
             onBlur={(e) => e.currentTarget.style.borderColor = c.border}
@@ -91,9 +96,15 @@ export default function DashboardSessions() {
         </div>
         <div style={{ display: "flex", gap: 6 }}>
           {sessionTypes.map(type => (
-            <button key={type} onClick={() => setFilter(type)} aria-pressed={filter === type}
+            <button key={type} onClick={() => { setFilter(type); setShowCount(20); }} aria-pressed={filter === type}
               style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 500, padding: "7px 14px", borderRadius: 100, cursor: "pointer", background: filter === type ? "rgba(201,169,110,0.1)" : "transparent", border: `1px solid ${filter === type ? c.gilt : c.border}`, color: filter === type ? c.gilt : c.stone, transition: "all 0.2s ease", outline: "none" }}>{type}</button>
           ))}
+        </div>
+        <div style={{ display: "flex", gap: 4 }}>
+          <button onClick={() => setSortBy("date")} aria-pressed={sortBy === "date"}
+            style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 500, padding: "7px 12px", borderRadius: 100, cursor: "pointer", background: sortBy === "date" ? "rgba(201,169,110,0.1)" : "transparent", border: `1px solid ${sortBy === "date" ? c.gilt : c.border}`, color: sortBy === "date" ? c.gilt : c.stone, transition: "all 0.2s ease", outline: "none" }}>Recent</button>
+          <button onClick={() => setSortBy("score")} aria-pressed={sortBy === "score"}
+            style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 500, padding: "7px 12px", borderRadius: 100, cursor: "pointer", background: sortBy === "score" ? "rgba(201,169,110,0.1)" : "transparent", border: `1px solid ${sortBy === "score" ? c.gilt : c.border}`, color: sortBy === "score" ? c.gilt : c.stone, transition: "all 0.2s ease", outline: "none" }}>Top Score</button>
         </div>
       </div>
 
@@ -118,7 +129,7 @@ export default function DashboardSessions() {
             </button>
           </div>
         ) : (
-          filtered.map(session => (
+          visible.map(session => (
             <button key={session.id}
               onClick={() => sessionNav(`/session/${session.id}`)}
               style={{ width: "100%", padding: "18px 20px", borderRadius: 14, textAlign: "left", background: c.graphite, border: `1px solid ${c.border}`, cursor: "pointer", display: "flex", alignItems: "center", gap: 18, transition: "all 0.2s ease", outline: "none" }}
@@ -157,6 +168,14 @@ export default function DashboardSessions() {
               <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={c.stone} strokeWidth="2" strokeLinecap="round" style={{ flexShrink: 0 }}><polyline points="9 18 15 12 9 6" /></svg>
             </button>
           ))
+        )}
+        {hasMore && (
+          <button onClick={() => setShowCount(s => s + 20)}
+            style={{ width: "100%", padding: "12px", borderRadius: 10, border: `1px solid ${c.border}`, background: "transparent", color: c.stone, fontFamily: font.ui, fontSize: 13, cursor: "pointer", transition: "background 0.15s", marginTop: 4 }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(240,237,232,0.04)"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}>
+            Show more ({filtered.length - showCount} remaining)
+          </button>
         )}
       </div>
     </div>
