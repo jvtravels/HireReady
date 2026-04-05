@@ -253,62 +253,41 @@ export default function DashboardHome() {
 
       {/* ─── Hero CTA ─── */}
       <div style={{
-        ...card, background: c.graphite, padding: isMobile ? "24px" : "32px 36px", marginBottom: sp["2xl"],
-        position: "relative" as const, overflow: "hidden" as const,
-        border: "1px solid rgba(201,169,110,0.12)",
-        boxShadow: "0 1px 3px rgba(0,0,0,0.24), 0 0 0 1px rgba(201,169,110,0.06), 0 0 40px rgba(201,169,110,0.04)",
-      }}>
-        {/* Golden radial glow */}
-        <div style={{ position: "absolute", top: "-40%", right: "-5%", width: "50%", height: "180%", background: "radial-gradient(ellipse at center, rgba(201,169,110,0.08) 0%, rgba(201,169,110,0.03) 40%, transparent 70%)", pointerEvents: "none" }} />
-        <div style={{ position: "absolute", bottom: 0, left: 0, width: "100%", height: "1px", background: "linear-gradient(90deg, transparent, rgba(201,169,110,0.15) 30%, rgba(201,169,110,0.15) 70%, transparent)", pointerEvents: "none" }} />
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: isMobile ? 16 : 24, position: "relative" as const }}>
+        ...card, padding: isMobile ? "24px" : "28px 32px", marginBottom: sp["2xl"],
+      }} className="gradient-border-card">
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: isMobile ? 16 : 24 }}>
           <div style={{ flex: 1, minWidth: 260 }}>
             {daysLeft > 0 && persisted.interviewDate && (
-              <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "5px 14px", borderRadius: radius.pill, background: daysLeft <= 7 ? "rgba(196,112,90,0.08)" : "rgba(122,158,126,0.06)", border: `1px solid ${daysLeft <= 7 ? "rgba(196,112,90,0.2)" : "rgba(122,158,126,0.18)"}`, marginBottom: 12 }}>
-                <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={daysLeft <= 7 ? c.ember : c.sage} strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                <span style={{ fontFamily: font.mono, fontSize: 11, fontWeight: 600, color: daysLeft <= 7 ? c.ember : c.sage }}>{daysLeft} days until interview</span>
+              <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "5px 14px", borderRadius: radius.pill, background: "rgba(122,158,126,0.06)", border: "1px solid rgba(122,158,126,0.18)", marginBottom: 14 }}>
+                <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                <span style={{ fontFamily: font.mono, fontSize: 11, fontWeight: 600, color: c.sage }}>{daysLeft} days until interview</span>
               </div>
             )}
-            <h2 style={{ fontFamily: font.display, fontSize: isMobile ? 20 : 24, fontWeight: 400, color: c.ivory, marginBottom: 8, letterSpacing: "-0.01em" }}>
+            <h2 style={{ fontFamily: font.display, fontSize: isMobile ? 18 : 20, fontWeight: 600, color: c.ivory, marginBottom: 6, letterSpacing: "-0.01em" }}>
               {hasData ? `Ready for session #${overallStats.sessionsCompleted + 1}?` : "Start practicing to ace your next interview"}
             </h2>
-            <p style={{ fontFamily: font.ui, fontSize: 13, color: c.stone, lineHeight: 1.6, maxWidth: 480 }}>
+            <p style={{ fontFamily: font.ui, fontSize: 13, color: c.stone, lineHeight: 1.6, maxWidth: 560 }}>
               {weakestSkill ? (
-                <>Your <strong style={{ color: c.chalk }}>{weakestSkill.name}</strong> score is {weakestSkill.score}{user?.targetCompany ? ` — ${user.targetCompany} interviews test this heavily` : ""}. Try a focused session to boost it.</>
+                <>Your <strong style={{ color: c.ivory, fontWeight: 600 }}>{weakestSkill.name}</strong> score is {weakestSkill.score}{user?.targetCompany ? ` — ${user.targetCompany} interviews test this heavily` : ""}. Try a focused session to boost it.</>
               ) : (
                 <>Each session is tailored to your target role{user?.targetCompany ? ` at ${user.targetCompany}` : ""}. Complete your first session to get personalized insights.</>
               )}
             </p>
-            {hasData && overallStats.sessionsCompleted >= 2 && overallStats.improvement > 0 && (
-              <p style={{ fontFamily: font.ui, fontSize: 12, color: c.sage, marginTop: 8, display: "flex", alignItems: "center", gap: 6 }}>
-                <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="2" strokeLinecap="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
-                {readinessScore >= 85
-                  ? "You're interview-ready! Keep practicing to stay sharp."
-                  : (() => {
-                      const ptsPerSession = overallStats.improvement / overallStats.sessionsCompleted;
-                      const sessionsNeeded = Math.max(1, Math.ceil((85 - readinessScore) / Math.max(1, ptsPerSession)));
-                      const roundedPts = Math.round(ptsPerSession);
-                      return `At your current pace (+${isFinite(roundedPts) ? roundedPts : "?"}pts/session), you'll reach 85 in ~${isFinite(sessionsNeeded) ? sessionsNeeded : "?"} more sessions.`;
-                    })()
-                }
-              </p>
-            )}
           </div>
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 12 }}>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 14 }}>
             <button className="shimmer-btn dash-focus" onClick={handleStartSession} style={{
-              fontFamily: font.ui, fontSize: 14, fontWeight: 600, padding: "14px 32px", borderRadius: radius.md,
-              border: "none", background: `linear-gradient(135deg, ${c.gilt}, ${c.giltDark})`, color: c.obsidian,
+              fontFamily: font.ui, fontSize: 14, fontWeight: 600, padding: "12px 28px", borderRadius: radius.md,
+              border: `1px solid rgba(201,169,110,0.25)`, background: "rgba(201,169,110,0.08)", color: c.ivory,
               cursor: "pointer", display: "flex", alignItems: "center", gap: 8, whiteSpace: "nowrap",
-              boxShadow: "0 4px 20px rgba(201,169,110,0.2)",
               transition: "all 0.3s cubic-bezier(0.16,1,0.3,1)",
             }}
-              onMouseEnter={(e) => { e.currentTarget.style.boxShadow = "0 8px 32px rgba(201,169,110,0.3)"; e.currentTarget.style.transform = "translateY(-1px)"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.boxShadow = "0 4px 20px rgba(201,169,110,0.2)"; e.currentTarget.style.transform = "translateY(0)"; }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(201,169,110,0.14)"; e.currentTarget.style.borderColor = "rgba(201,169,110,0.4)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(201,169,110,0.08)"; e.currentTarget.style.borderColor = "rgba(201,169,110,0.25)"; }}
             >
-              <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polygon points="5,3 19,12 5,21" /></svg>
+              <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polygon points="5,3 19,12 5,21" /></svg>
               {atSessionLimit ? "Upgrade to Continue" : "Start Session"}
             </button>
-            {/* ─── Streak widget (inline with CTA, matches reference) ─── */}
+            {/* ─── Streak widget ─── */}
             <div style={{ display: "flex", alignItems: "center", gap: 0 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 14px", borderRadius: `${radius.pill}px 0 0 ${radius.pill}px`, background: "rgba(201,169,110,0.06)", border: "1px solid rgba(201,169,110,0.12)", borderRight: "none" }}>
                 <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="2" strokeLinecap="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" /></svg>
