@@ -310,7 +310,7 @@ export default function DashboardResume() {
             </p>
             <button onClick={triggerUpload} style={{
               padding: "8px 20px", borderRadius: 8, border: "none", cursor: "pointer",
-              background: `linear-gradient(135deg, ${c.gilt}, #B8923E)`, color: c.obsidian,
+              background: `linear-gradient(135deg, ${c.gilt}, ${c.giltDark})`, color: c.obsidian,
               fontFamily: font.ui, fontSize: 12, fontWeight: 600,
             }}>
               Re-upload for AI Analysis

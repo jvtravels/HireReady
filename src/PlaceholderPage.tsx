@@ -34,7 +34,7 @@ export default function PlaceholderPage() {
         {page.cta && (
           <button onClick={() => nav(page.cta!.path)} style={{
             fontFamily: font.ui, fontSize: 14, fontWeight: 600, padding: "10px 24px", borderRadius: 8,
-            border: "none", background: `linear-gradient(135deg, ${c.gilt}, #B8923E)`, color: c.obsidian, cursor: "pointer",
+            border: "none", background: `linear-gradient(135deg, ${c.gilt}, ${c.giltDark})`, color: c.obsidian, cursor: "pointer",
           }}>{page.cta.label}</button>
         )}
       </div>

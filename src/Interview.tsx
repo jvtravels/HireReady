@@ -1496,7 +1496,7 @@ export default function Interview() {
                     style={{
                       fontFamily: font.ui, fontSize: 13, fontWeight: 600,
                       padding: "10px 28px", borderRadius: 10,
-                      background: `linear-gradient(135deg, ${c.gilt}, #B8923E)`,
+                      background: `linear-gradient(135deg, ${c.gilt}, ${c.giltDark})`,
                       border: "none", color: c.obsidian, cursor: "pointer",
                       display: "flex", alignItems: "center", gap: 8,
                       transition: "all 0.2s ease",
@@ -1734,7 +1734,7 @@ export default function Interview() {
             style={{
               fontFamily: font.ui, fontSize: 11, fontWeight: 500,
               padding: "6px 16px", borderRadius: 8,
-              background: phase === "done" ? `linear-gradient(135deg, ${c.gilt}, #B8923E)` : "transparent",
+              background: phase === "done" ? `linear-gradient(135deg, ${c.gilt}, ${c.giltDark})` : "transparent",
               border: phase === "done" ? "none" : `1px solid rgba(240,237,232,0.08)`,
               color: phase === "done" ? c.obsidian : c.stone,
               cursor: "pointer", transition: "all 0.25s",

@@ -436,7 +436,7 @@ export default function Onboarding() {
       <div style={{ padding: "18px 40px", display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", borderBottom: `1px solid rgba(240,237,232,0.04)`, background: "rgba(10,10,11,0.6)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)", zIndex: 10 }}>
         {/* Logo — left */}
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <div style={{ width: 6, height: 6, borderRadius: 2, background: `linear-gradient(135deg, ${c.gilt}, #B8923E)`, boxShadow: "0 0 8px rgba(201,169,110,0.3)" }} />
+          <div style={{ width: 6, height: 6, borderRadius: 2, background: `linear-gradient(135deg, ${c.gilt}, ${c.giltDark})`, boxShadow: "0 0 8px rgba(201,169,110,0.3)" }} />
           <span style={{ fontFamily: font.display, fontSize: 17, fontWeight: 400, color: c.ivory, letterSpacing: "0.02em" }}>HireReady</span>
         </div>
         {/* Stepper — center */}
@@ -445,7 +445,7 @@ export default function Onboarding() {
             <div key={i} style={{ display: "flex", alignItems: "center", gap: 6 }}>
               <div style={{
                 width: 26, height: 26, borderRadius: "50%",
-                background: step > i + 1 ? `linear-gradient(135deg, ${c.gilt}, #B8923E)` : step === i + 1 ? "rgba(201,169,110,0.1)" : "transparent",
+                background: step > i + 1 ? `linear-gradient(135deg, ${c.gilt}, ${c.giltDark})` : step === i + 1 ? "rgba(201,169,110,0.1)" : "transparent",
                 border: `1.5px solid ${step >= i + 1 ? c.gilt : "rgba(240,237,232,0.08)"}`,
                 display: "flex", alignItems: "center", justifyContent: "center",
                 transition: "all 0.4s cubic-bezier(0.16, 1, 0.3, 1)",
@@ -587,7 +587,7 @@ export default function Onboarding() {
                     </p>
                     {/* Progress bar */}
                     <div style={{ maxWidth: 320, margin: "20px auto 0", height: 4, borderRadius: 2, background: "rgba(240,237,232,0.06)", overflow: "hidden" }}>
-                      <div className="ob-progress-bar" style={{ height: "100%", borderRadius: 2, background: `linear-gradient(90deg, ${c.gilt}, #B8923E)` }} />
+                      <div className="ob-progress-bar" style={{ height: "100%", borderRadius: 2, background: `linear-gradient(90deg, ${c.gilt}, ${c.giltDark})` }} />
                     </div>
                     <p style={{ fontFamily: font.ui, fontSize: 12, color: "rgba(154,149,144,0.5)", marginTop: 8 }}>Usually 10–20 seconds</p>
                     {fileName && (
@@ -1020,7 +1020,7 @@ export default function Onboarding() {
                 <button onClick={goNext} disabled={isContinueDisabled}
                   style={{
                     fontFamily: font.ui, fontSize: 15, fontWeight: 600, padding: "14px 40px", borderRadius: 10, border: "none",
-                    background: isContinueDisabled ? "rgba(201,169,110,0.15)" : `linear-gradient(135deg, ${c.gilt}, #B8923E)`,
+                    background: isContinueDisabled ? "rgba(201,169,110,0.15)" : `linear-gradient(135deg, ${c.gilt}, ${c.giltDark})`,
                     color: isContinueDisabled ? "rgba(201,169,110,0.4)" : c.obsidian,
                     cursor: isContinueDisabled ? "not-allowed" : "pointer",
                     transition: "all 0.25s ease", display: "inline-flex", alignItems: "center", gap: 8,
@@ -1036,7 +1036,7 @@ export default function Onboarding() {
                 <button onClick={handleStart}
                   style={{
                     fontFamily: font.ui, fontSize: 15, fontWeight: 600, padding: "14px 40px", borderRadius: 10, border: "none",
-                    background: `linear-gradient(135deg, ${c.gilt}, #B8923E)`,
+                    background: `linear-gradient(135deg, ${c.gilt}, ${c.giltDark})`,
                     color: c.obsidian,
                     cursor: "pointer",
                     transition: "all 0.25s ease", display: "inline-flex", alignItems: "center", gap: 8,

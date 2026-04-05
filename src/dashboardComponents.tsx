@@ -306,7 +306,7 @@ export function UpgradeModal({ onClose, sessionsUsed, user, currentTier, onPayme
                 </div>
               ) : (
                 <button onClick={() => handleCheckout(plan.id)} disabled={!!loading}
-                  style={{ width: "100%", padding: "10px 16px", borderRadius: 8, border: plan.featured ? "none" : `1px solid ${c.borderHover}`, background: plan.featured ? `linear-gradient(135deg, ${c.gilt}, #B8923E)` : "transparent", color: plan.featured ? c.obsidian : c.chalk, fontFamily: font.ui, fontSize: 13, fontWeight: 600, cursor: loading ? "wait" : "pointer", opacity: loading && loading !== plan.id ? 0.5 : 1, transition: "all 0.2s" }}
+                  style={{ width: "100%", padding: "10px 16px", borderRadius: 8, border: plan.featured ? "none" : `1px solid ${c.borderHover}`, background: plan.featured ? `linear-gradient(135deg, ${c.gilt}, ${c.giltDark})` : "transparent", color: plan.featured ? c.obsidian : c.chalk, fontFamily: font.ui, fontSize: 13, fontWeight: 600, cursor: loading ? "wait" : "pointer", opacity: loading && loading !== plan.id ? 0.5 : 1, transition: "all 0.2s" }}
                   onMouseEnter={(e) => { if (!loading) { if (plan.featured) e.currentTarget.style.filter = "brightness(1.15)"; else { e.currentTarget.style.borderColor = c.chalk; e.currentTarget.style.background = "rgba(240,237,232,0.03)"; } } }}
                   onMouseLeave={(e) => { if (plan.featured) e.currentTarget.style.filter = "brightness(1)"; else { e.currentTarget.style.borderColor = c.borderHover; e.currentTarget.style.background = "transparent"; } }}
                 >
@@ -337,7 +337,7 @@ export function ProGate({ feature, onUpgrade }: { feature: string; onUpgrade: ()
       <p style={{ fontFamily: font.ui, fontSize: 14, color: c.stone, lineHeight: 1.6, maxWidth: 360, marginBottom: 24 }}>
         Upgrade to access {feature.toLowerCase()}. Unlock full analytics, calendar tools, and unlimited sessions with the Pro plan.
       </p>
-      <button onClick={onUpgrade} style={{ padding: "12px 28px", borderRadius: 10, border: "none", cursor: "pointer", background: `linear-gradient(135deg, ${c.gilt}, #B8923E)`, color: c.obsidian, fontFamily: font.ui, fontSize: 14, fontWeight: 600, transition: "opacity 0.2s" }}
+      <button onClick={onUpgrade} style={{ padding: "12px 28px", borderRadius: 10, border: "none", cursor: "pointer", background: `linear-gradient(135deg, ${c.gilt}, ${c.giltDark})`, color: c.obsidian, fontFamily: font.ui, fontSize: 14, fontWeight: 600, transition: "opacity 0.2s" }}
         onMouseEnter={(e) => e.currentTarget.style.opacity = "0.9"}
         onMouseLeave={(e) => e.currentTarget.style.opacity = "1"}
       >

@@ -127,7 +127,7 @@ export default function OnboardingComplete() {
               style={{
                 fontFamily: font.ui, fontSize: 15, fontWeight: 600,
                 padding: "16px 44px", borderRadius: 10, border: "none",
-                background: `linear-gradient(135deg, ${c.gilt}, #B8923E)`,
+                background: `linear-gradient(135deg, ${c.gilt}, ${c.giltDark})`,
                 color: c.obsidian, cursor: "pointer",
                 transition: "all 0.25s ease",
                 display: "inline-flex", alignItems: "center", gap: 10,

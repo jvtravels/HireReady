@@ -314,7 +314,7 @@ export default function SessionSetup() {
             navigate(`/interview?type=${draft.type}&difficulty=${draft.difficulty}&focus=${draft.focus || "general"}&resume=true`);
           }} style={{
             padding: "6px 16px", borderRadius: 6, border: "none", cursor: "pointer",
-            background: `linear-gradient(135deg, ${c.gilt}, #B8923E)`, color: c.obsidian,
+            background: `linear-gradient(135deg, ${c.gilt}, ${c.giltDark})`, color: c.obsidian,
             fontFamily: font.ui, fontSize: 12, fontWeight: 600,
           }}>Resume</button>
           <button onClick={() => {

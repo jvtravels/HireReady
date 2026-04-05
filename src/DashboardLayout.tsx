@@ -90,7 +90,7 @@ export default function DashboardLayout() {
         transition: "transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)",
       }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 36, padding: "0 12px" }}>
-          <Link to="/" style={{ textDecoration: "none" }}><span style={{ fontFamily: font.display, fontSize: 18, fontWeight: 400, color: c.ivory, letterSpacing: "0.02em" }}>HireReady</span></Link>
+          <Link to="/" style={{ textDecoration: "none" }}><span style={{ fontFamily: font.ui, fontSize: 16, fontWeight: 600, color: c.ivory, letterSpacing: "0.06em" }}>HireReady</span></Link>
           {isMobile && <button onClick={() => setSidebarOpen(false)} style={{ background: "none", border: "none", color: c.stone, cursor: "pointer", padding: 4 }}><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>}
         </div>
         <nav aria-label="Main navigation" style={{ display: "flex", flexDirection: "column", gap: 4, flex: "1 1 auto", overflow: "hidden" }}>
@@ -155,7 +155,7 @@ export default function DashboardLayout() {
               onMouseLeave={(e) => e.currentTarget.style.opacity = "1"}
             >Manage Plan</button>
           ) : (
-            <button onClick={() => setShowUpgradeModal(true)} style={{ width: "100%", padding: "8px 0", borderRadius: 8, border: "none", cursor: "pointer", background: `linear-gradient(135deg, ${c.gilt}, #B8923E)`, color: c.obsidian, fontFamily: font.ui, fontSize: 12, fontWeight: 600, transition: "opacity 0.2s" }}
+            <button onClick={() => setShowUpgradeModal(true)} style={{ width: "100%", padding: "8px 0", borderRadius: 8, border: "none", cursor: "pointer", background: `linear-gradient(135deg, ${c.gilt}, ${c.giltDark})`, color: c.obsidian, fontFamily: font.ui, fontSize: 12, fontWeight: 600, transition: "opacity 0.2s" }}
               onMouseEnter={(e) => e.currentTarget.style.opacity = "0.9"}
               onMouseLeave={(e) => e.currentTarget.style.opacity = "1"}
             >Upgrade to Pro</button>
@@ -188,7 +188,7 @@ export default function DashboardLayout() {
       </aside>
 
       {/* Main Content */}
-      <main id="dashboard-main" style={{ flex: 1, marginLeft: isMobile ? 0 : 240, padding: isMobile ? "20px 16px 60px" : "28px 36px 60px", overflowY: "auto", height: "100vh" }}>
+      <main id="dashboard-main" style={{ flex: 1, marginLeft: isMobile ? 0 : 240, padding: isMobile ? "20px 16px 60px" : "40px 48px 80px", overflowY: "auto", height: "100vh" }}>
         {isMobile && (
           <button onClick={() => setSidebarOpen(true)} aria-label="Open navigation menu" aria-expanded={sidebarOpen}
             style={{ background: c.graphite, border: `1px solid ${c.border}`, borderRadius: 8, padding: "8px 10px", cursor: "pointer", marginBottom: 20, color: c.ivory, display: "flex", alignItems: "center", gap: 8 }}>

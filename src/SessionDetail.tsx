@@ -323,7 +323,7 @@ export default function SessionDetail() {
             </div>
             {user && (!user.subscriptionTier || user.subscriptionTier === "free") && (
               <button onClick={() => { window.location.href = "/#pricing"; }}
-                style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, padding: "9px 20px", borderRadius: 8, border: "none", background: `linear-gradient(135deg, ${c.gilt}, #B8923E)`, color: c.obsidian, cursor: "pointer", whiteSpace: "nowrap" }}>
+                style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, padding: "9px 20px", borderRadius: 8, border: "none", background: `linear-gradient(135deg, ${c.gilt}, ${c.giltDark})`, color: c.obsidian, cursor: "pointer", whiteSpace: "nowrap" }}>
                 Upgrade & Keep Going
               </button>
             )}
@@ -646,7 +646,7 @@ export default function SessionDetail() {
               <p style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, margin: 0 }}>Get unlimited sessions, detailed analytics, and priority AI feedback.</p>
             </div>
             <button onClick={() => { window.location.href = "/#pricing"; }}
-              style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, padding: "10px 24px", borderRadius: 8, border: "none", background: `linear-gradient(135deg, ${c.gilt}, #B8923E)`, color: c.obsidian, cursor: "pointer", whiteSpace: "nowrap" }}>
+              style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, padding: "10px 24px", borderRadius: 8, border: "none", background: `linear-gradient(135deg, ${c.gilt}, ${c.giltDark})`, color: c.obsidian, cursor: "pointer", whiteSpace: "nowrap" }}>
               Upgrade Now
             </button>
           </div>
