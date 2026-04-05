@@ -219,35 +219,6 @@ export default function DashboardHome() {
         </div>
       )}
 
-      {/* ─── Daily Challenge (full-width gradient banner) ─── */}
-      {dailyChallenge && !dailyChallenge.completed && !persisted.dismissedNotifs.includes(`challenge-${dailyChallenge.id}`) && (
-        <div style={{
-          display: "flex", alignItems: "center", justifyContent: "center", gap: 16,
-          padding: "12px 48px",
-          margin: `0 -48px ${sp.xl}px`,
-          background: "linear-gradient(90deg, rgba(184,146,62,0.18) 0%, rgba(201,169,110,0.10) 50%, rgba(184,146,62,0.18) 100%)",
-          borderTop: "1px solid rgba(201,169,110,0.12)", borderBottom: "1px solid rgba(201,169,110,0.12)",
-          position: "relative" as const,
-        }}>
-          <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="2" strokeLinecap="round" style={{ flexShrink: 0 }}><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" /></svg>
-          <span style={{ fontFamily: font.ui, fontSize: 13, color: c.ivory }}>
-            <strong>Daily Challenge:</strong> {dailyChallenge.label} — {dailyChallenge.description}
-          </span>
-          <button onClick={() => nav(`/session/new?type=${dailyChallenge.type}${dailyChallenge.focus ? `&focus=${dailyChallenge.focus}` : ""}`)}
-            style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.ivory, background: "transparent", border: `1px solid rgba(240,237,232,0.25)`, borderRadius: radius.pill, padding: "5px 16px", cursor: "pointer", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 5, transition: "all 0.2s ease", flexShrink: 0 }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(240,237,232,0.08)"; e.currentTarget.style.borderColor = "rgba(240,237,232,0.4)"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.borderColor = "rgba(240,237,232,0.25)"; }}>
-            Start Challenge
-            <svg aria-hidden="true" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
-          </button>
-          <button onClick={() => updatePersisted({ dismissedNotifs: [...persisted.dismissedNotifs, `challenge-${dailyChallenge.id}`] })} aria-label="Dismiss challenge"
-            style={{ position: "absolute", right: 16, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: c.stone, cursor: "pointer", padding: 4, display: "flex", alignItems: "center", transition: "color 0.2s" }}
-            onMouseEnter={(e) => { e.currentTarget.style.color = c.ivory; }}
-            onMouseLeave={(e) => { e.currentTarget.style.color = c.stone; }}>
-            <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-          </button>
-        </div>
-      )}
 
       {/* ─── Prep Plan Timeline ─── */}
       {prepPlan && (
@@ -660,6 +631,29 @@ export default function DashboardHome() {
           </div>
         </div>
       </div>
+
+      {/* ─── Daily Challenge | empty ─── */}
+      {dailyChallenge && !dailyChallenge.completed && (
+        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: sp["2xl"], marginBottom: sp["2xl"] }}>
+          <div style={{ ...card, padding: "24px 28px", boxShadow: "0 1px 3px rgba(0,0,0,0.24), 0 0 0 1px rgba(201,169,110,0.08)" }} {...cardLift}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="2" strokeLinecap="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" /></svg>
+                {sectionTitle("Daily Challenge", 15)}
+              </div>
+              <span style={{ fontFamily: font.mono, fontSize: 9, fontWeight: 600, padding: "2px 8px", borderRadius: radius.pill, background: dailyChallenge.difficulty === "hard" ? "rgba(196,112,90,0.08)" : "rgba(201,169,110,0.08)", color: dailyChallenge.difficulty === "hard" ? c.ember : c.gilt, textTransform: "uppercase" as const }}>{dailyChallenge.difficulty}</span>
+            </div>
+            <p style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: c.chalk, marginBottom: 4 }}>{dailyChallenge.label}</p>
+            <p style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, lineHeight: 1.6, marginBottom: 14 }}>{dailyChallenge.description}</p>
+            <button onClick={() => nav(`/session/new?type=${dailyChallenge.type}${dailyChallenge.focus ? `&focus=${dailyChallenge.focus}` : ""}`)}
+              style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: c.obsidian, background: `linear-gradient(135deg, ${c.gilt}, ${c.giltDark})`, border: "none", borderRadius: radius.sm, padding: "10px 18px", cursor: "pointer", width: "100%", transition: "all 0.25s cubic-bezier(0.16,1,0.3,1)", boxShadow: "0 2px 12px rgba(201,169,110,0.15)" }}
+              onMouseEnter={(e) => { e.currentTarget.style.boxShadow = "0 4px 20px rgba(201,169,110,0.25)"; e.currentTarget.style.transform = "translateY(-1px)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.boxShadow = "0 2px 12px rgba(201,169,110,0.15)"; e.currentTarget.style.transform = "translateY(0)"; }}
+            >Start Challenge</button>
+          </div>
+          <div />
+        </div>
+      )}
 
       {/* ─── Achievements (full-width) ─── */}
       {badges.length > 0 && (
