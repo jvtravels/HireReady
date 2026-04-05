@@ -8,7 +8,7 @@ import { ToastProvider } from "./Toast";
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/react";
 import { initErrorReporter } from "./errorReporter";
-import App from "./App";
+const App = lazy(() => import("./App"));
 import NotFound from "./NotFound";
 import ErrorBoundary, { RouteErrorBoundary } from "./ErrorBoundary";
 
