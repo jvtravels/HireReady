@@ -23,7 +23,7 @@ const LAST_ROUTE_KEY = "hireready_last_route";
 export function saveLastRoute(path: string) {
   try {
     // Only save persistent app routes — not transient screens like /interview
-    if (path.startsWith("/dashboard") || path.startsWith("/onboarding") || path.startsWith("/session")) {
+    if (path.startsWith("/dashboard") || path.startsWith("/onboarding") || path.startsWith("/session") || ["/sessions", "/calendar", "/analytics", "/resume", "/settings"].includes(path)) {
       localStorage.setItem(LAST_ROUTE_KEY, path);
     }
   } catch {}

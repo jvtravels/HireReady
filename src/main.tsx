@@ -85,13 +85,13 @@ createRoot(document.getElementById("root")!).render(
               <Route path="/login" element={<div className="page-enter"><SignUp isLogin /></div>} />
               <Route path="/onboarding" element={<RequireAuth><div className="page-enter"><Onboarding /></div></RequireAuth>} />
               <Route path="/onboarding/complete" element={<RequireAuth><div className="page-enter"><OnboardingComplete /></div></RequireAuth>} />
-              <Route path="/dashboard" element={<RequireAuth><DashboardProvider><div className="page-enter"><DashboardLayout /></div></DashboardProvider></RequireAuth>}>
-                <Route index element={<RouteErrorBoundary><DashboardHome /></RouteErrorBoundary>} />
-                <Route path="sessions" element={<RouteErrorBoundary><DashboardSessions /></RouteErrorBoundary>} />
-                <Route path="calendar" element={<RouteErrorBoundary><DashboardCalendar /></RouteErrorBoundary>} />
-                <Route path="analytics" element={<RouteErrorBoundary><DashboardAnalytics /></RouteErrorBoundary>} />
-                <Route path="resume" element={<RouteErrorBoundary><DashboardResume /></RouteErrorBoundary>} />
-                <Route path="settings" element={<RouteErrorBoundary><DashboardSettings /></RouteErrorBoundary>} />
+              <Route element={<RequireAuth><DashboardProvider><div className="page-enter"><DashboardLayout /></div></DashboardProvider></RequireAuth>}>
+                <Route path="/dashboard" element={<RouteErrorBoundary><DashboardHome /></RouteErrorBoundary>} />
+                <Route path="/sessions" element={<RouteErrorBoundary><DashboardSessions /></RouteErrorBoundary>} />
+                <Route path="/calendar" element={<RouteErrorBoundary><DashboardCalendar /></RouteErrorBoundary>} />
+                <Route path="/analytics" element={<RouteErrorBoundary><DashboardAnalytics /></RouteErrorBoundary>} />
+                <Route path="/resume" element={<RouteErrorBoundary><DashboardResume /></RouteErrorBoundary>} />
+                <Route path="/settings" element={<RouteErrorBoundary><DashboardSettings /></RouteErrorBoundary>} />
               </Route>
               <Route path="/session/new" element={<RequireAuth><div className="page-enter"><SessionSetup /></div></RequireAuth>} />
               <Route path="/interview" element={<RequireAuth><RouteErrorBoundary><Interview /></RouteErrorBoundary></RequireAuth>} />

@@ -229,7 +229,7 @@ export default function DashboardHome() {
               <span style={{ fontFamily: font.ui, fontSize: 14, color: c.chalk, flex: 1, lineHeight: 1.5 }}>{notif.text}</span>
               {notif.action && (
                 <button onClick={() => {
-                  if (notif.action === "View Report") nav("/dashboard/analytics");
+                  if (notif.action === "View Report") nav("/analytics");
                   else if (notif.action === "Quick Practice" || notif.action === "Practice Now") handleStartSession();
                   else if (notif.action === "Renew") nav("/#pricing");
                 }} style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: c.sage, background: "rgba(122,158,126,0.08)", border: `1px solid rgba(122,158,126,0.2)`, borderRadius: 6, padding: "6px 14px", cursor: "pointer", whiteSpace: "nowrap" }}
@@ -404,7 +404,7 @@ export default function DashboardHome() {
           <div style={{ ...card, padding: "24px 28px", marginBottom: sp["3xl"] }} className="gradient-border-card">
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
               {sectionTitle("Upcoming Interviews", 18)}
-              <button onClick={() => nav("/dashboard/calendar")} style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.gilt, background: "none", border: "none", cursor: "pointer", textDecoration: "underline", textUnderlineOffset: 2 }}>View all</button>
+              <button onClick={() => nav("/calendar")} style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.gilt, background: "none", border: "none", cursor: "pointer", textDecoration: "underline", textUnderlineOffset: 2 }}>View all</button>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : `repeat(${Math.min(upcomingEvents.length, 3)}, 1fr)`, gap: 12 }}>
               {upcomingEvents.map(ev => {
@@ -413,8 +413,8 @@ export default function DashboardHome() {
                 const isToday = days === 0;
                 return (
                   <div key={ev.id} role="button" tabIndex={0} aria-label={`${ev.company} interview — ${isToday ? "Today" : `${days} days away`}`}
-                    onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); nav("/dashboard/calendar"); } }}
-                    style={{ padding: "16px 20px", borderRadius: radius.md, background: c.obsidian, borderLeft: `3px solid ${isToday ? c.ember : urgent ? c.gilt : c.sage}`, cursor: "pointer", transition: "background 0.2s ease" }} onClick={() => nav("/dashboard/calendar")}
+                    onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); nav("/calendar"); } }}
+                    style={{ padding: "16px 20px", borderRadius: radius.md, background: c.obsidian, borderLeft: `3px solid ${isToday ? c.ember : urgent ? c.gilt : c.sage}`, cursor: "pointer", transition: "background 0.2s ease" }} onClick={() => nav("/calendar")}
                     onMouseEnter={(e) => e.currentTarget.style.background = "rgba(240,237,232,0.02)"}
                     onMouseLeave={(e) => e.currentTarget.style.background = c.obsidian}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>

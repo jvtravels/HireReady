@@ -7,27 +7,27 @@ test.describe("Dashboard — Unauthenticated", () => {
   });
 
   test("sessions page redirects to login", async ({ page }) => {
-    await page.goto("/dashboard/sessions");
+    await page.goto("/sessions");
     await expect(page).toHaveURL(/\/login/, { timeout: 5000 });
   });
 
   test("analytics page redirects to login", async ({ page }) => {
-    await page.goto("/dashboard/analytics");
+    await page.goto("/analytics");
     await expect(page).toHaveURL(/\/login/, { timeout: 5000 });
   });
 
   test("calendar page redirects to login", async ({ page }) => {
-    await page.goto("/dashboard/calendar");
+    await page.goto("/calendar");
     await expect(page).toHaveURL(/\/login/, { timeout: 5000 });
   });
 
   test("resume page redirects to login", async ({ page }) => {
-    await page.goto("/dashboard/resume");
+    await page.goto("/resume");
     await expect(page).toHaveURL(/\/login/, { timeout: 5000 });
   });
 
   test("settings page redirects to login", async ({ page }) => {
-    await page.goto("/dashboard/settings");
+    await page.goto("/settings");
     await expect(page).toHaveURL(/\/login/, { timeout: 5000 });
   });
 });
