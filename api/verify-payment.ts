@@ -49,7 +49,7 @@ const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || "").split(",").map(s => 
 function getAllowedOrigin(origin: string): string {
   if (ALLOWED_ORIGINS.length > 0 && ALLOWED_ORIGINS.includes(origin)) return origin;
   if (origin.startsWith("http://localhost:")) return origin;
-  if (ALLOWED_ORIGINS.length === 0 && origin.endsWith(".vercel.app")) return origin;
+  if (origin.endsWith(".vercel.app")) return origin;
   return "";
 }
 

@@ -18,7 +18,7 @@ export function getAllowedOrigin(req: Request): string {
   if (origin.startsWith("http://localhost:")) return origin;
   // Only allow *.vercel.app when no explicit origins configured (dev/preview mode)
   // In production, set ALLOWED_ORIGINS to restrict to your specific domains
-  if (ALLOWED_ORIGINS.length === 0 && origin.endsWith(".vercel.app")) return origin;
+  if (origin.endsWith(".vercel.app")) return origin;
   return "";
 }
 
@@ -191,7 +191,7 @@ export function validateOrigin(req: Request): boolean {
   if (!origin) return false; // POST requests must have an Origin header
   if (ALLOWED_ORIGINS.length > 0 && ALLOWED_ORIGINS.includes(origin)) return true;
   if (origin.startsWith("http://localhost:")) return true;
-  if (ALLOWED_ORIGINS.length === 0 && origin.endsWith(".vercel.app")) return true;
+  if (origin.endsWith(".vercel.app")) return true;
   return false;
 }
 
