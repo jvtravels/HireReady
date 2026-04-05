@@ -63,7 +63,7 @@ export const sessionTypes = ["All", "Behavioral", "Strategic", "Technical Leader
 export function scoreLabel(score: number) {
   if (score >= 85) return "Strong";
   if (score >= 75) return "Good";
-  return "Building up";
+  return "Needs work";
 }
 
 export function scoreLabelColor(score: number) {

@@ -167,9 +167,13 @@ export default function DashboardHome() {
             <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
             Download
           </button>
-          <button onClick={handleExportPDF} title="Export as PDF" style={utilBtn} onMouseEnter={utilBtnEnter} onMouseLeave={utilBtnLeave}>
-            <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-            PDF
+          <button onClick={() => nav("/session/new?type=behavioral")} title="Quick Behavioral session" style={utilBtn} onMouseEnter={utilBtnEnter} onMouseLeave={utilBtnLeave}>
+            <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            Quick Behavioral
+          </button>
+          <button onClick={() => nav("/session/new?type=case-study")} title="Quick Case Study session" style={utilBtn} onMouseEnter={utilBtnEnter} onMouseLeave={utilBtnLeave}>
+            <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+            Quick Case Study
           </button>
         </div>
       </div>
@@ -302,6 +306,30 @@ export default function DashboardHome() {
                 Focus: {weakestSkill.name} ({weakestSkill.score})
               </button>
             )}
+            {/* ─── Streak widget (inline with CTA) ─── */}
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 12px", borderRadius: radius.pill, background: "rgba(201,169,110,0.06)", border: "1px solid rgba(201,169,110,0.12)" }}>
+                <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="2" strokeLinecap="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" /></svg>
+                <span style={{ fontFamily: font.mono, fontSize: 10, fontWeight: 600, color: c.gilt }}>{currentStreak > 0 ? `${currentStreak}-day streak` : "Start a streak"}</span>
+              </div>
+              {["M", "T", "W", "T", "F", "S", "S"].map((day, i) => {
+                const today = new Date();
+                const todayIdx = today.getDay() === 0 ? 6 : today.getDay() - 1;
+                const isToday = i === todayIdx;
+                const isFutureDay = i > todayIdx;
+                const practiced = weekActivity[i];
+                return (
+                  <div key={`day-${i}`} title={`${day}: ${isFutureDay ? "Upcoming" : practiced ? "Practiced" : "Missed"}`} style={{
+                    width: 22, height: 22, borderRadius: 4,
+                    background: practiced ? "rgba(201,169,110,0.12)" : "transparent",
+                    border: `1px solid ${practiced ? "rgba(201,169,110,0.25)" : isToday ? "rgba(201,169,110,0.2)" : "rgba(240,237,232,0.06)"}`,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    fontSize: 8, fontFamily: font.mono, fontWeight: 600,
+                    color: practiced ? c.gilt : isToday ? c.ivory : c.stone,
+                  }}>{day}</div>
+                );
+              })}
+            </div>
             {isFree && sessionsRemaining > 0 && (
               <span style={{ fontFamily: font.mono, fontSize: 10, color: sessionsRemaining === 1 ? c.ember : c.stone }}>{sessionsRemaining} free session{sessionsRemaining !== 1 ? "s" : ""} left</span>
             )}
@@ -309,59 +337,16 @@ export default function DashboardHome() {
         </div>
       </div>
 
-      {/* ─── Streak & Activity (separated from CTA for balance) ─── */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, padding: "10px 0", marginBottom: sp["2xl"] }}>
-        <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="2" strokeLinecap="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" /></svg>
-        <span style={{ fontFamily: font.mono, fontSize: 11, fontWeight: 600, color: c.gilt }}>{currentStreak > 0 ? `${currentStreak}-day streak` : "Start a streak"}</span>
-        <div style={{ width: 1, height: 14, background: "rgba(240,237,232,0.08)", margin: "0 4px" }} />
-        {["M", "T", "W", "T", "F", "S", "S"].map((day, i) => {
-          const today = new Date();
-          const todayIdx = today.getDay() === 0 ? 6 : today.getDay() - 1;
-          const isToday = i === todayIdx;
-          const isFutureDay = i > todayIdx;
-          const practiced = weekActivity[i];
-          return (
-            <div key={`day-${i}`} title={`${day}: ${isFutureDay ? "Upcoming" : practiced ? "Practiced" : "Missed"}`} style={{
-              width: 24, height: 24, borderRadius: 4,
-              background: practiced ? "rgba(201,169,110,0.12)" : "transparent",
-              border: `1px solid ${practiced ? "rgba(201,169,110,0.25)" : isToday ? "rgba(201,169,110,0.2)" : "rgba(240,237,232,0.06)"}`,
-              display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: 9, fontFamily: font.mono, fontWeight: 600,
-              color: practiced ? c.gilt : isToday ? c.ivory : c.stone,
-            }}>{day}</div>
-          );
-        })}
-      </div>
-
-      {/* ─── Stats Grid (3+2 for breathing room) ─── */}
-      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(3, 1fr)", gap: sp.lg, marginBottom: sp.lg }}>
+      {/* ─── Stats Grid (all 5 in one row) ─── */}
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(5, 1fr)", gap: sp.lg, marginBottom: sp["3xl"] }}>
         {[
           { label: "Readiness", value: hasData ? (readinessScore > 0 ? readinessScore.toString() : "\u2014") : "\u2014", icon: <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>, sub: !hasData ? "Complete a session" : readinessScore > 0 ? scoreLabel(readinessScore) : "Need more sessions", subColor: !hasData ? c.stone : readinessScore > 0 ? scoreLabelColor(readinessScore) : c.stone },
           { label: "Sessions", value: overallStats.sessionsCompleted.toString(), icon: <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>, sub: hasData ? `${weekActivity.filter(Boolean).length} this week` : "Get started", subColor: c.stone },
           { label: "Avg Score", value: hasData ? overallStats.avgScore.toString() : "\u2014", icon: <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="1.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>, sub: hasData ? `+${overallStats.improvement} pts` : "No data yet", subColor: hasData ? c.sage : c.stone },
           { label: "Improvement", value: hasData ? `+${overallStats.improvement}%` : "\u2014", icon: <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="1.5"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>, sub: hasData ? "All skills" : "Practice to improve", subColor: c.stone },
           { label: "Time Logged", value: hasData ? `${overallStats.hoursLogged}h` : "0h", icon: <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>, sub: "Total", subColor: c.stone },
-        ].map((stat, i) => {
-          // First 3 in top row, last 2 in bottom row
-          if (i >= 3) return null;
-          return (
-            <div key={i} style={{ ...card, padding: "24px", cursor: "default" }} {...cardLift}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
-                <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 500, color: c.stone, letterSpacing: "0.04em", textTransform: "uppercase" as const }}>{stat.label}</span>
-                <div style={{ opacity: 0.7 }}>{stat.icon}</div>
-              </div>
-              <span style={{ fontFamily: font.mono, fontSize: 28, fontWeight: 600, color: c.ivory, display: "block", marginBottom: 4, letterSpacing: "-0.03em" }}>{stat.value}</span>
-              <span style={{ fontFamily: font.ui, fontSize: 11, color: stat.subColor, fontWeight: stat.subColor !== c.stone ? 600 : 400 }}>{stat.sub}</span>
-            </div>
-          );
-        })}
-      </div>
-      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(2, 1fr)", gap: sp.lg, marginBottom: sp["3xl"], maxWidth: isMobile ? "100%" : "66.66%" }}>
-        {[
-          { label: "Improvement", value: hasData ? `+${overallStats.improvement}%` : "\u2014", icon: <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="1.5"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>, sub: hasData ? "All skills" : "Practice to improve", subColor: c.stone },
-          { label: "Time Logged", value: hasData ? `${overallStats.hoursLogged}h` : "0h", icon: <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>, sub: "Total", subColor: c.stone },
         ].map((stat, i) => (
-          <div key={`stat2-${i}`} style={{ ...card, padding: "24px", cursor: "default" }} {...cardLift}>
+          <div key={i} style={{ ...card, padding: "24px", cursor: "default" }} {...cardLift}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
               <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 500, color: c.stone, letterSpacing: "0.04em", textTransform: "uppercase" as const }}>{stat.label}</span>
               <div style={{ opacity: 0.7 }}>{stat.icon}</div>
@@ -412,8 +397,8 @@ export default function DashboardHome() {
         );
       })()}
 
-      {/* ─── Row 1: Score Trend | Skill Breakdown (equal 2-col) ─── */}
-      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: sp["2xl"], marginBottom: sp["2xl"] }}>
+      {/* ─── Row 1: Score Trend | Skill Breakdown ─── */}
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "2fr 1fr", gap: sp["2xl"], marginBottom: sp["2xl"] }}>
         {/* Score Trend */}
         <div style={{ ...card, padding: "28px 32px" }} {...cardLift}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
@@ -476,8 +461,9 @@ export default function DashboardHome() {
         </div>
       </div>
 
-      {/* ─── Row 2: Recent Sessions (full-width) ─── */}
-      <div style={{ ...card, padding: "28px 32px", marginBottom: sp["2xl"] }} {...cardLift}>
+      {/* ─── Row 2: Recent Sessions | AI Insights (side by side) ─── */}
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "3fr 2fr", gap: sp["2xl"], marginBottom: sp["2xl"] }}>
+      <div style={{ ...card, padding: "28px 32px" }} {...cardLift}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
           {sectionTitle("Recent Sessions")}
           <button onClick={() => setSortBy(sortBy === "date" ? "score" : "date")}
@@ -601,9 +587,7 @@ export default function DashboardHome() {
         </div>
       </div>
 
-      {/* ─── Row 3: AI Insights/Goals | Daily Challenge (equal 2-col) ─── */}
-      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: sp["2xl"], marginBottom: sp["2xl"] }}>
-        {/* Tabbed Insights & Goals */}
+        {/* Tabbed Insights & Goals (in same grid row as Recent Sessions) */}
         <div style={{ ...card, overflow: "hidden" }} {...cardLift}>
           <div style={{ display: "flex", borderBottom: "1px solid rgba(240,237,232,0.04)" }}>
             {([["insights", "AI Insights"], ["goals", "Weekly Goals"]] as const).map(([key, label]) => (
@@ -649,7 +633,10 @@ export default function DashboardHome() {
             )}
           </div>
         </div>
+      </div>
 
+      {/* ─── Row 3: Daily Challenge | Achievements ─── */}
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: sp["2xl"], marginBottom: sp["2xl"] }}>
         {/* Daily Challenge */}
         {dailyChallenge && !dailyChallenge.completed ? (
           <div style={{ ...card, padding: "24px 28px", boxShadow: "0 1px 3px rgba(0,0,0,0.24), 0 0 0 1px rgba(201,169,110,0.08)" }} {...cardLift}>
