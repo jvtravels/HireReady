@@ -195,7 +195,7 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
       if (result.success) {
         setResetSent(true);
       } else {
-        setError(result.error || "Failed to send reset email");
+        setError(result.error || "Failed to send reset email. Try again or contact support@hireready.ai");
       }
     } finally {
       setLoading(false);

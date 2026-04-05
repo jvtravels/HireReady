@@ -116,6 +116,13 @@ function speakWithBrowser(
   onEnd: () => void,
   onError: () => void,
 ): { cancel: () => void } {
+  // Check if browser speech synthesis is available at all
+  if (!window.speechSynthesis) {
+    console.warn("Browser speech synthesis not available");
+    onError();
+    return { cancel: () => {} };
+  }
+
   window.speechSynthesis.cancel();
   const utter = new SpeechSynthesisUtterance(text);
   utter.rate = 1.0;
@@ -131,11 +138,29 @@ function speakWithBrowser(
   );
   if (preferred) utter.voice = preferred;
   utter.onend = onEnd;
-  utter.onerror = onError;
+  utter.onerror = (e) => {
+    console.warn("Browser TTS error:", e);
+    onError();
+  };
+
+  // Safety: some browsers silently fail — if no speech after 5s, fire error
+  let fired = false;
+  const safetyTimer = setTimeout(() => {
+    if (!fired && window.speechSynthesis.speaking === false) {
+      fired = true;
+      console.warn("Browser TTS silent failure — no speech detected after 5s");
+      onError();
+    }
+  }, 5000);
+  const origOnEnd = utter.onend;
+  utter.onend = (ev) => { fired = true; clearTimeout(safetyTimer); origOnEnd?.call(utter, ev); };
+  const origOnErr = utter.onerror;
+  utter.onerror = (ev) => { fired = true; clearTimeout(safetyTimer); origOnErr?.call(utter, ev); };
+
   window.speechSynthesis.speak(utter);
 
   return {
-    cancel: () => window.speechSynthesis.cancel(),
+    cancel: () => { fired = true; clearTimeout(safetyTimer); window.speechSynthesis.cancel(); },
   };
 }
 

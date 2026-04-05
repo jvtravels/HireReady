@@ -110,6 +110,8 @@ export function UpgradeModal({ onClose, sessionsUsed, user, currentTier, onPayme
   } | null>(null);
   const authHeadersRef = useRef<Record<string, string>>({});
 
+  const [verifyRetries, setVerifyRetries] = useState(0);
+
   // Verify payment in React lifecycle, not in Razorpay callback
   useEffect(() => {
     if (!pendingVerification) return;
@@ -117,30 +119,45 @@ export function UpgradeModal({ onClose, sessionsUsed, user, currentTier, onPayme
     setLoading("verifying");
     setError("");
 
-    fetch("/api/verify-payment", {
-      method: "POST",
-      headers: authHeadersRef.current,
-      body: JSON.stringify(pendingVerification),
-    })
-      .then(r => r.json())
-      .then(verifyData => {
-        if (cancelled) return;
-        if (verifyData.success) {
-          onPaymentSuccess(verifyData.subscriptionTier, verifyData.subscriptionStart, verifyData.subscriptionEnd);
-        } else {
-          setError(verifyData.error || "Payment verification failed. Contact support.");
-          setLoading(null);
-        }
+    const attemptVerify = (attempt: number) => {
+      fetch("/api/verify-payment", {
+        method: "POST",
+        headers: authHeadersRef.current,
+        body: JSON.stringify(pendingVerification),
       })
-      .catch(() => {
-        if (cancelled) return;
-        setError("Payment verification failed. Your payment was received — please refresh the page.");
-        setLoading(null);
-      })
-      .finally(() => { setPendingVerification(null); });
+        .then(r => r.json())
+        .then(verifyData => {
+          if (cancelled) return;
+          if (verifyData.success) {
+            onPaymentSuccess(verifyData.subscriptionTier, verifyData.subscriptionStart, verifyData.subscriptionEnd);
+          } else {
+            setError(verifyData.error || "Payment verification failed. Please try again or contact support@hireready.ai");
+            setLoading(null);
+          }
+        })
+        .catch(() => {
+          if (cancelled) return;
+          // Auto-retry once after 2 seconds
+          if (attempt < 1) {
+            setTimeout(() => { if (!cancelled) attemptVerify(attempt + 1); }, 2000);
+          } else {
+            setError("Payment verification failed. Your payment was received — try refreshing, or contact support@hireready.ai for help.");
+            setVerifyRetries(attempt + 1);
+            setLoading(null);
+          }
+        });
+    };
+
+    attemptVerify(0);
 
     return () => { cancelled = true; };
   }, [pendingVerification, onPaymentSuccess]);
+
+  const retryVerification = () => {
+    if (pendingVerification) {
+      setPendingVerification({ ...pendingVerification });
+    }
+  };
 
   const handleCheckout = async (planId: string) => {
     setLoading(planId);
@@ -160,17 +177,18 @@ export function UpgradeModal({ onClose, sessionsUsed, user, currentTier, onPayme
         return;
       }
       if (!(window as any).Razorpay) {
-        // Dynamically load Razorpay checkout script
+        // Dynamically load Razorpay checkout script with timeout
         try {
           await new Promise<void>((resolve, reject) => {
             const s = document.createElement("script");
             s.src = "https://checkout.razorpay.com/v1/checkout.js";
-            s.onload = () => resolve();
-            s.onerror = () => reject();
+            const timer = setTimeout(() => { reject(new Error("timeout")); }, 10_000);
+            s.onload = () => { clearTimeout(timer); resolve(); };
+            s.onerror = () => { clearTimeout(timer); reject(); };
             document.head.appendChild(s);
           });
         } catch {
-          setError("Payment system failed to load. Please refresh and try again.");
+          setError("Payment system failed to load. Check your connection and try again, or contact support@hireready.ai");
           setLoading(null);
           return;
         }
@@ -199,7 +217,7 @@ export function UpgradeModal({ onClose, sessionsUsed, user, currentTier, onPayme
       rzp.on("payment.failed", function () { setError("Payment failed. Please try again."); setLoading(null); });
       rzp.open();
     } catch {
-      setError("Something went wrong. Please try again.");
+      setError("Something went wrong. Please try again or contact support@hireready.ai");
       setLoading(null);
     }
   };
@@ -239,9 +257,14 @@ export function UpgradeModal({ onClose, sessionsUsed, user, currentTier, onPayme
         </div>
 
         {error && (
-          <div style={{ background: "rgba(196,112,90,0.1)", border: `1px solid rgba(196,112,90,0.2)`, borderRadius: 8, padding: "10px 14px", marginBottom: 16, textAlign: "center", display: "flex", alignItems: "center", justifyContent: "center", gap: 12 }}>
-            <span style={{ fontFamily: font.ui, fontSize: 12, color: c.ember }}>{error}</span>
-            <button onClick={() => setError(null)} style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.gilt, background: "none", border: `1px solid rgba(201,169,110,0.3)`, borderRadius: 6, padding: "4px 12px", cursor: "pointer" }}>Dismiss</button>
+          <div style={{ background: "rgba(196,112,90,0.1)", border: `1px solid rgba(196,112,90,0.2)`, borderRadius: 8, padding: "10px 14px", marginBottom: 16, textAlign: "center" }}>
+            <span style={{ fontFamily: font.ui, fontSize: 12, color: c.ember, display: "block", marginBottom: 8 }}>{error}</span>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+              {verifyRetries > 0 && (
+                <button onClick={retryVerification} style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.ivory, background: c.ember, border: "none", borderRadius: 6, padding: "5px 14px", cursor: "pointer" }}>Retry Verification</button>
+              )}
+              <button onClick={() => { setError(null); setVerifyRetries(0); }} style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.gilt, background: "none", border: `1px solid rgba(201,169,110,0.3)`, borderRadius: 6, padding: "4px 12px", cursor: "pointer" }}>Dismiss</button>
+            </div>
           </div>
         )}
 

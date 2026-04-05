@@ -681,12 +681,15 @@ export default function Interview() {
       if (questions && questions.length > 0 && currentStepRef.current <= 1) {
         setInterviewScript(questions);
       } else if (!questions) {
-        setSaveWarning("AI questions unavailable. Using practice questions instead.");
+        setSaveWarning(`Custom ${interviewType} questions unavailable. Using practice questions instead.`);
+        toast(`Using practice questions — custom ${interviewType} generation unavailable.`, "info");
       }
       setLlmLoading(false);
     }).catch(err => {
       if (!cancelled) {
-        setSaveWarning(err.message || "Could not generate questions. Using practice questions.");
+        const msg = err.message || "Could not generate questions.";
+        setSaveWarning(`${msg} Using practice questions.`);
+        toast(`Using practice questions — ${msg.toLowerCase()}`, "info");
         setLlmLoading(false);
       }
     });
