@@ -342,6 +342,56 @@ function BottomCTA() {
 /* ═══════════════════════════════════════════════
    HERO — split layout: text left, mockup right
    ═══════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════
+   LAUNCH COUNTDOWN
+   ═══════════════════════════════════════════════ */
+const LAUNCH_DATE = new Date("2025-05-02T00:00:00+05:30");
+
+function useCountdown(target: Date) {
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
+  const diff = Math.max(0, target.getTime() - now);
+  const d = Math.floor(diff / 86400000);
+  const h = Math.floor((diff % 86400000) / 3600000);
+  const m = Math.floor((diff % 3600000) / 60000);
+  const s = Math.floor((diff % 60000) / 1000);
+  return { d, h, m, s, launched: diff === 0 };
+}
+
+function LaunchCountdown() {
+  const { d, h, m, s, launched } = useCountdown(LAUNCH_DATE);
+  if (launched) return null;
+
+  const units = [
+    { value: d, label: "Days" },
+    { value: h, label: "Hours" },
+    { value: m, label: "Min" },
+    { value: s, label: "Sec" },
+  ];
+
+  return (
+    <div style={{ animation: "fadeInUp 0.8s ease 2s both", marginBottom: 28 }}>
+      <p style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: c.gilt, marginBottom: 12 }}>
+        Launching in India — May 2
+      </p>
+      <div style={{ display: "flex", gap: 12 }}>
+        {units.map(u => (
+          <div key={u.label} style={{
+            background: "rgba(201,169,110,0.06)", border: `1px solid rgba(201,169,110,0.15)`,
+            borderRadius: 10, padding: "10px 14px", minWidth: 56, textAlign: "center",
+          }}>
+            <span style={{ fontFamily: font.mono, fontSize: 22, fontWeight: 600, color: c.ivory, display: "block", lineHeight: 1 }}>{String(u.value).padStart(2, "0")}</span>
+            <span style={{ fontFamily: font.ui, fontSize: 9, fontWeight: 500, color: c.stone, letterSpacing: "0.06em", textTransform: "uppercase" }}>{u.label}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function Hero() {
   const parallaxOffset = useParallax(0.1);
   const mouse = useMouse();
@@ -426,6 +476,9 @@ function Hero() {
           AI mock interviews that adapt to your resume and target role — whether you're
           landing your first job or leveling up to your dream company. Free to start.
         </p>
+
+        {/* Launch countdown */}
+        <LaunchCountdown />
 
         {/* CTAs */}
         <HeroCTA />
@@ -1807,6 +1860,81 @@ function FinalCTA() {
 }
 
 /* ═══════════════════════════════════════════════
+   EMAIL CAPTURE
+   ═══════════════════════════════════════════════ */
+function EmailCapture() {
+  const ref = useReveal<HTMLElement>();
+  const [email, setEmail] = useState("");
+  const [status, setStatus] = useState<"idle" | "sending" | "done" | "error">("idle");
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return;
+    setStatus("sending");
+    // Store in localStorage as lightweight waitlist until backend endpoint is added
+    try {
+      const existing = JSON.parse(localStorage.getItem("hirloop_waitlist") || "[]");
+      existing.push({ email, ts: new Date().toISOString() });
+      localStorage.setItem("hirloop_waitlist", JSON.stringify(existing));
+    } catch {}
+    track("waitlist_signup", { email });
+    setTimeout(() => setStatus("done"), 600);
+  };
+
+  return (
+    <section ref={ref} className="reveal" style={{ padding: "0 40px 120px", maxWidth: 600, margin: "0 auto", textAlign: "center" }}>
+      <div style={{
+        background: c.graphite, borderRadius: 16, border: `1px solid ${c.border}`,
+        padding: "48px 40px", position: "relative", overflow: "hidden",
+      }}>
+        <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: 400, height: 400, borderRadius: "50%", background: "radial-gradient(ellipse, rgba(201,169,110,0.06), transparent 70%)", pointerEvents: "none" }} />
+        <div style={{ position: "relative", zIndex: 1 }}>
+          <p style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: c.gilt, marginBottom: 12 }}>Get Early Access</p>
+          <h3 style={{ fontFamily: font.display, fontSize: "clamp(24px, 3vw, 32px)", fontWeight: 400, color: c.ivory, letterSpacing: "-0.02em", lineHeight: 1.2, marginBottom: 8 }}>
+            Be the first to know when we launch
+          </h3>
+          <p style={{ fontFamily: font.ui, fontSize: 14, color: c.stone, lineHeight: 1.6, marginBottom: 28 }}>
+            Join the waitlist and get 7 days of Pro free on launch day.
+          </p>
+          {status === "done" ? (
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, padding: 16 }}>
+              <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="2" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+              <span style={{ fontFamily: font.ui, fontSize: 15, fontWeight: 500, color: c.sage }}>You're on the list! We'll be in touch.</span>
+            </div>
+          ) : (
+            <form onSubmit={handleSubmit} style={{ display: "flex", gap: 10, maxWidth: 420, margin: "0 auto" }}>
+              <input
+                type="email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                placeholder="your@email.com"
+                required
+                style={{
+                  flex: 1, fontFamily: font.ui, fontSize: 14, padding: "12px 16px",
+                  borderRadius: 8, border: `1px solid ${c.border}`, background: c.obsidian,
+                  color: c.ivory, outline: "none",
+                }}
+                onFocus={e => { e.currentTarget.style.borderColor = c.gilt; }}
+                onBlur={e => { e.currentTarget.style.borderColor = c.border; }}
+              />
+              <button type="submit" disabled={status === "sending"} style={{
+                fontFamily: font.ui, fontSize: 14, fontWeight: 600, padding: "12px 24px",
+                borderRadius: 8, border: "none", cursor: "pointer",
+                background: `linear-gradient(135deg, ${c.gilt}, ${c.giltDark})`, color: c.obsidian,
+                opacity: status === "sending" ? 0.7 : 1,
+              }}>
+                {status === "sending" ? "..." : "Join Waitlist"}
+              </button>
+            </form>
+          )}
+          <p style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, marginTop: 16 }}>No spam. Unsubscribe anytime.</p>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ═══════════════════════════════════════════════
    FOOTER
    ═══════════════════════════════════════════════ */
 function Footer() {
@@ -1816,13 +1944,13 @@ function Footer() {
     "Score Analytics": "/#features",
     "For Teams": "/#pricing",
     "About": "/page/about",
-    "Blog": "/page/blog",
+    "Blog": "/blog",
     "Careers": "/page/careers",
     "Contact": "/page/contact",
     "Help Center": "/page/help",
     "API Docs": "/page/help",
-    "Interview Tips": "/page/help",
-    "Success Stories": "/page/help",
+    "Interview Tips": "/blog",
+    "Success Stories": "/blog",
     "Privacy Policy": "/privacy",
     "Terms of Service": "/terms",
     "Cookie Policy": "/privacy",
@@ -1939,6 +2067,7 @@ export default function App() {
         <ForTeamsBanner />
         <TrustBadges />
         <FinalCTA />
+        <EmailCapture />
       </main>
       <Footer />
     </div>

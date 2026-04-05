@@ -55,6 +55,7 @@ const SessionSetup = lazy(() => import("./SessionSetup"));
 const ResetPassword = lazy(() => import("./ResetPassword"));
 const SessionDetail = lazy(() => import("./SessionDetail"));
 const PlaceholderPage = lazy(() => import("./PlaceholderPage"));
+const BlogPage = lazy(() => import("./BlogPage"));
 
 function LoadingFallback() {
   return <div style={{ minHeight: "100vh", background: "#0A0A0B" }} />;
@@ -99,6 +100,8 @@ createRoot(document.getElementById("root")!).render(
               <Route path="/terms" element={<div className="page-enter"><LegalPage type="terms" /></div>} />
               <Route path="/privacy" element={<div className="page-enter"><LegalPage type="privacy" /></div>} />
               <Route path="/session/:id" element={<RequireAuth><div className="page-enter"><RouteErrorBoundary><SessionDetail /></RouteErrorBoundary></div></RequireAuth>} />
+              <Route path="/blog" element={<div className="page-enter"><BlogPage /></div>} />
+              <Route path="/blog/:slug" element={<div className="page-enter"><BlogPage /></div>} />
               <Route path="/page/:slug" element={<div className="page-enter"><PlaceholderPage /></div>} />
               <Route path="*" element={<div className="page-enter"><NotFound /></div>} />
             </Routes>
