@@ -144,7 +144,7 @@ export default function DashboardHome() {
   const activeNotifs = notifications.filter(n => !persisted.dismissedNotifs.includes(n.id));
 
   return (
-    <div style={{ maxWidth: 1200, margin: "0 auto" }} className="dash-card">
+    <div style={{ margin: "0 auto" }} className="dash-card">
       <style>{dashboardStyles}</style>
       {/* ─── Header ─── */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: sp["3xl"], flexWrap: "wrap", gap: sp.lg }}>
@@ -216,6 +216,22 @@ export default function DashboardHome() {
             onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(201,169,110,0.15)"; }}
             onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(201,169,110,0.08)"; }}
           >Practice Now</button>
+        </div>
+      )}
+
+      {/* ─── Daily Challenge (compact banner) ─── */}
+      {dailyChallenge && !dailyChallenge.completed && (
+        <div style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 20px", borderRadius: radius.md, background: "rgba(201,169,110,0.03)", border: "1px solid rgba(201,169,110,0.08)", marginBottom: sp.xl, cursor: "pointer", transition: "all 0.2s ease" }}
+          onClick={() => nav(`/session/new?type=${dailyChallenge.type}${dailyChallenge.focus ? `&focus=${dailyChallenge.focus}` : ""}`)}
+          onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(201,169,110,0.06)"; e.currentTarget.style.borderColor = "rgba(201,169,110,0.15)"; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(201,169,110,0.03)"; e.currentTarget.style.borderColor = "rgba(201,169,110,0.08)"; }}>
+          <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="2" strokeLinecap="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" /></svg>
+          <div style={{ flex: 1 }}>
+            <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: c.ivory }}>Daily Challenge: {dailyChallenge.label}</span>
+            <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, marginLeft: 8 }}>{dailyChallenge.description}</span>
+          </div>
+          <span style={{ fontFamily: font.mono, fontSize: 9, fontWeight: 600, padding: "2px 8px", borderRadius: radius.pill, background: dailyChallenge.difficulty === "hard" ? "rgba(196,112,90,0.08)" : "rgba(201,169,110,0.08)", color: dailyChallenge.difficulty === "hard" ? c.ember : c.gilt, textTransform: "uppercase" as const, flexShrink: 0 }}>{dailyChallenge.difficulty}</span>
+          <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="2" strokeLinecap="round" style={{ flexShrink: 0 }}><polyline points="9 18 15 12 9 6"/></svg>
         </div>
       )}
 
@@ -297,42 +313,31 @@ export default function DashboardHome() {
               <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polygon points="5,3 19,12 5,21" /></svg>
               {atSessionLimit ? "Upgrade to Continue" : "Start Session"}
             </button>
-            {weakestSkill && !atSessionLimit && (
-              <button className="dash-focus" onClick={() => nav(`/session/new?type=behavioral&focus=${weakestSkill.name.toLowerCase().replace(/\s+/g, "-")}`)}
-                style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, padding: "9px 20px", borderRadius: radius.md, border: `1px solid rgba(196,112,90,0.15)`, background: "rgba(196,112,90,0.04)", color: c.ember, cursor: "pointer", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 6, transition: "all 0.25s cubic-bezier(0.16,1,0.3,1)" }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(196,112,90,0.1)"; }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(196,112,90,0.04)"; }}>
-                <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-                Focus: {weakestSkill.name} ({weakestSkill.score})
-              </button>
-            )}
-            {/* ─── Streak widget (inline with CTA) ─── */}
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 12px", borderRadius: radius.pill, background: "rgba(201,169,110,0.06)", border: "1px solid rgba(201,169,110,0.12)" }}>
+            {/* ─── Streak widget (inline with CTA, matches reference) ─── */}
+            <div style={{ display: "flex", alignItems: "center", gap: 0 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 14px", borderRadius: `${radius.pill}px 0 0 ${radius.pill}px`, background: "rgba(201,169,110,0.06)", border: "1px solid rgba(201,169,110,0.12)", borderRight: "none" }}>
                 <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="2" strokeLinecap="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" /></svg>
                 <span style={{ fontFamily: font.mono, fontSize: 10, fontWeight: 600, color: c.gilt }}>{currentStreak > 0 ? `${currentStreak}-day streak` : "Start a streak"}</span>
               </div>
-              {["M", "T", "W", "T", "F", "S", "S"].map((day, i) => {
-                const today = new Date();
-                const todayIdx = today.getDay() === 0 ? 6 : today.getDay() - 1;
-                const isToday = i === todayIdx;
-                const isFutureDay = i > todayIdx;
-                const practiced = weekActivity[i];
-                return (
-                  <div key={`day-${i}`} title={`${day}: ${isFutureDay ? "Upcoming" : practiced ? "Practiced" : "Missed"}`} style={{
-                    width: 22, height: 22, borderRadius: 4,
-                    background: practiced ? "rgba(201,169,110,0.12)" : "transparent",
-                    border: `1px solid ${practiced ? "rgba(201,169,110,0.25)" : isToday ? "rgba(201,169,110,0.2)" : "rgba(240,237,232,0.06)"}`,
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    fontSize: 8, fontFamily: font.mono, fontWeight: 600,
-                    color: practiced ? c.gilt : isToday ? c.ivory : c.stone,
-                  }}>{day}</div>
-                );
-              })}
+              <div style={{ display: "flex", alignItems: "center", gap: 0, border: "1px solid rgba(240,237,232,0.08)", borderRadius: `0 ${radius.pill}px ${radius.pill}px 0`, overflow: "hidden" }}>
+                {["M", "T", "W", "T", "F", "S", "S"].map((day, i) => {
+                  const today = new Date();
+                  const todayIdx = today.getDay() === 0 ? 6 : today.getDay() - 1;
+                  const isToday = i === todayIdx;
+                  const isFutureDay = i > todayIdx;
+                  const practiced = weekActivity[i];
+                  return (
+                    <div key={`day-${i}`} title={`${day}: ${isFutureDay ? "Upcoming" : practiced ? "Practiced" : "Missed"}`} style={{
+                      width: 26, height: 28, display: "flex", alignItems: "center", justifyContent: "center",
+                      background: practiced ? "rgba(201,169,110,0.1)" : "transparent",
+                      borderRight: i < 6 ? "1px solid rgba(240,237,232,0.06)" : "none",
+                      fontSize: 9, fontFamily: font.mono, fontWeight: 600,
+                      color: practiced ? c.gilt : isToday ? c.ivory : c.stone,
+                    }}>{day}</div>
+                  );
+                })}
+              </div>
             </div>
-            {isFree && sessionsRemaining > 0 && (
-              <span style={{ fontFamily: font.mono, fontSize: 10, color: sessionsRemaining === 1 ? c.ember : c.stone }}>{sessionsRemaining} free session{sessionsRemaining !== 1 ? "s" : ""} left</span>
-            )}
           </div>
         </div>
       </div>
@@ -635,32 +640,7 @@ export default function DashboardHome() {
         </div>
       </div>
 
-      {/* ─── Row 3: Daily Challenge | Achievements ─── */}
-      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: sp["2xl"], marginBottom: sp["2xl"] }}>
-        {/* Daily Challenge */}
-        {dailyChallenge && !dailyChallenge.completed ? (
-          <div style={{ ...card, padding: "24px 28px", boxShadow: "0 1px 3px rgba(0,0,0,0.24), 0 0 0 1px rgba(201,169,110,0.08)" }} {...cardLift}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="2" strokeLinecap="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" /></svg>
-                {sectionTitle("Daily Challenge", 15)}
-              </div>
-              <span style={{ fontFamily: font.mono, fontSize: 9, fontWeight: 600, padding: "2px 8px", borderRadius: radius.pill, background: dailyChallenge.difficulty === "hard" ? "rgba(196,112,90,0.08)" : "rgba(201,169,110,0.08)", color: dailyChallenge.difficulty === "hard" ? c.ember : c.gilt, textTransform: "uppercase" }}>{dailyChallenge.difficulty}</span>
-            </div>
-            <p style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: c.chalk, marginBottom: 4 }}>{dailyChallenge.label}</p>
-            <p style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, lineHeight: 1.6, marginBottom: 14 }}>{dailyChallenge.description}</p>
-            <button onClick={() => nav(`/session/new?type=${dailyChallenge.type}${dailyChallenge.focus ? `&focus=${dailyChallenge.focus}` : ""}`)}
-              style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: c.obsidian, background: `linear-gradient(135deg, ${c.gilt}, ${c.giltDark})`, border: "none", borderRadius: radius.sm, padding: "10px 18px", cursor: "pointer", width: "100%", transition: "all 0.25s cubic-bezier(0.16,1,0.3,1)", boxShadow: "0 2px 12px rgba(201,169,110,0.15)" }}
-              onMouseEnter={(e) => { e.currentTarget.style.boxShadow = "0 4px 20px rgba(201,169,110,0.25)"; e.currentTarget.style.transform = "translateY(-1px)"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.boxShadow = "0 2px 12px rgba(201,169,110,0.15)"; e.currentTarget.style.transform = "translateY(0)"; }}
-            >Start Challenge</button>
-          </div>
-        ) : (
-          <div /> /* empty placeholder to maintain grid symmetry when no challenge */
-        )}
-      </div>
-
-      {/* ─── Row 4: Achievements (full-width, horizontal) ─── */}
+      {/* ─── Achievements (full-width) ─── */}
       {badges.length > 0 && (
         <div style={{ ...card, padding: "24px 28px" }} {...cardLift}>
           {sectionTitle("Achievements")}
