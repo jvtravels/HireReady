@@ -97,10 +97,9 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
     setEmailSuggestion("");
   };
 
-  // Preserve plan intent from pricing page and referral code
+  // Preserve plan intent from pricing page
   const searchParams = new URLSearchParams(location.search);
   const planParam = searchParams.get("plan");
-  const refCode = searchParams.get("ref");
 
   // If already logged in, redirect based on onboarding status
   useEffect(() => {
@@ -139,7 +138,7 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
         // Navigation handled by useEffect when isLoggedIn changes
         // This avoids double-redirect since useEffect checks onboarding status
       } else {
-        const result = await signup(email, name, password, refCode || undefined);
+        const result = await signup(email, name, password);
         if (!result.success) {
           setError(result.error || "Signup failed");
           return;
@@ -223,12 +222,6 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
           </span>
         </Link>
 
-        {refCode && !isLogin && (
-          <div style={{ background: "rgba(122,158,126,0.08)", border: "1px solid rgba(122,158,126,0.2)", borderRadius: 8, padding: "10px 14px", marginBottom: 16, display: "flex", alignItems: "center", gap: 8 }}>
-            <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="2" strokeLinecap="round"><path d="M20 12V8H6a2 2 0 0 1 0-4h12v4"/><path d="M4 6v12a2 2 0 0 0 2 2h14v-4"/><path d="M18 12a2 2 0 0 0 0 4h4v-4z"/></svg>
-            <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: c.sage }}>You were referred! Sign up to get a bonus free session.</span>
-          </div>
-        )}
         <h1 style={{
           fontFamily: font.display, fontSize: 36, fontWeight: 400,
           color: c.ivory, letterSpacing: "-0.02em", lineHeight: 1.2, marginBottom: 8,

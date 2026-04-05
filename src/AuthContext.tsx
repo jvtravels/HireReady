@@ -67,7 +67,7 @@ interface AuthContextType {
   isLoggedIn: boolean;
   loading: boolean;
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
-  signup: (email: string, name: string, password: string, referralCode?: string) => Promise<{ success: boolean; error?: string }>;
+  signup: (email: string, name: string, password: string) => Promise<{ success: boolean; error?: string }>;
   loginWithGoogle: () => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   updateUser: (updates: Partial<User>) => Promise<void>;
@@ -263,7 +263,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => { unsubscribe?.(); };
   }, []);
 
-  const signup = useCallback(async (email: string, name: string, password: string, referralCode?: string): Promise<{ success: boolean; error?: string }> => {
+  const signup = useCallback(async (email: string, name: string, password: string): Promise<{ success: boolean; error?: string }> => {
     if (!supabaseConfigured) {
       // localStorage fallback
       const newUser: User = { id: Date.now().toString(36), name, email, targetRole: "", resumeFileName: null, hasCompletedOnboarding: false, emailVerified: false };
@@ -272,7 +272,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     const client = await getSupabase();
     const metadata: Record<string, string> = { name };
-    if (referralCode) metadata.referred_by = referralCode;
     const { error } = await client.auth.signUp({
       email,
       password,

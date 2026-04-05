@@ -92,9 +92,6 @@ export default function SettingsPage() {
   const [previewVoice, setPreviewVoice] = useState<string | null>(null);
   const [previewCancel, setPreviewCancel] = useState<{ cancel: () => void } | null>(null);
 
-  // Referral
-  const [copied, setCopied] = useState(false);
-
   // Password
   const [resetSent, setResetSent] = useState(false);
   const [resetLoading, setResetLoading] = useState(false);
@@ -426,27 +423,6 @@ export default function SettingsPage() {
           </div>
         ))}
 
-        {/* Referral */}
-        <div style={{ marginTop: 24, paddingTop: 20, borderTop: `1px solid ${c.border}` }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-            <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="2" strokeLinecap="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
-            <span style={{ fontFamily: font.ui, fontSize: 14, fontWeight: 600, color: c.ivory }}>Refer a Friend</span>
-          </div>
-          <p style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, marginBottom: 12, lineHeight: 1.5 }}>Share your link — you both get a bonus free session.</p>
-          {(() => {
-            const code = authUser?.id ? authUser.id.slice(0, 8).toUpperCase() : "SHARE";
-            const link = `${window.location.origin}/signup?ref=${code}`;
-            return (
-              <div style={{ display: "flex", gap: 8 }}>
-                <input readOnly value={link} style={{ flex: 1, fontFamily: font.mono, fontSize: 11, color: c.chalk, background: c.obsidian, border: `1px solid ${c.border}`, borderRadius: 6, padding: "10px 12px", outline: "none", minWidth: 0 }} onClick={(e) => (e.target as HTMLInputElement).select()} />
-                <button onClick={() => { navigator.clipboard.writeText(link); setCopied(true); showToast("Referral link copied"); setTimeout(() => setCopied(false), 2000); }}
-                  style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: copied ? c.sage : c.obsidian, background: copied ? "rgba(122,158,126,0.12)" : c.gilt, border: copied ? `1px solid rgba(122,158,126,0.2)` : "none", borderRadius: 6, padding: "10px 18px", cursor: "pointer", whiteSpace: "nowrap", transition: "all 0.2s" }}>
-                  {copied ? "Copied ✓" : "Copy Link"}
-                </button>
-              </div>
-            );
-          })()}
-        </div>
       </div>}
 
       {/* ═══════════════════ PLAN & DATA ═══════════════════ */}
