@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { c, font } from "./tokens";
 import { useAuth } from "./AuthContext";
@@ -100,8 +100,7 @@ export default function SettingsPage() {
   const [resetLoading, setResetLoading] = useState(false);
 
   // Section nav
-  const [activeSection, setActiveSection] = useState("account");
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const [activeSection, setActiveSection] = useState<string>("account");
 
   const isDirty = editName !== persisted.userName || editRole !== persisted.targetRole || editDate !== persisted.interviewDate || editCompany !== (authUser?.targetCompany || "") || editIndustry !== (authUser?.industry || "");
 
@@ -121,20 +120,6 @@ export default function SettingsPage() {
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, [isDirty, editName, editRole, editDate, editCompany, editIndustry]);
-
-  // Scroll spy for active section
-  useEffect(() => {
-    const main = document.getElementById("dashboard-main");
-    if (!main) return;
-    const handler = () => {
-      for (const s of [...SECTIONS].reverse()) {
-        const el = document.getElementById(`settings-${s.id}`);
-        if (el && el.getBoundingClientRect().top < 180) { setActiveSection(s.id); break; }
-      }
-    };
-    main.addEventListener("scroll", handler, { passive: true });
-    return () => main.removeEventListener("scroll", handler);
-  }, []);
 
   // Cleanup voice preview
   useEffect(() => { return () => { previewCancel?.cancel(); }; }, [previewCancel]);
@@ -181,18 +166,12 @@ export default function SettingsPage() {
     </button>
   );
 
-  const scrollTo = (id: string) => {
-    const el = document.getElementById(`settings-${id}`);
-    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
-    setActiveSection(id);
-  };
-
   const difficultyVal = persisted.defaultDifficulty || "standard";
   const learningVal = authUser?.learningStyle || "direct";
   const sessionLenVal = authUser?.preferredSessionLength || 15;
 
   return (
-    <div style={{ maxWidth: 720, margin: "0 auto" }} ref={scrollRef}>
+    <div style={{ maxWidth: 720, margin: "0 auto" }}>
       {/* Header */}
       <h2 style={{ fontFamily: font.ui, fontSize: 22, fontWeight: 600, color: c.ivory, marginBottom: 4 }}>Settings</h2>
       <p style={{ fontFamily: font.ui, fontSize: 13, color: c.stone, marginBottom: 20 }}>Manage your account, preferences, and subscription</p>
@@ -200,7 +179,7 @@ export default function SettingsPage() {
       {/* Section pills */}
       <div className="settings-pills" style={{ display: "flex", gap: 6, marginBottom: 28, overflowX: "auto", paddingBottom: 2 }}>
         {SECTIONS.map(s => (
-          <button key={s.id} onClick={() => scrollTo(s.id)}
+          <button key={s.id} onClick={() => setActiveSection(s.id)}
             style={{
               fontFamily: font.ui, fontSize: 12, fontWeight: 500, whiteSpace: "nowrap",
               padding: "7px 16px", borderRadius: 20, cursor: "pointer", transition: "all 0.15s",
@@ -214,7 +193,7 @@ export default function SettingsPage() {
       </div>
 
       {/* ═══════════════════ ACCOUNT ═══════════════════ */}
-      <div id="settings-account" style={sectionStyle}>
+      {activeSection === "account" && <div style={sectionStyle}>
         <h3 style={sectionTitle}>Account</h3>
         <p style={sectionDesc}>Your profile photo, name, and login credentials</p>
 
@@ -298,10 +277,10 @@ export default function SettingsPage() {
             {resetLoading ? "Sending..." : resetSent ? "Email Sent ✓" : "Reset Password"}
           </button>
         </div>
-      </div>
+      </div>}
 
       {/* ═══════════════════ INTERVIEW ═══════════════════ */}
-      <div id="settings-interview" style={sectionStyle}>
+      {activeSection === "interview" && <div style={sectionStyle}>
         <h3 style={sectionTitle}>Interview Preferences</h3>
         <p style={sectionDesc}>Configure your target role, difficulty, and session format. Changes save automatically.</p>
 
@@ -366,10 +345,10 @@ export default function SettingsPage() {
             </div>
           </div>
         </div>
-      </div>
+      </div>}
 
       {/* ═══════════════════ AI VOICE ═══════════════════ */}
-      <div id="settings-voice" style={sectionStyle}>
+      {activeSection === "voice" && <div style={sectionStyle}>
         <h3 style={sectionTitle}>AI Interviewer Voice</h3>
         <p style={sectionDesc}>Premium Neural2 voices included free. Click play to preview before selecting.</p>
 
@@ -426,10 +405,10 @@ export default function SettingsPage() {
             Using your browser's built-in speech. Quality varies by browser and OS. Switch to Neural Voice for premium voices — free with your account.
           </p>
         )}
-      </div>
+      </div>}
 
       {/* ═══════════════════ NOTIFICATIONS ═══════════════════ */}
-      <div id="settings-notifications" style={sectionStyle}>
+      {activeSection === "notifications" && <div style={sectionStyle}>
         <h3 style={sectionTitle}>Notifications</h3>
         <p style={sectionDesc}>Control how and when HireReady reaches out to you</p>
 
@@ -468,10 +447,10 @@ export default function SettingsPage() {
             );
           })()}
         </div>
-      </div>
+      </div>}
 
       {/* ═══════════════════ PLAN & DATA ═══════════════════ */}
-      <div id="settings-plan" style={sectionStyle}>
+      {activeSection === "plan" && <div style={sectionStyle}>
         <h3 style={sectionTitle}>Plan & Data</h3>
         <p style={sectionDesc}>Manage your subscription, export data, or delete your account</p>
 
@@ -679,7 +658,7 @@ export default function SettingsPage() {
           </div>
           {deleteMsg && <p style={{ fontFamily: font.ui, fontSize: 12, color: c.ember, marginTop: 8 }}>{deleteMsg}</p>}
         </div>
-      </div>
+      </div>}
     </div>
   );
 }
