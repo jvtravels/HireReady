@@ -519,7 +519,7 @@ export default function SettingsPage() {
           </div>
 
           <div style={{ display: "flex", flexDirection: "column", gap: 8, minWidth: 140 }}>
-            {(!authUser?.subscriptionTier || authUser.subscriptionTier !== "pro") && (
+            {(!authUser?.subscriptionTier || authUser.subscriptionTier !== "pro") && !confirmCancel && (
               <button onClick={() => nav("/dashboard?plan=monthly")}
                 style={{ padding: "11px 20px", borderRadius: 8, border: "none", cursor: "pointer", background: `linear-gradient(135deg, ${c.gilt}, ${c.giltDark})`, color: c.obsidian, fontFamily: font.ui, fontSize: 13, fontWeight: 600 }}>
                 {authUser?.subscriptionTier === "starter" ? "Upgrade to Pro" : "Upgrade Plan"}
