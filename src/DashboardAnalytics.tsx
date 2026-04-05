@@ -1,4 +1,4 @@
-import { c, font, sp, radius, shadow, gradient, ease } from "./tokens";
+import { c, font } from "./tokens";
 import { useDocTitle } from "./useDocTitle";
 import { sessionTypes, scoreLabel, scoreLabelColor } from "./dashboardTypes";
 import type { DashboardSession, SkillData, TrendPoint } from "./dashboardTypes";
@@ -6,89 +6,23 @@ import { ScoreTrendChart, SkillRadar } from "./DashboardCharts";
 import { useDashboard } from "./DashboardContext";
 import { DataLoadingSkeleton, ProGate } from "./dashboardComponents";
 
-/* ─── Shared Card Styles ─── */
-const card = {
-  base: {
-    borderRadius: radius.xl,
-    border: `1px solid ${c.border}`,
-    padding: "28px 32px",
-    position: "relative" as const,
-    overflow: "hidden" as const,
-  },
-  glass: {
-    background: `linear-gradient(170deg, rgba(30,30,32,0.55) 0%, rgba(10,10,12,0.55) 100%)`,
-    backdropFilter: "blur(24px)",
-    boxShadow: shadow.sm,
-  },
-  elevated: {
-    background: `linear-gradient(170deg, rgba(35,35,38,0.6) 0%, rgba(17,17,19,0.6) 100%)`,
-    backdropFilter: "blur(24px)",
-    boxShadow: shadow.md,
-  },
-  featured: {
-    background: `linear-gradient(135deg, rgba(212,179,127,0.06) 0%, rgba(17,17,19,0.6) 60%)`,
-    backdropFilter: "blur(24px)",
-    border: `1px solid rgba(212,179,127,0.12)`,
-    boxShadow: `${shadow.md}, ${shadow.glow}`,
-  },
-};
-
-/* ─── Section Label ─── */
-function SectionLabel({ children }: { children: string }) {
-  return (
-    <span style={{
-      fontFamily: font.ui, fontSize: 10, fontWeight: 600,
-      letterSpacing: "0.1em", textTransform: "uppercase",
-      color: c.gilt, display: "block", marginBottom: 6,
-    }}>{children}</span>
-  );
-}
-
-/* ─── Readiness Ring (large hero version) ─── */
-function ReadinessRing({ score }: { score: number }) {
-  const size = 180, strokeW = 10, r = (size - strokeW) / 2;
+/* ─── Readiness Gauge (circular arc) ─── */
+function ReadinessGauge({ score }: { score: number }) {
+  const size = 120, strokeW = 8, r = (size - strokeW) / 2;
   const circumference = 2 * Math.PI * r;
   const progress = (score / 100) * circumference;
   const color = score >= 75 ? c.sage : score >= 50 ? c.gilt : c.ember;
   return (
     <div style={{ position: "relative", width: size, height: size }}>
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ transform: "rotate(-90deg)" }}>
-        <defs>
-          <linearGradient id="ringGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor={color} stopOpacity="0.15" />
-            <stop offset="100%" stopColor={color} stopOpacity="0.02" />
-          </linearGradient>
-        </defs>
-        <circle cx={size / 2} cy={size / 2} r={r} fill="url(#ringGrad)" stroke="rgba(255,255,255,0.04)" strokeWidth={strokeW} />
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={c.border} strokeWidth={strokeW} />
         <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={color} strokeWidth={strokeW}
           strokeDasharray={`${progress} ${circumference - progress}`} strokeLinecap="round"
-          style={{ transition: `stroke-dasharray 0.8s ${ease.out}`, filter: `drop-shadow(0 0 8px ${color}44)` }} />
+          style={{ transition: "stroke-dasharray 0.6s ease" }} />
       </svg>
       <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
-        <span style={{ fontFamily: font.display, fontSize: 52, fontWeight: 400, color, lineHeight: 1, letterSpacing: "-0.02em" }}>{score}</span>
-        <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 500, color: c.stone, marginTop: 4, letterSpacing: "0.04em" }}>readiness</span>
-      </div>
-    </div>
-  );
-}
-
-/* ─── Mini Stat Pill ─── */
-function StatPill({ icon, value, label, accent }: { icon: React.ReactNode; value: string; label: string; accent?: string }) {
-  return (
-    <div style={{
-      display: "flex", alignItems: "center", gap: 14,
-      padding: "16px 20px", borderRadius: radius.lg,
-      background: "rgba(255,255,255,0.02)", border: `1px solid ${c.borderSubtle}`,
-    }}>
-      <div style={{
-        width: 42, height: 42, borderRadius: radius.md,
-        background: accent ? `${accent}0a` : "rgba(212,179,127,0.06)",
-        border: `1px solid ${accent ? `${accent}1a` : "rgba(212,179,127,0.12)"}`,
-        display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
-      }}>{icon}</div>
-      <div>
-        <span style={{ fontFamily: font.mono, fontSize: 22, fontWeight: 700, color: accent || c.gilt, display: "block", lineHeight: 1 }}>{value}</span>
-        <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, marginTop: 2, display: "block" }}>{label}</span>
+        <span style={{ fontFamily: font.mono, fontSize: 28, fontWeight: 700, color, lineHeight: 1 }}>{score}</span>
+        <span style={{ fontFamily: font.ui, fontSize: 9, color: c.stone, marginTop: 2 }}>readiness</span>
       </div>
     </div>
   );
@@ -96,7 +30,6 @@ function StatPill({ icon, value, label, accent }: { icon: React.ReactNode; value
 
 /* ─── Insight type → icon color ─── */
 const insightColor: Record<string, string> = { strength: c.sage, tip: c.gilt, warning: c.ember, focus: c.slate };
-const insightIcon: Record<string, string> = { strength: "↑", tip: "◆", warning: "!", focus: "◎" };
 
 export default function AnalyticsPage() {
   useDocTitle("Analytics");
@@ -112,24 +45,22 @@ export default function AnalyticsPage() {
 
   if (sessions.length === 0) {
     return (
-      <div style={{ maxWidth: 520, margin: "80px auto", textAlign: "center", padding: "0 20px" }}>
-        <div style={{
-          width: 80, height: 80, borderRadius: radius["2xl"], margin: "0 auto 28px",
-          background: gradient.giltSubtle, border: `1px solid rgba(212,179,127,0.1)`,
-          display: "flex", alignItems: "center", justifyContent: "center",
-        }}>
-          <svg aria-hidden="true" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5" strokeLinecap="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+      <div style={{ maxWidth: 560, margin: "0 auto", textAlign: "center", padding: "60px 20px" }}>
+        <div style={{ width: 64, height: 64, borderRadius: 16, margin: "0 auto 24px", background: "rgba(122,158,126,0.06)", border: `1px solid rgba(122,158,126,0.15)`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <svg aria-hidden="true" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="1.5" strokeLinecap="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
         </div>
-        <h2 style={{ fontFamily: font.display, fontSize: 32, fontWeight: 400, color: c.ivory, marginBottom: 10, letterSpacing: "-0.01em" }}>Analytics</h2>
-        <p style={{ fontFamily: font.ui, fontSize: 14, color: c.stone, lineHeight: 1.7, marginBottom: 32, maxWidth: 380, margin: "0 auto 32px" }}>
-          Complete your first session to unlock score trends, skill breakdowns, and personalized insights.
+        <h2 style={{ fontFamily: font.ui, fontSize: 22, fontWeight: 600, color: c.ivory, marginBottom: 8 }}>Analytics</h2>
+        <p style={{ fontFamily: font.ui, fontSize: 14, color: c.stone, lineHeight: 1.6, marginBottom: 28 }}>
+          Complete sessions to see analytics. Score trends, skill breakdowns, performance by interview type, and more will appear here.
         </p>
         {handleStartSession && (
-          <button onClick={handleStartSession} className="premium-btn"
-            style={{ fontFamily: font.ui, fontSize: 14, fontWeight: 600, padding: "14px 36px", borderRadius: radius.lg, border: "none", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 10 }}
+          <button onClick={handleStartSession} className="shimmer-btn"
+            style={{ fontFamily: font.ui, fontSize: 14, fontWeight: 500, padding: "12px 32px", borderRadius: 8, border: "none", background: c.gilt, color: c.obsidian, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 8 }}
+            onMouseEnter={(e) => { e.currentTarget.style.filter = "brightness(1.15)"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.filter = "brightness(1)"; }}
           >
             <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="5,3 19,12 5,21" /></svg>
-            Start First Session
+            Start Your First Session
           </button>
         )}
       </div>
@@ -146,6 +77,7 @@ export default function AnalyticsPage() {
     return { type, count: typeSessions.length, avgScore: typeSessions.length ? Math.round(typeSessions.reduce((s, sess) => s + sess.score, 0) / typeSessions.length) : 0 };
   }).filter(t => t.count > 0);
 
+  // Weekly practice heatmap (last 12 weeks)
   const weeklyData: { week: string; sessions: number; avgScore: number }[] = [];
   for (let w = 11; w >= 0; w--) {
     const weekStart = new Date();
@@ -161,408 +93,304 @@ export default function AnalyticsPage() {
     });
   }
   const maxWeeklySessions = Math.max(...weeklyData.map(w => w.sessions), 1);
+
   const earnedBadges = badges.filter(b => b.earned);
   const nextBadge = badges.find(b => !b.earned && b.progress > 0);
 
   return (
-    <div style={{ margin: "0 auto", maxWidth: 1120 }}>
+    <div style={{ margin: "0 auto" }}>
+      <h2 style={{ fontFamily: font.ui, fontSize: 22, fontWeight: 600, color: c.ivory, marginBottom: 4 }}>Analytics</h2>
+      <p style={{ fontFamily: font.ui, fontSize: 13, color: c.stone, marginBottom: 24 }}>Your performance insights and interview readiness</p>
 
-      {/* ─── Page Header ─── */}
-      <div style={{ marginBottom: 32 }}>
-        <h2 style={{ fontFamily: font.display, fontSize: 34, fontWeight: 400, color: c.ivory, marginBottom: 6, letterSpacing: "-0.01em" }}>Analytics</h2>
-        <p style={{ fontFamily: font.ui, fontSize: 14, color: c.stone }}>Performance insights & interview readiness</p>
-      </div>
-
-      {/* ═══════════════════════════════════════════════
-          HERO: Readiness + Stats + Daily Challenge
-          ═══════════════════════════════════════════════ */}
-      <div style={{ display: "grid", gridTemplateColumns: "280px 1fr 300px", gap: 16, marginBottom: 28 }}>
-
-        {/* Readiness — Featured card */}
-        <div style={{ ...card.base, ...card.featured, padding: "32px 28px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
-          <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "100%", background: `radial-gradient(circle at 50% 30%, ${readinessScore >= 75 ? "rgba(122,158,126,0.08)" : readinessScore >= 50 ? "rgba(212,179,127,0.08)" : "rgba(196,112,90,0.08)"} 0%, transparent 70%)`, pointerEvents: "none" }} />
-          <ReadinessRing score={readinessScore} />
-          <span style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: c.ivory, marginTop: 16, position: "relative" }}>Interview Readiness</span>
-          <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, marginTop: 4, position: "relative" }}>
-            {readinessScore >= 75 ? "You're well prepared" : readinessScore >= 50 ? "Getting there" : "More practice needed"}
+      {/* ─── Hero: Readiness + Countdown + Streak + Daily Challenge ─── */}
+      <div style={{ display: "grid", gridTemplateColumns: "auto 1fr 1fr", gap: 16, marginBottom: 24 }}>
+        {/* Readiness gauge */}
+        <div style={{ background: "linear-gradient(180deg, rgba(30,30,32,0.5) 0%, rgba(17,17,19,0.5) 100%)", backdropFilter: "blur(16px)", borderRadius: 14, border: `1px solid ${c.border}`, padding: "24px 28px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minWidth: 176 }}>
+          <ReadinessGauge score={readinessScore} />
+          <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: c.ivory, marginTop: 12 }}>Interview Readiness</span>
+          <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, marginTop: 2 }}>
+            {readinessScore >= 75 ? "You're well prepared" : readinessScore >= 50 ? "Getting there — keep practicing" : "More practice needed"}
           </span>
         </div>
 
-        {/* Quick Stats — Stacked pills */}
+        {/* Quick stats column */}
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          <StatPill
-            icon={<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5" strokeLinecap="round"><path d="M12 2c1 6-4 6-4 12a6 6 0 0012 0c0-6-5-6-4-12"/><path d="M12 22a3 3 0 01-3-3c0-3 3-3 3-6"/></svg>}
-            value={currentStreak.toString()} label="day streak" accent={currentStreak > 0 ? c.gilt : c.stone}
-          />
-          <StatPill
-            icon={<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={daysLeft > 0 && daysLeft <= 7 ? c.ember : c.slate} strokeWidth="1.5" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>}
-            value={daysLeft > 0 ? daysLeft.toString() : "—"} label={daysLeft > 0 ? "days until interview" : "No date set"}
-            accent={daysLeft > 0 && daysLeft <= 7 ? c.ember : c.slate}
-          />
-          <StatPill
-            icon={<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="1.5" strokeLinecap="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>}
-            value={`+${avgImprovement}`} label="avg skill improvement" accent={c.sage}
-          />
+          {/* Streak */}
+          <div style={{ background: "linear-gradient(180deg, rgba(30,30,32,0.5) 0%, rgba(17,17,19,0.5) 100%)", backdropFilter: "blur(16px)", borderRadius: 14, border: `1px solid ${c.border}`, padding: "18px 20px", flex: 1, display: "flex", alignItems: "center", gap: 16 }}>
+            <div style={{ width: 44, height: 44, borderRadius: 10, background: "rgba(212,179,127,0.08)", border: `1px solid rgba(212,179,127,0.15)`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5" strokeLinecap="round"><path d="M12 2c1 6-4 6-4 12a6 6 0 0012 0c0-6-5-6-4-12"/><path d="M12 22a3 3 0 01-3-3c0-3 3-3 3-6"/></svg>
+            </div>
+            <div>
+              <span style={{ fontFamily: font.mono, fontSize: 24, fontWeight: 700, color: currentStreak > 0 ? c.gilt : c.stone, display: "block", lineHeight: 1 }}>{currentStreak}</span>
+              <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>day streak</span>
+            </div>
+          </div>
+          {/* Interview countdown */}
+          <div style={{ background: "linear-gradient(180deg, rgba(30,30,32,0.5) 0%, rgba(17,17,19,0.5) 100%)", backdropFilter: "blur(16px)", borderRadius: 14, border: `1px solid ${c.border}`, padding: "18px 20px", flex: 1, display: "flex", alignItems: "center", gap: 16 }}>
+            <div style={{ width: 44, height: 44, borderRadius: 10, background: daysLeft > 0 && daysLeft <= 7 ? "rgba(196,112,90,0.08)" : "rgba(126,141,152,0.08)", border: `1px solid ${daysLeft > 0 && daysLeft <= 7 ? "rgba(196,112,90,0.15)" : "rgba(126,141,152,0.15)"}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={daysLeft > 0 && daysLeft <= 7 ? c.ember : c.slate} strokeWidth="1.5" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            </div>
+            <div>
+              {daysLeft > 0 ? (
+                <>
+                  <span style={{ fontFamily: font.mono, fontSize: 24, fontWeight: 700, color: daysLeft <= 7 ? c.ember : c.ivory, display: "block", lineHeight: 1 }}>{daysLeft}</span>
+                  <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>days until interview</span>
+                </>
+              ) : (
+                <>
+                  <span style={{ fontFamily: font.mono, fontSize: 16, fontWeight: 600, color: c.stone, display: "block", lineHeight: 1.2 }}>—</span>
+                  <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>No interview date set</span>
+                </>
+              )}
+            </div>
+          </div>
         </div>
 
-        {/* Daily Challenge — Accent card */}
-        <div style={{
-          ...card.base, ...card.elevated, padding: "24px 28px",
-          display: "flex", flexDirection: "column",
-          borderTop: `2px solid ${dailyChallenge.completed ? c.sage : c.gilt}`,
-        }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
+        {/* Daily Challenge */}
+        <div style={{ background: "linear-gradient(180deg, rgba(30,30,32,0.5) 0%, rgba(17,17,19,0.5) 100%)", backdropFilter: "blur(16px)", borderRadius: 14, border: `1px solid ${c.border}`, padding: "22px 24px", display: "flex", flexDirection: "column" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
             <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5" strokeLinecap="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-            <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.ivory, letterSpacing: "0.02em" }}>Today's Challenge</span>
-            <span style={{
-              fontFamily: font.mono, fontSize: 9, fontWeight: 600, marginLeft: "auto",
-              color: dailyChallenge.completed ? c.sage : c.gilt,
-              background: dailyChallenge.completed ? "rgba(122,158,126,0.1)" : "rgba(212,179,127,0.1)",
-              borderRadius: radius.sm, padding: "3px 8px",
-              border: `1px solid ${dailyChallenge.completed ? "rgba(122,158,126,0.2)" : "rgba(212,179,127,0.2)"}`,
-            }}>
-              {dailyChallenge.completed ? "DONE" : dailyChallenge.difficulty.toUpperCase()}
+            <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: c.ivory }}>Today's Challenge</span>
+            <span style={{ fontFamily: font.ui, fontSize: 9, fontWeight: 500, color: c.obsidian, background: dailyChallenge.completed ? c.sage : c.gilt, borderRadius: 4, padding: "2px 6px", marginLeft: "auto" }}>
+              {dailyChallenge.completed ? "Done" : dailyChallenge.difficulty}
             </span>
           </div>
-          <span style={{ fontFamily: font.ui, fontSize: 15, fontWeight: 600, color: c.chalk, marginBottom: 6, lineHeight: 1.3 }}>{dailyChallenge.label}</span>
-          <span style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, lineHeight: 1.6, flex: 1 }}>{dailyChallenge.description}</span>
+          <span style={{ fontFamily: font.ui, fontSize: 14, fontWeight: 500, color: c.chalk, marginBottom: 4 }}>{dailyChallenge.label}</span>
+          <span style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, lineHeight: 1.5, flex: 1 }}>{dailyChallenge.description}</span>
           {!dailyChallenge.completed && handleStartSession && (
             <button onClick={handleStartSession}
-              style={{
-                fontFamily: font.ui, fontSize: 12, fontWeight: 600, padding: "10px 20px",
-                borderRadius: radius.md, border: `1px solid rgba(212,179,127,0.3)`,
-                background: "rgba(212,179,127,0.08)", color: c.gilt,
-                cursor: "pointer", marginTop: 14, alignSelf: "flex-start",
-                transition: `all 0.2s ${ease.out}`,
-              }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(212,179,127,0.15)"; e.currentTarget.style.borderColor = "rgba(212,179,127,0.5)"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(212,179,127,0.08)"; e.currentTarget.style.borderColor = "rgba(212,179,127,0.3)"; }}
+              style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, padding: "8px 16px", borderRadius: 8, border: "none", background: c.gilt, color: c.obsidian, cursor: "pointer", marginTop: 12, alignSelf: "flex-start" }}
+              onMouseEnter={(e) => { e.currentTarget.style.filter = "brightness(1.15)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.filter = "brightness(1)"; }}
             >
-              Start Challenge →
+              Start Challenge
             </button>
           )}
         </div>
       </div>
 
-      {/* ═══════════════════════════════════════════════
-          AI INSIGHTS — Horizontal scroll cards
-          ═══════════════════════════════════════════════ */}
+      {/* ─── AI Insights ─── */}
       {aiInsights.length > 0 && (
-        <div style={{ marginBottom: 28 }}>
-          <SectionLabel>AI Insights</SectionLabel>
-          <div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.min(aiInsights.length, 4)}, 1fr)`, gap: 12 }}>
-            {aiInsights.map((insight, i) => {
-              const clr = insightColor[insight.type] || c.gilt;
-              return (
-                <div key={i} style={{
-                  ...card.base, padding: "18px 22px", ...card.glass,
-                  borderLeft: `3px solid ${clr}`,
-                  borderRadius: `4px ${radius.lg}px ${radius.lg}px 4px`,
-                }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                    <span style={{ fontFamily: font.mono, fontSize: 12, fontWeight: 700, color: clr }}>{insightIcon[insight.type] || "◆"}</span>
-                    <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, color: clr, textTransform: "uppercase", letterSpacing: "0.08em" }}>{insight.type}</span>
-                  </div>
-                  <span style={{ fontFamily: font.ui, fontSize: 13, color: c.chalk, lineHeight: 1.6 }}>{insight.text}</span>
-                </div>
-              );
-            })}
+        <div style={{ background: "linear-gradient(180deg, rgba(30,30,32,0.5) 0%, rgba(17,17,19,0.5) 100%)", backdropFilter: "blur(16px)", borderRadius: 14, border: `1px solid ${c.border}`, padding: "20px 24px", marginBottom: 24 }}>
+          <h3 style={{ fontFamily: font.ui, fontSize: 14, fontWeight: 600, color: c.ivory, marginBottom: 14 }}>AI Insights</h3>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 10 }}>
+            {aiInsights.map((insight, i) => (
+              <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "10px 14px", background: c.obsidian, borderRadius: 8, border: `1px solid ${c.border}` }}>
+                <div style={{ width: 6, height: 6, borderRadius: "50%", background: insightColor[insight.type] || c.gilt, marginTop: 6, flexShrink: 0 }} />
+                <span style={{ fontFamily: font.ui, fontSize: 12, color: c.chalk, lineHeight: 1.5 }}>{insight.text}</span>
+              </div>
+            ))}
           </div>
         </div>
       )}
 
-      {/* ═══════════════════════════════════════════════
-          KPI ROW — Large numbers
-          ═══════════════════════════════════════════════ */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 12, marginBottom: 28 }}>
+      {/* ─── Summary KPIs ─── */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12, marginBottom: 24 }}>
         {[
-          { label: "Avg Score", value: avgScore.toString(), color: c.gilt, sub: scoreLabel(avgScore) },
+          { label: "Average Score", value: avgScore.toString(), color: c.gilt, sub: scoreLabel(avgScore) },
           { label: "Best Score", value: bestSession?.score.toString() || "—", color: c.sage, sub: bestSession?.type || "" },
-          { label: "Sessions", value: sessions.length.toString(), color: c.ivory, sub: `${typeBreakdown.length} types` },
-          { label: "Improvement", value: `+${avgImprovement}`, color: c.sage, sub: "pts/skill" },
-          { label: "Hours", value: overallStats.hoursLogged.toFixed(1), color: c.slateLight, sub: "practiced" },
-        ].map((kpi, i) => (
-          <div key={i} style={{
-            ...card.base, padding: "22px 24px", ...card.glass,
-            textAlign: "center",
-          }}>
-            <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 500, color: c.stone, display: "block", marginBottom: 10, letterSpacing: "0.04em" }}>{kpi.label}</span>
-            <span style={{ fontFamily: font.display, fontSize: 36, fontWeight: 400, color: kpi.color, display: "block", lineHeight: 1, letterSpacing: "-0.02em" }}>{kpi.value}</span>
-            <span style={{ fontFamily: font.ui, fontSize: 10, color: c.stone, marginTop: 6, display: "block" }}>{kpi.sub}</span>
+          { label: "Total Sessions", value: sessions.length.toString(), color: c.ivory, sub: `${typeBreakdown.length} types practiced` },
+          { label: "Avg Improvement", value: `+${avgImprovement}`, color: c.sage, sub: "pts per skill" },
+          { label: "Hours Logged", value: overallStats.hoursLogged.toFixed(1), color: c.slate, sub: "practice time" },
+        ].map((card, i) => (
+          <div key={i} style={{ background: "linear-gradient(180deg, rgba(30,30,32,0.5) 0%, rgba(17,17,19,0.5) 100%)", backdropFilter: "blur(16px)", borderRadius: 14, border: `1px solid ${c.border}`, padding: 18 }}>
+            <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, display: "block", marginBottom: 8 }}>{card.label}</span>
+            <span style={{ fontFamily: font.mono, fontSize: 26, fontWeight: 600, color: card.color, display: "block", marginBottom: 2, letterSpacing: "-0.02em" }}>{card.value}</span>
+            <span style={{ fontFamily: font.ui, fontSize: 10, color: c.stone }}>{card.sub}</span>
           </div>
         ))}
       </div>
 
-      {/* ═══════════════════════════════════════════════
-          CHARTS ROW: Score Progression + Skill Radar
-          ═══════════════════════════════════════════════ */}
-      <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: 16, marginBottom: 28 }}>
-        {/* Score Trend */}
-        <div style={{ ...card.base, ...card.elevated }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
-            <div>
-              <SectionLabel>Performance</SectionLabel>
-              <h3 style={{ fontFamily: font.display, fontSize: 22, fontWeight: 400, color: c.ivory }}>Score Progression</h3>
-            </div>
-            {trend.length >= 2 && (
-              <div style={{ display: "flex", gap: 16 }}>
-                <div style={{ textAlign: "right" }}>
-                  <span style={{ fontFamily: font.mono, fontSize: 20, fontWeight: 600, color: c.sage, display: "block", lineHeight: 1 }}>+{(trend[trend.length - 1]?.score || 0) - (trend[0]?.score || 0)}</span>
-                  <span style={{ fontFamily: font.ui, fontSize: 10, color: c.stone }}>total gain</span>
-                </div>
-              </div>
-            )}
-          </div>
+      {/* ─── Charts: Score Trend + Skill Radar ─── */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginBottom: 24 }}>
+        <div style={{ background: "linear-gradient(180deg, rgba(30,30,32,0.5) 0%, rgba(17,17,19,0.5) 100%)", backdropFilter: "blur(16px)", borderRadius: 14, border: `1px solid ${c.border}`, padding: "24px 28px" }}>
+          <h3 style={{ fontFamily: font.ui, fontSize: 14, fontWeight: 600, color: c.ivory, marginBottom: 4 }}>Score Progression</h3>
+          <p style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, marginBottom: 16 }}>{trend.length >= 2 ? `Your trajectory over ${trend.length} sessions` : "Complete sessions to see progress"}</p>
           {trend.length >= 2 ? (
             <>
               <ScoreTrendChart data={trend} />
-              <div style={{ display: "flex", justifyContent: "space-between", marginTop: 10, padding: "0 24px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8, padding: "0 24px" }}>
                 <span style={{ fontFamily: font.mono, fontSize: 10, color: c.stone }}>{trend[0]?.date}</span>
                 <span style={{ fontFamily: font.mono, fontSize: 10, color: c.stone }}>{trend[trend.length - 1]?.date}</span>
               </div>
-              <div style={{ display: "flex", justifyContent: "center", gap: 28, marginTop: 18, padding: "14px 0 0", borderTop: `1px solid ${c.borderSubtle}` }}>
-                {[
-                  { v: trend[0]?.score, l: "First", clr: c.stone },
-                  { v: trend[trend.length - 1]?.score, l: "Latest", clr: c.ivory },
-                  { v: Math.max(...trend.map(t => t.score)), l: "Peak", clr: c.gilt },
-                ].map((s, i) => (
-                  <div key={i} style={{ textAlign: "center" }}>
-                    <span style={{ fontFamily: font.mono, fontSize: 18, fontWeight: 600, color: s.clr, display: "block" }}>{s.v}</span>
-                    <span style={{ fontFamily: font.ui, fontSize: 10, color: c.stone }}>{s.l}</span>
-                  </div>
-                ))}
+              <div style={{ display: "flex", justifyContent: "center", gap: 20, marginTop: 16, padding: "12px 0", borderTop: `1px solid ${c.border}` }}>
+                <div style={{ textAlign: "center" }}>
+                  <span style={{ fontFamily: font.mono, fontSize: 16, fontWeight: 600, color: c.ivory, display: "block" }}>{trend[0]?.score}</span>
+                  <span style={{ fontFamily: font.ui, fontSize: 10, color: c.stone }}>First</span>
+                </div>
+                <div style={{ width: 1, background: c.border }} />
+                <div style={{ textAlign: "center" }}>
+                  <span style={{ fontFamily: font.mono, fontSize: 16, fontWeight: 600, color: c.sage, display: "block" }}>+{(trend[trend.length - 1]?.score || 0) - (trend[0]?.score || 0)}</span>
+                  <span style={{ fontFamily: font.ui, fontSize: 10, color: c.stone }}>Total gain</span>
+                </div>
+                <div style={{ width: 1, background: c.border }} />
+                <div style={{ textAlign: "center" }}>
+                  <span style={{ fontFamily: font.mono, fontSize: 16, fontWeight: 600, color: c.ivory, display: "block" }}>{trend[trend.length - 1]?.score}</span>
+                  <span style={{ fontFamily: font.ui, fontSize: 10, color: c.stone }}>Latest</span>
+                </div>
               </div>
             </>
           ) : (
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "48px 20px", textAlign: "center" }}>
-              <svg aria-hidden="true" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="1.5" strokeLinecap="round" style={{ marginBottom: 12 }}><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/></svg>
-              <p style={{ fontFamily: font.ui, fontSize: 13, color: c.stone }}>Complete 2+ sessions to see your trajectory</p>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 20px", textAlign: "center" }}>
+              <svg aria-hidden="true" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke={c.border} strokeWidth="1.5" strokeLinecap="round" style={{ marginBottom: 10 }}><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/></svg>
+              <p style={{ fontFamily: font.ui, fontSize: 12, color: c.stone }}>Complete at least 2 sessions to see your score progression</p>
             </div>
           )}
         </div>
 
-        {/* Skill Radar */}
-        <div style={{ ...card.base, ...card.glass }}>
-          <SectionLabel>Skills</SectionLabel>
-          <h3 style={{ fontFamily: font.display, fontSize: 22, fontWeight: 400, color: c.ivory, marginBottom: 16 }}>Skill Radar</h3>
+        <div style={{ background: "linear-gradient(180deg, rgba(30,30,32,0.5) 0%, rgba(17,17,19,0.5) 100%)", backdropFilter: "blur(16px)", borderRadius: 14, border: `1px solid ${c.border}`, padding: "24px 28px" }}>
+          <h3 style={{ fontFamily: font.ui, fontSize: 14, fontWeight: 600, color: c.ivory, marginBottom: 4 }}>Skill Radar</h3>
+          <p style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, marginBottom: 12 }}>{sk.length > 0 ? "Current vs first session — dashed line shows where you started" : "Complete sessions to see your skill radar"}</p>
           {sk.length > 0 ? (
             <>
               <SkillRadar skills={sk} />
-              <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 16 }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 12 }}>
                 {[...sk].sort((a, b) => (b.score - b.prev) - (a.score - a.prev)).map(s => (
                   <div key={s.name} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <span style={{ fontFamily: font.ui, fontSize: 12, color: c.chalk, flex: 1 }}>{s.name}</span>
-                    <div style={{ width: 72, height: 4, background: "rgba(255,255,255,0.04)", borderRadius: 2, overflow: "hidden" }}>
-                      <div style={{ height: "100%", width: `${s.score}%`, background: `linear-gradient(90deg, ${s.color}, ${s.color}88)`, borderRadius: 2, transition: `width 0.5s ${ease.out}` }} />
+                    <span style={{ fontFamily: font.ui, fontSize: 11, color: c.chalk, flex: 1 }}>{s.name}</span>
+                    <div style={{ width: 80, height: 4, background: c.border, borderRadius: 2, overflow: "hidden" }}>
+                      <div style={{ height: "100%", width: `${s.score}%`, background: s.color, borderRadius: 2 }} />
                     </div>
-                    <span style={{ fontFamily: font.mono, fontSize: 12, fontWeight: 600, color: c.ivory, width: 24, textAlign: "right" }}>{s.score}</span>
-                    <span style={{ fontFamily: font.mono, fontSize: 10, color: c.sage, width: 30, textAlign: "right" }}>+{s.score - s.prev}</span>
+                    <span style={{ fontFamily: font.mono, fontSize: 11, fontWeight: 600, color: c.ivory, width: 22, textAlign: "right" }}>{s.score}</span>
+                    <span style={{ fontFamily: font.mono, fontSize: 10, color: c.sage, width: 28, textAlign: "right" }}>+{s.score - s.prev}</span>
                   </div>
                 ))}
               </div>
-              <div style={{ display: "flex", gap: 12, marginTop: 14, paddingTop: 12, borderTop: `1px solid ${c.borderSubtle}` }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <div style={{ width: 16, height: 2, background: c.gilt, borderRadius: 1 }} />
-                  <span style={{ fontFamily: font.ui, fontSize: 10, color: c.stone }}>Current</span>
-                </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <div style={{ width: 16, height: 2, background: c.stone, borderRadius: 1, backgroundImage: "repeating-linear-gradient(90deg, transparent, transparent 3px, rgba(0,0,0,0.5) 3px, rgba(0,0,0,0.5) 6px)" }} />
-                  <span style={{ fontFamily: font.ui, fontSize: 10, color: c.stone }}>First session</span>
-                </div>
-              </div>
             </>
           ) : (
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "48px 20px", textAlign: "center" }}>
-              <svg aria-hidden="true" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="1.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-              <p style={{ fontFamily: font.ui, fontSize: 13, color: c.stone, marginTop: 12 }}>Complete sessions to unlock your skill radar</p>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "40px 20px", textAlign: "center" }}>
+              <svg aria-hidden="true" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke={c.border} strokeWidth="1.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+              <p style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, marginTop: 10 }}>Complete sessions to unlock your skill radar</p>
             </div>
           )}
         </div>
       </div>
 
-      {/* ═══════════════════════════════════════════════
-          GOALS + BADGES ROW
-          ═══════════════════════════════════════════════ */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 28 }}>
+      {/* ─── Goals + Badges row ─── */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginBottom: 24 }}>
         {/* Goals */}
         {upcomingGoals.length > 0 && (
-          <div style={{ ...card.base, ...card.glass }}>
-            <SectionLabel>Progress</SectionLabel>
-            <h3 style={{ fontFamily: font.display, fontSize: 20, fontWeight: 400, color: c.ivory, marginBottom: 20 }}>Goals</h3>
-            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-              {upcomingGoals.map((g, i) => {
-                const pct = Math.min(100, (g.progress / g.total) * 100);
-                const done = g.progress >= g.total;
-                return (
-                  <div key={i}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8 }}>
-                      <span style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.chalk }}>{g.label}</span>
-                      <span style={{ fontFamily: font.mono, fontSize: 11, color: done ? c.sage : c.stone }}>{g.progress}/{g.total}</span>
-                    </div>
-                    <div style={{ height: 6, background: "rgba(255,255,255,0.04)", borderRadius: 3, overflow: "hidden" }}>
-                      <div style={{
-                        height: "100%", width: `${pct}%`, borderRadius: 3,
-                        background: done ? `linear-gradient(90deg, ${c.sage}, ${c.sageLight})` : `linear-gradient(90deg, ${c.gilt}, ${c.giltLight})`,
-                        transition: `width 0.5s ${ease.out}`,
-                        boxShadow: done ? `0 0 8px ${c.sage}44` : "none",
-                      }} />
-                    </div>
+          <div style={{ background: "linear-gradient(180deg, rgba(30,30,32,0.5) 0%, rgba(17,17,19,0.5) 100%)", backdropFilter: "blur(16px)", borderRadius: 14, border: `1px solid ${c.border}`, padding: "24px 28px" }}>
+            <h3 style={{ fontFamily: font.ui, fontSize: 14, fontWeight: 600, color: c.ivory, marginBottom: 16 }}>Goals</h3>
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              {upcomingGoals.map((g, i) => (
+                <div key={i}>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                    <span style={{ fontFamily: font.ui, fontSize: 12, color: c.chalk }}>{g.label}</span>
+                    <span style={{ fontFamily: font.mono, fontSize: 11, color: c.stone }}>{g.progress}/{g.total}</span>
                   </div>
-                );
-              })}
+                  <div style={{ height: 6, background: c.border, borderRadius: 3, overflow: "hidden" }}>
+                    <div style={{ height: "100%", width: `${Math.min(100, (g.progress / g.total) * 100)}%`, background: g.progress >= g.total ? c.sage : c.gilt, borderRadius: 3, transition: "width 0.4s ease" }} />
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         )}
 
         {/* Badges */}
-        <div style={{ ...card.base, ...card.glass }}>
-          <SectionLabel>Achievements</SectionLabel>
-          <h3 style={{ fontFamily: font.display, fontSize: 20, fontWeight: 400, color: c.ivory, marginBottom: 20 }}>Badges</h3>
+        <div style={{ background: "linear-gradient(180deg, rgba(30,30,32,0.5) 0%, rgba(17,17,19,0.5) 100%)", backdropFilter: "blur(16px)", borderRadius: 14, border: `1px solid ${c.border}`, padding: "24px 28px" }}>
+          <h3 style={{ fontFamily: font.ui, fontSize: 14, fontWeight: 600, color: c.ivory, marginBottom: 16 }}>Badges</h3>
           {earnedBadges.length > 0 ? (
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginBottom: nextBadge ? 18 : 0 }}>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginBottom: nextBadge ? 16 : 0 }}>
               {earnedBadges.map(b => (
-                <div key={b.id} title={b.description} style={{
-                  display: "flex", alignItems: "center", gap: 8,
-                  padding: "8px 14px", borderRadius: radius.md,
-                  background: "rgba(212,179,127,0.04)", border: `1px solid rgba(212,179,127,0.1)`,
-                }}>
-                  <span style={{ fontSize: 18 }}>{b.icon}</span>
-                  <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: c.chalk }}>{b.label}</span>
+                <div key={b.id} title={b.description} style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 12px", background: c.obsidian, borderRadius: 8, border: `1px solid ${c.border}` }}>
+                  <span style={{ fontSize: 16 }}>{b.icon}</span>
+                  <span style={{ fontFamily: font.ui, fontSize: 11, color: c.chalk }}>{b.label}</span>
                 </div>
               ))}
             </div>
           ) : (
-            <p style={{ fontFamily: font.ui, fontSize: 13, color: c.stone, marginBottom: nextBadge ? 18 : 0 }}>Complete challenges to earn badges</p>
+            <p style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, marginBottom: nextBadge ? 16 : 0 }}>Complete challenges to earn badges</p>
           )}
           {nextBadge && (
-            <div style={{
-              padding: "14px 18px", borderRadius: radius.md,
-              background: "rgba(255,255,255,0.02)", border: `1px solid ${c.borderSubtle}`,
-            }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                <span style={{ fontFamily: font.ui, fontSize: 12, color: c.stone }}>
-                  Next: <span style={{ color: c.giltLight, fontWeight: 500 }}>{nextBadge.icon} {nextBadge.label}</span>
-                </span>
-                <span style={{ fontFamily: font.mono, fontSize: 11, fontWeight: 600, color: c.gilt }}>{Math.round(nextBadge.progress * 100)}%</span>
+            <div style={{ padding: "12px 16px", background: c.obsidian, borderRadius: 8, border: `1px solid ${c.border}` }}>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>Next: <span style={{ color: c.chalk }}>{nextBadge.icon} {nextBadge.label}</span></span>
+                <span style={{ fontFamily: font.mono, fontSize: 10, color: c.stone }}>{Math.round(nextBadge.progress * 100)}%</span>
               </div>
-              <div style={{ height: 4, background: "rgba(255,255,255,0.04)", borderRadius: 2, overflow: "hidden" }}>
-                <div style={{ height: "100%", width: `${nextBadge.progress * 100}%`, background: gradient.giltShine, borderRadius: 2, transition: `width 0.4s ${ease.out}` }} />
+              <div style={{ height: 4, background: c.border, borderRadius: 2, overflow: "hidden" }}>
+                <div style={{ height: "100%", width: `${nextBadge.progress * 100}%`, background: c.gilt, borderRadius: 2 }} />
               </div>
             </div>
           )}
         </div>
       </div>
 
-      {/* ═══════════════════════════════════════════════
-          PERFORMANCE BY TYPE — Visual cards
-          ═══════════════════════════════════════════════ */}
-      <div style={{ ...card.base, ...card.elevated, marginBottom: 28 }}>
-        <SectionLabel>Breakdown</SectionLabel>
-        <h3 style={{ fontFamily: font.display, fontSize: 22, fontWeight: 400, color: c.ivory, marginBottom: 24 }}>Performance by Type</h3>
-        <div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.min(typeBreakdown.length, 4)}, 1fr)`, gap: 14 }}>
-          {typeBreakdown.map(tb => {
-            const clr = scoreLabelColor(tb.avgScore);
-            return (
-              <div key={tb.type} style={{
-                padding: "24px 20px", borderRadius: radius.lg, textAlign: "center",
-                background: `linear-gradient(180deg, ${clr}08 0%, transparent 60%)`,
-                border: `1px solid ${clr}15`,
-              }}>
-                <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: clr, display: "block", marginBottom: 14 }}>{tb.type}</span>
-                <span style={{ fontFamily: font.display, fontSize: 44, fontWeight: 400, color: clr, display: "block", lineHeight: 1, letterSpacing: "-0.02em" }}>{tb.avgScore}</span>
-                <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, display: "block", marginTop: 8 }}>{tb.count} session{tb.count !== 1 ? "s" : ""}</span>
-                <div style={{ height: 3, background: "rgba(255,255,255,0.04)", borderRadius: 2, marginTop: 16, overflow: "hidden" }}>
-                  <div style={{ height: "100%", width: `${tb.avgScore}%`, background: `linear-gradient(90deg, ${clr}88, ${clr})`, borderRadius: 2, transition: `width 0.5s ${ease.out}` }} />
-                </div>
+      {/* ─── Performance by Type ─── */}
+      <div style={{ background: "linear-gradient(180deg, rgba(30,30,32,0.5) 0%, rgba(17,17,19,0.5) 100%)", backdropFilter: "blur(16px)", borderRadius: 14, border: `1px solid ${c.border}`, padding: "24px 28px", marginBottom: 24 }}>
+        <h3 style={{ fontFamily: font.ui, fontSize: 14, fontWeight: 600, color: c.ivory, marginBottom: 16 }}>Performance by Interview Type</h3>
+        <div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.max(typeBreakdown.length, 1)}, 1fr)`, gap: 12 }}>
+          {typeBreakdown.map(tb => (
+            <div key={tb.type} style={{ background: c.obsidian, borderRadius: 10, border: `1px solid ${c.border}`, padding: "18px 20px", textAlign: "center" }}>
+              <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", color: c.gilt, display: "block", marginBottom: 12 }}>{tb.type}</span>
+              <span style={{ fontFamily: font.mono, fontSize: 32, fontWeight: 600, color: scoreLabelColor(tb.avgScore), display: "block", marginBottom: 4 }}>{tb.avgScore}</span>
+              <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>{tb.count} session{tb.count !== 1 ? "s" : ""}</span>
+              <div style={{ height: 4, background: c.border, borderRadius: 2, marginTop: 12, overflow: "hidden" }}>
+                <div style={{ height: "100%", width: `${tb.avgScore}%`, background: scoreLabelColor(tb.avgScore), borderRadius: 2, transition: "width 0.5s ease" }} />
               </div>
-            );
-          })}
+            </div>
+          ))}
         </div>
       </div>
 
-      {/* ═══════════════════════════════════════════════
-          PRACTICE CONSISTENCY HEATMAP
-          ═══════════════════════════════════════════════ */}
-      <div style={{ ...card.base, ...card.glass, marginBottom: 28 }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
-          <div>
-            <SectionLabel>Consistency</SectionLabel>
-            <h3 style={{ fontFamily: font.display, fontSize: 22, fontWeight: 400, color: c.ivory }}>Practice Activity</h3>
-          </div>
-          <div style={{ display: "flex", gap: 14 }}>
-            {[
-              { color: "rgba(212,179,127,0.2)", label: "1" },
-              { color: c.gilt, label: "2" },
-              { color: c.sage, label: "3+" },
-            ].map(l => (
-              <div key={l.label} style={{ display: "flex", alignItems: "center", gap: 5 }}>
-                <div style={{ width: 10, height: 10, borderRadius: 3, background: l.color }} />
-                <span style={{ fontFamily: font.mono, fontSize: 9, color: c.stone }}>{l.label}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-        <div style={{ display: "flex", gap: 6, alignItems: "flex-end", height: 110 }}>
+      {/* ─── Practice Consistency ─── */}
+      <div style={{ background: "linear-gradient(180deg, rgba(30,30,32,0.5) 0%, rgba(17,17,19,0.5) 100%)", backdropFilter: "blur(16px)", borderRadius: 14, border: `1px solid ${c.border}`, padding: "24px 28px", marginBottom: 24 }}>
+        <h3 style={{ fontFamily: font.ui, fontSize: 14, fontWeight: 600, color: c.ivory, marginBottom: 4 }}>Practice Consistency</h3>
+        <p style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, marginBottom: 16 }}>Sessions per week — last 12 weeks</p>
+        <div style={{ display: "flex", gap: 6, alignItems: "flex-end", height: 100 }}>
           {weeklyData.map((w, i) => (
             <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
-              <span style={{ fontFamily: font.mono, fontSize: 9, fontWeight: 600, color: w.sessions > 0 ? c.ivory : "transparent" }}>{w.sessions}</span>
+              <span style={{ fontFamily: font.mono, fontSize: 9, color: w.sessions > 0 ? c.ivory : "transparent" }}>{w.sessions}</span>
               <div style={{
-                width: "100%", borderRadius: 5,
-                height: Math.max(6, (w.sessions / maxWeeklySessions) * 80),
-                background: w.sessions > 0
-                  ? w.sessions >= 3 ? `linear-gradient(180deg, ${c.sageLight}, ${c.sage})` : w.sessions >= 2 ? `linear-gradient(180deg, ${c.giltLight}, ${c.gilt})` : "rgba(212,179,127,0.2)"
-                  : "rgba(255,255,255,0.03)",
-                transition: `height 0.4s ${ease.out}`,
-                boxShadow: w.sessions >= 3 ? `0 2px 8px ${c.sage}33` : "none",
+                width: "100%", borderRadius: 4,
+                height: Math.max(4, (w.sessions / maxWeeklySessions) * 72),
+                background: w.sessions > 0 ? w.sessions >= 3 ? c.sage : w.sessions >= 2 ? c.gilt : "rgba(212,179,127,0.3)" : c.border,
+                transition: "height 0.3s ease",
               }} />
               <span style={{ fontFamily: font.mono, fontSize: 8, color: c.stone, whiteSpace: "nowrap" }}>{w.week}</span>
             </div>
           ))}
         </div>
-      </div>
-
-      {/* ═══════════════════════════════════════════════
-          STRENGTHS + AREAS TO IMPROVE
-          ═══════════════════════════════════════════════ */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-        {/* Strengths */}
-        <div style={{ ...card.base, ...card.glass, borderTop: `2px solid ${c.sage}` }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
-            <div style={{ width: 32, height: 32, borderRadius: radius.sm, background: "rgba(122,158,126,0.08)", border: "1px solid rgba(122,158,126,0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/></svg>
-            </div>
-            <h3 style={{ fontFamily: font.display, fontSize: 20, fontWeight: 400, color: c.ivory }}>Top Strengths</h3>
-          </div>
-          {sessions.slice(0, 5).map((s, i) => (
-            <div key={i} style={{
-              display: "flex", alignItems: "center", gap: 12,
-              padding: "12px 0",
-              borderBottom: i < 4 ? `1px solid ${c.borderSubtle}` : "none",
-            }}>
-              <span style={{ fontFamily: font.mono, fontSize: 10, fontWeight: 600, color: c.sage, width: 18, textAlign: "center" }}>{i + 1}</span>
-              <span style={{ fontFamily: font.ui, fontSize: 13, color: c.chalk, flex: 1 }}>{s.topStrength}</span>
-              <span style={{ fontFamily: font.ui, fontSize: 10, color: c.stone, padding: "2px 8px", background: "rgba(255,255,255,0.03)", borderRadius: radius.sm }}>{s.type}</span>
+        <div style={{ display: "flex", gap: 16, marginTop: 14, justifyContent: "center" }}>
+          {[
+            { color: "rgba(212,179,127,0.3)", label: "1 session" },
+            { color: c.gilt, label: "2 sessions" },
+            { color: c.sage, label: "3+ sessions" },
+          ].map(l => (
+            <div key={l.label} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <div style={{ width: 10, height: 10, borderRadius: 2, background: l.color }} />
+              <span style={{ fontFamily: font.ui, fontSize: 10, color: c.stone }}>{l.label}</span>
             </div>
           ))}
         </div>
+      </div>
 
-        {/* Areas to improve */}
-        <div style={{ ...card.base, ...card.glass, borderTop: `2px solid ${c.ember}` }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
-            <div style={{ width: 32, height: 32, borderRadius: radius.sm, background: "rgba(196,112,90,0.08)", border: "1px solid rgba(196,112,90,0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={c.ember} strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-            </div>
-            <h3 style={{ fontFamily: font.display, fontSize: 20, fontWeight: 400, color: c.ivory }}>Areas to Improve</h3>
+      {/* ─── Strengths / Areas to Improve ─── */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
+        <div style={{ background: "linear-gradient(180deg, rgba(30,30,32,0.5) 0%, rgba(17,17,19,0.5) 100%)", backdropFilter: "blur(16px)", borderRadius: 14, border: `1px solid ${c.border}`, padding: "24px 28px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
+            <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/></svg>
+            <h3 style={{ fontFamily: font.ui, fontSize: 14, fontWeight: 600, color: c.ivory }}>Top Strengths</h3>
           </div>
           {sessions.slice(0, 5).map((s, i) => (
-            <div key={i} style={{
-              display: "flex", alignItems: "center", gap: 12,
-              padding: "12px 0",
-              borderBottom: i < 4 ? `1px solid ${c.borderSubtle}` : "none",
-            }}>
-              <span style={{ fontFamily: font.mono, fontSize: 10, fontWeight: 600, color: c.ember, width: 18, textAlign: "center" }}>{i + 1}</span>
+            <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 0", borderBottom: i < 4 ? `1px solid ${c.border}` : "none" }}>
+              <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="2"><polyline points="20 6 9 17 4 12" /></svg>
+              <span style={{ fontFamily: font.ui, fontSize: 13, color: c.chalk, flex: 1 }}>{s.topStrength}</span>
+              <span style={{ fontFamily: font.ui, fontSize: 10, color: c.stone }}>{s.type}</span>
+            </div>
+          ))}
+        </div>
+        <div style={{ background: "linear-gradient(180deg, rgba(30,30,32,0.5) 0%, rgba(17,17,19,0.5) 100%)", backdropFilter: "blur(16px)", borderRadius: 14, border: `1px solid ${c.border}`, padding: "24px 28px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
+            <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={c.ember} strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            <h3 style={{ fontFamily: font.ui, fontSize: 14, fontWeight: 600, color: c.ivory }}>Areas to Improve</h3>
+          </div>
+          {sessions.slice(0, 5).map((s, i) => (
+            <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 0", borderBottom: i < 4 ? `1px solid ${c.border}` : "none" }}>
+              <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={c.ember} strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
               <span style={{ fontFamily: font.ui, fontSize: 13, color: c.chalk, flex: 1 }}>{s.topWeakness}</span>
-              <span style={{ fontFamily: font.ui, fontSize: 10, color: c.stone, padding: "2px 8px", background: "rgba(255,255,255,0.03)", borderRadius: radius.sm }}>{s.type}</span>
+              <span style={{ fontFamily: font.ui, fontSize: 10, color: c.stone }}>{s.type}</span>
             </div>
           ))}
         </div>
