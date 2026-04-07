@@ -955,10 +955,12 @@ export default function Interview() {
       }, Math.max(step.speakingDuration + 5000, 30000));
 
       if (aiVoiceEnabled) {
-        // Use unified TTS service (Google Cloud or browser fallback)
+        // Use TTS service (Cartesia or browser fallback)
+        console.log("[interview] TTS speak() called for step", currentStep);
         speak(step.aiText, onSpeechEnd, onSpeechEnd).then(handle => {
+          console.log("[interview] TTS speak() resolved for step", currentStep);
           ttsCancelRef.current = handle.cancel;
-        }).catch(() => { onSpeechEnd(); });
+        }).catch((e) => { console.warn("[interview] TTS speak() rejected:", e); onSpeechEnd(); });
       } else {
         // No voice — use timer fallback
         const speakTimer = setTimeout(onSpeechEnd, step.speakingDuration);

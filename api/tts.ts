@@ -69,7 +69,7 @@ export default async function handler(req: Request): Promise<Response> {
         language: "en",
         output_format: {
           container: "mp3",
-          sample_rate: 44100,
+          sample_rate: 48000,
           bit_rate: 128000,
         },
       }),

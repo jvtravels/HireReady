@@ -85,6 +85,8 @@ async function speakWithProxy(
 ): Promise<{ cancel: () => void }> {
   const controller = new AbortController();
   let audio: HTMLAudioElement | null = null;
+  let settled = false;
+  const settle = (cb: () => void) => { if (!settled) { settled = true; cb(); } };
 
   try {
     const { authHeaders } = await import("./supabase");
@@ -97,27 +99,44 @@ async function speakWithProxy(
     });
 
     if (!res.ok) {
-      console.warn("TTS proxy error:", res.status);
-      onError();
+      console.warn("[TTS] proxy error:", res.status);
+      settle(onError);
       return { cancel: () => {} };
     }
 
-    const blob = await res.blob();
-    const url = URL.createObjectURL(blob);
-    let revoked = false;
-    const revokeUrl = () => { if (!revoked) { revoked = true; URL.revokeObjectURL(url); } };
-    audio = new Audio(url);
-    audio.onended = () => { revokeUrl(); onEnd(); };
-    audio.onerror = () => { revokeUrl(); onError(); };
-    audio.play().catch(() => {
-      revokeUrl();
-      onError();
-    });
-  } catch (err: any) {
-    if (err.name !== "AbortError") {
-      console.warn("TTS proxy failed:", err);
-      onError();
+    const contentType = res.headers.get("content-type") || "";
+    if (!contentType.includes("audio")) {
+      console.warn("[TTS] non-audio content-type:", contentType);
+      settle(onError);
+      return { cancel: () => {} };
     }
+
+    const arrayBuffer = await res.arrayBuffer();
+    const audioBlob = new Blob([arrayBuffer], { type: "audio/mpeg" });
+    const url = URL.createObjectURL(audioBlob);
+    const revokeUrl = () => { try { URL.revokeObjectURL(url); } catch {} };
+
+    audio = new Audio();
+    audio.src = url;
+
+    audio.onended = () => { revokeUrl(); settle(onEnd); };
+    audio.onerror = () => { console.warn("[TTS] audio element error"); revokeUrl(); settle(onError); };
+
+    try {
+      await audio.play();
+    } catch (e) {
+      console.warn("[TTS] play() rejected:", e);
+      revokeUrl();
+      settle(onError);
+      return { cancel: () => {} };
+    }
+  } catch (err: any) {
+    if (err.name === "AbortError") {
+      // Cancelled — don't fire callbacks
+      return { cancel: () => {} };
+    }
+    console.warn("[TTS] proxy failed:", err);
+    settle(onError);
     return { cancel: () => {} };
   }
 
@@ -125,6 +144,7 @@ async function speakWithProxy(
   return {
     cancel: () => {
       controller.abort();
+      settled = true; // prevent callbacks after cancel
       if (capturedAudio) {
         capturedAudio.pause();
         capturedAudio.onended = null;
