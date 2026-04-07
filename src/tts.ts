@@ -1,6 +1,27 @@
 /* ─── Text-to-Speech Service ─── */
 /* Uses server-side Cartesia TTS proxy (ultra-low latency) with Web Speech API fallback */
 
+/* Unlock audio playback — call this on a user gesture (button click)
+   before navigating to pages that auto-play audio. This creates a
+   silent AudioContext that satisfies the browser's autoplay policy. */
+let _audioUnlocked = false;
+export function unlockAudio() {
+  if (_audioUnlocked) return;
+  try {
+    const ctx = new AudioContext();
+    const buf = ctx.createBuffer(1, 1, 22050);
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    src.connect(ctx.destination);
+    src.start();
+    // Also play a silent HTML5 audio to unlock that pathway
+    const audio = new Audio("data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=");
+    audio.volume = 0;
+    audio.play().catch(() => {});
+    _audioUnlocked = true;
+  } catch {}
+}
+
 const TTS_SETTINGS_KEY = "hirloop_tts";
 
 export interface TTSSettings {

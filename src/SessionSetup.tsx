@@ -4,6 +4,7 @@ import { track } from "@vercel/analytics";
 import { capture } from "./analytics";
 import { c, font } from "./tokens";
 import { useAuth } from "./AuthContext";
+import { unlockAudio } from "./tts";
 
 /* ─── Adaptive difficulty helper ─── */
 function getSuggestedDifficulty(): { id: string; reason: string } {
@@ -270,6 +271,8 @@ export default function SessionSetup() {
 
   // Launch interview with countdown
   const handleLaunch = () => {
+    // Unlock audio playback on this user gesture so TTS can auto-play on the interview page
+    unlockAudio();
     track("session_start", { type: selectedType, difficulty, focus: selectedFocus });
     capture("session_start", { type: selectedType, difficulty, focus: selectedFocus });
     // Stop test streams before navigating
@@ -313,6 +316,7 @@ export default function SessionSetup() {
             You have an unfinished <strong>{draft.type}</strong> session ({Math.floor(draft.elapsed / 60)}m {draft.elapsed % 60}s in).
           </span>
           <button onClick={() => {
+            unlockAudio();
             navigate(`/interview?type=${draft.type}&difficulty=${draft.difficulty}&focus=${draft.focus || "general"}&resume=true`);
           }} style={{
             padding: "6px 16px", borderRadius: 10, border: "none", cursor: "pointer",

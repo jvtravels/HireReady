@@ -5,6 +5,7 @@ import { c, font } from "./tokens";
 import { useAuth } from "./AuthContext";
 import { extractResumeText, parseResumeData, type ParsedResume } from "./resumeParser";
 import { analyzeResumeWithAI, type ResumeProfile } from "./dashboardData";
+import { unlockAudio } from "./tts";
 
 const TOTAL_STEPS = 3;
 
@@ -385,6 +386,7 @@ export default function Onboarding() {
       console.error("[handleStart] save failed:", err);
     }
     clearObStep();
+    unlockAudio();
     navigate("/interview?type=behavioral&difficulty=standard&mini=true");
   };
 
