@@ -28,7 +28,7 @@ export const CARTESIA_VOICES: CartesiaVoice[] = [
 const _voiceCache: Record<string, CartesiaVoice[]> = {};
 const _fetchPromises: Record<string, Promise<CartesiaVoice[]>> = {};
 
-export function fetchCartesiaVoices(language = "en"): Promise<CartesiaVoice[]> {
+export function fetchCartesiaVoices(language = "en_IN"): Promise<CartesiaVoice[]> {
   if (_voiceCache[language]) return Promise.resolve(_voiceCache[language]);
   if (_fetchPromises[language]) return _fetchPromises[language];
 
@@ -43,7 +43,7 @@ export function fetchCartesiaVoices(language = "en"): Promise<CartesiaVoice[]> {
   return _fetchPromises[language];
 }
 
-export function getCachedVoices(language = "en"): CartesiaVoice[] {
+export function getCachedVoices(language = "en_IN"): CartesiaVoice[] {
   return _voiceCache[language] || CARTESIA_VOICES;
 }
 

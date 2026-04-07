@@ -89,7 +89,7 @@ export default function SettingsPage() {
   const [ttsSettings, setTtsSettings] = useState<TTSSettings>(loadTTSSettings);
   const [previewVoice, setPreviewVoice] = useState<string | null>(null);
   const [previewCancel, setPreviewCancel] = useState<{ cancel: () => void } | null>(null);
-  const [voiceAccent, setVoiceAccent] = useState<"en" | "en_IN">("en");
+  const [voiceAccent, setVoiceAccent] = useState<"en" | "en_IN">("en_IN");
   const [cartesiaVoices, setCartesiaVoices] = useState<CartesiaVoice[]>(getCachedVoices);
 
   useEffect(() => { fetchCartesiaVoices(voiceAccent).then(setCartesiaVoices); }, [voiceAccent]);
