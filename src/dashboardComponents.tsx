@@ -225,7 +225,14 @@ export function UpgradeModal({ onClose, sessionsUsed, user, currentTier, onPayme
       setTimeout(() => { setLoading(prev => prev === planId ? null : prev); }, 8000);
     } catch (err) {
       console.error("Checkout error:", err);
-      setError("Something went wrong. Please try again or contact support@hirloop.com");
+      const msg = err instanceof Error ? err.message : "";
+      if (msg.includes("timeout") || msg.includes("Timeout")) {
+        setError("Payment system timed out. Please check your connection and try again.");
+      } else if (msg.includes("CSP") || msg.includes("Content Security Policy") || msg.includes("unsafe-eval")) {
+        setError("Payment blocked by browser security settings. Try disabling browser extensions or use a different browser.");
+      } else {
+        setError("Something went wrong. Please try again or contact support@hirloop.com");
+      }
       setLoading(null);
     }
   };
