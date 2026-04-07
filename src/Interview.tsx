@@ -252,14 +252,16 @@ async function fetchLLMQuestions(params: {
     if (!res.ok) return null;
     const data = await res.json();
     if (!data.questions || !Array.isArray(data.questions)) return null;
-    return data.questions.map((q: { type?: string; aiText?: string; text?: string; scoreNote?: string }) => ({
-      type: (q.type || "question") as InterviewStep["type"],
-      aiText: q.aiText || q.text || "",
-      thinkingDuration: q.type === "intro" ? 500 : 600,
-      speakingDuration: 5000,
-      waitForUser: q.type !== "closing",
-      scoreNote: q.scoreNote || "",
-    }));
+    return data.questions
+      .map((q: { type?: string; aiText?: string; text?: string; scoreNote?: string }) => ({
+        type: (q.type || "question") as InterviewStep["type"],
+        aiText: q.aiText || q.text || "",
+        thinkingDuration: q.type === "intro" ? 500 : 600,
+        speakingDuration: 5000,
+        waitForUser: q.type !== "closing",
+        scoreNote: q.scoreNote || "",
+      }))
+      .filter((q: InterviewStep) => q.aiText.length >= 10); // filter out empty/malformed steps
   };
   // Retry once on network errors
   for (let i = 0; i < 2; i++) {
@@ -642,7 +644,7 @@ export default function Interview() {
   // Restore draft if resuming
   const draftKey = `hirloop_interview_draft_${user?.id || "anon"}`;
   const isResuming = searchParams.get("resume") === "true";
-  const draftRef = useRef<{ transcript: any[]; currentStep: number; elapsed: number } | null>(null);
+  const draftRef = useRef<{ transcript: any[]; currentStep: number; elapsed: number; script?: InterviewStep[] } | null>(null);
   if (isResuming && !draftRef.current) {
     try {
       const raw = localStorage.getItem(draftKey);
@@ -656,7 +658,9 @@ export default function Interview() {
   }
 
   const fallbackScript = isMiniMode ? getMiniScript(user) : getScript(interviewType, interviewDifficulty, user);
-  const [interviewScript, setInterviewScript] = useState<InterviewStep[]>(fallbackScript);
+  const [interviewScript, setInterviewScript] = useState<InterviewStep[]>(
+    draftRef.current?.script && draftRef.current.script.length > 0 ? draftRef.current.script : fallbackScript
+  );
   const [llmLoading, setLlmLoading] = useState(!draftRef.current && !isMiniMode);
 
   // Interview state (declared early so refs can use it)
@@ -672,6 +676,9 @@ export default function Interview() {
         setCurrentStep(d.currentStep || 0);
         setTranscript(d.transcript || []);
         setElapsed(d.elapsed || 0);
+        if (d.script && Array.isArray(d.script) && d.script.length > 0) {
+          setInterviewScript(d.script);
+        }
       }
     });
   }, []);
@@ -698,7 +705,7 @@ export default function Interview() {
       resumeText: user?.resumeText,
     }).then(questions => {
       if (cancelled) return;
-      if (questions && questions.length > 0 && currentStepRef.current <= 1) {
+      if (questions && questions.length > 0 && currentStepRef.current === 0) {
         setInterviewScript(questions);
       } else if (!questions) {
         setSaveWarning(`Custom ${interviewType} questions unavailable. Using practice questions instead.`);
@@ -766,6 +773,7 @@ export default function Interview() {
   // AI Voice (Text-to-Speech)
   const [aiVoiceEnabled, setAiVoiceEnabled] = useState(true);
   const ttsCancelRef = useRef<(() => void) | null>(null);
+  const ttsInstanceIdRef = useRef(0);
   const interviewEndedRef = useRef(false);
 
   // Warn user before closing tab during active interview + auto-save draft
@@ -774,6 +782,7 @@ export default function Interview() {
     const saveDraft = () => {
       const draftData = {
         transcript, currentStep, elapsed, interviewType, interviewDifficulty, interviewFocus,
+        script: interviewScript,
         savedAt: Date.now(),
       };
       try { localStorage.setItem(draftKey, JSON.stringify(draftData)); } catch {}
@@ -865,15 +874,15 @@ export default function Interview() {
         }
         recognitionRef.current = recognition;
 
-        // Safety timeout: if listening phase lasts > 2 minutes, auto-fallback to text input
+        // Safety timeout: if no speech detected for 30s, offer text fallback
         const safetyTimer = setTimeout(() => {
           if (!stopped && phase === "listening") {
             console.warn("[interview] Listening safety timeout — enabling text fallback");
             setSpeechUnavailable(true);
-            setMicError("Speech recognition timed out. Type your answer below.");
+            setMicError("Having trouble hearing you? Type your answer instead.");
             setTimeout(() => textareaRef.current?.focus(), 100);
           }
-        }, 120_000);
+        }, 30_000);
 
         return () => {
           clearTimeout(safetyTimer);
@@ -904,16 +913,23 @@ export default function Interview() {
   }, [phase]);
 
   // Answer timer (when user is "speaking") with max 300s (5 min)
+  // Pauses when tab is backgrounded to prevent surprise auto-advance
   const handleNextRef = useRef<() => void>(() => {});
+  const tabVisibleRef = useRef(true);
+  useEffect(() => {
+    const onVisibility = () => { tabVisibleRef.current = !document.hidden; };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => document.removeEventListener("visibilitychange", onVisibility);
+  }, []);
   useEffect(() => {
     if (phase !== "listening") {
       setAnswerTimer(0);
       return;
     }
     const timer = setInterval(() => setAnswerTimer(t => {
+      if (!tabVisibleRef.current) return t; // pause when tab hidden
       const next = t + 1;
       if (next >= 300) {
-        // Max answer time reached — auto-advance
         handleNextRef.current();
         return t;
       }
@@ -983,10 +999,17 @@ export default function Interview() {
       }, Math.max(step.speakingDuration + 5000, 30000));
 
       if (aiVoiceEnabled) {
-        console.log("[interview] TTS speak() called for step", currentStep);
+        const instanceId = ++ttsInstanceIdRef.current;
+        console.log("[interview] TTS speak() called for step", currentStep, "instance", instanceId);
         speak(step.aiText, onSpeechEnd, onSpeechEnd).then(handle => {
-          console.log("[interview] TTS speak() resolved for step", currentStep);
-          ttsCancelRef.current = handle.cancel;
+          // Only assign cancel if this is still the active TTS instance
+          if (ttsInstanceIdRef.current === instanceId) {
+            console.log("[interview] TTS speak() resolved for step", currentStep);
+            ttsCancelRef.current = handle.cancel;
+          } else {
+            // Stale instance — cancel it immediately
+            handle.cancel();
+          }
         }).catch((e) => { console.warn("[interview] TTS speak() rejected:", e); onSpeechEnd(); });
       } else {
         const speakTimer = setTimeout(onSpeechEnd, step.speakingDuration);
@@ -1002,8 +1025,8 @@ export default function Interview() {
       const timeout = new Promise<null>(r => setTimeout(() => r(null), 4000));
       Promise.race([pendingFollowUp, timeout]).then(result => {
         if (cancelled) return;
-        if (result?.needsFollowUp && result.followUpText) {
-          // Inject follow-up step at current position (before current step)
+        // Guard: only inject if user hasn't advanced past this step
+        if (result?.needsFollowUp && result.followUpText && currentStepRef.current === currentStep) {
           const followUpStep: InterviewStep = {
             type: "follow-up",
             aiText: result.followUpText,
@@ -1017,8 +1040,6 @@ export default function Interview() {
             followUpStep,
             ...prev.slice(currentStep),
           ]);
-          // The script insertion will bump currentStep's content to currentStep+1,
-          // and this useEffect will re-run with the follow-up step at currentStep
         } else {
           // No follow-up needed — proceed with current step after short think
           setTimeout(startSpeaking, step.thinkingDuration);
@@ -1115,6 +1136,8 @@ export default function Interview() {
 
   // Handle end interview — evaluate with LLM, persist results, navigate
   const handleEnd = useCallback(async () => {
+    // Prevent duplicate calls (e.g., rapid clicks during evaluation)
+    if (evaluating || interviewEndedRef.current) return;
     // Immediately stop everything
     interviewEndedRef.current = true;
     setPhase("done");
@@ -1156,10 +1179,10 @@ export default function Interview() {
           questions: originalQuestions,
         });
         if (evaluation) {
-          score = evaluation.overallScore;
-          aiFeedback = evaluation.feedback;
-          skillScores = evaluation.skillScores;
-          idealAnswers = evaluation.idealAnswers || [];
+          score = Math.min(100, Math.max(0, evaluation.overallScore || fallbackScore));
+          aiFeedback = evaluation.feedback || "";
+          skillScores = evaluation.skillScores && typeof evaluation.skillScores === "object" ? evaluation.skillScores : {};
+          idealAnswers = Array.isArray(evaluation.idealAnswers) ? evaluation.idealAnswers : [];
         } else {
           setUsedFallbackScore(true);
         }
@@ -1194,8 +1217,20 @@ export default function Interview() {
       setSaveWarning("Session saved locally but could not sync to cloud.");
       toast("Session saved locally — will sync when online.", "info");
     } else if (!localOk && !cloudOk) {
-      setSaveWarning("Warning: Session could not be saved. Please check your connection.");
-      toast("Could not save session. Check your connection.", "error");
+      // Emergency save: queue in IndexedDB so data isn't lost
+      try {
+        await saveToIDB(`hirloop_unsaved_${sessionId}`, {
+          id: sessionId, date: new Date().toISOString(), type: interviewType,
+          difficulty: interviewDifficulty, focus: interviewFocus, duration: elapsed,
+          score, questions: totalQuestions, transcript, ai_feedback: aiFeedback,
+          skill_scores: skillScores,
+        });
+        setSaveWarning("Session saved to backup storage. Will sync when connection restores.");
+        toast("Saved to backup — will sync when online.", "info");
+      } catch {
+        setSaveWarning("Warning: Session could not be saved. Please check your connection.");
+        toast("Could not save session. Check your connection.", "error");
+      }
     } else {
       toast("Session saved successfully!", "success");
     }
@@ -1205,7 +1240,7 @@ export default function Interview() {
 
     // Clear draft and track practice timestamp
     try { localStorage.removeItem(draftKey); } catch {}
-    deleteFromIDB(draftKey);
+    await deleteFromIDB(draftKey);
     const timestamps = user?.practiceTimestamps || [];
     updateUser({ practiceTimestamps: [...timestamps, new Date().toISOString()] });
     setEvaluating(false);
@@ -1445,13 +1480,13 @@ export default function Interview() {
                 </div>
                 {/* Waveform — centered */}
                 <div style={{ height: 20, width: 140, margin: "0 auto" }}>
-                  <WaveformVisualizer active={phase === "speaking"} color={c.gilt} barCount={20} />
+                  <div role="img" aria-label="AI speaking indicator"><WaveformVisualizer active={phase === "speaking"} color={c.gilt} barCount={20} /></div>
                 </div>
               </div>
             </div>
 
             {/* Question Card */}
-            <div style={{
+            <div aria-live="polite" aria-atomic="true" style={{
               background: c.graphite, borderRadius: 14,
               border: `1px solid ${phase === "speaking" ? "rgba(212,179,127,0.12)" : c.border}`,
               padding: "24px 28px",
@@ -1763,7 +1798,7 @@ export default function Interview() {
                 <p style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, textAlign: "center", padding: "40px 0" }}>Transcript will appear here...</p>
               )}
               {transcript.map((msg, i) => (
-                <div key={i} style={{ display: "flex", gap: 10 }}>
+                <div key={`${msg.speaker}-${msg.time}-${i}`} style={{ display: "flex", gap: 10 }}>
                   <div style={{
                     width: 20, height: 20, borderRadius: "50%", flexShrink: 0, marginTop: 2,
                     background: msg.speaker === "ai" ? "rgba(212,179,127,0.08)" : "rgba(122,158,126,0.08)",
