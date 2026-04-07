@@ -269,6 +269,14 @@ export default function SessionSetup() {
     };
   }, [micStream, videoStream]);
 
+  // Intro text by type — pre-fetch TTS during countdown so first voice is instant
+  const introByType: Record<string, string> = {
+    behavioral: "Hi! Welcome to your behavioral mock interview. I'm your AI interviewer today. We'll focus on leadership, decision-making, and conflict resolution. This will take about 15 minutes. Feel free to take your time. Ready?",
+    strategic: "Welcome to your strategic interview session. Today we'll explore your vision-setting ability, roadmap thinking, and business alignment. Let's dive in — are you ready?",
+    technical: "Welcome to your technical leadership interview. We'll focus on architecture decisions, system design at scale, and tech strategy. Ready to begin?",
+    "case-study": "Welcome to your case study interview. I'll present you with business scenarios that test your analytical thinking and problem-solving frameworks. Let's start.",
+  };
+
   // Launch interview with countdown
   const handleLaunch = () => {
     // Unlock audio playback on this user gesture so TTS can auto-play on the interview page
@@ -278,6 +286,10 @@ export default function SessionSetup() {
     // Stop test streams before navigating
     micStream?.getTracks().forEach(t => t.stop());
     videoStream?.getTracks().forEach(t => t.stop());
+
+    // Pre-fetch intro TTS during 3s countdown so it's cached when interview loads
+    const introText = introByType[selectedType] || introByType.behavioral;
+    prefetchTTS(introText);
 
     setCountdown(3);
   };

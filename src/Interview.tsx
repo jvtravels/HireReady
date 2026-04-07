@@ -694,6 +694,12 @@ export default function Interview() {
   // re-validation needed here — it would add latency without improving security.
   useEffect(() => {
     if (isMiniMode) return; // Mini mode uses built-in script, no LLM fetch
+    // Skip LLM fetch if offline — use fallback script immediately
+    if (!navigator.onLine) {
+      toast("Offline — using practice questions.", "info");
+      setLlmLoading(false);
+      return;
+    }
     let cancelled = false;
     fetchLLMQuestions({
       type: interviewType,
@@ -752,6 +758,7 @@ export default function Interview() {
   const [evalTimedOut, setEvalTimedOut] = useState(false);
   const noSpeechCountRef = useRef(0);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const nextBtnRef = useRef<HTMLButtonElement>(null);
   const [evaluating, setEvaluating] = useState(false);
   const [evalElapsed, setEvalElapsed] = useState(0);
 
@@ -986,7 +993,7 @@ export default function Interview() {
             prefetchTTS(nextStep.aiText);
           }
         } else {
-          setTimeout(() => setPhase("done"), 2000);
+          setTimeout(() => setPhase("done"), 1000);
         }
       };
 
@@ -1113,16 +1120,38 @@ export default function Interview() {
   // Keep ref in sync for answer timer auto-advance
   useEffect(() => { handleNextRef.current = handleNextQuestion; }, [handleNextQuestion]);
 
-  // Keyboard: Enter to advance when listening
+  // Skip AI speaking: user can interrupt by pressing Enter or Space during speaking phase
+  const skipSpeaking = useCallback(() => {
+    if (phase !== "speaking") return;
+    ttsCancelRef.current?.();
+    ttsCancelRef.current = null;
+    setIsRecording(false);
+    const currentStepObj = interviewScript[currentStep];
+    if (currentStepObj?.waitForUser) {
+      setPhase("listening");
+      // Pre-fetch TTS for next step
+      const nextStep = interviewScript[currentStep + 1];
+      if (nextStep && aiVoiceEnabled) {
+        prefetchTTS(nextStep.aiText);
+      }
+    } else {
+      setTimeout(() => setPhase("done"), 1000);
+    }
+  }, [phase, currentStep, interviewScript, aiVoiceEnabled]);
+
+  // Keyboard: Enter to advance when listening, or skip speaking
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === "Enter" && phase === "listening") {
         handleNextQuestion();
+      } else if ((e.key === "Enter" || e.key === " ") && phase === "speaking") {
+        e.preventDefault();
+        skipSpeaking();
       }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [phase, handleNextQuestion]);
+  }, [phase, handleNextQuestion, skipSpeaking]);
 
   // Auto-scroll transcript
   useEffect(() => {
@@ -1482,6 +1511,15 @@ export default function Interview() {
                 <div style={{ height: 20, width: 140, margin: "0 auto" }}>
                   <div role="img" aria-label="AI speaking indicator"><WaveformVisualizer active={phase === "speaking"} color={c.gilt} barCount={20} /></div>
                 </div>
+                {phase === "speaking" && (
+                  <button onClick={skipSpeaking} style={{
+                    fontFamily: font.mono, fontSize: 10, color: c.stone, background: "none",
+                    border: "none", cursor: "pointer", padding: "4px 0", opacity: 0.6,
+                    transition: "opacity 0.2s",
+                  }} onMouseEnter={e => (e.currentTarget.style.opacity = "1")} onMouseLeave={e => (e.currentTarget.style.opacity = "0.6")}>
+                    Press Enter to skip
+                  </button>
+                )}
               </div>
             </div>
 
@@ -1630,6 +1668,7 @@ export default function Interview() {
                 {/* Next question button — centered */}
                 <div style={{ display: "flex", justifyContent: "center" }}>
                   <button
+                    ref={nextBtnRef}
                     onClick={handleNextQuestion}
                     style={{
                       fontFamily: font.ui, fontSize: 13, fontWeight: 600,
