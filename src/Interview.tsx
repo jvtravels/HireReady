@@ -935,6 +935,11 @@ export default function Interview() {
     // Phase 1: Thinking — also resolve any pending follow-up
     setPhase("thinking");
 
+    // Pre-fetch TTS for current step during thinking phase so audio is ready instantly
+    if (aiVoiceEnabled && step.aiText) {
+      prefetchTTS(step.aiText);
+    }
+
     const startSpeaking = () => {
       if (cancelled) return;
       // Phase 2: Speaking

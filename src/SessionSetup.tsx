@@ -4,7 +4,7 @@ import { track } from "@vercel/analytics";
 import { capture } from "./analytics";
 import { c, font } from "./tokens";
 import { useAuth } from "./AuthContext";
-import { unlockAudio } from "./tts";
+import { unlockAudio, prefetchTTS } from "./tts";
 
 /* ─── Adaptive difficulty helper ─── */
 function getSuggestedDifficulty(): { id: string; reason: string } {

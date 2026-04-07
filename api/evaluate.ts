@@ -97,7 +97,7 @@ Evaluate the candidate's performance. Respond JSON only:
 
 Scoring guide: 90-100 exceptional (specific examples, metrics, clear structure), 75-89 good (solid but missing depth), 60-74 adequate (vague or generic), <60 needs practice. Be honest and reference specific answers.`;
 
-    const result = await callLLM({ prompt, temperature: 0.3, maxTokens: 2000, jsonMode: true }, 18000);
+    const result = await callLLM({ prompt, temperature: 0.3, maxTokens: 2000, jsonMode: true }, 25000);
     const evaluation = extractJSON(result.text);
     if (!evaluation) {
       return new Response(JSON.stringify({ error: "Failed to parse evaluation" }), { status: 500, headers });

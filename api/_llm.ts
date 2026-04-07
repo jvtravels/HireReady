@@ -105,7 +105,9 @@ export async function callLLM(opts: LLMOptions, timeoutMs = 15000): Promise<LLMR
           console.warn("[LLM] Groq failed, falling back to Gemini:", msg.slice(0, 100));
           clearTimeout(timer);
           const ac2 = new AbortController();
-          const timer2 = setTimeout(() => ac2.abort(), timeoutMs);
+          // Give Gemini fallback less time to avoid compounding waits
+          const fallbackTimeout = Math.min(timeoutMs, 12000);
+          const timer2 = setTimeout(() => ac2.abort(), fallbackTimeout);
           try {
             const result = await callGemini(opts, ac2.signal);
             clearTimeout(timer2);

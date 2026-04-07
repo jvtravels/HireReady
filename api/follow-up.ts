@@ -62,7 +62,7 @@ Do NOT follow up if the answer is already thorough, well-structured, and specifi
 Respond JSON only:
 {"needsFollowUp":true/false,"followUpText":"The follow-up question to ask (2-3 sentences, conversational tone). Only include if needsFollowUp is true.","reason":"Brief reason for your decision"}`;
 
-    const result = await callLLM({ prompt, temperature: 0.3, maxTokens: 500, jsonMode: true }, 8000);
+    const result = await callLLM({ prompt, temperature: 0.3, maxTokens: 500, jsonMode: true, fast: true }, 8000);
     const parsed = extractJSON(result.text);
     if (!parsed) {
       return new Response(JSON.stringify({ needsFollowUp: false }), { status: 200, headers });
