@@ -104,26 +104,29 @@ async function speakWithProxy(
       return { cancel: () => {} };
     }
 
-    const contentType = res.headers.get("content-type") || "";
-    if (!contentType.includes("audio")) {
-      console.warn("[TTS] non-audio content-type:", contentType);
-      settle(onError);
-      return { cancel: () => {} };
-    }
-
     const arrayBuffer = await res.arrayBuffer();
+    console.log("[TTS] received", arrayBuffer.byteLength, "bytes");
+
     const audioBlob = new Blob([arrayBuffer], { type: "audio/mpeg" });
     const url = URL.createObjectURL(audioBlob);
     const revokeUrl = () => { try { URL.revokeObjectURL(url); } catch {} };
 
-    audio = new Audio();
-    audio.src = url;
+    audio = new Audio(url);
 
-    audio.onended = () => { revokeUrl(); settle(onEnd); };
+    // Wait for audio to be ready before playing
+    await new Promise<void>((resolve, reject) => {
+      audio!.oncanplaythrough = () => resolve();
+      audio!.onerror = () => reject(new Error("Audio decode error"));
+      // Safety: resolve after 3s even if canplaythrough never fires
+      setTimeout(resolve, 3000);
+    });
+
+    audio.onended = () => { console.log("[TTS] audio ended"); revokeUrl(); settle(onEnd); };
     audio.onerror = () => { console.warn("[TTS] audio element error"); revokeUrl(); settle(onError); };
 
     try {
       await audio.play();
+      console.log("[TTS] audio playing");
     } catch (e) {
       console.warn("[TTS] play() rejected:", e);
       revokeUrl();
