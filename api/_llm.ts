@@ -17,10 +17,13 @@ interface LLMResult {
   text: string;
   model: string;
   fallback: boolean;
+  tokensUsed?: { prompt: number; completion: number; total: number };
+  latencyMs?: number;
 }
 
 async function callGroq(opts: LLMOptions, signal?: AbortSignal): Promise<LLMResult> {
   const model = opts.fast ? "llama-3.1-8b-instant" : "llama-3.3-70b-versatile";
+  const start = Date.now();
   const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
     method: "POST",
     headers: { "Content-Type": "application/json", "Authorization": `Bearer ${GROQ_API_KEY}` },
@@ -39,11 +42,18 @@ async function callGroq(opts: LLMOptions, signal?: AbortSignal): Promise<LLMResu
     throw new Error(`Groq error ${status}: ${errText.slice(0, 200)}`);
   }
   const data = await res.json();
-  return { text: data.choices?.[0]?.message?.content || "", model, fallback: false };
+  const latencyMs = Date.now() - start;
+  const usage = data.usage;
+  const tokensUsed = usage ? { prompt: usage.prompt_tokens, completion: usage.completion_tokens, total: usage.total_tokens } : undefined;
+  if (tokensUsed) {
+    console.log(`[LLM] Groq ${model} — ${tokensUsed.total} tokens, ${latencyMs}ms`);
+  }
+  return { text: data.choices?.[0]?.message?.content || "", model, fallback: false, tokensUsed, latencyMs };
 }
 
 async function callGemini(opts: LLMOptions, signal?: AbortSignal): Promise<LLMResult> {
   if (!GEMINI_API_KEY) throw new Error("Gemini not configured");
+  const start = Date.now();
   const res = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent", {
     method: "POST",
     headers: { "Content-Type": "application/json", "x-goog-api-key": GEMINI_API_KEY },
@@ -62,7 +72,13 @@ async function callGemini(opts: LLMOptions, signal?: AbortSignal): Promise<LLMRe
     throw new Error(`Gemini error ${res.status}: ${errText.slice(0, 200)}`);
   }
   const data = await res.json();
-  return { text: data.candidates?.[0]?.content?.parts?.[0]?.text || "", model: "gemini-2.0-flash", fallback: true };
+  const latencyMs = Date.now() - start;
+  const usage = data.usageMetadata;
+  const tokensUsed = usage ? { prompt: usage.promptTokenCount, completion: usage.candidatesTokenCount, total: usage.totalTokenCount } : undefined;
+  if (tokensUsed) {
+    console.log(`[LLM] Gemini — ${tokensUsed.total} tokens, ${latencyMs}ms`);
+  }
+  return { text: data.candidates?.[0]?.content?.parts?.[0]?.text || "", model: "gemini-2.0-flash", fallback: true, tokensUsed, latencyMs };
 }
 
 export async function callLLM(opts: LLMOptions, timeoutMs = 15000): Promise<LLMResult> {

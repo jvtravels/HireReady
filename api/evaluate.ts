@@ -46,7 +46,7 @@ export default async function handler(req: Request): Promise<Response> {
   }
 
   try {
-    const { transcript, type, difficulty, role, company } = await req.json();
+    const { transcript, type, difficulty, role, company, questions } = await req.json();
 
     if (!transcript || !Array.isArray(transcript) || transcript.length === 0 ||
         !transcript.every((t: unknown) => typeof t === "object" && t !== null && typeof (t as any).speaker === "string" && typeof (t as any).text === "string")) {
@@ -68,14 +68,34 @@ export default async function handler(req: Request): Promise<Response> {
       .map((t: { speaker: string; text: string }) => `${t.speaker === "ai" ? "Q" : "A"}: ${sanitizeForLLM(t.text, 800)}`)
       .join("\n");
 
-    const prompt = `Evaluate this mock interview. Type: ${sanitizeForLLM(type, 50) || "behavioral"}, Role: ${sanitizeForLLM(role, 100) || "senior leader"}${company ? `, Company: ${sanitizeForLLM(company, 100)}` : ""}, Difficulty: ${sanitizeForLLM(difficulty, 20) || "standard"}
+    const interviewType = sanitizeForLLM(type, 50) || "behavioral";
+    const interviewRole = sanitizeForLLM(role, 100) || "senior leader";
 
+    // Build original questions context if available
+    const questionsContext = Array.isArray(questions) && questions.length > 0
+      ? `\nOriginal questions asked:\n${questions.slice(0, 10).map((q: unknown, i: number) => `${i + 1}. ${sanitizeForLLM(q, 300)}`).join("\n")}\n`
+      : "";
+
+    // Role-specific skill weighting guidance
+    const skillWeighting = interviewType === "technical"
+      ? "For this technical interview, weight technicalDepth and problemSolving highest. Communication and structure are secondary."
+      : interviewType === "behavioral"
+      ? "For this behavioral interview, weight communication, structure, and leadership highest. Technical depth is secondary."
+      : interviewType === "strategic"
+      ? "For this strategic interview, weight leadership, problemSolving, and communication highest."
+      : "Weight all skills equally for this case study interview.";
+
+    const prompt = `You are an expert interview coach evaluating a mock ${interviewType} interview for a ${interviewRole} candidate.${company ? ` Company: ${sanitizeForLLM(company, 100)}.` : ""} Difficulty: ${sanitizeForLLM(difficulty, 20) || "standard"}.
+${questionsContext}
+Transcript:
 ${formattedTranscript}
 
-Respond JSON only:
-{"overallScore":<0-100>,"skillScores":{"communication":<0-100>,"structure":<0-100>,"technicalDepth":<0-100>,"leadership":<0-100>,"problemSolving":<0-100>},"strengths":["str1","str2","str3"],"improvements":["imp1","imp2","imp3"],"feedback":"<2-3 paragraphs with specific examples, constructive>","idealAnswers":[{"question":"<q>","ideal":"<2-3 sentences>","candidateSummary":"<1 sentence>"}]}
+${skillWeighting}
 
-Scoring: 90-100 exceptional, 75-89 good, 60-74 adequate, <60 needs practice. Be honest, reference specific answers.`;
+Evaluate the candidate's performance. Respond JSON only:
+{"overallScore":<0-100>,"skillScores":{"communication":<0-100>,"structure":<0-100>,"technicalDepth":<0-100>,"leadership":<0-100>,"problemSolving":<0-100>},"strengths":["str1","str2","str3"],"improvements":["imp1","imp2","imp3"],"feedback":"<2-3 paragraphs with specific examples from their answers, constructive tone>","idealAnswers":[{"question":"<the original question>","ideal":"<2-3 sentence model answer>","candidateSummary":"<1 sentence summary of what the candidate said>"}]}
+
+Scoring guide: 90-100 exceptional (specific examples, metrics, clear structure), 75-89 good (solid but missing depth), 60-74 adequate (vague or generic), <60 needs practice. Be honest and reference specific answers.`;
 
     const result = await callLLM({ prompt, temperature: 0.3, maxTokens: 2000, jsonMode: true }, 18000);
     const evaluation = extractJSON(result.text);

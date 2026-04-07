@@ -57,11 +57,14 @@ export default async function handler(req: Request): Promise<Response> {
 
     const roleContext = targetRole ? `The candidate is targeting a ${sanitizeForLLM(targetRole, 100)} role.` : "";
 
-    const prompt = `You are an expert career coach. Analyze this resume and produce a structured JSON profile.
+    // Use full resume text (up to 8000 chars for LLM context) instead of aggressive truncation
+    const resumeForLLM = sanitizeForLLM(resumeText, 8000);
+
+    const prompt = `You are an expert career coach and interview preparation specialist. Analyze this resume thoroughly and produce a structured JSON profile.
 
 Resume text:
 """
-${resumeText.slice(0, 3000)}
+${resumeForLLM}
 """
 
 ${roleContext}
@@ -71,7 +74,7 @@ Return a JSON object with these exact fields:
   "headline": "A single compelling sentence (under 15 words) summarizing who this person is professionally",
   "summary": "A 2-3 sentence professional narrative of the candidate's career arc, strengths, and what makes them stand out. Write in third person.",
   "yearsExperience": number or null if unclear,
-  "seniorityLevel": "Entry" | "Mid" | "Senior" | "Staff" | "Lead" | "Director" | "VP" | "C-Suite",
+  "seniorityLevel": "Entry" | "Mid" | "Senior" | "Staff" | "Lead" | "Principal" | "Director" | "VP" | "C-Suite",
   "topSkills": ["array of their 6-8 strongest technical and leadership skills, ordered by strength"],
   "keyAchievements": ["3-5 specific, quantified accomplishments from the resume — use exact numbers when available"],
   "industries": ["1-3 industries they have experience in"],
@@ -80,17 +83,16 @@ Return a JSON object with these exact fields:
   "careerTrajectory": "A brief sentence describing their career direction/momentum"
 }
 
-Be specific — reference real details from the resume. Don't invent information not present.
+IMPORTANT: Only reference information explicitly present in the resume. Do NOT invent or fabricate achievements, skills, or details.
 Respond with ONLY the JSON object, no markdown or explanation.`;
 
-    const result = await callLLM({ prompt, temperature: 0.4, maxTokens: 1500, jsonMode: true }, 15000);
+    const result = await callLLM({ prompt, temperature: 0.4, maxTokens: 1500, jsonMode: true }, 18000);
     const profile = extractJSON(result.text);
     if (!profile) {
       return new Response(JSON.stringify({ error: "Failed to parse analysis" }), { status: 500, headers });
     }
 
-    const truncated = resumeText.length > 3000;
-    return new Response(JSON.stringify({ profile, truncated }), { status: 200, headers });
+    return new Response(JSON.stringify({ profile }), { status: 200, headers });
   } catch (err) {
     const isTimeout = err instanceof Error && (err.name === "AbortError" || err.message.includes("abort"));
     console.error("Resume analysis error:", err);

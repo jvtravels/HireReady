@@ -62,14 +62,25 @@ export default async function handler(req: Request): Promise<Response> {
 
     const tone = diff === "warmup" ? "Warm, confidence-building." : diff === "intense" ? "Rigorous, probing, demand metrics." : "Professional, balanced.";
 
-    const prompt = `Generate 5 mock interview steps as JSON array. Role: ${targetRole}, Type: ${interviewType}, Tone: ${tone}
-${focusContext}${companyContext}${industryContext}${resumeContext}${avoidTopics}
+    const prompt = `You are an expert interviewer conducting a ${interviewType} mock interview for a ${targetRole} candidate. ${tone}
 
-Sequence: intro, question, question, question, closing. Do NOT include follow-up steps — those are generated dynamically.
-Each: {"type":"intro|question|closing","aiText":"2-3 sentences spoken by interviewer","scoreNote":"evaluation criteria"}
-Be specific to role/company. Reference resume if provided. JSON array only.`;
+Context:
+${companyContext ? `- ${companyContext}\n` : ""}${industryContext ? `- ${industryContext}\n` : ""}${focusContext ? `- ${focusContext}\n` : ""}${resumeContext ? `- ${resumeContext}\n` : ""}${avoidTopics ? `- ${avoidTopics}\n` : ""}
+Generate exactly 5 interview steps as a JSON array. Sequence: intro, question, question, question, closing. Do NOT include follow-up steps — those are generated dynamically based on the candidate's answers.
 
-    const result = await callLLM({ prompt, temperature: 0.7, maxTokens: 1500, jsonMode: true, fast: true }, 10000);
+Each step: {"type":"intro|question|closing","aiText":"2-3 sentences spoken naturally by the interviewer","scoreNote":"specific evaluation criteria for this question"}
+
+Example good question: "Walk me through a system you designed that had to handle 10x growth. What were the key architectural trade-offs you made, and how did you validate them?"
+Example bad question: "Tell me about your experience." (too vague, not role-specific)
+
+Requirements:
+- Questions must be specific to the role, company, and industry
+- Reference the candidate's resume details if provided
+- Each question should test a different competency
+- Use natural conversational tone, not robotic
+- JSON array only, no markdown or explanation`;
+
+    const result = await callLLM({ prompt, temperature: 0.7, maxTokens: 2000, jsonMode: true }, 15000);
     const parsed = extractJSON(result.text);
     if (!parsed) {
       return new Response(JSON.stringify({ error: "Failed to parse questions" }), { status: 500, headers });

@@ -278,6 +278,7 @@ async function fetchLLMQuestions(params: {
 async function fetchLLMEvaluation(params: {
   transcript: { speaker: string; text: string }[];
   type: string; difficulty: string; role: string; company?: string;
+  questions?: string[];
 }, timeoutMs = 35000): Promise<{
   overallScore: number;
   skillScores: Record<string, number>;
@@ -1138,12 +1139,16 @@ export default function Interview() {
 
     if (hasRealAnswers) {
       try {
+        const originalQuestions = interviewScript
+          .filter(s => s.type === "question" || s.type === "follow-up")
+          .map(s => s.aiText);
         const evaluation = await fetchLLMEvaluation({
           transcript,
           type: interviewType,
           difficulty: interviewDifficulty,
           role: user?.targetRole || "the role",
           company: user?.targetCompany,
+          questions: originalQuestions,
         });
         if (evaluation) {
           score = evaluation.overallScore;
