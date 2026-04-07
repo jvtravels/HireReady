@@ -346,6 +346,21 @@ export default function SessionSetup() {
         </div>
       )}
 
+      {/* Offline warning */}
+      {!navigator.onLine && countdown === null && (
+        <div role="alert" style={{
+          position: "fixed", top: 0, left: 0, right: 0, zIndex: 50,
+          padding: "10px 24px", background: "rgba(196,112,90,0.12)",
+          borderBottom: "1px solid rgba(196,112,90,0.25)",
+          display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+        }}>
+          <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.ember} strokeWidth="2" strokeLinecap="round"><line x1="1" y1="1" x2="23" y2="23"/><path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"/></svg>
+          <span style={{ fontFamily: font.ui, fontSize: 12, color: c.ember }}>
+            You're offline — interview will use practice questions and AI feedback will be limited.
+          </span>
+        </div>
+      )}
+
       {/* Countdown overlay */}
       {countdown !== null && (
         <div onClick={(e) => e.stopPropagation()} style={{

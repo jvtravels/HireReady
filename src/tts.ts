@@ -511,10 +511,10 @@ function speakWithBrowser(
   const safetyTimer = setTimeout(() => {
     if (!fired && window.speechSynthesis.speaking === false) {
       fired = true;
-      console.warn("Browser TTS silent failure — no speech detected after 5s");
+      console.warn("Browser TTS silent failure — no speech detected after 2s");
       onError();
     }
-  }, 5000);
+  }, 2000);
   const origOnEnd = utter.onend;
   utter.onend = (ev) => { fired = true; clearTimeout(safetyTimer); origOnEnd?.call(utter, ev); };
   const origOnErr = utter.onerror;

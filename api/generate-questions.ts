@@ -60,7 +60,11 @@ export default async function handler(req: Request): Promise<Response> {
     const resumeContext = resumeText ? `Resume summary: ${sanitizeForLLM(resumeText, 1500)}` : "";
     const avoidTopics = Array.isArray(pastTopics) ? `Avoid repeating these topics from past sessions: ${pastTopics.slice(0, 20).map((t: unknown) => sanitizeForLLM(t, 100)).filter(Boolean).join(", ")}.` : "";
 
-    const tone = diff === "warmup" ? "Warm, confidence-building." : diff === "intense" ? "Rigorous, probing, demand metrics." : "Professional, balanced.";
+    const tone = diff === "warmup"
+      ? "Warm and confidence-building. Ask straightforward questions with clear scope. No multi-part questions."
+      : diff === "intense"
+      ? "Rigorous and probing. Ask multi-part questions that demand specific metrics, trade-offs, and quantified business impact. Push for depth — expect the candidate to cite numbers, timelines, and outcomes."
+      : "Professional and balanced. Expect specific examples but don't demand exhaustive detail.";
 
     const prompt = `You are an expert interviewer conducting a ${interviewType} mock interview for a ${targetRole} candidate. ${tone}
 

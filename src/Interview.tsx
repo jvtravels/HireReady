@@ -501,8 +501,8 @@ function AIAvatar({ isSpeaking, isThinking }: { isSpeaking: boolean; isThinking:
   );
 }
 
-/* ─── Live Captions ─── */
-function LiveCaptions({ text, isTyping }: { text: string; isTyping: boolean }) {
+/* ─── Live Captions (synced to ~150 wpm speaking rate) ─── */
+function LiveCaptions({ text, isTyping, speakingDuration }: { text: string; isTyping: boolean; speakingDuration?: number }) {
   const [displayText, setDisplayText] = useState("");
   const [charIndex, setCharIndex] = useState(0);
 
@@ -513,12 +513,16 @@ function LiveCaptions({ text, isTyping }: { text: string; isTyping: boolean }) {
 
   useEffect(() => {
     if (!isTyping || charIndex >= text.length) return;
+    // Sync caption reveal to estimated speaking duration (~150 wpm)
+    const estimatedDuration = speakingDuration || Math.max(3000, (text.split(/\s+/).length / 150) * 60 * 1000);
+    const msPerChar = estimatedDuration / text.length;
+    const delay = Math.max(15, Math.min(80, msPerChar + (Math.random() * 5 - 2.5)));
     const timer = setTimeout(() => {
       setDisplayText(text.slice(0, charIndex + 1));
       setCharIndex(charIndex + 1);
-    }, 25 + Math.random() * 15);
+    }, delay);
     return () => clearTimeout(timer);
-  }, [charIndex, text, isTyping]);
+  }, [charIndex, text, isTyping, speakingDuration]);
 
   if (!isTyping && !displayText) return null;
 
@@ -826,6 +830,8 @@ export default function Interview() {
   const nextBtnRef = useRef<HTMLButtonElement>(null);
   const [evaluating, setEvaluating] = useState(false);
   const [evalElapsed, setEvalElapsed] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
+  const [microFeedback, setMicroFeedback] = useState<string | null>(null);
 
   // Eval elapsed timer
   useEffect(() => {
@@ -923,6 +929,7 @@ export default function Interview() {
           if (error === "not-allowed") {
             setMicError("Microphone access denied. Check browser permissions.");
             setSpeechUnavailable(true);
+            setShowCaptions(true); // Auto-enable captions when mic unavailable
             setTimeout(() => textareaRef.current?.focus(), 100);
           } else if (error === "no-speech") {
             // Silence — auto-restarts, but track consecutive no-speech errors
@@ -998,12 +1005,12 @@ export default function Interview() {
   const totalQuestions = interviewScript.filter(s => s.type === "question" || s.type === "follow-up").length;
   const currentQuestionNum = interviewScript.slice(0, currentStep + 1).filter(s => s.type === "question" || s.type === "follow-up").length;
 
-  // Timer
+  // Timer (pauses when interview is paused)
   useEffect(() => {
-    if (phase === "done") return;
+    if (phase === "done" || isPaused) return;
     const timer = setInterval(() => setElapsed(e => e + 1), 1000);
     return () => clearInterval(timer);
-  }, [phase]);
+  }, [phase, isPaused]);
 
   // Answer timer (when user is "speaking") with max 300s (5 min)
   // Pauses when tab is backgrounded to prevent surprise auto-advance
@@ -1020,7 +1027,7 @@ export default function Interview() {
       return;
     }
     const timer = setInterval(() => setAnswerTimer(t => {
-      if (!tabVisibleRef.current) return t; // pause when tab hidden
+      if (!tabVisibleRef.current || isPaused) return t; // pause when tab hidden or interview paused
       const next = t + 1;
       if (next >= 300) {
         handleNextRef.current();
@@ -1185,6 +1192,25 @@ export default function Interview() {
 
     const currentStepObj = interviewScript[currentStep];
     const isLastStep = currentStep >= interviewScript.length - 1;
+
+    // Generate micro-feedback on the answer (non-blocking)
+    setMicroFeedback(null);
+    if (answerText.length > 10 && !answerText.startsWith("[Answer recorded")) {
+      const wordCount = answerText.trim().split(/\s+/).length;
+      const hasMetrics = /\d+%|\$\d|[0-9]+x|[0-9]+ (users|customers|engineers|people)/i.test(answerText);
+      const hasStructure = /first|second|then|finally|result|outcome|impact/i.test(answerText);
+      if (wordCount < 30) {
+        setMicroFeedback("Try to elaborate more — aim for 60+ seconds per answer.");
+      } else if (!hasMetrics && !hasStructure) {
+        setMicroFeedback("Good start! Try adding specific metrics and structuring with STAR.");
+      } else if (!hasMetrics) {
+        setMicroFeedback("Nice structure! Strengthen with specific numbers or metrics.");
+      } else if (!hasStructure) {
+        setMicroFeedback("Great data! Try structuring as Situation → Action → Result.");
+      } else {
+        setMicroFeedback("Strong answer — specific and well-structured.");
+      }
+    }
 
     // Fire follow-up check in background (non-blocking) after question steps
     if (currentStepObj?.type === "question" && !isLastStep && answerText.length > 10 && !answerText.startsWith("[Answer recorded")) {
@@ -1699,7 +1725,7 @@ export default function Interview() {
 
               {/* Show LiveCaptions while speaking, static text otherwise; CC forces text visible always */}
               {phase === "speaking" ? (
-                <LiveCaptions text={step?.aiText || ""} isTyping={true} />
+                <LiveCaptions text={step?.aiText || ""} isTyping={true} speakingDuration={step?.speakingDuration} />
               ) : (step?.aiText && (showCaptions || phase !== "listening")) ? (
                 <p style={{ fontFamily: font.ui, fontSize: 14, color: c.chalk, lineHeight: 1.75, margin: 0 }}>
                   {step.aiText}
@@ -1871,7 +1897,7 @@ export default function Interview() {
               </div>
             )}
 
-            {/* Last user answer recap during thinking/speaking */}
+            {/* Last user answer recap + micro-feedback during thinking/speaking */}
             {(phase === "thinking" || phase === "speaking") && (() => {
               const lastUserMsg = [...transcript].reverse().find(t => t.speaker === "user");
               if (!lastUserMsg) return null;
@@ -1889,6 +1915,17 @@ export default function Interview() {
                     fontFamily: font.ui, fontSize: 12, color: "rgba(197,192,186,0.5)", lineHeight: 1.5, margin: 0,
                     overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" as const,
                   }}>{lastUserMsg.text}</p>
+                  {microFeedback && (
+                    <div style={{
+                      marginTop: 8, padding: "6px 10px", borderRadius: 6,
+                      background: microFeedback.includes("Strong") ? "rgba(122,158,126,0.08)" : "rgba(212,179,127,0.06)",
+                      border: `1px solid ${microFeedback.includes("Strong") ? "rgba(122,158,126,0.15)" : "rgba(212,179,127,0.12)"}`,
+                      display: "flex", alignItems: "center", gap: 6,
+                    }}>
+                      <svg aria-hidden="true" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={microFeedback.includes("Strong") ? c.sage : c.gilt} strokeWidth="2" strokeLinecap="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                      <span style={{ fontFamily: font.ui, fontSize: 11, color: microFeedback.includes("Strong") ? c.sage : c.gilt }}>{microFeedback}</span>
+                    </div>
+                  )}
                 </div>
               );
             })()}
@@ -2032,25 +2069,51 @@ export default function Interview() {
         background: c.obsidian,
         flexShrink: 0, zIndex: 10,
       }}>
-        {/* Left: phase pill */}
-        <div style={{ width: 140 }}>
+        {/* Left: phase pill + pause */}
+        <div style={{ width: 180, display: "flex", alignItems: "center", gap: 8 }}>
           <div style={{
             display: "inline-flex", alignItems: "center", gap: 6,
             padding: "4px 12px", borderRadius: 100,
-            background: phase === "listening" ? "rgba(122,158,126,0.06)" : phase === "speaking" ? "rgba(212,179,127,0.05)" : "transparent",
-            border: `1px solid ${phase === "listening" ? "rgba(122,158,126,0.12)" : phase === "speaking" ? "rgba(212,179,127,0.1)" : c.border}`,
+            background: isPaused ? "rgba(212,179,127,0.08)" : phase === "listening" ? "rgba(122,158,126,0.06)" : phase === "speaking" ? "rgba(212,179,127,0.05)" : "transparent",
+            border: `1px solid ${isPaused ? "rgba(212,179,127,0.15)" : phase === "listening" ? "rgba(122,158,126,0.12)" : phase === "speaking" ? "rgba(212,179,127,0.1)" : c.border}`,
           }}>
-            {phase === "thinking" ? (
+            {isPaused ? (
+              <div style={{ width: 5, height: 5, borderRadius: "50%", background: c.gilt }} />
+            ) : phase === "thinking" ? (
               <div style={{ width: 8, height: 8, border: "1.5px solid rgba(212,179,127,0.3)", borderTopColor: c.gilt, borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
             ) : phase === "done" ? (
               <svg aria-hidden="true" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="2.5" strokeLinecap="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
             ) : (
               <div style={{ width: 5, height: 5, borderRadius: "50%", background: phase === "listening" ? c.sage : c.gilt, animation: "recordPulse 1.2s ease-in-out infinite" }} />
             )}
-            <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 500, color: phase === "listening" ? c.sage : phase === "speaking" ? c.gilt : c.stone }}>
-              {phase === "thinking" ? "Preparing" : phase === "speaking" ? "AI speaking" : phase === "listening" ? "Your turn" : "Complete"}
+            <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 500, color: isPaused ? c.gilt : phase === "listening" ? c.sage : phase === "speaking" ? c.gilt : c.stone }}>
+              {isPaused ? "Paused" : phase === "thinking" ? "Preparing" : phase === "speaking" ? "AI speaking" : phase === "listening" ? "Your turn" : "Complete"}
             </span>
           </div>
+          {phase !== "done" && !evaluating && (
+            <button
+              onClick={() => {
+                if (!isPaused) { ttsCancelRef.current?.(); recognitionRef.current?.stop(); }
+                setIsPaused(p => !p);
+              }}
+              title={isPaused ? "Resume interview" : "Pause interview"}
+              aria-label={isPaused ? "Resume interview" : "Pause interview"}
+              style={{
+                width: 24, height: 24, borderRadius: 6,
+                background: isPaused ? "rgba(212,179,127,0.1)" : "transparent",
+                border: `1px solid ${isPaused ? "rgba(212,179,127,0.2)" : "transparent"}`,
+                color: isPaused ? c.gilt : c.stone,
+                cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+                transition: "all 0.2s", padding: 0,
+              }}
+            >
+              {isPaused ? (
+                <svg aria-hidden="true" width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+              ) : (
+                <svg aria-hidden="true" width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+              )}
+            </button>
+          )}
         </div>
 
         {/* Center: keyboard hint */}
@@ -2190,6 +2253,40 @@ export default function Interview() {
         </div>
       )}
 
+      {/* Pause overlay */}
+      {isPaused && !evaluating && (
+        <div style={{
+          position: "fixed", inset: 0, zIndex: 150,
+          display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+          background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)",
+        }}>
+          <div style={{
+            background: c.graphite, borderRadius: 16, border: `1px solid ${c.border}`,
+            padding: "32px", maxWidth: 360, width: "90%", textAlign: "center",
+          }}>
+            <svg aria-hidden="true" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5" strokeLinecap="round" style={{ marginBottom: 16 }}>
+              <rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>
+            </svg>
+            <h3 style={{ fontFamily: font.ui, fontSize: 18, fontWeight: 600, color: c.ivory, marginBottom: 8 }}>Interview Paused</h3>
+            <p style={{ fontFamily: font.ui, fontSize: 13, color: c.stone, marginBottom: 20 }}>
+              Take your time. Your progress is saved.
+            </p>
+            <button
+              onClick={() => setIsPaused(false)}
+              autoFocus
+              style={{
+                fontFamily: font.ui, fontSize: 14, fontWeight: 600,
+                padding: "10px 32px", borderRadius: 10,
+                background: `linear-gradient(135deg, ${c.gilt}, ${c.giltDark})`,
+                border: "none", color: c.obsidian, cursor: "pointer",
+              }}
+            >
+              Resume Interview
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Evaluating overlay */}
       {evaluating && (
         <div style={{
@@ -2206,16 +2303,13 @@ export default function Interview() {
           <div style={{ width: 200, height: 3, borderRadius: 2, background: c.border, marginTop: 16, overflow: "hidden" }}>
             <div style={{ height: "100%", borderRadius: 2, background: c.gilt, transition: "width 1s ease", width: `${Math.min(95, (evalElapsed / 30) * 100)}%` }} />
           </div>
-          {usedFallbackScore && (
-            <div style={{ marginTop: 16, padding: "10px 16px", borderRadius: 8, background: "rgba(212,179,127,0.06)", border: "1px solid rgba(212,179,127,0.12)", maxWidth: 400 }}>
-              <p style={{ fontFamily: font.ui, fontSize: 12, color: c.gilt, margin: 0 }}>AI evaluation unavailable — using estimated score based on your session metrics.</p>
-            </div>
-          )}
-          {evalTimedOut && (
-            <div style={{ marginTop: 16, padding: "10px 16px", borderRadius: 8, background: "rgba(196,112,90,0.06)", border: "1px solid rgba(196,112,90,0.15)", maxWidth: 400, display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
-              <p style={{ fontFamily: font.ui, fontSize: 12, color: c.ember, margin: 0 }}>Evaluation timed out — using estimated score based on your session metrics.</p>
+          {(usedFallbackScore || evalTimedOut) && (
+            <div style={{ marginTop: 16, padding: "10px 16px", borderRadius: 8, background: evalTimedOut ? "rgba(196,112,90,0.06)" : "rgba(212,179,127,0.06)", border: `1px solid ${evalTimedOut ? "rgba(196,112,90,0.15)" : "rgba(212,179,127,0.12)"}`, maxWidth: 400, display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
+              <p style={{ fontFamily: font.ui, fontSize: 12, color: evalTimedOut ? c.ember : c.gilt, margin: 0 }}>
+                {evalTimedOut ? "Evaluation timed out" : "AI evaluation unavailable"} — using estimated score.
+              </p>
               <button
-                onClick={() => { setEvalTimedOut(false); setEvaluating(false); interviewEndedRef.current = false; handleEnd(); }}
+                onClick={() => { setEvalTimedOut(false); setUsedFallbackScore(false); setEvaluating(false); interviewEndedRef.current = false; handleEnd(); }}
                 style={{
                   fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: c.ivory,
                   background: "rgba(212,179,127,0.1)", border: `1px solid rgba(212,179,127,0.2)`,

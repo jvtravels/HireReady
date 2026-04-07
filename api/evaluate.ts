@@ -92,10 +92,18 @@ ${formattedTranscript}
 
 ${skillWeighting}
 
-Evaluate the candidate's performance. Respond JSON only:
-{"overallScore":<0-100>,"skillScores":{"communication":<0-100>,"structure":<0-100>,"technicalDepth":<0-100>,"leadership":<0-100>,"problemSolving":<0-100>},"strengths":["str1","str2","str3"],"improvements":["imp1","imp2","imp3"],"feedback":"<2-3 paragraphs with specific examples from their answers, constructive tone>","idealAnswers":[{"question":"<the original question>","ideal":"<2-3 sentence model answer>","candidateSummary":"<1 sentence summary of what the candidate said>"}]}
+Evaluate the candidate's performance. For each skill score, you MUST cite a specific quote or paraphrase from the candidate's answer that justifies the score.
 
-Scoring guide: 90-100 exceptional (specific examples, metrics, clear structure), 75-89 good (solid but missing depth), 60-74 adequate (vague or generic), <60 needs practice. Be honest and reference specific answers.`;
+Scoring rubric:
+- 90-100: Uses STAR structure, includes specific metrics/numbers, clearly states personal role, connects to business impact
+- 75-89: Good structure but missing quantified impact OR specific metrics
+- 60-74: Vague, generic, uses "we" without clarifying individual role, no metrics
+- Below 60: Off-topic, extremely brief, or no substantive content
+
+Respond JSON only:
+{"overallScore":<0-100>,"skillScores":{"communication":{"score":<0-100>,"reason":"<cite specific answer text>"},"structure":{"score":<0-100>,"reason":"<cite>"},"technicalDepth":{"score":<0-100>,"reason":"<cite>"},"leadership":{"score":<0-100>,"reason":"<cite>"},"problemSolving":{"score":<0-100>,"reason":"<cite>"}},"strengths":["str1 — citing which answer","str2","str3"],"improvements":["imp1 — what to do differently","imp2","imp3"],"feedback":"<2-3 paragraphs, constructive, cite specific quotes from their answers>","idealAnswers":[{"question":"<the original question>","ideal":"<4-5 sentence model answer using STAR: Situation, Task, Action with specific metrics, Result with quantified impact>","candidateSummary":"<what the candidate actually said, 2 sentences>"}],"nextSteps":["<specific actionable tip for next practice>","<second tip>","<third tip>"]}
+
+Be honest, specific, and cite the candidate's actual words when justifying scores.`;
 
     const result = await callLLM({ prompt, temperature: 0.3, maxTokens: 2000, jsonMode: true }, 25000);
     const evaluation = extractJSON(result.text);
