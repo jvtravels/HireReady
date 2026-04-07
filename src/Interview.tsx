@@ -1000,12 +1000,14 @@ export default function Interview() {
     const questionBonus = Math.min(5, Math.floor(transcript.filter(t => t.speaker === "user").length * 1.5));
     const fallbackScore = Math.min(98, Math.max(60, baseScore + difficultyBonus + timeBonus + questionBonus));
 
-    // Try LLM evaluation if user gave real answers
+    // Try LLM evaluation — even if speech recognition failed, the user still answered
+    // "[Answer recorded — 41s]" means they spoke for 41s but text wasn't captured
     const hasRealAnswers = transcript.some(t => t.speaker === "user" && !t.text.startsWith("["));
+    const hasAnyAnswers = transcript.some(t => t.speaker === "user");
     score = fallbackScore;
     let idealAnswers: { question: string; ideal: string; candidateSummary: string }[] = [];
 
-    if (hasRealAnswers) {
+    if (hasAnyAnswers) {
       try {
         const originalQuestions = interviewScript
           .filter(s => s.type === "question" || s.type === "follow-up")
