@@ -1,7 +1,14 @@
 /* Vercel Serverless Function — Cancel Subscription */
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { getPostHog, captureError } from "./_posthog";
+// Lazy-load posthog to prevent import-time crashes
+let _posthogMod: typeof import("./_posthog") | null = null;
+async function lazyPostHog() {
+  if (!_posthogMod) {
+    try { _posthogMod = await import("./_posthog"); } catch { /* ignore */ }
+  }
+  return _posthogMod;
+}
 
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || "";
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
@@ -85,12 +92,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(500).json({ error: "Failed to cancel subscription" });
     }
 
-    getPostHog()?.capture({ distinctId: userId, event: "subscription_cancelled" });
+    try { const ph = await lazyPostHog(); ph?.getPostHog()?.capture({ distinctId: userId, event: "subscription_cancelled" }); } catch {}
 
     return res.status(200).json({ success: true });
   } catch (err) {
     console.error("Cancel subscription error:", err);
-    captureError(err, userId);
+    try { const ph = await lazyPostHog(); ph?.captureError(err, userId); } catch {}
     return res.status(500).json({ error: "Internal error" });
   }
 }

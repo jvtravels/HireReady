@@ -3,7 +3,14 @@
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { createHmac } from "crypto";
-import { getPostHog, captureError } from "./_posthog";
+// Lazy-load posthog to prevent import-time crashes from taking down the function
+let _posthogMod: typeof import("./_posthog") | null = null;
+async function lazyPostHog() {
+  if (!_posthogMod) {
+    try { _posthogMod = await import("./_posthog"); } catch { /* ignore */ }
+  }
+  return _posthogMod;
+}
 
 /* ─── Inline rate limiting (Node.js ESM can't resolve extensionless imports) ─── */
 const UPSTASH_URL = (process.env.UPSTASH_REDIS_REST_URL || "").trim();
@@ -270,7 +277,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (expectedSignature !== razorpay_signature) {
       console.error("Payment signature mismatch for order", razorpay_order_id.slice(0, 8) + "...");
-      getPostHog()?.capture({ distinctId: userId, event: "payment_failed", properties: { plan, reason: "signature_mismatch" } });
+      try { const ph = await lazyPostHog(); ph?.getPostHog()?.capture({ distinctId: userId, event: "payment_failed", properties: { plan, reason: "signature_mismatch" } }); } catch {}
       return res.status(400).json({ error: "Payment verification failed" });
     }
 
@@ -285,7 +292,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const orderData = await orderRes.json();
     if (orderData.amount !== PLAN_AMOUNT[plan]) {
       console.error("Plan/amount mismatch for order", razorpay_order_id.slice(0, 8) + "...");
-      getPostHog()?.capture({ distinctId: userId, event: "payment_failed", properties: { plan, reason: "amount_mismatch" } });
+      try { const ph = await lazyPostHog(); ph?.getPostHog()?.capture({ distinctId: userId, event: "payment_failed", properties: { plan, reason: "amount_mismatch" } }); } catch {}
       return res.status(400).json({ error: "Plan does not match payment amount" });
     }
 
@@ -395,18 +402,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
-    getPostHog()?.capture({
-      distinctId: userId,
-      event: "payment_verified",
-      properties: {
-        plan,
-        tier,
-        amount: PLAN_AMOUNT[plan],
-        currency: "INR",
-        razorpay_payment_id,
-        subscription_end: end.toISOString(),
-      },
-    });
+    try {
+      const ph = await lazyPostHog();
+      ph?.getPostHog()?.capture({
+        distinctId: userId,
+        event: "payment_verified",
+        properties: {
+          plan,
+          tier,
+          amount: PLAN_AMOUNT[plan],
+          currency: "INR",
+          razorpay_payment_id,
+          subscription_end: end.toISOString(),
+        },
+      });
+    } catch { /* analytics should never block payment */ }
 
     return res.status(200).json({
       success: true,
@@ -417,7 +427,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
   } catch (err) {
     console.error("Payment verification error:", err);
-    captureError(err, userId);
+    try { const ph = await lazyPostHog(); ph?.captureError(err, userId); } catch {}
     return res.status(500).json({ error: "Internal error" });
   }
 }

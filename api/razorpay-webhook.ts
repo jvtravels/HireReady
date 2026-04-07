@@ -5,7 +5,14 @@
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { createHmac } from "crypto";
-import { getPostHog, captureError } from "./_posthog";
+// Lazy-load posthog to prevent import-time crashes
+let _posthogMod: typeof import("./_posthog") | null = null;
+async function lazyPostHog() {
+  if (!_posthogMod) {
+    try { _posthogMod = await import("./_posthog"); } catch { /* ignore */ }
+  }
+  return _posthogMod;
+}
 
 const RAZORPAY_WEBHOOK_SECRET = (process.env.RAZORPAY_WEBHOOK_SECRET || "").trim();
 const RAZORPAY_KEY_ID = (process.env.RAZORPAY_KEY_ID || "").trim();
@@ -174,24 +181,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       } catch {}
     }
 
-    getPostHog()?.capture({
-      distinctId: userId,
-      event: "webhook_payment_activated",
-      properties: {
-        plan,
-        tier,
-        amount,
-        currency: "INR",
-        razorpay_payment_id: paymentId,
-        subscription_end: end.toISOString(),
-      },
-    });
+    try {
+      const ph = await lazyPostHog();
+      ph?.getPostHog()?.capture({
+        distinctId: userId,
+        event: "webhook_payment_activated",
+        properties: {
+          plan,
+          tier,
+          amount,
+          currency: "INR",
+          razorpay_payment_id: paymentId,
+          subscription_end: end.toISOString(),
+        },
+      });
+    } catch {}
 
     console.log(`[webhook] Activated ${tier} for user ${userId.slice(0, 8)}...`);
     return res.status(200).json({ received: true, activated: true, tier });
   } catch (err) {
     console.error("[webhook] Error:", err);
-    captureError(err);
+    try { const ph = await lazyPostHog(); ph?.captureError(err); } catch {}
     return res.status(500).json({ error: "Internal error" });
   }
 }

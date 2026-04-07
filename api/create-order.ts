@@ -1,7 +1,15 @@
 /* Vercel Serverless Function — Razorpay Order Creation */
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { getPostHog, captureError } from "./_posthog";
+
+// Lazy-load posthog to prevent import-time crashes from taking down the function
+let _posthogMod: typeof import("./_posthog") | null = null;
+async function lazyPostHog() {
+  if (!_posthogMod) {
+    try { _posthogMod = await import("./_posthog"); } catch { /* ignore */ }
+  }
+  return _posthogMod;
+}
 
 /* ─── Inline rate limiting (Node.js ESM can't resolve extensionless imports) ─── */
 const UPSTASH_URL = (process.env.UPSTASH_REDIS_REST_URL || "").trim();
@@ -150,16 +158,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const order = await response.json();
 
     if (resolvedUserId) {
-      getPostHog()?.capture({
-        distinctId: resolvedUserId,
-        event: "order_created",
-        properties: {
-          plan,
-          amount: price.amount,
-          currency: "INR",
-          order_id: order.id,
-        },
-      });
+      try {
+        const ph = await lazyPostHog();
+        ph?.getPostHog()?.capture({
+          distinctId: resolvedUserId,
+          event: "order_created",
+          properties: {
+            plan,
+            amount: price.amount,
+            currency: "INR",
+            order_id: order.id,
+          },
+        });
+      } catch { /* analytics should never block payment */ }
     }
 
     return res.status(200).json({
@@ -172,7 +183,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
   } catch (err) {
     console.error("Order creation error:", err);
-    captureError(err, authenticatedUserId || "unknown");
+    try { const ph = await lazyPostHog(); ph?.captureError(err, authenticatedUserId || "unknown"); } catch {}
     return res.status(500).json({ error: "Internal error" });
   }
 }

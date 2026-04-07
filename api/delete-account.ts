@@ -1,7 +1,14 @@
 /* Vercel Serverless Function — Delete User Account & Data */
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { getPostHog, captureError } from "./_posthog";
+// Lazy-load posthog to prevent import-time crashes
+let _posthogMod: typeof import("./_posthog") | null = null;
+async function lazyPostHog() {
+  if (!_posthogMod) {
+    try { _posthogMod = await import("./_posthog"); } catch { /* ignore */ }
+  }
+  return _posthogMod;
+}
 
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || "";
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
@@ -110,12 +117,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(207).json({ success: true, partial: true, warning: "Account data deleted but auth cleanup incomplete. You can still sign up again with the same email." });
     }
 
-    getPostHog()?.capture({ distinctId: userId, event: "account_deleted" });
+    try { const ph = await lazyPostHog(); ph?.getPostHog()?.capture({ distinctId: userId, event: "account_deleted" }); } catch {}
 
     return res.status(200).json({ success: true });
   } catch (err) {
     console.error("Delete account error:", err);
-    captureError(err, userId);
+    try { const ph = await lazyPostHog(); ph?.captureError(err, userId); } catch {}
     return res.status(500).json({ error: "Failed to delete account" });
   }
 }

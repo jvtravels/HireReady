@@ -171,6 +171,22 @@ export function UpgradeModal({ onClose, sessionsUsed, user, currentTier, onPayme
         headers: hdrs,
         body: JSON.stringify({ plan: planId, userId: user?.id, email: user?.email }),
       });
+      if (!res.ok) {
+        let errMsg = "Could not start checkout. Please try again.";
+        try {
+          const errData = await res.json();
+          if (errData.error) errMsg = errData.error;
+        } catch {
+          // Server returned non-JSON (e.g. Vercel crash page)
+          console.error("create-order returned", res.status, "with non-JSON body");
+          errMsg = res.status === 503
+            ? "Payments are not configured yet. Please contact support@hirloop.com"
+            : "Payment server error. Please try again or contact support@hirloop.com";
+        }
+        setError(errMsg);
+        setLoading(null);
+        return;
+      }
       const data = await res.json();
       if (!data.orderId) {
         setError(data.error || "Could not start checkout. Please try again.");
