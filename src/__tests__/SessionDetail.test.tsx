@@ -79,8 +79,9 @@ describe("SessionDetail", () => {
 
     renderWithRouter("test123");
 
-    const scoreElement = await screen.findByText("85");
-    expect(scoreElement).toBeInTheDocument();
+    // Score appears in multiple places (overall circle + breakdown), so use findAllByText
+    const scoreElements = await screen.findAllByText("85");
+    expect(scoreElements.length).toBeGreaterThan(0);
     expect(screen.getByText("Great session!")).toBeInTheDocument();
   });
 

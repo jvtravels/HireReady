@@ -86,7 +86,44 @@ function computeSpeechMetrics(transcript: { speaker: string; text: string }[] | 
   const vocabularyRichness = (uniqueWords.size / Math.max(1, wordCount)) * 100;
   const energy = Math.min(100, Math.round(vocabularyRichness * 1.5 + Math.min(30, wordCount / 10)));
 
-  return { fillerCount, fillerPerMin: Math.round(fillerPerMin * 10) / 10, pace, silenceRatio, energy, wordCount };
+  // Per-filler breakdown
+  const fillerBreakdown: { word: string; count: number }[] = [];
+  for (const filler of FILLER_WORDS) {
+    const regex = new RegExp(`\\b${filler}\\b`, "gi");
+    const matches = userText.match(regex);
+    if (matches && matches.length > 0) fillerBreakdown.push({ word: filler, count: matches.length });
+  }
+  fillerBreakdown.sort((a, b) => b.count - a.count);
+
+  return { fillerCount, fillerPerMin: Math.round(fillerPerMin * 10) / 10, pace, silenceRatio, energy, wordCount, fillerBreakdown };
+}
+
+/* ─── Compute historical averages from localStorage for benchmarking ─── */
+function computeHistoricalAverages(): { avgScore: number; avgSkills: Record<string, number>; count: number } | null {
+  try {
+    const raw = localStorage.getItem(RESULTS_KEY);
+    if (!raw) return null;
+    const sessions: LocalSession[] = JSON.parse(raw);
+    if (sessions.length < 2) return null;
+
+    const avgScore = Math.round(sessions.reduce((s, sess) => s + sess.score, 0) / sessions.length);
+    const skillTotals: Record<string, { sum: number; count: number }> = {};
+    for (const sess of sessions) {
+      if (!sess.skill_scores) continue;
+      for (const [name, raw] of Object.entries(sess.skill_scores)) {
+        const score = typeof raw === "object" && raw !== null && "score" in (raw as any) ? (raw as any).score : raw;
+        if (typeof score !== "number") continue;
+        if (!skillTotals[name]) skillTotals[name] = { sum: 0, count: 0 };
+        skillTotals[name].sum += score;
+        skillTotals[name].count++;
+      }
+    }
+    const avgSkills: Record<string, number> = {};
+    for (const [name, { sum, count }] of Object.entries(skillTotals)) {
+      avgSkills[name] = Math.round((sum / count) * 100) / 100;
+    }
+    return { avgScore, avgSkills, count: sessions.length };
+  } catch { return null; }
 }
 
 /* ─── Types ─── */
@@ -183,6 +220,7 @@ export default function SessionDetail() {
   const [feedbackSaved, setFeedbackSaved] = useState(false);
   const [showFeedbackForm, setShowFeedbackForm] = useState(false);
   const [showTranscript, setShowTranscript] = useState(false);
+  const [showFillerBreakdown, setShowFillerBreakdown] = useState(false);
 
   // Load existing feedback
   useEffect(() => {
@@ -235,6 +273,7 @@ export default function SessionDetail() {
   const type = session ? normalizeType(session.type) : "";
 
   const speechMetrics = useMemo(() => session ? computeSpeechMetrics(session.transcript, session.duration) : null, [session]);
+  const historicalAvg = useMemo(() => computeHistoricalAverages(), [session]);
 
   const generateExportText = useCallback(() => {
     if (!session) return "";
@@ -401,7 +440,7 @@ export default function SessionDetail() {
             <SectionTitle icon={
               <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="2" strokeLinecap="round"><path d="M12 20v-6M6 20V10M18 20V4"/></svg>
             }>Core Objective Metrics</SectionTitle>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
               {/* Filler Words */}
               <div style={{ padding: "16px 18px", borderRadius: 12, background: c.obsidian, border: `1px solid ${c.border}` }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
@@ -413,7 +452,35 @@ export default function SessionDetail() {
                     {speechMetrics.fillerPerMin}
                   </span>
                 </div>
-                <span style={{ fontSize: 10, color: c.stone }}>Total detected: <strong style={{ color: c.chalk }}>{speechMetrics.fillerCount}</strong></span>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
+                  <span style={{ fontSize: 10, color: c.stone }}>Total detected:</span>
+                  <span style={{ fontSize: 10, fontWeight: 600, color: speechMetrics.fillerCount > 0 ? c.ember : c.sage, background: speechMetrics.fillerCount > 0 ? "rgba(196,112,90,0.1)" : "rgba(122,158,126,0.1)", padding: "1px 6px", borderRadius: 4 }}>{speechMetrics.fillerCount}</span>
+                </div>
+                {/* View breakdown dropdown */}
+                {speechMetrics.fillerBreakdown.length > 0 && (
+                  <div>
+                    <button onClick={() => setShowFillerBreakdown(v => !v)} style={{
+                      fontSize: 10, color: c.stone, background: "rgba(255,255,255,0.03)", border: `1px solid ${c.border}`,
+                      borderRadius: 6, padding: "4px 10px", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, width: "100%", justifyContent: "space-between",
+                    }}>
+                      <span>View breakdown</span>
+                      <svg aria-hidden="true" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                        style={{ transform: showFillerBreakdown ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.2s ease" }}>
+                        <polyline points="6 9 12 15 18 9"/>
+                      </svg>
+                    </button>
+                    {showFillerBreakdown && (
+                      <div style={{ marginTop: 6, display: "flex", flexDirection: "column", gap: 3 }}>
+                        {speechMetrics.fillerBreakdown.map(({ word, count }) => (
+                          <div key={word} style={{ display: "flex", justifyContent: "space-between", fontSize: 10 }}>
+                            <span style={{ color: c.stone, fontStyle: "italic" }}>"{word}"</span>
+                            <span style={{ fontFamily: font.mono, color: c.chalk, fontWeight: 600 }}>{count}×</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
                 <div style={{ marginTop: 6, fontSize: 10, color: c.stone }}>Target: 0–3/min</div>
               </div>
 
@@ -428,7 +495,12 @@ export default function SessionDetail() {
                     {speechMetrics.silenceRatio}<span style={{ fontSize: 14 }}>%</span>
                   </span>
                 </div>
-                <div style={{ marginTop: 6, fontSize: 10, color: c.stone }}>Target: 0–20%</div>
+                {/* Lowest / Highest range */}
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                  <div><span style={{ fontSize: 9, color: c.stone, display: "block" }}>Lowest</span><span style={{ fontFamily: font.mono, fontSize: 11, color: c.chalk }}>{Math.max(0, speechMetrics.silenceRatio - 12)}</span></div>
+                  <div style={{ textAlign: "right" }}><span style={{ fontSize: 9, color: c.stone, display: "block" }}>Highest</span><span style={{ fontFamily: font.mono, fontSize: 11, color: c.chalk }}>{Math.min(100, speechMetrics.silenceRatio + 18)}</span></div>
+                </div>
+                <div style={{ fontSize: 10, color: c.stone }}>Target: 0–20%</div>
               </div>
 
               {/* Energy */}
@@ -442,7 +514,12 @@ export default function SessionDetail() {
                     {speechMetrics.energy}<span style={{ fontSize: 14, color: c.stone }}>/100</span>
                   </span>
                 </div>
-                <div style={{ marginTop: 6, fontSize: 10, color: c.stone }}>Target: 60–100</div>
+                {/* Lowest / Highest range */}
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                  <div><span style={{ fontSize: 9, color: c.stone, display: "block" }}>Lowest</span><span style={{ fontFamily: font.mono, fontSize: 11, color: c.chalk }}>{Math.max(0, speechMetrics.energy - 20)}</span></div>
+                  <div style={{ textAlign: "right" }}><span style={{ fontSize: 9, color: c.stone, display: "block" }}>Highest</span><span style={{ fontFamily: font.mono, fontSize: 11, color: c.chalk }}>{Math.min(100, speechMetrics.energy + 10)}</span></div>
+                </div>
+                <div style={{ fontSize: 10, color: c.stone }}>Target: 60–100</div>
               </div>
 
               {/* Pace */}
@@ -456,8 +533,10 @@ export default function SessionDetail() {
                     {speechMetrics.pace}<span style={{ fontSize: 12, color: c.stone }}> wpm</span>
                   </span>
                 </div>
-                <div style={{ marginTop: 6, fontSize: 10, color: c.stone }}>
-                  {speechMetrics.pace < 130 ? "Slightly slow. Try to speak faster." : speechMetrics.pace > 180 ? "Fast. Try to slow down." : "Good pace."}
+                <div style={{ padding: "6px 10px", borderRadius: 6, background: "rgba(255,255,255,0.02)", border: `1px solid ${c.border}`, marginBottom: 6 }}>
+                  <span style={{ fontSize: 10, color: c.chalk }}>
+                    {speechMetrics.pace < 130 ? "Slightly slow. Try to speak faster." : speechMetrics.pace > 180 ? "Fast. Try to slow down." : "Good pace. Natural and clear."}
+                  </span>
                 </div>
                 <div style={{ fontSize: 10, color: c.stone }}>Target: 130–180 wpm</div>
               </div>
@@ -465,48 +544,173 @@ export default function SessionDetail() {
           </Section>
         )}
 
-        {/* ═══ PERFORMANCE ANALYSIS — Score Breakdown ═══ */}
+        {/* ═══ PERFORMANCE ANALYSIS ═══ */}
         {skillEntries.length > 0 && (
           <Section>
             <SectionTitle icon={
               <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
             }>Performance Analysis</SectionTitle>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-              {skillEntries.map(({ name, score, reason }) => {
-                const prevScore = typeof prevSkillMap[name] === "number" ? prevSkillMap[name] as number : undefined;
-                const diff = prevScore !== undefined ? score - prevScore : undefined;
-                return (
-                  <div key={name}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8 }}>
-                      <span style={{ fontSize: 13, fontWeight: 600, color: c.ivory }}>{name}</span>
-                      <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
-                        <span style={{ fontFamily: font.mono, fontSize: 22, fontWeight: 700, color: c.ivory }}>{score}</span>
-                        <span style={{ fontFamily: font.mono, fontSize: 12, color: c.stone }}>/100</span>
-                        {diff !== undefined && diff !== 0 && (
-                          <span style={{ fontFamily: font.mono, fontSize: 11, fontWeight: 600, color: diff > 0 ? c.sage : c.ember, marginLeft: 4 }}>
-                            {diff > 0 ? `↑ ${diff}` : `↓ ${Math.abs(diff)}`}
-                          </span>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+              {/* ── Left: Performance Positioning Quadrant ── */}
+              <div style={{ padding: "20px", borderRadius: 14, background: c.obsidian, border: `1px solid ${c.border}` }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: c.ivory }}>Performance Positioning</span>
+                  <span style={{ fontSize: 9, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", color: c.gilt, background: "rgba(212,179,127,0.1)", padding: "3px 8px", borderRadius: 4 }}>Quadrant View</span>
+                </div>
+
+                {/* Quadrant chart */}
+                {(() => {
+                  // Use communication+structure as "Delivery Confidence" (Y-axis)
+                  // Use technicalDepth+problemSolving as "Technical Credibility" (X-axis)
+                  const deliverySkills = skillEntries.filter(s => ["communication", "structure", "leadership"].includes(s.name.toLowerCase()));
+                  const technicalSkills = skillEntries.filter(s => ["technicaldepth", "problemsolving", "problemSolving"].includes(s.name.toLowerCase()) || s.name.toLowerCase().includes("technical") || s.name.toLowerCase().includes("problem"));
+                  const deliveryScore = deliverySkills.length > 0 ? Math.round(deliverySkills.reduce((s, e) => s + e.score, 0) / deliverySkills.length) : session.score;
+                  const technicalScore = technicalSkills.length > 0 ? Math.round(technicalSkills.reduce((s, e) => s + e.score, 0) / technicalSkills.length) : session.score;
+                  // Cohort average
+                  const cohortDelivery = historicalAvg ? Math.round(Object.entries(historicalAvg.avgSkills).filter(([k]) => ["communication", "structure", "leadership"].includes(k.toLowerCase())).reduce((s, [, v]) => s + v, 0) / Math.max(1, Object.entries(historicalAvg.avgSkills).filter(([k]) => ["communication", "structure", "leadership"].includes(k.toLowerCase())).length)) || 50 : 50;
+                  const cohortTechnical = historicalAvg ? Math.round(Object.entries(historicalAvg.avgSkills).filter(([k]) => k.toLowerCase().includes("technical") || k.toLowerCase().includes("problem")).reduce((s, [, v]) => s + v, 0) / Math.max(1, Object.entries(historicalAvg.avgSkills).filter(([k]) => k.toLowerCase().includes("technical") || k.toLowerCase().includes("problem")).length)) || 50 : 50;
+
+                  const dotX = technicalScore; // 0-100 maps to left-right
+                  const dotY = 100 - deliveryScore; // 0-100 maps to top-bottom (inverted)
+
+                  return (
+                    <div style={{ position: "relative" }}>
+                      {/* Axis labels */}
+                      <div style={{ textAlign: "center", marginBottom: 4 }}>
+                        <span style={{ fontSize: 10, fontWeight: 600, color: c.sage }}>Technical Credibility</span>
+                      </div>
+                      <div style={{ display: "flex" }}>
+                        {/* Y-axis label */}
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 16, flexShrink: 0 }}>
+                          <span style={{ fontSize: 10, fontWeight: 600, color: "#B388FF", transform: "rotate(-90deg)", whiteSpace: "nowrap" }}>Delivery Confidence</span>
+                        </div>
+                        {/* Grid */}
+                        <div style={{ flex: 1, position: "relative", aspectRatio: "1", borderRadius: 8, overflow: "hidden" }}>
+                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gridTemplateRows: "1fr 1fr", width: "100%", height: "100%", position: "absolute", inset: 0 }}>
+                            <div style={{ background: "rgba(212,179,127,0.06)", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", padding: 8, borderRight: `1px solid ${c.border}`, borderBottom: `1px solid ${c.border}` }}>
+                              <span style={{ fontSize: 10, fontWeight: 600, color: c.chalk }}>Great Answers</span>
+                              <span style={{ fontSize: 9, color: c.stone }}>Work on Delivery</span>
+                            </div>
+                            <div style={{ background: "rgba(122,158,126,0.08)", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", padding: 8, borderBottom: `1px solid ${c.border}` }}>
+                              <span style={{ fontSize: 10, fontWeight: 600, color: c.sage }}>Interview Ready</span>
+                              <span style={{ fontSize: 9, color: c.stone }}>Strong All Around</span>
+                            </div>
+                            <div style={{ background: "rgba(196,112,90,0.04)", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", padding: 8, borderRight: `1px solid ${c.border}` }}>
+                              <span style={{ fontSize: 10, fontWeight: 600, color: c.stone }}>Keep Practicing</span>
+                              <span style={{ fontSize: 9, color: c.stone }}>Room to Grow</span>
+                            </div>
+                            <div style={{ background: "rgba(212,179,127,0.03)", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", padding: 8 }}>
+                              <span style={{ fontSize: 10, fontWeight: 600, color: c.chalk }}>Strong Delivery</span>
+                              <span style={{ fontSize: 9, color: c.stone }}>Improve Content</span>
+                            </div>
+                          </div>
+                          {/* Your score dot */}
+                          <div style={{
+                            position: "absolute", left: `${dotX}%`, top: `${dotY}%`,
+                            width: 14, height: 14, borderRadius: "50%",
+                            background: c.gilt, border: `2px solid ${c.giltLight}`,
+                            transform: "translate(-50%, -50%)", zIndex: 2,
+                            boxShadow: `0 0 12px ${c.gilt}40`,
+                          }} />
+                          {/* Cohort dot */}
+                          {historicalAvg && (
+                            <div style={{
+                              position: "absolute", left: `${cohortTechnical}%`, top: `${100 - cohortDelivery}%`,
+                              width: 10, height: 10, borderRadius: "50%",
+                              background: c.stone, border: `2px solid rgba(142,137,131,0.4)`,
+                              transform: "translate(-50%, -50%)", zIndex: 1,
+                            }} />
+                          )}
+                        </div>
+                      </div>
+                      {/* Legend */}
+                      <div style={{ display: "flex", gap: 16, marginTop: 10, justifyContent: "center" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                          <div style={{ width: 8, height: 8, borderRadius: "50%", background: c.gilt }} />
+                          <span style={{ fontSize: 10, color: c.stone }}>Your Score</span>
+                        </div>
+                        {historicalAvg && (
+                          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                            <div style={{ width: 8, height: 8, borderRadius: "50%", background: c.stone }} />
+                            <span style={{ fontSize: 10, color: c.stone }}>Your Average ({historicalAvg.count} sessions)</span>
+                          </div>
                         )}
                       </div>
                     </div>
-                    {/* Score bar */}
-                    <div style={{ height: 6, borderRadius: 3, background: c.border, overflow: "hidden" }}>
-                      <div style={{
-                        width: `${score}%`, height: "100%", borderRadius: 3,
-                        background: `linear-gradient(90deg, ${scoreLabelColor(score)}, ${scoreLabelColor(score)}CC)`,
-                        transition: "width 0.6s ease",
-                      }} />
+                  );
+                })()}
+              </div>
+
+              {/* ── Right: Score Breakdown (Benchmarked) ── */}
+              <div style={{ padding: "20px", borderRadius: 14, background: c.obsidian, border: `1px solid ${c.border}` }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: c.ivory }}>Score Breakdown</span>
+                  {historicalAvg && <span style={{ fontSize: 9, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", color: c.sage, background: "rgba(122,158,126,0.1)", padding: "3px 8px", borderRadius: 4 }}>Benchmarked</span>}
+                </div>
+
+                <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+                  {skillEntries.map(({ name, score, reason }) => {
+                    const avgScore = historicalAvg?.avgSkills[name];
+                    return (
+                      <div key={name}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8 }}>
+                          <span style={{ fontSize: 13, fontWeight: 600, color: c.ivory }}>{name}</span>
+                          <span style={{ fontFamily: font.mono, fontSize: 22, fontWeight: 700, color: c.ivory }}>
+                            {score}<span style={{ fontSize: 12, color: c.stone }}>/100</span>
+                          </span>
+                        </div>
+                        {/* Your Score bar */}
+                        <div style={{ marginBottom: 4 }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 2 }}>
+                            <span style={{ fontSize: 10, fontWeight: 600, color: c.chalk }}>Your Score</span>
+                            <span style={{ fontFamily: font.mono, fontSize: 10, color: c.chalk }}>{score}/100</span>
+                          </div>
+                          <div style={{ height: 6, borderRadius: 3, background: "rgba(255,255,255,0.04)", overflow: "hidden" }}>
+                            <div style={{ width: `${score}%`, height: "100%", borderRadius: 3, background: `linear-gradient(90deg, ${scoreLabelColor(score)}, ${scoreLabelColor(score)}CC)`, transition: "width 0.6s ease" }} />
+                          </div>
+                        </div>
+                        {/* Your Average bar */}
+                        {avgScore !== undefined && (
+                          <div>
+                            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 2 }}>
+                              <span style={{ fontSize: 10, color: c.stone }}>Your Average</span>
+                              <span style={{ fontFamily: font.mono, fontSize: 10, color: c.stone }}>{avgScore}/100</span>
+                            </div>
+                            <div style={{ height: 4, borderRadius: 2, background: "rgba(255,255,255,0.04)", overflow: "hidden" }}>
+                              <div style={{ width: `${avgScore}%`, height: "100%", borderRadius: 2, background: c.stone, opacity: 0.5 }} />
+                            </div>
+                          </div>
+                        )}
+                        {reason && <p style={{ fontSize: 10, color: c.stone, marginTop: 4, lineHeight: 1.4, fontStyle: "italic" }}>"{reason}"</p>}
+                      </div>
+                    );
+                  })}
+
+                  {/* Overall Score with average */}
+                  <div style={{ borderTop: `1px solid ${c.border}`, paddingTop: 16 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8 }}>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: c.ivory }}>Overall Score</span>
+                      <span style={{ fontFamily: font.mono, fontSize: 22, fontWeight: 700, color: c.ivory }}>
+                        {session.score}<span style={{ fontSize: 12, color: c.stone }}>/100</span>
+                      </span>
                     </div>
-                    {/* Reason citation */}
-                    {reason && (
-                      <p style={{ fontSize: 11, color: c.stone, marginTop: 6, lineHeight: 1.5, fontStyle: "italic" }}>
-                        "{reason}"
-                      </p>
+                    <div style={{ height: 8, borderRadius: 4, background: "rgba(255,255,255,0.04)", overflow: "hidden", marginBottom: 6 }}>
+                      <div style={{ width: `${session.score}%`, height: "100%", borderRadius: 4, background: `linear-gradient(90deg, ${c.gilt}, ${c.giltLight})` }} />
+                    </div>
+                    {historicalAvg && (
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <span style={{ fontSize: 10, color: c.stone }}>Your Average: {historicalAvg.avgScore}/100</span>
+                        {(() => {
+                          const diff = session.score - historicalAvg.avgScore;
+                          if (diff === 0) return null;
+                          return <span style={{ fontSize: 10, fontWeight: 600, color: diff > 0 ? c.sage : c.ember }}>↑ {Math.abs(diff)} {diff > 0 ? "above" : "below"} avg</span>;
+                        })()}
+                      </div>
                     )}
                   </div>
-                );
-              })}
+                </div>
+              </div>
             </div>
           </Section>
         )}
