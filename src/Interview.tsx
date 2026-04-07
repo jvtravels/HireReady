@@ -750,6 +750,21 @@ export default function Interview() {
   const [showEndModal, setShowEndModal] = useState(false);
   const endModalTriggerRef = useRef<HTMLButtonElement>(null);
 
+  // Multi-tab guard: prevent two interview tabs from running concurrently
+  const [tabConflict, setTabConflict] = useState(false);
+  useEffect(() => {
+    if (typeof BroadcastChannel === "undefined") return;
+    const ch = new BroadcastChannel("hirloop_interview");
+    ch.postMessage({ type: "claim" });
+    ch.onmessage = (e) => {
+      if (e.data?.type === "claim") {
+        // Another tab claimed the interview — warn this one
+        setTabConflict(true);
+      }
+    };
+    return () => ch.close();
+  }, []);
+
   // Offline + save status + mic error
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const [saveWarning, setSaveWarning] = useState("");
@@ -1156,19 +1171,42 @@ export default function Interview() {
     }
   }, [phase, currentStep, interviewScript, aiVoiceEnabled]);
 
-  // Keyboard: Enter to advance when listening, or skip speaking
+  // Keyboard: Enter to advance/skip, Alt+key shortcuts for controls
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
+      // Don't intercept when typing in textarea
+      if ((e.target as HTMLElement)?.tagName === "TEXTAREA") {
+        if (e.key === "Enter" && !e.shiftKey && phase === "listening") {
+          e.preventDefault();
+          handleNextQuestion();
+        }
+        return;
+      }
       if (e.key === "Enter" && phase === "listening") {
         handleNextQuestion();
       } else if ((e.key === "Enter" || e.key === " ") && phase === "speaking") {
         e.preventDefault();
         skipSpeaking();
       }
+      // Alt+key shortcuts
+      if (e.altKey) {
+        if (e.key === "m") { e.preventDefault(); setIsMuted(m => !m); }
+        else if (e.key === "c") { e.preventDefault(); setIsCameraOff(c => !c); }
+        else if (e.key === "t") { e.preventDefault(); setShowTranscript(t => !t); }
+        else if (e.key === "k") { e.preventDefault(); setShowCaptions(c => !c); }
+        else if (e.key === "v") { e.preventDefault(); if (aiVoiceEnabled) ttsCancelRef.current?.(); setAiVoiceEnabled(v => !v); }
+      }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [phase, handleNextQuestion, skipSpeaking]);
+  }, [phase, handleNextQuestion, skipSpeaking, aiVoiceEnabled]);
+
+  // Update document.title with current phase for accessibility
+  useEffect(() => {
+    const phaseLabel = phase === "thinking" ? "Preparing" : phase === "speaking" ? "AI Speaking" : phase === "listening" ? "Your Turn" : "Complete";
+    document.title = `${phaseLabel} — Hirloop Interview`;
+    return () => { document.title = "Hirloop"; };
+  }, [phase]);
 
   // Auto-scroll transcript (only if user is near bottom, not reading earlier messages)
   useEffect(() => {
@@ -1358,6 +1396,19 @@ export default function Interview() {
         }
       `}</style>
 
+      {/* Tab conflict banner */}
+      {tabConflict && (
+        <div role="alert" style={{
+          padding: "8px 16px", background: "rgba(212,179,127,0.12)", borderBottom: "1px solid rgba(212,179,127,0.25)",
+          display: "flex", alignItems: "center", gap: 8, justifyContent: "center",
+        }}>
+          <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="2" strokeLinecap="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          <span style={{ fontFamily: font.ui, fontSize: 12, color: c.gilt }}>
+            Interview is open in another tab. Audio may play in both tabs.
+          </span>
+        </div>
+      )}
+
       {/* Offline banner */}
       {isOffline && (
         <div role="alert" style={{
@@ -1447,7 +1498,7 @@ export default function Interview() {
           <div className="header-controls" style={{ display: "flex", alignItems: "center", gap: 4 }}>
             <button
               onClick={() => setIsMuted(!isMuted)}
-              title={isMuted ? "Unmute" : "Mute"}
+              title={isMuted ? "Unmute (Alt+M)" : "Mute (Alt+M)"}
               aria-label={isMuted ? "Unmute" : "Mute"}
               style={{ width: 32, height: 32, borderRadius: 8, background: isMuted ? "rgba(196,112,90,0.1)" : "transparent", border: `1px solid ${isMuted ? "rgba(196,112,90,0.2)" : "transparent"}`, color: isMuted ? c.ember : c.stone, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s" }}
             >
@@ -1459,7 +1510,7 @@ export default function Interview() {
             </button>
             <button
               onClick={() => setIsCameraOff(!isCameraOff)}
-              title={isCameraOff ? "Turn camera on" : "Turn camera off"}
+              title={isCameraOff ? "Turn camera on (Alt+C)" : "Turn camera off (Alt+C)"}
               aria-label={isCameraOff ? "Turn camera on" : "Turn camera off"}
               style={{ width: 32, height: 32, borderRadius: 8, background: isCameraOff ? "rgba(196,112,90,0.1)" : "transparent", border: `1px solid ${isCameraOff ? "rgba(196,112,90,0.2)" : "transparent"}`, color: isCameraOff ? c.ember : c.stone, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s" }}
             >
@@ -1471,7 +1522,7 @@ export default function Interview() {
             </button>
             <button
               onClick={() => { if (aiVoiceEnabled) ttsCancelRef.current?.(); setAiVoiceEnabled(!aiVoiceEnabled); }}
-              title={aiVoiceEnabled ? "Mute AI voice" : "Enable AI voice"}
+              title={aiVoiceEnabled ? "Mute AI voice (Alt+V)" : "Enable AI voice (Alt+V)"}
               aria-label={aiVoiceEnabled ? "Mute AI voice" : "Enable AI voice"}
               style={{ width: 32, height: 32, borderRadius: 8, background: !aiVoiceEnabled ? "rgba(196,112,90,0.1)" : "transparent", border: `1px solid ${!aiVoiceEnabled ? "rgba(196,112,90,0.2)" : "transparent"}`, color: !aiVoiceEnabled ? c.ember : c.stone, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s" }}
             >
@@ -1483,7 +1534,7 @@ export default function Interview() {
             </button>
             <button
               onClick={() => setShowCaptions(!showCaptions)}
-              title={showCaptions ? "Hide captions" : "Show captions (CC)"}
+              title={showCaptions ? "Hide captions (Alt+K)" : "Show captions CC (Alt+K)"}
               aria-label={showCaptions ? "Hide captions" : "Show captions"}
               style={{ width: 32, height: 32, borderRadius: 8, background: showCaptions ? "rgba(212,179,127,0.1)" : "transparent", border: `1px solid ${showCaptions ? "rgba(212,179,127,0.2)" : "transparent"}`, color: showCaptions ? c.gilt : c.stone, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s" }}
             >
@@ -1491,7 +1542,7 @@ export default function Interview() {
             </button>
             <button
               onClick={() => setShowTranscript(!showTranscript)}
-              title="Toggle transcript"
+              title="Toggle transcript (Alt+T)"
               aria-label="Toggle transcript"
               style={{ width: 32, height: 32, borderRadius: 8, background: showTranscript ? "rgba(212,179,127,0.1)" : "transparent", border: `1px solid ${showTranscript ? "rgba(212,179,127,0.2)" : "transparent"}`, color: showTranscript ? c.gilt : c.stone, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s" }}
             >
@@ -1932,11 +1983,17 @@ export default function Interview() {
 
         {/* Center: keyboard hint */}
         <div style={{ flex: 1, textAlign: "center" }}>
-          {phase === "listening" && (
+          {phase === "listening" ? (
             <span style={{ fontFamily: font.ui, fontSize: 10, color: c.stone, letterSpacing: "0.02em" }}>
               <kbd style={{ fontFamily: font.mono, fontSize: 9, padding: "1px 5px", borderRadius: 3, background: "rgba(245,242,237,0.04)", border: `1px solid ${c.border}`, color: c.chalk }}>Enter</kbd> to advance
+              <span style={{ margin: "0 6px", opacity: 0.3 }}>·</span>
+              <kbd style={{ fontFamily: font.mono, fontSize: 9, padding: "1px 5px", borderRadius: 3, background: "rgba(245,242,237,0.04)", border: `1px solid ${c.border}`, color: c.chalk }}>Alt</kbd>+<kbd style={{ fontFamily: font.mono, fontSize: 9, padding: "1px 5px", borderRadius: 3, background: "rgba(245,242,237,0.04)", border: `1px solid ${c.border}`, color: c.chalk }}>M</kbd> mute
             </span>
-          )}
+          ) : phase === "speaking" ? (
+            <span style={{ fontFamily: font.ui, fontSize: 10, color: c.stone, letterSpacing: "0.02em" }}>
+              <kbd style={{ fontFamily: font.mono, fontSize: 9, padding: "1px 5px", borderRadius: 3, background: "rgba(245,242,237,0.04)", border: `1px solid ${c.border}`, color: c.chalk }}>Enter</kbd> or <kbd style={{ fontFamily: font.mono, fontSize: 9, padding: "1px 5px", borderRadius: 3, background: "rgba(245,242,237,0.04)", border: `1px solid ${c.border}`, color: c.chalk }}>Space</kbd> to skip
+            </span>
+          ) : null}
         </div>
 
         {/* Right: End / View Feedback */}
