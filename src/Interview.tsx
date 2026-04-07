@@ -5,7 +5,7 @@ import { capture } from "./analytics";
 import { c, font } from "./tokens";
 import { useAuth } from "./AuthContext";
 import type { User } from "./AuthContext";
-import { speak, prefetchTTS } from "./tts";
+import { speak, prefetchTTS, cleanupTTS } from "./tts";
 import { saveSession, getAuthToken } from "./supabase";
 import { useToast } from "./Toast";
 
@@ -473,7 +473,7 @@ function LiveCaptions({ text, isTyping }: { text: string; isTyping: boolean }) {
   if (!isTyping && !displayText) return null;
 
   return (
-    <div style={{ width: "100%" }}>
+    <div style={{ width: "100%" }} aria-live="polite" aria-label="AI interviewer speaking">
       <p style={{
         fontFamily: font.ui, fontSize: 14, color: c.chalk,
         lineHeight: 1.75, margin: 0, minHeight: 22,
@@ -779,9 +779,20 @@ export default function Interview() {
 
   // AI Voice (Text-to-Speech)
   const [aiVoiceEnabled, setAiVoiceEnabled] = useState(true);
+  const [showCaptions, setShowCaptions] = useState(false);
   const ttsCancelRef = useRef<(() => void) | null>(null);
   const ttsInstanceIdRef = useRef(0);
   const interviewEndedRef = useRef(false);
+
+  // Cleanup TTS/WebSocket on tab close
+  useEffect(() => {
+    const handleUnload = () => {
+      cleanupTTS();
+      ttsCancelRef.current?.();
+    };
+    window.addEventListener("beforeunload", handleUnload);
+    return () => window.removeEventListener("beforeunload", handleUnload);
+  }, []);
 
   // Warn user before closing tab during active interview + auto-save draft
   useEffect(() => {
@@ -869,10 +880,16 @@ export default function Interview() {
           };
         })(recognition.onresult);
         recognition.onend = () => {
-          // Check interview ended FIRST to avoid race condition
           if (interviewEndedRef.current) return;
           if (!stopped) {
-            try { recognition.start(); } catch {}
+            try {
+              recognition.start();
+            } catch (e) {
+              console.warn("[speech] restart failed, enabling text fallback:", e);
+              setSpeechUnavailable(true);
+              setMicError("Speech recognition stopped unexpectedly. Type your answer below.");
+              setTimeout(() => textareaRef.current?.focus(), 100);
+            }
           }
         };
         try { recognition.start(); } catch (e) {
@@ -1153,12 +1170,14 @@ export default function Interview() {
     return () => window.removeEventListener("keydown", handler);
   }, [phase, handleNextQuestion, skipSpeaking]);
 
-  // Auto-scroll transcript
+  // Auto-scroll transcript (only if user is near bottom, not reading earlier messages)
   useEffect(() => {
-    if (transcriptRef.current) {
-      const lastChild = transcriptRef.current.lastElementChild;
-      if (lastChild) {
-        lastChild.scrollIntoView({ behavior: "smooth", block: "end" });
+    const el = transcriptRef.current;
+    if (el) {
+      const isNearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 120;
+      if (isNearBottom) {
+        const lastChild = el.lastElementChild;
+        if (lastChild) lastChild.scrollIntoView({ behavior: "smooth", block: "end" });
       }
     }
   }, [transcript]);
@@ -1279,19 +1298,24 @@ export default function Interview() {
       await new Promise(r => setTimeout(r, 2500));
     }
 
-    if (isMiniMode) {
-      navigate("/onboarding/complete", {
-        state: {
-          score,
-          aiFeedback,
-          skillScores,
-          sessionId,
-          type: interviewType,
-          duration: elapsed,
-        },
-      });
-    } else {
-      navigate(`/session/${sessionId}`);
+    try {
+      if (isMiniMode) {
+        navigate("/onboarding/complete", {
+          state: {
+            score,
+            aiFeedback,
+            skillScores,
+            sessionId,
+            type: interviewType,
+            duration: elapsed,
+          },
+        });
+      } else {
+        navigate(`/session/${sessionId}`);
+      }
+    } catch (navErr) {
+      console.warn("[interview] Navigation failed:", navErr);
+      toast("Session saved! Navigate to dashboard to view results.", "info");
     }
   }, [navigate, elapsed, interviewType, interviewDifficulty, interviewFocus, totalQuestions, user, updateUser, currentStep, interviewScript.length, transcript]);
 
@@ -1458,6 +1482,14 @@ export default function Interview() {
               )}
             </button>
             <button
+              onClick={() => setShowCaptions(!showCaptions)}
+              title={showCaptions ? "Hide captions" : "Show captions (CC)"}
+              aria-label={showCaptions ? "Hide captions" : "Show captions"}
+              style={{ width: 32, height: 32, borderRadius: 8, background: showCaptions ? "rgba(212,179,127,0.1)" : "transparent", border: `1px solid ${showCaptions ? "rgba(212,179,127,0.2)" : "transparent"}`, color: showCaptions ? c.gilt : c.stone, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s" }}
+            >
+              <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M7 15h4m-4-3h2m4 3h4m-4-3h2"/></svg>
+            </button>
+            <button
               onClick={() => setShowTranscript(!showTranscript)}
               title="Toggle transcript"
               aria-label="Toggle transcript"
@@ -1542,11 +1574,15 @@ export default function Interview() {
                 </p>
               )}
 
-              {/* Show LiveCaptions only while speaking, static text otherwise */}
+              {/* Show LiveCaptions while speaking, static text otherwise; CC forces text visible always */}
               {phase === "speaking" ? (
                 <LiveCaptions text={step?.aiText || ""} isTyping={true} />
-              ) : step?.aiText ? (
+              ) : (step?.aiText && (showCaptions || phase !== "listening")) ? (
                 <p style={{ fontFamily: font.ui, fontSize: 14, color: c.chalk, lineHeight: 1.75, margin: 0 }}>
+                  {step.aiText}
+                </p>
+              ) : showCaptions && step?.aiText ? (
+                <p style={{ fontFamily: font.ui, fontSize: 14, color: c.chalk, lineHeight: 1.75, margin: 0, opacity: 0.6, fontStyle: "italic" }}>
                   {step.aiText}
                 </p>
               ) : null}
@@ -1650,17 +1686,17 @@ export default function Interview() {
                   )}
                 </div>
 
-                {/* Answer time nudge */}
+                {/* Answer time nudge + 5-min warning */}
                 {answerTimer >= 120 && (
                   <div role="status" style={{
                     display: "flex", alignItems: "center", gap: 8,
                     padding: "6px 12px", borderRadius: 8, marginBottom: 12,
-                    background: answerTimer >= 180 ? "rgba(196,112,90,0.08)" : "rgba(212,179,127,0.06)",
-                    border: `1px solid ${answerTimer >= 180 ? "rgba(196,112,90,0.15)" : "rgba(212,179,127,0.12)"}`,
+                    background: answerTimer >= 270 ? "rgba(196,112,90,0.12)" : answerTimer >= 180 ? "rgba(196,112,90,0.08)" : "rgba(212,179,127,0.06)",
+                    border: `1px solid ${answerTimer >= 270 ? "rgba(196,112,90,0.25)" : answerTimer >= 180 ? "rgba(196,112,90,0.15)" : "rgba(212,179,127,0.12)"}`,
                   }}>
                     <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={answerTimer >= 180 ? c.ember : c.gilt} strokeWidth="1.5" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                    <span style={{ fontFamily: font.ui, fontSize: 11, color: answerTimer >= 240 ? c.ember : answerTimer >= 180 ? c.ember : c.gilt }}>
-                      {answerTimer >= 240 ? "1 minute remaining — start wrapping up" : answerTimer >= 180 ? "3+ min — wrap up with your key takeaway" : "2 min — consider landing your main point"}
+                    <span style={{ fontFamily: font.ui, fontSize: 11, color: answerTimer >= 270 ? c.ember : answerTimer >= 180 ? c.ember : c.gilt, fontWeight: answerTimer >= 270 ? 600 : 400 }}>
+                      {answerTimer >= 270 ? `Auto-advancing in ${300 - answerTimer}s — finish your answer` : answerTimer >= 240 ? "1 minute remaining — start wrapping up" : answerTimer >= 180 ? "3+ min — wrap up with your key takeaway" : "2 min — consider landing your main point"}
                     </span>
                   </div>
                 )}
@@ -1856,7 +1892,7 @@ export default function Interview() {
                       </span>
                       <span style={{ fontFamily: font.mono, fontSize: 9, color: c.stone }}>{msg.time}</span>
                     </div>
-                    <p style={{ fontFamily: font.ui, fontSize: 12, color: c.chalk, lineHeight: 1.55, margin: 0 }}>{msg.text}</p>
+                    <p style={{ fontFamily: font.ui, fontSize: 12, color: c.chalk, lineHeight: 1.55, margin: 0, wordBreak: "break-word", overflowWrap: "break-word" }}>{msg.text}</p>
                   </div>
                 </div>
               ))}
@@ -1908,6 +1944,7 @@ export default function Interview() {
           <button
             ref={endModalTriggerRef}
             onClick={() => phase === "done" ? handleEnd() : setShowEndModal(true)}
+            disabled={evaluating}
             aria-label={phase === "done" ? "View feedback" : "End interview"}
             style={{
               fontFamily: font.ui, fontSize: 11, fontWeight: 500,
@@ -2046,8 +2083,18 @@ export default function Interview() {
             </div>
           )}
           {evalTimedOut && (
-            <div style={{ marginTop: 16, padding: "10px 16px", borderRadius: 8, background: "rgba(196,112,90,0.06)", border: "1px solid rgba(196,112,90,0.15)", maxWidth: 400 }}>
+            <div style={{ marginTop: 16, padding: "10px 16px", borderRadius: 8, background: "rgba(196,112,90,0.06)", border: "1px solid rgba(196,112,90,0.15)", maxWidth: 400, display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
               <p style={{ fontFamily: font.ui, fontSize: 12, color: c.ember, margin: 0 }}>Evaluation timed out — using estimated score based on your session metrics.</p>
+              <button
+                onClick={() => { setEvalTimedOut(false); setEvaluating(false); interviewEndedRef.current = false; handleEnd(); }}
+                style={{
+                  fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: c.ivory,
+                  background: "rgba(212,179,127,0.1)", border: `1px solid rgba(212,179,127,0.2)`,
+                  borderRadius: 8, padding: "6px 16px", cursor: "pointer",
+                }}
+              >
+                Retry Evaluation
+              </button>
             </div>
           )}
           {saveWarning && (
