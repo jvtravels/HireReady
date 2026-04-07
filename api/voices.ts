@@ -8,10 +8,9 @@ import { corsHeaders, validateOrigin, withRequestId } from "./_shared";
 declare const process: { env: Record<string, string | undefined> };
 const CARTESIA_API_KEY = process.env.CARTESIA_API_KEY || "";
 
-let cachedVoices: { data: any; expiry: number } | null = null;
+const cache: Record<string, { data: any; expiry: number }> = {};
 
 export default async function handler(req: Request): Promise<Response> {
-  // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: withRequestId(corsHeaders(req)) });
   }
@@ -32,16 +31,22 @@ export default async function handler(req: Request): Promise<Response> {
     return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers });
   }
 
+  // Support ?language=en or ?language=en_IN
+  const url = new URL(req.url);
+  const language = url.searchParams.get("language") || "en";
+  const cacheKey = `voices_${language}`;
+
   // Return cached if fresh
-  if (cachedVoices && Date.now() < cachedVoices.expiry) {
-    return new Response(JSON.stringify(cachedVoices.data), {
+  if (cache[cacheKey] && Date.now() < cache[cacheKey].expiry) {
+    return new Response(JSON.stringify(cache[cacheKey].data), {
       status: 200,
       headers: { ...headers, "Content-Type": "application/json", "Cache-Control": "public, max-age=3600" },
     });
   }
 
   try {
-    const res = await fetch("https://api.cartesia.ai/voices", {
+    const apiUrl = `https://api.cartesia.ai/voices?language=${encodeURIComponent(language)}&limit=100`;
+    const res = await fetch(apiUrl, {
       headers: {
         "Cartesia-Version": "2026-03-01",
         "X-API-Key": CARTESIA_API_KEY,
@@ -49,23 +54,25 @@ export default async function handler(req: Request): Promise<Response> {
     });
 
     if (!res.ok) {
-      console.error("Cartesia voices error:", res.status);
+      const errText = await res.text().catch(() => "");
+      console.error("Cartesia voices error:", res.status, errText);
       return new Response(JSON.stringify({ error: "Failed to fetch voices" }), { status: 502, headers });
     }
 
-    const allVoices = await res.json();
+    const body = await res.json();
 
-    // Filter to English voices and map to slim format
-    const voices = (Array.isArray(allVoices) ? allVoices : []).filter(
-      (v: any) => v.language === "en"
-    ).map((v: any) => ({
+    // Cartesia returns { data: [...], has_more } for paginated, or flat array
+    const rawVoices = Array.isArray(body) ? body : (body.data || []);
+
+    const voices = rawVoices.map((v: any) => ({
       id: v.id,
       name: v.name,
       desc: v.description || "",
       gender: v.gender || "unknown",
+      language: v.language || language,
     }));
 
-    cachedVoices = { data: voices, expiry: Date.now() + 3600_000 };
+    cache[cacheKey] = { data: voices, expiry: Date.now() + 3600_000 };
 
     return new Response(JSON.stringify(voices), {
       status: 200,

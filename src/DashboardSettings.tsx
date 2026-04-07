@@ -89,9 +89,10 @@ export default function SettingsPage() {
   const [ttsSettings, setTtsSettings] = useState<TTSSettings>(loadTTSSettings);
   const [previewVoice, setPreviewVoice] = useState<string | null>(null);
   const [previewCancel, setPreviewCancel] = useState<{ cancel: () => void } | null>(null);
+  const [voiceAccent, setVoiceAccent] = useState<"en" | "en_IN">("en");
   const [cartesiaVoices, setCartesiaVoices] = useState<CartesiaVoice[]>(getCachedVoices);
 
-  useEffect(() => { fetchCartesiaVoices().then(setCartesiaVoices); }, []);
+  useEffect(() => { fetchCartesiaVoices(voiceAccent).then(setCartesiaVoices); }, [voiceAccent]);
 
   // Password
   const [resetSent, setResetSent] = useState(false);
@@ -412,6 +413,19 @@ export default function SettingsPage() {
         </div>
 
         {ttsSettings.provider === "cartesia" && (
+          <>
+          <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
+            {([
+              { id: "en" as const, label: "English (US)", desc: "American accent" },
+              { id: "en_IN" as const, label: "English (India)", desc: "Indian accent" },
+            ]).map(a => (
+              <button key={a.id} onClick={() => setVoiceAccent(a.id)}
+                style={{ ...chipBtn(voiceAccent === a.id), flex: 1 }}>
+                <span style={chipLabel(voiceAccent === a.id)}>{a.label}</span>
+                <span style={chipDesc}>{a.desc}</span>
+              </button>
+            ))}
+          </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }} className="settings-form-grid">
             {cartesiaVoices.map(v => {
               const sel = ttsSettings.voiceId === v.id;
@@ -444,6 +458,7 @@ export default function SettingsPage() {
               );
             })}
           </div>
+          </>
         )}
 
         {ttsSettings.provider === "browser" && (

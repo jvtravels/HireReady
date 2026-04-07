@@ -25,26 +25,26 @@ export const CARTESIA_VOICES: CartesiaVoice[] = [
 ];
 
 /* Dynamically loaded voices from /api/voices */
-let _dynamicVoices: CartesiaVoice[] | null = null;
-let _voicesFetchPromise: Promise<CartesiaVoice[]> | null = null;
+const _voiceCache: Record<string, CartesiaVoice[]> = {};
+const _fetchPromises: Record<string, Promise<CartesiaVoice[]>> = {};
 
-export function fetchCartesiaVoices(): Promise<CartesiaVoice[]> {
-  if (_dynamicVoices) return Promise.resolve(_dynamicVoices);
-  if (_voicesFetchPromise) return _voicesFetchPromise;
+export function fetchCartesiaVoices(language = "en"): Promise<CartesiaVoice[]> {
+  if (_voiceCache[language]) return Promise.resolve(_voiceCache[language]);
+  if (_fetchPromises[language]) return _fetchPromises[language];
 
-  _voicesFetchPromise = fetch("/api/voices")
+  _fetchPromises[language] = fetch(`/api/voices?language=${encodeURIComponent(language)}`)
     .then(res => res.ok ? res.json() : [])
     .then((voices: CartesiaVoice[]) => {
-      if (voices.length > 0) _dynamicVoices = voices;
-      return _dynamicVoices || CARTESIA_VOICES;
+      if (voices.length > 0) _voiceCache[language] = voices;
+      return _voiceCache[language] || CARTESIA_VOICES;
     })
     .catch(() => CARTESIA_VOICES);
 
-  return _voicesFetchPromise;
+  return _fetchPromises[language];
 }
 
-export function getCachedVoices(): CartesiaVoice[] {
-  return _dynamicVoices || CARTESIA_VOICES;
+export function getCachedVoices(language = "en"): CartesiaVoice[] {
+  return _voiceCache[language] || CARTESIA_VOICES;
 }
 
 const DEFAULT_SETTINGS: TTSSettings = {
