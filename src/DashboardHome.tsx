@@ -135,6 +135,19 @@ export default function DashboardHome() {
   const searchInputRef = useRef<HTMLInputElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Draft detection — must be before any early returns (Rules of Hooks)
+  const draftKey = `hirloop_interview_draft_${user?.id || "anon"}`;
+  const [hasDraft, setHasDraft] = useState<{ type: string; savedAt: number } | null>(() => {
+    try {
+      const raw = localStorage.getItem(draftKey);
+      if (!raw) return null;
+      const d = JSON.parse(raw);
+      if (d && d.savedAt && Date.now() - d.savedAt < 86400000) return { type: d.interviewType || "behavioral", savedAt: d.savedAt };
+    } catch {}
+    return null;
+  });
+  const [, setDraftTick] = useState(0);
+
   const handleSearch = (val: string) => {
     setSearchQuery(val);
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -164,6 +177,13 @@ export default function DashboardHome() {
     document.addEventListener("keydown", handleKey);
     return () => document.removeEventListener("keydown", handleKey);
   }, [handleStartSession]);
+
+  // Refresh draft relative time every 60s
+  useEffect(() => {
+    if (!hasDraft) return;
+    const timer = setInterval(() => setDraftTick(t => t + 1), 60000);
+    return () => clearInterval(timer);
+  }, [!!hasDraft]);
 
   // useMemo must be called before any early returns to satisfy Rules of Hooks
   const filteredSessions = useMemo(() => recentSessions
@@ -202,26 +222,7 @@ export default function DashboardHome() {
   const activeNotifs = notifications.filter(n => !persisted.dismissedNotifs.includes(n.id));
   const latestBadge = badges.filter(b => b.earned).slice(-1)[0] || null;
 
-  // Check for interrupted interview draft
-  const draftKey = `hirloop_interview_draft_${user?.id || "anon"}`;
-  const [hasDraft, setHasDraft] = useState<{ type: string; savedAt: number } | null>(() => {
-    try {
-      const raw = localStorage.getItem(draftKey);
-      if (!raw) return null;
-      const d = JSON.parse(raw);
-      // Only show if draft is less than 24 hours old
-      if (d && d.savedAt && Date.now() - d.savedAt < 86400000) return { type: d.interviewType || "behavioral", savedAt: d.savedAt };
-    } catch {}
-    return null;
-  });
   const dismissDraft = () => { setHasDraft(null); try { localStorage.removeItem(draftKey); } catch {} };
-  // Refresh draft relative time every 60s
-  const [, setDraftTick] = useState(0);
-  useEffect(() => {
-    if (!hasDraft) return;
-    const timer = setInterval(() => setDraftTick(t => t + 1), 60000);
-    return () => clearInterval(timer);
-  }, [!!hasDraft]);
 
   return (
     <div style={{ margin: "0 auto", lineHeight: 1.5 }} className="dash-card">
