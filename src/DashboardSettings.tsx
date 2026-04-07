@@ -3,7 +3,7 @@ import { c, font } from "./tokens";
 import { useAuth } from "./AuthContext";
 import { useDocTitle } from "./useDocTitle";
 import { authHeaders, supabaseConfigured, getSupabase } from "./supabase";
-import { loadTTSSettings, saveTTSSettings, CARTESIA_VOICES, speak, type TTSSettings } from "./tts";
+import { loadTTSSettings, saveTTSSettings, fetchCartesiaVoices, getCachedVoices, speak, type TTSSettings, type CartesiaVoice } from "./tts";
 import type { PersistedState } from "./dashboardTypes";
 import { useDashboard } from "./DashboardContext";
 import { DataLoadingSkeleton } from "./dashboardComponents";
@@ -89,6 +89,9 @@ export default function SettingsPage() {
   const [ttsSettings, setTtsSettings] = useState<TTSSettings>(loadTTSSettings);
   const [previewVoice, setPreviewVoice] = useState<string | null>(null);
   const [previewCancel, setPreviewCancel] = useState<{ cancel: () => void } | null>(null);
+  const [cartesiaVoices, setCartesiaVoices] = useState<CartesiaVoice[]>(getCachedVoices);
+
+  useEffect(() => { fetchCartesiaVoices().then(setCartesiaVoices); }, []);
 
   // Password
   const [resetSent, setResetSent] = useState(false);
@@ -410,7 +413,7 @@ export default function SettingsPage() {
 
         {ttsSettings.provider === "cartesia" && (
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }} className="settings-form-grid">
-            {CARTESIA_VOICES.map(v => {
+            {cartesiaVoices.map(v => {
               const sel = ttsSettings.voiceId === v.id;
               const playing = previewVoice === v.id;
               return (

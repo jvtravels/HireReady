@@ -9,21 +9,48 @@ export interface TTSSettings {
   voiceName: string;
 }
 
-export const CARTESIA_VOICES = [
-  { id: "79a125e8-cd45-4c13-8a67-188112f4dd22", name: "Aria", desc: "Warm, professional female — great for interviews", gender: "female" },
-  { id: "b7d50908-b17c-442d-ad8d-810c63997ed9", name: "Claire", desc: "Calm, composed female", gender: "female" },
-  { id: "a0e99841-438c-4a64-b679-ae501e7d6091", name: "Harper", desc: "Friendly, clear female", gender: "female" },
-  { id: "694f9389-aac1-45b6-b726-9d9369183238", name: "Evelyn", desc: "Soft, approachable female", gender: "female" },
-  { id: "ee7ea9f8-c0c1-498c-9f62-dc2da49a6f98", name: "James", desc: "Clear, neutral male — natural interviewer", gender: "male" },
-  { id: "fb26447f-308b-471e-8b00-4ef9e4c4ebe6", name: "Marcus", desc: "Deep, authoritative male", gender: "male" },
-  { id: "63ff761f-c1e8-414b-b969-a1cb9a4e1313", name: "Nathan", desc: "Conversational, warm male", gender: "male" },
-  { id: "820a3788-2b37-46b6-9571-9d2054466c5b", name: "Oliver", desc: "Professional, measured male", gender: "male" },
+export interface CartesiaVoice {
+  id: string;
+  name: string;
+  desc: string;
+  gender: string;
+}
+
+/* Default voice — confirmed working Cartesia voice */
+const DEFAULT_VOICE_ID = "e07c00bc-4134-4eae-9ea4-1a55fb45746b";
+
+/* Fallback voice list (used until dynamic fetch completes) */
+export const CARTESIA_VOICES: CartesiaVoice[] = [
+  { id: DEFAULT_VOICE_ID, name: "Default", desc: "Professional, clear voice", gender: "female" },
 ];
+
+/* Dynamically loaded voices from /api/voices */
+let _dynamicVoices: CartesiaVoice[] | null = null;
+let _voicesFetchPromise: Promise<CartesiaVoice[]> | null = null;
+
+export function fetchCartesiaVoices(): Promise<CartesiaVoice[]> {
+  if (_dynamicVoices) return Promise.resolve(_dynamicVoices);
+  if (_voicesFetchPromise) return _voicesFetchPromise;
+
+  _voicesFetchPromise = fetch("/api/voices")
+    .then(res => res.ok ? res.json() : [])
+    .then((voices: CartesiaVoice[]) => {
+      if (voices.length > 0) _dynamicVoices = voices;
+      return _dynamicVoices || CARTESIA_VOICES;
+    })
+    .catch(() => CARTESIA_VOICES);
+
+  return _voicesFetchPromise;
+}
+
+export function getCachedVoices(): CartesiaVoice[] {
+  return _dynamicVoices || CARTESIA_VOICES;
+}
 
 const DEFAULT_SETTINGS: TTSSettings = {
   provider: "cartesia",
-  voiceId: "79a125e8-cd45-4c13-8a67-188112f4dd22", // Aria
-  voiceName: "Aria",
+  voiceId: DEFAULT_VOICE_ID,
+  voiceName: "Default",
 };
 
 export function loadTTSSettings(): TTSSettings {

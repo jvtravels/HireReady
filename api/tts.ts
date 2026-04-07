@@ -8,17 +8,6 @@ import { handleCorsPreflightOrMethod, corsHeaders, isRateLimited, getClientIp, r
 declare const process: { env: Record<string, string | undefined> };
 const CARTESIA_API_KEY = process.env.CARTESIA_API_KEY || "";
 
-const ALLOWED_VOICES = [
-  "79a125e8-cd45-4c13-8a67-188112f4dd22",
-  "b7d50908-b17c-442d-ad8d-810c63997ed9",
-  "a0e99841-438c-4a64-b679-ae501e7d6091",
-  "694f9389-aac1-45b6-b726-9d9369183238",
-  "ee7ea9f8-c0c1-498c-9f62-dc2da49a6f98",
-  "fb26447f-308b-471e-8b00-4ef9e4c4ebe6",
-  "63ff761f-c1e8-414b-b969-a1cb9a4e1313",
-  "820a3788-2b37-46b6-9571-9d2054466c5b",
-];
-
 export default async function handler(req: Request): Promise<Response> {
   const earlyResponse = handleCorsPreflightOrMethod(req);
   if (earlyResponse) return earlyResponse;
@@ -59,27 +48,29 @@ export default async function handler(req: Request): Promise<Response> {
       return new Response(JSON.stringify({ error: "Text is empty" }), { status: 400, headers });
     }
 
-    const voice = (typeof voiceId === "string" && ALLOWED_VOICES.includes(voiceId))
-      ? voiceId : ALLOWED_VOICES[0];
+    // Accept any valid UUID voice ID — Cartesia validates on their end
+    const voice = (typeof voiceId === "string" && voiceId.length > 0)
+      ? voiceId : "e07c00bc-4134-4eae-9ea4-1a55fb45746b";
 
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 15_000);
     const res = await fetch("https://api.cartesia.ai/tts/bytes", {
       method: "POST",
       headers: {
-        "Cartesia-Version": "2024-06-10",
+        "Cartesia-Version": "2026-03-01",
         "X-API-Key": CARTESIA_API_KEY,
         "Content-Type": "application/json",
       },
       signal: controller.signal,
       body: JSON.stringify({
-        model_id: "sonic-2",
+        model_id: "sonic-3",
         transcript: trimmedText,
         voice: { mode: "id", id: voice },
+        language: "en",
         output_format: {
           container: "mp3",
-          bit_rate: 128000,
           sample_rate: 44100,
+          bit_rate: 128000,
         },
       }),
     });
