@@ -418,6 +418,9 @@ export function getDailyChallenge(sessions: DashboardSession[], sk: SkillData[])
     { label: "Strategic Vision", description: "Work on strategic thinking and roadmap questions", type: "strategic", difficulty: "standard" },
     { label: "Weak Spot", description: weakest ? `Focus on your weakest area: ${weakest.name}` : "Practice your weakest skill area", type: "behavioral", focus: weakest?.name.toLowerCase().replace(/\s+/g, "-"), difficulty: "standard" },
     { label: "Full Mock", description: "Simulate a real interview at intense difficulty", type: "behavioral", difficulty: "intense" },
+    { label: "Campus Ready", description: "Practice a campus placement interview — nail your intro and project walkthrough", type: "campus-placement", difficulty: "standard" },
+    { label: "HR Essentials", description: "Sharpen your strengths, weaknesses, and 'why hire you' pitch", type: "hr-round", difficulty: "standard" },
+    { label: "Lead the Team", description: "Practice management scenarios — delegation, conflict, and change", type: "management", difficulty: "standard" },
   ];
 
   const challenge = challenges[dayOfWeek % challenges.length];

@@ -30,6 +30,9 @@ function normalizeType(type: string): string {
     behavioral: "Behavioral", strategic: "Strategic",
     "technical-leadership": "Technical Leadership", "case-study": "Case Study",
     technical: "Technical", case: "Case Study",
+    "campus-placement": "Campus Placement", "hr-round": "HR Round",
+    management: "Management", "government-psu": "Government & PSU",
+    teaching: "Teaching",
   };
   return map[type] || type;
 }
@@ -622,7 +625,9 @@ export default function SessionDetail() {
           const weakest = session.skill_scores
             ? Object.entries(session.skill_scores).map(([k, v]) => [k, typeof v === "object" && v !== null && "score" in (v as any) ? (v as any).score : v] as [string, number]).sort(([,a], [,b]) => a - b)[0]
             : null;
-          const nextType = session.type === "behavioral" ? "case-study" : session.type === "case-study" ? "technical" : "behavioral";
+          const typeRotation = ["behavioral", "case-study", "technical", "strategic", "campus-placement", "hr-round", "management", "government-psu", "teaching"];
+          const currentIdx = typeRotation.indexOf(session.type);
+          const nextType = typeRotation[(currentIdx + 1) % typeRotation.length] || "behavioral";
           const nextDifficulty = session.score >= 85 ? "intense" : session.score < 70 ? "warmup" : "standard";
           return (
             <div style={{ background: `linear-gradient(135deg, rgba(212,179,127,0.06) 0%, ${c.graphite} 100%)`, borderRadius: 14, border: `1px solid rgba(212,179,127,0.12)`, padding: "24px 32px", marginBottom: 20 }}>

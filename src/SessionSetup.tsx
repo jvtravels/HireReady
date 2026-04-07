@@ -95,6 +95,101 @@ const interviewTypes = [
       "A competitor launched a feature in 2 months; your team estimates 6. The CEO wants it in 3. How do you handle this?",
     ],
   },
+  {
+    id: "campus-placement",
+    label: "Campus Placement",
+    description: "HR questions, project discussions, and aptitude for on-campus drives and fresher interviews",
+    icon: (
+      <svg aria-hidden="true" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+        <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
+        <path d="M6 12v5c0 1.66 2.69 3 6 3s6-1.34 6-3v-5" />
+      </svg>
+    ),
+    duration: "15–20 min",
+    questions: "4–5 questions",
+    color: "#6B8AFF",
+    sampleQuestions: [
+      "Tell me about yourself — your academic background and what you're looking for in your first role.",
+      "Walk me through a college project you're most proud of.",
+    ],
+  },
+  {
+    id: "hr-round",
+    label: "HR Round",
+    description: "Personality, cultural fit, strengths & weaknesses — the classic HR interview",
+    icon: (
+      <svg aria-hidden="true" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+        <circle cx="12" cy="7" r="4" />
+      </svg>
+    ),
+    duration: "15–20 min",
+    questions: "4–5 questions",
+    color: "#E89B5A",
+    sampleQuestions: [
+      "What are your greatest strengths and weaknesses?",
+      "Why should we hire you over other candidates?",
+    ],
+  },
+  {
+    id: "management",
+    label: "Management",
+    description: "Leadership style, team management, and cross-functional coordination for manager roles",
+    icon: (
+      <svg aria-hidden="true" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+        <circle cx="9" cy="7" r="4" />
+        <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+        <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+      </svg>
+    ),
+    duration: "20–25 min",
+    questions: "4–5 questions",
+    color: "#B388FF",
+    sampleQuestions: [
+      "How do you handle underperformance on your team?",
+      "Tell me about a cross-functional initiative you led.",
+    ],
+  },
+  {
+    id: "government-psu",
+    label: "Government & PSU",
+    description: "Public administration, ethics, current affairs, and policy — for SSC, Banking, PSU, and civil services",
+    icon: (
+      <svg aria-hidden="true" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+        <path d="M3 21h18" />
+        <path d="M5 21V7l7-4 7 4v14" />
+        <path d="M9 21v-6h6v6" />
+        <line x1="9" y1="10" x2="9" y2="10.01" />
+        <line x1="15" y1="10" x2="15" y2="10.01" />
+      </svg>
+    ),
+    duration: "20–25 min",
+    questions: "4–5 questions",
+    color: "#4DB6AC",
+    sampleQuestions: [
+      "Why do you want to work in the public sector over a private career?",
+      "How would you balance economic growth with environmental sustainability?",
+    ],
+  },
+  {
+    id: "teaching",
+    label: "Teaching",
+    description: "Pedagogy, classroom management, and subject knowledge for PGT, TGT, KVS, and college positions",
+    icon: (
+      <svg aria-hidden="true" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+        <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
+        <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
+      </svg>
+    ),
+    duration: "15–20 min",
+    questions: "4–5 questions",
+    color: "#FF8A80",
+    sampleQuestions: [
+      "What is your teaching philosophy? How do you ensure every student is engaged?",
+      "How would you handle a group of consistently disruptive students?",
+    ],
+  },
 ];
 
 /* ─── Focus Areas ─── */
@@ -275,6 +370,11 @@ export default function SessionSetup() {
     strategic: "Welcome to your strategic interview session. Today we'll explore your vision-setting ability, roadmap thinking, and business alignment. Let's dive in — are you ready?",
     technical: "Welcome to your technical leadership interview. We'll focus on architecture decisions, system design at scale, and tech strategy. Ready to begin?",
     "case-study": "Welcome to your case study interview. I'll present you with business scenarios that test your analytical thinking and problem-solving frameworks. Let's start.",
+    "campus-placement": "Hi! Welcome to your campus placement mock interview. I'll be your interviewer today. We'll cover a mix of HR questions, problem-solving, and questions about your academic projects. This is designed to feel like a real on-campus interview. Ready to begin?",
+    "hr-round": "Welcome to your HR round practice session. This round focuses on your personality, cultural fit, and soft skills. I'll ask questions that real HR managers ask. Let's get started — are you ready?",
+    management: "Welcome to your management interview session. We'll explore your leadership style, team management approach, and how you drive results through others. Ready?",
+    "government-psu": "Welcome to your government and public sector interview practice. These interviews test your awareness of public administration, ethics, current affairs, and your motivation for public service. Let's begin — are you ready?",
+    teaching: "Welcome to your teaching position interview practice. We'll cover pedagogy, classroom management, and subject knowledge. Let's start — ready?",
   };
 
   // Launch interview with countdown

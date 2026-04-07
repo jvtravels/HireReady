@@ -58,7 +58,7 @@ export interface PersistedState {
   weeklyDigest?: boolean;
 }
 
-export const sessionTypes = ["All", "Behavioral", "Strategic", "Technical Leadership", "Case Study"];
+export const sessionTypes = ["All", "Behavioral", "Strategic", "Technical Leadership", "Case Study", "Campus Placement", "HR Round", "Management", "Government & PSU", "Teaching"];
 
 export function scoreLabel(score: number) {
   if (score >= 85) return "Strong";

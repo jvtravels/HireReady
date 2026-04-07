@@ -83,13 +83,17 @@ export default async function handler(req: Request): Promise<Response> {
       : "";
 
     // Role-specific skill weighting guidance
-    const skillWeighting = interviewType === "technical"
-      ? "For this technical interview, weight technicalDepth and problemSolving highest. Communication and structure are secondary."
-      : interviewType === "behavioral"
-      ? "For this behavioral interview, weight communication, structure, and leadership highest. Technical depth is secondary."
-      : interviewType === "strategic"
-      ? "For this strategic interview, weight leadership, problemSolving, and communication highest."
-      : "Weight all skills equally for this case study interview.";
+    const skillWeightingMap: Record<string, string> = {
+      technical: "For this technical interview, weight technicalDepth and problemSolving highest. Communication and structure are secondary.",
+      behavioral: "For this behavioral interview, weight communication, structure, and leadership highest. Technical depth is secondary.",
+      strategic: "For this strategic interview, weight leadership, problemSolving, and communication highest.",
+      "campus-placement": "For this campus placement interview, weight communication, confidence, and clarity highest. Assess project knowledge and career awareness. Technical depth expectations are entry-level.",
+      "hr-round": "For this HR round, weight communication, self-awareness, cultural fit, and motivation highest. Technical depth is not expected.",
+      management: "For this management interview, weight leadership, people management, stakeholder alignment, and strategic thinking highest.",
+      "government-psu": "For this government/public sector interview, weight current affairs knowledge, ethical reasoning, communication, and policy awareness highest. Technical depth is secondary.",
+      teaching: "For this teaching interview, weight pedagogy, classroom management, communication clarity, and student-centered thinking highest.",
+    };
+    const skillWeighting = skillWeightingMap[interviewType] || "Weight all skills equally for this case study interview.";
 
     const prompt = `You are an expert interview coach evaluating a mock ${interviewType} interview for a ${interviewRole} candidate.${company ? ` Company: ${sanitizeForLLM(company, 100)}.` : ""} Difficulty: ${sanitizeForLLM(difficulty, 20) || "standard"}.
 ${questionsContext}

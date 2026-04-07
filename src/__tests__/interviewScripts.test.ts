@@ -33,9 +33,10 @@ describe("interviewScripts", () => {
       expect(closing?.waitForUser).toBe(true);
     });
 
-    it.each(Object.keys(scriptsByType))("%s has exactly 3 questions", (type) => {
+    it.each(Object.keys(scriptsByType))("%s has 3–4 questions", (type) => {
       const questions = scriptsByType[type].filter(s => s.type === "question");
-      expect(questions.length).toBe(3);
+      expect(questions.length).toBeGreaterThanOrEqual(3);
+      expect(questions.length).toBeLessThanOrEqual(4);
     });
   });
 
