@@ -170,15 +170,24 @@ function LiveCaptions({ text, isTyping, speakingDuration }: { text: string; isTy
 /* ─── User Webcam Feed (simulated) ─── */
 function UserWebcam({ isMuted, isCameraOff }: { isMuted: boolean; isCameraOff: boolean }) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
   const [hasCamera, setHasCamera] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
 
+  // Stop all camera tracks helper
+  const stopStream = useCallback(() => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(t => t.stop());
+      streamRef.current = null;
+    }
+    if (videoRef.current?.srcObject) {
+      videoRef.current.srcObject = null;
+    }
+  }, []);
+
   useEffect(() => {
     if (isCameraOff) {
-      if (videoRef.current?.srcObject) {
-        (videoRef.current.srcObject as MediaStream).getTracks().forEach(t => t.stop());
-        videoRef.current.srcObject = null;
-      }
+      stopStream();
       setHasCamera(false);
       setCameraError(null);
       return;
@@ -186,9 +195,13 @@ function UserWebcam({ isMuted, isCameraOff }: { isMuted: boolean; isCameraOff: b
     navigator.mediaDevices.getUserMedia({ video: true, audio: false })
       .then(stream => {
         if (videoRef.current) {
+          streamRef.current = stream;
           videoRef.current.srcObject = stream;
           setHasCamera(true);
           setCameraError(null);
+        } else {
+          // Component unmounted before stream arrived — stop immediately
+          stream.getTracks().forEach(t => t.stop());
         }
       })
       .catch((err) => {
@@ -198,12 +211,13 @@ function UserWebcam({ isMuted, isCameraOff }: { isMuted: boolean; isCameraOff: b
         else setCameraError("Camera unavailable.");
       });
 
-    return () => {
-      if (videoRef.current?.srcObject) {
-        (videoRef.current.srcObject as MediaStream).getTracks().forEach(t => t.stop());
-      }
-    };
-  }, [isCameraOff]);
+    return () => { stopStream(); };
+  }, [isCameraOff, stopStream]);
+
+  // Ensure camera stops on unmount regardless of isCameraOff state
+  useEffect(() => {
+    return () => { stopStream(); };
+  }, [stopStream]);
 
   return (
     <div style={{
