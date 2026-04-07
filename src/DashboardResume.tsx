@@ -61,7 +61,8 @@ export default function DashboardResume() {
             }
             setPhase("done");
           })
-          .catch(() => setPhase("done"));
+          .catch(() => setPhase("done"))
+          .finally(() => { analyzingRef.current = false; });
       } else if (stored.name || stored.skills) {
         const parsed = stored as any;
         const fallback: ResumeProfile = {
@@ -92,7 +93,8 @@ export default function DashboardResume() {
           }
           setPhase("done");
         })
-        .catch(() => setPhase("done"));
+        .catch(() => setPhase("done"))
+        .finally(() => { analyzingRef.current = false; });
     } else if (user?.resumeFileName) {
       // Resume filename exists but no text/analysis — mark done but show re-upload prompt
       setPhase("done");
@@ -150,8 +152,8 @@ export default function DashboardResume() {
         headline: parsed.name || "Resume uploaded",
         summary: parsed.summary || "Your resume has been uploaded and will be used to personalize your interview questions.",
         yearsExperience: null, seniorityLevel: "",
-        topSkills: parsed.skills.slice(0, 8),
-        keyAchievements: parsed.experience.flatMap(e => e.bullets).slice(0, 5),
+        topSkills: (parsed.skills || []).slice(0, 8),
+        keyAchievements: (parsed.experience || []).flatMap((e: any) => e.bullets || []).slice(0, 5),
         industries: [], interviewStrengths: [], interviewGaps: [], careerTrajectory: "",
       };
       setProfile(fallback);

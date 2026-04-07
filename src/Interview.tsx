@@ -54,7 +54,7 @@ function createSpeechRecognition(): SpeechRecognitionInstance | null {
 }
 
 /* ─── Waveform Visualizer ─── */
-function WaveformVisualizer({ active, color, barCount = (typeof window !== "undefined" && window.innerWidth < 480 ? 12 : 24) }: { active: boolean; color: string; barCount?: number }) {
+const WaveformVisualizer = React.memo(function WaveformVisualizer({ active, color, barCount = (typeof window !== "undefined" && window.innerWidth < 480 ? 12 : 24) }: { active: boolean; color: string; barCount?: number }) {
   const [bars, setBars] = useState<number[]>(Array(barCount).fill(0.1));
   const frameRef = useRef<number>(0);
 
@@ -82,10 +82,10 @@ function WaveformVisualizer({ active, color, barCount = (typeof window !== "unde
       ))}
     </div>
   );
-}
+});
 
 /* ─── AI Avatar with Speaking Animation ─── */
-function AIAvatar({ isSpeaking, isThinking }: { isSpeaking: boolean; isThinking: boolean }) {
+const AIAvatar = React.memo(function AIAvatar({ isSpeaking, isThinking }: { isSpeaking: boolean; isThinking: boolean }) {
   return (
     <div style={{ position: "relative", width: 56, height: 56 }}>
       {/* Subtle pulse ring when speaking */}
@@ -124,10 +124,10 @@ function AIAvatar({ isSpeaking, isThinking }: { isSpeaking: boolean; isThinking:
       </div>
     </div>
   );
-}
+});
 
 /* ─── Live Captions (synced to ~150 wpm speaking rate) ─── */
-function LiveCaptions({ text, isTyping, speakingDuration }: { text: string; isTyping: boolean; speakingDuration?: number }) {
+const LiveCaptions = React.memo(function LiveCaptions({ text, isTyping, speakingDuration }: { text: string; isTyping: boolean; speakingDuration?: number }) {
   const [displayText, setDisplayText] = useState("");
   const [charIndex, setCharIndex] = useState(0);
 
@@ -153,7 +153,7 @@ function LiveCaptions({ text, isTyping, speakingDuration }: { text: string; isTy
   if (!isTyping && !displayText) return null;
 
   return (
-    <div style={{ width: "100%" }} aria-live="polite" aria-label="AI interviewer speaking">
+    <div style={{ width: "100%" }} aria-live="off" aria-label="AI interviewer speaking">
       <p style={{
         fontFamily: font.ui, fontSize: 14, color: c.chalk,
         lineHeight: 1.75, margin: 0, minHeight: 22,
@@ -165,10 +165,10 @@ function LiveCaptions({ text, isTyping, speakingDuration }: { text: string; isTy
       </p>
     </div>
   );
-}
+});
 
 /* ─── User Webcam Feed (simulated) ─── */
-function UserWebcam({ isMuted, isCameraOff }: { isMuted: boolean; isCameraOff: boolean }) {
+const UserWebcam = React.memo(function UserWebcam({ isMuted, isCameraOff }: { isMuted: boolean; isCameraOff: boolean }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const [hasCamera, setHasCamera] = useState(false);
@@ -278,7 +278,7 @@ function UserWebcam({ isMuted, isCameraOff }: { isMuted: boolean; isCameraOff: b
       </div>
     </div>
   );
-}
+});
 
 /* ─── Timer ─── */
 function formatTime(seconds: number) {
@@ -288,7 +288,7 @@ function formatTime(seconds: number) {
 }
 
 /* ─── Control Button ─── */
-function ControlButton({ icon, label, active, danger, onClick }: {
+const ControlButton = React.memo(function ControlButton({ icon, label, active, danger, onClick }: {
   icon: React.ReactNode; label: string; active?: boolean; danger?: boolean; onClick: () => void;
 }) {
   return (
@@ -319,7 +319,7 @@ function ControlButton({ icon, label, active, danger, onClick }: {
       {icon}
     </button>
   );
-}
+});
 
 /* ═══════════════════════════════════════════════
    INTERVIEW SCREEN

@@ -532,8 +532,12 @@ let _activeCancel: (() => void) | null = null;
 export function cleanupTTS() {
   _activeCancel?.();
   _activeCancel = null;
-  // Close persistent WebSocket
+  // Close persistent WebSocket and remove listeners
   if (_persistentWs) {
+    if (_wsMessageHandler) {
+      _persistentWs.removeEventListener("message", _wsMessageHandler);
+      _wsMessageHandler = null;
+    }
     try { _persistentWs.close(); } catch {}
     _persistentWs = null;
     _persistentWsReady = false;
