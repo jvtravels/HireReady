@@ -89,56 +89,50 @@ async function speakWithProxy(
   const settle = (cb: () => void) => { if (!settled) { settled = true; cb(); } };
 
   try {
+    console.log("[TTS] starting fetch...");
     const { authHeaders } = await import("./supabase");
+    console.log("[TTS] got supabase module");
     const headers = await authHeaders();
+    console.log("[TTS] got auth headers");
+
     const res = await fetch("/api/tts", {
       method: "POST",
       headers,
       body: JSON.stringify({ text, voiceId }),
       signal: controller.signal,
     });
+    console.log("[TTS] fetch done, status:", res.status);
 
     if (!res.ok) {
-      console.warn("[TTS] proxy error:", res.status);
       settle(onError);
       return { cancel: () => {} };
     }
 
-    const arrayBuffer = await res.arrayBuffer();
-    console.log("[TTS] received", arrayBuffer.byteLength, "bytes");
+    const blob = await res.blob();
+    console.log("[TTS] blob ready, size:", blob.size, "type:", blob.type);
 
-    const audioBlob = new Blob([arrayBuffer], { type: "audio/mpeg" });
-    const url = URL.createObjectURL(audioBlob);
-    const revokeUrl = () => { try { URL.revokeObjectURL(url); } catch {} };
-
+    const url = URL.createObjectURL(blob);
     audio = new Audio(url);
 
-    // Wait for audio to be ready before playing
-    await new Promise<void>((resolve, reject) => {
-      audio!.oncanplaythrough = () => resolve();
-      audio!.onerror = () => reject(new Error("Audio decode error"));
-      // Safety: resolve after 3s even if canplaythrough never fires
-      setTimeout(resolve, 3000);
-    });
-
-    audio.onended = () => { console.log("[TTS] audio ended"); revokeUrl(); settle(onEnd); };
-    audio.onerror = () => { console.warn("[TTS] audio element error"); revokeUrl(); settle(onError); };
-
-    try {
-      await audio.play();
-      console.log("[TTS] audio playing");
-    } catch (e) {
-      console.warn("[TTS] play() rejected:", e);
-      revokeUrl();
+    audio.onended = () => {
+      console.log("[TTS] playback ended");
+      URL.revokeObjectURL(url);
+      settle(onEnd);
+    };
+    audio.onerror = () => {
+      console.warn("[TTS] audio element error");
+      URL.revokeObjectURL(url);
       settle(onError);
-      return { cancel: () => {} };
-    }
+    };
+
+    await audio.play();
+    console.log("[TTS] playing");
   } catch (err: any) {
     if (err.name === "AbortError") {
-      // Cancelled — don't fire callbacks
+      console.log("[TTS] aborted");
       return { cancel: () => {} };
     }
-    console.warn("[TTS] proxy failed:", err);
+    console.warn("[TTS] error:", err?.message || err);
     settle(onError);
     return { cancel: () => {} };
   }
@@ -147,12 +141,11 @@ async function speakWithProxy(
   return {
     cancel: () => {
       controller.abort();
-      settled = true; // prevent callbacks after cancel
+      settled = true;
       if (capturedAudio) {
         capturedAudio.pause();
         capturedAudio.onended = null;
         capturedAudio.onerror = null;
-        capturedAudio.src = "";
       }
     },
   };
