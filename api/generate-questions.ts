@@ -89,7 +89,7 @@ Make questions specific to the role, company, and industry. If resume text is pr
 
 Respond with ONLY the JSON array, no markdown or explanation.`;
 
-    const result = await callLLM({ prompt, temperature: 0.7, maxTokens: 2000, jsonMode: true }, 15000);
+    const result = await callLLM({ prompt, temperature: 0.7, maxTokens: 2000, jsonMode: true, fast: true }, 12000);
     const parsed = extractJSON(result.text);
     if (!parsed) {
       return new Response(JSON.stringify({ error: "Failed to parse questions" }), { status: 500, headers });

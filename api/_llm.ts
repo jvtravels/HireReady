@@ -10,6 +10,7 @@ interface LLMOptions {
   temperature?: number;
   maxTokens?: number;
   jsonMode?: boolean;
+  fast?: boolean; // Use smaller, faster model (8B instead of 70B)
 }
 
 interface LLMResult {
@@ -19,12 +20,13 @@ interface LLMResult {
 }
 
 async function callGroq(opts: LLMOptions, signal?: AbortSignal): Promise<LLMResult> {
+  const model = opts.fast ? "llama-3.1-8b-instant" : "llama-3.3-70b-versatile";
   const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
     method: "POST",
     headers: { "Content-Type": "application/json", "Authorization": `Bearer ${GROQ_API_KEY}` },
     signal,
     body: JSON.stringify({
-      model: "llama-3.3-70b-versatile",
+      model,
       messages: [{ role: "user", content: opts.prompt }],
       temperature: opts.temperature ?? 0.3,
       max_tokens: opts.maxTokens ?? 2000,
@@ -37,7 +39,7 @@ async function callGroq(opts: LLMOptions, signal?: AbortSignal): Promise<LLMResu
     throw new Error(`Groq error ${status}: ${errText.slice(0, 200)}`);
   }
   const data = await res.json();
-  return { text: data.choices?.[0]?.message?.content || "", model: "llama-3.3-70b-versatile", fallback: false };
+  return { text: data.choices?.[0]?.message?.content || "", model, fallback: false };
 }
 
 async function callGemini(opts: LLMOptions, signal?: AbortSignal): Promise<LLMResult> {
