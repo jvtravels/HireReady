@@ -97,6 +97,26 @@ export function saveTTSSettings(settings: TTSSettings) {
   } catch {}
 }
 
+/* ─── Cartesia API Key Cache ─── */
+let _cachedApiKey: string | null = null;
+let _apiKeyExpiry = 0;
+
+async function getCartesiaApiKey(): Promise<string | null> {
+  if (_cachedApiKey && Date.now() < _apiKeyExpiry) return _cachedApiKey;
+  try {
+    const { authHeaders } = await import("./supabase");
+    const headers = await authHeaders();
+    const res = await fetch("/api/tts-token", { method: "POST", headers });
+    if (!res.ok) return null;
+    const data = await res.json();
+    _cachedApiKey = data.apiKey || null;
+    _apiKeyExpiry = Date.now() + 5 * 60 * 1000; // cache 5 min
+    return _cachedApiKey;
+  } catch {
+    return null;
+  }
+}
+
 /* ─── TTS Audio Pre-fetch Cache ─── */
 const _prefetchCache = new Map<string, Promise<Blob | null>>();
 
@@ -131,7 +151,167 @@ function consumePrefetch(text: string): Promise<Blob | null> | undefined {
   return cached;
 }
 
-/* ─── Cartesia TTS via Server Proxy ─── */
+/* ─── WebSocket Streaming TTS ─── */
+const CARTESIA_WS_URL = "wss://api.cartesia.ai/tts/websocket";
+const WS_SAMPLE_RATE = 24000; // PCM output sample rate
+
+async function speakWithWebSocket(
+  text: string,
+  voiceId: string,
+  onEnd: () => void,
+  onError: () => void,
+): Promise<{ cancel: () => void }> {
+  let settled = false;
+  const settle = (cb: () => void) => { if (!settled) { settled = true; cb(); } };
+  let ws: WebSocket | null = null;
+  let audioCtx: AudioContext | null = null;
+  let cancelled = false;
+
+  // Audio scheduling state
+  let nextStartTime = 0;
+  let chunksReceived = 0;
+  let allChunksReceived = false;
+  let chunksPlayed = 0;
+  let totalChunksScheduled = 0;
+
+  const checkPlaybackComplete = () => {
+    if (allChunksReceived && chunksPlayed >= totalChunksScheduled) {
+      console.log(`[TTS-WS] playback complete, ${chunksReceived} chunks`);
+      settle(onEnd);
+    }
+  };
+
+  try {
+    const apiKey = await getCartesiaApiKey();
+    if (!apiKey) {
+      console.warn("[TTS-WS] no API key, falling back to REST");
+      return speakWithProxy(text, voiceId, onEnd, onError);
+    }
+
+    audioCtx = new AudioContext({ sampleRate: WS_SAMPLE_RATE });
+    nextStartTime = audioCtx.currentTime;
+
+    const contextId = crypto.randomUUID();
+    const wsUrl = `${CARTESIA_WS_URL}?api_key=${apiKey}&cartesia_version=2024-06-10`;
+
+    ws = new WebSocket(wsUrl);
+    const capturedWs = ws;
+    const capturedCtx = audioCtx;
+
+    // Timeout: if no data in 10s, fall back
+    const wsTimeout = setTimeout(() => {
+      if (chunksReceived === 0 && !cancelled) {
+        console.warn("[TTS-WS] timeout — no data received, falling back to REST");
+        capturedWs.close();
+        settle(() => {});
+        speakWithProxy(text, voiceId, onEnd, onError);
+      }
+    }, 10000);
+
+    ws.onopen = () => {
+      console.log("[TTS-WS] connected, sending text");
+      capturedWs.send(JSON.stringify({
+        context_id: contextId,
+        model_id: "sonic-3",
+        transcript: text.trim().slice(0, 2000),
+        voice: { mode: "id", id: voiceId },
+        language: "en",
+        output_format: {
+          container: "raw",
+          encoding: "pcm_f32le",
+          sample_rate: WS_SAMPLE_RATE,
+        },
+        add_timestamps: false,
+      }));
+    };
+
+    ws.onmessage = (event) => {
+      if (cancelled) return;
+      clearTimeout(wsTimeout);
+
+      try {
+        const msg = JSON.parse(event.data);
+
+        if (msg.type === "chunk" && msg.data) {
+          chunksReceived++;
+          // Decode base64 PCM data
+          const binaryStr = atob(msg.data);
+          const bytes = new Uint8Array(binaryStr.length);
+          for (let i = 0; i < binaryStr.length; i++) {
+            bytes[i] = binaryStr.charCodeAt(i);
+          }
+          const float32 = new Float32Array(bytes.buffer);
+
+          // Create audio buffer and schedule playback
+          const buffer = capturedCtx.createBuffer(1, float32.length, WS_SAMPLE_RATE);
+          buffer.getChannelData(0).set(float32);
+
+          const source = capturedCtx.createBufferSource();
+          source.buffer = buffer;
+          source.connect(capturedCtx.destination);
+
+          const scheduleTime = Math.max(capturedCtx.currentTime, nextStartTime);
+          source.start(scheduleTime);
+          nextStartTime = scheduleTime + buffer.duration;
+          totalChunksScheduled++;
+
+          source.onended = () => {
+            chunksPlayed++;
+            checkPlaybackComplete();
+          };
+
+          if (chunksReceived === 1) {
+            console.log(`[TTS-WS] first chunk received, playing immediately`);
+          }
+        } else if (msg.type === "done" || msg.done) {
+          console.log(`[TTS-WS] all chunks received (${chunksReceived})`);
+          allChunksReceived = true;
+          capturedWs.close();
+          // If no chunks were scheduled (empty text), end now
+          if (totalChunksScheduled === 0) settle(onEnd);
+          else checkPlaybackComplete();
+        }
+      } catch (e) {
+        console.warn("[TTS-WS] message parse error:", e);
+      }
+    };
+
+    ws.onerror = (e) => {
+      clearTimeout(wsTimeout);
+      console.warn("[TTS-WS] error, falling back to REST:", e);
+      if (!cancelled && chunksReceived === 0) {
+        // No audio played yet — fall back to REST seamlessly
+        speakWithProxy(text, voiceId, onEnd, onError);
+      } else {
+        settle(onError);
+      }
+    };
+
+    ws.onclose = () => {
+      clearTimeout(wsTimeout);
+      if (!allChunksReceived && chunksReceived === 0 && !cancelled) {
+        console.warn("[TTS-WS] closed before data, falling back to REST");
+        speakWithProxy(text, voiceId, onEnd, onError);
+      }
+    };
+  } catch (err: any) {
+    console.warn("[TTS-WS] setup error:", err?.message || err);
+    return speakWithProxy(text, voiceId, onEnd, onError);
+  }
+
+  const capturedWs = ws;
+  const capturedCtx = audioCtx;
+  return {
+    cancel: () => {
+      cancelled = true;
+      settled = true;
+      try { capturedWs?.close(); } catch {}
+      try { capturedCtx?.close(); } catch {}
+    },
+  };
+}
+
+/* ─── Cartesia TTS via REST Server Proxy (fallback) ─── */
 async function speakWithProxy(
   text: string,
   voiceId: string,
@@ -154,7 +334,7 @@ async function speakWithProxy(
     }
 
     if (!blob) {
-      console.log("[TTS] starting fetch...");
+      console.log("[TTS] starting REST fetch...");
       const { authHeaders } = await import("./supabase");
       const headers = await authHeaders();
 
@@ -164,7 +344,6 @@ async function speakWithProxy(
         body: JSON.stringify({ text, voiceId }),
         signal: controller.signal,
       });
-      console.log("[TTS] fetch done, status:", res.status);
 
       if (!res.ok) {
         settle(onError);
@@ -174,30 +353,22 @@ async function speakWithProxy(
       blob = await res.blob();
     }
 
-    console.log("[TTS] blob ready, size:", blob.size, "type:", blob.type);
-
     const url = URL.createObjectURL(blob);
     audio = new Audio(url);
 
     audio.onended = () => {
-      console.log("[TTS] playback ended");
       URL.revokeObjectURL(url);
       settle(onEnd);
     };
     audio.onerror = () => {
-      console.warn("[TTS] audio element error");
       URL.revokeObjectURL(url);
       settle(onError);
     };
 
     await audio.play();
-    console.log("[TTS] playing");
+    console.log("[TTS] playing via REST fallback");
   } catch (err: any) {
-    if (err.name === "AbortError") {
-      console.log("[TTS] aborted");
-      return { cancel: () => {} };
-    }
-    console.warn("[TTS] error:", err?.message || err);
+    if (err.name === "AbortError") return { cancel: () => {} };
     settle(onError);
     return { cancel: () => {} };
   }
@@ -277,8 +448,17 @@ export async function speak(
   const settings = loadTTSSettings();
 
   if (settings.provider === "cartesia") {
-    return speakWithProxy(text, settings.voiceId, onEnd, () => {
-      console.warn("Cartesia TTS proxy failed, falling back to browser TTS");
+    // Check if we have a pre-fetched blob — use REST path directly for cache hits
+    const hasPrefetch = _prefetchCache.has(text);
+    if (hasPrefetch) {
+      return speakWithProxy(text, settings.voiceId, onEnd, () => {
+        console.warn("Cartesia REST failed, falling back to browser TTS");
+        speakWithBrowser(text, onEnd, onError);
+      });
+    }
+    // Primary: WebSocket streaming (~50ms first-chunk vs 800-1500ms REST)
+    return speakWithWebSocket(text, settings.voiceId, onEnd, () => {
+      console.warn("Cartesia WebSocket failed, falling back to browser TTS");
       speakWithBrowser(text, onEnd, onError);
     });
   }
