@@ -1,28 +1,28 @@
 /* ─── Text-to-Speech Service ─── */
-/* Uses server-side Google Cloud TTS proxy (free for users) with Web Speech API fallback */
+/* Uses server-side Cartesia TTS proxy (ultra-low latency) with Web Speech API fallback */
 
 const TTS_SETTINGS_KEY = "hirloop_tts";
 
 export interface TTSSettings {
-  provider: "google" | "browser";
+  provider: "cartesia" | "browser";
   voiceId: string;
   voiceName: string;
 }
 
-export const GOOGLE_VOICES = [
-  { id: "en-US-Neural2-F", name: "Aria", desc: "Warm, professional female — great for interviews", gender: "female" },
-  { id: "en-US-Neural2-C", name: "Claire", desc: "Calm, composed female", gender: "female" },
-  { id: "en-US-Neural2-H", name: "Harper", desc: "Friendly, clear female", gender: "female" },
-  { id: "en-US-Neural2-E", name: "Evelyn", desc: "Soft, approachable female", gender: "female" },
-  { id: "en-US-Neural2-D", name: "James", desc: "Clear, neutral male — natural interviewer", gender: "male" },
-  { id: "en-US-Neural2-A", name: "Marcus", desc: "Deep, authoritative male", gender: "male" },
-  { id: "en-US-Neural2-I", name: "Nathan", desc: "Conversational, warm male", gender: "male" },
-  { id: "en-US-Neural2-J", name: "Oliver", desc: "Professional, measured male", gender: "male" },
+export const CARTESIA_VOICES = [
+  { id: "79a125e8-cd45-4c13-8a67-188112f4dd22", name: "Aria", desc: "Warm, professional female — great for interviews", gender: "female" },
+  { id: "b7d50908-b17c-442d-ad8d-810c63997ed9", name: "Claire", desc: "Calm, composed female", gender: "female" },
+  { id: "a0e99841-438c-4a64-b679-ae501e7d6091", name: "Harper", desc: "Friendly, clear female", gender: "female" },
+  { id: "694f9389-aac1-45b6-b726-9d9369183238", name: "Evelyn", desc: "Soft, approachable female", gender: "female" },
+  { id: "ee7ea9f8-c0c1-498c-9f62-dc2da49a6f98", name: "James", desc: "Clear, neutral male — natural interviewer", gender: "male" },
+  { id: "fb26447f-308b-471e-8b00-4ef9e4c4ebe6", name: "Marcus", desc: "Deep, authoritative male", gender: "male" },
+  { id: "63ff761f-c1e8-414b-b969-a1cb9a4e1313", name: "Nathan", desc: "Conversational, warm male", gender: "male" },
+  { id: "820a3788-2b37-46b6-9571-9d2054466c5b", name: "Oliver", desc: "Professional, measured male", gender: "male" },
 ];
 
 const DEFAULT_SETTINGS: TTSSettings = {
-  provider: "google",
-  voiceId: "en-US-Neural2-F", // Aria
+  provider: "cartesia",
+  voiceId: "79a125e8-cd45-4c13-8a67-188112f4dd22", // Aria
   voiceName: "Aria",
 };
 
@@ -31,9 +31,9 @@ export function loadTTSSettings(): TTSSettings {
     const raw = localStorage.getItem(TTS_SETTINGS_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
-      // Migrate old ElevenLabs settings to Google
-      if (parsed.provider === "elevenlabs") {
-        parsed.provider = "google";
+      // Migrate old providers to Cartesia
+      if (parsed.provider === "elevenlabs" || parsed.provider === "google") {
+        parsed.provider = "cartesia";
         parsed.voiceId = DEFAULT_SETTINGS.voiceId;
         parsed.voiceName = DEFAULT_SETTINGS.voiceName;
       }
@@ -49,7 +49,7 @@ export function saveTTSSettings(settings: TTSSettings) {
   } catch {}
 }
 
-/* ─── Google Cloud TTS via Server Proxy ─── */
+/* ─── Cartesia TTS via Server Proxy ─── */
 async function speakWithProxy(
   text: string,
   voiceId: string,
@@ -60,13 +60,12 @@ async function speakWithProxy(
   let audio: HTMLAudioElement | null = null;
 
   try {
-    // Dynamically import to avoid circular deps
     const { authHeaders } = await import("./supabase");
     const headers = await authHeaders();
     const res = await fetch("/api/tts", {
       method: "POST",
       headers,
-      body: JSON.stringify({ text, voiceName: voiceId }),
+      body: JSON.stringify({ text, voiceId }),
       signal: controller.signal,
     });
 
@@ -84,7 +83,6 @@ async function speakWithProxy(
     audio.onended = () => { revokeUrl(); onEnd(); };
     audio.onerror = () => { revokeUrl(); onError(); };
     audio.play().catch(() => {
-      // Autoplay blocked or playback failed — trigger error fallback
       revokeUrl();
       onError();
     });
@@ -116,7 +114,6 @@ function speakWithBrowser(
   onEnd: () => void,
   onError: () => void,
 ): { cancel: () => void } {
-  // Check if browser speech synthesis is available at all
   if (!window.speechSynthesis) {
     console.warn("Browser speech synthesis not available");
     onError();
@@ -143,7 +140,6 @@ function speakWithBrowser(
     onError();
   };
 
-  // Safety: some browsers silently fail — if no speech after 5s, fire error
   let fired = false;
   const safetyTimer = setTimeout(() => {
     if (!fired && window.speechSynthesis.speaking === false) {
@@ -172,10 +168,9 @@ export async function speak(
 ): Promise<{ cancel: () => void }> {
   const settings = loadTTSSettings();
 
-  if (settings.provider === "google") {
-    // Try proxy first; if it fails, fall back to browser TTS
+  if (settings.provider === "cartesia") {
     return speakWithProxy(text, settings.voiceId, onEnd, () => {
-      console.warn("Google TTS proxy failed, falling back to browser TTS");
+      console.warn("Cartesia TTS proxy failed, falling back to browser TTS");
       speakWithBrowser(text, onEnd, onError);
     });
   }

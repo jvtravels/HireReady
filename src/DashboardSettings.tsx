@@ -3,7 +3,7 @@ import { c, font } from "./tokens";
 import { useAuth } from "./AuthContext";
 import { useDocTitle } from "./useDocTitle";
 import { authHeaders, supabaseConfigured, getSupabase } from "./supabase";
-import { loadTTSSettings, saveTTSSettings, GOOGLE_VOICES, speak, type TTSSettings } from "./tts";
+import { loadTTSSettings, saveTTSSettings, CARTESIA_VOICES, speak, type TTSSettings } from "./tts";
 import type { PersistedState } from "./dashboardTypes";
 import { useDashboard } from "./DashboardContext";
 import { DataLoadingSkeleton } from "./dashboardComponents";
@@ -166,7 +166,7 @@ export default function SettingsPage() {
     if (previewVoice === voiceId) { setPreviewVoice(null); setPreviewCancel(null); return; }
     setPreviewVoice(voiceId);
     const original = loadTTSSettings();
-    saveTTSSettings({ ...original, provider: "google", voiceId });
+    saveTTSSettings({ ...original, provider: "cartesia", voiceId });
     const handle = await speak(PREVIEW_TEXT, () => { setPreviewVoice(null); setPreviewCancel(null); }, () => { setPreviewVoice(null); setPreviewCancel(null); });
     saveTTSSettings(original);
     setPreviewCancel(handle);
@@ -393,11 +393,11 @@ export default function SettingsPage() {
       {/* ═══════════════════ AI VOICE ═══════════════════ */}
       {activeSection === "voice" && <div style={sectionStyle}>
         <h3 style={sectionTitle}>AI Interviewer Voice</h3>
-        <p style={sectionDesc}>Premium Neural2 voices included free. Click play to preview before selecting.</p>
+        <p style={sectionDesc}>Ultra-low latency Cartesia voices included free. Click play to preview before selecting.</p>
 
         <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
           {([
-            { id: "google" as const, label: "Neural Voice", desc: "Premium, natural" },
+            { id: "cartesia" as const, label: "Cartesia Voice", desc: "Ultra-low latency" },
             { id: "browser" as const, label: "Browser Voice", desc: "Built-in fallback" },
           ]).map(p => (
             <button key={p.id} onClick={() => { const u = { ...ttsSettings, provider: p.id }; setTtsSettings(u); saveTTSSettings(u); }}
@@ -408,9 +408,9 @@ export default function SettingsPage() {
           ))}
         </div>
 
-        {ttsSettings.provider === "google" && (
+        {ttsSettings.provider === "cartesia" && (
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }} className="settings-form-grid">
-            {GOOGLE_VOICES.map(v => {
+            {CARTESIA_VOICES.map(v => {
               const sel = ttsSettings.voiceId === v.id;
               const playing = previewVoice === v.id;
               return (
@@ -445,7 +445,7 @@ export default function SettingsPage() {
 
         {ttsSettings.provider === "browser" && (
           <p style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, padding: "14px 16px", borderRadius: 8, background: c.obsidian, border: `1px solid ${c.border}`, lineHeight: 1.6 }}>
-            Using your browser's built-in speech. Quality varies by browser and OS. Switch to Neural Voice for premium voices — free with your account.
+            Using your browser's built-in speech. Quality varies by browser and OS. Switch to Cartesia Voice for ultra-low latency premium voices — free with your account.
           </p>
         )}
       </div>}

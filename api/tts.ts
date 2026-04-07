@@ -1,12 +1,23 @@
-/* Vercel Serverless Function — Google Cloud TTS Proxy */
-/* Keeps the API key server-side so users get premium voice for free */
+/* Vercel Serverless Function — Cartesia TTS Proxy */
+/* Ultra-low latency voice synthesis — keeps API key server-side */
 
 export const config = { runtime: "edge" };
 
 import { handleCorsPreflightOrMethod, corsHeaders, isRateLimited, getClientIp, rateLimitResponse, verifyAuth, unauthorizedResponse, validateOrigin, withRequestId } from "./_shared";
 
 declare const process: { env: Record<string, string | undefined> };
-const GCP_TTS_KEY = process.env.GCP_TTS_API_KEY || "";
+const CARTESIA_API_KEY = process.env.CARTESIA_API_KEY || "";
+
+const ALLOWED_VOICES = [
+  "79a125e8-cd45-4c13-8a67-188112f4dd22",
+  "b7d50908-b17c-442d-ad8d-810c63997ed9",
+  "a0e99841-438c-4a64-b679-ae501e7d6091",
+  "694f9389-aac1-45b6-b726-9d9369183238",
+  "ee7ea9f8-c0c1-498c-9f62-dc2da49a6f98",
+  "fb26447f-308b-471e-8b00-4ef9e4c4ebe6",
+  "63ff761f-c1e8-414b-b969-a1cb9a4e1313",
+  "820a3788-2b37-46b6-9571-9d2054466c5b",
+];
 
 export default async function handler(req: Request): Promise<Response> {
   const earlyResponse = handleCorsPreflightOrMethod(req);
@@ -20,11 +31,10 @@ export default async function handler(req: Request): Promise<Response> {
     return new Response(JSON.stringify({ error: "Request too large" }), { status: 413, headers });
   }
 
-  if (!GCP_TTS_KEY) {
+  if (!CARTESIA_API_KEY) {
     return new Response(JSON.stringify({ error: "TTS not configured" }), { status: 503, headers });
   }
 
-  // CSRF: validate Origin header on POST
   if (!validateOrigin(req)) {
     return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers });
   }
@@ -38,78 +48,64 @@ export default async function handler(req: Request): Promise<Response> {
   }
 
   try {
-    const { text, voiceName } = await req.json();
+    const { text, voiceId } = await req.json();
 
     if (!text || typeof text !== "string") {
       return new Response(JSON.stringify({ error: "Missing text" }), { status: 400, headers });
     }
 
-    // Cap text length to prevent abuse
     const trimmedText = text.trim().slice(0, 2000);
     if (trimmedText.length === 0) {
       return new Response(JSON.stringify({ error: "Text is empty" }), { status: 400, headers });
     }
 
-    // Whitelist allowed voices
-    const ALLOWED_VOICES = [
-      "en-US-Neural2-F", "en-US-Neural2-C", "en-US-Neural2-H", "en-US-Neural2-E",
-      "en-US-Neural2-D", "en-US-Neural2-A", "en-US-Neural2-I", "en-US-Neural2-J",
-    ];
-    const voice = (typeof voiceName === "string" && ALLOWED_VOICES.includes(voiceName))
-      ? voiceName : "en-US-Neural2-D";
+    const voice = (typeof voiceId === "string" && ALLOWED_VOICES.includes(voiceId))
+      ? voiceId : ALLOWED_VOICES[0];
 
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 10_000);
-    const res = await fetch(
-      "https://texttospeech.googleapis.com/v1/text:synthesize",
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "X-Goog-Api-Key": GCP_TTS_KEY },
-        signal: controller.signal,
-        body: JSON.stringify({
-          input: { text: trimmedText },
-          voice: { languageCode: "en-US", name: voice },
-          audioConfig: {
-            audioEncoding: "MP3",
-            speakingRate: 1.0,
-            pitch: 0,
-            volumeGainDb: 0,
-          },
-        }),
+    const timeout = setTimeout(() => controller.abort(), 15_000);
+    const res = await fetch("https://api.cartesia.ai/tts/bytes", {
+      method: "POST",
+      headers: {
+        "Cartesia-Version": "2024-06-10",
+        "X-API-Key": CARTESIA_API_KEY,
+        "Content-Type": "application/json",
       },
-    );
+      signal: controller.signal,
+      body: JSON.stringify({
+        model_id: "sonic-2",
+        transcript: trimmedText,
+        voice: { mode: "id", id: voice },
+        output_format: {
+          container: "mp3",
+          bit_rate: 128000,
+          sample_rate: 44100,
+        },
+      }),
+    });
     clearTimeout(timeout);
 
     if (!res.ok) {
       const errText = await res.text().catch(() => "");
-      console.error("Google TTS error:", res.status, errText);
+      console.error("Cartesia TTS error:", res.status, errText);
       return new Response(JSON.stringify({ error: "TTS generation failed" }), { status: 502, headers });
     }
 
-    const data = await res.json();
-    const audioContent = data.audioContent; // base64 encoded MP3
-
-    // Decode base64 to binary
-    const binaryString = atob(audioContent);
-    const bytes = new Uint8Array(binaryString.length);
-    for (let i = 0; i < binaryString.length; i++) {
-      bytes[i] = binaryString.charCodeAt(i);
-    }
+    const audioBytes = await res.arrayBuffer();
 
     const audioHeaders: Record<string, string> = {
       "Content-Type": "audio/mpeg",
-      "Content-Length": String(bytes.length),
+      "Content-Length": String(audioBytes.byteLength),
       "Cache-Control": "no-store",
       "X-Content-Type-Options": "nosniff",
     };
-    // Add CORS origin if allowed
     const origin = headers["Access-Control-Allow-Origin"];
     if (origin) {
       audioHeaders["Access-Control-Allow-Origin"] = origin;
       audioHeaders["Vary"] = "Origin";
     }
 
-    return new Response(bytes.buffer, { status: 200, headers: audioHeaders });
+    return new Response(audioBytes, { status: 200, headers: audioHeaders });
   } catch (err) {
     console.error("TTS proxy error:", err);
     return new Response(JSON.stringify({ error: "Internal error" }), { status: 500, headers });
