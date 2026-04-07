@@ -77,7 +77,7 @@ Respond JSON only:
 
 Scoring: 90-100 exceptional, 75-89 good, 60-74 adequate, <60 needs practice. Be honest, reference specific answers.`;
 
-    const result = await callLLM({ prompt, temperature: 0.3, maxTokens: 2000, jsonMode: true, fast: true }, 15000);
+    const result = await callLLM({ prompt, temperature: 0.3, maxTokens: 2000, jsonMode: true }, 18000);
     const evaluation = extractJSON(result.text);
     if (!evaluation) {
       return new Response(JSON.stringify({ error: "Failed to parse evaluation" }), { status: 500, headers });
