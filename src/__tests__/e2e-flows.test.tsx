@@ -40,6 +40,9 @@ vi.mock("../supabase", () => ({
 
 vi.mock("../tts", () => ({
   speak: vi.fn(() => Promise.resolve({ cancel: vi.fn() })),
+  prefetchTTS: vi.fn(() => Promise.resolve()),
+  getCachedVoices: vi.fn(() => []),
+  fetchCartesiaVoices: vi.fn(() => Promise.resolve([])),
   loadTTSSettings: () => ({ provider: "browser", voiceId: "", voiceName: "" }),
   saveTTSSettings: vi.fn(),
   GOOGLE_VOICES: [

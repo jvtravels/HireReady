@@ -3,10 +3,10 @@ import { c, font } from "../tokens";
 
 describe("design tokens", () => {
   it("exports all required colors", () => {
-    expect(c.obsidian).toBe("#0A0A0B");
-    expect(c.graphite).toBe("#161618");
-    expect(c.ivory).toBe("#F0EDE8");
-    expect(c.gilt).toBe("#C9A96E");
+    expect(c.obsidian).toBe("#060607");
+    expect(c.graphite).toBe("#111113");
+    expect(c.ivory).toBe("#F5F2ED");
+    expect(c.gilt).toBe("#D4B37F");
     expect(c.sage).toBe("#7A9E7E");
     expect(c.ember).toBe("#C4705A");
   });
