@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import SessionDetail from "../SessionDetail";
 
@@ -106,6 +106,8 @@ describe("SessionDetail", () => {
     renderWithRouter("withTranscript");
 
     await screen.findByText("78");
+    // Transcript is collapsed by default — expand it
+    fireEvent.click(screen.getByText("Full Transcript"));
     expect(screen.getByText("How do you build roadmaps?")).toBeInTheDocument();
     expect(screen.getByText("I use OKRs and quarterly planning")).toBeInTheDocument();
   });
