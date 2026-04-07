@@ -339,6 +339,56 @@ async function fetchFollowUp(params: {
   }
 }
 
+/* ─── Offline Eval Retry Queue ─── */
+async function retryQueuedEvals(): Promise<void> {
+  try {
+    const db = await openIDB();
+    const tx = db.transaction(IDB_STORE, "readonly");
+    const store = tx.objectStore(IDB_STORE);
+    const req = store.getAllKeys();
+    req.onsuccess = async () => {
+      const keys = (req.result as string[]).filter(k => typeof k === "string" && k.startsWith("hirloop_eval_retry_"));
+      db.close();
+      for (const key of keys) {
+        try {
+          const data = await loadFromIDB(key) as any;
+          if (!data || Date.now() - data.queuedAt > 24 * 60 * 60 * 1000) {
+            await deleteFromIDB(key); // expired (>24h)
+            continue;
+          }
+          const result = await fetchLLMEvaluation({
+            transcript: data.transcript,
+            type: data.type,
+            difficulty: data.difficulty,
+            role: data.role,
+            company: data.company,
+            questions: data.questions,
+          });
+          if (result) {
+            // Update the session in localStorage with real eval
+            try {
+              const raw = localStorage.getItem(RESULTS_KEY);
+              const sessions: SessionResult[] = raw ? JSON.parse(raw) : [];
+              const idx = sessions.findIndex(s => s.id === data.sessionId);
+              if (idx >= 0) {
+                sessions[idx].score = Math.min(100, Math.max(0, result.overallScore));
+                sessions[idx].ai_feedback = result.feedback;
+                sessions[idx].skill_scores = result.skillScores;
+                localStorage.setItem(RESULTS_KEY, JSON.stringify(sessions));
+              }
+            } catch {}
+            await deleteFromIDB(key);
+            console.log("[eval-retry] successfully retried:", key);
+          }
+        } catch {
+          // Leave in queue for next retry
+        }
+      }
+    };
+    req.onerror = () => db.close();
+  } catch {}
+}
+
 /* ─── Speech Recognition (Web Speech API) ─── */
 interface SpeechRecognitionInstance {
   continuous: boolean;
@@ -786,7 +836,11 @@ export default function Interview() {
 
   useEffect(() => {
     const goOffline = () => setIsOffline(true);
-    const goOnline = () => setIsOffline(false);
+    const goOnline = () => {
+      setIsOffline(false);
+      // Retry queued evaluations when back online
+      retryQueuedEvals().catch(() => {});
+    };
     window.addEventListener("offline", goOffline);
     window.addEventListener("online", goOnline);
     return () => { window.removeEventListener("offline", goOffline); window.removeEventListener("online", goOnline); };
@@ -978,14 +1032,17 @@ export default function Interview() {
   }, [phase]);
 
   // Interview flow: thinking → speaking (with TTS) → listening
+  const flowGenerationRef = useRef(0);
   useEffect(() => {
     if (phase === "done") return;
 
     const step = interviewScript[currentStep];
     if (!step) return;
 
+    const gen = ++flowGenerationRef.current;
     let safetyTimer: ReturnType<typeof setTimeout> | null = null;
     let cancelled = false;
+    const isStale = () => cancelled || gen !== flowGenerationRef.current;
 
     // Phase 1: Thinking — also resolve any pending follow-up
     setPhase("thinking");
@@ -996,7 +1053,7 @@ export default function Interview() {
     }
 
     const startSpeaking = () => {
-      if (cancelled) return;
+      if (isStale()) return;
       // Phase 2: Speaking
       setPhase("speaking");
       setIsRecording(true);
@@ -1013,7 +1070,7 @@ export default function Interview() {
 
       let speechEnded = false;
       const onSpeechEnd = () => {
-        if (speechEnded) return;
+        if (speechEnded || isStale()) return;
         speechEnded = true;
         if (safetyTimer) clearTimeout(safetyTimer);
         setIsRecording(false);
@@ -1063,7 +1120,7 @@ export default function Interview() {
       // Race: resolve follow-up vs 4s timeout — whichever comes first
       const timeout = new Promise<null>(r => setTimeout(() => r(null), 4000));
       Promise.race([pendingFollowUp, timeout]).then(result => {
-        if (cancelled) return;
+        if (isStale()) return;
         // Guard: only inject if user hasn't advanced past this step
         if (result?.needsFollowUp && result.followUpText && currentStepRef.current === currentStep) {
           const followUpStep: InterviewStep = {
@@ -1084,7 +1141,7 @@ export default function Interview() {
           setTimeout(startSpeaking, step.thinkingDuration);
         }
       }).catch(() => {
-        if (!cancelled) setTimeout(startSpeaking, step.thinkingDuration);
+        if (!isStale()) setTimeout(startSpeaking, step.thinkingDuration);
       });
     } else {
       // No pending follow-up — normal thinking delay then speak
@@ -1280,6 +1337,21 @@ export default function Interview() {
           setUsedFallbackScore(true);
         }
         setSaveWarning(errMsg);
+        // Queue for offline retry if network-related failure
+        if (!navigator.onLine || errMsg.toLowerCase().includes("network") || errMsg.toLowerCase().includes("fetch")) {
+          const retryKey = `hirloop_eval_retry_${Date.now().toString(36)}`;
+          await saveToIDB(retryKey, {
+            transcript,
+            type: interviewType,
+            difficulty: interviewDifficulty,
+            role: user?.targetRole || "the role",
+            company: user?.targetCompany,
+            questions: interviewScript.filter(s => s.type === "question" || s.type === "follow-up").map(s => s.aiText),
+            sessionId: Date.now().toString(36),
+            queuedAt: Date.now(),
+          });
+          console.log("[eval] queued for offline retry:", retryKey);
+        }
       }
     }
 

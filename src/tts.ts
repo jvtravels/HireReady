@@ -164,9 +164,74 @@ function consumePrefetch(text: string): Promise<Blob | null> | undefined {
   return cached;
 }
 
-/* ─── WebSocket Streaming TTS ─── */
+/* ─── WebSocket Streaming TTS (persistent connection) ─── */
 const CARTESIA_WS_URL = "wss://api.cartesia.ai/tts/websocket";
-const WS_SAMPLE_RATE = 24000; // PCM output sample rate
+const WS_SAMPLE_RATE = 24000;
+const WS_IDLE_TIMEOUT = 30_000; // close idle connection after 30s
+
+// Persistent WebSocket pool — reuse across questions
+let _persistentWs: WebSocket | null = null;
+let _persistentWsReady = false;
+let _persistentWsApiKey: string | null = null;
+let _wsIdleTimer: ReturnType<typeof setTimeout> | null = null;
+let _wsMessageHandler: ((event: MessageEvent) => void) | null = null;
+
+function resetWsIdleTimer() {
+  if (_wsIdleTimer) clearTimeout(_wsIdleTimer);
+  _wsIdleTimer = setTimeout(() => {
+    if (_persistentWs && _persistentWs.readyState === WebSocket.OPEN) {
+      console.log("[TTS-WS] closing idle connection");
+      _persistentWs.close();
+    }
+    _persistentWs = null;
+    _persistentWsReady = false;
+  }, WS_IDLE_TIMEOUT);
+}
+
+async function getOrCreateWs(apiKey: string): Promise<WebSocket | null> {
+  // Reuse if open and same key
+  if (_persistentWs && _persistentWs.readyState === WebSocket.OPEN && _persistentWsApiKey === apiKey) {
+    resetWsIdleTimer();
+    return _persistentWs;
+  }
+  // Close stale connection
+  if (_persistentWs) {
+    try { _persistentWs.close(); } catch {}
+    _persistentWs = null;
+    _persistentWsReady = false;
+  }
+
+  return new Promise((resolve) => {
+    const wsUrl = `${CARTESIA_WS_URL}?api_key=${apiKey}&cartesia_version=2024-06-10`;
+    const ws = new WebSocket(wsUrl);
+    const timeout = setTimeout(() => {
+      if (ws.readyState !== WebSocket.OPEN) {
+        ws.close();
+        resolve(null);
+      }
+    }, 5000);
+
+    ws.onopen = () => {
+      clearTimeout(timeout);
+      _persistentWs = ws;
+      _persistentWsReady = true;
+      _persistentWsApiKey = apiKey;
+      resetWsIdleTimer();
+      console.log("[TTS-WS] persistent connection opened");
+      resolve(ws);
+    };
+    ws.onerror = () => {
+      clearTimeout(timeout);
+      resolve(null);
+    };
+    ws.onclose = () => {
+      if (_persistentWs === ws) {
+        _persistentWs = null;
+        _persistentWsReady = false;
+      }
+    };
+  });
+}
 
 async function speakWithWebSocket(
   text: string,
@@ -176,12 +241,10 @@ async function speakWithWebSocket(
 ): Promise<{ cancel: () => void }> {
   let settled = false;
   const settle = (cb: () => void) => { if (!settled) { settled = true; cb(); } };
-  let ws: WebSocket | null = null;
   let audioCtx: AudioContext | null = null;
   let cancelled = false;
   const closeCtx = () => { try { audioCtx?.close(); } catch {} audioCtx = null; };
 
-  // Audio scheduling state
   let nextStartTime = 0;
   let chunksReceived = 0;
   let allChunksReceived = false;
@@ -191,6 +254,7 @@ async function speakWithWebSocket(
   const checkPlaybackComplete = () => {
     if (allChunksReceived && chunksPlayed >= totalChunksScheduled) {
       console.log(`[TTS-WS] playback complete, ${chunksReceived} chunks`);
+      resetWsIdleTimer();
       settle(onEnd);
     }
   };
@@ -202,45 +266,29 @@ async function speakWithWebSocket(
       return speakWithProxy(text, voiceId, onEnd, onError);
     }
 
+    const ws = await getOrCreateWs(apiKey);
+    if (!ws || ws.readyState !== WebSocket.OPEN) {
+      console.warn("[TTS-WS] connection failed, falling back to REST");
+      return speakWithProxy(text, voiceId, onEnd, onError);
+    }
+
     audioCtx = new AudioContext({ sampleRate: WS_SAMPLE_RATE });
     nextStartTime = audioCtx.currentTime;
-
-    const contextId = crypto.randomUUID();
-    const wsUrl = `${CARTESIA_WS_URL}?api_key=${apiKey}&cartesia_version=2024-06-10`;
-
-    ws = new WebSocket(wsUrl);
-    const capturedWs = ws;
     const capturedCtx = audioCtx;
+    const contextId = crypto.randomUUID();
 
     // Timeout: if no data in 10s, fall back
     const wsTimeout = setTimeout(() => {
       if (chunksReceived === 0 && !cancelled) {
         console.warn("[TTS-WS] timeout — no data received, falling back to REST");
-        capturedWs.close();
         closeCtx();
         settle(() => {});
         speakWithProxy(text, voiceId, onEnd, onError);
       }
     }, 10000);
 
-    ws.onopen = () => {
-      console.log("[TTS-WS] connected, sending text");
-      capturedWs.send(JSON.stringify({
-        context_id: contextId,
-        model_id: "sonic-3",
-        transcript: text.trim().slice(0, 2000),
-        voice: { mode: "id", id: voiceId },
-        language: "en",
-        output_format: {
-          container: "raw",
-          encoding: "pcm_f32le",
-          sample_rate: WS_SAMPLE_RATE,
-        },
-        add_timestamps: false,
-      }));
-    };
-
-    ws.onmessage = (event) => {
+    // Set message handler for this utterance
+    const handler = (event: MessageEvent) => {
       if (cancelled) return;
       clearTimeout(wsTimeout);
 
@@ -249,7 +297,6 @@ async function speakWithWebSocket(
 
         if (msg.type === "chunk" && msg.data) {
           chunksReceived++;
-          // Decode base64 PCM data
           const binaryStr = atob(msg.data);
           const bytes = new Uint8Array(binaryStr.length);
           for (let i = 0; i < binaryStr.length; i++) {
@@ -257,7 +304,6 @@ async function speakWithWebSocket(
           }
           const float32 = new Float32Array(bytes.buffer);
 
-          // Create audio buffer and schedule playback
           const buffer = capturedCtx.createBuffer(1, float32.length, WS_SAMPLE_RATE);
           buffer.getChannelData(0).set(float32);
 
@@ -281,49 +327,67 @@ async function speakWithWebSocket(
         } else if (msg.type === "done" || msg.done) {
           console.log(`[TTS-WS] all chunks received (${chunksReceived})`);
           allChunksReceived = true;
-          capturedWs.close();
-          // If no chunks were scheduled (empty text), end now
+          // Don't close WS — reuse for next question
           if (totalChunksScheduled === 0) settle(onEnd);
           else checkPlaybackComplete();
+        } else if (msg.type === "error") {
+          console.warn("[TTS-WS] server error:", msg);
+          clearTimeout(wsTimeout);
+          closeCtx();
+          settle(() => {});
+          speakWithProxy(text, voiceId, onEnd, onError);
         }
       } catch (e) {
         console.warn("[TTS-WS] message parse error:", e);
       }
     };
 
-    ws.onerror = (e) => {
-      clearTimeout(wsTimeout);
-      console.warn("[TTS-WS] error, falling back to REST:", e);
-      if (!cancelled && chunksReceived === 0) {
-        closeCtx();
-        speakWithProxy(text, voiceId, onEnd, onError);
-      } else {
-        settle(onError);
-      }
-    };
+    // Replace previous handler
+    if (_wsMessageHandler) ws.removeEventListener("message", _wsMessageHandler);
+    ws.addEventListener("message", handler);
+    _wsMessageHandler = handler;
 
-    ws.onclose = () => {
+    // Handle connection loss mid-utterance
+    const closeHandler = () => {
       clearTimeout(wsTimeout);
       if (!allChunksReceived && chunksReceived === 0 && !cancelled) {
-        console.warn("[TTS-WS] closed before data, falling back to REST");
+        console.warn("[TTS-WS] closed mid-utterance, falling back to REST");
         closeCtx();
         speakWithProxy(text, voiceId, onEnd, onError);
       }
     };
+    ws.addEventListener("close", closeHandler, { once: true });
+
+    // Send the utterance
+    console.log("[TTS-WS] sending text on persistent connection");
+    ws.send(JSON.stringify({
+      context_id: contextId,
+      model_id: "sonic-3",
+      transcript: text.trim().slice(0, 2000),
+      voice: { mode: "id", id: voiceId },
+      language: "en",
+      output_format: {
+        container: "raw",
+        encoding: "pcm_f32le",
+        sample_rate: WS_SAMPLE_RATE,
+      },
+      add_timestamps: false,
+    }));
+
   } catch (err: any) {
     console.warn("[TTS-WS] setup error:", err?.message || err);
     closeCtx();
     return speakWithProxy(text, voiceId, onEnd, onError);
   }
 
-  const capturedWs = ws;
   const capturedCtx = audioCtx;
   return {
     cancel: () => {
       cancelled = true;
       settled = true;
-      try { capturedWs?.close(); } catch {}
+      // Don't close the WS — just stop the audio
       try { capturedCtx?.close(); } catch {}
+      resetWsIdleTimer();
     },
   };
 }
@@ -468,6 +532,13 @@ let _activeCancel: (() => void) | null = null;
 export function cleanupTTS() {
   _activeCancel?.();
   _activeCancel = null;
+  // Close persistent WebSocket
+  if (_persistentWs) {
+    try { _persistentWs.close(); } catch {}
+    _persistentWs = null;
+    _persistentWsReady = false;
+  }
+  if (_wsIdleTimer) { clearTimeout(_wsIdleTimer); _wsIdleTimer = null; }
 }
 
 /* ─── Unified speak function ─── */
