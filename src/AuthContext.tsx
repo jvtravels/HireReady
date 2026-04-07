@@ -421,8 +421,8 @@ export function RequireAuth({ children }: { children: ReactNode }) {
   }, [isLoggedIn, loading, user, navigate, location.pathname]);
 
   if (loading || (!isLoggedIn && hasStoredSession())) return (
-    <div style={{ minHeight: "100vh", background: "#060607", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16 }}>
-      <div style={{ width: 40, height: 40, borderRadius: 10, background: "rgba(212,179,127,0.08)", border: "1px solid rgba(212,179,127,0.2)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+    <div role="status" aria-live="polite" aria-busy="true" style={{ minHeight: "100vh", background: "#060607", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16 }}>
+      <div aria-hidden="true" style={{ width: 40, height: 40, borderRadius: 10, background: "rgba(212,179,127,0.08)", border: "1px solid rgba(212,179,127,0.2)", display: "flex", alignItems: "center", justifyContent: "center" }}>
         <div style={{ width: 16, height: 16, border: "2px solid rgba(212,179,127,0.3)", borderTopColor: "#D4B37F", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
       </div>
       <span style={{ fontFamily: "'Inter', sans-serif", fontSize: 13, color: "#8E8983" }}>Loading...</span>

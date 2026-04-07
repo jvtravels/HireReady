@@ -57,6 +57,19 @@ body {
   overflow-x: hidden;
 }
 
+/* ─── Screen Reader Only ─── */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 /* ─── Mobile Touch Targets ─── */
 @media (pointer: coarse) {
   input, select, textarea { min-height: 44px; }
@@ -536,6 +549,20 @@ body {
   .streak-widget { flex-wrap: wrap !important; gap: 0 !important; }
   .streak-label { border-radius: 100px !important; border-right: 1px solid rgba(212,179,127,0.12) !important; }
   .streak-dots { border-radius: 100px !important; margin-top: 6px; }
+
+  .landing-stats-grid { grid-template-columns: repeat(2, 1fr) !important; }
+  .landing-problem-grid { grid-template-columns: 1fr !important; gap: 32px !important; }
+  .landing-steps-grid { grid-template-columns: 1fr !important; }
+  .cal-form-grid { grid-template-columns: 1fr !important; }
+  .cal-form-grid-3 { grid-template-columns: 1fr !important; }
+  .setup-type-grid { grid-template-columns: 1fr !important; }
+  .setup-preview-grid { grid-template-columns: 1fr !important; }
+  .setup-check-grid { grid-template-columns: 1fr !important; }
+
+  .landing-section { padding-left: 20px !important; padding-right: 20px !important; }
+  .landing-hero { padding-left: 20px !important; padding-right: 20px !important; }
+
+  .session-detail-outer { padding: 20px 16px !important; }
 }
 @media (min-width: 769px) {
   .mobile-nav-toggle { display: none !important; }
@@ -674,6 +701,41 @@ body {
 }
 
 /* ─── Print Stylesheet ─── */
+/* ─── Active Button States ─── */
+.shimmer-btn:active {
+  transform: translateY(0) scale(0.98);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+}
+.premium-btn:active {
+  transform: translateY(0) scale(0.98);
+  box-shadow: 0 1px 4px rgba(212,179,127,0.2), inset 0 1px 0 rgba(255,255,255,0.15);
+}
+.gradient-border-card:active {
+  transform: translateY(0) scale(0.995);
+}
+
+/* ─── Responsive: Tablet (≤ 900px) ─── */
+@media (max-width: 900px) {
+  .settings-form-grid { grid-template-columns: 1fr !important; }
+  .settings-chip-grid { grid-template-columns: repeat(2, 1fr) !important; }
+  .stat-grid { grid-template-columns: repeat(2, 1fr) !important; }
+  .dash-main { padding: 28px 24px 80px !important; }
+  .landing-section { padding-left: 28px !important; padding-right: 28px !important; }
+}
+
+/* ─── Responsive: Mobile (≤ 600px) ─── */
+@media (max-width: 600px) {
+  .settings-form-grid { grid-template-columns: 1fr !important; }
+  .settings-chip-grid { grid-template-columns: 1fr !important; }
+  .stat-grid { grid-template-columns: 1fr !important; }
+  .dash-card { padding-left: 8px !important; padding-right: 8px !important; }
+  .landing-stats-grid { grid-template-columns: 1fr !important; }
+  .landing-section { padding-left: 16px !important; padding-right: 16px !important; }
+  .landing-hero { padding-left: 16px !important; padding-right: 16px !important; padding-top: 80px !important; }
+  .session-detail-outer { padding: 16px 10px !important; }
+  .session-detail-card { padding: 20px 16px !important; }
+}
+
 @media print {
   body { background: #fff !important; color: #111 !important; }
   aside, .mobile-nav-toggle, [role="dialog"], [role="status"],

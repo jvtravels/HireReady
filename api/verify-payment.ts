@@ -3,7 +3,7 @@
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { createHmac } from "crypto";
-import { getPostHog } from "./_posthog";
+import { getPostHog, captureError } from "./_posthog";
 
 /* ─── Inline rate limiting (Node.js ESM can't resolve extensionless imports) ─── */
 const UPSTASH_URL = (process.env.UPSTASH_REDIS_REST_URL || "").trim();
@@ -50,7 +50,7 @@ const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || "").split(",").map(s => 
 function getAllowedOrigin(origin: string): string {
   if (ALLOWED_ORIGINS.length > 0 && ALLOWED_ORIGINS.includes(origin)) return origin;
   if (origin.startsWith("http://localhost:")) return origin;
-  if (origin.endsWith(".vercel.app")) return origin;
+  if (ALLOWED_ORIGINS.length === 0 && origin.endsWith(".vercel.app")) return origin;
   return "";
 }
 
@@ -289,8 +289,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ error: "Plan does not match payment amount" });
     }
 
-    // 3. Atomic duplicate check + subscription update
-    // First check for duplicate payment AND current subscription state in one query
+    // 3. Duplicate check FIRST — before any state mutations
+    // Check payments table for any user with this payment ID (cross-user replay)
+    const dupCheck = await fetch(
+      `${SUPABASE_URL}/rest/v1/payments?razorpay_payment_id=eq.${encodeURIComponent(razorpay_payment_id)}&select=id`,
+      { headers: { apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` } },
+    );
+    const dupRows = await dupCheck.json();
+    if (Array.isArray(dupRows) && dupRows.length > 0) {
+      return res.status(409).json({ error: "Payment already processed" });
+    }
+
+    // 3b. Check profile for duplicate + subscription state
     const profileRes = await fetch(
       `${SUPABASE_URL}/rest/v1/profiles?id=eq.${encodeURIComponent(userId)}&select=subscription_tier,subscription_end,razorpay_payment_id`,
       { headers: { apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` } },
@@ -298,7 +308,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const profiles = await profileRes.json();
     const current = Array.isArray(profiles) && profiles.length > 0 ? profiles[0] : null;
     if (current) {
-      // Check duplicate payment on this user's profile
       if (current.razorpay_payment_id === razorpay_payment_id) {
         return res.status(409).json({ error: "Payment already processed" });
       }
@@ -309,16 +318,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (isActive && (tierRank[current.subscription_tier] || 0) > (tierRank[newTier] || 0)) {
         return res.status(400).json({ error: `You already have an active ${current.subscription_tier} plan. Downgrading is not supported — wait for it to expire or contact support.` });
       }
-    }
-
-    // Also check payments table for any user with this payment ID (cross-user replay)
-    const dupCheck = await fetch(
-      `${SUPABASE_URL}/rest/v1/payments?razorpay_payment_id=eq.${encodeURIComponent(razorpay_payment_id)}&select=id`,
-      { headers: { apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` } },
-    );
-    const dupRows = await dupCheck.json();
-    if (Array.isArray(dupRows) && dupRows.length > 0) {
-      return res.status(409).json({ error: "Payment already processed" });
     }
 
     // 4. Calculate subscription dates — extend from current end if still active
@@ -418,7 +417,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
   } catch (err) {
     console.error("Payment verification error:", err);
-    getPostHog()?.captureException(err, userId);
+    captureError(err, userId);
     return res.status(500).json({ error: "Internal error" });
   }
 }

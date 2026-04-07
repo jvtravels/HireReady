@@ -25,7 +25,8 @@ async function saveToIDB(key: string, data: unknown) {
     const db = await openIDB();
     const tx = db.transaction(IDB_STORE, "readwrite");
     tx.objectStore(IDB_STORE).put(data, key);
-    db.close();
+    tx.oncomplete = () => db.close();
+    tx.onerror = () => db.close();
   } catch {}
 }
 async function loadFromIDB(key: string): Promise<unknown | null> {
@@ -36,7 +37,8 @@ async function loadFromIDB(key: string): Promise<unknown | null> {
       const req = tx.objectStore(IDB_STORE).get(key);
       req.onsuccess = () => resolve(req.result ?? null);
       req.onerror = () => resolve(null);
-      db.close();
+      tx.oncomplete = () => db.close();
+      tx.onerror = () => db.close();
     });
   } catch { return null; }
 }
@@ -45,7 +47,8 @@ async function deleteFromIDB(key: string) {
     const db = await openIDB();
     const tx = db.transaction(IDB_STORE, "readwrite");
     tx.objectStore(IDB_STORE).delete(key);
-    db.close();
+    tx.oncomplete = () => db.close();
+    tx.onerror = () => db.close();
   } catch {}
 }
 
@@ -205,7 +208,9 @@ async function saveSessionResult(result: SessionResult, userId?: string): Promis
     sessions.unshift(result);
     localStorage.setItem(RESULTS_KEY, JSON.stringify(sessions));
     localOk = true;
-  } catch {}
+  } catch (e) {
+    console.error("[save] localStorage save failed:", e);
+  }
   // Save to Supabase if user is logged in
   if (userId) {
     try {
@@ -434,16 +439,10 @@ function WaveformVisualizer({ active, color, barCount = (typeof window !== "unde
       setBars(Array(barCount).fill(0.1));
       return;
     }
-    let running = true;
-    const animate = () => {
-      if (!running) return;
+    const id = setInterval(() => {
       setBars(prev => prev.map(() => 0.15 + Math.random() * 0.85));
-      frameRef.current = requestAnimationFrame(() => {
-        setTimeout(() => { if (running) animate(); }, 80);
-      });
-    };
-    animate();
-    return () => { running = false; cancelAnimationFrame(frameRef.current); };
+    }, 96);
+    return () => clearInterval(id);
   }, [active, barCount]);
 
   return (
@@ -515,10 +514,11 @@ function LiveCaptions({ text, isTyping, speakingDuration }: { text: string; isTy
 
   useEffect(() => {
     if (!isTyping || charIndex >= text.length) return;
-    // Sync caption reveal to estimated speaking duration (~150 wpm)
-    const estimatedDuration = speakingDuration || Math.max(3000, (text.split(/\s+/).length / 150) * 60 * 1000);
+    // Sync caption reveal to TTS duration (~175 wpm for Cartesia Sonic-3)
+    const wordCount = text.split(/\s+/).length;
+    const estimatedDuration = speakingDuration || Math.max(2500, (wordCount / 175) * 60 * 1000);
     const msPerChar = estimatedDuration / text.length;
-    const delay = Math.max(15, Math.min(80, msPerChar + (Math.random() * 5 - 2.5)));
+    const delay = Math.max(12, Math.min(70, msPerChar + (Math.random() * 4 - 2)));
     const timer = setTimeout(() => {
       setDisplayText(text.slice(0, charIndex + 1));
       setCharIndex(charIndex + 1);
@@ -710,7 +710,9 @@ export default function Interview() {
           draftRef.current = parsed;
         }
       }
-    } catch {}
+    } catch (e) {
+      console.warn("[interview] Draft restore failed:", e);
+    }
   }
 
   const fallbackScript = isMiniMode ? getMiniScript(user) : getScript(interviewType, interviewDifficulty, user);
@@ -828,6 +830,7 @@ export default function Interview() {
   const [usedFallbackScore, setUsedFallbackScore] = useState(false);
   const [evalTimedOut, setEvalTimedOut] = useState(false);
   const noSpeechCountRef = useRef(0);
+  const recognitionRestartCountRef = useRef(0);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const nextBtnRef = useRef<HTMLButtonElement>(null);
   const [evaluating, setEvaluating] = useState(false);
@@ -954,12 +957,21 @@ export default function Interview() {
         recognition.onresult = ((origOnResult) => {
           return (event: SpeechRecognitionEvent) => {
             noSpeechCountRef.current = 0; // reset on successful recognition
+            recognitionRestartCountRef.current = 0;
             origOnResult(event);
           };
         })(recognition.onresult);
         recognition.onend = () => {
           if (interviewEndedRef.current) return;
           if (!stopped) {
+            recognitionRestartCountRef.current++;
+            if (recognitionRestartCountRef.current > 5) {
+              console.warn("[speech] too many restarts, falling back to text input");
+              setSpeechUnavailable(true);
+              setMicError("Speech recognition keeps stopping. Type your answer below.");
+              setTimeout(() => textareaRef.current?.focus(), 100);
+              return;
+            }
             try {
               recognition.start();
             } catch (e) {
@@ -1025,7 +1037,7 @@ export default function Interview() {
   }, []);
   useEffect(() => {
     if (phase !== "listening") {
-      setAnswerTimer(0);
+      if (phase !== "speaking") setAnswerTimer(0);
       return;
     }
     const timer = setInterval(() => setAnswerTimer(t => {
@@ -1488,6 +1500,12 @@ export default function Interview() {
           .interview-qcard { padding: 12px 16px !important; }
           .interview-header-right .header-controls { gap: 2px !important; }
           .interview-pip-float { width: 100px !important; height: 75px !important; bottom: 8px !important; right: 8px !important; }
+        }
+        @media (max-width: 600px) {
+          .interview-qcard { font-size: 14px !important; }
+          .interview-avatar-row { padding: 12px 12px 0 !important; }
+          .interview-input-area { padding: 8px 12px !important; }
+          .interview-right .interview-stats > div { padding: 6px 8px !important; font-size: 11px !important; }
         }
         @media (max-width: 480px) {
           .interview-header-left .interview-type-badge { display: none !important; }

@@ -4,6 +4,7 @@ import { c, font, sp, radius } from "./tokens";
 import { useAuth } from "./AuthContext";
 import { useDashboard } from "./DashboardContext";
 import { DataLoadingSkeleton, EmptyState, SessionDetailView } from "./dashboardComponents";
+import { SectionErrorBoundary } from "./ErrorBoundary";
 import { scoreLabel, scoreLabelColor, sessionTypes } from "./dashboardTypes";
 import { daysUntilEvent, formatEventDate, formatEventTime } from "./dashboardHelpers";
 import { getPersonalizedGreeting } from "./dashboardData";
@@ -233,7 +234,7 @@ export default function DashboardHome() {
               {getPersonalizedGreeting(displayName.split(" ")[0], currentStreak, recentSessions.length)}
             </h1>
             {latestBadge && (
-              <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "4px 12px", borderRadius: radius.pill, background: "rgba(212,179,127,0.06)", border: "1px solid rgba(212,179,127,0.15)" }} title={latestBadge.description}>
+              <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "4px 12px", borderRadius: radius.pill, background: c.glow, border: "1px solid rgba(212,179,127,0.15)" }} title={latestBadge.description}>
                 <span style={{ display: "flex", transform: "scale(0.65)", transformOrigin: "center" }}>{(badgeIcons[latestBadge.icon] || badgeIcons.star)(c.gilt)}</span>
                 <span style={{ fontFamily: font.mono, fontSize: 11, fontWeight: 600, color: c.gilt }}>{latestBadge.label}</span>
               </div>
@@ -441,7 +442,7 @@ export default function DashboardHome() {
             </button>
             {/* ─── Streak widget ─── */}
             <div className="streak-widget" style={{ display: "flex", alignItems: "center", gap: 0, flexWrap: "wrap" }}>
-              <div className="streak-label" style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 14px", borderRadius: `${radius.pill}px 0 0 ${radius.pill}px`, background: "rgba(212,179,127,0.06)", border: "1px solid rgba(212,179,127,0.12)", borderRight: "none", whiteSpace: "nowrap" }}>
+              <div className="streak-label" style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 14px", borderRadius: `${radius.pill}px 0 0 ${radius.pill}px`, background: c.glow, border: "1px solid rgba(212,179,127,0.12)", borderRight: "none", whiteSpace: "nowrap" }}>
                 <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="2" strokeLinecap="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" /></svg>
                 <span style={{ fontFamily: font.mono, fontSize: 11, fontWeight: 600, color: c.gilt }}>{currentStreak > 0 ? `${currentStreak}-day streak` : "Start a streak"}</span>
               </div>
@@ -531,6 +532,7 @@ export default function DashboardHome() {
       })()}
 
       {/* ─── Row 1: Score Trend | Skill Breakdown ─── */}
+      <SectionErrorBoundary label="charts">
       <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "2fr 1fr", gap: sp["2xl"], marginBottom: sp["2xl"] }}>
         {/* Score Trend */}
         <div style={{ ...card, padding: "28px 32px" }} className="gradient-border-card">
@@ -613,8 +615,10 @@ export default function DashboardHome() {
           )}
         </div>
       </div>
+      </SectionErrorBoundary>
 
       {/* ─── Row 2: Recent Sessions | AI Insights (side by side) ─── */}
+      <SectionErrorBoundary label="sessions">
       <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "3fr 2fr", gap: sp["2xl"], marginBottom: sp["2xl"] }}>
       <div style={{ ...card, padding: "28px 32px" }} className="gradient-border-card">
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
@@ -676,7 +680,7 @@ export default function DashboardHome() {
               </p>
               {(searchQuery || filterType !== "All" || dateRange !== "all") && (
                 <button onClick={() => { setSearchQuery(""); setDebouncedSearch(""); setFilterType("All"); setDateRange("all"); }}
-                  style={{ marginTop: 14, fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.gilt, background: "rgba(212,179,127,0.06)", border: `1px solid rgba(212,179,127,0.15)`, borderRadius: radius.sm, padding: "8px 18px", cursor: "pointer", transition: "background 0.2s" }}
+                  style={{ marginTop: 14, fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.gilt, background: c.glow, border: `1px solid rgba(212,179,127,0.15)`, borderRadius: radius.sm, padding: "8px 18px", cursor: "pointer", transition: "background 0.2s" }}
                   onMouseEnter={(e) => e.currentTarget.style.background = "rgba(212,179,127,0.12)"}
                   onMouseLeave={(e) => e.currentTarget.style.background = "rgba(212,179,127,0.06)"}>
                   Clear all filters
@@ -736,7 +740,7 @@ export default function DashboardHome() {
                     )}
                     <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                       <button onClick={() => setFeedbackSession(feedbackSession === session.id ? null : session.id)}
-                        style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.gilt, background: "rgba(212,179,127,0.06)", border: "none", borderRadius: radius.sm, padding: "8px 16px", cursor: "pointer", transition: "background 0.2s" }}
+                        style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.gilt, background: c.glow, border: "none", borderRadius: radius.sm, padding: "8px 16px", cursor: "pointer", transition: "background 0.2s" }}
                         onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(212,179,127,0.12)"; }}
                         onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(212,179,127,0.06)"; }}>
                         {feedbackSession === session.id ? "Hide Feedback" : "View Feedback"}
@@ -844,8 +848,10 @@ export default function DashboardHome() {
           </div>
         </div>
       </div>
+      </SectionErrorBoundary>
 
       {/* ─── Achievements (full-width) ─── */}
+      <SectionErrorBoundary label="achievements">
       {badges.length > 0 && (
         <div style={{ ...card, padding: "24px 28px" }} className="gradient-border-card">
           {sectionTitle("Achievements")}
@@ -868,6 +874,7 @@ export default function DashboardHome() {
           </div>
         </div>
       )}
+      </SectionErrorBoundary>
     </div>
   );
 }

@@ -279,7 +279,7 @@ export default function SessionDetail() {
   }
 
   return (
-    <div style={{ minHeight: "100vh", background: c.obsidian, fontFamily: font.ui, padding: "40px 24px" }}>
+    <div className="session-detail-outer" style={{ minHeight: "100vh", background: c.obsidian, fontFamily: font.ui, padding: "40px 24px" }}>
       <div style={{ maxWidth: 800, margin: "0 auto" }}>
         {/* Header */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
@@ -340,7 +340,7 @@ export default function SessionDetail() {
         )}
 
         {/* Session summary card */}
-        <div style={{ background: c.graphite, borderRadius: 14, border: `1px solid ${c.border}`, padding: "28px 32px", marginBottom: 20 }}>
+        <div className="session-detail-card" style={{ background: c.graphite, borderRadius: 14, border: `1px solid ${c.border}`, padding: "28px 32px", marginBottom: 20 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20, flexWrap: "wrap", gap: 16 }}>
             <div>
               <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8 }}>
@@ -382,7 +382,7 @@ export default function SessionDetail() {
 
         {/* Answer vs Ideal Comparison */}
         {session.ideal_answers && session.ideal_answers.length > 0 && (
-          <div style={{ background: c.graphite, borderRadius: 14, border: `1px solid ${c.border}`, padding: "28px 32px", marginBottom: 20 }}>
+          <div className="session-detail-card" style={{ background: c.graphite, borderRadius: 14, border: `1px solid ${c.border}`, padding: "28px 32px", marginBottom: 20 }}>
             <h3 style={{ fontSize: 15, fontWeight: 600, color: c.ivory, marginBottom: 16, display: "flex", alignItems: "center", gap: 8 }}>
               <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="2" strokeLinecap="round"><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg>
               Answer vs Ideal
@@ -447,7 +447,7 @@ export default function SessionDetail() {
 
         {/* AI Feedback — structured */}
         {session.ai_feedback && (
-          <div style={{ background: c.graphite, borderRadius: 14, border: `1px solid ${c.border}`, padding: "28px 32px", marginBottom: 20 }}>
+          <div className="session-detail-card" style={{ background: c.graphite, borderRadius: 14, border: `1px solid ${c.border}`, padding: "28px 32px", marginBottom: 20 }}>
             <h3 style={{ fontSize: 15, fontWeight: 600, color: c.ivory, marginBottom: 16 }}>AI Coach Summary</h3>
             {(() => {
               const feedback = session.ai_feedback;

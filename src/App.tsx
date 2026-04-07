@@ -358,7 +358,7 @@ function Hero() {
       justifyContent: "center", overflow: "hidden",
     }}>
       <ParticleCanvas />
-      <div style={{ display: "flex", alignItems: "center", maxWidth: 1200, width: "100%", padding: "140px 48px 100px", position: "relative" }}>
+      <div className="landing-hero" style={{ display: "flex", alignItems: "center", maxWidth: 1200, width: "100%", padding: "140px 48px 100px", position: "relative" }}>
 
       {/* Mesh gradient */}
       <div style={{
@@ -696,7 +696,7 @@ function LogoMarquee() {
   const ref = useReveal<HTMLElement>();
 
   return (
-    <section ref={ref} className="reveal" style={{ padding: "60px 40px", borderTop: `1px solid ${c.border}`, borderBottom: `1px solid ${c.border}` }}>
+    <section ref={ref} className="reveal landing-section" style={{ padding: "60px 40px", borderTop: `1px solid ${c.border}`, borderBottom: `1px solid ${c.border}` }}>
       <p style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 500, letterSpacing: "0.1em", textTransform: "uppercase", color: c.stone, textAlign: "center", marginBottom: 36 }}>
         Our users have landed roles at
       </p>
@@ -782,8 +782,8 @@ function StatsSection() {
   ];
 
   return (
-    <section ref={sectionRef} className="reveal" style={{ padding: "80px 40px", maxWidth: 1100, margin: "0 auto" }}>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 24 }}>
+    <section ref={sectionRef} className="reveal landing-section" style={{ padding: "80px 40px", maxWidth: 1100, margin: "0 auto" }}>
+      <div className="landing-stats-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 24 }}>
         {stats.map((s, i) => (
           <div
             key={i}
@@ -810,8 +810,8 @@ function StatsSection() {
 function ProblemSection() {
   const ref = useReveal<HTMLElement>();
   return (
-    <section ref={ref} className="reveal" style={{ padding: "140px 40px", maxWidth: 1100, margin: "0 auto" }}>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 64, alignItems: "center" }}>
+    <section ref={ref} className="reveal landing-section" style={{ padding: "140px 40px", maxWidth: 1100, margin: "0 auto" }}>
+      <div className="landing-problem-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 64, alignItems: "center" }}>
         {/* Image side */}
         <div style={{ position: "relative" }}>
           <div style={{
@@ -893,7 +893,7 @@ function HowItWorks() {
   }, [isPaused]);
 
   return (
-    <section id="how-it-works" ref={ref} className="reveal dot-grid-bg" style={{ padding: "140px 40px 100px", maxWidth: 1100, margin: "0 auto" }}>
+    <section id="how-it-works" ref={ref} className="reveal dot-grid-bg landing-section" style={{ padding: "140px 40px 100px", maxWidth: 1100, margin: "0 auto" }}>
       <div style={{ textAlign: "center", marginBottom: 64 }}>
         <p style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: c.gilt, marginBottom: 16 }}>How It Works</p>
         <h2 className="text-glow" style={{ fontFamily: font.display, fontSize: "clamp(32px, 4vw, 48px)", fontWeight: 400, letterSpacing: "-0.02em", color: c.ivory, lineHeight: 1.15 }}>
@@ -906,7 +906,7 @@ function HowItWorks() {
         onMouseEnter={() => setIsPaused(true)}
         onMouseLeave={() => setIsPaused(false)}
       >
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16, marginBottom: 48 }}>
+        <div className="landing-steps-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16, marginBottom: 48 }}>
           {steps.map((step, i) => {
             const isActive = activeStep === i;
             return (
@@ -1112,7 +1112,7 @@ function MockupFeedback() {
 function DemoVideoSection() {
   const ref = useReveal<HTMLElement>();
   return (
-    <section ref={ref} className="reveal" style={{ padding: "140px 40px", maxWidth: 960, margin: "0 auto" }}>
+    <section ref={ref} className="reveal landing-section" style={{ padding: "140px 40px", maxWidth: 960, margin: "0 auto" }}>
       <div style={{ textAlign: "center", marginBottom: 48 }}>
         <p style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: c.gilt, marginBottom: 16 }}>See It In Action</p>
         <h2 className="text-glow" style={{ fontFamily: font.display, fontSize: "clamp(32px, 4vw, 48px)", fontWeight: 400, letterSpacing: "-0.02em", color: c.ivory, lineHeight: 1.15, marginBottom: 12 }}>
@@ -1174,7 +1174,7 @@ const features = [
 function FeaturesSection() {
   const ref = useReveal<HTMLElement>();
   return (
-    <section id="features" ref={ref} className="reveal" style={{ padding: "140px 40px 80px", maxWidth: 1100, margin: "0 auto" }}>
+    <section id="features" ref={ref} className="reveal landing-section" style={{ padding: "140px 40px 80px", maxWidth: 1100, margin: "0 auto" }}>
       <div style={{ textAlign: "center", marginBottom: 80 }}>
         <p style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: c.gilt, marginBottom: 16 }}>Why Hirloop</p>
         <h2 className="text-glow" style={{ fontFamily: font.display, fontSize: "clamp(32px, 4vw, 48px)", fontWeight: 400, letterSpacing: "-0.02em", color: c.ivory, lineHeight: 1.15 }}>
@@ -1331,7 +1331,7 @@ function ScorePreview() {
   ];
 
   return (
-    <section ref={setRefs} className="reveal" style={{ padding: "140px 40px", maxWidth: 900, margin: "0 auto" }}>
+    <section ref={setRefs} className="reveal landing-section" style={{ padding: "140px 40px", maxWidth: 900, margin: "0 auto" }}>
       <div style={{ textAlign: "center", marginBottom: 64 }}>
         <p style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: c.gilt, marginBottom: 16 }}>Precision Feedback</p>
         <h2 className="text-glow" style={{ fontFamily: font.display, fontSize: "clamp(32px, 4vw, 48px)", fontWeight: 400, letterSpacing: "-0.02em", color: c.ivory, lineHeight: 1.15, marginBottom: 16 }}>Scores that mean something</h2>
@@ -1388,7 +1388,7 @@ function TestimonialsSection() {
   }, [isPaused]);
 
   return (
-    <section ref={ref} className="reveal" style={{ padding: "140px 40px", maxWidth: 1100, margin: "0 auto" }}>
+    <section ref={ref} className="reveal landing-section" style={{ padding: "140px 40px", maxWidth: 1100, margin: "0 auto" }}>
       <div style={{ textAlign: "center", marginBottom: 64 }}>
         <p style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: c.gilt, marginBottom: 16 }}>Real Results</p>
         <h2 className="text-glow" style={{ fontFamily: font.display, fontSize: "clamp(32px, 4vw, 48px)", fontWeight: 400, letterSpacing: "-0.02em", color: c.ivory, lineHeight: 1.15 }}>People who practiced here got hired</h2>
@@ -1495,7 +1495,7 @@ const plans = [
 function PricingSection() {
   const ref = useReveal<HTMLElement>();
   return (
-    <section id="pricing" ref={ref} className="reveal dot-grid-bg" style={{ padding: "140px 40px", maxWidth: 1100, margin: "0 auto" }}>
+    <section id="pricing" ref={ref} className="reveal dot-grid-bg landing-section" style={{ padding: "140px 40px", maxWidth: 1100, margin: "0 auto" }}>
       <div style={{ textAlign: "center", marginBottom: 80 }}>
         <p style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: c.gilt, marginBottom: 16 }}>Pricing</p>
         <h2 className="text-glow" style={{ fontFamily: font.display, fontSize: "clamp(32px, 4vw, 48px)", fontWeight: 400, letterSpacing: "-0.02em", color: c.ivory, lineHeight: 1.15, marginBottom: 16 }}>Transparent. No surprises.</h2>
@@ -1656,7 +1656,7 @@ function PricingCard({ plan, delay }: { plan: (typeof plans)[0]; delay: number }
 function ForTeamsBanner() {
   const ref = useReveal<HTMLElement>();
   return (
-    <section ref={ref} className="reveal" style={{ padding: "0 40px 140px", maxWidth: 1100, margin: "0 auto" }}>
+    <section ref={ref} className="reveal landing-section" style={{ padding: "0 40px 140px", maxWidth: 1100, margin: "0 auto" }}>
       <div className="gradient-border-card" style={{ padding: "52px 56px", display: "flex", alignItems: "center", justifyContent: "space-between", position: "relative", overflow: "hidden", zIndex: 0 }}>
         <div style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: "40%", background: "url(https://images.unsplash.com/photo-1497366216548-37526070297c?w=600&q=80) center/cover no-repeat", maskImage: "linear-gradient(to right, transparent, black 40%)", WebkitMaskImage: "linear-gradient(to right, transparent, black 40%)", opacity: 0.12 }} />
         <div style={{ position: "relative", zIndex: 1 }}>
@@ -1707,7 +1707,7 @@ function TrustBadges() {
   ];
 
   return (
-    <section ref={ref} className="reveal" style={{ padding: "60px 40px 100px", maxWidth: 1100, margin: "0 auto" }}>
+    <section ref={ref} className="reveal landing-section" style={{ padding: "60px 40px 100px", maxWidth: 1100, margin: "0 auto" }}>
       <div style={{ textAlign: "center", marginBottom: 48 }}>
         <p style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: c.gilt, marginBottom: 16 }}>Privacy & Security</p>
         <h2 style={{ fontFamily: font.display, fontSize: "clamp(24px, 3vw, 36px)", fontWeight: 400, letterSpacing: "-0.02em", color: c.ivory, lineHeight: 1.2 }}>
@@ -1748,7 +1748,7 @@ function FAQSection() {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
 
   return (
-    <section ref={ref} className="reveal" style={{ padding: "80px 40px", maxWidth: 800, margin: "0 auto" }}>
+    <section ref={ref} className="reveal landing-section" style={{ padding: "80px 40px", maxWidth: 800, margin: "0 auto" }}>
       <div style={{ textAlign: "center", marginBottom: 48 }}>
         <p style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: c.gilt, marginBottom: 16 }}>FAQ</p>
         <h2 style={{ fontFamily: font.display, fontSize: "clamp(24px, 3vw, 36px)", fontWeight: 400, letterSpacing: "-0.02em", color: c.ivory, lineHeight: 1.2 }}>
@@ -1803,7 +1803,7 @@ function FinalCTA() {
   const ref = useReveal<HTMLElement>();
 
   return (
-    <section ref={ref} className="reveal" style={{ padding: "80px 40px 140px", maxWidth: 1100, margin: "0 auto" }}>
+    <section ref={ref} className="reveal landing-section" style={{ padding: "80px 40px 140px", maxWidth: 1100, margin: "0 auto" }}>
       <div style={{
         position: "relative", borderRadius: 20, overflow: "hidden",
         minHeight: 400, display: "flex", alignItems: "center",
@@ -1887,7 +1887,7 @@ function EmailCapture() {
   };
 
   return (
-    <section ref={ref} className="reveal" style={{ padding: "0 40px 120px", maxWidth: 600, margin: "0 auto", textAlign: "center" }}>
+    <section ref={ref} className="reveal landing-section" style={{ padding: "0 40px 120px", maxWidth: 600, margin: "0 auto", textAlign: "center" }}>
       <div style={{
         background: c.graphite, borderRadius: 16, border: `1px solid ${c.border}`,
         padding: "48px 40px", position: "relative", overflow: "hidden",
@@ -1969,7 +1969,7 @@ function Footer() {
   ];
 
   return (
-    <footer style={{ borderTop: `1px solid ${c.border}`, maxWidth: 1100, margin: "0 auto", padding: "64px 40px 40px" }}>
+    <footer className="landing-section" style={{ borderTop: `1px solid ${c.border}`, maxWidth: 1100, margin: "0 auto", padding: "64px 40px 40px" }}>
       <div className="footer-grid" style={{ display: "grid", gridTemplateColumns: "1.5fr repeat(4, 1fr)", gap: 48, marginBottom: 48 }}>
         {/* Brand column */}
         <div>

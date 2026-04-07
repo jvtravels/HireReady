@@ -185,3 +185,35 @@ export class RouteErrorBoundary extends Component<{ children: ReactNode }, Route
     return this.props.children;
   }
 }
+
+/* ─── Compact section-level error boundary ─── */
+/* Renders a small inline error message instead of crashing the entire page */
+
+export class SectionErrorBoundary extends Component<{ children: ReactNode; label?: string }, { hasError: boolean }> {
+  constructor(props: { children: ReactNode; label?: string }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(): { hasError: boolean } {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    console.error(`[SectionError${this.props.label ? `: ${this.props.label}` : ""}]`, error, info.componentStack);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div role="alert" style={{ padding: "20px 16px", textAlign: "center", borderRadius: 12, background: "rgba(196,112,90,0.04)", border: "1px solid rgba(196,112,90,0.12)" }}>
+          <p style={{ fontSize: 13, color: c.stone, margin: 0 }}>
+            {this.props.label ? `Could not load ${this.props.label}.` : "This section could not load."}{" "}
+            <button onClick={() => this.setState({ hasError: false })} style={{ fontSize: 13, color: c.gilt, background: "none", border: "none", cursor: "pointer", textDecoration: "underline", padding: 0 }}>Retry</button>
+          </p>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}

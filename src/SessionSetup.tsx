@@ -437,7 +437,7 @@ export default function SessionSetup() {
             </p>
 
             {/* Type cards */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 40 }}>
+            <div className="setup-type-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 40 }}>
               {interviewTypes.map(type => (
                 <button key={type.id}
                   aria-label={`${type.label} interview: ${type.description}`}
@@ -602,7 +602,7 @@ export default function SessionSetup() {
             {/* Session summary */}
             <div style={{ background: c.graphite, borderRadius: 14, border: `1px solid ${c.border}`, padding: "20px 24px" }}>
               <h3 style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: c.stone, letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 14 }}>Session Preview</h3>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16 }}>
+              <div className="setup-preview-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16 }}>
                 <div>
                   <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, display: "block", marginBottom: 4 }}>Type</span>
                   <span style={{ fontFamily: font.ui, fontSize: 14, fontWeight: 600, color: c.ivory }}>{selectedTypeData?.label}</span>
@@ -630,7 +630,7 @@ export default function SessionSetup() {
               Test your microphone and camera before starting. This ensures the AI can hear and see you clearly.
             </p>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginBottom: 32 }}>
+            <div className="setup-check-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginBottom: 32 }}>
               {/* Mic check */}
               <div style={{ background: c.graphite, borderRadius: 14, border: `1px solid ${c.border}`, padding: "28px 24px" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>

@@ -17,8 +17,8 @@ export function getAllowedOrigin(req: Request): string {
   // Allow localhost in development
   if (origin.startsWith("http://localhost:")) return origin;
   // Only allow *.vercel.app when no explicit origins configured (dev/preview mode)
-  // In production, set ALLOWED_ORIGINS to restrict to your specific domains
-  if (origin.endsWith(".vercel.app")) return origin;
+  // In production, ALLOWED_ORIGINS restricts to specific domains
+  if (ALLOWED_ORIGINS.length === 0 && origin.endsWith(".vercel.app")) return origin;
   return "";
 }
 
@@ -118,9 +118,9 @@ export async function checkSessionLimit(userId: string): Promise<{ allowed: bool
       `${SUPABASE_URL}/rest/v1/profiles?id=eq.${encodeURIComponent(userId)}&select=subscription_tier,subscription_end`,
       { headers: { apikey: SERVICE_ROLE_KEY, Authorization: `Bearer ${SERVICE_ROLE_KEY}` }, signal: ac.signal },
     );
-    if (!profileRes.ok) { clearTimeout(timer); return { allowed: true }; } // fail open
+    if (!profileRes.ok) { clearTimeout(timer); console.error("Session limit check: profile fetch failed", profileRes.status); return { allowed: false, reason: "Could not verify session limit. Please try again." }; }
     const profiles = await profileRes.json();
-    if (!Array.isArray(profiles) || profiles.length === 0) { clearTimeout(timer); return { allowed: true }; }
+    if (!Array.isArray(profiles) || profiles.length === 0) { clearTimeout(timer); return { allowed: false, reason: "Could not verify session limit. Please try again." }; }
 
     let tier = profiles[0].subscription_tier || "free";
     const subEnd = profiles[0].subscription_end;
@@ -138,9 +138,9 @@ export async function checkSessionLimit(userId: string): Promise<{ allowed: bool
       { headers: { apikey: SERVICE_ROLE_KEY, Authorization: `Bearer ${SERVICE_ROLE_KEY}` }, signal: ac.signal },
     );
     clearTimeout(timer);
-    if (!sessionsRes.ok) return { allowed: true };
+    if (!sessionsRes.ok) { console.error("Session limit check: sessions fetch failed", sessionsRes.status); return { allowed: false, reason: "Could not verify session limit. Please try again." }; }
     const sessions = await sessionsRes.json();
-    if (!Array.isArray(sessions)) return { allowed: true };
+    if (!Array.isArray(sessions)) return { allowed: false, reason: "Could not verify session limit. Please try again." };
 
     if (tier === "free") {
       if (sessions.length >= FREE_SESSION_LIMIT) {
@@ -158,8 +158,9 @@ export async function checkSessionLimit(userId: string): Promise<{ allowed: bool
     }
 
     return { allowed: true };
-  } catch {
-    return { allowed: true }; // fail open on error
+  } catch (err) {
+    console.error("Session limit check error:", err);
+    return { allowed: false, reason: "Could not verify session limit. Please try again." };
   }
 }
 
@@ -191,7 +192,7 @@ export function validateOrigin(req: Request): boolean {
   if (!origin) return false; // POST requests must have an Origin header
   if (ALLOWED_ORIGINS.length > 0 && ALLOWED_ORIGINS.includes(origin)) return true;
   if (origin.startsWith("http://localhost:")) return true;
-  if (origin.endsWith(".vercel.app")) return true;
+  if (ALLOWED_ORIGINS.length === 0 && origin.endsWith(".vercel.app")) return true;
   return false;
 }
 

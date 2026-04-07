@@ -213,19 +213,19 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     [user?.targetRole, persisted.targetRole, supabaseSessions],
   );
 
-  const weekActivity = computeWeekActivity(recentSessions);
-  const currentStreak = computeStreak(recentSessions);
+  const weekActivity = useMemo(() => computeWeekActivity(recentSessions), [recentSessions]);
+  const currentStreak = useMemo(() => computeStreak(recentSessions), [recentSessions]);
 
-  // Personalized data
-  const aiInsights = generatePersonalizedInsights(user, skills);
-  const notifications = generateNotifications(user, currentStreak, weekActivity, recentSessions);
-  const upcomingGoals = generateGoals(user, weekActivity, skills);
-  const returnContext = getReturnContext(recentSessions);
-  const smartSchedule = getSmartScheduleSuggestion(user);
-  const prepPlan = getPrepPlan(user, recentSessions, skills);
-  const badges = computeBadges(recentSessions, skills, currentStreak);
-  const dailyChallenge = getDailyChallenge(recentSessions, skills);
-  const practiceReminder = getPracticeReminder(recentSessions, currentStreak);
+  // Personalized data (memoized to avoid re-computation on every render)
+  const aiInsights = useMemo(() => generatePersonalizedInsights(user, skills), [user, skills]);
+  const notifications = useMemo(() => generateNotifications(user, currentStreak, weekActivity, recentSessions), [user, currentStreak, weekActivity, recentSessions]);
+  const upcomingGoals = useMemo(() => generateGoals(user, weekActivity, skills), [user, weekActivity, skills]);
+  const returnContext = useMemo(() => getReturnContext(recentSessions), [recentSessions]);
+  const smartSchedule = useMemo(() => getSmartScheduleSuggestion(user), [user]);
+  const prepPlan = useMemo(() => getPrepPlan(user, recentSessions, skills), [user, recentSessions, skills]);
+  const badges = useMemo(() => computeBadges(recentSessions, skills, currentStreak), [recentSessions, skills, currentStreak]);
+  const dailyChallenge = useMemo(() => getDailyChallenge(recentSessions, skills), [recentSessions, skills]);
+  const practiceReminder = useMemo(() => getPracticeReminder(recentSessions, currentStreak), [recentSessions, currentStreak]);
 
   // Persist state
   const updatePersisted = useCallback((updates: Partial<PersistedState>) => {

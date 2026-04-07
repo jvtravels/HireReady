@@ -64,12 +64,41 @@ const PlaceholderPage = lazy(() => import("./PlaceholderPage"));
 const BlogPage = lazy(() => import("./BlogPage"));
 
 function LoadingFallback() {
-  return <div style={{ minHeight: "100vh", background: "#060607" }} />;
+  return <div role="status" aria-live="polite" aria-busy="true" style={{ minHeight: "100vh", background: "#060607" }}><span className="sr-only">Loading…</span></div>;
 }
 
 function ScrollToTop() {
   const { pathname } = useLocation();
   useEffect(() => { window.scrollTo(0, 0); }, [pathname]);
+  return null;
+}
+
+const ROUTE_TITLES: Record<string, string> = {
+  "/": "Hirloop — AI Mock Interviews",
+  "/signup": "Sign Up — Hirloop",
+  "/login": "Log In — Hirloop",
+  "/onboarding": "Get Started — Hirloop",
+  "/onboarding/complete": "You're Ready — Hirloop",
+  "/dashboard": "Dashboard — Hirloop",
+  "/sessions": "Sessions — Hirloop",
+  "/calendar": "Calendar — Hirloop",
+  "/analytics": "Analytics — Hirloop",
+  "/resume": "Resume — Hirloop",
+  "/settings": "Settings — Hirloop",
+  "/session/new": "New Session — Hirloop",
+  "/interview": "Interview — Hirloop",
+  "/reset-password": "Reset Password — Hirloop",
+  "/terms": "Terms of Service — Hirloop",
+  "/privacy": "Privacy Policy — Hirloop",
+  "/blog": "Blog — Hirloop",
+};
+
+function DocumentTitle() {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    const title = ROUTE_TITLES[pathname] || (pathname.startsWith("/session/") ? "Session Details — Hirloop" : pathname.startsWith("/blog/") ? "Blog — Hirloop" : "Hirloop");
+    document.title = title;
+  }, [pathname]);
   return null;
 }
 
@@ -83,6 +112,7 @@ createRoot(document.getElementById("root")!).render(
       <ErrorBoundary>
       <BrowserRouter>
         <ScrollToTop />
+        <DocumentTitle />
         <AuthProvider>
         <ToastProvider>
           <Suspense fallback={<LoadingFallback />}>

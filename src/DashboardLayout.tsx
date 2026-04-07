@@ -250,7 +250,7 @@ export default function DashboardLayout() {
       </aside>
 
       {/* Main Content */}
-      <main id="dashboard-main" style={{ flex: 1, marginLeft: isMobile ? 0 : 260, padding: isMobile ? "20px 16px 60px" : "44px 52px 80px", overflowY: "auto", height: "100vh" }}>
+      <main id="dashboard-main" className="dash-main" style={{ flex: 1, marginLeft: isMobile ? 0 : 260, padding: isMobile ? "20px 16px 60px" : "44px 52px 80px", overflowY: "auto", height: "100vh" }}>
         {isMobile && (
           <button onClick={() => setSidebarOpen(true)} aria-label="Open navigation menu" aria-expanded={sidebarOpen}
             style={{ background: c.graphite, border: `1px solid ${c.border}`, borderRadius: 8, padding: "8px 10px", cursor: "pointer", marginBottom: 20, color: c.ivory, display: "flex", alignItems: "center", gap: 8 }}>

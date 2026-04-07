@@ -5,7 +5,7 @@
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { createHmac } from "crypto";
-import { getPostHog } from "./_posthog";
+import { getPostHog, captureError } from "./_posthog";
 
 const RAZORPAY_WEBHOOK_SECRET = (process.env.RAZORPAY_WEBHOOK_SECRET || "").trim();
 const RAZORPAY_KEY_ID = (process.env.RAZORPAY_KEY_ID || "").trim();
@@ -191,7 +191,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(200).json({ received: true, activated: true, tier });
   } catch (err) {
     console.error("[webhook] Error:", err);
-    getPostHog()?.captureException(err);
+    captureError(err);
     return res.status(500).json({ error: "Internal error" });
   }
 }

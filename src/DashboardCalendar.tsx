@@ -202,7 +202,7 @@ export default function CalendarPage() {
             </button>
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
+          <div className="cal-form-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
             <div>
               <label style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 500, color: c.stone, display: "block", marginBottom: 6 }}>Interview Title *</label>
               <input value={formTitle} onChange={(e) => setFormTitle(e.target.value)} placeholder="e.g. Final Round Interview" style={inputStyle}
@@ -215,7 +215,7 @@ export default function CalendarPage() {
             </div>
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16, marginBottom: 16 }}>
+          <div className="cal-form-grid-3" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16, marginBottom: 16 }}>
             <div>
               <label style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 500, color: c.stone, display: "block", marginBottom: 6 }}>Date *</label>
               <input type="date" value={formDate} onChange={(e) => setFormDate(e.target.value)} style={{ ...inputStyle, colorScheme: "dark" }} />
@@ -236,7 +236,7 @@ export default function CalendarPage() {
             </div>
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
+          <div className="cal-form-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
             <div>
               <label style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 500, color: c.stone, display: "block", marginBottom: 6 }}>Interview Type</label>
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>

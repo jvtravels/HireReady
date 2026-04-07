@@ -558,9 +558,13 @@ export async function speak(
         speakWithBrowser(text, onEnd, onError);
       });
     } else {
-      handle = await speakWithWebSocket(text, settings.voiceId, onEnd, () => {
-        console.warn("Cartesia WebSocket failed, falling back to browser TTS");
-        speakWithBrowser(text, onEnd, onError);
+      handle = await speakWithWebSocket(text, settings.voiceId, onEnd, async () => {
+        console.warn("Cartesia WebSocket failed, falling back to REST");
+        handle = await speakWithProxy(text, settings.voiceId, onEnd, () => {
+          console.warn("Cartesia REST also failed, falling back to browser TTS");
+          speakWithBrowser(text, onEnd, onError);
+        });
+        _activeCancel = handle.cancel;
       });
     }
   } else {
