@@ -171,7 +171,9 @@ export function getSessionData(targetRole: string, supabaseSessions: RealSession
     const skillMap: Record<string, number[]> = {};
     real.forEach(rs => {
       if (rs.skill_scores) {
-        Object.entries(rs.skill_scores).forEach(([name, score]) => {
+        Object.entries(rs.skill_scores).forEach(([name, raw]) => {
+          const score = typeof raw === "object" && raw !== null && "score" in (raw as any) ? (raw as any).score : raw;
+          if (typeof score !== "number" || isNaN(score)) return;
           if (!skillMap[name]) skillMap[name] = [];
           skillMap[name].push(score);
         });

@@ -373,7 +373,9 @@ async function retryQueuedEvals(): Promise<void> {
               if (idx >= 0) {
                 sessions[idx].score = Math.min(100, Math.max(0, result.overallScore));
                 sessions[idx].ai_feedback = result.feedback;
-                sessions[idx].skill_scores = result.skillScores;
+                sessions[idx].skill_scores = result.skillScores && typeof result.skillScores === "object"
+                  ? Object.fromEntries(Object.entries(result.skillScores).map(([k, v]) => [k, typeof v === "object" && v !== null && "score" in (v as any) ? (v as any).score : v]))
+                  : result.skillScores;
                 localStorage.setItem(RESULTS_KEY, JSON.stringify(sessions));
               }
             } catch {}
@@ -1350,7 +1352,9 @@ export default function Interview() {
         if (evaluation) {
           score = Math.min(100, Math.max(0, evaluation.overallScore || fallbackScore));
           aiFeedback = evaluation.feedback || "";
-          skillScores = evaluation.skillScores && typeof evaluation.skillScores === "object" ? evaluation.skillScores : {};
+          skillScores = evaluation.skillScores && typeof evaluation.skillScores === "object"
+            ? Object.fromEntries(Object.entries(evaluation.skillScores).map(([k, v]) => [k, typeof v === "object" && v !== null && "score" in (v as any) ? (v as any).score : v]))
+            : {};
           idealAnswers = Array.isArray(evaluation.idealAnswers) ? evaluation.idealAnswers : [];
         } else {
           setUsedFallbackScore(true);

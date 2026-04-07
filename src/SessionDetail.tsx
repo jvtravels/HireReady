@@ -361,7 +361,10 @@ export default function SessionDetail() {
           {/* Skill scores */}
           {session.skill_scores && Object.keys(session.skill_scores).length > 0 && (
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 10, marginTop: 16 }}>
-              {Object.entries(session.skill_scores).map(([name, score]) => (
+              {Object.entries(session.skill_scores).map(([name, raw]) => {
+                const score = typeof raw === "object" && raw !== null && "score" in (raw as any) ? (raw as any).score : raw;
+                if (typeof score !== "number" || isNaN(score)) return null;
+                return (
                 <div key={name} style={{ padding: "12px 14px", borderRadius: 10, background: c.obsidian, border: `1px solid ${c.border}` }}>
                   <span style={{ fontSize: 11, color: c.stone, display: "block", marginBottom: 6 }}>{name}</span>
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -371,7 +374,8 @@ export default function SessionDetail() {
                     <span style={{ fontFamily: font.mono, fontSize: 12, fontWeight: 600, color: c.ivory }}>{score}</span>
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
@@ -592,14 +596,16 @@ export default function SessionDetail() {
             </div>
             {session.skill_scores && prevSession.skill_scores && (
               <div style={{ marginTop: 14, display: "flex", flexDirection: "column", gap: 6 }}>
-                {Object.entries(session.skill_scores).map(([skill, score]) => {
-                  const prevScore = (prevSession.skill_scores as Record<string, number>)[skill];
-                  if (prevScore === undefined) return null;
-                  const diff = (score as number) - prevScore;
+                {Object.entries(session.skill_scores).map(([skill, raw]) => {
+                  const score = typeof raw === "object" && raw !== null && "score" in (raw as any) ? (raw as any).score : raw;
+                  const prevRaw = (prevSession.skill_scores as Record<string, any>)?.[skill];
+                  const prevScore = typeof prevRaw === "object" && prevRaw !== null && "score" in prevRaw ? prevRaw.score : prevRaw;
+                  if (prevScore === undefined || typeof score !== "number") return null;
+                  const diff = score - (typeof prevScore === "number" ? prevScore : 0);
                   return (
                     <div key={skill} style={{ display: "flex", alignItems: "center", gap: 10 }}>
                       <span style={{ fontFamily: font.ui, fontSize: 11, color: c.chalk, flex: 1 }}>{skill}</span>
-                      <span style={{ fontFamily: font.mono, fontSize: 11, color: c.ivory, width: 24, textAlign: "right" }}>{score as number}</span>
+                      <span style={{ fontFamily: font.mono, fontSize: 11, color: c.ivory, width: 24, textAlign: "right" }}>{score}</span>
                       <span style={{ fontFamily: font.mono, fontSize: 10, color: diff > 0 ? c.sage : diff < 0 ? c.ember : c.stone, width: 30, textAlign: "right", fontWeight: 600 }}>
                         {diff > 0 ? `+${diff}` : diff === 0 ? "—" : diff}
                       </span>
@@ -614,7 +620,7 @@ export default function SessionDetail() {
         {/* Recommended Next Session */}
         {(() => {
           const weakest = session.skill_scores
-            ? Object.entries(session.skill_scores).sort(([,a], [,b]) => (a as number) - (b as number))[0]
+            ? Object.entries(session.skill_scores).map(([k, v]) => [k, typeof v === "object" && v !== null && "score" in (v as any) ? (v as any).score : v] as [string, number]).sort(([,a], [,b]) => a - b)[0]
             : null;
           const nextType = session.type === "behavioral" ? "case-study" : session.type === "case-study" ? "technical" : "behavioral";
           const nextDifficulty = session.score >= 85 ? "intense" : session.score < 70 ? "warmup" : "standard";
