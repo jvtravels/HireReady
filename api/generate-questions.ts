@@ -74,6 +74,12 @@ Generate exactly 5 interview steps as a JSON array. Sequence: intro, question, q
 
 Each step: {"type":"intro|question|closing","aiText":"2-3 sentences spoken naturally by the interviewer","scoreNote":"specific evaluation criteria for this question"}
 
+IMPORTANT closing rules:
+- The closing step MUST be a wrap-up summary, NOT an open-ended question
+- Do NOT ask "Do you have any questions?" or similar — the system handles that separately
+- The closing should thank the candidate, summarize their performance highlights, and give one specific improvement tip
+- Example closing: "Great session! You demonstrated strong strategic thinking, especially around prioritization. To improve, try anchoring your examples with specific metrics — numbers make your stories more compelling."
+
 Example good question: "Walk me through a system you designed that had to handle 10x growth. What were the key architectural trade-offs you made, and how did you validate them?"
 Example bad question: "Tell me about your experience." (too vague, not role-specific)
 
