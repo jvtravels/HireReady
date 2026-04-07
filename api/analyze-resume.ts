@@ -83,7 +83,7 @@ Return a JSON object with these exact fields:
 Be specific — reference real details from the resume. Don't invent information not present.
 Respond with ONLY the JSON object, no markdown or explanation.`;
 
-    const result = await callLLM({ prompt, temperature: 0.4, maxTokens: 1500, jsonMode: true }, 15000);
+    const result = await callLLM({ prompt, temperature: 0.4, maxTokens: 1500, jsonMode: true, fast: true }, 10000);
     const profile = extractJSON(result.text);
     if (!profile) {
       return new Response(JSON.stringify({ error: "Failed to parse analysis" }), { status: 500, headers });

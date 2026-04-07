@@ -60,36 +60,16 @@ export default async function handler(req: Request): Promise<Response> {
     const resumeContext = resumeText ? `Resume summary: ${sanitizeForLLM(resumeText, 1500)}` : "";
     const avoidTopics = Array.isArray(pastTopics) ? `Avoid repeating these topics from past sessions: ${pastTopics.slice(0, 20).map((t: unknown) => sanitizeForLLM(t, 100)).filter(Boolean).join(", ")}.` : "";
 
-    const difficultyGuide = diff === "warmup"
-      ? "Use a warm, conversational tone. Ask open-ended questions that build confidence. Keep follow-ups gentle."
-      : diff === "intense"
-        ? "Be rigorous and challenging. Ask probing follow-ups. Expect precise, structured answers. Push for specifics and metrics."
-        : "Use a professional, balanced tone. Ask thorough but fair questions with reasonable follow-ups.";
+    const tone = diff === "warmup" ? "Warm, confidence-building." : diff === "intense" ? "Rigorous, probing, demand metrics." : "Professional, balanced.";
 
-    const prompt = `You are an expert interview coach generating questions for a mock interview.
+    const prompt = `Generate 7 mock interview steps as JSON array. Role: ${targetRole}, Type: ${interviewType}, Tone: ${tone}
+${focusContext}${companyContext}${industryContext}${resumeContext}${avoidTopics}
 
-Role: ${targetRole}
-Interview Type: ${interviewType}
-${focusContext}
-${companyContext}
-${industryContext}
-${resumeContext}
-${avoidTopics}
+Sequence: intro, question, follow-up, question, follow-up, question, closing.
+Each: {"type":"intro|question|follow-up|closing","aiText":"2-3 sentences spoken by interviewer","scoreNote":"evaluation criteria"}
+Be specific to role/company. Reference resume if provided. JSON array only.`;
 
-${difficultyGuide}
-
-Generate exactly 7 interview steps in this JSON array format. Each step must have:
-- "type": one of "intro", "question", "follow-up", "closing"
-- "aiText": the exact text the AI interviewer will speak (2-4 sentences)
-- "scoreNote": what to evaluate in the candidate's response (for question/follow-up types)
-
-The sequence must be: intro, question, follow-up, question, follow-up, question, closing.
-
-Make questions specific to the role, company, and industry. If resume text is provided, reference specific experiences from it.
-
-Respond with ONLY the JSON array, no markdown or explanation.`;
-
-    const result = await callLLM({ prompt, temperature: 0.7, maxTokens: 2000, jsonMode: true, fast: true }, 12000);
+    const result = await callLLM({ prompt, temperature: 0.7, maxTokens: 1500, jsonMode: true, fast: true }, 10000);
     const parsed = extractJSON(result.text);
     if (!parsed) {
       return new Response(JSON.stringify({ error: "Failed to parse questions" }), { status: 500, headers });

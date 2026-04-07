@@ -62,48 +62,22 @@ export default async function handler(req: Request): Promise<Response> {
       return new Response(JSON.stringify({ error: "Individual transcript entry too long" }), { status: 400, headers });
     }
 
-    const formattedTranscript = transcript
-      .slice(0, 50)
-      .map((t: { speaker: string; text: string }) => `${t.speaker === "ai" ? "INTERVIEWER" : "CANDIDATE"}: ${sanitizeForLLM(t.text, 2000)}`)
-      .join("\n\n");
+    // Cap each entry to 800 chars and keep max 20 turns to limit prompt size
+    const trimmedTranscript = transcript.slice(0, 20);
+    const formattedTranscript = trimmedTranscript
+      .map((t: { speaker: string; text: string }) => `${t.speaker === "ai" ? "Q" : "A"}: ${sanitizeForLLM(t.text, 800)}`)
+      .join("\n");
 
-    const prompt = `You are an expert interview coach evaluating a mock interview performance.
-
-Interview Type: ${sanitizeForLLM(type, 50) || "behavioral"}
-Difficulty: ${sanitizeForLLM(difficulty, 20) || "standard"}
-Target Role: ${sanitizeForLLM(role, 100) || "senior leader"}
-${company ? `Company: ${sanitizeForLLM(company, 100)}` : ""}
-
-Here is the full interview transcript:
+    const prompt = `Evaluate this mock interview. Type: ${sanitizeForLLM(type, 50) || "behavioral"}, Role: ${sanitizeForLLM(role, 100) || "senior leader"}${company ? `, Company: ${sanitizeForLLM(company, 100)}` : ""}, Difficulty: ${sanitizeForLLM(difficulty, 20) || "standard"}
 
 ${formattedTranscript}
 
-Evaluate the candidate's performance and respond with ONLY this JSON object (no markdown):
+Respond JSON only:
+{"overallScore":<0-100>,"skillScores":{"communication":<0-100>,"structure":<0-100>,"technicalDepth":<0-100>,"leadership":<0-100>,"problemSolving":<0-100>},"strengths":["str1","str2","str3"],"improvements":["imp1","imp2","imp3"],"feedback":"<2-3 paragraphs with specific examples, constructive>","idealAnswers":[{"question":"<q>","ideal":"<2-3 sentences>","candidateSummary":"<1 sentence>"}]}
 
-{
-  "overallScore": <number 0-100>,
-  "skillScores": {
-    "communication": <number 0-100>,
-    "structure": <number 0-100>,
-    "technicalDepth": <number 0-100>,
-    "leadership": <number 0-100>,
-    "problemSolving": <number 0-100>
-  },
-  "strengths": ["<strength 1>", "<strength 2>", "<strength 3>"],
-  "improvements": ["<improvement 1>", "<improvement 2>", "<improvement 3>"],
-  "feedback": "<2-3 paragraph detailed feedback with specific examples from the transcript. Be constructive and actionable. Reference specific answers the candidate gave.>",
-  "idealAnswers": [{"question": "<question text>", "ideal": "<2-3 sentence ideal answer approach for this question>", "candidateSummary": "<1 sentence summary of what the candidate said>"}]
-}
+Scoring: 90-100 exceptional, 75-89 good, 60-74 adequate, <60 needs practice. Be honest, reference specific answers.`;
 
-Scoring guidelines:
-- 90-100: Exceptional, hire-ready answers with strong STAR structure, metrics, and impact
-- 75-89: Good answers with some areas to strengthen
-- 60-74: Adequate but needs significant improvement in structure or depth
-- Below 60: Needs substantial practice
-
-Be honest but constructive. Reference specific moments from the transcript.`;
-
-    const result = await callLLM({ prompt, temperature: 0.3, maxTokens: 2000, jsonMode: true }, 20000);
+    const result = await callLLM({ prompt, temperature: 0.3, maxTokens: 2000, jsonMode: true, fast: true }, 15000);
     const evaluation = extractJSON(result.text);
     if (!evaluation) {
       return new Response(JSON.stringify({ error: "Failed to parse evaluation" }), { status: 500, headers });
