@@ -8,7 +8,7 @@ interface Command {
   id: string;
   label: string;
   section: string;
-  icon: JSX.Element;
+  icon: React.ReactNode;
   action: () => void;
   keywords?: string;
   meta?: string;

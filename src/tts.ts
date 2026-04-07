@@ -51,7 +51,7 @@ const _fetchPromises: Record<string, Promise<CartesiaVoice[]>> = {};
 
 export function fetchCartesiaVoices(language = "en_IN"): Promise<CartesiaVoice[]> {
   if (_voiceCache[language]) return Promise.resolve(_voiceCache[language]);
-  if (_fetchPromises[language]) return _fetchPromises[language];
+  if (language in _fetchPromises) return _fetchPromises[language];
 
   _fetchPromises[language] = fetch(`/api/voices?language=${encodeURIComponent(language)}`)
     .then(res => res.ok ? res.json() : [])

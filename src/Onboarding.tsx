@@ -611,7 +611,7 @@ export default function Onboarding() {
               )}
 
               {/* ── State: Profile ready ── */}
-              {resumeParsed && !resumeParsing && aiPhase === "done" && (
+              {resumeParsed && !resumeParsing && aiPhase === "done" && aiProfile && (
                 <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                   {/* Step heading */}
                   <div style={{ marginBottom: 8 }}>

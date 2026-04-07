@@ -77,7 +77,7 @@ export default function SessionDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const toast = useToast();
+  const { toast } = useToast();
   const [session, setSession] = useState<LocalSession | null>(null);
   const [prevSession, setPrevSession] = useState<LocalSession | null>(null);
   const [loading, setLoading] = useState(true);

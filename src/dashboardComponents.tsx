@@ -294,7 +294,7 @@ export function UpgradeModal({ onClose, sessionsUsed, user, currentTier, onPayme
               {verifyRetries > 0 && (
                 <button onClick={retryVerification} style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.ivory, background: c.ember, border: "none", borderRadius: 10, padding: "5px 14px", cursor: "pointer" }}>Retry Verification</button>
               )}
-              <button onClick={() => { setError(null); setVerifyRetries(0); }} style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.gilt, background: "none", border: `1px solid rgba(212,179,127,0.3)`, borderRadius: 10, padding: "4px 12px", cursor: "pointer" }}>Dismiss</button>
+              <button onClick={() => { setError(""); setVerifyRetries(0); }} style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.gilt, background: "none", border: `1px solid rgba(212,179,127,0.3)`, borderRadius: 10, padding: "4px 12px", cursor: "pointer" }}>Dismiss</button>
             </div>
           </div>
         )}
