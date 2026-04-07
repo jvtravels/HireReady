@@ -97,6 +97,40 @@ export function saveTTSSettings(settings: TTSSettings) {
   } catch {}
 }
 
+/* ─── TTS Audio Pre-fetch Cache ─── */
+const _prefetchCache = new Map<string, Promise<Blob | null>>();
+
+/* Pre-fetch TTS audio for a text so it's ready when needed */
+export async function prefetchTTS(text: string): Promise<void> {
+  if (!text || _prefetchCache.has(text)) return;
+  const settings = loadTTSSettings();
+  if (settings.provider !== "cartesia") return;
+
+  const promise = (async (): Promise<Blob | null> => {
+    try {
+      const { authHeaders } = await import("./supabase");
+      const headers = await authHeaders();
+      const res = await fetch("/api/tts", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ text, voiceId: settings.voiceId }),
+      });
+      if (!res.ok) return null;
+      return await res.blob();
+    } catch {
+      return null;
+    }
+  })();
+
+  _prefetchCache.set(text, promise);
+}
+
+function consumePrefetch(text: string): Promise<Blob | null> | undefined {
+  const cached = _prefetchCache.get(text);
+  if (cached) _prefetchCache.delete(text);
+  return cached;
+}
+
 /* ─── Cartesia TTS via Server Proxy ─── */
 async function speakWithProxy(
   text: string,
@@ -110,26 +144,36 @@ async function speakWithProxy(
   const settle = (cb: () => void) => { if (!settled) { settled = true; cb(); } };
 
   try {
-    console.log("[TTS] starting fetch...");
-    const { authHeaders } = await import("./supabase");
-    console.log("[TTS] got supabase module");
-    const headers = await authHeaders();
-    console.log("[TTS] got auth headers");
+    let blob: Blob | null = null;
 
-    const res = await fetch("/api/tts", {
-      method: "POST",
-      headers,
-      body: JSON.stringify({ text, voiceId }),
-      signal: controller.signal,
-    });
-    console.log("[TTS] fetch done, status:", res.status);
-
-    if (!res.ok) {
-      settle(onError);
-      return { cancel: () => {} };
+    // Check pre-fetch cache first
+    const cached = consumePrefetch(text);
+    if (cached) {
+      console.log("[TTS] using pre-fetched audio");
+      blob = await cached;
     }
 
-    const blob = await res.blob();
+    if (!blob) {
+      console.log("[TTS] starting fetch...");
+      const { authHeaders } = await import("./supabase");
+      const headers = await authHeaders();
+
+      const res = await fetch("/api/tts", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ text, voiceId }),
+        signal: controller.signal,
+      });
+      console.log("[TTS] fetch done, status:", res.status);
+
+      if (!res.ok) {
+        settle(onError);
+        return { cancel: () => {} };
+      }
+
+      blob = await res.blob();
+    }
+
     console.log("[TTS] blob ready, size:", blob.size, "type:", blob.type);
 
     const url = URL.createObjectURL(blob);

@@ -5,7 +5,7 @@ import { capture } from "./analytics";
 import { c, font } from "./tokens";
 import { useAuth } from "./AuthContext";
 import type { User } from "./AuthContext";
-import { speak } from "./tts";
+import { speak, prefetchTTS } from "./tts";
 import { saveSession, getAuthToken } from "./supabase";
 import { useToast } from "./Toast";
 
@@ -61,40 +61,32 @@ interface InterviewStep {
 
 const scriptsByType: Record<string, InterviewStep[]> = {
   behavioral: [
-    { type: "intro", aiText: "Hi! Welcome to your behavioral mock interview. I'm your AI interviewer today. We'll focus on leadership, decision-making, and conflict resolution. This will take about 15 minutes. Feel free to take your time. Ready?", thinkingDuration: 1000, speakingDuration: 6000, waitForUser: true },
-    { type: "question", aiText: "Great. Tell me about a time you had to make a difficult technical decision that significantly impacted your team's roadmap. What was the situation, and how did you approach it?", thinkingDuration: 1500, speakingDuration: 5000, waitForUser: true, scoreNote: "Focus on: STAR structure, strategic framing, business impact" },
-    { type: "follow-up", aiText: "Interesting approach. You mentioned the team was divided on the solution. How did you navigate that disagreement, and what was your decision-making framework?", thinkingDuration: 2000, speakingDuration: 4000, waitForUser: true, scoreNote: "Looking for: conflict resolution, leadership presence" },
-    { type: "question", aiText: "Now, let's talk about scaling. Describe a situation where you had to scale your engineering organization. What challenges did you face, and how did you maintain engineering velocity during that growth?", thinkingDuration: 2000, speakingDuration: 5000, waitForUser: true, scoreNote: "Focus on: scaling strategy, people management, metrics" },
-    { type: "follow-up", aiText: "You mentioned hiring. How did you ensure quality while scaling quickly? Were there any trade-offs you had to make?", thinkingDuration: 1500, speakingDuration: 3500, waitForUser: true, scoreNote: "Looking for: quality vs speed trade-offs, practical examples" },
-    { type: "question", aiText: "Let's shift to stakeholder management. Tell me about a time when you had to push back on a request from a senior executive. How did you handle it, and what was the outcome?", thinkingDuration: 2000, speakingDuration: 5000, waitForUser: true, scoreNote: "Focus on: stakeholder alignment, communication, courage" },
-    { type: "closing", aiText: "That's excellent. We've covered some great ground today. You showed strong strategic thinking and good STAR structure. Your main area for improvement is quantifying business impact — try anchoring your answers with specific metrics. Great session!", thinkingDuration: 2000, speakingDuration: 7000, waitForUser: false },
+    { type: "intro", aiText: "Hi! Welcome to your behavioral mock interview. I'm your AI interviewer today. We'll focus on leadership, decision-making, and conflict resolution. This will take about 15 minutes. Feel free to take your time. Ready?", thinkingDuration: 500, speakingDuration: 6000, waitForUser: true },
+    { type: "question", aiText: "Great. Tell me about a time you had to make a difficult technical decision that significantly impacted your team's roadmap. What was the situation, and how did you approach it?", thinkingDuration: 600, speakingDuration: 5000, waitForUser: true, scoreNote: "Focus on: STAR structure, strategic framing, business impact" },
+    { type: "question", aiText: "Now, let's talk about scaling. Describe a situation where you had to scale your engineering organization. What challenges did you face, and how did you maintain engineering velocity during that growth?", thinkingDuration: 700, speakingDuration: 5000, waitForUser: true, scoreNote: "Focus on: scaling strategy, people management, metrics" },
+    { type: "question", aiText: "Let's shift to stakeholder management. Tell me about a time when you had to push back on a request from a senior executive. How did you handle it, and what was the outcome?", thinkingDuration: 700, speakingDuration: 5000, waitForUser: true, scoreNote: "Focus on: stakeholder alignment, communication, courage" },
+    { type: "closing", aiText: "That's excellent. We've covered some great ground today. You showed strong strategic thinking and good STAR structure. Your main area for improvement is quantifying business impact — try anchoring your answers with specific metrics. Great session!", thinkingDuration: 800, speakingDuration: 7000, waitForUser: false },
   ],
   strategic: [
-    { type: "intro", aiText: "Welcome to your strategic interview session. Today we'll explore your vision-setting ability, roadmap thinking, and business alignment. Let's dive in — are you ready?", thinkingDuration: 1000, speakingDuration: 5000, waitForUser: true },
-    { type: "question", aiText: "Imagine you've just joined a company as VP of Engineering. The product has strong market fit but the tech stack is aging. How would you approach building a 3-year technical strategy?", thinkingDuration: 2000, speakingDuration: 5500, waitForUser: true, scoreNote: "Focus on: strategic vision, prioritization, stakeholder buy-in" },
-    { type: "follow-up", aiText: "How would you balance investment in platform modernization against shipping new features? What framework would you use?", thinkingDuration: 1500, speakingDuration: 4000, waitForUser: true, scoreNote: "Looking for: trade-off analysis, business acumen" },
-    { type: "question", aiText: "Tell me about a time you had to pivot a major initiative based on changing business conditions. How did you recognize the need and communicate the change?", thinkingDuration: 2000, speakingDuration: 5000, waitForUser: true, scoreNote: "Focus on: adaptability, communication, decisiveness" },
-    { type: "follow-up", aiText: "What metrics did you use to validate the pivot was working? How did you manage team morale during the change?", thinkingDuration: 1500, speakingDuration: 3500, waitForUser: true, scoreNote: "Looking for: data-driven decisions, emotional intelligence" },
-    { type: "question", aiText: "How do you ensure engineering strategy stays aligned with business goals? Walk me through your approach to cross-functional planning.", thinkingDuration: 2000, speakingDuration: 4500, waitForUser: true, scoreNote: "Focus on: cross-functional alignment, planning rigor" },
-    { type: "closing", aiText: "Excellent session. Your strategic thinking is sharp, especially around prioritization frameworks. I'd recommend strengthening your answers with more specific revenue or growth metrics. Well done!", thinkingDuration: 2000, speakingDuration: 6000, waitForUser: false },
+    { type: "intro", aiText: "Welcome to your strategic interview session. Today we'll explore your vision-setting ability, roadmap thinking, and business alignment. Let's dive in — are you ready?", thinkingDuration: 500, speakingDuration: 5000, waitForUser: true },
+    { type: "question", aiText: "Imagine you've just joined a company as VP of Engineering. The product has strong market fit but the tech stack is aging. How would you approach building a 3-year technical strategy?", thinkingDuration: 700, speakingDuration: 5500, waitForUser: true, scoreNote: "Focus on: strategic vision, prioritization, stakeholder buy-in" },
+    { type: "question", aiText: "Tell me about a time you had to pivot a major initiative based on changing business conditions. How did you recognize the need and communicate the change?", thinkingDuration: 700, speakingDuration: 5000, waitForUser: true, scoreNote: "Focus on: adaptability, communication, decisiveness" },
+    { type: "question", aiText: "How do you ensure engineering strategy stays aligned with business goals? Walk me through your approach to cross-functional planning.", thinkingDuration: 700, speakingDuration: 4500, waitForUser: true, scoreNote: "Focus on: cross-functional alignment, planning rigor" },
+    { type: "closing", aiText: "Excellent session. Your strategic thinking is sharp, especially around prioritization frameworks. I'd recommend strengthening your answers with more specific revenue or growth metrics. Well done!", thinkingDuration: 800, speakingDuration: 6000, waitForUser: false },
   ],
   technical: [
-    { type: "intro", aiText: "Welcome to your technical leadership interview. We'll focus on architecture decisions, system design at scale, and tech strategy. Ready to begin?", thinkingDuration: 1000, speakingDuration: 4500, waitForUser: true },
-    { type: "question", aiText: "Describe a system you designed that had to handle 10x growth in traffic. What were the key architectural decisions and trade-offs?", thinkingDuration: 2000, speakingDuration: 5000, waitForUser: true, scoreNote: "Focus on: scalability thinking, trade-off analysis" },
-    { type: "follow-up", aiText: "How did you decide between building vs buying for the key components? What was your evaluation criteria?", thinkingDuration: 1500, speakingDuration: 3500, waitForUser: true, scoreNote: "Looking for: pragmatism, cost-benefit analysis" },
-    { type: "question", aiText: "Tell me about a major production incident you led the response for. How did you structure the incident response, and what systemic changes did you make afterward?", thinkingDuration: 2000, speakingDuration: 5500, waitForUser: true, scoreNote: "Focus on: incident management, blameless culture, systemic thinking" },
-    { type: "follow-up", aiText: "How do you balance reliability investment against feature velocity? What SLO framework do you use?", thinkingDuration: 1500, speakingDuration: 4000, waitForUser: true, scoreNote: "Looking for: SRE principles, practical frameworks" },
-    { type: "question", aiText: "How do you evaluate and introduce new technologies into your stack? Walk me through a recent technology decision you drove.", thinkingDuration: 2000, speakingDuration: 4500, waitForUser: true, scoreNote: "Focus on: tech evaluation rigor, risk management" },
-    { type: "closing", aiText: "Strong session. Your technical depth is evident, and you communicate architecture decisions clearly. For improvement, try connecting technical decisions more explicitly to business outcomes. Great work!", thinkingDuration: 2000, speakingDuration: 6500, waitForUser: false },
+    { type: "intro", aiText: "Welcome to your technical leadership interview. We'll focus on architecture decisions, system design at scale, and tech strategy. Ready to begin?", thinkingDuration: 500, speakingDuration: 4500, waitForUser: true },
+    { type: "question", aiText: "Describe a system you designed that had to handle 10x growth in traffic. What were the key architectural decisions and trade-offs?", thinkingDuration: 700, speakingDuration: 5000, waitForUser: true, scoreNote: "Focus on: scalability thinking, trade-off analysis" },
+    { type: "question", aiText: "Tell me about a major production incident you led the response for. How did you structure the incident response, and what systemic changes did you make afterward?", thinkingDuration: 700, speakingDuration: 5500, waitForUser: true, scoreNote: "Focus on: incident management, blameless culture, systemic thinking" },
+    { type: "question", aiText: "How do you evaluate and introduce new technologies into your stack? Walk me through a recent technology decision you drove.", thinkingDuration: 700, speakingDuration: 4500, waitForUser: true, scoreNote: "Focus on: tech evaluation rigor, risk management" },
+    { type: "closing", aiText: "Strong session. Your technical depth is evident, and you communicate architecture decisions clearly. For improvement, try connecting technical decisions more explicitly to business outcomes. Great work!", thinkingDuration: 800, speakingDuration: 6500, waitForUser: false },
   ],
   "case-study": [
-    { type: "intro", aiText: "Welcome to your case study interview. I'll present you with business scenarios that test your analytical thinking and problem-solving frameworks. Let's start.", thinkingDuration: 1000, speakingDuration: 5000, waitForUser: true },
-    { type: "question", aiText: "Your company's core API has 99.95% uptime but customers are churning citing 'reliability issues.' Latency p99 is 2 seconds. How would you investigate and address this?", thinkingDuration: 2000, speakingDuration: 5500, waitForUser: true, scoreNote: "Focus on: problem decomposition, data-driven approach" },
-    { type: "follow-up", aiText: "You discover the latency spikes correlate with a third-party dependency. What's your short-term and long-term mitigation strategy?", thinkingDuration: 1500, speakingDuration: 4000, waitForUser: true, scoreNote: "Looking for: tactical vs strategic thinking, vendor management" },
-    { type: "question", aiText: "A competitor just launched a feature that took them 2 months. Your team estimates it would take 6 months due to tech debt. The CEO wants it in 3. How do you handle this?", thinkingDuration: 2000, speakingDuration: 5000, waitForUser: true, scoreNote: "Focus on: negotiation, creative solutions, scope management" },
-    { type: "follow-up", aiText: "If you had to ship something in 6 weeks, what would you cut and what would you keep? How do you communicate that to the CEO?", thinkingDuration: 1500, speakingDuration: 3500, waitForUser: true, scoreNote: "Looking for: prioritization, executive communication" },
-    { type: "question", aiText: "Your engineering team of 40 has low morale. Attrition is at 25%. Exit interviews cite 'lack of growth' and 'unclear direction.' You have 90 days to turn it around. What do you do?", thinkingDuration: 2000, speakingDuration: 5500, waitForUser: true, scoreNote: "Focus on: people leadership, organizational design, quick wins" },
-    { type: "closing", aiText: "Impressive problem-solving. You structured your answers well and considered multiple stakeholders. To improve, try to quantify the expected impact of your proposed solutions. Great case analysis!", thinkingDuration: 2000, speakingDuration: 6500, waitForUser: false },
+    { type: "intro", aiText: "Welcome to your case study interview. I'll present you with business scenarios that test your analytical thinking and problem-solving frameworks. Let's start.", thinkingDuration: 500, speakingDuration: 5000, waitForUser: true },
+    { type: "question", aiText: "Your company's core API has 99.95% uptime but customers are churning citing 'reliability issues.' Latency p99 is 2 seconds. How would you investigate and address this?", thinkingDuration: 700, speakingDuration: 5500, waitForUser: true, scoreNote: "Focus on: problem decomposition, data-driven approach" },
+    { type: "question", aiText: "A competitor just launched a feature that took them 2 months. Your team estimates it would take 6 months due to tech debt. The CEO wants it in 3. How do you handle this?", thinkingDuration: 700, speakingDuration: 5000, waitForUser: true, scoreNote: "Focus on: negotiation, creative solutions, scope management" },
+    { type: "question", aiText: "Your engineering team of 40 has low morale. Attrition is at 25%. Exit interviews cite 'lack of growth' and 'unclear direction.' You have 90 days to turn it around. What do you do?", thinkingDuration: 700, speakingDuration: 5500, waitForUser: true, scoreNote: "Focus on: people leadership, organizational design, quick wins" },
+    { type: "closing", aiText: "Impressive problem-solving. You structured your answers well and considered multiple stakeholders. To improve, try to quantify the expected impact of your proposed solutions. Great case analysis!", thinkingDuration: 800, speakingDuration: 6500, waitForUser: false },
   ],
 };
 
@@ -263,7 +255,7 @@ async function fetchLLMQuestions(params: {
     return data.questions.map((q: { type?: string; aiText?: string; text?: string; scoreNote?: string }) => ({
       type: (q.type || "question") as InterviewStep["type"],
       aiText: q.aiText || q.text || "",
-      thinkingDuration: q.type === "intro" ? 1000 : 1500,
+      thinkingDuration: q.type === "intro" ? 500 : 600,
       speakingDuration: 5000,
       waitForUser: q.type !== "closing",
       scoreNote: q.scoreNote || "",
@@ -318,6 +310,28 @@ async function fetchLLMEvaluation(params: {
     if (err instanceof DOMException && err.name === "AbortError") {
       throw new Error("Evaluation timed out. Using estimated score.");
     }
+    return null;
+  }
+}
+
+/* ─── Dynamic Follow-Up ─── */
+async function fetchFollowUp(params: {
+  question: string; answer: string; type: string; role: string;
+}): Promise<{ needsFollowUp: boolean; followUpText: string } | null> {
+  try {
+    const headers = await import("./supabase").then(m => m.authHeaders());
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 4000);
+    const res = await fetch("/api/follow-up", {
+      method: "POST",
+      headers,
+      body: JSON.stringify(params),
+      signal: controller.signal,
+    });
+    clearTimeout(timer);
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
     return null;
   }
 }
@@ -915,10 +929,13 @@ export default function Interview() {
     if (!step) return;
 
     let safetyTimer: ReturnType<typeof setTimeout> | null = null;
+    let cancelled = false;
 
-    // Phase 1: Thinking
+    // Phase 1: Thinking — also resolve any pending follow-up
     setPhase("thinking");
-    const thinkTimer = setTimeout(() => {
+
+    const startSpeaking = () => {
+      if (cancelled) return;
       // Phase 2: Speaking
       setPhase("speaking");
       setIsRecording(true);
@@ -935,18 +952,23 @@ export default function Interview() {
 
       let speechEnded = false;
       const onSpeechEnd = () => {
-        if (speechEnded) return; // prevent double-fire
+        if (speechEnded) return;
         speechEnded = true;
         if (safetyTimer) clearTimeout(safetyTimer);
         setIsRecording(false);
         if (step.waitForUser) {
           setPhase("listening");
+          // Pre-fetch TTS for the next step while user is answering
+          const nextStep = interviewScript[currentStep + 1];
+          if (nextStep && aiVoiceEnabled) {
+            prefetchTTS(nextStep.aiText);
+          }
         } else {
           setTimeout(() => setPhase("done"), 2000);
         }
       };
 
-      // Safety timeout: force transition if TTS hangs or never fires callback
+      // Safety timeout
       safetyTimer = setTimeout(() => {
         if (!speechEnded) {
           console.warn("[interview] TTS safety timeout — forcing phase transition");
@@ -955,21 +977,62 @@ export default function Interview() {
       }, Math.max(step.speakingDuration + 5000, 30000));
 
       if (aiVoiceEnabled) {
-        // Use TTS service (Cartesia or browser fallback)
         console.log("[interview] TTS speak() called for step", currentStep);
         speak(step.aiText, onSpeechEnd, onSpeechEnd).then(handle => {
           console.log("[interview] TTS speak() resolved for step", currentStep);
           ttsCancelRef.current = handle.cancel;
         }).catch((e) => { console.warn("[interview] TTS speak() rejected:", e); onSpeechEnd(); });
       } else {
-        // No voice — use timer fallback
         const speakTimer = setTimeout(onSpeechEnd, step.speakingDuration);
         ttsCancelRef.current = () => clearTimeout(speakTimer);
       }
-    }, step.thinkingDuration);
+    };
+
+    // Check if there's a pending follow-up to resolve during thinking phase
+    const pendingFollowUp = pendingFollowUpRef.current;
+    if (pendingFollowUp) {
+      pendingFollowUpRef.current = null;
+      // Race: resolve follow-up vs 4s timeout — whichever comes first
+      const timeout = new Promise<null>(r => setTimeout(() => r(null), 4000));
+      Promise.race([pendingFollowUp, timeout]).then(result => {
+        if (cancelled) return;
+        if (result?.needsFollowUp && result.followUpText) {
+          // Inject follow-up step at current position (before current step)
+          const followUpStep: InterviewStep = {
+            type: "follow-up",
+            aiText: result.followUpText,
+            thinkingDuration: 300,
+            speakingDuration: 4000,
+            waitForUser: true,
+            scoreNote: "Dynamic follow-up based on candidate's answer",
+          };
+          setInterviewScript(prev => [
+            ...prev.slice(0, currentStep),
+            followUpStep,
+            ...prev.slice(currentStep),
+          ]);
+          // The script insertion will bump currentStep's content to currentStep+1,
+          // and this useEffect will re-run with the follow-up step at currentStep
+        } else {
+          // No follow-up needed — proceed with current step after short think
+          setTimeout(startSpeaking, step.thinkingDuration);
+        }
+      }).catch(() => {
+        if (!cancelled) setTimeout(startSpeaking, step.thinkingDuration);
+      });
+    } else {
+      // No pending follow-up — normal thinking delay then speak
+      const thinkTimer = setTimeout(startSpeaking, step.thinkingDuration);
+      return () => {
+        cancelled = true;
+        clearTimeout(thinkTimer);
+        if (safetyTimer) clearTimeout(safetyTimer);
+        ttsCancelRef.current?.();
+      };
+    }
 
     return () => {
-      clearTimeout(thinkTimer);
+      cancelled = true;
       if (safetyTimer) clearTimeout(safetyTimer);
       ttsCancelRef.current?.();
     };
@@ -978,6 +1041,7 @@ export default function Interview() {
 
   // Handle user "finishing" their answer
   const advancingRef = useRef(false);
+  const pendingFollowUpRef = useRef<Promise<{ needsFollowUp: boolean; followUpText: string } | null> | null>(null);
   const handleNextQuestion = useCallback(() => {
     if (phase !== "listening" || advancingRef.current) return;
     advancingRef.current = true;
@@ -987,7 +1051,7 @@ export default function Interview() {
     ttsCancelRef.current?.();
     recognitionRef.current?.stop();
 
-    // Add real transcribed answer to transcript
+    // Capture answer text before clearing
     const answerText = currentTranscript.trim() || `[Answer recorded — ${answerTimer}s]`;
     setTranscript(prev => [...prev, {
       speaker: "user",
@@ -996,12 +1060,28 @@ export default function Interview() {
     }]);
     setCurrentTranscript("");
 
-    if (currentStep < interviewScript.length - 1) {
+    const currentStepObj = interviewScript[currentStep];
+    const isLastStep = currentStep >= interviewScript.length - 1;
+
+    // Fire follow-up check in background (non-blocking) after question steps
+    if (currentStepObj?.type === "question" && !isLastStep && answerText.length > 10 && !answerText.startsWith("[Answer recorded")) {
+      pendingFollowUpRef.current = fetchFollowUp({
+        question: currentStepObj.aiText,
+        answer: answerText,
+        type: interviewType,
+        role: user?.targetRole || "senior role",
+      });
+    } else {
+      pendingFollowUpRef.current = null;
+    }
+
+    // Always advance immediately — no blocking
+    if (!isLastStep) {
       setCurrentStep(currentStep + 1);
     } else {
       setPhase("done");
     }
-  }, [phase, currentStep, answerTimer, elapsed]);
+  }, [phase, currentStep, answerTimer, elapsed, interviewScript, interviewType, user]);
 
   // Keep ref in sync for answer timer auto-advance
   useEffect(() => { handleNextRef.current = handleNextQuestion; }, [handleNextQuestion]);

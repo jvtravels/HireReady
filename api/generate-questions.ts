@@ -62,11 +62,11 @@ export default async function handler(req: Request): Promise<Response> {
 
     const tone = diff === "warmup" ? "Warm, confidence-building." : diff === "intense" ? "Rigorous, probing, demand metrics." : "Professional, balanced.";
 
-    const prompt = `Generate 7 mock interview steps as JSON array. Role: ${targetRole}, Type: ${interviewType}, Tone: ${tone}
+    const prompt = `Generate 5 mock interview steps as JSON array. Role: ${targetRole}, Type: ${interviewType}, Tone: ${tone}
 ${focusContext}${companyContext}${industryContext}${resumeContext}${avoidTopics}
 
-Sequence: intro, question, follow-up, question, follow-up, question, closing.
-Each: {"type":"intro|question|follow-up|closing","aiText":"2-3 sentences spoken by interviewer","scoreNote":"evaluation criteria"}
+Sequence: intro, question, question, question, closing. Do NOT include follow-up steps — those are generated dynamically.
+Each: {"type":"intro|question|closing","aiText":"2-3 sentences spoken by interviewer","scoreNote":"evaluation criteria"}
 Be specific to role/company. Reference resume if provided. JSON array only.`;
 
     const result = await callLLM({ prompt, temperature: 0.7, maxTokens: 1500, jsonMode: true, fast: true }, 10000);
