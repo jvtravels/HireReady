@@ -1336,6 +1336,25 @@ export default function Interview() {
     setIsMuted(true); // stop mic
     setEvaluating(true);
 
+    // Safety timeout: if handleEnd hangs for any reason, force-dismiss overlay and navigate
+    let sessionId = Date.now().toString(36);
+    let score = 0;
+    let aiFeedback = "";
+    let skillScores: Record<string, number> | null = null;
+    const safetyTimer = setTimeout(() => {
+      console.warn("[interview] handleEnd safety timeout — forcing navigation");
+      setEvaluating(false);
+      toast("Evaluation took too long. Session saved with estimated score.", "info");
+      try {
+        if (isMiniMode) {
+          navigate("/onboarding/complete", { state: { score, aiFeedback, skillScores, sessionId, type: interviewType, duration: elapsed } });
+        } else {
+          navigate(`/session/${sessionId}`);
+        }
+      } catch { /* already navigating or unmounted */ }
+    }, 45_000);
+
+    try {
     // Deterministic fallback score
     const completionRatio = currentStep / Math.max(1, interviewScript.length);
     const baseScore = 65 + Math.round(completionRatio * 20);
@@ -1346,9 +1365,7 @@ export default function Interview() {
 
     // Try LLM evaluation if user gave real answers
     const hasRealAnswers = transcript.some(t => t.speaker === "user" && !t.text.startsWith("["));
-    let score = fallbackScore;
-    let aiFeedback = "";
-    let skillScores: Record<string, number> | null = null;
+    score = fallbackScore;
     let idealAnswers: { question: string; ideal: string; candidateSummary: string }[] = [];
 
     if (hasRealAnswers) {
@@ -1398,23 +1415,34 @@ export default function Interview() {
           console.log("[eval] queued for offline retry:", retryKey);
         }
       }
+    } else {
+      // No real answers — skip LLM evaluation, use fallback
+      setUsedFallbackScore(true);
     }
 
-    const sessionId = Date.now().toString(36);
-    const { localOk, cloudOk } = await saveSessionResult({
-      id: sessionId,
-      date: new Date().toISOString(),
-      type: interviewType,
-      difficulty: interviewDifficulty,
-      focus: interviewFocus,
-      duration: elapsed,
-      score,
-      questions: totalQuestions,
-      transcript,
-      ai_feedback: aiFeedback,
-      skill_scores: skillScores,
-      ideal_answers: idealAnswers.length > 0 ? idealAnswers : undefined,
-    }, user?.id);
+    sessionId = Date.now().toString(36);
+    let localOk = false;
+    let cloudOk = false;
+    try {
+      const saveResult = await saveSessionResult({
+        id: sessionId,
+        date: new Date().toISOString(),
+        type: interviewType,
+        difficulty: interviewDifficulty,
+        focus: interviewFocus,
+        duration: elapsed,
+        score,
+        questions: totalQuestions,
+        transcript,
+        ai_feedback: aiFeedback,
+        skill_scores: skillScores,
+        ideal_answers: idealAnswers.length > 0 ? idealAnswers : undefined,
+      }, user?.id);
+      localOk = saveResult.localOk;
+      cloudOk = saveResult.cloudOk;
+    } catch (saveErr) {
+      console.error("[interview] saveSessionResult threw:", saveErr);
+    }
 
     if (!cloudOk && localOk) {
       setSaveWarning("Session saved locally but could not sync to cloud.");
@@ -1443,10 +1471,11 @@ export default function Interview() {
 
     // Clear draft and track practice timestamp
     try { localStorage.removeItem(draftKey); } catch {}
-    await deleteFromIDB(draftKey);
-    const timestamps = user?.practiceTimestamps || [];
-    updateUser({ practiceTimestamps: [...timestamps, new Date().toISOString()] });
-    setEvaluating(false);
+    try { await deleteFromIDB(draftKey); } catch {}
+    try {
+      const timestamps = user?.practiceTimestamps || [];
+      updateUser({ practiceTimestamps: [...timestamps, new Date().toISOString()] });
+    } catch {}
 
     // Brief delay to show save warning before navigating
     if (!localOk || !cloudOk) {
@@ -1471,6 +1500,15 @@ export default function Interview() {
     } catch (navErr) {
       console.warn("[interview] Navigation failed:", navErr);
       toast("Session saved! Navigate to dashboard to view results.", "info");
+    }
+
+    } catch (fatalErr) {
+      console.error("[interview] handleEnd fatal error:", fatalErr);
+      toast("Something went wrong saving your session. Please check your dashboard.", "error");
+      try { navigate("/dashboard"); } catch {}
+    } finally {
+      clearTimeout(safetyTimer);
+      setEvaluating(false);
     }
   }, [navigate, elapsed, interviewType, interviewDifficulty, interviewFocus, totalQuestions, user, updateUser, currentStep, interviewScript.length, transcript]);
 
