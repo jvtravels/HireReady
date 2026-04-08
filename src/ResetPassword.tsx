@@ -1,9 +1,11 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { c, font } from "./tokens";
+import { font } from "./tokens";
+import type { ColorTokens } from "./tokens";
+import { useTheme } from "./ThemeContext";
 import { getSupabase, supabaseConfigured } from "./supabase";
 
-function getPasswordStrength(pw: string): { score: number; label: string; color: string } {
+function getPasswordStrength(pw: string, c: ColorTokens): { score: number; label: string; color: string } {
   let score = 0;
   if (pw.length >= 8) score++;
   if (pw.length >= 12) score++;
@@ -17,6 +19,7 @@ function getPasswordStrength(pw: string): { score: number; label: string; color:
 }
 
 export default function ResetPassword() {
+  const { c } = useTheme();
   const navigate = useNavigate();
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -24,7 +27,7 @@ export default function ResetPassword() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
   const [hasSession, setHasSession] = useState(false);
-  const strength = getPasswordStrength(password);
+  const strength = getPasswordStrength(password, c);
 
   useEffect(() => {
     if (!supabaseConfigured) {

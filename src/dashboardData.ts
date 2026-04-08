@@ -1,4 +1,5 @@
-import { c } from "./tokens";
+import type { ColorTokens } from "./tokens";
+import { darkColors } from "./tokens";
 import { type InterviewEvent, loadEvents, daysUntilEvent, formatEventTime } from "./dashboardHelpers";
 import { authHeaders, supabaseConfigured } from "./supabase";
 import type { UserContext, DashboardSession, SkillData, TrendPoint, PersistedState } from "./dashboardTypes";
@@ -146,7 +147,7 @@ function realSessionsToDashboard(realSessions: RealSession[], targetRole: string
   });
 }
 
-export function getSessionData(targetRole: string, supabaseSessions: RealSession[] = []) {
+export function getSessionData(targetRole: string, supabaseSessions: RealSession[] = [], c: ColorTokens = darkColors) {
   // When Supabase is configured, use ONLY Supabase sessions (localStorage is not user-scoped
   // and would leak sessions between accounts on the same browser).
   // Only use localStorage when Supabase is not configured (demo/offline mode).

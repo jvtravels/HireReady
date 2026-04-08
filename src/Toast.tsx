@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useCallback, useRef, useEffect } from "react";
-import { c, font } from "./tokens";
+import { font } from "./tokens";
+import { useTheme } from "./ThemeContext";
 
 /* ─── Types ─── */
 type ToastType = "success" | "error" | "info";
@@ -21,6 +22,7 @@ export const useToast = () => useContext(ToastContext);
 let nextId = 0;
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
+  const { c } = useTheme();
   const [toasts, setToasts] = useState<Toast[]>([]);
   const timersRef = useRef<Map<number, ReturnType<typeof setTimeout>>>(new Map());
 

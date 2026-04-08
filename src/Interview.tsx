@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { track } from "@vercel/analytics";
 import { capture } from "./analytics";
-import { c, font } from "./tokens";
+import { font } from "./tokens";
+import { useTheme } from "./ThemeContext";
 import { useAuth } from "./AuthContext";
 import type { User } from "./AuthContext";
 import { speak, prefetchTTS, cleanupTTS } from "./tts";
@@ -86,6 +87,7 @@ const WaveformVisualizer = React.memo(function WaveformVisualizer({ active, colo
 
 /* ─── AI Avatar with Speaking Animation ─── */
 const AIAvatar = React.memo(function AIAvatar({ isSpeaking, isThinking }: { isSpeaking: boolean; isThinking: boolean }) {
+  const { c } = useTheme();
   return (
     <div style={{ position: "relative", width: 56, height: 56 }}>
       {/* Subtle pulse ring when speaking */}
@@ -128,6 +130,7 @@ const AIAvatar = React.memo(function AIAvatar({ isSpeaking, isThinking }: { isSp
 
 /* ─── Live Captions (synced to ~150 wpm speaking rate) ─── */
 const LiveCaptions = React.memo(function LiveCaptions({ text, isTyping, speakingDuration }: { text: string; isTyping: boolean; speakingDuration?: number }) {
+  const { c } = useTheme();
   const [displayText, setDisplayText] = useState("");
   const [charIndex, setCharIndex] = useState(0);
 
@@ -169,6 +172,7 @@ const LiveCaptions = React.memo(function LiveCaptions({ text, isTyping, speaking
 
 /* ─── User Webcam Feed (simulated) ─── */
 const UserWebcam = React.memo(function UserWebcam({ isMuted, isCameraOff }: { isMuted: boolean; isCameraOff: boolean }) {
+  const { c } = useTheme();
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const [hasCamera, setHasCamera] = useState(false);
@@ -291,6 +295,7 @@ function formatTime(seconds: number) {
 const ControlButton = React.memo(function ControlButton({ icon, label, active, danger, onClick }: {
   icon: React.ReactNode; label: string; active?: boolean; danger?: boolean; onClick: () => void;
 }) {
+  const { c } = useTheme();
   return (
     <button
       type="button"
@@ -325,6 +330,7 @@ const ControlButton = React.memo(function ControlButton({ icon, label, active, d
    INTERVIEW SCREEN
    ═══════════════════════════════════════════════ */
 export default function Interview() {
+  const { c } = useTheme();
   const navigate = useNavigate();
   const { user, updateUser } = useAuth();
   const { toast } = useToast();

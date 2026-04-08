@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, act } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { DashboardProvider, useDashboard } from "../DashboardContext";
+import { ThemeProvider } from "../ThemeContext";
 
 // Mock auth
 const mockUser = {
@@ -52,9 +53,11 @@ function TestConsumer() {
 
 function renderWithProviders() {
   return render(
-    <MemoryRouter initialEntries={["/dashboard"]}>
-      <DashboardProvider><TestConsumer /></DashboardProvider>
-    </MemoryRouter>,
+    <ThemeProvider>
+      <MemoryRouter initialEntries={["/dashboard"]}>
+        <DashboardProvider><TestConsumer /></DashboardProvider>
+      </MemoryRouter>
+    </ThemeProvider>,
   );
 }
 
@@ -63,7 +66,7 @@ describe("DashboardContext", () => {
 
   it("throws when used outside provider", () => {
     const spy = vi.spyOn(console, "error").mockImplementation(() => {});
-    expect(() => render(<TestConsumer />)).toThrow("useDashboard must be used within DashboardProvider");
+    expect(() => render(<ThemeProvider><TestConsumer /></ThemeProvider>)).toThrow("useDashboard must be used within DashboardProvider");
     spy.mockRestore();
   });
 

@@ -4,6 +4,7 @@ import { createRoot } from "react-dom/client";
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { AuthProvider, RequireAuth } from "./AuthContext";
 import { DashboardProvider } from "./DashboardContext";
+import { ThemeProvider } from "./ThemeContext";
 import { ToastProvider } from "./Toast";
 import NotFound from "./NotFound";
 import ErrorBoundary, { RouteErrorBoundary } from "./ErrorBoundary";
@@ -64,7 +65,7 @@ const PlaceholderPage = lazy(() => import("./PlaceholderPage"));
 const BlogPage = lazy(() => import("./BlogPage"));
 
 function LoadingFallback() {
-  return <div role="status" aria-live="polite" aria-busy="true" style={{ minHeight: "100vh", background: "#060607" }}><span className="sr-only">Loading…</span></div>;
+  return <div role="status" aria-live="polite" aria-busy="true" style={{ minHeight: "100vh", background: "var(--color-bg)" }}><span className="sr-only">Loading…</span></div>;
 }
 
 function ScrollToTop() {
@@ -110,6 +111,7 @@ createRoot(document.getElementById("root")!).render(
       <Suspense fallback={<LoadingFallback />}><TempoHost /></Suspense>
     ) : (
       <ErrorBoundary>
+      <ThemeProvider>
       <BrowserRouter>
         <ScrollToTop />
         <DocumentTitle />
@@ -145,6 +147,7 @@ createRoot(document.getElementById("root")!).render(
         </ToastProvider>
         </AuthProvider>
       </BrowserRouter>
+      </ThemeProvider>
       </ErrorBoundary>
     )}
     <Suspense fallback={null}><Analytics /></Suspense>

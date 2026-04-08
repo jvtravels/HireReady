@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { c, font } from "./tokens";
+import { font } from "./tokens";
+import { useTheme } from "./ThemeContext";
 import { useAuth } from "./AuthContext";
 import { useDocTitle } from "./useDocTitle";
 import { authHeaders, supabaseConfigured, getSupabase } from "./supabase";
@@ -8,53 +9,56 @@ import type { PersistedState } from "./dashboardTypes";
 import { useDashboard } from "./DashboardContext";
 import { DataLoadingSkeleton } from "./dashboardComponents";
 
-/* ─── Shared Styles ─── */
-const sectionStyle = {
+/* ─── Shared Styles (theme-aware) ─── */
+type C = ReturnType<typeof useTheme>["c"];
+
+const getSectionStyle = (c: C) => ({
   background: c.graphite,
   borderRadius: 14,
   border: `1px solid ${c.border}`,
   padding: "28px 32px",
   marginBottom: 20,
-} as const;
+} as const);
 
-const sectionTitle: React.CSSProperties = {
+const getSectionTitle = (c: C): React.CSSProperties => ({
   fontFamily: font.ui, fontSize: 16, fontWeight: 600, color: c.ivory, marginBottom: 4,
-};
+});
 
-const sectionDesc: React.CSSProperties = {
+const getSectionDesc = (c: C): React.CSSProperties => ({
   fontFamily: font.ui, fontSize: 12, color: c.stone, marginBottom: 24, lineHeight: 1.5,
-};
+});
 
-const labelStyle: React.CSSProperties = {
+const getLabelStyle = (c: C): React.CSSProperties => ({
   fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: c.chalk, display: "block", marginBottom: 6,
-};
+});
 
-const inputStyle: React.CSSProperties = {
+const getInputStyle = (c: C): React.CSSProperties => ({
   width: "100%", padding: "10px 14px", borderRadius: 8,
   background: c.obsidian, border: `1px solid ${c.border}`,
   color: c.ivory, fontFamily: font.ui, fontSize: 13, outline: "none", boxSizing: "border-box",
-};
+});
 
-const focusIn = (e: React.FocusEvent<HTMLInputElement>) => { e.currentTarget.style.borderColor = c.gilt; };
-const focusOut = (e: React.FocusEvent<HTMLInputElement>) => { e.currentTarget.style.borderColor = c.border; };
+const getFocusIn = (c: C) => (e: React.FocusEvent<HTMLInputElement>) => { e.currentTarget.style.borderColor = c.gilt; };
+const getFocusOut = (c: C) => (e: React.FocusEvent<HTMLInputElement>) => { e.currentTarget.style.borderColor = c.border; };
 
-const chipBtn = (active: boolean): React.CSSProperties => ({
+const getChipBtn = (c: C) => (active: boolean): React.CSSProperties => ({
   padding: "10px 14px", borderRadius: 8, cursor: "pointer",
   background: active ? "rgba(212,179,127,0.08)" : c.obsidian,
   border: `1.5px solid ${active ? c.gilt : c.border}`,
   textAlign: "left", transition: "all 0.15s ease",
 });
 
-const chipLabel = (active: boolean): React.CSSProperties => ({
+const getChipLabel = (c: C) => (active: boolean): React.CSSProperties => ({
   fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: active ? c.ivory : c.chalk, display: "block", marginBottom: 2,
 });
 
-const chipDesc: React.CSSProperties = { fontFamily: font.ui, fontSize: 10, color: c.stone };
+const getChipDesc = (c: C): React.CSSProperties => ({ fontFamily: font.ui, fontSize: 10, color: c.stone });
 
 const PREVIEW_TEXT = "Tell me about a time you led a cross-functional team through a challenging project.";
 
 const SECTIONS = [
   { id: "account", label: "Account" },
+  { id: "appearance", label: "Appearance" },
   { id: "interview", label: "Interview" },
   { id: "voice", label: "AI Voice" },
   { id: "notifications", label: "Notifications" },
@@ -63,6 +67,17 @@ const SECTIONS = [
 
 export default function SettingsPage() {
   useDocTitle("Settings");
+  const { c, mode, setTheme } = useTheme();
+  const sectionStyle = getSectionStyle(c);
+  const sectionTitle = getSectionTitle(c);
+  const sectionDesc = getSectionDesc(c);
+  const labelStyle = getLabelStyle(c);
+  const inputStyle = getInputStyle(c);
+  const focusIn = getFocusIn(c);
+  const focusOut = getFocusOut(c);
+  const chipBtn = getChipBtn(c);
+  const chipLabel = getChipLabel(c);
+  const chipDesc = getChipDesc(c);
   const { user: authUser, logout: authLogout, updateUser: authUpdateUser, resetPassword } = useAuth();
   const { persisted, updatePersisted: onUpdate, handleExportCSV: onExportCSV, dataLoading, showToast, setShowUpgradeModal } = useDashboard();
   const onLogout = () => { authLogout(); };
@@ -313,6 +328,34 @@ export default function SettingsPage() {
             style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: resetSent ? c.sage : c.gilt, background: resetSent ? "rgba(122,158,126,0.06)" : "rgba(212,179,127,0.06)", border: `1px solid ${resetSent ? "rgba(122,158,126,0.15)" : "rgba(212,179,127,0.15)"}`, borderRadius: 10, padding: "8px 18px", cursor: (resetLoading || resetSent) ? "default" : "pointer", opacity: resetLoading ? 0.6 : 1 }}>
             {resetLoading ? "Sending..." : resetSent ? "Email Sent ✓" : "Reset Password"}
           </button>
+        </div>
+      </div>}
+
+      {/* ═══════════════════ APPEARANCE ═══════════════════ */}
+      {activeSection === "appearance" && <div style={sectionStyle}>
+        <h3 style={sectionTitle}>Appearance</h3>
+        <p style={sectionDesc}>Choose your preferred color mode. Your preference is saved automatically.</p>
+
+        <div style={{ marginTop: 20 }}>
+          <label style={labelStyle}>Color Mode</label>
+          <div style={{ display: "flex", gap: 12, marginTop: 8 }}>
+            {([["light", "Light", <svg key="l" aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>], ["dark", "Dark", <svg key="d" aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>]] as const).map(([value, label, icon]) => (
+              <button key={value} onClick={() => setTheme(value as "light" | "dark")}
+                style={{
+                  flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
+                  padding: "14px 20px", borderRadius: 10, cursor: "pointer",
+                  fontFamily: font.ui, fontSize: 14, fontWeight: 600,
+                  background: mode === value ? `${c.gilt}15` : c.carbon,
+                  border: `1.5px solid ${mode === value ? c.gilt : c.border}`,
+                  color: mode === value ? c.gilt : c.chalk,
+                  transition: "all 0.2s ease",
+                }}
+              >
+                {icon}
+                {label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>}
 

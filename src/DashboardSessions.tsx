@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { c, font } from "./tokens";
+import { font } from "./tokens";
+import { useTheme } from "./ThemeContext";
 import { scoreLabel, scoreLabelColor, sessionTypes } from "./dashboardTypes";
 import { useDashboard } from "./DashboardContext";
 import { DataLoadingSkeleton } from "./dashboardComponents";
@@ -24,6 +25,7 @@ function relativeTime(dateStr: string): string {
 
 export default function DashboardSessions() {
   useDocTitle("Sessions");
+  const { c } = useTheme();
   const sessionNav = useNavigate();
   const { recentSessions, handleStartSession, dataLoading } = useDashboard();
   const [filter, setFilter] = useState("All");
@@ -139,13 +141,13 @@ export default function DashboardSessions() {
               <div style={{ width: 52, height: 52, flexShrink: 0, position: "relative", display: "flex", alignItems: "center", justifyContent: "center" }}>
                 <svg width="52" height="52" viewBox="0 0 52 52" style={{ position: "absolute", transform: "rotate(-90deg)" }}>
                   <circle cx="26" cy="26" r="23" fill="none" stroke="rgba(245,242,237,0.06)" strokeWidth="2.5" />
-                  <circle cx="26" cy="26" r="23" fill="none" stroke={scoreLabelColor(session.score)} strokeWidth="2.5"
+                  <circle cx="26" cy="26" r="23" fill="none" stroke={scoreLabelColor(session.score, c)} strokeWidth="2.5"
                     strokeDasharray={`${(session.score / 100) * 2 * Math.PI * 23} ${2 * Math.PI * 23}`}
                     strokeLinecap="round" className="score-ring" />
                 </svg>
                 <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
                   <span style={{ fontFamily: font.mono, fontSize: 18, fontWeight: 700, color: c.ivory, lineHeight: 1 }}>{session.score}</span>
-                  <span style={{ fontFamily: font.ui, fontSize: 8, color: scoreLabelColor(session.score), fontWeight: 600, marginTop: 1 }}>{scoreLabel(session.score)}</span>
+                  <span style={{ fontFamily: font.ui, fontSize: 8, color: scoreLabelColor(session.score, c), fontWeight: 600, marginTop: 1 }}>{scoreLabel(session.score)}</span>
                 </div>
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>

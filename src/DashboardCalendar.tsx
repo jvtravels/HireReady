@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { c, font } from "./tokens";
+import { font } from "./tokens";
+import { useTheme } from "./ThemeContext";
 import { useAuth } from "./AuthContext";
 import { useDocTitle } from "./useDocTitle";
 import { getCalendarEvents, saveCalendarEvent, deleteCalendarEvent } from "./supabase";
@@ -13,6 +14,7 @@ import { DataLoadingSkeleton, ProGate } from "./dashboardComponents";
 
 export default function CalendarPage() {
   useDocTitle("Calendar");
+  const { c } = useTheme();
   const { handleStartSession: onStartSession, dataLoading, isFree, isStarter, setShowUpgradeModal, showToast } = useDashboard();
 
   const { user } = useAuth();

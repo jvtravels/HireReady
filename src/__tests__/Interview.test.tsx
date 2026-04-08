@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, act } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import Interview from "../Interview";
+import { ThemeProvider } from "../ThemeContext";
 
 // Mock auth
 vi.mock("../AuthContext", () => ({
@@ -51,9 +52,11 @@ describe("Interview", () => {
   it("renders interview UI with timer and progress", async () => {
     await act(async () => {
       render(
-        <MemoryRouter initialEntries={["/interview?type=behavioral&difficulty=standard"]}>
+        <ThemeProvider>
+          <MemoryRouter initialEntries={["/interview?type=behavioral&difficulty=standard"]}>
           <Interview />
-        </MemoryRouter>,
+        </MemoryRouter>
+        </ThemeProvider>,
       );
     });
 
@@ -66,9 +69,11 @@ describe("Interview", () => {
   it("renders end interview button", async () => {
     await act(async () => {
       render(
-        <MemoryRouter initialEntries={["/interview?type=behavioral"]}>
+        <ThemeProvider>
+          <MemoryRouter initialEntries={["/interview?type=behavioral"]}>
           <Interview />
-        </MemoryRouter>,
+        </MemoryRouter>
+        </ThemeProvider>,
       );
     });
 
@@ -79,9 +84,11 @@ describe("Interview", () => {
   it("shows confirmation modal when End is clicked", async () => {
     await act(async () => {
       render(
-        <MemoryRouter initialEntries={["/interview?type=behavioral"]}>
+        <ThemeProvider>
+          <MemoryRouter initialEntries={["/interview?type=behavioral"]}>
           <Interview />
-        </MemoryRouter>,
+        </MemoryRouter>
+        </ThemeProvider>,
       );
     });
 
@@ -94,9 +101,11 @@ describe("Interview", () => {
   it("has control buttons for mute and camera", async () => {
     await act(async () => {
       render(
-        <MemoryRouter initialEntries={["/interview?type=behavioral"]}>
+        <ThemeProvider>
+          <MemoryRouter initialEntries={["/interview?type=behavioral"]}>
           <Interview />
-        </MemoryRouter>,
+        </MemoryRouter>
+        </ThemeProvider>,
       );
     });
 

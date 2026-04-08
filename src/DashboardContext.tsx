@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "./AuthContext";
+import { useTheme } from "./ThemeContext";
 import { getUserSessions, getCalendarEvents } from "./supabase";
 import { type InterviewEvent, loadEvents } from "./dashboardHelpers";
 import {
@@ -80,6 +81,7 @@ export function useDashboard() {
 export function DashboardProvider({ children }: { children: ReactNode }) {
   const nav = useNavigate();
   const { logout: authLogout, user, updateUser: authUpdateUser } = useAuth();
+  const { c: themeColors } = useTheme();
   const [persisted, setPersisted] = useState<PersistedState>(() => {
     const local = loadState();
     // Merge with auth user profile (Supabase data takes precedence over empty localStorage)
@@ -209,8 +211,8 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
 
   // Session data
   const { recentSessions, scoreTrend, skills, overallStats, hasData } = useMemo(
-    () => getSessionData(user?.targetRole || persisted.targetRole, supabaseSessions),
-    [user?.targetRole, persisted.targetRole, supabaseSessions],
+    () => getSessionData(user?.targetRole || persisted.targetRole, supabaseSessions, themeColors),
+    [user?.targetRole, persisted.targetRole, supabaseSessions, themeColors],
   );
 
   const weekActivity = useMemo(() => computeWeekActivity(recentSessions), [recentSessions]);

@@ -1,4 +1,4 @@
-import { c } from "./tokens";
+import type { ColorTokens } from "./tokens";
 
 export type UserContext = { targetRole?: string; targetCompany?: string; industry?: string; interviewDate?: string; practiceTimestamps?: string[]; subscriptionTier?: string; subscriptionEnd?: string } | null;
 
@@ -66,7 +66,7 @@ export function scoreLabel(score: number) {
   return "Needs work";
 }
 
-export function scoreLabelColor(score: number) {
+export function scoreLabelColor(score: number, c: ColorTokens) {
   if (score >= 85) return c.sage;
   if (score >= 75) return c.gilt;
   return c.ember;

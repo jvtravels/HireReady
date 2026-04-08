@@ -1,7 +1,9 @@
 import { Link } from "react-router-dom";
-import { c, font } from "./tokens";
+import { font } from "./tokens";
+import { useTheme } from "./ThemeContext";
 
 export default function NotFound() {
+  const { c } = useTheme();
   return (
     <div style={{
       minHeight: "100vh", background: c.obsidian,

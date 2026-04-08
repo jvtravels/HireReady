@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { c, font } from "./tokens";
+import { font } from "./tokens";
+import { useTheme } from "./ThemeContext";
 import { useSEO, articleJsonLd, faqJsonLd } from "./useSEO";
 
 /* ─── Blog post data (SEO-optimized interview prep articles) ─── */
@@ -405,6 +406,7 @@ const CATEGORIES = ["All", ...Array.from(new Set(posts.map(p => p.category)))];
 
 /* ─── Blog index (list of all posts) ─── */
 function BlogIndex({ navigate }: { navigate: (path: string) => void }) {
+  const { c } = useTheme();
   const [activeCategory, setActiveCategory] = useState("All");
 
   useSEO({
@@ -565,6 +567,7 @@ function BlogIndex({ navigate }: { navigate: (path: string) => void }) {
 
 /* ─── Single blog post ─── */
 function BlogPostPage({ post }: { post: BlogPost }) {
+  const { c } = useTheme();
   const url = `https://hirloop.com/blog/${post.slug}`;
   const related = getRelatedPosts(post.relatedSlugs);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
@@ -749,6 +752,7 @@ function BlogPostPage({ post }: { post: BlogPost }) {
 
 /* ─── Main export ─── */
 export default function BlogPage() {
+  const { c } = useTheme();
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
 

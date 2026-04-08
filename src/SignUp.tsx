@@ -2,7 +2,8 @@ import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { track } from "@vercel/analytics";
 import { capture } from "./analytics";
-import { c, font } from "./tokens";
+import { font } from "./tokens";
+import { useTheme } from "./ThemeContext";
 import { useAuth } from "./AuthContext";
 import { getSupabase, supabaseConfigured } from "./supabase";
 
@@ -62,6 +63,7 @@ function friendlyError(raw: string, isLogin: boolean): { message: string; sugges
 }
 
 export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
+  const { c } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
   const { login, signup, loginWithGoogle, resetPassword, isLoggedIn, user } = useAuth();

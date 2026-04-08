@@ -2,7 +2,9 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { track } from "@vercel/analytics";
 import { capture } from "./analytics";
-import { c, font } from "./tokens";
+import { font } from "./tokens";
+import type { ColorTokens } from "./tokens";
+import { useTheme } from "./ThemeContext";
 import { useAuth } from "./AuthContext";
 import { unlockAudio, prefetchTTS } from "./tts";
 
@@ -22,7 +24,7 @@ function getSuggestedDifficulty(): { id: string; reason: string } {
 }
 
 /* ─── Interview Types ─── */
-const interviewTypes = [
+function getInterviewTypes(c: ColorTokens) { return [
   {
     id: "behavioral",
     label: "Behavioral",
@@ -190,7 +192,7 @@ const interviewTypes = [
       "How would you handle a group of consistently disruptive students?",
     ],
   },
-];
+]; }
 
 /* ─── Focus Areas ─── */
 const focusAreas = [
@@ -203,14 +205,15 @@ const focusAreas = [
 ];
 
 /* ─── Difficulty Levels ─── */
-const difficulties = [
+function getDifficulties(c: ColorTokens) { return [
   { id: "warmup", label: "Warm-up", description: "Friendly pace, generous prompts", color: c.sage },
   { id: "standard", label: "Standard", description: "Typical interview pressure", color: c.gilt },
   { id: "intense", label: "Intense", description: "Tough follow-ups, time pressure", color: c.ember },
-];
+]; }
 
 /* ─── Waveform for mic test ─── */
 function MicTestWaveform({ stream }: { stream: MediaStream | null }) {
+  const { c } = useTheme();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animRef = useRef<number>(0);
 
@@ -287,6 +290,9 @@ function loadDraft(userId?: string): { type: string; difficulty: string; focus: 
 }
 
 export default function SessionSetup() {
+  const { c } = useTheme();
+  const interviewTypes = getInterviewTypes(c);
+  const difficulties = getDifficulties(c);
   const navigate = useNavigate();
   const { user } = useAuth();
   const [searchParams] = useSearchParams();

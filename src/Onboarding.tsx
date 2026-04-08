@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
-import { c, font } from "./tokens";
+import { font } from "./tokens";
+import { useTheme } from "./ThemeContext";
 import { useAuth } from "./AuthContext";
 import { extractResumeText, parseResumeData, type ParsedResume } from "./resumeParser";
 import { analyzeResumeWithAI, type ResumeProfile } from "./dashboardData";
@@ -42,6 +43,7 @@ function AutocompleteInput({
   required?: boolean;
   error?: string;
 }) {
+  const { c } = useTheme();
   const [focused, setFocused] = useState(false);
   const [selectedIdx, setSelectedIdx] = useState(-1);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -133,6 +135,7 @@ function loadObForm(): { targetRole: string; targetCompany: string; interviewFoc
 const SESSION_LENGTH_MAP: Record<string, 10 | 15 | 25> = { "10m": 10, "15m": 15, "25m": 25 };
 
 export default function Onboarding() {
+  const { c } = useTheme();
   const navigate = useNavigate();
   const { user, updateUser } = useAuth();
   const [step, setStep] = useState(loadObStep);

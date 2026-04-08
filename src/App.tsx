@@ -2,7 +2,8 @@ import React, { useEffect, useRef, useState, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { track } from "@vercel/analytics";
 import { capture } from "./analytics";
-import { c, font } from "./tokens";
+import { font } from "./tokens";
+import { useTheme } from "./ThemeContext";
 import { useAuth, hasStoredSession, getLastRoute } from "./AuthContext";
 import { useSEO, webAppJsonLd, faqJsonLd } from "./useSEO";
 import { getSupabase, supabaseConfigured } from "./supabase";
@@ -138,6 +139,7 @@ function ParticleCanvas() {
    NAV
    ═══════════════════════════════════════════════ */
 function Nav() {
+  const { c } = useTheme();
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
@@ -293,6 +295,7 @@ function Nav() {
 
 /* ─── Auth-aware CTA ─── */
 function HeroCTA() {
+  const { c } = useTheme();
   const { isLoggedIn } = useAuth();
   return (
     <div className="hero-cta" style={{ display: "flex", gap: 16, animation: "fadeInUp 0.8s ease 2.2s both", marginBottom: 40 }}>
@@ -338,6 +341,7 @@ function BottomCTA() {
    ═══════════════════════════════════════════════ */
 
 function Hero() {
+  const { c } = useTheme();
   const parallaxOffset = useParallax(0.1);
   const mouse = useMouse();
   const [wordsVisible, setWordsVisible] = useState<number[]>([]);
@@ -474,6 +478,7 @@ function Hero() {
 
 /* Hero floating score card */
 function HeroMockup() {
+  const { c } = useTheme();
   const [step, setStep] = useState(0);
   useEffect(() => {
     const timers = [
@@ -693,6 +698,7 @@ const companyLogos: { name: string; svg: React.ReactNode }[] = [
    LOGO MARQUEE
    ═══════════════════════════════════════════════ */
 function LogoMarquee() {
+  const { c } = useTheme();
   const ref = useReveal<HTMLElement>();
 
   return (
@@ -760,6 +766,7 @@ function useCountUp(target: number, duration = 2000) {
 }
 
 function StatsSection() {
+  const { c } = useTheme();
   const sectionRef = useReveal<HTMLElement>();
   const stat1 = useCountUp(6, 1200);
   const stat2 = useCountUp(50, 1500);
@@ -808,6 +815,7 @@ function StatsSection() {
    PROBLEM SECTION
    ═══════════════════════════════════════════════ */
 function ProblemSection() {
+  const { c } = useTheme();
   const ref = useReveal<HTMLElement>();
   return (
     <section ref={ref} className="reveal landing-section" style={{ padding: "140px 40px", maxWidth: 1100, margin: "0 auto" }}>
@@ -879,6 +887,7 @@ const steps = [
 ];
 
 function HowItWorks() {
+  const { c } = useTheme();
   const ref = useReveal<HTMLElement>();
   const [activeStep, setActiveStep] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
@@ -1003,6 +1012,7 @@ function HowItWorks() {
 }
 
 function ProductMockup({ type, showChrome = false }: { type: "upload" | "interview" | "feedback"; showChrome?: boolean }) {
+  const { c } = useTheme();
   const content = (
     <>
       {type === "upload" && <MockupUpload />}
@@ -1027,6 +1037,7 @@ function ProductMockup({ type, showChrome = false }: { type: "upload" | "intervi
 }
 
 function MockupUpload() {
+  const { c } = useTheme();
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <div style={{ fontFamily: font.ui, fontSize: 14, fontWeight: 600, color: c.ivory }}>New Session</div>
@@ -1047,6 +1058,7 @@ function MockupUpload() {
 }
 
 function MockupInterview() {
+  const { c } = useTheme();
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -1078,6 +1090,7 @@ function MockupInterview() {
 }
 
 function MockupFeedback() {
+  const { c } = useTheme();
   const scores = [
     { label: "Communication", value: 87, color: c.gilt },
     { label: "Problem Solving", value: 92, color: c.sage },
@@ -1110,6 +1123,7 @@ function MockupFeedback() {
    DEMO VIDEO
    ═══════════════════════════════════════════════ */
 function DemoVideoSection() {
+  const { c } = useTheme();
   const ref = useReveal<HTMLElement>();
   return (
     <section ref={ref} className="reveal landing-section" style={{ padding: "140px 40px", maxWidth: 960, margin: "0 auto" }}>
@@ -1164,15 +1178,16 @@ function DemoVideoSection() {
 /* ═══════════════════════════════════════════════
    FEATURES — gradient border cards with icons
    ═══════════════════════════════════════════════ */
-const features = [
-  { label: "Adaptive", title: "Questions from your resume", description: "No recycled question banks. Every session is generated from your actual experience, targeting the exact role you're applying for.", accent: c.gilt, accentClass: "", icon: <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg> },
-  { label: "Real-Time", title: "Conversational AI that listens", description: "The interviewer responds to what you actually say — asking follow-ups and probing deeper, just like a real hiring manager would.", accent: c.sage, accentClass: "accent-sage", icon: <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg> },
-  { label: "Precise", title: "Feedback that's specific", description: '"You forgot to mention the outcome — add the 40% improvement metric." Not "try to be more specific."', accent: c.ember, accentClass: "accent-ember", icon: <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg> },
-  { label: "Private", title: "Your data stays yours", description: "Delete your data anytime from Settings. No social features, no tracking beyond basic web vitals.", accent: c.slate, accentClass: "accent-slate", icon: <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> },
-];
-
 function FeaturesSection() {
+  const { c } = useTheme();
   const ref = useReveal<HTMLElement>();
+
+  const features = [
+    { label: "Adaptive", title: "Questions from your resume", description: "No recycled question banks. Every session is generated from your actual experience, targeting the exact role you're applying for.", accent: c.gilt, accentClass: "", icon: <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg> },
+    { label: "Real-Time", title: "Conversational AI that listens", description: "The interviewer responds to what you actually say — asking follow-ups and probing deeper, just like a real hiring manager would.", accent: c.sage, accentClass: "accent-sage", icon: <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg> },
+    { label: "Precise", title: "Feedback that's specific", description: '"You forgot to mention the outcome — add the 40% improvement metric." Not "try to be more specific."', accent: c.ember, accentClass: "accent-ember", icon: <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg> },
+    { label: "Private", title: "Your data stays yours", description: "Delete your data anytime from Settings. No social features, no tracking beyond basic web vitals.", accent: c.slate, accentClass: "accent-slate", icon: <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> },
+  ];
   return (
     <section id="features" ref={ref} className="reveal landing-section" style={{ padding: "140px 40px 80px", maxWidth: 1100, margin: "0 auto" }}>
       <div style={{ textAlign: "center", marginBottom: 80 }}>
@@ -1186,7 +1201,8 @@ function FeaturesSection() {
   );
 }
 
-function FeatureRow({ feature, index }: { feature: (typeof features)[0]; index: number }) {
+function FeatureRow({ feature, index }: { feature: { label: string; title: string; description: string; accent: string; accentClass: string; icon: React.ReactNode }; index: number }) {
+  const { c } = useTheme();
   const ref = useReveal<HTMLDivElement>();
   const isEven = index % 2 === 0;
 
@@ -1217,6 +1233,7 @@ function FeatureRow({ feature, index }: { feature: (typeof features)[0]; index: 
 }
 
 function FeatureVisual({ type, accent }: { type: string; accent: string }) {
+  const { c } = useTheme();
   if (type === "Adaptive") {
     return (
       <div className="gradient-border-card" style={{ padding: "28px 24px", zIndex: 0 }}>
@@ -1308,6 +1325,7 @@ function FeatureVisual({ type, accent }: { type: string; accent: string }) {
    SCORE PREVIEW
    ═══════════════════════════════════════════════ */
 function ScorePreview() {
+  const { c } = useTheme();
   const [visible, setVisible] = useState(false);
   const sectionRef = useRef<HTMLElement | null>(null);
   const revealRef = useReveal<HTMLElement>();
@@ -1375,6 +1393,7 @@ const testimonials = [
 ];
 
 function TestimonialsSection() {
+  const { c } = useTheme();
   const ref = useReveal<HTMLElement>();
   const [active, setActive] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
@@ -1493,6 +1512,7 @@ const plans = [
 ];
 
 function PricingSection() {
+  const { c } = useTheme();
   const ref = useReveal<HTMLElement>();
   return (
     <section id="pricing" ref={ref} className="reveal dot-grid-bg landing-section" style={{ padding: "140px 40px", maxWidth: 1100, margin: "0 auto" }}>
@@ -1509,6 +1529,7 @@ function PricingSection() {
 }
 
 function PricingCard({ plan, delay }: { plan: (typeof plans)[0]; delay: number }) {
+  const { c } = useTheme();
   const ref = useReveal<HTMLDivElement>();
   const navigate = useNavigate();
   const { user, isLoggedIn, updateUser } = useAuth();
@@ -1654,6 +1675,7 @@ function PricingCard({ plan, delay }: { plan: (typeof plans)[0]; delay: number }
    FOR TEAMS BANNER
    ═══════════════════════════════════════════════ */
 function ForTeamsBanner() {
+  const { c } = useTheme();
   const ref = useReveal<HTMLElement>();
   return (
     <section ref={ref} className="reveal landing-section" style={{ padding: "0 40px 140px", maxWidth: 1100, margin: "0 auto" }}>
@@ -1682,6 +1704,7 @@ function ForTeamsBanner() {
    TRUST / SECURITY BADGES
    ═══════════════════════════════════════════════ */
 function TrustBadges() {
+  const { c } = useTheme();
   const ref = useReveal<HTMLElement>();
   const badges = [
     {
@@ -1744,6 +1767,7 @@ const LANDING_FAQS = [
 ];
 
 function FAQSection() {
+  const { c } = useTheme();
   const ref = useReveal<HTMLElement>();
   const [openIndex, setOpenIndex] = useState<number | null>(null);
 
@@ -1800,6 +1824,7 @@ function FAQSection() {
    FINAL CTA
    ═══════════════════════════════════════════════ */
 function FinalCTA() {
+  const { c } = useTheme();
   const ref = useReveal<HTMLElement>();
 
   return (
@@ -1858,6 +1883,7 @@ function FinalCTA() {
    EMAIL CAPTURE
    ═══════════════════════════════════════════════ */
 function EmailCapture() {
+  const { c } = useTheme();
   const ref = useReveal<HTMLElement>();
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<"idle" | "sending" | "done" | "error">("idle");
@@ -1943,6 +1969,7 @@ function EmailCapture() {
    FOOTER
    ═══════════════════════════════════════════════ */
 function Footer() {
+  const { c } = useTheme();
   const linkHref: Record<string, string> = {
     "Interview Practice": "/#features",
     "AI Feedback": "/#how-it-works",
@@ -2032,6 +2059,7 @@ function Footer() {
    APP
    ═══════════════════════════════════════════════ */
 export default function App() {
+  const { c } = useTheme();
   const { isLoggedIn, user, loading } = useAuth();
   const navigate = useNavigate();
   const [hadStoredSession] = useState(() => hasStoredSession());

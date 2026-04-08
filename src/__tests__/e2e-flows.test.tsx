@@ -5,6 +5,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent, act, waitFor, cleanup } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
+import { ThemeProvider } from "../ThemeContext";
 
 /* ─── Shared Mocks ─── */
 
@@ -107,9 +108,11 @@ describe("Flow 1: Onboarding", () => {
     const Onboarding = (await import("../Onboarding")).default;
     await act(async () => {
       render(
-        <MemoryRouter>
-          <Onboarding />
-        </MemoryRouter>,
+        <ThemeProvider>
+          <MemoryRouter>
+            <Onboarding />
+          </MemoryRouter>
+        </ThemeProvider>,
       );
     });
     expect(screen.getAllByText(/your resume/i).length).toBeGreaterThan(0);
@@ -121,9 +124,11 @@ describe("Flow 1: Onboarding", () => {
     const Onboarding = (await import("../Onboarding")).default;
     await act(async () => {
       render(
-        <MemoryRouter>
-          <Onboarding />
-        </MemoryRouter>,
+        <ThemeProvider>
+          <MemoryRouter>
+            <Onboarding />
+          </MemoryRouter>
+        </ThemeProvider>,
       );
     });
     expect(screen.getAllByText(/Resume/).length).toBeGreaterThan(0);
@@ -146,11 +151,13 @@ describe("Flow 2: Dashboard Empty State", () => {
     const DashboardHome = (await import("../DashboardHome")).default;
     await act(async () => {
       render(
-        <MemoryRouter initialEntries={["/dashboard"]}>
-          <DashboardProvider>
-            <DashboardHome />
-          </DashboardProvider>
-        </MemoryRouter>,
+        <ThemeProvider>
+          <MemoryRouter initialEntries={["/dashboard"]}>
+            <DashboardProvider>
+              <DashboardHome />
+            </DashboardProvider>
+          </MemoryRouter>
+        </ThemeProvider>,
       );
     });
     // Should show user's name or welcome
@@ -162,11 +169,13 @@ describe("Flow 2: Dashboard Empty State", () => {
     const DashboardHome = (await import("../DashboardHome")).default;
     await act(async () => {
       render(
-        <MemoryRouter initialEntries={["/dashboard"]}>
-          <DashboardProvider>
-            <DashboardHome />
-          </DashboardProvider>
-        </MemoryRouter>,
+        <ThemeProvider>
+          <MemoryRouter initialEntries={["/dashboard"]}>
+            <DashboardProvider>
+              <DashboardHome />
+            </DashboardProvider>
+          </MemoryRouter>
+        </ThemeProvider>,
       );
     });
     // Should show sessions remaining info somewhere
@@ -188,9 +197,11 @@ describe("Flow 3: Session Setup", () => {
     const SessionSetup = (await import("../SessionSetup")).default;
     await act(async () => {
       render(
-        <MemoryRouter initialEntries={["/session/new"]}>
-          <SessionSetup />
-        </MemoryRouter>,
+        <ThemeProvider>
+          <MemoryRouter initialEntries={["/session/new"]}>
+            <SessionSetup />
+          </MemoryRouter>
+        </ThemeProvider>,
       );
     });
     expect(screen.getByText(/Behavioral/i)).toBeInTheDocument();
@@ -200,9 +211,11 @@ describe("Flow 3: Session Setup", () => {
     const SessionSetup = (await import("../SessionSetup")).default;
     await act(async () => {
       render(
-        <MemoryRouter initialEntries={["/session/new"]}>
-          <SessionSetup />
-        </MemoryRouter>,
+        <ThemeProvider>
+          <MemoryRouter initialEntries={["/session/new"]}>
+            <SessionSetup />
+          </MemoryRouter>
+        </ThemeProvider>,
       );
     });
     expect(screen.getByText(/Behavioral/i)).toBeInTheDocument();
@@ -223,9 +236,11 @@ describe("Flow 4: Interview Lifecycle", () => {
     const Interview = (await import("../Interview")).default;
     await act(async () => {
       render(
-        <MemoryRouter initialEntries={["/interview?type=behavioral&difficulty=standard"]}>
-          <Interview />
-        </MemoryRouter>,
+        <ThemeProvider>
+          <MemoryRouter initialEntries={["/interview?type=behavioral&difficulty=standard"]}>
+            <Interview />
+          </MemoryRouter>
+        </ThemeProvider>,
       );
     });
     expect(screen.getByText("Hirloop")).toBeInTheDocument();
@@ -238,9 +253,11 @@ describe("Flow 4: Interview Lifecycle", () => {
     const Interview = (await import("../Interview")).default;
     await act(async () => {
       render(
-        <MemoryRouter initialEntries={["/interview?type=behavioral"]}>
-          <Interview />
-        </MemoryRouter>,
+        <ThemeProvider>
+          <MemoryRouter initialEntries={["/interview?type=behavioral"]}>
+            <Interview />
+          </MemoryRouter>
+        </ThemeProvider>,
       );
     });
     const endBtn = screen.getByLabelText("End interview");
@@ -252,9 +269,11 @@ describe("Flow 4: Interview Lifecycle", () => {
     const Interview = (await import("../Interview")).default;
     await act(async () => {
       render(
-        <MemoryRouter initialEntries={["/interview?type=behavioral"]}>
-          <Interview />
-        </MemoryRouter>,
+        <ThemeProvider>
+          <MemoryRouter initialEntries={["/interview?type=behavioral"]}>
+            <Interview />
+          </MemoryRouter>
+        </ThemeProvider>,
       );
     });
 
@@ -275,9 +294,11 @@ describe("Flow 4: Interview Lifecycle", () => {
 
     await act(async () => {
       render(
-        <MemoryRouter initialEntries={["/interview?type=behavioral"]}>
-          <Interview />
-        </MemoryRouter>,
+        <ThemeProvider>
+          <MemoryRouter initialEntries={["/interview?type=behavioral"]}>
+            <Interview />
+          </MemoryRouter>
+        </ThemeProvider>,
       );
     });
 
@@ -306,11 +327,13 @@ describe("Flow 5: Settings", () => {
     const SettingsPage = (await import("../DashboardSettings")).default;
     await act(async () => {
       render(
-        <MemoryRouter>
-          <DashboardProvider>
-            <SettingsPage />
-          </DashboardProvider>
-        </MemoryRouter>,
+        <ThemeProvider>
+          <MemoryRouter>
+            <DashboardProvider>
+              <SettingsPage />
+            </DashboardProvider>
+          </MemoryRouter>
+        </ThemeProvider>,
       );
     });
     expect(screen.getByText("Settings")).toBeInTheDocument();
@@ -323,11 +346,13 @@ describe("Flow 5: Settings", () => {
     const SettingsPage = (await import("../DashboardSettings")).default;
     await act(async () => {
       render(
-        <MemoryRouter>
-          <DashboardProvider>
-            <SettingsPage />
-          </DashboardProvider>
-        </MemoryRouter>,
+        <ThemeProvider>
+          <MemoryRouter>
+            <DashboardProvider>
+              <SettingsPage />
+            </DashboardProvider>
+          </MemoryRouter>
+        </ThemeProvider>,
       );
     });
     await act(async () => { fireEvent.click(screen.getByText("Plan & Data")); });
@@ -339,11 +364,13 @@ describe("Flow 5: Settings", () => {
     const SettingsPage = (await import("../DashboardSettings")).default;
     await act(async () => {
       render(
-        <MemoryRouter>
-          <DashboardProvider>
-            <SettingsPage />
-          </DashboardProvider>
-        </MemoryRouter>,
+        <ThemeProvider>
+          <MemoryRouter>
+            <DashboardProvider>
+              <SettingsPage />
+            </DashboardProvider>
+          </MemoryRouter>
+        </ThemeProvider>,
       );
     });
     await act(async () => { fireEvent.click(screen.getByText("Plan & Data")); });
@@ -355,11 +382,13 @@ describe("Flow 5: Settings", () => {
     const SettingsPage = (await import("../DashboardSettings")).default;
     await act(async () => {
       render(
-        <MemoryRouter>
-          <DashboardProvider>
-            <SettingsPage />
-          </DashboardProvider>
-        </MemoryRouter>,
+        <ThemeProvider>
+          <MemoryRouter>
+            <DashboardProvider>
+              <SettingsPage />
+            </DashboardProvider>
+          </MemoryRouter>
+        </ThemeProvider>,
       );
     });
     await act(async () => { fireEvent.click(screen.getByText("Plan & Data")); });
@@ -383,15 +412,17 @@ describe("Flow 6: Upgrade Modal", () => {
     const { UpgradeModal } = await import("../dashboardComponents");
     await act(async () => {
       render(
-        <MemoryRouter>
-          <UpgradeModal
-            onClose={vi.fn()}
-            sessionsUsed={2}
-            user={mockUser}
-            currentTier="free"
-            onPaymentSuccess={vi.fn()}
-          />
-        </MemoryRouter>,
+        <ThemeProvider>
+          <MemoryRouter>
+            <UpgradeModal
+              onClose={vi.fn()}
+              sessionsUsed={2}
+              user={mockUser}
+              currentTier="free"
+              onPaymentSuccess={vi.fn()}
+            />
+          </MemoryRouter>
+        </ThemeProvider>,
       );
     });
     expect(screen.getByText("Starter")).toBeInTheDocument();
@@ -404,15 +435,17 @@ describe("Flow 6: Upgrade Modal", () => {
     const { UpgradeModal } = await import("../dashboardComponents");
     await act(async () => {
       render(
-        <MemoryRouter>
-          <UpgradeModal
-            onClose={vi.fn()}
-            sessionsUsed={3}
-            user={mockUser}
-            currentTier="free"
-            onPaymentSuccess={vi.fn()}
-          />
-        </MemoryRouter>,
+        <ThemeProvider>
+          <MemoryRouter>
+            <UpgradeModal
+              onClose={vi.fn()}
+              sessionsUsed={3}
+              user={mockUser}
+              currentTier="free"
+              onPaymentSuccess={vi.fn()}
+            />
+          </MemoryRouter>
+        </ThemeProvider>,
       );
     });
     const text = document.body.textContent || "";
@@ -434,11 +467,13 @@ describe("Flow 7: Resume Page", () => {
     const DashboardResume = (await import("../DashboardResume")).default;
     await act(async () => {
       render(
-        <MemoryRouter>
-          <DashboardProvider>
-            <DashboardResume />
-          </DashboardProvider>
-        </MemoryRouter>,
+        <ThemeProvider>
+          <MemoryRouter>
+            <DashboardProvider>
+              <DashboardResume />
+            </DashboardProvider>
+          </MemoryRouter>
+        </ThemeProvider>,
       );
     });
     expect(screen.getByText(/Resume Intelligence/i)).toBeInTheDocument();
@@ -450,11 +485,13 @@ describe("Flow 7: Resume Page", () => {
     const DashboardResume = (await import("../DashboardResume")).default;
     await act(async () => {
       render(
-        <MemoryRouter>
-          <DashboardProvider>
-            <DashboardResume />
-          </DashboardProvider>
-        </MemoryRouter>,
+        <ThemeProvider>
+          <MemoryRouter>
+            <DashboardProvider>
+              <DashboardResume />
+            </DashboardProvider>
+          </MemoryRouter>
+        </ThemeProvider>,
       );
     });
     expect(screen.getByText("PDF")).toBeInTheDocument();
@@ -483,11 +520,13 @@ describe("Flow 7: Resume Page", () => {
     const DashboardResume = (await import("../DashboardResume")).default;
     await act(async () => {
       render(
-        <MemoryRouter>
-          <DashboardProvider>
-            <DashboardResume />
-          </DashboardProvider>
-        </MemoryRouter>,
+        <ThemeProvider>
+          <MemoryRouter>
+            <DashboardProvider>
+              <DashboardResume />
+            </DashboardProvider>
+          </MemoryRouter>
+        </ThemeProvider>,
       );
     });
     expect(screen.getByText("Senior Design Leader")).toBeInTheDocument();
@@ -509,11 +548,13 @@ describe("Flow 8: Calendar", () => {
     const DashboardCalendar = (await import("../DashboardCalendar")).default;
     await act(async () => {
       render(
-        <MemoryRouter>
-          <DashboardProvider>
-            <DashboardCalendar />
-          </DashboardProvider>
-        </MemoryRouter>,
+        <ThemeProvider>
+          <MemoryRouter>
+            <DashboardProvider>
+              <DashboardCalendar />
+            </DashboardProvider>
+          </MemoryRouter>
+        </ThemeProvider>,
       );
     });
     // Free users see upgrade gate
@@ -536,11 +577,13 @@ describe("Flow 9: Sessions List", () => {
     const DashboardSessions = (await import("../DashboardSessions")).default;
     await act(async () => {
       render(
-        <MemoryRouter>
-          <DashboardProvider>
-            <DashboardSessions />
-          </DashboardProvider>
-        </MemoryRouter>,
+        <ThemeProvider>
+          <MemoryRouter>
+            <DashboardProvider>
+              <DashboardSessions />
+            </DashboardProvider>
+          </MemoryRouter>
+        </ThemeProvider>,
       );
     });
     expect(screen.getByText(/No sessions yet/i)).toBeInTheDocument();
@@ -628,9 +671,11 @@ describe("Flow 11: Edge Cases", () => {
     const Interview = (await import("../Interview")).default;
     await act(async () => {
       render(
-        <MemoryRouter initialEntries={["/interview"]}>
-          <Interview />
-        </MemoryRouter>,
+        <ThemeProvider>
+          <MemoryRouter initialEntries={["/interview"]}>
+            <Interview />
+          </MemoryRouter>
+        </ThemeProvider>,
       );
     });
     // Should still render without crashing
@@ -643,11 +688,13 @@ describe("Flow 11: Edge Cases", () => {
     const DashboardHome = (await import("../DashboardHome")).default;
     await act(async () => {
       render(
-        <MemoryRouter initialEntries={["/dashboard"]}>
-          <DashboardProvider>
-            <DashboardHome />
-          </DashboardProvider>
-        </MemoryRouter>,
+        <ThemeProvider>
+          <MemoryRouter initialEntries={["/dashboard"]}>
+            <DashboardProvider>
+              <DashboardHome />
+            </DashboardProvider>
+          </MemoryRouter>
+        </ThemeProvider>,
       );
     });
     // Should not crash — just show empty state
@@ -664,11 +711,13 @@ describe("Flow 11: Edge Cases", () => {
     const SettingsPage = (await import("../DashboardSettings")).default;
     await act(async () => {
       render(
-        <MemoryRouter>
-          <DashboardProvider>
-            <SettingsPage />
-          </DashboardProvider>
-        </MemoryRouter>,
+        <ThemeProvider>
+          <MemoryRouter>
+            <DashboardProvider>
+              <SettingsPage />
+            </DashboardProvider>
+          </MemoryRouter>
+        </ThemeProvider>,
       );
     });
     await act(async () => { fireEvent.click(screen.getByText("Plan & Data")); });
