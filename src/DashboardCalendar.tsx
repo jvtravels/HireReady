@@ -174,32 +174,6 @@ export default function CalendarPage() {
           </p>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
-          <button
-            onClick={async () => {
-              if (!hasGoogleToken) {
-                showToast("Redirecting to Google for calendar access...");
-                await loginWithGoogle("/calendar");
-                return;
-              }
-              syncGoogleCalendar();
-            }}
-            disabled={googleSyncStatus === "syncing"}
-            style={{
-              fontFamily: font.ui, fontSize: 13, fontWeight: 500, padding: "10px 22px",
-              borderRadius: 8, border: `1px solid ${c.border}`, background: "transparent", color: c.chalk,
-              cursor: googleSyncStatus === "syncing" ? "wait" : "pointer",
-              display: "flex", alignItems: "center", gap: 8,
-              opacity: googleSyncStatus === "syncing" ? 0.6 : 1,
-              transition: "border-color 0.2s ease",
-            }}
-            onMouseEnter={(e) => { if (googleSyncStatus !== "syncing") e.currentTarget.style.borderColor = c.gilt; }}
-            onMouseLeave={(e) => { e.currentTarget.style.borderColor = c.border; }}
-          >
-            <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-              <polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
-            </svg>
-            {googleSyncStatus === "syncing" ? "Syncing..." : "Sync Google Calendar"}
-          </button>
           <button onClick={openNewForm} style={{
             fontFamily: font.ui, fontSize: 13, fontWeight: 500, padding: "10px 22px",
             borderRadius: 8, border: "none", background: c.gilt, color: c.obsidian,
