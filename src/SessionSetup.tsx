@@ -295,19 +295,16 @@ export default function SessionSetup() {
   const [draft] = useState(() => loadDraft(user?.id));
   const [showDraftBanner, setShowDraftBanner] = useState(!!draft);
 
-  // Steps: 1 = type + focus, 2 = difficulty, 3 = mic/camera check
+  // Steps: 1 = type + focus, 2 = difficulty, 3 = mic check
   const [step, setStep] = useState(1);
   const [selectedType, setSelectedType] = useState(preselectedType || "");
   const [selectedFocus, setSelectedFocus] = useState("general");
   const [targetCompany, setTargetCompany] = useState(user?.targetCompany || "");
   const [difficulty, setDifficulty] = useState(suggested.id);
 
-  // Mic/Camera check
+  // Mic check
   const [micStream, setMicStream] = useState<MediaStream | null>(null);
-  const [videoStream, setVideoStream] = useState<MediaStream | null>(null);
   const [micStatus, setMicStatus] = useState<"idle" | "testing" | "ready" | "error">("idle");
-  const [camStatus, setCamStatus] = useState<"idle" | "testing" | "ready" | "error">("idle");
-  const videoRef = useRef<HTMLVideoElement>(null);
 
   // Countdown before interview starts
   const [countdown, setCountdown] = useState<number | null>(null);
@@ -319,7 +316,6 @@ export default function SessionSetup() {
   const selectedTypeData = interviewTypes.find(t => t.id === selectedType);
 
   const [micError, setMicError] = useState<string | null>(null);
-  const [camError, setCamError] = useState<string | null>(null);
 
   // Test microphone
   const testMic = async () => {
@@ -337,32 +333,12 @@ export default function SessionSetup() {
     }
   };
 
-  // Test camera
-  const testCamera = async () => {
-    setCamStatus("testing");
-    setCamError(null);
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-      setVideoStream(stream);
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-      }
-      setCamStatus("ready");
-    } catch (err: any) {
-      setCamStatus("error");
-      if (err.name === "NotAllowedError") setCamError("Camera access denied. Please allow camera access in your browser settings.");
-      else if (err.name === "NotFoundError") setCamError("No camera found on this device.");
-      else setCamError("Camera unavailable. You can proceed without video.");
-    }
-  };
-
   // Cleanup streams on unmount
   useEffect(() => {
     return () => {
       micStream?.getTracks().forEach(t => t.stop());
-      videoStream?.getTracks().forEach(t => t.stop());
     };
-  }, [micStream, videoStream]);
+  }, [micStream]);
 
   // Intro text by type — pre-fetch TTS during countdown so first voice is instant
   const introByType: Record<string, string> = {
@@ -384,7 +360,6 @@ export default function SessionSetup() {
     track("session_start", { type: selectedType, difficulty, focus: selectedFocus });
     // Stop test streams before navigating
     micStream?.getTracks().forEach(t => t.stop());
-    videoStream?.getTracks().forEach(t => t.stop());
 
     // Pre-fetch intro TTS during 3s countdown so it's cached when interview loads
     const introText = introByType[selectedType] || introByType.behavioral;
@@ -792,52 +767,6 @@ export default function SessionSetup() {
                 )}
               </div>
 
-              {/* Camera check */}
-              <div style={{ background: c.graphite, borderRadius: 14, border: `1px solid ${c.border}`, padding: "28px 24px" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
-                  <div style={{
-                    width: 40, height: 40, borderRadius: 10,
-                    background: camStatus === "ready" ? "rgba(122,158,126,0.08)" : camStatus === "error" ? "rgba(196,112,90,0.08)" : "rgba(212,179,127,0.06)",
-                    border: `1px solid ${camStatus === "ready" ? "rgba(122,158,126,0.2)" : camStatus === "error" ? "rgba(196,112,90,0.2)" : "rgba(212,179,127,0.12)"}`,
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                  }}>
-                    <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={camStatus === "ready" ? c.sage : camStatus === "error" ? c.ember : c.gilt} strokeWidth="1.5" strokeLinecap="round">
-                      <path d="M23 7l-7 5 7 5V7z" /><rect x="1" y="5" width="15" height="14" rx="2" />
-                    </svg>
-                  </div>
-                  <div>
-                    <h3 style={{ fontFamily: font.ui, fontSize: 14, fontWeight: 600, color: c.ivory }}>Camera</h3>
-                    <span style={{ fontFamily: font.ui, fontSize: 11, color: camStatus === "ready" ? c.sage : camStatus === "error" ? c.ember : c.stone }}>
-                      {camStatus === "idle" ? "Not tested" : camStatus === "testing" ? "Testing..." : camStatus === "ready" ? "Working" : "Not available"}
-                    </span>
-                  </div>
-                </div>
-
-                {camStatus === "ready" ? (
-                  <div style={{ borderRadius: 10, overflow: "hidden", height: 120, background: c.obsidian }}>
-                    <video ref={videoRef} autoPlay muted playsInline style={{ width: "100%", height: "100%", objectFit: "cover", transform: "scaleX(-1)" }} />
-                  </div>
-                ) : (
-                  <button onClick={testCamera}
-                    style={{
-                      width: "100%", padding: "10px", borderRadius: 8, cursor: "pointer",
-                      fontFamily: font.ui, fontSize: 13, fontWeight: 500,
-                      background: "rgba(212,179,127,0.06)", border: `1px solid rgba(212,179,127,0.15)`,
-                      color: c.gilt, transition: "all 0.2s ease", outline: "none",
-                    }}
-                    onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(212,179,127,0.12)"; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(212,179,127,0.06)"; }}
-                  >
-                    {camStatus === "error" ? "Retry Camera" : "Test Camera"}
-                  </button>
-                )}
-
-                {camStatus === "error" && (
-                  <p style={{ fontFamily: font.ui, fontSize: 11, color: c.ember, marginTop: 10, lineHeight: 1.5, padding: "8px 12px", borderRadius: 10, background: "rgba(196,112,90,0.06)", border: "1px solid rgba(196,112,90,0.12)" }}>
-                    {camError || "Camera access was denied. The interview will work without video."}
-                  </p>
-                )}
-              </div>
             </div>
 
             {/* Tips */}
@@ -846,9 +775,9 @@ export default function SessionSetup() {
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 {[
                   "Find a quiet space — background noise affects AI evaluation",
-                  "Look at the camera, not the screen — it simulates eye contact",
                   "Speak at a natural pace — rushing is the #1 mistake in mock interviews",
                   "Press Enter when you're done answering to move to the next question",
+                  "You can type your answers if you prefer not to use the microphone",
                 ].map((tip, i) => (
                   <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
                     <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="2" style={{ marginTop: 2, flexShrink: 0 }}><polyline points="20 6 9 17 4 12" /></svg>

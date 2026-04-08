@@ -91,7 +91,7 @@ describe("Interview", () => {
     expect(screen.getByText(/End interview early/i)).toBeInTheDocument();
   });
 
-  it("has control buttons for mute and camera", async () => {
+  it("has control button for mute", async () => {
     await act(async () => {
       render(
         <MemoryRouter initialEntries={["/interview?type=behavioral"]}>
@@ -101,6 +101,5 @@ describe("Interview", () => {
     });
 
     expect(screen.getByLabelText("Mute")).toBeInTheDocument();
-    expect(screen.getByLabelText("Turn camera off")).toBeInTheDocument();
   });
 });

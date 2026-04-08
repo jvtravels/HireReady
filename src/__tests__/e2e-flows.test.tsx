@@ -231,7 +231,6 @@ describe("Flow 4: Interview Lifecycle", () => {
     expect(screen.getByText("HireStepX")).toBeInTheDocument();
     expect(screen.getAllByText("00:00").length).toBeGreaterThanOrEqual(1);
     expect(screen.getByLabelText("Mute")).toBeInTheDocument();
-    expect(screen.getByLabelText("Turn camera off")).toBeInTheDocument();
   });
 
   it("shows end confirmation modal on end click", async () => {
@@ -248,7 +247,7 @@ describe("Flow 4: Interview Lifecycle", () => {
     expect(screen.getByText(/End interview early/i)).toBeInTheDocument();
   });
 
-  it("camera and mic toggling works", async () => {
+  it("mic toggling works", async () => {
     const Interview = (await import("../Interview")).default;
     await act(async () => {
       render(
@@ -262,11 +261,6 @@ describe("Flow 4: Interview Lifecycle", () => {
     const muteBtn = screen.getByLabelText("Mute");
     await act(async () => { fireEvent.click(muteBtn); });
     expect(screen.getByLabelText("Unmute")).toBeInTheDocument();
-
-    // Toggle camera
-    const cameraBtn = screen.getByLabelText("Turn camera off");
-    await act(async () => { fireEvent.click(cameraBtn); });
-    expect(screen.getByLabelText("Turn camera on")).toBeInTheDocument();
   });
 
   it("ending interview stops all media and enters evaluation", async () => {

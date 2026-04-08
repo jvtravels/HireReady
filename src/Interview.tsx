@@ -167,119 +167,6 @@ const LiveCaptions = React.memo(function LiveCaptions({ text, isTyping, speaking
   );
 });
 
-/* ─── User Webcam Feed (simulated) ─── */
-const UserWebcam = React.memo(function UserWebcam({ isMuted, isCameraOff }: { isMuted: boolean; isCameraOff: boolean }) {
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-  const [hasCamera, setHasCamera] = useState(false);
-  const [cameraError, setCameraError] = useState<string | null>(null);
-
-  // Stop all camera tracks helper
-  const stopStream = useCallback(() => {
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(t => t.stop());
-      streamRef.current = null;
-    }
-    if (videoRef.current?.srcObject) {
-      videoRef.current.srcObject = null;
-    }
-  }, []);
-
-  useEffect(() => {
-    if (isCameraOff) {
-      stopStream();
-      setHasCamera(false);
-      setCameraError(null);
-      return;
-    }
-    navigator.mediaDevices.getUserMedia({ video: true, audio: false })
-      .then(stream => {
-        if (videoRef.current) {
-          streamRef.current = stream;
-          videoRef.current.srcObject = stream;
-          setHasCamera(true);
-          setCameraError(null);
-        } else {
-          // Component unmounted before stream arrived — stop immediately
-          stream.getTracks().forEach(t => t.stop());
-        }
-      })
-      .catch((err) => {
-        setHasCamera(false);
-        if (err.name === "NotAllowedError") setCameraError("Camera access denied. Check browser permissions.");
-        else if (err.name === "NotFoundError") setCameraError("No camera found on this device.");
-        else setCameraError("Camera unavailable.");
-      });
-
-    return () => { stopStream(); };
-  }, [isCameraOff, stopStream]);
-
-  // Ensure camera stops on unmount regardless of isCameraOff state
-  useEffect(() => {
-    return () => { stopStream(); };
-  }, [stopStream]);
-
-  return (
-    <div style={{
-      width: "100%", height: "100%", borderRadius: 16, overflow: "hidden",
-      background: c.graphite, position: "relative", aspectRatio: "16/9",
-    }}>
-      {!isCameraOff && (
-        <video ref={videoRef} autoPlay muted playsInline
-          style={{ width: "100%", height: "100%", objectFit: "cover", transform: "scaleX(-1)", display: hasCamera ? "block" : "none" }}
-        />
-      )}
-
-      {(isCameraOff || !hasCamera) && (
-        <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12 }}>
-          <div style={{
-            width: 64, height: 64, borderRadius: "50%",
-            background: "rgba(212,179,127,0.08)",
-            border: `1px solid rgba(212,179,127,0.2)`,
-            display: "flex", alignItems: "center", justifyContent: "center",
-          }}>
-            <svg aria-hidden="true" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={c.stone} strokeWidth="1.5" strokeLinecap="round">
-              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-              <circle cx="12" cy="7" r="4" />
-            </svg>
-          </div>
-          <span style={{ fontFamily: font.ui, fontSize: 12, color: c.stone }}>
-            {isCameraOff ? "Camera off" : cameraError || "Camera not available"}
-          </span>
-        </div>
-      )}
-
-      {/* Muted indicator */}
-      {isMuted && (
-        <div style={{
-          position: "absolute", top: 12, right: 12,
-          width: 28, height: 28, borderRadius: "50%",
-          background: "rgba(196,112,90,0.2)",
-          border: `1px solid rgba(196,112,90,0.3)`,
-          display: "flex", alignItems: "center", justifyContent: "center",
-        }}>
-          <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.ember} strokeWidth="2" strokeLinecap="round">
-            <line x1="1" y1="1" x2="23" y2="23" />
-            <path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6" />
-            <path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2c0 .76-.13 1.49-.35 2.17" />
-            <line x1="12" y1="19" x2="12" y2="23" />
-          </svg>
-        </div>
-      )}
-
-      {/* Name tag */}
-      <div style={{
-        position: "absolute", bottom: 12, left: 12,
-        padding: "4px 10px", borderRadius: 10,
-        background: "rgba(6,6,7,0.7)",
-        backdropFilter: "blur(8px)",
-      }}>
-        <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 500, color: c.ivory }}>You</span>
-      </div>
-    </div>
-  );
-});
-
 /* ─── Timer ─── */
 function formatTime(seconds: number) {
   const m = Math.floor(seconds / 60);
@@ -435,7 +322,6 @@ export default function Interview() {
 
   // Controls
   const [isMuted, setIsMuted] = useState(false);
-  const [isCameraOff, setIsCameraOff] = useState(false);
   const [showTranscript, setShowTranscript] = useState(false);
 
   // Transcript history
@@ -969,7 +855,6 @@ export default function Interview() {
     recognitionRef.current?.stop();
     recognitionRef.current = null;
     setAiVoiceEnabled(false); // prevent interview flow effect from restarting
-    setIsCameraOff(true); // stop camera immediately
     setIsMuted(true); // stop mic
     setEvaluating(true);
 
@@ -1308,18 +1193,6 @@ export default function Interview() {
               )}
             </button>
             <button
-              onClick={() => setIsCameraOff(!isCameraOff)}
-              title={isCameraOff ? "Turn camera on (Alt+C)" : "Turn camera off (Alt+C)"}
-              aria-label={isCameraOff ? "Turn camera on" : "Turn camera off"}
-              style={{ width: 32, height: 32, borderRadius: 8, background: isCameraOff ? "rgba(196,112,90,0.1)" : "transparent", border: `1px solid ${isCameraOff ? "rgba(196,112,90,0.2)" : "transparent"}`, color: isCameraOff ? c.ember : c.stone, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s" }}
-            >
-              {isCameraOff ? (
-                <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><line x1="1" y1="1" x2="23" y2="23"/><path d="M21 21H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h3m3.06 0H21a2 2 0 0 1 2 2v11"/><circle cx="12" cy="13" r="3"/></svg>
-              ) : (
-                <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
-              )}
-            </button>
-            <button
               onClick={() => { if (aiVoiceEnabled) ttsCancelRef.current?.(); setAiVoiceEnabled(!aiVoiceEnabled); }}
               title={aiVoiceEnabled ? "Mute AI voice (Alt+V)" : "Enable AI voice (Alt+V)"}
               aria-label={aiVoiceEnabled ? "Mute AI voice" : "Enable AI voice"}
@@ -1642,7 +1515,7 @@ export default function Interview() {
             display: "flex", flexDirection: "column",
             overflow: "hidden",
           }}>
-            {/* Webcam feed */}
+            {/* User avatar */}
             <div style={{
               flex: 1, margin: "16px 16px 8px",
               borderRadius: 16,
@@ -1650,11 +1523,32 @@ export default function Interview() {
               overflow: "hidden",
               transition: "border-color 0.3s ease",
               boxShadow: phase === "listening" ? "0 0 24px rgba(122,158,126,0.08)" : "none",
+              background: c.graphite,
+              display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12,
             }}>
-              <UserWebcam isMuted={isMuted} isCameraOff={isCameraOff || evaluating} />
+              <div style={{
+                width: 64, height: 64, borderRadius: "50%",
+                background: "rgba(212,179,127,0.08)",
+                border: `1px solid rgba(212,179,127,0.2)`,
+                display: "flex", alignItems: "center", justifyContent: "center",
+              }}>
+                <svg aria-hidden="true" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={c.stone} strokeWidth="1.5" strokeLinecap="round">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                  <circle cx="12" cy="7" r="4" />
+                </svg>
+              </div>
+              <span style={{ fontFamily: font.ui, fontSize: 12, color: c.stone }}>
+                {user?.name?.split(" ")[0] || "You"}
+              </span>
+              {isMuted && (
+                <div style={{ display: "flex", alignItems: "center", gap: 4, padding: "2px 8px", borderRadius: 6, background: "rgba(196,112,90,0.1)", border: "1px solid rgba(196,112,90,0.15)" }}>
+                  <svg aria-hidden="true" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={c.ember} strokeWidth="2" strokeLinecap="round"><line x1="1" y1="1" x2="23" y2="23"/><path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"/></svg>
+                  <span style={{ fontFamily: font.ui, fontSize: 10, color: c.ember }}>Muted</span>
+                </div>
+              )}
             </div>
 
-            {/* User status card below camera */}
+            {/* User status card */}
             <div className="interview-stats" style={{ padding: "0 16px 16px" }}>
               <div style={{
                 background: c.graphite, borderRadius: 12,
@@ -1718,17 +1612,6 @@ export default function Interview() {
                 <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
               </button>
             </div>
-            {/* PiP webcam — above transcript list */}
-            {!isCameraOff && (
-              <div className="interview-pip-float" style={{
-                margin: "12px 16px 0",
-                height: 110, borderRadius: 10,
-                border: `1.5px solid ${phase === "listening" ? "rgba(122,158,126,0.2)" : c.border}`,
-                overflow: "hidden", flexShrink: 0,
-              }}>
-                <UserWebcam isMuted={isMuted} isCameraOff={false} />
-              </div>
-            )}
             <div ref={transcriptRef} aria-live="polite" aria-label="Interview transcript" style={{ flex: 1, overflow: "auto", padding: "14px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
               {transcript.length === 0 && (
                 <p style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, textAlign: "center", padding: "40px 0" }}>Transcript will appear here...</p>
