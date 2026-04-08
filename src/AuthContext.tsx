@@ -19,6 +19,15 @@ export function hasStoredSession(): boolean {
   return false;
 }
 
+/** Local fallback for hasCompletedOnboarding (survives refresh even if Supabase column missing) */
+const ONBOARDING_DONE_KEY = "hirestepx_onboarding_done";
+function getLocalOnboardingDone(userId: string): boolean {
+  try { return localStorage.getItem(`${ONBOARDING_DONE_KEY}_${userId}`) === "1"; } catch { return false; }
+}
+function setLocalOnboardingDone(userId: string) {
+  try { localStorage.setItem(`${ONBOARDING_DONE_KEY}_${userId}`, "1"); } catch {}
+}
+
 /** Save/restore the last authenticated route so users return where they left off */
 const LAST_ROUTE_KEY = "hirestepx_last_route";
 export function saveLastRoute(path: string) {
@@ -79,15 +88,19 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | null>(null);
 
 function profileToUser(profile: Profile, session: Session): User {
+  const completed = profile.has_completed_onboarding != null
+    ? !!(profile.has_completed_onboarding)
+    : !!(profile.practice_timestamps && profile.practice_timestamps.length > 0)
+      || getLocalOnboardingDone(profile.id);
+  // Persist to localStorage so it survives refresh even if Supabase column doesn't exist yet
+  if (completed) setLocalOnboardingDone(profile.id);
   return {
     id: profile.id,
     name: profile.name || session.user.user_metadata?.name || session.user.user_metadata?.full_name || "",
     email: profile.email || session.user.email || "",
     targetRole: profile.target_role || "",
     resumeFileName: profile.resume_file_name || null,
-    hasCompletedOnboarding: profile.has_completed_onboarding != null
-      ? !!(profile.has_completed_onboarding)
-      : !!(profile.practice_timestamps && profile.practice_timestamps.length > 0),
+    hasCompletedOnboarding: completed,
     targetCompany: profile.target_company || undefined,
     industry: profile.industry || undefined,
     learningStyle: (profile.learning_style as "direct" | "encouraging") || "direct",
@@ -355,7 +368,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (updates.practiceTimestamps !== undefined) profileUpdates.practice_timestamps = updates.practiceTimestamps;
     if (updates.avatarUrl !== undefined) profileUpdates.avatar_url = updates.avatarUrl;
     if (updates.cancelAtPeriodEnd !== undefined) profileUpdates.cancel_at_period_end = updates.cancelAtPeriodEnd;
-    if (updates.hasCompletedOnboarding !== undefined) profileUpdates.has_completed_onboarding = updates.hasCompletedOnboarding;
+    if (updates.hasCompletedOnboarding !== undefined) {
+      profileUpdates.has_completed_onboarding = updates.hasCompletedOnboarding;
+      if (updates.hasCompletedOnboarding) setLocalOnboardingDone(currentId);
+    }
 
     console.log("[updateUser] upserting profile:", Object.keys(profileUpdates));
     await upsertProfile(profileUpdates);

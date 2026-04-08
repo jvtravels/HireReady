@@ -100,6 +100,6 @@ describe("Interview", () => {
       );
     });
 
-    expect(screen.getByLabelText("Mute")).toBeInTheDocument();
+    expect(screen.getByLabelText(/^Mute \(Alt\+M\)/)).toBeInTheDocument();
   });
 });

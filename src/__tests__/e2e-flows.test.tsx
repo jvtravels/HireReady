@@ -36,6 +36,7 @@ vi.mock("../supabase", () => ({
   saveSession: vi.fn(() => Promise.resolve()),
   getAuthToken: vi.fn(() => Promise.resolve("mock-token")),
   authHeaders: vi.fn(() => Promise.resolve({ "Content-Type": "application/json", Authorization: "Bearer mock-token" })),
+  getGoogleProviderToken: vi.fn(() => null),
 }));
 
 vi.mock("../tts", () => ({
@@ -230,7 +231,7 @@ describe("Flow 4: Interview Lifecycle", () => {
     });
     expect(screen.getByText("HireStepX")).toBeInTheDocument();
     expect(screen.getAllByText("00:00").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByLabelText("Mute")).toBeInTheDocument();
+    expect(screen.getByLabelText(/^Mute \(Alt\+M\)/)).toBeInTheDocument();
   });
 
   it("shows end confirmation modal on end click", async () => {
@@ -258,9 +259,9 @@ describe("Flow 4: Interview Lifecycle", () => {
     });
 
     // Toggle mute
-    const muteBtn = screen.getByLabelText("Mute");
+    const muteBtn = screen.getByLabelText(/^Mute \(Alt\+M\)/);
     await act(async () => { fireEvent.click(muteBtn); });
-    expect(screen.getByLabelText("Unmute")).toBeInTheDocument();
+    expect(screen.getByLabelText(/^Unmute \(Alt\+M\)/)).toBeInTheDocument();
   });
 
   it("ending interview stops all media and enters evaluation", async () => {

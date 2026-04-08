@@ -26,6 +26,7 @@ vi.mock("../supabase", () => ({
   getCalendarEvents: vi.fn(() => Promise.resolve([])),
   getProfile: vi.fn(() => Promise.resolve(null)),
   authHeaders: vi.fn(() => Promise.resolve({ "Content-Type": "application/json" })),
+  getGoogleProviderToken: vi.fn(() => null),
 }));
 
 // Mock dashboard helpers

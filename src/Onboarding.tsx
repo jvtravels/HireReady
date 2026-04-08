@@ -430,6 +430,7 @@ export default function Onboarding() {
   const [savedForm] = useState(loadObForm);
   const [targetRole, setTargetRole] = useState(savedForm?.targetRole || user?.targetRole || "");
   const [roleAutoFilled, setRoleAutoFilled] = useState(false);
+  const [roleTouched, setRoleTouched] = useState(false);
   const [targetCompany, setTargetCompany] = useState(savedForm?.targetCompany || user?.targetCompany || "");
   const [interviewFocus, setInterviewFocus] = useState<string[]>(savedForm?.interviewFocus?.slice(0, 1) || ["Behavioral"]);
   const [upgradedTier, setUpgradedTier] = useState<string | null>(null); // Fix #8: local override after upgrade
@@ -714,6 +715,7 @@ export default function Onboarding() {
           .ob-s2-focus-grid { grid-template-columns: 1fr 1fr !important; }
           .ob-s2-bottom-row { grid-template-columns: 1fr !important; }
           .ob-s2-session-grid { grid-template-columns: 1fr !important; }
+          .ob-s2-role-grid { grid-template-columns: 1fr !important; }
           .ob-s3-profile-row { flex-direction: column !important; }
         }
         @media (max-height: 700px) {
@@ -722,7 +724,7 @@ export default function Onboarding() {
       `}</style>
 
       {/* ─── Top Bar ─── */}
-      <div style={{ padding: "18px 40px", display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", borderBottom: `1px solid rgba(245,242,237,0.04)`, background: "rgba(6,6,7,0.6)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)", zIndex: 10 }}>
+      <div style={{ padding: "18px 40px", display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", borderBottom: `1px solid rgba(245,242,237,0.04)`, background: "rgba(6,6,7,0.6)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)", zIndex: 10, marginTop: user && !user.emailVerified ? 44 : 0 }}>
         {/* Logo — left, clickable to go home */}
         <div onClick={() => navigate("/")} style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }} title="Back to home">
           <div style={{ width: 6, height: 6, borderRadius: 2, background: `linear-gradient(135deg, ${c.gilt}, ${c.giltDark})`, boxShadow: "0 0 8px rgba(212,179,127,0.3)" }} />
@@ -730,45 +732,39 @@ export default function Onboarding() {
         </div>
         {/* Stepper — center */}
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          {["Resume", "Profile", "Ready"].map((label, i) => (
+          {["Resume", "Profile", "Ready"].map((label, i) => {
+            const stepNum = i + 1;
+            const isCompleted = step > stepNum;
+            const isCurrent = step === stepNum;
+            const canClick = isCompleted; // Only allow clicking completed steps
+            return (
             <div key={i} style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <div style={{
+              <div
+                onClick={canClick ? () => { setSlideDir("back"); setStep(stepNum); saveObStep(stepNum); } : undefined}
+                style={{
                 width: 26, height: 26, borderRadius: "50%",
-                background: step > i + 1 ? `linear-gradient(135deg, ${c.gilt}, ${c.giltDark})` : step === i + 1 ? "rgba(212,179,127,0.1)" : "transparent",
-                border: `1.5px solid ${step >= i + 1 ? c.gilt : "rgba(245,242,237,0.08)"}`,
+                background: isCompleted ? `linear-gradient(135deg, ${c.gilt}, ${c.giltDark})` : isCurrent ? "rgba(212,179,127,0.1)" : "transparent",
+                border: `1.5px solid ${step >= stepNum ? c.gilt : "rgba(245,242,237,0.08)"}`,
                 display: "flex", alignItems: "center", justifyContent: "center",
                 transition: "all 0.4s cubic-bezier(0.16, 1, 0.3, 1)",
-                boxShadow: step === i + 1 ? "0 0 12px rgba(212,179,127,0.15)" : "none",
+                boxShadow: isCurrent ? "0 0 12px rgba(212,179,127,0.15)" : "none",
+                cursor: canClick ? "pointer" : "default",
               }}>
-                {step > i + 1 ? (
+                {isCompleted ? (
                   <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={c.obsidian} strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
                 ) : (
-                  <span style={{ fontFamily: font.mono, fontSize: 10, fontWeight: 600, color: step === i + 1 ? c.gilt : c.stone }}>{i + 1}</span>
+                  <span style={{ fontFamily: font.mono, fontSize: 10, fontWeight: 600, color: isCurrent ? c.gilt : c.stone }}>{stepNum}</span>
                 )}
               </div>
-              <span style={{ fontFamily: font.ui, fontSize: 11, color: step === i + 1 ? c.ivory : c.stone, fontWeight: step === i + 1 ? 500 : 400 }}>{label}</span>
-              {i < 2 && <div style={{ width: 24, height: 1, background: step > i + 1 ? `linear-gradient(90deg, ${c.gilt}, rgba(212,179,127,0.2))` : "rgba(245,242,237,0.06)", transition: "background 0.4s", borderRadius: 1 }} />}
+              <span
+                onClick={canClick ? () => { setSlideDir("back"); setStep(stepNum); saveObStep(stepNum); } : undefined}
+                style={{ fontFamily: font.ui, fontSize: 11, color: isCurrent ? c.ivory : c.stone, fontWeight: isCurrent ? 500 : 400, cursor: canClick ? "pointer" : "default" }}>{label}</span>
+              {i < 2 && <div style={{ width: 24, height: 1, background: isCompleted ? `linear-gradient(90deg, ${c.gilt}, rgba(212,179,127,0.2))` : "rgba(245,242,237,0.06)", transition: "background 0.4s", borderRadius: 1 }} />}
             </div>
-          ))}
+            );
+          })}
         </div>
-        {/* Quick start shortcut */}
-        <div style={{ display: "flex", justifyContent: "flex-end" }}>
-          <button onClick={() => {
-            setSaveStatus("saving");
-            updateUser({ ...(userName.trim() ? { name: userName.trim() } : {}), ...(targetRole.trim() ? { targetRole: targetRole.trim() } : {}) })
-              .then(() => setSaveStatus("saved"))
-              .catch(() => setSaveStatus("error"));
-            clearObStep();
-            unlockAudio();
-            track("onboarding_skip");
-            navigate("/interview?type=behavioral&difficulty=standard&mini=true");
-          }}
-            style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, background: "none", border: "none", cursor: "pointer", padding: "4px 0", transition: "color 0.2s" }}
-            onMouseEnter={(e) => { e.currentTarget.style.color = c.ivory; }}
-            onMouseLeave={(e) => { e.currentTarget.style.color = c.stone; }}>
-            Skip to quick practice →
-          </button>
-        </div>
+        <div />
       </div>
 
       {/* ─── Content ─── */}
@@ -912,10 +908,10 @@ export default function Onboarding() {
                   <div style={{ marginBottom: 8 }}>
                     <p style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 700, color: c.gilt, textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 12 }}>Step 1 — Your Experience</p>
                     <h2 style={{ fontFamily: font.display, fontSize: 32, fontWeight: 400, color: c.ivory, letterSpacing: "-0.025em", lineHeight: 1.2, marginBottom: 10 }}>
-                      Upload your resume <span style={{ color: c.ember }}>*</span>
+                      Your candidate profile
                     </h2>
                     <p style={{ fontFamily: font.ui, fontSize: 15, color: c.stone, lineHeight: 1.7 }}>
-                      Upload your resume to get personalized interview questions tailored to your experience.
+                      We've analyzed your resume. Review your profile below, then continue to set up your session.
                     </p>
                   </div>
 
@@ -936,7 +932,6 @@ export default function Onboarding() {
                         <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>{fileName}</span>
                         <span style={{ color: c.stone, fontSize: 11 }}>·</span>
                         <button onClick={() => fileInputRef.current?.click()} style={{ fontFamily: font.ui, fontSize: 11, color: c.gilt, background: "none", border: "none", cursor: "pointer", padding: 0, textDecoration: "underline" }}>Replace</button>
-                        <input ref={fileInputRef} type="file" accept=".pdf,.docx,.doc,.txt" onChange={(e) => handleFileChange(e.target.files?.[0])} style={{ display: "none" }} />
                       </div>
                     </div>
                     <div className="ob-s1-header-actions" style={{ display: "flex", gap: 6, flexShrink: 0 }}>
@@ -951,7 +946,7 @@ export default function Onboarding() {
                         undoRef.current = { fileName, resumeText, resumeParsed, aiProfile, aiPhase, targetRole, targetCompany, userName };
                         setFileName(""); setResumeText(""); setResumeParsed(null); setResumeError(""); setAiProfile(null); setAiPhase("idle"); setTargetRole(""); setTargetCompany(""); setUserName("");
                         setShowUndo(true); clearTimeout(undoTimerRef.current);
-                        undoTimerRef.current = window.setTimeout(() => { setShowUndo(false); undoRef.current = null; }, 8000);
+                        undoTimerRef.current = window.setTimeout(() => { setShowUndo(false); undoRef.current = null; }, 12000);
                       }}
                         style={{ display: "flex", alignItems: "center", gap: 5, padding: "6px 12px", borderRadius: 7, background: c.graphite, border: `1px solid ${c.border}`, cursor: "pointer", fontFamily: font.ui, fontSize: 11, color: c.stone, transition: "all 0.2s" }}
                         onMouseEnter={(e) => { e.currentTarget.style.borderColor = "rgba(245,242,237,0.15)"; e.currentTarget.style.color = c.ivory; }}
@@ -1018,7 +1013,7 @@ export default function Onboarding() {
                             <p style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, lineHeight: 1.4 }}>
                               {aiProfile.resumeScore >= 50
                                 ? "Your resume meets the minimum standard. You can proceed to interview practice."
-                                : "Your resume score is below 50. Please improve your resume before proceeding to interview practice."}
+                                : "We've identified areas to strengthen. You can still practice — check the tips below to improve."}
                             </p>
                           </div>
                         </div>
@@ -1158,9 +1153,9 @@ We've pre-filled your target role from your resume. Adjust if needed, then choos
                     <span style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: c.ivory }}>Target Role</span>
                     <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, fontWeight: 400, marginLeft: 4 }}>— AI tailors questions to this role</span>
                   </div>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                  <div className="ob-s2-role-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
                     <div>
-                      <AutocompleteInput id="ob-role" value={targetRole} onChange={(v) => { setTargetRole(v); setRoleAutoFilled(false); }} suggestions={ROLE_SUGGESTIONS} placeholder="e.g. Senior Engineering Manager..." label="Role" required error={!targetRole.trim() && interviewFocus.length > 0 ? "Required to personalize your questions" : undefined} />
+                      <AutocompleteInput id="ob-role" value={targetRole} onChange={(v) => { setTargetRole(v); setRoleAutoFilled(false); setRoleTouched(true); }} suggestions={ROLE_SUGGESTIONS} placeholder="e.g. Senior Engineering Manager..." label="Role" required error={roleTouched && !targetRole.trim() ? "Required to personalize your questions" : undefined} />
                       {roleAutoFilled && targetRole && (
                         <p style={{ fontFamily: font.ui, fontSize: 11, color: c.sage, marginTop: 4, display: "flex", alignItems: "center", gap: 4 }}>
                           <svg aria-hidden="true" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg>
@@ -1419,18 +1414,18 @@ We've pre-filled your target role from your resume. Adjust if needed, then choos
                   )}
                   {starting ? "Starting..." : micStatus === "granted" ? "Start Practice Interview" : "Start with Text Input"}
                 </button>
-                {micStatus !== "granted" && (
-                  <p style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, textAlign: "center", marginTop: 8 }}>
-                    You can type your answers instead of speaking
-                  </p>
-                )}
+                <p style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, textAlign: "center", marginTop: 8 }}>
+                  {micStatus !== "granted"
+                    ? "You can type your answers instead of speaking"
+                    : "Your practice interview will start immediately"}
+                </p>
                 </>
               )}
             </div>
 
             {/* Save status indicator */}
             {saveStatus !== "idle" && (
-              <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4, animation: "fadeUp 0.25s ease-out" }}>
+              <div aria-live="polite" style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4, animation: "fadeUp 0.25s ease-out" }}>
                 {saveStatus === "saving" && <div style={{ width: 10, height: 10, border: "1.5px solid rgba(212,179,127,0.3)", borderTopColor: c.gilt, borderRadius: "50%", animation: "spin 1s linear infinite" }} />}
                 {saveStatus === "saved" && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>}
                 {saveStatus === "error" && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={c.ember} strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/></svg>}
@@ -1451,7 +1446,8 @@ We've pre-filled your target role from your resume. Adjust if needed, then choos
           currentTier={user?.subscriptionTier || "free"}
           onPaymentSuccess={(tier, start, end) => {
             setShowUpgradeModal(false);
-            setUpgradedTier(tier); // Fix #8: immediately unlock session lengths
+            setUpgradedTier(tier);
+            if (sessionLength === "10m") setSessionLength("15m"); // Auto-select recommended length after upgrade
             updateUser({ subscriptionTier: tier as "starter" | "pro", subscriptionStart: start, subscriptionEnd: end });
             track("onboarding_upgrade", { tier });
           }}
