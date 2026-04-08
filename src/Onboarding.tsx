@@ -1239,35 +1239,38 @@ We've pre-filled your target role from your resume. Adjust if needed, then choos
                       </p>
                     </div>
 
-                    {/* Camera */}
-                    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, padding: "20px 16px", borderRadius: 12, background: camStatus === "granted" ? "rgba(122,158,126,0.04)" : "rgba(245,242,237,0.02)", border: `1px solid ${camStatus === "granted" ? "rgba(122,158,126,0.12)" : "rgba(245,242,237,0.06)"}`, textAlign: "center" }}>
-                      <div style={{ width: 44, height: 44, borderRadius: 12, background: camStatus === "granted" ? `${c.sage}12` : "rgba(245,242,237,0.03)", border: `1px solid ${camStatus === "granted" ? `${c.sage}25` : "rgba(245,242,237,0.06)"}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                        <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={camStatus === "granted" ? c.sage : c.stone} strokeWidth="1.5" strokeLinecap="round">
-                          <path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
-                        </svg>
-                      </div>
+                    {/* Camera — shows video feed inside the card when granted */}
+                    <div style={{ position: "relative", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10, padding: camStatus === "granted" ? 0 : "20px 16px", borderRadius: 12, overflow: "hidden", background: camStatus === "granted" ? "#000" : "rgba(245,242,237,0.02)", border: `1px solid ${camStatus === "granted" ? "rgba(122,158,126,0.12)" : "rgba(245,242,237,0.06)"}`, textAlign: "center", minHeight: camStatus === "granted" ? 140 : undefined }}>
                       {camStatus === "granted" ? (
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                        <>
+                          <video ref={videoRef} autoPlay muted playsInline style={{ width: "100%", height: "100%", objectFit: "cover", transform: "scaleX(-1)", position: "absolute", inset: 0 }} />
+                          <div style={{ position: "absolute", bottom: 8, left: 0, right: 0, display: "flex", justifyContent: "center" }}>
+                            <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, color: c.sage, background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)", padding: "3px 10px", borderRadius: 6, display: "flex", alignItems: "center", gap: 4 }}>
+                              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                              Camera connected
+                            </span>
+                          </div>
+                        </>
                       ) : (
-                        <button onClick={requestCamera}
-                          style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: c.stone, background: "rgba(245,242,237,0.03)", border: `1px solid rgba(245,242,237,0.06)`, borderRadius: 8, padding: "8px 20px", cursor: "pointer", transition: "all 0.2s" }}
-                          onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(245,242,237,0.06)"; }}
-                          onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(245,242,237,0.03)"; }}>
-                          {camStatus === "denied" ? "Retry" : "Enable"}
-                        </button>
+                        <>
+                          <div style={{ width: 44, height: 44, borderRadius: 12, background: "rgba(245,242,237,0.03)", border: "1px solid rgba(245,242,237,0.06)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                            <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={c.stone} strokeWidth="1.5" strokeLinecap="round">
+                              <path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+                            </svg>
+                          </div>
+                          <button onClick={requestCamera}
+                            style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: c.stone, background: "rgba(245,242,237,0.03)", border: `1px solid rgba(245,242,237,0.06)`, borderRadius: 8, padding: "8px 20px", cursor: "pointer", transition: "all 0.2s" }}
+                            onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(245,242,237,0.06)"; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(245,242,237,0.03)"; }}>
+                            {camStatus === "denied" ? "Retry" : "Enable"}
+                          </button>
+                          <p style={{ fontFamily: font.ui, fontSize: 11, color: camStatus === "denied" ? c.ember : c.stone, lineHeight: 1.3 }}>
+                            {camStatus === "denied" ? "No worries — camera is optional" : "Optional — for a realistic feel"}
+                          </p>
+                        </>
                       )}
-                      <p style={{ fontFamily: font.ui, fontSize: 11, color: camStatus === "granted" ? c.sage : camStatus === "denied" ? c.ember : c.stone, lineHeight: 1.3 }}>
-                        {camStatus === "granted" ? "Connected" : camStatus === "denied" ? "No worries — camera is optional" : "Optional — for a realistic feel"}
-                      </p>
                     </div>
                   </div>
-
-                  {/* Camera preview */}
-                  {camStatus === "granted" && (
-                    <div style={{ marginTop: 12, borderRadius: 10, overflow: "hidden", background: "#000", aspectRatio: "16/9", maxHeight: 120 }}>
-                      <video ref={videoRef} autoPlay muted playsInline style={{ width: "100%", height: "100%", objectFit: "cover", transform: "scaleX(-1)" }} />
-                    </div>
-                  )}
                 </div>
 
                 {/* ── Your Profile Card ── */}
