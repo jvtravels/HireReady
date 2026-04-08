@@ -85,7 +85,7 @@ function profileToUser(profile: Profile, session: Session): User {
     email: profile.email || session.user.email || "",
     targetRole: profile.target_role || "",
     resumeFileName: profile.resume_file_name || null,
-    hasCompletedOnboarding: !!(profile.target_role),
+    hasCompletedOnboarding: profile.has_completed_onboarding != null ? !!(profile.has_completed_onboarding) : !!(profile.target_role),
     targetCompany: profile.target_company || undefined,
     industry: profile.industry || undefined,
     learningStyle: (profile.learning_style as "direct" | "encouraging") || "direct",
@@ -353,6 +353,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (updates.practiceTimestamps !== undefined) profileUpdates.practice_timestamps = updates.practiceTimestamps;
     if (updates.avatarUrl !== undefined) profileUpdates.avatar_url = updates.avatarUrl;
     if (updates.cancelAtPeriodEnd !== undefined) profileUpdates.cancel_at_period_end = updates.cancelAtPeriodEnd;
+    if (updates.hasCompletedOnboarding !== undefined) profileUpdates.has_completed_onboarding = updates.hasCompletedOnboarding;
 
     console.log("[updateUser] upserting profile:", Object.keys(profileUpdates));
     await upsertProfile(profileUpdates);
@@ -412,7 +413,7 @@ export function RequireAuth({ children }: { children: ReactNode }) {
         return;
       }
       navigate("/login", { replace: true, state: { from: location.pathname } });
-    } else if (user && !user.hasCompletedOnboarding && location.pathname !== "/onboarding") {
+    } else if (user && !user.hasCompletedOnboarding && !["/onboarding", "/interview", "/onboarding/complete"].includes(location.pathname)) {
       navigate("/onboarding", { replace: true });
     }
   }, [isLoggedIn, loading, user, navigate, location.pathname]);
@@ -427,7 +428,7 @@ export function RequireAuth({ children }: { children: ReactNode }) {
     </div>
   );
   if (!isLoggedIn) return null;
-  if (user && !user.hasCompletedOnboarding && location.pathname !== "/onboarding") return null;
+  if (user && !user.hasCompletedOnboarding && !["/onboarding", "/interview", "/onboarding/complete"].includes(location.pathname)) return null;
 
   return <>{children}</>;
 }

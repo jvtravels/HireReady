@@ -630,9 +630,7 @@ export default function Onboarding() {
     cancelAnimationFrame(animFrameRef.current);
     // Don't stop mic stream — Interview component will re-use the permission grant
     // Only include fields that have values — don't overwrite existing data with empty strings
-    const saveData: Partial<Parameters<typeof updateUser>[0]> = {
-      hasCompletedOnboarding: true,
-    };
+    const saveData: Partial<Parameters<typeof updateUser>[0]> = {};
     if (userName.trim()) saveData.name = userName.trim();
     if (targetRole.trim()) saveData.targetRole = targetRole.trim();
     if (targetCompany.trim()) saveData.targetCompany = targetCompany.trim();
@@ -753,7 +751,7 @@ export default function Onboarding() {
         <div style={{ display: "flex", justifyContent: "flex-end" }}>
           <button onClick={() => {
             setSaveStatus("saving");
-            updateUser({ hasCompletedOnboarding: true, ...(userName.trim() ? { name: userName.trim() } : {}), ...(targetRole.trim() ? { targetRole: targetRole.trim() } : {}) })
+            updateUser({ ...(userName.trim() ? { name: userName.trim() } : {}), ...(targetRole.trim() ? { targetRole: targetRole.trim() } : {}) })
               .then(() => setSaveStatus("saved"))
               .catch(() => setSaveStatus("error"));
             clearObStep();

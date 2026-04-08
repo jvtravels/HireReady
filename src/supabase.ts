@@ -78,6 +78,7 @@ export interface Profile {
   subscription_start: string | null;
   subscription_end: string | null;
   cancel_at_period_end: boolean;
+  has_completed_onboarding: boolean;
   razorpay_payment_id: string | null;
   created_at: string;
 }

@@ -992,12 +992,16 @@ export default function Interview() {
 
     track("session_complete", { type: interviewType, score, difficulty: interviewDifficulty });
 
-    // Clear draft and track practice timestamp
+    // Clear draft, mark onboarding complete, and track practice timestamp
     try { localStorage.removeItem(draftKey); } catch {}
     try { await deleteFromIDB(draftKey); } catch {}
     try {
       const timestamps = user?.practiceTimestamps || [];
-      updateUser({ practiceTimestamps: [...timestamps, new Date().toISOString()] });
+      const updates: Partial<Parameters<typeof updateUser>[0]> = {
+        practiceTimestamps: [...timestamps, new Date().toISOString()],
+      };
+      if (!user?.hasCompletedOnboarding) updates.hasCompletedOnboarding = true;
+      updateUser(updates);
     } catch {}
 
     // Brief delay to show save warning before navigating
