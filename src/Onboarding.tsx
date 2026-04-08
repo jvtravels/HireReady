@@ -6,6 +6,7 @@ import { useAuth } from "./AuthContext";
 import { extractResumeText, parseResumeData, type ParsedResume } from "./resumeParser";
 import { analyzeResumeWithAI, type ResumeProfile } from "./dashboardData";
 import { unlockAudio } from "./tts";
+import { UpgradeModal } from "./dashboardComponents";
 
 const TOTAL_STEPS = 3;
 
@@ -428,6 +429,7 @@ export default function Onboarding() {
   const [camStatus, setCamStatus] = useState<"idle" | "requesting" | "granted" | "denied">("idle");
   const [micLevel, setMicLevel] = useState(0);
   const [starting, setStarting] = useState(false);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const animFrameRef = useRef(0);
@@ -1227,7 +1229,7 @@ We've pre-filled your target role from your resume. Adjust if needed, then choos
                       const locked = opt.paidOnly && isFreeUser;
                       const sel = sessionLength === opt.value;
                       return (
-                        <button key={opt.value} onClick={() => { if (locked) { window.open("/#pricing", "_blank"); } else { setSessionLength(opt.value); } }}
+                        <button key={opt.value} onClick={() => { if (locked) { setShowUpgradeModal(true); } else { setSessionLength(opt.value); } }}
                           style={{
                             padding: "16px 14px", borderRadius: 12, cursor: "pointer", textAlign: "center", position: "relative",
                             background: sel ? "rgba(212,179,127,0.08)" : "transparent",
@@ -1455,6 +1457,18 @@ We've pre-filled your target role from your resume. Adjust if needed, then choos
           </div>
         </div>
       </div>
+      {showUpgradeModal && (
+        <UpgradeModal
+          onClose={() => setShowUpgradeModal(false)}
+          sessionsUsed={0}
+          user={user}
+          currentTier={user?.subscriptionTier || "free"}
+          onPaymentSuccess={(tier, start, end) => {
+            setShowUpgradeModal(false);
+            updateUser({ subscriptionTier: tier as "starter" | "pro", subscriptionStart: start, subscriptionEnd: end });
+          }}
+        />
+      )}
     </div>
   );
 }
