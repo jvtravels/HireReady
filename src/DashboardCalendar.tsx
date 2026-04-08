@@ -14,9 +14,7 @@ import { DataLoadingSkeleton, ProGate } from "./dashboardComponents";
 export default function CalendarPage() {
   useDocTitle("Calendar");
   const { handleStartSession: onStartSession, dataLoading, isFree, isStarter, setShowUpgradeModal, showToast, syncGoogleCalendar, googleSyncStatus, hasGoogleToken } = useDashboard();
-  const { loginWithGoogle } = useAuth();
-
-  const { user } = useAuth();
+  const { user, loginWithGoogle } = useAuth();
   const [events, setEvents] = useState<InterviewEvent[]>(loadEvents);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -34,15 +32,8 @@ export default function CalendarPage() {
   const [formReminders, setFormReminders] = useState(true);
   const [formError, setFormError] = useState("");
 
-  if (dataLoading) return <DataLoadingSkeleton />;
-  if (isFree || isStarter) return <ProGate feature="Interview Calendar" onUpgrade={() => setShowUpgradeModal(true)} />;
-
-  const updateEvents = (next: InterviewEvent[]) => {
-    setEvents(next);
-    saveEvents(next);
-  };
-
   // Load from Supabase on mount and merge with localStorage
+  // Must be before conditional returns to respect rules of hooks
   useEffect(() => {
     if (!user?.id) return;
     getCalendarEvents(user.id).then(dbEvents => {
@@ -53,7 +44,6 @@ export default function CalendarPage() {
         duration: 60, location: "", notes: e.notes,
         status: "upcoming" as const, reminders: true,
       }));
-      // Merge: Supabase wins for existing IDs, keep local-only events
       setEvents(prev => {
         const dbIds = new Set(mapped.map(e => e.id));
         const localOnly = prev.filter(e => !dbIds.has(e.id));
@@ -63,6 +53,9 @@ export default function CalendarPage() {
       });
     }).catch(() => {});
   }, [user?.id]);
+
+  if (dataLoading) return <DataLoadingSkeleton />;
+  if (isFree || isStarter) return <ProGate feature="Interview Calendar" onUpgrade={() => setShowUpgradeModal(true)} />;
 
   const resetForm = () => {
     setFormTitle("");
