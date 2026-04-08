@@ -379,27 +379,25 @@ function Hero() {
   const my = (mouse.y / window.innerHeight - 0.5) * 30;
 
   return (
-    <section className="dot-grid-bg" style={{
+    <section className={isDark ? "dot-grid-bg" : ""} style={{
       position: "relative", minHeight: "100vh", display: "flex", alignItems: "center",
       justifyContent: "center", overflow: "hidden",
     }}>
-      <ParticleCanvas isDark={isDark} />
-      <div className="landing-hero" style={{ display: "flex", alignItems: "center", maxWidth: 1200, width: "100%", padding: "140px 48px 100px", position: "relative" }}>
+      {isDark && <ParticleCanvas isDark={isDark} />}
+      <div className="landing-hero" style={{ display: "flex", alignItems: "center", maxWidth: 1200, width: "100%", padding: "160px 48px 100px", position: "relative" }}>
 
       {/* Mesh gradient */}
-      <div style={{
+      {isDark && <div style={{
         position: "absolute", top: "40%", left: "50%",
         transform: `translate(calc(-50% + ${mx}px), calc(-50% + ${my}px))`,
         width: 900, height: 900, borderRadius: "50%",
-        background: isDark
-          ? `conic-gradient(from 180deg, rgba(212,179,127,0.06), rgba(122,158,126,0.03), rgba(196,112,90,0.02), rgba(212,179,127,0.06))`
-          : `conic-gradient(from 180deg, rgba(184,146,62,0.04), rgba(45,122,58,0.02), rgba(196,112,90,0.015), rgba(184,146,62,0.04))`,
+        background: `conic-gradient(from 180deg, rgba(212,179,127,0.06), rgba(122,158,126,0.03), rgba(196,112,90,0.02), rgba(212,179,127,0.06))`,
         filter: "blur(80px)", pointerEvents: "none",
         animation: "meshRotate 30s linear infinite",
-      }} />
+      }} />}
 
       {/* Geometric circles (parallax) */}
-      {[600, 400, 220].map((size, i) => (
+      {isDark && [600, 400, 220].map((size, i) => (
         <div key={size} style={{
           position: "absolute", top: "50%", left: "60%",
           transform: `translate(-50%, -50%) translateY(${parallaxOffset * (0.5 - i * 0.15)}px)`,
@@ -413,7 +411,7 @@ function Hero() {
         {/* Social proof badge */}
         <div style={{
           display: "inline-flex", alignItems: "center", gap: 10, padding: "8px 16px",
-          background: "rgba(212,179,127,0.06)", border: `1px solid rgba(212,179,127,0.15)`,
+          background: isDark ? "rgba(212,179,127,0.06)" : "rgba(184,146,62,0.06)", border: `1px solid ${isDark ? "rgba(212,179,127,0.15)" : "rgba(184,146,62,0.12)"}`,
           borderRadius: 100, marginBottom: 28, animation: "fadeIn 0.8s ease 0.2s both",
         }}>
           <span style={{ width: 6, height: 6, borderRadius: "50%", background: c.sage, display: "inline-block", animation: "giltPulse 2s ease-in-out infinite" }} />
@@ -478,7 +476,7 @@ function Hero() {
           <div style={{
             position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)",
             width: "80%", height: "80%", borderRadius: "50%",
-            background: "radial-gradient(ellipse at center, rgba(212,179,127,0.08) 0%, transparent 70%)",
+            background: isDark ? "radial-gradient(ellipse at center, rgba(212,179,127,0.08) 0%, transparent 70%)" : "radial-gradient(ellipse at center, rgba(184,146,62,0.06) 0%, transparent 70%)",
             pointerEvents: "none", filter: "blur(40px)",
           }} />
           <HeroMockup />
@@ -519,7 +517,7 @@ function HeroMockup() {
       {/* Main card */}
       <div className="mockup-window" style={{
         background: c.graphite, borderRadius: 16, border: `1px solid ${c.border}`,
-        overflow: "hidden", boxShadow: "0 32px 80px rgba(0,0,0,0.5), 0 0 60px rgba(212,179,127,0.04)",
+        overflow: "hidden", boxShadow: isDark ? "0 32px 80px rgba(0,0,0,0.5), 0 0 60px rgba(212,179,127,0.04)" : "0 32px 80px rgba(0,0,0,0.08), 0 0 60px rgba(184,146,62,0.03)",
         animation: "floatSlow 6s ease-in-out infinite",
       }}>
         {/* Window chrome */}
@@ -544,7 +542,7 @@ function HeroMockup() {
               </div>
               <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, color: c.gilt, letterSpacing: "0.06em", textTransform: "uppercase" }}>Interviewer</span>
             </div>
-            <div style={{ background: `rgba(212,179,127,0.05)`, border: `1px solid rgba(212,179,127,0.1)`, borderRadius: "2px 12px 12px 12px", padding: "12px 16px", marginLeft: 32 }}>
+            <div style={{ background: isDark ? `rgba(212,179,127,0.05)` : `rgba(184,146,62,0.04)`, border: `1px solid ${isDark ? "rgba(212,179,127,0.1)" : "rgba(184,146,62,0.08)"}`, borderRadius: "2px 12px 12px 12px", padding: "12px 16px", marginLeft: 32 }}>
               <p style={{ fontFamily: font.ui, fontSize: 13, lineHeight: 1.6, color: c.ivory }}>
                 Tell me about a challenging project you worked on. What was your role and how did you approach the problem?
               </p>
@@ -594,8 +592,8 @@ function HeroMockup() {
               opacity: step >= 3 ? 1 : 0, transform: step >= 3 ? "translateY(0)" : "translateY(8px)",
               transition: "all 0.5s ease",
               display: "flex", alignItems: "center", gap: 8, marginLeft: 32,
-              padding: "10px 16px", background: `rgba(212,179,127,0.03)`,
-              border: `1px solid rgba(212,179,127,0.08)`, borderRadius: "2px 12px 12px 12px",
+              padding: "10px 16px", background: isDark ? `rgba(212,179,127,0.03)` : `rgba(184,146,62,0.02)`,
+              border: `1px solid ${isDark ? "rgba(212,179,127,0.08)" : "rgba(184,146,62,0.06)"}`, borderRadius: "2px 12px 12px 12px",
             }}>
               <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, color: c.gilt, letterSpacing: "0.04em", textTransform: "uppercase", marginRight: 4 }}>Follow-up</span>
               <div style={{ display: "flex", gap: 4 }}>
@@ -614,9 +612,9 @@ function HeroMockup() {
       {/* Floating insight card — overlaps bottom-right */}
       <div style={{
         position: "absolute", bottom: -20, right: -16,
-        background: c.graphite, borderRadius: 12, border: `1px solid rgba(212,179,127,0.15)`,
+        background: c.graphite, borderRadius: 12, border: `1px solid ${isDark ? "rgba(212,179,127,0.15)" : "rgba(184,146,62,0.12)"}`,
         padding: "14px 18px", maxWidth: 220,
-        boxShadow: "0 16px 48px rgba(0,0,0,0.5), 0 0 24px rgba(212,179,127,0.06)",
+        boxShadow: isDark ? "0 16px 48px rgba(0,0,0,0.5), 0 0 24px rgba(212,179,127,0.06)" : "0 16px 48px rgba(0,0,0,0.08), 0 0 24px rgba(184,146,62,0.04)",
         opacity: step >= 4 ? 1 : 0, transform: step >= 4 ? "translateY(0) scale(1)" : "translateY(8px) scale(0.95)",
         transition: "all 0.6s cubic-bezier(0.16, 1, 0.3, 1)",
         zIndex: 2,
@@ -842,7 +840,7 @@ function ProblemSection() {
   const { c } = useTheme();
   const ref = useReveal<HTMLElement>();
   return (
-    <section ref={ref} className="reveal landing-section" style={{ padding: "140px 40px", maxWidth: 1100, margin: "0 auto" }}>
+    <section ref={ref} className="reveal landing-section" style={{ padding: "160px 40px", maxWidth: 1100, margin: "0 auto" }}>
       <div className="landing-problem-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 64, alignItems: "center" }}>
         {/* Image side */}
         <div style={{ position: "relative" }}>
@@ -911,7 +909,7 @@ const steps = [
 ];
 
 function HowItWorks() {
-  const { c } = useTheme();
+  const { c, isDark } = useTheme();
   const ref = useReveal<HTMLElement>();
   const [activeStep, setActiveStep] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
@@ -926,7 +924,7 @@ function HowItWorks() {
   }, [isPaused]);
 
   return (
-    <section id="how-it-works" ref={ref} className="reveal dot-grid-bg landing-section" style={{ padding: "140px 40px 100px", maxWidth: 1100, margin: "0 auto" }}>
+    <section id="how-it-works" ref={ref} className={`reveal ${isDark ? "dot-grid-bg" : ""} landing-section`} style={{ padding: "160px 40px 100px", maxWidth: 1100, margin: "0 auto" }}>
       <div style={{ textAlign: "center", marginBottom: 64 }}>
         <p style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: c.gilt, marginBottom: 16 }}>How It Works</p>
         <h2 className="text-glow" style={{ fontFamily: font.display, fontSize: "clamp(32px, 4vw, 48px)", fontWeight: 400, letterSpacing: "-0.02em", color: c.ivory, lineHeight: 1.15 }}>
@@ -974,8 +972,8 @@ function HowItWorks() {
                     border: `1.5px solid ${isActive ? c.gilt : c.border}`,
                     display: "flex", alignItems: "center", justifyContent: "center",
                     transition: "all 0.4s ease",
-                    background: isActive ? `rgba(212,179,127,0.08)` : "transparent",
-                    boxShadow: isActive ? `0 0 20px rgba(212,179,127,0.12)` : "none",
+                    background: isActive ? (isDark ? `rgba(212,179,127,0.08)` : `rgba(184,146,62,0.06)`) : "transparent",
+                    boxShadow: isActive ? (isDark ? `0 0 20px rgba(212,179,127,0.12)` : `0 0 20px rgba(184,146,62,0.08)`) : "none",
                   }}>
                     {step.number}
                   </span>
@@ -1061,11 +1059,11 @@ function ProductMockup({ type, showChrome = false }: { type: "upload" | "intervi
 }
 
 function MockupUpload() {
-  const { c } = useTheme();
+  const { c, isDark } = useTheme();
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <div style={{ fontFamily: font.ui, fontSize: 14, fontWeight: 600, color: c.ivory }}>New Session</div>
-      <div style={{ border: `1.5px dashed rgba(212,179,127,0.25)`, borderRadius: 10, padding: "32px 20px", textAlign: "center", background: "rgba(212,179,127,0.02)", transition: "all 0.3s ease" }}>
+      <div style={{ border: `1.5px dashed ${isDark ? "rgba(212,179,127,0.25)" : "rgba(184,146,62,0.2)"}`, borderRadius: 10, padding: "32px 20px", textAlign: "center", background: isDark ? "rgba(212,179,127,0.02)" : "rgba(184,146,62,0.015)", transition: "all 0.3s ease" }}>
         <svg aria-hidden="true" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5" style={{ margin: "0 auto 12px", display: "block" }}>
           <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" />
         </svg>
@@ -1082,7 +1080,7 @@ function MockupUpload() {
 }
 
 function MockupInterview() {
-  const { c } = useTheme();
+  const { c, isDark } = useTheme();
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -1092,7 +1090,7 @@ function MockupInterview() {
           Recording
         </span>
       </div>
-      <div style={{ background: "rgba(212,179,127,0.05)", border: `1px solid rgba(212,179,127,0.1)`, borderRadius: "14px 12px 12px 2px", padding: "14px 16px" }}>
+      <div style={{ background: isDark ? "rgba(212,179,127,0.05)" : "rgba(184,146,62,0.04)", border: `1px solid ${isDark ? "rgba(212,179,127,0.1)" : "rgba(184,146,62,0.08)"}`, borderRadius: "14px 12px 12px 2px", padding: "14px 16px" }}>
         <p style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.gilt, marginBottom: 6, letterSpacing: "0.04em", textTransform: "uppercase" }}>Interviewer</p>
         <p style={{ fontFamily: font.ui, fontSize: 13, lineHeight: 1.6, color: c.ivory }}>Tell me about a time you had to learn a new technology quickly to complete a project. How did you approach it?</p>
       </div>
@@ -1150,7 +1148,7 @@ function DemoVideoSection() {
   const { c, isDark } = useTheme();
   const ref = useReveal<HTMLElement>();
   return (
-    <section ref={ref} className="reveal landing-section" style={{ padding: "140px 40px", maxWidth: 960, margin: "0 auto" }}>
+    <section ref={ref} className="reveal landing-section" style={{ padding: "160px 40px", maxWidth: 960, margin: "0 auto" }}>
       <div style={{ textAlign: "center", marginBottom: 48 }}>
         <p style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: c.gilt, marginBottom: 16 }}>See It In Action</p>
         <h2 className="text-glow" style={{ fontFamily: font.display, fontSize: "clamp(32px, 4vw, 48px)", fontWeight: 400, letterSpacing: "-0.02em", color: c.ivory, lineHeight: 1.15, marginBottom: 12 }}>
@@ -1160,7 +1158,7 @@ function DemoVideoSection() {
       </div>
 
       <div className="video-player" style={{ position: "relative", width: "100%", aspectRatio: "16 / 9", borderRadius: 16, overflow: "hidden", cursor: "pointer", border: `1px solid ${c.border}`, background: c.graphite, transition: "border-color 0.3s ease, box-shadow 0.3s ease" }}
-        onMouseEnter={(e) => { e.currentTarget.style.borderColor = c.borderHover; e.currentTarget.style.boxShadow = "0 32px 80px rgba(0,0,0,0.5), 0 0 80px rgba(212,179,127,0.04)"; }}
+        onMouseEnter={(e) => { e.currentTarget.style.borderColor = c.borderHover; e.currentTarget.style.boxShadow = isDark ? "0 32px 80px rgba(0,0,0,0.5), 0 0 80px rgba(212,179,127,0.04)" : "0 32px 80px rgba(0,0,0,0.08), 0 0 80px rgba(184,146,62,0.03)"; }}
         onMouseLeave={(e) => { e.currentTarget.style.borderColor = c.border; e.currentTarget.style.boxShadow = "none"; }}>
         {/* Video preview */}
         <div style={{ position: "absolute", inset: 0, background: `linear-gradient(135deg, ${c.obsidian} 0%, ${c.graphite} 50%, ${c.obsidian} 100%)`, display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -1169,7 +1167,7 @@ function DemoVideoSection() {
           <div style={{ position: "absolute", inset: 40, display: "flex", alignItems: "center", justifyContent: "center", opacity: 0.25 }}>
             <div style={{ width: "70%", maxWidth: 500, background: c.graphite, borderRadius: 10, border: `1px solid ${c.border}`, padding: 24, textAlign: "left" }}>
               <div style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: c.ivory, marginBottom: 12 }}>Live Session</div>
-              <div style={{ background: "rgba(212,179,127,0.06)", borderRadius: 8, padding: "10px 14px", marginBottom: 10 }}>
+              <div style={{ background: isDark ? "rgba(212,179,127,0.06)" : "rgba(184,146,62,0.04)", borderRadius: 8, padding: "10px 14px", marginBottom: 10 }}>
                 <p style={{ fontFamily: font.ui, fontSize: 11, color: c.gilt, marginBottom: 4 }}>Interviewer</p>
                 <p style={{ fontFamily: font.ui, fontSize: 12, color: c.ivory, lineHeight: 1.5 }}>Walk me through a project you're proud of...</p>
               </div>
@@ -1213,7 +1211,7 @@ function FeaturesSection() {
     { label: "Private", title: "Your data stays yours", description: "Delete your data anytime from Settings. No social features, no tracking beyond basic web vitals.", accent: c.slate, accentClass: "accent-slate", icon: <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> },
   ];
   return (
-    <section id="features" ref={ref} className="reveal landing-section" style={{ padding: "140px 40px 80px", maxWidth: 1100, margin: "0 auto" }}>
+    <section id="features" ref={ref} className="reveal landing-section" style={{ padding: "160px 40px 80px", maxWidth: 1100, margin: "0 auto" }}>
       <div style={{ textAlign: "center", marginBottom: 80 }}>
         <p style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: c.gilt, marginBottom: 16 }}>Why Hirloop</p>
         <h2 className="text-glow" style={{ fontFamily: font.display, fontSize: "clamp(32px, 4vw, 48px)", fontWeight: 400, letterSpacing: "-0.02em", color: c.ivory, lineHeight: 1.15 }}>
@@ -1373,7 +1371,7 @@ function ScorePreview() {
   ];
 
   return (
-    <section ref={setRefs} className="reveal landing-section" style={{ padding: "140px 40px", maxWidth: 900, margin: "0 auto" }}>
+    <section ref={setRefs} className="reveal landing-section" style={{ padding: "160px 40px", maxWidth: 900, margin: "0 auto" }}>
       <div style={{ textAlign: "center", marginBottom: 64 }}>
         <p style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: c.gilt, marginBottom: 16 }}>Precision Feedback</p>
         <h2 className="text-glow" style={{ fontFamily: font.display, fontSize: "clamp(32px, 4vw, 48px)", fontWeight: 400, letterSpacing: "-0.02em", color: c.ivory, lineHeight: 1.15, marginBottom: 16 }}>Scores that mean something</h2>
@@ -1431,7 +1429,7 @@ function TestimonialsSection() {
   }, [isPaused]);
 
   return (
-    <section ref={ref} className="reveal landing-section" style={{ padding: "140px 40px", maxWidth: 1100, margin: "0 auto" }}>
+    <section ref={ref} className="reveal landing-section" style={{ padding: "160px 40px", maxWidth: 1100, margin: "0 auto" }}>
       <div style={{ textAlign: "center", marginBottom: 64 }}>
         <p style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: c.gilt, marginBottom: 16 }}>Real Results</p>
         <h2 className="text-glow" style={{ fontFamily: font.display, fontSize: "clamp(32px, 4vw, 48px)", fontWeight: 400, letterSpacing: "-0.02em", color: c.ivory, lineHeight: 1.15 }}>People who practiced here got hired</h2>
@@ -1536,10 +1534,10 @@ const plans = [
 ];
 
 function PricingSection() {
-  const { c } = useTheme();
+  const { c, isDark } = useTheme();
   const ref = useReveal<HTMLElement>();
   return (
-    <section id="pricing" ref={ref} className="reveal dot-grid-bg landing-section" style={{ padding: "140px 40px", maxWidth: 1100, margin: "0 auto" }}>
+    <section id="pricing" ref={ref} className={`reveal ${isDark ? "dot-grid-bg" : ""} landing-section`} style={{ padding: "160px 40px", maxWidth: 1100, margin: "0 auto" }}>
       <div style={{ textAlign: "center", marginBottom: 80 }}>
         <p style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: c.gilt, marginBottom: 16 }}>Pricing</p>
         <h2 className="text-glow" style={{ fontFamily: font.display, fontSize: "clamp(32px, 4vw, 48px)", fontWeight: 400, letterSpacing: "-0.02em", color: c.ivory, lineHeight: 1.15, marginBottom: 16 }}>Transparent. No surprises.</h2>
@@ -1650,7 +1648,7 @@ function PricingCard({ plan, delay }: { plan: (typeof plans)[0]; delay: number }
   return (
     <div ref={ref} className={`reveal reveal-delay-${delay + 1} gradient-border-card ${plan.featured ? "pricing-featured" : ""}`} style={{
       padding: "36px 32px", position: "relative", overflow: "hidden", zIndex: 0,
-      borderColor: plan.featured ? `rgba(212,179,127,0.2)` : undefined,
+      borderColor: plan.featured ? (isDark ? `rgba(212,179,127,0.2)` : `rgba(184,146,62,0.15)`) : undefined,
     }}>
       {plan.featured && <div style={{ position: "absolute", top: -1, left: 0, right: 0, height: 2, background: `linear-gradient(90deg, transparent, ${c.gilt}, transparent)` }} />}
       {plan.featured && <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: c.gilt, display: "block", marginBottom: 16 }}>Most Popular</span>}
@@ -1688,7 +1686,7 @@ function PricingCard({ plan, delay }: { plan: (typeof plans)[0]; delay: number }
       {error && (
         <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginTop: 8 }}>
           <p style={{ fontFamily: font.ui, fontSize: 11, color: c.ember, margin: 0 }}>{error}</p>
-          <button onClick={() => setError("")} style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, color: c.gilt, background: "none", border: `1px solid rgba(212,179,127,0.3)`, borderRadius: 4, padding: "2px 8px", cursor: "pointer" }}>Dismiss</button>
+          <button onClick={() => setError("")} style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, color: c.gilt, background: "none", border: `1px solid ${isDark ? "rgba(212,179,127,0.3)" : "rgba(184,146,62,0.25)"}`, borderRadius: 4, padding: "2px 8px", cursor: "pointer" }}>Dismiss</button>
         </div>
       )}
     </div>
@@ -2125,14 +2123,10 @@ export default function App() {
         <HowItWorks />
         <DemoVideoSection />
         <FeaturesSection />
-        <ScorePreview />
         <TestimonialsSection />
         <PricingSection />
-        <ForTeamsBanner />
-        <TrustBadges />
         <FAQSection />
         <FinalCTA />
-        <EmailCapture />
       </main>
       <Footer />
     </div>

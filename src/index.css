@@ -280,6 +280,30 @@ body {
   opacity: 1;
 }
 
+/* ─── Light Mode Card Simplification ─── */
+[data-theme="light"] .gradient-border-card {
+  background: #FFFFFF;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+[data-theme="light"] .gradient-border-card:hover {
+  border-color: rgba(0, 0, 0, 0.12);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+}
+
+[data-theme="light"] .gradient-border-card::before,
+[data-theme="light"] .gradient-border-card::after {
+  display: none;
+}
+
+[data-theme="light"] .gradient-border-card:focus-within {
+  border-color: rgba(0, 0, 0, 0.12);
+  box-shadow: 0 0 0 3px rgba(184, 146, 62, 0.08);
+}
+
 /* ─── Accent Variants ─── */
 
 .gradient-border-card.accent-sage::before {
