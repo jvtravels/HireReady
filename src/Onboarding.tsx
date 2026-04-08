@@ -137,7 +137,7 @@ const COMPANY_SUGGESTIONS = [
   "Mindtree", "Hexaware", "Zensar Technologies", "Sonata Software", "Birlasoft", "NIIT Technologies",
   "Cognizant", "Capgemini", "Accenture", "Deloitte", "PwC", "EY", "KPMG",
   "ThoughtWorks", "Publicis Sapient", "Mu Sigma", "Fractal Analytics", "Tiger Analytics", "AbsolutData",
-  "Happiest Minds", "Mphasis", "iGate", "Sasken Technologies", "Tata Elxsi", "Amdocs",
+  "Happiest Minds", "iGate", "Sasken Technologies", "Tata Elxsi", "Amdocs",
   // Indian Startups — E-commerce & Consumer
   "Flipkart", "Myntra", "Meesho", "Nykaa", "Lenskart", "FirstCry", "Purplle",
   "BigBasket", "Blinkit", "JioMart", "Swiggy Instamart", "Zepto", "BlinkIt",
@@ -167,7 +167,7 @@ const COMPANY_SUGGESTIONS = [
   "Freshworks", "Zoho", "Postman", "BrowserStack", "Chargebee", "Druva", "Icertis",
   "CleverTap", "WebEngage", "MoEngage", "Haptik", "Yellow.ai", "Gupshup",
   "Leadsquared", "Whatfix", "Mindtickle", "Darwinbox", "GreyTip", "Keka HR",
-  "Razorpay (SaaS)", "Uniphore", "Observe.AI", "Hasura", "Appsmith", "ToolJet",
+  "Uniphore", "Observe.AI", "Hasura", "Appsmith", "ToolJet",
   "InMobi", "Glance", "Apna", "Pratilipi", "Koo",
   // Indian Startups — Social & Media
   "ShareChat", "Dailyhunt", "Josh", "Kuku FM", "Pocket FM",
@@ -297,8 +297,9 @@ function AutocompleteInput({
         id={id} type="text" value={value}
         onChange={(e) => { onChange(e.target.value); setSelectedIdx(-1); }}
         onFocus={() => setFocused(true)}
-        onBlur={() => setTimeout(() => setFocused(false), 150)}
+        onBlur={() => setTimeout(() => setFocused(false), 200)}
         onKeyDown={(e) => {
+          if (e.key === "Escape") { e.preventDefault(); setFocused(false); inputRef.current?.blur(); return; }
           if (filtered.length === 0) return;
           if (e.key === "ArrowDown") { e.preventDefault(); setSelectedIdx(i => Math.min(i + 1, filtered.length - 1)); }
           else if (e.key === "ArrowUp") { e.preventDefault(); setSelectedIdx(i => Math.max(i - 1, 0)); }
@@ -380,7 +381,6 @@ export default function Onboarding() {
   const [aiProfile, setAiProfile] = useState<ResumeProfile | null>(null);
   const [aiPhase, setAiPhase] = useState<"idle" | "analyzing" | "done">("idle");
   const [userName, setUserName] = useState(user?.name || "");
-  const [scoreOverride, setScoreOverride] = useState(false); // Fix #1: allow proceeding with low score
   const undoRef = useRef<{ fileName: string; resumeText: string; resumeParsed: ParsedResume | null; aiProfile: ResumeProfile | null; aiPhase: "idle" | "analyzing" | "done"; targetRole: string; targetCompany: string; userName: string } | null>(null);
   const analysisAbortRef = useRef<AbortController | null>(null);
   const [showUndo, setShowUndo] = useState(false);
@@ -563,7 +563,7 @@ export default function Onboarding() {
     }
   };
 
-  // ─── Mic/Camera ───
+  // ─── Mic ───
   const requestMic = useCallback(async () => {
     setMicStatus("requesting");
     try {
@@ -607,7 +607,7 @@ export default function Onboarding() {
       if (e.key === "Enter") {
         e.preventDefault();
         if (step < TOTAL_STEPS) {
-          if (step === 1 && (!resumeParsed || aiPhase !== "done" || !userName.trim() || (!scoreOverride && aiProfile?.resumeScore != null && aiProfile.resumeScore < 50))) return;
+          if (step === 1 && (!resumeParsed || aiPhase !== "done" || !userName.trim())) return;
           if (step === 2 && (!targetRole.trim() || interviewFocus.length === 0)) return;
           goNext();
         } else {
@@ -620,7 +620,7 @@ export default function Onboarding() {
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  });
+  }, [step, resumeParsed, aiPhase, userName, targetRole, interviewFocus, starting]);
 
   const handleStart = async () => {
     if (starting) return;
@@ -647,10 +647,14 @@ export default function Onboarding() {
     setSaveStatus("saving");
     try {
       await updateUser(saveData);
+      setSaveStatus("saved");
     } catch (err) {
       console.error("[handleStart] save failed:", err);
+      setSaveStatus("error");
+      setStarting(false);
+      startingRef.current = false;
+      return;
     }
-    setSaveStatus("saved");
     clearObStep();
     unlockAudio();
     // Map onboarding focus labels to SessionSetup type IDs
@@ -662,11 +666,9 @@ export default function Onboarding() {
 
   const isStep1Busy = step === 1 && (resumeParsing || aiPhase === "analyzing");
   const isStep1NoResume = step === 1 && !resumeParsed && !resumeParsing && aiPhase !== "analyzing";
-  // Fix #1: Allow proceeding with low score if user explicitly overrides
-  const isStep1LowScore = step === 1 && !scoreOverride && aiPhase === "done" && aiProfile?.resumeScore != null && aiProfile.resumeScore < 50;
   const isStep1NameEmpty = step === 1 && aiPhase === "done" && !userName.trim();
   const isStep2Disabled = step === 2 && (!targetRole.trim() || interviewFocus.length === 0);
-  const isContinueDisabled = isStep1Busy || isStep1NoResume || isStep1LowScore || isStep1NameEmpty || isStep2Disabled;
+  const isContinueDisabled = isStep1Busy || isStep1NoResume || isStep1NameEmpty || isStep2Disabled;
 
   return (
     <div style={{ minHeight: "100vh", background: `radial-gradient(ellipse 80% 50% at 50% 0%, rgba(212,179,127,0.03) 0%, ${c.obsidian} 70%)`, display: "flex", flexDirection: "column", position: "relative" }}>
@@ -709,6 +711,7 @@ export default function Onboarding() {
           .ob-s1-name-score { grid-template-columns: 1fr !important; }
           .ob-s2-focus-grid { grid-template-columns: 1fr 1fr !important; }
           .ob-s2-bottom-row { grid-template-columns: 1fr !important; }
+          .ob-s2-session-grid { grid-template-columns: 1fr !important; }
           .ob-s3-profile-row { flex-direction: column !important; }
         }
         @media (max-height: 700px) {
@@ -944,7 +947,7 @@ export default function Onboarding() {
                       </button>
                       <button onClick={() => {
                         undoRef.current = { fileName, resumeText, resumeParsed, aiProfile, aiPhase, targetRole, targetCompany, userName };
-                        setFileName(""); setResumeText(""); setResumeParsed(null); setResumeError(""); setAiProfile(null); setAiPhase("idle"); setTargetRole(""); setTargetCompany(""); setUserName(""); setScoreOverride(false);
+                        setFileName(""); setResumeText(""); setResumeParsed(null); setResumeError(""); setAiProfile(null); setAiPhase("idle"); setTargetRole(""); setTargetCompany(""); setUserName("");
                         setShowUndo(true); clearTimeout(undoTimerRef.current);
                         undoTimerRef.current = window.setTimeout(() => { setShowUndo(false); undoRef.current = null; }, 8000);
                       }}
@@ -1018,7 +1021,7 @@ export default function Onboarding() {
                           </div>
                         </div>
                       ) : (
-                        <p style={{ fontFamily: font.ui, fontSize: 12, color: c.stone }}>Score not available — try re-analyzing</p>
+                        <p style={{ fontFamily: font.ui, fontSize: 12, color: c.stone }}>Score not available — try re-analyzing or upload a different format</p>
                       )}
                     </div>
                   </div>
@@ -1029,7 +1032,7 @@ export default function Onboarding() {
                       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
                         <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={c.ember} strokeWidth="1.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
                         <h4 style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: c.ember, margin: 0 }}>How to improve your resume</h4>
-                        <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, marginLeft: "auto" }}>Score must be 50+ to continue</span>
+                        <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, marginLeft: "auto" }}>Tips to strengthen your resume</span>
                       </div>
                       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                         {aiProfile.improvements.map((tip, i) => (
@@ -1041,17 +1044,9 @@ export default function Onboarding() {
                           </div>
                         ))}
                       </div>
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 16, marginTop: 14 }}>
-                        <p style={{ fontFamily: font.ui, fontSize: 12, color: c.stone }}>
-                          Update your resume and upload again to re-check your score
-                        </p>
-                        <button onClick={() => { setScoreOverride(true); track("onboarding_score_override", { score: aiProfile.resumeScore }); }}
-                          style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, background: "none", border: `1px solid ${c.border}`, borderRadius: 6, padding: "4px 12px", cursor: "pointer", whiteSpace: "nowrap", transition: "all 0.2s" }}
-                          onMouseEnter={(e) => { e.currentTarget.style.color = c.ivory; e.currentTarget.style.borderColor = c.chalk; }}
-                          onMouseLeave={(e) => { e.currentTarget.style.color = c.stone; e.currentTarget.style.borderColor = c.border; }}>
-                          Proceed anyway
-                        </button>
-                      </div>
+                      <p style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, marginTop: 14, textAlign: "center" }}>
+                        Update your resume and upload again to re-check your score — or continue to practice anyway.
+                      </p>
                     </div>
                   )}
 
@@ -1228,13 +1223,12 @@ We've pre-filled your target role from your resume. Adjust if needed, then choos
                     </div>
                     <span style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: c.ivory }}>Session Length</span>
                   </div>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
+                  <div className="ob-s2-session-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
                     {[
                       { value: "10m", label: "10 min", desc: "Quick practice", sub: "2–3 questions", paidOnly: false },
                       { value: "15m", label: "15 min", desc: "Standard session", sub: "4–5 questions", recommended: true, paidOnly: true },
                       { value: "25m", label: "25 min", desc: "Deep dive", sub: "6–8 questions", paidOnly: true },
                     ].map(opt => {
-                      const isFreeUser = !user?.subscriptionTier || user.subscriptionTier === "free";
                       const locked = opt.paidOnly && isFreeUser;
                       const sel = sessionLength === opt.value;
                       return (
@@ -1302,7 +1296,7 @@ We've pre-filled your target role from your resume. Adjust if needed, then choos
                     <div style={{ flex: 1 }}>
                       <p style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: c.ivory, marginBottom: 4 }}>Microphone</p>
                       <p style={{ fontFamily: font.ui, fontSize: 12, color: micStatus === "granted" ? c.sage : c.stone, lineHeight: 1.4 }}>
-                        {micStatus === "granted" ? "Connected — ready to go" : micStatus === "denied" ? "No worries — you can type your answers instead" : "Recommended for the best interview experience"}
+                        {micStatus === "granted" ? "Connected — ready to go" : micStatus === "denied" ? `No worries — you can type your answers instead. ${micPermissionHint}` : "Recommended for the best interview experience"}
                       </p>
                       {micStatus === "granted" && (
                         <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 6 }}>
@@ -1334,6 +1328,7 @@ We've pre-filled your target role from your resume. Adjust if needed, then choos
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
                     {[
+                      { label: "Name", value: userName.trim() || "Not set", icon: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={c.stone} strokeWidth="1.5" strokeLinecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>, editStep: 1 },
                       { label: "Resume", value: fileName || "Not uploaded", icon: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={c.stone} strokeWidth="1.5" strokeLinecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>, editStep: 1 },
                       { label: "Target Role", value: targetRole || "Not set", icon: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={c.stone} strokeWidth="1.5" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>, editStep: 2 },
                       { label: "Target Company", value: targetCompany || "Exploring", icon: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={c.stone} strokeWidth="1.5" strokeLinecap="round"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="9" y1="6" x2="15" y2="6"/><line x1="9" y1="10" x2="15" y2="10"/><line x1="9" y1="14" x2="15" y2="14"/></svg>, editStep: 2 },
