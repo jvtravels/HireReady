@@ -859,7 +859,7 @@ export default function Interview() {
     setEvaluating(true);
 
     // Safety timeout: if handleEnd hangs for any reason, force-dismiss overlay and navigate
-    let sessionId = Date.now().toString(36);
+    let sessionId = crypto.randomUUID();
     let score = 0;
     let aiFeedback = "";
     let skillScores: Record<string, number> | null = null;
@@ -944,7 +944,7 @@ export default function Interview() {
       setUsedFallbackScore(true);
     }
 
-    sessionId = Date.now().toString(36);
+    sessionId = crypto.randomUUID();
     let localOk = false;
     let cloudOk = false;
     try {

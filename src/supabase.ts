@@ -148,7 +148,9 @@ export async function upsertProfile(profile: Partial<Profile> & { id: string }) 
 
 export async function saveSession(session: Omit<SessionRecord, "created_at">) {
   const client = await getSupabase();
-  return client.from("sessions").insert(session);
+  const result = await client.from("sessions").insert(session);
+  if (result.error) throw new Error(result.error.message);
+  return result;
 }
 
 export async function getUserSessions(userId: string): Promise<SessionRecord[]> {
