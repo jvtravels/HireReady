@@ -238,6 +238,15 @@ const COMPANY_SUGGESTIONS = [
   "Bootstrapped Startup", "Enterprise / MNC", "Government / PSU",
 ];
 
+/* Sample diverse suggestions by picking evenly spaced items */
+function sampleDiverse(arr: string[], count: number): string[] {
+  if (arr.length <= count) return arr;
+  const step = Math.floor(arr.length / count);
+  const result: string[] = [];
+  for (let i = 0; i < count; i++) result.push(arr[i * step]);
+  return result;
+}
+
 /* ─── Autocomplete Input Component ─── */
 function AutocompleteInput({
   id, value, onChange, placeholder, suggestions, label, required, error,
@@ -255,6 +264,8 @@ function AutocompleteInput({
   const [selectedIdx, setSelectedIdx] = useState(-1);
   const inputRef = useRef<HTMLInputElement>(null);
   const [dropdownPos, setDropdownPos] = useState<{ top: number; left: number; width: number } | null>(null);
+  // Stable diverse sample for empty-state (computed once)
+  const [diverseSample] = useState(() => sampleDiverse(suggestions, 8));
 
   // Cleanup: set focused to false on unmount
   useEffect(() => {
@@ -263,7 +274,7 @@ function AutocompleteInput({
   const filtered = focused
     ? value.length > 0
       ? suggestions.filter(s => s.toLowerCase().includes(value.toLowerCase()) && s.toLowerCase() !== value.toLowerCase()).slice(0, 8)
-      : suggestions.slice(0, 8) // Show popular suggestions when focused but empty
+      : diverseSample // Show diverse suggestions from across categories
     : [];
 
   // Update dropdown position when filtered results change or input is focused
@@ -361,6 +372,7 @@ export default function Onboarding() {
   const [resumeParsed, setResumeParsed] = useState<ParsedResume | null>(null);
   const [resumeParsing, setResumeParsing] = useState(false);
   const [resumeError, setResumeError] = useState("");
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [isDragging, setIsDragging] = useState(false);
   const [dragFileName, setDragFileName] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -535,12 +547,14 @@ export default function Onboarding() {
       };
       if (!targetRole && autoRole) profileSave.targetRole = autoRole;
       if (data.name) profileSave.name = data.name;
-      console.log("[onboarding] Saving resume to profile:", { fileName: profileSave.resumeFileName, textLength: profileSave.resumeText?.length, hasData: !!profileSave.resumeData });
+      setSaveStatus("saving");
       try {
         await updateUser(profileSave);
-        console.log("[onboarding] Resume saved to profile successfully");
+        setSaveStatus("saved");
+        setTimeout(() => setSaveStatus("idle"), 3000);
       } catch (saveErr) {
         console.error("[onboarding] Failed to save resume to profile:", saveErr);
+        setSaveStatus("error");
       }
     } catch (err: any) {
       setResumeError(err.message || "Failed to parse resume");
@@ -663,17 +677,18 @@ export default function Onboarding() {
       saveData.resumeText = resumeText;
       saveData.resumeData = (aiProfile || resumeParsed) as unknown as ParsedResume;
     }
-    console.log("[handleStart] saving onboarding data:", JSON.stringify(saveData, null, 2));
+    setSaveStatus("saving");
     try {
       await updateUser(saveData);
-      console.log("[handleStart] save complete, navigating...");
     } catch (err) {
       console.error("[handleStart] save failed:", err);
     }
+    setSaveStatus("saved");
     clearObStep();
     unlockAudio();
-    // Fix #3: Use user's selected interview focus instead of hardcoded behavioral
-    const focusType = interviewFocus[0]?.toLowerCase().replace(/\s+/g, "-") || "behavioral";
+    // Map onboarding focus labels to SessionSetup type IDs
+    const FOCUS_TO_TYPE: Record<string, string> = { "Behavioral": "behavioral", "Strategic": "strategic", "Technical Leadership": "technical", "Case Study": "case-study" };
+    const focusType = FOCUS_TO_TYPE[interviewFocus[0]] || "behavioral";
     track("onboarding_complete", { focus: focusType, sessionLength, role: targetRole, hasMic: micStatus === "granted" });
     navigate(`/interview?type=${encodeURIComponent(focusType)}&difficulty=standard&mini=true`);
   };
@@ -724,6 +739,7 @@ export default function Onboarding() {
           .ob-s1-header { flex-direction: column !important; }
           .ob-s1-header-text { max-width: 100% !important; }
           .ob-s1-header-actions { position: static !important; margin-top: 8px !important; }
+          .ob-s1-name-score { grid-template-columns: 1fr !important; }
           .ob-s2-focus-grid { grid-template-columns: 1fr 1fr !important; }
           .ob-s2-bottom-row { grid-template-columns: 1fr !important; }
           .ob-s3-profile-row { flex-direction: column !important; }
@@ -764,8 +780,24 @@ export default function Onboarding() {
             </div>
           ))}
         </div>
-        {/* Right spacer for grid balance */}
-        <div />
+        {/* Quick start shortcut */}
+        <div style={{ display: "flex", justifyContent: "flex-end" }}>
+          <button onClick={() => {
+            setSaveStatus("saving");
+            updateUser({ hasCompletedOnboarding: true, ...(userName.trim() ? { name: userName.trim() } : {}), ...(targetRole.trim() ? { targetRole: targetRole.trim() } : {}) })
+              .then(() => setSaveStatus("saved"))
+              .catch(() => setSaveStatus("error"));
+            clearObStep();
+            unlockAudio();
+            track("onboarding_skip");
+            navigate("/interview?type=behavioral&difficulty=standard&mini=true");
+          }}
+            style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, background: "none", border: "none", cursor: "pointer", padding: "4px 0", transition: "color 0.2s" }}
+            onMouseEnter={(e) => { e.currentTarget.style.color = c.ivory; }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = c.stone; }}>
+            Skip to quick practice →
+          </button>
+        </div>
       </div>
 
       {/* ─── Content ─── */}
@@ -960,7 +992,7 @@ export default function Onboarding() {
                   </div>
 
                   {/* Name field + Resume Score */}
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                  <div className="ob-s1-name-score" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                     {/* Editable Name */}
                     <div className="ob-card fade-up-1" style={{ borderRadius: 14, padding: "16px 20px" }}>
                       <label htmlFor="ob-name" style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: c.ivory, display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
@@ -1324,7 +1356,7 @@ We've pre-filled your target role from your resume. Adjust if needed, then choos
                     </div>
 
                     {/* Camera — shows video feed inside the card when granted */}
-                    <div style={{ position: "relative", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10, padding: camStatus === "granted" ? 0 : "20px 16px", borderRadius: 12, overflow: "hidden", background: camStatus === "granted" ? "#000" : "rgba(245,242,237,0.02)", border: `1px solid ${camStatus === "granted" ? "rgba(122,158,126,0.12)" : "rgba(245,242,237,0.06)"}`, textAlign: "center", minHeight: camStatus === "granted" ? 140 : undefined }}>
+                    <div style={{ position: "relative", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10, padding: camStatus === "granted" ? 0 : "20px 16px", borderRadius: 12, overflow: "hidden", background: camStatus === "granted" ? "#000" : "rgba(245,242,237,0.02)", border: `1px solid ${camStatus === "granted" ? "rgba(122,158,126,0.12)" : "rgba(245,242,237,0.06)"}`, textAlign: "center", minHeight: 160 }}>
                       {camStatus === "granted" ? (
                         <>
                           <video ref={videoRef} autoPlay muted playsInline style={{ width: "100%", height: "100%", objectFit: "cover", transform: "scaleX(-1)", position: "absolute", inset: 0 }} />
@@ -1464,6 +1496,17 @@ We've pre-filled your target role from your resume. Adjust if needed, then choos
               )}
             </div>
 
+            {/* Save status indicator */}
+            {saveStatus !== "idle" && (
+              <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4, animation: "fadeUp 0.25s ease-out" }}>
+                {saveStatus === "saving" && <div style={{ width: 10, height: 10, border: "1.5px solid rgba(212,179,127,0.3)", borderTopColor: c.gilt, borderRadius: "50%", animation: "spin 1s linear infinite" }} />}
+                {saveStatus === "saved" && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>}
+                {saveStatus === "error" && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={c.ember} strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/></svg>}
+                <span style={{ fontFamily: font.ui, fontSize: 11, color: saveStatus === "error" ? c.ember : saveStatus === "saved" ? c.sage : c.stone }}>
+                  {saveStatus === "saving" ? "Saving..." : saveStatus === "saved" ? "Progress saved" : "Save failed — your data is safe locally"}
+                </span>
+              </div>
+            )}
 
           </div>
         </div>
