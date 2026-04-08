@@ -1,8 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
-import { font } from "./tokens";
-import { useTheme } from "./ThemeContext";
+import { c, font } from "./tokens";
 import { useAuth } from "./AuthContext";
 import { extractResumeText, parseResumeData, type ParsedResume } from "./resumeParser";
 import { analyzeResumeWithAI, type ResumeProfile } from "./dashboardData";
@@ -43,7 +42,6 @@ function AutocompleteInput({
   required?: boolean;
   error?: string;
 }) {
-  const { c } = useTheme();
   const [focused, setFocused] = useState(false);
   const [selectedIdx, setSelectedIdx] = useState(-1);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -120,8 +118,8 @@ function AutocompleteInput({
   );
 }
 
-const OB_STEP_KEY = "hirloop_ob_step";
-const OB_FORM_KEY = "hirloop_ob_form";
+const OB_STEP_KEY = "hirestepx_ob_step";
+const OB_FORM_KEY = "hirestepx_ob_form";
 function saveObStep(step: number) { try { localStorage.setItem(OB_STEP_KEY, String(step)); } catch {} }
 function loadObStep(): number { try { const v = localStorage.getItem(OB_STEP_KEY); return v ? Math.min(Math.max(parseInt(v), 1), TOTAL_STEPS) : 1; } catch { return 1; } }
 function clearObStep() { try { localStorage.removeItem(OB_STEP_KEY); localStorage.removeItem(OB_FORM_KEY); } catch {} }
@@ -135,7 +133,6 @@ function loadObForm(): { targetRole: string; targetCompany: string; interviewFoc
 const SESSION_LENGTH_MAP: Record<string, 10 | 15 | 25> = { "10m": 10, "15m": 15, "25m": 25 };
 
 export default function Onboarding() {
-  const { c } = useTheme();
   const navigate = useNavigate();
   const { user, updateUser } = useAuth();
   const [step, setStep] = useState(loadObStep);

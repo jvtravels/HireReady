@@ -2,7 +2,6 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import SessionDetail from "../SessionDetail";
-import { ThemeProvider } from "../ThemeContext";
 
 // Mock useAuth
 vi.mock("../AuthContext", () => ({
@@ -20,7 +19,7 @@ vi.mock("../supabase", () => ({
   supabaseConfigured: false,
 }));
 
-const RESULTS_KEY = "hirloop_sessions";
+const RESULTS_KEY = "hirestepx_sessions";
 
 // Mock localStorage since jsdom can be unreliable
 const localStorageData: Record<string, string> = {};
@@ -36,14 +35,12 @@ Object.defineProperty(globalThis, "localStorage", { value: mockLocalStorage, wri
 
 function renderWithRouter(sessionId: string) {
   return render(
-    <ThemeProvider>
-      <MemoryRouter initialEntries={[`/session/${sessionId}`]}>
-        <Routes>
-          <Route path="/session/:id" element={<SessionDetail />} />
-          <Route path="/dashboard" element={<div>Dashboard</div>} />
-        </Routes>
-      </MemoryRouter>
-    </ThemeProvider>,
+    <MemoryRouter initialEntries={[`/session/${sessionId}`]}>
+      <Routes>
+        <Route path="/session/:id" element={<SessionDetail />} />
+        <Route path="/dashboard" element={<div>Dashboard</div>} />
+      </Routes>
+    </MemoryRouter>,
   );
 }
 

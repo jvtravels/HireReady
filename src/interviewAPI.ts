@@ -4,7 +4,7 @@ import type { InterviewStep } from "./interviewScripts";
 import { saveSession } from "./supabase";
 import { openIDB, loadFromIDB, deleteFromIDB } from "./interviewIDB";
 
-const RESULTS_KEY = "hirloop_sessions";
+const RESULTS_KEY = "hirestepx_sessions";
 const IDB_STORE = "drafts";
 
 export interface SessionResult {
@@ -176,7 +176,7 @@ export async function retryQueuedEvals(): Promise<void> {
     const store = tx.objectStore(IDB_STORE);
     const req = store.getAllKeys();
     req.onsuccess = async () => {
-      const keys = (req.result as string[]).filter(k => typeof k === "string" && k.startsWith("hirloop_eval_retry_"));
+      const keys = (req.result as string[]).filter(k => typeof k === "string" && k.startsWith("hirestepx_eval_retry_"));
       db.close();
       for (const key of keys) {
         try {

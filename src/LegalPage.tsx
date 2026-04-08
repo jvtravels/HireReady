@@ -1,5 +1,4 @@
-import { font } from "./tokens";
-import { useTheme } from "./ThemeContext";
+import { c, font } from "./tokens";
 import { Link } from "react-router-dom";
 
 const TERMS_SECTIONS = [
@@ -29,7 +28,6 @@ const PRIVACY_SECTIONS = [
 ];
 
 export default function LegalPage({ type }: { type: "terms" | "privacy" }) {
-  const { c } = useTheme();
   const isTerms = type === "terms";
   const sections = isTerms ? TERMS_SECTIONS : PRIVACY_SECTIONS;
   const title = isTerms ? "Terms of Service" : "Privacy Policy";

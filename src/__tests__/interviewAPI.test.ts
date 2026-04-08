@@ -31,7 +31,7 @@ try {
   vi.stubGlobal("localStorage", mockLocalStorage);
 }
 
-const RESULTS_KEY = "hirloop_sessions";
+const RESULTS_KEY = "hirestepx_sessions";
 
 function makeSession(overrides?: Partial<SessionResult>): SessionResult {
   return {

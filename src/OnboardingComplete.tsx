@@ -1,11 +1,9 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { font } from "./tokens";
-import type { ColorTokens } from "./tokens";
-import { useTheme } from "./ThemeContext";
+import { c, font } from "./tokens";
 import { useAuth } from "./AuthContext";
 
-function scoreLabelColor(score: number, c: ColorTokens) {
+function scoreLabelColor(score: number) {
   if (score >= 85) return c.sage;
   if (score >= 70) return c.gilt;
   return c.ember;
@@ -18,7 +16,6 @@ function scoreLabel(score: number) {
 }
 
 export default function OnboardingComplete() {
-  const { c } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
@@ -62,23 +59,23 @@ export default function OnboardingComplete() {
 
             <div style={{
               width: 100, height: 100, borderRadius: "50%", margin: "0 auto 16px",
-              background: `conic-gradient(${scoreLabelColor(score, c)} ${score * 3.6}deg, ${c.graphite} 0deg)`,
+              background: `conic-gradient(${scoreLabelColor(score)} ${score * 3.6}deg, ${c.graphite} 0deg)`,
               display: "flex", alignItems: "center", justifyContent: "center",
-              boxShadow: `0 0 40px ${scoreLabelColor(score, c)}20`,
+              boxShadow: `0 0 40px ${scoreLabelColor(score)}20`,
               animation: "obcScaleIn 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.3s both",
             }}>
               <div style={{
                 width: 80, height: 80, borderRadius: "50%", background: c.obsidian,
                 display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
               }}>
-                <span style={{ fontFamily: font.mono, fontSize: 28, fontWeight: 700, color: scoreLabelColor(score, c) }}>{score}</span>
+                <span style={{ fontFamily: font.mono, fontSize: 28, fontWeight: 700, color: scoreLabelColor(score) }}>{score}</span>
               </div>
             </div>
 
             <span style={{
-              fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: scoreLabelColor(score, c),
+              fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: scoreLabelColor(score),
               display: "inline-block", padding: "4px 14px", borderRadius: 20,
-              background: `${scoreLabelColor(score, c)}15`, border: `1px solid ${scoreLabelColor(score, c)}30`,
+              background: `${scoreLabelColor(score)}15`, border: `1px solid ${scoreLabelColor(score)}30`,
             }}>
               {scoreLabel(score)}
             </span>
@@ -94,8 +91,8 @@ export default function OnboardingComplete() {
               <div style={{ marginTop: 20, display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 8 }}>
                 {Object.entries(skillScores).map(([skill, s]) => (
                   <span key={skill} style={{
-                    fontFamily: font.ui, fontSize: 11, color: scoreLabelColor(s as number, c),
-                    background: `${scoreLabelColor(s as number, c)}10`, border: `1px solid ${scoreLabelColor(s as number, c)}20`,
+                    fontFamily: font.ui, fontSize: 11, color: scoreLabelColor(s as number),
+                    background: `${scoreLabelColor(s as number)}10`, border: `1px solid ${scoreLabelColor(s as number)}20`,
                     borderRadius: 10, padding: "4px 10px",
                   }}>
                     {skill}: {s as number}

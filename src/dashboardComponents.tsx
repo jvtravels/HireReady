@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { font } from "./tokens";
-import { useTheme } from "./ThemeContext";
+import { c, font } from "./tokens";
 import { scoreLabel, scoreLabelColor } from "./dashboardTypes";
 import type { DashboardSession } from "./dashboardTypes";
 import { useAuth } from "./AuthContext";
@@ -39,7 +38,6 @@ export function DashboardSkeleton() {
 }
 
 export function DataLoadingSkeleton() {
-  const { c } = useTheme();
   const [showSlowMsg, setShowSlowMsg] = useState(false);
   useEffect(() => {
     const t = setTimeout(() => setShowSlowMsg(true), 3000);
@@ -100,7 +98,6 @@ const ALL_PLANS = [
 ];
 
 export function UpgradeModal({ onClose, sessionsUsed, user, currentTier, onPaymentSuccess }: { onClose: () => void; sessionsUsed: number; user?: { id?: string; email?: string; name?: string } | null; currentTier: string; onPaymentSuccess: (tier: string, start: string, end: string) => void }) {
-  const { c } = useTheme();
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState("");
   // Store Razorpay response + plan in state so useEffect handles verification
@@ -362,7 +359,6 @@ export function UpgradeModal({ onClose, sessionsUsed, user, currentTier, onPayme
 
 /* ─── Pro Feature Gate ─── */
 export function ProGate({ feature, onUpgrade }: { feature: string; onUpgrade: () => void }) {
-  const { c } = useTheme();
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: 400, textAlign: "center", padding: 40 }}>
       <div style={{ width: 64, height: 64, borderRadius: "50%", background: "rgba(212,179,127,0.06)", border: `1.5px solid rgba(212,179,127,0.15)`, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 20 }}>
@@ -384,7 +380,6 @@ export function ProGate({ feature, onUpgrade }: { feature: string; onUpgrade: ()
 
 /* ─── Welcome Dashboard (no sessions) ─── */
 export function EmptyState({ onStart, userName, targetRole, isMobile }: { onStart: () => void; userName: string; targetRole: string; isMobile?: boolean }) {
-  const { c } = useTheme();
   const hour = new Date().getHours();
   const timeGreeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
   const firstName = userName ? userName.split(" ")[0] : "there";
@@ -471,7 +466,6 @@ export function EmptyState({ onStart, userName, targetRole, isMobile }: { onStar
 
 /* ─── Session Detail View ─── */
 export function SessionDetailView({ session, onBack }: { session: DashboardSession; onBack: () => void }) {
-  const { c } = useTheme();
   return (
     <div style={{ maxWidth: 800, margin: "0 auto" }}>
       <button onClick={onBack} style={{ display: "flex", alignItems: "center", gap: 8, fontFamily: font.ui, fontSize: 13, color: c.stone, background: "none", border: "none", cursor: "pointer", padding: "0 0 20px", outline: "none" }}
@@ -495,13 +489,13 @@ export function SessionDetailView({ session, onBack }: { session: DashboardSessi
             <div style={{ width: 72, height: 72, position: "relative", display: "flex", alignItems: "center", justifyContent: "center" }}>
               <svg width="72" height="72" viewBox="0 0 72 72" style={{ position: "absolute", transform: "rotate(-90deg)" }}>
                 <circle cx="36" cy="36" r="33" fill="none" stroke="rgba(245,242,237,0.06)" strokeWidth="3" />
-                <circle cx="36" cy="36" r="33" fill="none" stroke={scoreLabelColor(session.score, c)} strokeWidth="3"
+                <circle cx="36" cy="36" r="33" fill="none" stroke={scoreLabelColor(session.score)} strokeWidth="3"
                   strokeDasharray={`${(session.score / 100) * 2 * Math.PI * 33} ${2 * Math.PI * 33}`}
                   strokeLinecap="round" className="score-ring" />
               </svg>
               <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
                 <span style={{ fontFamily: font.mono, fontSize: 26, fontWeight: 700, color: c.ivory, lineHeight: 1 }}>{session.score}</span>
-                <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, color: scoreLabelColor(session.score, c), marginTop: 2 }}>{scoreLabel(session.score)}</span>
+                <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, color: scoreLabelColor(session.score), marginTop: 2 }}>{scoreLabel(session.score)}</span>
               </div>
             </div>
             <span style={{ fontFamily: font.mono, fontSize: 12, fontWeight: 600, color: session.change > 0 ? c.sage : c.ember, display: "block", marginTop: 4 }}>
@@ -530,7 +524,7 @@ export function SessionDetailView({ session, onBack }: { session: DashboardSessi
               <div style={{ width: 40, height: 40, position: "relative", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                 <svg width="40" height="40" viewBox="0 0 40 40" style={{ position: "absolute", transform: "rotate(-90deg)" }}>
                   <circle cx="20" cy="20" r="17" fill="none" stroke="rgba(245,242,237,0.06)" strokeWidth="2" />
-                  <circle cx="20" cy="20" r="17" fill="none" stroke={scoreLabelColor(q.score, c)} strokeWidth="2"
+                  <circle cx="20" cy="20" r="17" fill="none" stroke={scoreLabelColor(q.score)} strokeWidth="2"
                     strokeDasharray={`${(q.score / 100) * 2 * Math.PI * 17} ${2 * Math.PI * 17}`}
                     strokeLinecap="round" className="score-ring" />
                 </svg>

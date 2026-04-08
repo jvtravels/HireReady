@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { font } from "./tokens";
-import { useTheme } from "./ThemeContext";
+import { c, font } from "./tokens";
 import { useAuth } from "./AuthContext";
 import { useDocTitle } from "./useDocTitle";
 import { useDashboard } from "./DashboardContext";
@@ -10,7 +9,6 @@ import { DataLoadingSkeleton } from "./dashboardComponents";
 
 export default function DashboardResume() {
   useDocTitle("Resume");
-  const { c } = useTheme();
   const { user, updateUser } = useAuth();
   const { persisted, updatePersisted, dataLoading } = useDashboard();
 

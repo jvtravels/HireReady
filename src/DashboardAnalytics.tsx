@@ -1,5 +1,4 @@
-import { font } from "./tokens";
-import { useTheme } from "./ThemeContext";
+import { c, font } from "./tokens";
 import { useDocTitle } from "./useDocTitle";
 import { sessionTypes, scoreLabel, scoreLabelColor } from "./dashboardTypes";
 import type { DashboardSession, SkillData, TrendPoint } from "./dashboardTypes";
@@ -9,7 +8,6 @@ import { DataLoadingSkeleton, ProGate } from "./dashboardComponents";
 
 /* ─── Readiness Gauge (circular arc) ─── */
 function ReadinessGauge({ score }: { score: number }) {
-  const { c } = useTheme();
   const size = 120, strokeW = 8, r = (size - strokeW) / 2;
   const circumference = 2 * Math.PI * r;
   const progress = (score / 100) * circumference;
@@ -31,12 +29,10 @@ function ReadinessGauge({ score }: { score: number }) {
 }
 
 /* ─── Insight type → icon color ─── */
-const getInsightColor = (c: ReturnType<typeof useTheme>["c"]): Record<string, string> => ({ strength: c.sage, tip: c.gilt, warning: c.ember, focus: c.slate });
+const insightColor: Record<string, string> = { strength: c.sage, tip: c.gilt, warning: c.ember, focus: c.slate };
 
 export default function AnalyticsPage() {
   useDocTitle("Analytics");
-  const { c } = useTheme();
-  const insightColor = getInsightColor(c);
   const {
     recentSessions: sessions, skills: sk, scoreTrend: trend,
     handleStartSession, dataLoading, isFree, setShowUpgradeModal,
@@ -328,10 +324,10 @@ export default function AnalyticsPage() {
           {typeBreakdown.map(tb => (
             <div key={tb.type} style={{ background: c.obsidian, borderRadius: 10, border: `1px solid ${c.border}`, padding: "18px 20px", textAlign: "center" }}>
               <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", color: c.gilt, display: "block", marginBottom: 12 }}>{tb.type}</span>
-              <span style={{ fontFamily: font.mono, fontSize: 32, fontWeight: 600, color: scoreLabelColor(tb.avgScore, c), display: "block", marginBottom: 4 }}>{tb.avgScore}</span>
+              <span style={{ fontFamily: font.mono, fontSize: 32, fontWeight: 600, color: scoreLabelColor(tb.avgScore), display: "block", marginBottom: 4 }}>{tb.avgScore}</span>
               <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>{tb.count} session{tb.count !== 1 ? "s" : ""}</span>
               <div style={{ height: 4, background: c.border, borderRadius: 2, marginTop: 12, overflow: "hidden" }}>
-                <div style={{ height: "100%", width: `${tb.avgScore}%`, background: scoreLabelColor(tb.avgScore, c), borderRadius: 2, transition: "width 0.5s ease" }} />
+                <div style={{ height: "100%", width: `${tb.avgScore}%`, background: scoreLabelColor(tb.avgScore), borderRadius: 2, transition: "width 0.5s ease" }} />
               </div>
             </div>
           ))}

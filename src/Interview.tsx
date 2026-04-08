@@ -2,8 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { track } from "@vercel/analytics";
 import { capture } from "./analytics";
-import { font } from "./tokens";
-import { useTheme } from "./ThemeContext";
+import { c, font } from "./tokens";
 import { useAuth } from "./AuthContext";
 import type { User } from "./AuthContext";
 import { speak, prefetchTTS, cleanupTTS } from "./tts";
@@ -87,7 +86,6 @@ const WaveformVisualizer = React.memo(function WaveformVisualizer({ active, colo
 
 /* ─── AI Avatar with Speaking Animation ─── */
 const AIAvatar = React.memo(function AIAvatar({ isSpeaking, isThinking }: { isSpeaking: boolean; isThinking: boolean }) {
-  const { c } = useTheme();
   return (
     <div style={{ position: "relative", width: 56, height: 56 }}>
       {/* Subtle pulse ring when speaking */}
@@ -130,7 +128,6 @@ const AIAvatar = React.memo(function AIAvatar({ isSpeaking, isThinking }: { isSp
 
 /* ─── Live Captions (synced to ~150 wpm speaking rate) ─── */
 const LiveCaptions = React.memo(function LiveCaptions({ text, isTyping, speakingDuration }: { text: string; isTyping: boolean; speakingDuration?: number }) {
-  const { c } = useTheme();
   const [displayText, setDisplayText] = useState("");
   const [charIndex, setCharIndex] = useState(0);
 
@@ -172,7 +169,6 @@ const LiveCaptions = React.memo(function LiveCaptions({ text, isTyping, speaking
 
 /* ─── User Webcam Feed (simulated) ─── */
 const UserWebcam = React.memo(function UserWebcam({ isMuted, isCameraOff }: { isMuted: boolean; isCameraOff: boolean }) {
-  const { c } = useTheme();
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const [hasCamera, setHasCamera] = useState(false);
@@ -295,7 +291,6 @@ function formatTime(seconds: number) {
 const ControlButton = React.memo(function ControlButton({ icon, label, active, danger, onClick }: {
   icon: React.ReactNode; label: string; active?: boolean; danger?: boolean; onClick: () => void;
 }) {
-  const { c } = useTheme();
   return (
     <button
       type="button"
@@ -330,7 +325,6 @@ const ControlButton = React.memo(function ControlButton({ icon, label, active, d
    INTERVIEW SCREEN
    ═══════════════════════════════════════════════ */
 export default function Interview() {
-  const { c } = useTheme();
   const navigate = useNavigate();
   const { user, updateUser } = useAuth();
   const { toast } = useToast();
@@ -342,7 +336,7 @@ export default function Interview() {
   const targetCompany = searchParams.get("company") || "";
   const isMiniMode = searchParams.get("mini") === "true";
   // Restore draft if resuming
-  const draftKey = `hirloop_interview_draft_${user?.id || "anon"}`;
+  const draftKey = `hirestepx_interview_draft_${user?.id || "anon"}`;
   const isResuming = searchParams.get("resume") === "true";
   const draftRef = useRef<{ transcript: any[]; currentStep: number; elapsed: number; script?: InterviewStep[] } | null>(null);
   if (isResuming && !draftRef.current) {
@@ -456,7 +450,7 @@ export default function Interview() {
   const [tabConflict, setTabConflict] = useState(false);
   useEffect(() => {
     if (typeof BroadcastChannel === "undefined") return;
-    const ch = new BroadcastChannel("hirloop_interview");
+    const ch = new BroadcastChannel("hirestepx_interview");
     ch.postMessage({ type: "claim" });
     ch.onmessage = (e) => {
       if (e.data?.type === "claim") {
@@ -1046,7 +1040,7 @@ export default function Interview() {
         setSaveWarning(errMsg);
         // Queue for offline retry if network-related failure
         if (!navigator.onLine || errMsg.toLowerCase().includes("network") || errMsg.toLowerCase().includes("fetch")) {
-          const retryKey = `hirloop_eval_retry_${Date.now().toString(36)}`;
+          const retryKey = `hirestepx_eval_retry_${Date.now().toString(36)}`;
           await saveToIDB(retryKey, {
             transcript,
             type: interviewType,
@@ -1095,7 +1089,7 @@ export default function Interview() {
     } else if (!localOk && !cloudOk) {
       // Emergency save: queue in IndexedDB so data isn't lost
       try {
-        await saveToIDB(`hirloop_unsaved_${sessionId}`, {
+        await saveToIDB(`hirestepx_unsaved_${sessionId}`, {
           id: sessionId, date: new Date().toISOString(), type: interviewType,
           difficulty: interviewDifficulty, focus: interviewFocus, duration: elapsed,
           score, questions: totalQuestions, transcript, ai_feedback: aiFeedback,

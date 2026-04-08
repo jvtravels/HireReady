@@ -1,6 +1,6 @@
 /* ─── IndexedDB transcript backup for interviews ─── */
 
-const IDB_NAME = "hirloop";
+const IDB_NAME = "hirestepx";
 const IDB_STORE = "drafts";
 
 export function openIDB(): Promise<IDBDatabase> {

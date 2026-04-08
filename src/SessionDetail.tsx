@@ -1,17 +1,15 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { font } from "./tokens";
-import type { ColorTokens } from "./tokens";
-import { useTheme } from "./ThemeContext";
+import { c, font, shadow, gradient } from "./tokens";
 import { useAuth } from "./AuthContext";
 import { getSessionById, saveFeedback, getSessionFeedback } from "./supabase";
 import { useToast } from "./Toast";
 
-const RESULTS_KEY = "hirloop_sessions";
+const RESULTS_KEY = "hirestepx_sessions";
 
 /* ─── Helpers ─── */
 
-function scoreLabelColor(score: number, c: ColorTokens) {
+function scoreLabelColor(score: number) {
   if (score >= 85) return c.sage;
   if (score >= 70) return c.gilt;
   return c.ember;
@@ -41,7 +39,7 @@ function normalizeType(type: string): string {
   return map[type] || type;
 }
 
-function ratingBadge(rating: string | undefined, c: ColorTokens): { label: string; color: string; bg: string } {
+function ratingBadge(rating: string | undefined): { label: string; color: string; bg: string } {
   switch (rating) {
     case "strong": return { label: "Strong", color: c.sage, bg: "rgba(122,158,126,0.1)" };
     case "good": return { label: "Good", color: c.gilt, bg: "rgba(212,179,127,0.1)" };
@@ -179,7 +177,6 @@ function loadPreviousSession(currentId: string): LocalSession | null {
 
 /* ─── Reusable Section Card ─── */
 function Section({ children, className }: { children: React.ReactNode; className?: string }) {
-  const { c } = useTheme();
   return (
     <div className={className} style={{
       background: c.graphite,
@@ -194,7 +191,6 @@ function Section({ children, className }: { children: React.ReactNode; className
 }
 
 function SectionTitle({ children, icon, action }: { children: React.ReactNode; icon?: React.ReactNode; action?: React.ReactNode }) {
-  const { c } = useTheme();
   return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
       <h3 style={{ fontSize: 16, fontWeight: 600, color: c.ivory, margin: 0, display: "flex", alignItems: "center", gap: 10 }}>
@@ -211,7 +207,6 @@ function SectionTitle({ children, icon, action }: { children: React.ReactNode; i
    ═══════════════════════════════════════ */
 
 export default function SessionDetail() {
-  const { c, shadow, gradient } = useTheme();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -236,7 +231,7 @@ export default function SessionDetail() {
       if (fb) { setFeedbackRating(fb.rating); setFeedbackComment(fb.comment || ""); setFeedbackSaved(true); }
     }).catch(() => {});
     try {
-      const localFb = localStorage.getItem(`hirloop_feedback_${id}`);
+      const localFb = localStorage.getItem(`hirestepx_feedback_${id}`);
       if (localFb) { const parsed = JSON.parse(localFb); setFeedbackRating(parsed.rating); setFeedbackComment(parsed.comment || ""); setFeedbackSaved(true); }
     } catch {}
     return () => { cancelled = true; };
@@ -246,7 +241,7 @@ export default function SessionDetail() {
     if (!id || !session) return;
     setFeedbackRating(rating);
     const feedbackData = { id: `fb_${id}`, user_id: user?.id || "anonymous", session_id: id, rating, comment: feedbackComment, session_score: session.score, session_type: session.type };
-    try { localStorage.setItem(`hirloop_feedback_${id}`, JSON.stringify(feedbackData)); } catch {}
+    try { localStorage.setItem(`hirestepx_feedback_${id}`, JSON.stringify(feedbackData)); } catch {}
     if (user?.id) { try { await saveFeedback(feedbackData); } catch {} }
     setFeedbackSaved(true);
     toast("Feedback saved — thank you!", "success");
@@ -255,7 +250,7 @@ export default function SessionDetail() {
   const submitComment = useCallback(async () => {
     if (!id || !session || !feedbackRating) return;
     const feedbackData = { id: `fb_${id}`, user_id: user?.id || "anonymous", session_id: id, rating: feedbackRating, comment: feedbackComment, session_score: session.score, session_type: session.type };
-    try { localStorage.setItem(`hirloop_feedback_${id}`, JSON.stringify(feedbackData)); } catch {}
+    try { localStorage.setItem(`hirestepx_feedback_${id}`, JSON.stringify(feedbackData)); } catch {}
     if (user?.id) { try { await saveFeedback(feedbackData); } catch {} }
     setShowFeedbackForm(false);
   }, [id, session, user?.id, feedbackRating, feedbackComment]);
@@ -404,14 +399,14 @@ export default function SessionDetail() {
             <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: c.stone, display: "block", marginBottom: 8 }}>Overall Score</span>
             <div style={{
               width: 72, height: 72, borderRadius: "50%",
-              border: `3px solid ${scoreLabelColor(session.score, c)}`,
+              border: `3px solid ${scoreLabelColor(session.score)}`,
               display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-              boxShadow: `0 0 24px ${scoreLabelColor(session.score, c)}20`,
+              boxShadow: `0 0 24px ${scoreLabelColor(session.score)}20`,
             }}>
               <span style={{ fontFamily: font.mono, fontSize: 24, fontWeight: 700, color: c.ivory, lineHeight: 1 }}>{session.score}</span>
-              <span style={{ fontSize: 9, color: scoreLabelColor(session.score, c), fontWeight: 600 }}>/100</span>
+              <span style={{ fontSize: 9, color: scoreLabelColor(session.score), fontWeight: 600 }}>/100</span>
             </div>
-            <span title={scoreTip(session.score)} style={{ fontSize: 11, fontWeight: 600, color: scoreLabelColor(session.score, c), marginTop: 6, display: "block", cursor: "help" }}>
+            <span title={scoreTip(session.score)} style={{ fontSize: 11, fontWeight: 600, color: scoreLabelColor(session.score), marginTop: 6, display: "block", cursor: "help" }}>
               {scoreLabel(session.score)}
             </span>
           </div>
@@ -672,7 +667,7 @@ export default function SessionDetail() {
                             <span style={{ fontFamily: font.mono, fontSize: 10, color: c.chalk }}>{score}/100</span>
                           </div>
                           <div style={{ height: 6, borderRadius: 3, background: "rgba(255,255,255,0.04)", overflow: "hidden" }}>
-                            <div style={{ width: `${score}%`, height: "100%", borderRadius: 3, background: `linear-gradient(90deg, ${scoreLabelColor(score, c)}, ${scoreLabelColor(score, c)}CC)`, transition: "width 0.6s ease" }} />
+                            <div style={{ width: `${score}%`, height: "100%", borderRadius: 3, background: `linear-gradient(90deg, ${scoreLabelColor(score)}, ${scoreLabelColor(score)}CC)`, transition: "width 0.6s ease" }} />
                           </div>
                         </div>
                         {/* Your Average bar */}
@@ -729,7 +724,7 @@ export default function SessionDetail() {
 
             <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
               {session.ideal_answers.map((item, i) => {
-                const badge = ratingBadge(item.rating, c);
+                const badge = ratingBadge(item.rating);
                 return (
                   <div key={i} style={{ borderRadius: 14, border: `1px solid ${c.border}`, overflow: "hidden" }}>
                     {/* Question header */}

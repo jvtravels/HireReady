@@ -22,7 +22,7 @@ export function unlockAudio() {
   } catch {}
 }
 
-const TTS_SETTINGS_KEY = "hirloop_tts";
+const TTS_SETTINGS_KEY = "hirestepx_tts";
 
 export interface TTSSettings {
   provider: "cartesia" | "browser";

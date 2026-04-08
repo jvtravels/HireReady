@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { font } from "./tokens";
-import { useTheme } from "./ThemeContext";
+import { c, font } from "./tokens";
 import { scoreLabel, scoreLabelColor } from "./dashboardTypes";
 import type { DashboardSession } from "./dashboardTypes";
 
@@ -17,7 +16,6 @@ interface Command {
 }
 
 export default function CommandPalette({ onStartSession, onExport, sessions = [] }: { onStartSession: () => void; onExport: () => void; sessions?: DashboardSession[] }) {
-  const { c } = useTheme();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState(0);
@@ -47,7 +45,7 @@ export default function CommandPalette({ onStartSession, onExport, sessions = []
       action: () => nav(`/session/${s.id}`),
       keywords: `${s.topStrength} ${s.topWeakness} ${s.role} ${s.score}`,
       meta: `${s.score}`,
-      metaColor: scoreLabelColor(s.score, c),
+      metaColor: scoreLabelColor(s.score),
     }));
 
     return [...base, ...sessionCmds];

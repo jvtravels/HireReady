@@ -2,8 +2,7 @@ import React, { useEffect, useRef, useState, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { track } from "@vercel/analytics";
 import { capture } from "./analytics";
-import { font } from "./tokens";
-import { useTheme } from "./ThemeContext";
+import { c, font } from "./tokens";
 import { useAuth, hasStoredSession, getLastRoute } from "./AuthContext";
 import { useSEO, webAppJsonLd, faqJsonLd } from "./useSEO";
 import { getSupabase, supabaseConfigured } from "./supabase";
@@ -56,7 +55,7 @@ function useMouse() {
 /* ═══════════════════════════════════════════════
    PARTICLE CANVAS
    ═══════════════════════════════════════════════ */
-function ParticleCanvas({ isDark }: { isDark: boolean }) {
+function ParticleCanvas() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   useEffect(() => {
@@ -87,9 +86,7 @@ function ParticleCanvas({ isDark }: { isDark: boolean }) {
     const ps: P[] = [];
     const w = () => cachedW;
     const h = () => cachedH;
-    const cols = isDark
-      ? ["rgba(212,179,127,", "rgba(245,242,237,", "rgba(197,192,186,"]
-      : ["rgba(184,146,62,", "rgba(26,26,26,", "rgba(142,137,131,"];
+    const cols = ["rgba(212,179,127,", "rgba(245,242,237,", "rgba(197,192,186,"];
 
     for (let i = 0; i < COUNT; i++) {
       ps.push({ x: Math.random() * w(), y: Math.random() * h(), vx: (Math.random() - 0.5) * 0.25, vy: -Math.random() * 0.35 - 0.08, r: Math.random() * 2.2 + 0.4, o: Math.random() * 0.45 + 0.08, od: (Math.random() - 0.5) * 0.004, c: cols[Math.floor(Math.random() * cols.length)] });
@@ -98,7 +95,7 @@ function ParticleCanvas({ isDark }: { isDark: boolean }) {
     const draw = () => {
       ctx.clearRect(0, 0, w(), h());
       const g = ctx.createRadialGradient(w() / 2, h() * 0.3, 0, w() / 2, h() * 0.3, w() * 0.45);
-      g.addColorStop(0, isDark ? "rgba(212,179,127,0.035)" : "rgba(184,146,62,0.025)");
+      g.addColorStop(0, "rgba(212,179,127,0.035)");
       g.addColorStop(1, "transparent");
       ctx.fillStyle = g;
       ctx.fillRect(0, 0, w(), h());
@@ -121,7 +118,7 @@ function ParticleCanvas({ isDark }: { isDark: boolean }) {
             const d = Math.sqrt(dx * dx + dy * dy);
             if (d < 100) {
               ctx.beginPath(); ctx.moveTo(ps[i].x, ps[i].y); ctx.lineTo(ps[j].x, ps[j].y);
-              ctx.strokeStyle = isDark ? `rgba(212,179,127,${0.025 * (1 - d / 100)})` : `rgba(184,146,62,${0.02 * (1 - d / 100)})`; ctx.lineWidth = 0.5; ctx.stroke();
+              ctx.strokeStyle = `rgba(212,179,127,${0.025 * (1 - d / 100)})`; ctx.lineWidth = 0.5; ctx.stroke();
             }
           }
         }
@@ -141,7 +138,6 @@ function ParticleCanvas({ isDark }: { isDark: boolean }) {
    NAV
    ═══════════════════════════════════════════════ */
 function Nav() {
-  const { c, isDark, toggleTheme } = useTheme();
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
@@ -164,7 +160,7 @@ function Nav() {
     <nav aria-label="Main navigation" style={{
       position: "fixed", top: 0, left: 0, right: 0, zIndex: 100, padding: "0 48px", height: 72,
       display: "flex", alignItems: "center", justifyContent: "space-between",
-      background: scrolled ? (isDark ? "rgba(6,6,7,0.72)" : "rgba(250,250,248,0.85)") : "transparent",
+      background: scrolled ? "rgba(6,6,7,0.72)" : "transparent",
       backdropFilter: scrolled ? "blur(32px) saturate(180%)" : "none",
       WebkitBackdropFilter: scrolled ? "blur(32px) saturate(180%)" : "none",
       borderBottom: scrolled ? `1px solid ${c.border}` : "1px solid transparent",
@@ -204,17 +200,6 @@ function Nav() {
             {item}
           </a>
         ))}
-        <button onClick={toggleTheme} aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
-          style={{ background: "none", border: `1px solid ${c.border}`, borderRadius: 8, padding: 7, cursor: "pointer", color: c.stone, display: "flex", alignItems: "center", justifyContent: "center", transition: "color 0.2s, border-color 0.2s" }}
-          onMouseEnter={e => { e.currentTarget.style.color = c.ivory; e.currentTarget.style.borderColor = c.borderHover; }}
-          onMouseLeave={e => { e.currentTarget.style.color = c.stone; e.currentTarget.style.borderColor = c.border; }}
-        >
-          {isDark ? (
-            <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
-          ) : (
-            <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-          )}
-        </button>
         {isLoggedIn ? (
           <>
             <Link to="/dashboard" className="premium-btn" style={{
@@ -276,7 +261,7 @@ function Nav() {
             }
           }}
           style={{
-          position: "fixed", inset: 0, background: isDark ? "rgba(6,6,7,0.95)" : "rgba(250,250,248,0.97)", backdropFilter: "blur(20px)",
+          position: "fixed", inset: 0, background: "rgba(6,6,7,0.95)", backdropFilter: "blur(20px)",
           zIndex: 101, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 28,
           outline: "none",
         }} onClick={() => setMobileOpen(false)}>
@@ -287,15 +272,6 @@ function Nav() {
               {item}
             </a>
           ))}
-          <button onClick={(e) => { e.stopPropagation(); toggleTheme(); }} aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
-            style={{ background: "none", border: `1px solid ${c.border}`, borderRadius: 10, padding: "8px 20px", cursor: "pointer", color: c.stone, fontFamily: font.ui, fontSize: 14, display: "flex", alignItems: "center", gap: 8 }}>
-            {isDark ? (
-              <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
-            ) : (
-              <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-            )}
-            {isDark ? "Light mode" : "Dark mode"}
-          </button>
           <div style={{ width: 40, height: 1, background: c.border, margin: "4px 0" }} />
           {isLoggedIn ? (
             <>
@@ -317,7 +293,6 @@ function Nav() {
 
 /* ─── Auth-aware CTA ─── */
 function HeroCTA() {
-  const { c, isDark } = useTheme();
   const { isLoggedIn } = useAuth();
   return (
     <div className="hero-cta" style={{ display: "flex", gap: 16, animation: "fadeInUp 0.8s ease 2.2s both", marginBottom: 40 }}>
@@ -332,12 +307,12 @@ function HeroCTA() {
       <button onClick={() => { document.getElementById("how-it-works")?.scrollIntoView({ behavior: "smooth" }); }}
         style={{
         fontFamily: font.ui, fontSize: 15, fontWeight: 500, padding: "16px 36px",
-        borderRadius: 12, border: `1px solid ${c.border}`, background: "transparent",
+        borderRadius: 12, border: `1px solid rgba(255,255,255,0.10)`, background: "rgba(255,255,255,0.03)",
         color: c.chalk, cursor: "pointer", transition: "all 0.35s cubic-bezier(0.16, 1, 0.3, 1)",
         backdropFilter: "blur(12px)",
       }}
-        onMouseEnter={(e) => { e.currentTarget.style.borderColor = c.borderHover; e.currentTarget.style.color = c.ivory; e.currentTarget.style.background = c.glow; }}
-        onMouseLeave={(e) => { e.currentTarget.style.borderColor = c.border; e.currentTarget.style.color = c.chalk; e.currentTarget.style.background = "transparent"; }}>
+        onMouseEnter={(e) => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.18)"; e.currentTarget.style.color = c.ivory; e.currentTarget.style.background = "rgba(255,255,255,0.06)"; }}
+        onMouseLeave={(e) => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.10)"; e.currentTarget.style.color = c.chalk; e.currentTarget.style.background = "rgba(255,255,255,0.03)"; }}>
         See How It Works
       </button>
     </div>
@@ -363,7 +338,6 @@ function BottomCTA() {
    ═══════════════════════════════════════════════ */
 
 function Hero() {
-  const { c, isDark } = useTheme();
   const parallaxOffset = useParallax(0.1);
   const mouse = useMouse();
   const [wordsVisible, setWordsVisible] = useState<number[]>([]);
@@ -379,29 +353,29 @@ function Hero() {
   const my = (mouse.y / window.innerHeight - 0.5) * 30;
 
   return (
-    <section className={isDark ? "dot-grid-bg" : ""} style={{
+    <section className="dot-grid-bg" style={{
       position: "relative", minHeight: "100vh", display: "flex", alignItems: "center",
       justifyContent: "center", overflow: "hidden",
     }}>
-      {isDark && <ParticleCanvas isDark={isDark} />}
-      <div className="landing-hero" style={{ display: "flex", alignItems: "center", maxWidth: 1200, width: "100%", padding: "160px 48px 100px", position: "relative" }}>
+      <ParticleCanvas />
+      <div className="landing-hero" style={{ display: "flex", alignItems: "center", maxWidth: 1200, width: "100%", padding: "140px 48px 100px", position: "relative" }}>
 
       {/* Mesh gradient */}
-      {isDark && <div style={{
+      <div style={{
         position: "absolute", top: "40%", left: "50%",
         transform: `translate(calc(-50% + ${mx}px), calc(-50% + ${my}px))`,
         width: 900, height: 900, borderRadius: "50%",
         background: `conic-gradient(from 180deg, rgba(212,179,127,0.06), rgba(122,158,126,0.03), rgba(196,112,90,0.02), rgba(212,179,127,0.06))`,
         filter: "blur(80px)", pointerEvents: "none",
         animation: "meshRotate 30s linear infinite",
-      }} />}
+      }} />
 
       {/* Geometric circles (parallax) */}
-      {isDark && [600, 400, 220].map((size, i) => (
+      {[600, 400, 220].map((size, i) => (
         <div key={size} style={{
           position: "absolute", top: "50%", left: "60%",
           transform: `translate(-50%, -50%) translateY(${parallaxOffset * (0.5 - i * 0.15)}px)`,
-          width: size, height: size, border: `1px solid ${c.border}`,
+          width: size, height: size, border: `1px solid rgba(245,242,237,${0.04 - i * 0.01})`,
           borderRadius: "50%", pointerEvents: "none",
         }} />
       ))}
@@ -411,7 +385,7 @@ function Hero() {
         {/* Social proof badge */}
         <div style={{
           display: "inline-flex", alignItems: "center", gap: 10, padding: "8px 16px",
-          background: isDark ? "rgba(212,179,127,0.06)" : "rgba(184,146,62,0.06)", border: `1px solid ${isDark ? "rgba(212,179,127,0.15)" : "rgba(184,146,62,0.12)"}`,
+          background: "rgba(212,179,127,0.06)", border: `1px solid rgba(212,179,127,0.15)`,
           borderRadius: 100, marginBottom: 28, animation: "fadeIn 0.8s ease 0.2s both",
         }}>
           <span style={{ width: 6, height: 6, borderRadius: "50%", background: c.sage, display: "inline-block", animation: "giltPulse 2s ease-in-out infinite" }} />
@@ -476,7 +450,7 @@ function Hero() {
           <div style={{
             position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)",
             width: "80%", height: "80%", borderRadius: "50%",
-            background: isDark ? "radial-gradient(ellipse at center, rgba(212,179,127,0.08) 0%, transparent 70%)" : "radial-gradient(ellipse at center, rgba(184,146,62,0.06) 0%, transparent 70%)",
+            background: "radial-gradient(ellipse at center, rgba(212,179,127,0.08) 0%, transparent 70%)",
             pointerEvents: "none", filter: "blur(40px)",
           }} />
           <HeroMockup />
@@ -500,7 +474,6 @@ function Hero() {
 
 /* Hero floating score card */
 function HeroMockup() {
-  const { c, isDark } = useTheme();
   const [step, setStep] = useState(0);
   useEffect(() => {
     const timers = [
@@ -517,12 +490,12 @@ function HeroMockup() {
       {/* Main card */}
       <div className="mockup-window" style={{
         background: c.graphite, borderRadius: 16, border: `1px solid ${c.border}`,
-        overflow: "hidden", boxShadow: isDark ? "0 32px 80px rgba(0,0,0,0.5), 0 0 60px rgba(212,179,127,0.04)" : "0 32px 80px rgba(0,0,0,0.08), 0 0 60px rgba(184,146,62,0.03)",
+        overflow: "hidden", boxShadow: "0 32px 80px rgba(0,0,0,0.5), 0 0 60px rgba(212,179,127,0.04)",
         animation: "floatSlow 6s ease-in-out infinite",
       }}>
         {/* Window chrome */}
         <div style={{ height: 38, background: c.obsidian, borderBottom: `1px solid ${c.border}`, display: "flex", alignItems: "center", padding: "0 14px", gap: 6 }}>
-          {[0.4, 0.3, 0.3].map((o, i) => <div key={i} style={{ width: 8, height: 8, borderRadius: "50%", background: isDark ? `rgba(245,242,237,${o * 0.4})` : `rgba(0,0,0,${o * 0.3})` }} />)}
+          {[0.15, 0.1, 0.1].map((o, i) => <div key={i} style={{ width: 8, height: 8, borderRadius: "50%", background: `rgba(245,242,237,${o})` }} />)}
           <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
             <span style={{ width: 6, height: 6, borderRadius: "50%", background: c.sage, animation: "giltPulse 1.5s ease-in-out infinite" }} />
             <span style={{ fontFamily: font.ui, fontSize: 10, color: c.stone }}>Live Session — Software Engineer</span>
@@ -542,7 +515,7 @@ function HeroMockup() {
               </div>
               <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, color: c.gilt, letterSpacing: "0.06em", textTransform: "uppercase" }}>Interviewer</span>
             </div>
-            <div style={{ background: isDark ? `rgba(212,179,127,0.05)` : `rgba(184,146,62,0.04)`, border: `1px solid ${isDark ? "rgba(212,179,127,0.1)" : "rgba(184,146,62,0.08)"}`, borderRadius: "2px 12px 12px 12px", padding: "12px 16px", marginLeft: 32 }}>
+            <div style={{ background: `rgba(212,179,127,0.05)`, border: `1px solid rgba(212,179,127,0.1)`, borderRadius: "2px 12px 12px 12px", padding: "12px 16px", marginLeft: 32 }}>
               <p style={{ fontFamily: font.ui, fontSize: 13, lineHeight: 1.6, color: c.ivory }}>
                 Tell me about a challenging project you worked on. What was your role and how did you approach the problem?
               </p>
@@ -592,8 +565,8 @@ function HeroMockup() {
               opacity: step >= 3 ? 1 : 0, transform: step >= 3 ? "translateY(0)" : "translateY(8px)",
               transition: "all 0.5s ease",
               display: "flex", alignItems: "center", gap: 8, marginLeft: 32,
-              padding: "10px 16px", background: isDark ? `rgba(212,179,127,0.03)` : `rgba(184,146,62,0.02)`,
-              border: `1px solid ${isDark ? "rgba(212,179,127,0.08)" : "rgba(184,146,62,0.06)"}`, borderRadius: "2px 12px 12px 12px",
+              padding: "10px 16px", background: `rgba(212,179,127,0.03)`,
+              border: `1px solid rgba(212,179,127,0.08)`, borderRadius: "2px 12px 12px 12px",
             }}>
               <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, color: c.gilt, letterSpacing: "0.04em", textTransform: "uppercase", marginRight: 4 }}>Follow-up</span>
               <div style={{ display: "flex", gap: 4 }}>
@@ -612,9 +585,9 @@ function HeroMockup() {
       {/* Floating insight card — overlaps bottom-right */}
       <div style={{
         position: "absolute", bottom: -20, right: -16,
-        background: c.graphite, borderRadius: 12, border: `1px solid ${isDark ? "rgba(212,179,127,0.15)" : "rgba(184,146,62,0.12)"}`,
+        background: c.graphite, borderRadius: 12, border: `1px solid rgba(212,179,127,0.15)`,
         padding: "14px 18px", maxWidth: 220,
-        boxShadow: isDark ? "0 16px 48px rgba(0,0,0,0.5), 0 0 24px rgba(212,179,127,0.06)" : "0 16px 48px rgba(0,0,0,0.08), 0 0 24px rgba(184,146,62,0.04)",
+        boxShadow: "0 16px 48px rgba(0,0,0,0.5), 0 0 24px rgba(212,179,127,0.06)",
         opacity: step >= 4 ? 1 : 0, transform: step >= 4 ? "translateY(0) scale(1)" : "translateY(8px) scale(0.95)",
         transition: "all 0.6s cubic-bezier(0.16, 1, 0.3, 1)",
         zIndex: 2,
@@ -720,7 +693,6 @@ const companyLogos: { name: string; svg: React.ReactNode }[] = [
    LOGO MARQUEE
    ═══════════════════════════════════════════════ */
 function LogoMarquee() {
-  const { c } = useTheme();
   const ref = useReveal<HTMLElement>();
 
   return (
@@ -788,7 +760,6 @@ function useCountUp(target: number, duration = 2000) {
 }
 
 function StatsSection() {
-  const { c } = useTheme();
   const sectionRef = useReveal<HTMLElement>();
   const stat1 = useCountUp(6, 1200);
   const stat2 = useCountUp(50, 1500);
@@ -837,10 +808,9 @@ function StatsSection() {
    PROBLEM SECTION
    ═══════════════════════════════════════════════ */
 function ProblemSection() {
-  const { c } = useTheme();
   const ref = useReveal<HTMLElement>();
   return (
-    <section ref={ref} className="reveal landing-section" style={{ padding: "160px 40px", maxWidth: 1100, margin: "0 auto" }}>
+    <section ref={ref} className="reveal landing-section" style={{ padding: "140px 40px", maxWidth: 1100, margin: "0 auto" }}>
       <div className="landing-problem-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 64, alignItems: "center" }}>
         {/* Image side */}
         <div style={{ position: "relative" }}>
@@ -909,7 +879,6 @@ const steps = [
 ];
 
 function HowItWorks() {
-  const { c, isDark } = useTheme();
   const ref = useReveal<HTMLElement>();
   const [activeStep, setActiveStep] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
@@ -924,7 +893,7 @@ function HowItWorks() {
   }, [isPaused]);
 
   return (
-    <section id="how-it-works" ref={ref} className={`reveal ${isDark ? "dot-grid-bg" : ""} landing-section`} style={{ padding: "160px 40px 100px", maxWidth: 1100, margin: "0 auto" }}>
+    <section id="how-it-works" ref={ref} className="reveal dot-grid-bg landing-section" style={{ padding: "140px 40px 100px", maxWidth: 1100, margin: "0 auto" }}>
       <div style={{ textAlign: "center", marginBottom: 64 }}>
         <p style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: c.gilt, marginBottom: 16 }}>How It Works</p>
         <h2 className="text-glow" style={{ fontFamily: font.display, fontSize: "clamp(32px, 4vw, 48px)", fontWeight: 400, letterSpacing: "-0.02em", color: c.ivory, lineHeight: 1.15 }}>
@@ -972,8 +941,8 @@ function HowItWorks() {
                     border: `1.5px solid ${isActive ? c.gilt : c.border}`,
                     display: "flex", alignItems: "center", justifyContent: "center",
                     transition: "all 0.4s ease",
-                    background: isActive ? (isDark ? `rgba(212,179,127,0.08)` : `rgba(184,146,62,0.06)`) : "transparent",
-                    boxShadow: isActive ? (isDark ? `0 0 20px rgba(212,179,127,0.12)` : `0 0 20px rgba(184,146,62,0.08)`) : "none",
+                    background: isActive ? `rgba(212,179,127,0.08)` : "transparent",
+                    boxShadow: isActive ? `0 0 20px rgba(212,179,127,0.12)` : "none",
                   }}>
                     {step.number}
                   </span>
@@ -1034,7 +1003,6 @@ function HowItWorks() {
 }
 
 function ProductMockup({ type, showChrome = false }: { type: "upload" | "interview" | "feedback"; showChrome?: boolean }) {
-  const { c, isDark } = useTheme();
   const content = (
     <>
       {type === "upload" && <MockupUpload />}
@@ -1048,7 +1016,7 @@ function ProductMockup({ type, showChrome = false }: { type: "upload" | "intervi
   return (
     <div className="mockup-window" style={{ background: c.graphite, borderRadius: 14, border: `1px solid ${c.border}`, overflow: "hidden", boxShadow: "0 24px 80px rgba(0,0,0,0.4)" }}>
       <div style={{ height: 38, background: c.obsidian, borderBottom: `1px solid ${c.border}`, display: "flex", alignItems: "center", padding: "0 14px", gap: 6 }}>
-        {[0.4, 0.3, 0.3].map((o, i) => <div key={i} style={{ width: 8, height: 8, borderRadius: "50%", background: isDark ? `rgba(245,242,237,${o * 0.4})` : `rgba(0,0,0,${o * 0.3})` }} />)}
+        {[0.15, 0.1, 0.1].map((o, i) => <div key={i} style={{ width: 8, height: 8, borderRadius: "50%", background: `rgba(245,242,237,${o})` }} />)}
         <div style={{ flex: 1, textAlign: "center" }}>
           <span style={{ fontFamily: font.ui, fontSize: 10, color: c.stone, letterSpacing: "0.02em" }}>hirestepx.com</span>
         </div>
@@ -1059,11 +1027,10 @@ function ProductMockup({ type, showChrome = false }: { type: "upload" | "intervi
 }
 
 function MockupUpload() {
-  const { c, isDark } = useTheme();
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <div style={{ fontFamily: font.ui, fontSize: 14, fontWeight: 600, color: c.ivory }}>New Session</div>
-      <div style={{ border: `1.5px dashed ${isDark ? "rgba(212,179,127,0.25)" : "rgba(184,146,62,0.2)"}`, borderRadius: 10, padding: "32px 20px", textAlign: "center", background: isDark ? "rgba(212,179,127,0.02)" : "rgba(184,146,62,0.015)", transition: "all 0.3s ease" }}>
+      <div style={{ border: `1.5px dashed rgba(212,179,127,0.25)`, borderRadius: 10, padding: "32px 20px", textAlign: "center", background: "rgba(212,179,127,0.02)", transition: "all 0.3s ease" }}>
         <svg aria-hidden="true" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5" style={{ margin: "0 auto 12px", display: "block" }}>
           <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" />
         </svg>
@@ -1080,7 +1047,6 @@ function MockupUpload() {
 }
 
 function MockupInterview() {
-  const { c, isDark } = useTheme();
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -1090,7 +1056,7 @@ function MockupInterview() {
           Recording
         </span>
       </div>
-      <div style={{ background: isDark ? "rgba(212,179,127,0.05)" : "rgba(184,146,62,0.04)", border: `1px solid ${isDark ? "rgba(212,179,127,0.1)" : "rgba(184,146,62,0.08)"}`, borderRadius: "14px 12px 12px 2px", padding: "14px 16px" }}>
+      <div style={{ background: "rgba(212,179,127,0.05)", border: `1px solid rgba(212,179,127,0.1)`, borderRadius: "14px 12px 12px 2px", padding: "14px 16px" }}>
         <p style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.gilt, marginBottom: 6, letterSpacing: "0.04em", textTransform: "uppercase" }}>Interviewer</p>
         <p style={{ fontFamily: font.ui, fontSize: 13, lineHeight: 1.6, color: c.ivory }}>Tell me about a time you had to learn a new technology quickly to complete a project. How did you approach it?</p>
       </div>
@@ -1112,7 +1078,6 @@ function MockupInterview() {
 }
 
 function MockupFeedback() {
-  const { c } = useTheme();
   const scores = [
     { label: "Communication", value: 87, color: c.gilt },
     { label: "Problem Solving", value: 92, color: c.sage },
@@ -1145,10 +1110,9 @@ function MockupFeedback() {
    DEMO VIDEO
    ═══════════════════════════════════════════════ */
 function DemoVideoSection() {
-  const { c, isDark } = useTheme();
   const ref = useReveal<HTMLElement>();
   return (
-    <section ref={ref} className="reveal landing-section" style={{ padding: "160px 40px", maxWidth: 960, margin: "0 auto" }}>
+    <section ref={ref} className="reveal landing-section" style={{ padding: "140px 40px", maxWidth: 960, margin: "0 auto" }}>
       <div style={{ textAlign: "center", marginBottom: 48 }}>
         <p style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: c.gilt, marginBottom: 16 }}>See It In Action</p>
         <h2 className="text-glow" style={{ fontFamily: font.display, fontSize: "clamp(32px, 4vw, 48px)", fontWeight: 400, letterSpacing: "-0.02em", color: c.ivory, lineHeight: 1.15, marginBottom: 12 }}>
@@ -1158,16 +1122,16 @@ function DemoVideoSection() {
       </div>
 
       <div className="video-player" style={{ position: "relative", width: "100%", aspectRatio: "16 / 9", borderRadius: 16, overflow: "hidden", cursor: "pointer", border: `1px solid ${c.border}`, background: c.graphite, transition: "border-color 0.3s ease, box-shadow 0.3s ease" }}
-        onMouseEnter={(e) => { e.currentTarget.style.borderColor = c.borderHover; e.currentTarget.style.boxShadow = isDark ? "0 32px 80px rgba(0,0,0,0.5), 0 0 80px rgba(212,179,127,0.04)" : "0 32px 80px rgba(0,0,0,0.08), 0 0 80px rgba(184,146,62,0.03)"; }}
+        onMouseEnter={(e) => { e.currentTarget.style.borderColor = c.borderHover; e.currentTarget.style.boxShadow = "0 32px 80px rgba(0,0,0,0.5), 0 0 80px rgba(212,179,127,0.04)"; }}
         onMouseLeave={(e) => { e.currentTarget.style.borderColor = c.border; e.currentTarget.style.boxShadow = "none"; }}>
         {/* Video preview */}
         <div style={{ position: "absolute", inset: 0, background: `linear-gradient(135deg, ${c.obsidian} 0%, ${c.graphite} 50%, ${c.obsidian} 100%)`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <div style={{ position: "absolute", top: "20%", left: "10%", width: 300, height: 300, borderRadius: "50%", background: isDark ? "radial-gradient(circle, rgba(212,179,127,0.04) 0%, transparent 70%)" : "radial-gradient(circle, rgba(184,146,62,0.03) 0%, transparent 70%)", pointerEvents: "none" }} />
-          <div style={{ position: "absolute", bottom: "15%", right: "15%", width: 200, height: 200, borderRadius: "50%", background: isDark ? "radial-gradient(circle, rgba(122,158,126,0.04) 0%, transparent 70%)" : "radial-gradient(circle, rgba(45,122,58,0.03) 0%, transparent 70%)", pointerEvents: "none" }} />
+          <div style={{ position: "absolute", top: "20%", left: "10%", width: 300, height: 300, borderRadius: "50%", background: "radial-gradient(circle, rgba(212,179,127,0.04) 0%, transparent 70%)", pointerEvents: "none" }} />
+          <div style={{ position: "absolute", bottom: "15%", right: "15%", width: 200, height: 200, borderRadius: "50%", background: "radial-gradient(circle, rgba(122,158,126,0.04) 0%, transparent 70%)", pointerEvents: "none" }} />
           <div style={{ position: "absolute", inset: 40, display: "flex", alignItems: "center", justifyContent: "center", opacity: 0.25 }}>
             <div style={{ width: "70%", maxWidth: 500, background: c.graphite, borderRadius: 10, border: `1px solid ${c.border}`, padding: 24, textAlign: "left" }}>
               <div style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: c.ivory, marginBottom: 12 }}>Live Session</div>
-              <div style={{ background: isDark ? "rgba(212,179,127,0.06)" : "rgba(184,146,62,0.04)", borderRadius: 8, padding: "10px 14px", marginBottom: 10 }}>
+              <div style={{ background: "rgba(212,179,127,0.06)", borderRadius: 8, padding: "10px 14px", marginBottom: 10 }}>
                 <p style={{ fontFamily: font.ui, fontSize: 11, color: c.gilt, marginBottom: 4 }}>Interviewer</p>
                 <p style={{ fontFamily: font.ui, fontSize: 12, color: c.ivory, lineHeight: 1.5 }}>Walk me through a project you're proud of...</p>
               </div>
@@ -1183,9 +1147,9 @@ function DemoVideoSection() {
         {/* Play button */}
         <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(6,6,7,0.2)", zIndex: 2 }}>
           <div className="video-play-btn" style={{
-            width: 80, height: 80, borderRadius: "50%", background: isDark ? "rgba(245,242,237,0.08)" : "rgba(0,0,0,0.06)",
+            width: 80, height: 80, borderRadius: "50%", background: "rgba(245,242,237,0.08)",
             backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)",
-            border: `1px solid ${c.border}`, display: "flex", alignItems: "center", justifyContent: "center",
+            border: "1px solid rgba(245,242,237,0.15)", display: "flex", alignItems: "center", justifyContent: "center",
           }}>
             <svg aria-hidden="true" width="28" height="28" viewBox="0 0 24 24" fill={c.ivory} style={{ marginLeft: 3 }}><polygon points="5,3 19,12 5,21" /></svg>
           </div>
@@ -1200,18 +1164,17 @@ function DemoVideoSection() {
 /* ═══════════════════════════════════════════════
    FEATURES — gradient border cards with icons
    ═══════════════════════════════════════════════ */
-function FeaturesSection() {
-  const { c } = useTheme();
-  const ref = useReveal<HTMLElement>();
+const features = [
+  { label: "Adaptive", title: "Questions from your resume", description: "No recycled question banks. Every session is generated from your actual experience, targeting the exact role you're applying for.", accent: c.gilt, accentClass: "", icon: <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg> },
+  { label: "Real-Time", title: "Conversational AI that listens", description: "The interviewer responds to what you actually say — asking follow-ups and probing deeper, just like a real hiring manager would.", accent: c.sage, accentClass: "accent-sage", icon: <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg> },
+  { label: "Precise", title: "Feedback that's specific", description: '"You forgot to mention the outcome — add the 40% improvement metric." Not "try to be more specific."', accent: c.ember, accentClass: "accent-ember", icon: <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg> },
+  { label: "Private", title: "Your data stays yours", description: "Delete your data anytime from Settings. No social features, no tracking beyond basic web vitals.", accent: c.slate, accentClass: "accent-slate", icon: <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> },
+];
 
-  const features = [
-    { label: "Adaptive", title: "Questions from your resume", description: "No recycled question banks. Every session is generated from your actual experience, targeting the exact role you're applying for.", accent: c.gilt, accentClass: "", icon: <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg> },
-    { label: "Real-Time", title: "Conversational AI that listens", description: "The interviewer responds to what you actually say — asking follow-ups and probing deeper, just like a real hiring manager would.", accent: c.sage, accentClass: "accent-sage", icon: <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg> },
-    { label: "Precise", title: "Feedback that's specific", description: '"You forgot to mention the outcome — add the 40% improvement metric." Not "try to be more specific."', accent: c.ember, accentClass: "accent-ember", icon: <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg> },
-    { label: "Private", title: "Your data stays yours", description: "Delete your data anytime from Settings. No social features, no tracking beyond basic web vitals.", accent: c.slate, accentClass: "accent-slate", icon: <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> },
-  ];
+function FeaturesSection() {
+  const ref = useReveal<HTMLElement>();
   return (
-    <section id="features" ref={ref} className="reveal landing-section" style={{ padding: "160px 40px 80px", maxWidth: 1100, margin: "0 auto" }}>
+    <section id="features" ref={ref} className="reveal landing-section" style={{ padding: "140px 40px 80px", maxWidth: 1100, margin: "0 auto" }}>
       <div style={{ textAlign: "center", marginBottom: 80 }}>
         <p style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: c.gilt, marginBottom: 16 }}>Why HireStepX</p>
         <h2 className="text-glow" style={{ fontFamily: font.display, fontSize: "clamp(32px, 4vw, 48px)", fontWeight: 400, letterSpacing: "-0.02em", color: c.ivory, lineHeight: 1.15 }}>
@@ -1223,8 +1186,7 @@ function FeaturesSection() {
   );
 }
 
-function FeatureRow({ feature, index }: { feature: { label: string; title: string; description: string; accent: string; accentClass: string; icon: React.ReactNode }; index: number }) {
-  const { c } = useTheme();
+function FeatureRow({ feature, index }: { feature: (typeof features)[0]; index: number }) {
   const ref = useReveal<HTMLDivElement>();
   const isEven = index % 2 === 0;
 
@@ -1255,7 +1217,6 @@ function FeatureRow({ feature, index }: { feature: { label: string; title: strin
 }
 
 function FeatureVisual({ type, accent }: { type: string; accent: string }) {
-  const { c } = useTheme();
   if (type === "Adaptive") {
     return (
       <div className="gradient-border-card" style={{ padding: "28px 24px", zIndex: 0 }}>
@@ -1347,7 +1308,6 @@ function FeatureVisual({ type, accent }: { type: string; accent: string }) {
    SCORE PREVIEW
    ═══════════════════════════════════════════════ */
 function ScorePreview() {
-  const { c } = useTheme();
   const [visible, setVisible] = useState(false);
   const sectionRef = useRef<HTMLElement | null>(null);
   const revealRef = useReveal<HTMLElement>();
@@ -1371,7 +1331,7 @@ function ScorePreview() {
   ];
 
   return (
-    <section ref={setRefs} className="reveal landing-section" style={{ padding: "160px 40px", maxWidth: 900, margin: "0 auto" }}>
+    <section ref={setRefs} className="reveal landing-section" style={{ padding: "140px 40px", maxWidth: 900, margin: "0 auto" }}>
       <div style={{ textAlign: "center", marginBottom: 64 }}>
         <p style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: c.gilt, marginBottom: 16 }}>Precision Feedback</p>
         <h2 className="text-glow" style={{ fontFamily: font.display, fontSize: "clamp(32px, 4vw, 48px)", fontWeight: 400, letterSpacing: "-0.02em", color: c.ivory, lineHeight: 1.15, marginBottom: 16 }}>Scores that mean something</h2>
@@ -1415,7 +1375,6 @@ const testimonials = [
 ];
 
 function TestimonialsSection() {
-  const { c } = useTheme();
   const ref = useReveal<HTMLElement>();
   const [active, setActive] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
@@ -1429,7 +1388,7 @@ function TestimonialsSection() {
   }, [isPaused]);
 
   return (
-    <section ref={ref} className="reveal landing-section" style={{ padding: "160px 40px", maxWidth: 1100, margin: "0 auto" }}>
+    <section ref={ref} className="reveal landing-section" style={{ padding: "140px 40px", maxWidth: 1100, margin: "0 auto" }}>
       <div style={{ textAlign: "center", marginBottom: 64 }}>
         <p style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: c.gilt, marginBottom: 16 }}>Real Results</p>
         <h2 className="text-glow" style={{ fontFamily: font.display, fontSize: "clamp(32px, 4vw, 48px)", fontWeight: 400, letterSpacing: "-0.02em", color: c.ivory, lineHeight: 1.15 }}>People who practiced here got hired</h2>
@@ -1534,10 +1493,9 @@ const plans = [
 ];
 
 function PricingSection() {
-  const { c, isDark } = useTheme();
   const ref = useReveal<HTMLElement>();
   return (
-    <section id="pricing" ref={ref} className={`reveal ${isDark ? "dot-grid-bg" : ""} landing-section`} style={{ padding: "160px 40px", maxWidth: 1100, margin: "0 auto" }}>
+    <section id="pricing" ref={ref} className="reveal dot-grid-bg landing-section" style={{ padding: "140px 40px", maxWidth: 1100, margin: "0 auto" }}>
       <div style={{ textAlign: "center", marginBottom: 80 }}>
         <p style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: c.gilt, marginBottom: 16 }}>Pricing</p>
         <h2 className="text-glow" style={{ fontFamily: font.display, fontSize: "clamp(32px, 4vw, 48px)", fontWeight: 400, letterSpacing: "-0.02em", color: c.ivory, lineHeight: 1.15, marginBottom: 16 }}>Transparent. No surprises.</h2>
@@ -1551,7 +1509,6 @@ function PricingSection() {
 }
 
 function PricingCard({ plan, delay }: { plan: (typeof plans)[0]; delay: number }) {
-  const { c, isDark } = useTheme();
   const ref = useReveal<HTMLDivElement>();
   const navigate = useNavigate();
   const { user, isLoggedIn, updateUser } = useAuth();
@@ -1648,7 +1605,7 @@ function PricingCard({ plan, delay }: { plan: (typeof plans)[0]; delay: number }
   return (
     <div ref={ref} className={`reveal reveal-delay-${delay + 1} gradient-border-card ${plan.featured ? "pricing-featured" : ""}`} style={{
       padding: "36px 32px", position: "relative", overflow: "hidden", zIndex: 0,
-      borderColor: plan.featured ? (isDark ? `rgba(212,179,127,0.2)` : `rgba(184,146,62,0.15)`) : undefined,
+      borderColor: plan.featured ? `rgba(212,179,127,0.2)` : undefined,
     }}>
       {plan.featured && <div style={{ position: "absolute", top: -1, left: 0, right: 0, height: 2, background: `linear-gradient(90deg, transparent, ${c.gilt}, transparent)` }} />}
       {plan.featured && <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: c.gilt, display: "block", marginBottom: 16 }}>Most Popular</span>}
@@ -1668,25 +1625,25 @@ function PricingCard({ plan, delay }: { plan: (typeof plans)[0]; delay: number }
       </ul>
       <button onClick={handleClick} disabled={loading} className={plan.featured ? "shimmer-btn premium-btn" : ""} style={{
         width: "100%", fontFamily: font.ui, fontSize: 14, fontWeight: 600, padding: "14px 24px",
-        borderRadius: 12, border: plan.featured ? "none" : `1px solid ${c.border}`,
-        background: plan.featured ? undefined : "transparent", color: plan.featured ? c.obsidian : c.chalk,
+        borderRadius: 12, border: plan.featured ? "none" : `1px solid rgba(255,255,255,0.08)`,
+        background: plan.featured ? undefined : "rgba(255,255,255,0.03)", color: plan.featured ? c.obsidian : c.chalk,
         cursor: loading ? "wait" : "pointer", transition: "all 0.35s cubic-bezier(0.16, 1, 0.3, 1)", position: "relative",
         opacity: loading ? 0.7 : 1,
       }}
         onMouseEnter={(e) => {
           if (plan.featured) { e.currentTarget.style.filter = "brightness(1.15)"; }
-          else { e.currentTarget.style.borderColor = c.chalk; e.currentTarget.style.color = c.ivory; e.currentTarget.style.background = c.glow; }
+          else { e.currentTarget.style.borderColor = c.chalk; e.currentTarget.style.color = c.ivory; e.currentTarget.style.background = "rgba(245,242,237,0.03)"; }
         }}
         onMouseLeave={(e) => {
           if (plan.featured) { e.currentTarget.style.filter = "brightness(1)"; }
-          else { e.currentTarget.style.borderColor = c.border; e.currentTarget.style.color = c.chalk; e.currentTarget.style.background = "transparent"; }
+          else { e.currentTarget.style.borderColor = c.borderHover; e.currentTarget.style.color = c.chalk; e.currentTarget.style.background = "transparent"; }
         }}>
         {loading ? "Redirecting to checkout..." : plan.cta}
       </button>
       {error && (
         <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginTop: 8 }}>
           <p style={{ fontFamily: font.ui, fontSize: 11, color: c.ember, margin: 0 }}>{error}</p>
-          <button onClick={() => setError("")} style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, color: c.gilt, background: "none", border: `1px solid ${isDark ? "rgba(212,179,127,0.3)" : "rgba(184,146,62,0.25)"}`, borderRadius: 4, padding: "2px 8px", cursor: "pointer" }}>Dismiss</button>
+          <button onClick={() => setError("")} style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, color: c.gilt, background: "none", border: `1px solid rgba(212,179,127,0.3)`, borderRadius: 4, padding: "2px 8px", cursor: "pointer" }}>Dismiss</button>
         </div>
       )}
     </div>
@@ -1697,7 +1654,6 @@ function PricingCard({ plan, delay }: { plan: (typeof plans)[0]; delay: number }
    FOR TEAMS BANNER
    ═══════════════════════════════════════════════ */
 function ForTeamsBanner() {
-  const { c } = useTheme();
   const ref = useReveal<HTMLElement>();
   return (
     <section ref={ref} className="reveal landing-section" style={{ padding: "0 40px 140px", maxWidth: 1100, margin: "0 auto" }}>
@@ -1726,7 +1682,6 @@ function ForTeamsBanner() {
    TRUST / SECURITY BADGES
    ═══════════════════════════════════════════════ */
 function TrustBadges() {
-  const { c } = useTheme();
   const ref = useReveal<HTMLElement>();
   const badges = [
     {
@@ -1789,7 +1744,6 @@ const LANDING_FAQS = [
 ];
 
 function FAQSection() {
-  const { c } = useTheme();
   const ref = useReveal<HTMLElement>();
   const [openIndex, setOpenIndex] = useState<number | null>(null);
 
@@ -1805,7 +1759,7 @@ function FAQSection() {
         {LANDING_FAQS.map((faq, i) => {
           const isOpen = openIndex === i;
           return (
-            <div key={i} style={{ borderBottom: `1px solid ${c.border}`, overflow: "hidden" }}>
+            <div key={i} style={{ borderBottom: "1px solid #1a1a1b", overflow: "hidden" }}>
               <button
                 onClick={() => setOpenIndex(isOpen ? null : i)}
                 aria-expanded={isOpen}
@@ -1846,7 +1800,6 @@ function FAQSection() {
    FINAL CTA
    ═══════════════════════════════════════════════ */
 function FinalCTA() {
-  const { c, isDark } = useTheme();
   const ref = useReveal<HTMLElement>();
 
   return (
@@ -1866,7 +1819,7 @@ function FinalCTA() {
         {/* Dark overlay */}
         <div style={{ position: "absolute", inset: 0, background: `linear-gradient(90deg, ${c.obsidian}E6 0%, ${c.obsidian}99 50%, transparent 100%)` }} />
         {/* Gilt glow */}
-        <div style={{ position: "absolute", top: "50%", right: "20%", transform: "translateY(-50%)", width: 400, height: 400, borderRadius: "50%", background: isDark ? "radial-gradient(ellipse at center, rgba(212,179,127,0.08) 0%, transparent 70%)" : "radial-gradient(ellipse at center, rgba(184,146,62,0.06) 0%, transparent 70%)", pointerEvents: "none" }} />
+        <div style={{ position: "absolute", top: "50%", right: "20%", transform: "translateY(-50%)", width: 400, height: 400, borderRadius: "50%", background: "radial-gradient(ellipse at center, rgba(212,179,127,0.08) 0%, transparent 70%)", pointerEvents: "none" }} />
 
         <div style={{ position: "relative", zIndex: 1, padding: "64px 60px", maxWidth: 560 }}>
           <p className="text-glow" style={{ fontFamily: font.display, fontSize: "clamp(32px, 4vw, 52px)", fontWeight: 400, lineHeight: 1.15, letterSpacing: "-0.03em", color: c.ivory, marginBottom: 20 }}>
@@ -1905,7 +1858,6 @@ function FinalCTA() {
    EMAIL CAPTURE
    ═══════════════════════════════════════════════ */
 function EmailCapture() {
-  const { c, isDark } = useTheme();
   const ref = useReveal<HTMLElement>();
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<"idle" | "sending" | "done" | "error">("idle");
@@ -1920,9 +1872,9 @@ function EmailCapture() {
         await client.from("waitlist").upsert({ email, created_at: new Date().toISOString() }, { onConflict: "email" });
       }
       // Fallback: also store locally in case Supabase table doesn't exist yet
-      const existing = JSON.parse(localStorage.getItem("hirloop_waitlist") || "[]");
+      const existing = JSON.parse(localStorage.getItem("hirestepx_waitlist") || "[]");
       existing.push({ email, ts: new Date().toISOString() });
-      localStorage.setItem("hirloop_waitlist", JSON.stringify(existing));
+      localStorage.setItem("hirestepx_waitlist", JSON.stringify(existing));
       track("waitlist_signup", { email });
       capture("waitlist_signup", { email });
       setStatus("done");
@@ -1940,7 +1892,7 @@ function EmailCapture() {
         background: c.graphite, borderRadius: 16, border: `1px solid ${c.border}`,
         padding: "48px 40px", position: "relative", overflow: "hidden",
       }}>
-        <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: 400, height: 400, borderRadius: "50%", background: isDark ? "radial-gradient(ellipse, rgba(212,179,127,0.06), transparent 70%)" : "radial-gradient(ellipse, rgba(184,146,62,0.04), transparent 70%)", pointerEvents: "none" }} />
+        <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: 400, height: 400, borderRadius: "50%", background: "radial-gradient(ellipse, rgba(212,179,127,0.06), transparent 70%)", pointerEvents: "none" }} />
         <div style={{ position: "relative", zIndex: 1 }}>
           <p style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: c.gilt, marginBottom: 12 }}>Stay Updated</p>
           <h3 style={{ fontFamily: font.display, fontSize: "clamp(24px, 3vw, 32px)", fontWeight: 400, color: c.ivory, letterSpacing: "-0.02em", lineHeight: 1.2, marginBottom: 8 }}>
@@ -1991,7 +1943,6 @@ function EmailCapture() {
    FOOTER
    ═══════════════════════════════════════════════ */
 function Footer() {
-  const { c } = useTheme();
   const linkHref: Record<string, string> = {
     "Interview Practice": "/#features",
     "AI Feedback": "/#how-it-works",
@@ -2081,7 +2032,6 @@ function Footer() {
    APP
    ═══════════════════════════════════════════════ */
 export default function App() {
-  const { c } = useTheme();
   const { isLoggedIn, user, loading } = useAuth();
   const navigate = useNavigate();
   const [hadStoredSession] = useState(() => hasStoredSession());
@@ -2123,10 +2073,14 @@ export default function App() {
         <HowItWorks />
         <DemoVideoSection />
         <FeaturesSection />
+        <ScorePreview />
         <TestimonialsSection />
         <PricingSection />
+        <ForTeamsBanner />
+        <TrustBadges />
         <FAQSection />
         <FinalCTA />
+        <EmailCapture />
       </main>
       <Footer />
     </div>

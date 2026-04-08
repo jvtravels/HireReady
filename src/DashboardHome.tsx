@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { font, sp, radius } from "./tokens";
-import { useTheme } from "./ThemeContext";
+import { c, font, sp, radius } from "./tokens";
 import { useAuth } from "./AuthContext";
 import { useDashboard } from "./DashboardContext";
 import { DataLoadingSkeleton, EmptyState, SessionDetailView } from "./dashboardComponents";
@@ -24,17 +23,17 @@ const card = {
 } as const;
 
 /* ─── Utility button style (hoisted for perf) ─── */
-const getUtilBtn = (c: ReturnType<typeof useTheme>["c"]) => ({
+const utilBtn = {
   fontFamily: font.ui, fontSize: 13, fontWeight: 500 as const, color: c.stone,
   background: "transparent", border: `1px solid ${c.border}`, borderRadius: radius.sm,
   padding: "8px 14px", cursor: "pointer" as const, display: "flex" as const, alignItems: "center" as const,
   gap: 6, transition: "all 0.25s cubic-bezier(0.16,1,0.3,1)", outline: "none" as const,
-});
-const getUtilBtnEnter = (c: ReturnType<typeof useTheme>["c"]) => (e: React.MouseEvent<HTMLButtonElement>) => { e.currentTarget.style.borderColor = "rgba(212,179,127,0.3)"; e.currentTarget.style.color = c.ivory; };
-const getUtilBtnLeave = (c: ReturnType<typeof useTheme>["c"]) => (e: React.MouseEvent<HTMLButtonElement>) => { e.currentTarget.style.borderColor = c.border; e.currentTarget.style.color = c.stone; };
+};
+const utilBtnEnter = (e: React.MouseEvent<HTMLButtonElement>) => { e.currentTarget.style.borderColor = "rgba(212,179,127,0.3)"; e.currentTarget.style.color = c.ivory; };
+const utilBtnLeave = (e: React.MouseEvent<HTMLButtonElement>) => { e.currentTarget.style.borderColor = c.border; e.currentTarget.style.color = c.stone; };
 
 /* ─── Section heading (serif) ─── */
-const getSectionTitle = (c: ReturnType<typeof useTheme>["c"]) => (text: string, size = 18, tag: "h2" | "h3" = "h3") => {
+const sectionTitle = (text: string, size = 18, tag: "h2" | "h3" = "h3") => {
   const Tag = tag;
   return <Tag style={{ fontFamily: font.display, fontSize: size, fontWeight: 400, color: c.ivory, letterSpacing: "0.01em", margin: 0 }}>{text}</Tag>;
 };
@@ -104,11 +103,6 @@ const dashboardStyles = `
 `;
 
 export default function DashboardHome() {
-  const { c } = useTheme();
-  const utilBtn = getUtilBtn(c);
-  const utilBtnEnter = getUtilBtnEnter(c);
-  const utilBtnLeave = getUtilBtnLeave(c);
-  const sectionTitle = getSectionTitle(c);
   const nav = useNavigate();
   const { user } = useAuth();
   const {
@@ -142,7 +136,7 @@ export default function DashboardHome() {
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Draft detection — must be before any early returns (Rules of Hooks)
-  const draftKey = `hirloop_interview_draft_${user?.id || "anon"}`;
+  const draftKey = `hirestepx_interview_draft_${user?.id || "anon"}`;
   const [hasDraft, setHasDraft] = useState<{ type: string; savedAt: number } | null>(() => {
     try {
       const raw = localStorage.getItem(draftKey);
@@ -480,7 +474,7 @@ export default function DashboardHome() {
       {/* ─── Stats Grid (all 5 in one row) ─── */}
       <div className="stat-grid" style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(5, 1fr)", gap: sp.lg, marginBottom: sp["3xl"] }}>
         {[
-          { label: "Readiness", value: hasData ? (readinessScore > 0 ? readinessScore.toString() : "\u2014") : "\u2014", icon: <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>, sub: !hasData ? "Complete a session" : readinessScore > 0 ? scoreLabel(readinessScore) : "Need more sessions", subColor: !hasData ? c.stone : readinessScore > 0 ? scoreLabelColor(readinessScore, c) : c.stone, tip: "Composite score based on your last 5 sessions, weighted by recency" },
+          { label: "Readiness", value: hasData ? (readinessScore > 0 ? readinessScore.toString() : "\u2014") : "\u2014", icon: <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>, sub: !hasData ? "Complete a session" : readinessScore > 0 ? scoreLabel(readinessScore) : "Need more sessions", subColor: !hasData ? c.stone : readinessScore > 0 ? scoreLabelColor(readinessScore) : c.stone, tip: "Composite score based on your last 5 sessions, weighted by recency" },
           { label: "Sessions", value: overallStats.sessionsCompleted.toString(), icon: <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>, sub: hasData ? `${weekActivity.filter(Boolean).length} this week` : "Get started", subColor: c.stone, tip: "Total practice sessions completed across all interview types" },
           { label: "Avg Score", value: hasData ? overallStats.avgScore.toString() : "\u2014", icon: <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="1.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>, sub: hasData ? `+${overallStats.improvement} pts` : "No data yet", subColor: hasData ? c.sage : c.stone, tip: "Average score across all sessions — higher means more consistent performance" },
           { label: "Improvement", value: hasData ? `+${overallStats.improvement}%` : "\u2014", icon: <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="1.5"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>, sub: hasData ? "All skills" : "Practice to improve", subColor: c.stone, tip: "Score improvement from your first session to your most recent" },
@@ -704,13 +698,13 @@ export default function DashboardHome() {
                   <div style={{ width: 48, height: 48, flexShrink: 0, position: "relative", display: "flex", alignItems: "center", justifyContent: "center" }}>
                     <svg width="48" height="48" viewBox="0 0 48 48" style={{ position: "absolute", transform: "rotate(-90deg)" }}>
                       <circle cx="24" cy="24" r="21" fill="none" stroke="rgba(245,242,237,0.06)" strokeWidth="2.5" />
-                      <circle cx="24" cy="24" r="21" fill="none" stroke={scoreLabelColor(session.score, c)} strokeWidth="2.5"
+                      <circle cx="24" cy="24" r="21" fill="none" stroke={scoreLabelColor(session.score)} strokeWidth="2.5"
                         strokeDasharray={`${(session.score / 100) * 2 * Math.PI * 21} ${2 * Math.PI * 21}`}
                         strokeLinecap="round" className="score-ring" />
                     </svg>
                     <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
                       <span style={{ fontFamily: font.mono, fontSize: 15, fontWeight: 600, color: c.ivory, lineHeight: 1 }}>{session.score}</span>
-                      <span style={{ fontFamily: font.ui, fontSize: 8, color: scoreLabelColor(session.score, c), fontWeight: 600, lineHeight: 1, marginTop: 1 }}>{scoreLabel(session.score)}</span>
+                      <span style={{ fontFamily: font.ui, fontSize: 8, color: scoreLabelColor(session.score), fontWeight: 600, lineHeight: 1, marginTop: 1 }}>{scoreLabel(session.score)}</span>
                     </div>
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>

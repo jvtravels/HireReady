@@ -1,11 +1,9 @@
 import { memo, useState } from "react";
-import { font } from "./tokens";
-import { useTheme } from "./ThemeContext";
+import { c, font } from "./tokens";
 import type { SkillData, TrendPoint } from "./dashboardTypes";
 
 /* ─── Score Trend Chart with tooltips ─── */
 export const ScoreTrendChart = memo(function ScoreTrendChart({ data }: { data: TrendPoint[] }) {
-  const { c } = useTheme();
   const [hovered, setHovered] = useState<number | null>(null);
   const w = 400, h = 140, px = 24, py = 20;
   const scores = data.map(d => d.score);
@@ -69,7 +67,6 @@ export const ScoreTrendChart = memo(function ScoreTrendChart({ data }: { data: T
 
 /* ─── Skill Radar ─── */
 export const SkillRadar = memo(function SkillRadar({ skills: s }: { skills: SkillData[] }) {
-  const { c } = useTheme();
   const size = 200, cx = size / 2, cy = size / 2, r = 70;
   const n = s.length;
   const getPoint = (i: number, val: number) => {

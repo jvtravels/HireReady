@@ -2,13 +2,12 @@ import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { track } from "@vercel/analytics";
 import { capture } from "./analytics";
-import { font } from "./tokens";
-import { useTheme } from "./ThemeContext";
+import { c, font } from "./tokens";
 import { useAuth } from "./AuthContext";
 import { getSupabase, supabaseConfigured } from "./supabase";
 
 // Remember me preference
-const REMEMBER_ME_KEY = "hirloop_remember_me";
+const REMEMBER_ME_KEY = "hirestepx_remember_me";
 function saveRememberMe(val: boolean) {
   try { localStorage.setItem(REMEMBER_ME_KEY, val ? "1" : "0"); } catch {}
 }
@@ -17,7 +16,7 @@ function getRememberMe(): boolean {
 }
 
 // Track last login method for returning users
-const LOGIN_METHOD_KEY = "hirloop_login_method";
+const LOGIN_METHOD_KEY = "hirestepx_login_method";
 function saveLoginMethod(method: "email" | "google") {
   try { localStorage.setItem(LOGIN_METHOD_KEY, method); } catch {}
 }
@@ -63,7 +62,6 @@ function friendlyError(raw: string, isLogin: boolean): { message: string; sugges
 }
 
 export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
-  const { c } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
   const { login, signup, loginWithGoogle, resetPassword, isLoggedIn, user } = useAuth();
@@ -137,7 +135,7 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
         saveRememberMe(rememberMe);
         if (!rememberMe) {
           // Mark session as ephemeral — will be cleared on tab close
-          try { sessionStorage.setItem("hirloop_ephemeral", "1"); } catch {}
+          try { sessionStorage.setItem("hirestepx_ephemeral", "1"); } catch {}
         }
         // Navigation handled by useEffect when isLoggedIn changes
         // This avoids double-redirect since useEffect checks onboarding status

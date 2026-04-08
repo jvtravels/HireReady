@@ -1,4 +1,4 @@
-import { font } from "./tokens";
+import { c, font } from "./tokens";
 
 /* ─── Interview Events (Calendar Integration) ─── */
 export interface InterviewEvent {
@@ -15,7 +15,7 @@ export interface InterviewEvent {
   reminders: boolean;
 }
 
-export const EVENTS_KEY = "hirloop_events";
+export const EVENTS_KEY = "hirestepx_events";
 
 export function loadEvents(): InterviewEvent[] {
   try {

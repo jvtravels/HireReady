@@ -1,6 +1,5 @@
 import { useNavigate, useParams } from "react-router-dom";
-import { font } from "./tokens";
-import { useTheme } from "./ThemeContext";
+import { c, font } from "./tokens";
 
 const pages: Record<string, { title: string; description: string; cta?: { label: string; path: string } }> = {
   about: { title: "About HireStepX", description: "HireStepX is an AI-powered interview preparation platform built by Silva Vitalis LLC. We help professionals at every level — from first-time job seekers to senior leaders — practice and improve their interview skills with real-time AI feedback, skill tracking, and personalized coaching.\n\nOur mission is simple: no one should lose a job opportunity because they didn't practice enough. With adaptive questions generated from your resume, conversational AI that listens and follows up, and precise feedback that tells you exactly what to fix — we make interview prep efficient and effective.\n\nQuestions? Reach out at hello@hirestepx.com", cta: { label: "Try It Free", path: "/signup" } },
@@ -11,7 +10,6 @@ const pages: Record<string, { title: string; description: string; cta?: { label:
 };
 
 export default function PlaceholderPage() {
-  const { c } = useTheme();
   const nav = useNavigate();
   const { slug } = useParams<{ slug: string }>();
   const page = pages[slug || ""] || { title: "Page Not Found", description: "This page doesn't exist yet." };

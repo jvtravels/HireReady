@@ -2,16 +2,14 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { track } from "@vercel/analytics";
 import { capture } from "./analytics";
-import { font } from "./tokens";
-import type { ColorTokens } from "./tokens";
-import { useTheme } from "./ThemeContext";
+import { c, font } from "./tokens";
 import { useAuth } from "./AuthContext";
 import { unlockAudio, prefetchTTS } from "./tts";
 
 /* ─── Adaptive difficulty helper ─── */
 function getSuggestedDifficulty(): { id: string; reason: string } {
   try {
-    const raw = localStorage.getItem("hirloop_sessions");
+    const raw = localStorage.getItem("hirestepx_sessions");
     if (!raw) return { id: "standard", reason: "Default for first session" };
     const sessions = JSON.parse(raw);
     if (!sessions.length) return { id: "standard", reason: "Default for first session" };
@@ -24,7 +22,7 @@ function getSuggestedDifficulty(): { id: string; reason: string } {
 }
 
 /* ─── Interview Types ─── */
-function getInterviewTypes(c: ColorTokens) { return [
+const interviewTypes = [
   {
     id: "behavioral",
     label: "Behavioral",
@@ -192,7 +190,7 @@ function getInterviewTypes(c: ColorTokens) { return [
       "How would you handle a group of consistently disruptive students?",
     ],
   },
-]; }
+];
 
 /* ─── Focus Areas ─── */
 const focusAreas = [
@@ -205,15 +203,14 @@ const focusAreas = [
 ];
 
 /* ─── Difficulty Levels ─── */
-function getDifficulties(c: ColorTokens) { return [
+const difficulties = [
   { id: "warmup", label: "Warm-up", description: "Friendly pace, generous prompts", color: c.sage },
   { id: "standard", label: "Standard", description: "Typical interview pressure", color: c.gilt },
   { id: "intense", label: "Intense", description: "Tough follow-ups, time pressure", color: c.ember },
-]; }
+];
 
 /* ─── Waveform for mic test ─── */
 function MicTestWaveform({ stream }: { stream: MediaStream | null }) {
-  const { c } = useTheme();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animRef = useRef<number>(0);
 
@@ -272,7 +269,7 @@ function MicTestWaveform({ stream }: { stream: MediaStream | null }) {
 // Check for a saved interview draft (less than 2 hours old)
 function loadDraft(userId?: string): { type: string; difficulty: string; focus: string; elapsed: number; savedAt: number } | null {
   try {
-    const key = `hirloop_interview_draft_${userId || "anon"}`;
+    const key = `hirestepx_interview_draft_${userId || "anon"}`;
     const raw = localStorage.getItem(key);
     if (!raw) return null;
     const draft = JSON.parse(raw);
@@ -290,9 +287,6 @@ function loadDraft(userId?: string): { type: string; difficulty: string; focus: 
 }
 
 export default function SessionSetup() {
-  const { c } = useTheme();
-  const interviewTypes = getInterviewTypes(c);
-  const difficulties = getDifficulties(c);
   const navigate = useNavigate();
   const { user } = useAuth();
   const [searchParams] = useSearchParams();
@@ -442,7 +436,7 @@ export default function SessionSetup() {
             fontFamily: font.ui, fontSize: 12, fontWeight: 600,
           }}>Resume</button>
           <button onClick={() => {
-            localStorage.removeItem(`hirloop_interview_draft_${user?.id || "anon"}`);
+            localStorage.removeItem(`hirestepx_interview_draft_${user?.id || "anon"}`);
             setShowDraftBanner(false);
           }} style={{
             padding: "6px 16px", borderRadius: 10, cursor: "pointer",

@@ -1,7 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "./AuthContext";
-import { useTheme } from "./ThemeContext";
 import { getUserSessions, getCalendarEvents } from "./supabase";
 import { type InterviewEvent, loadEvents } from "./dashboardHelpers";
 import {
@@ -81,7 +80,6 @@ export function useDashboard() {
 export function DashboardProvider({ children }: { children: ReactNode }) {
   const nav = useNavigate();
   const { logout: authLogout, user, updateUser: authUpdateUser } = useAuth();
-  const { c: themeColors } = useTheme();
   const [persisted, setPersisted] = useState<PersistedState>(() => {
     const local = loadState();
     // Merge with auth user profile (Supabase data takes precedence over empty localStorage)
@@ -133,8 +131,8 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!user?.id) { setDataLoading(false); return; }
 
-    const sessionsCacheKey = `hirloop_cache_sessions_${user.id}`;
-    const eventsCacheKey = `hirloop_cache_events_${user.id}`;
+    const sessionsCacheKey = `hirestepx_cache_sessions_${user.id}`;
+    const eventsCacheKey = `hirestepx_cache_events_${user.id}`;
 
     let cancelled = false;
 
@@ -202,7 +200,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
           ai_feedback: s.ai_feedback, skill_scores: s.skill_scores,
         }));
         setSupabaseSessions(mapped);
-        try { localStorage.setItem(`hirloop_cache_sessions_${user.id}`, JSON.stringify(mapped)); } catch {}
+        try { localStorage.setItem(`hirestepx_cache_sessions_${user.id}`, JSON.stringify(mapped)); } catch {}
       }).catch(() => {});
     };
     document.addEventListener("visibilitychange", handleVisibility);
@@ -211,8 +209,8 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
 
   // Session data
   const { recentSessions, scoreTrend, skills, overallStats, hasData } = useMemo(
-    () => getSessionData(user?.targetRole || persisted.targetRole, supabaseSessions, themeColors),
-    [user?.targetRole, persisted.targetRole, supabaseSessions, themeColors],
+    () => getSessionData(user?.targetRole || persisted.targetRole, supabaseSessions),
+    [user?.targetRole, persisted.targetRole, supabaseSessions],
   );
 
   const weekActivity = useMemo(() => computeWeekActivity(recentSessions), [recentSessions]);

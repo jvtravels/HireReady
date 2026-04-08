@@ -1,5 +1,4 @@
-import type { ColorTokens } from "./tokens";
-import { darkColors } from "./tokens";
+import { c } from "./tokens";
 import { type InterviewEvent, loadEvents, daysUntilEvent, formatEventTime } from "./dashboardHelpers";
 import { authHeaders, supabaseConfigured } from "./supabase";
 import type { UserContext, DashboardSession, SkillData, TrendPoint, PersistedState } from "./dashboardTypes";
@@ -25,8 +24,8 @@ export type { UserContext, DashboardSession, SkillData, TrendPoint, PersistedSta
 /* ─── Constants ─── */
 export const FREE_SESSION_LIMIT = 3;
 export const STARTER_WEEKLY_LIMIT = 10;
-export const STORAGE_KEY = "hirloop_dashboard";
-export const RESULTS_KEY = "hirloop_sessions";
+export const STORAGE_KEY = "hirestepx_dashboard";
+export const RESULTS_KEY = "hirestepx_sessions";
 
 /* ─── RealSession (from localStorage / Supabase) ─── */
 export interface RealSession {
@@ -49,7 +48,7 @@ export function loadState(): PersistedState {
     if (raw) return JSON.parse(raw);
   } catch {}
   try {
-    const authRaw = localStorage.getItem("hirloop_auth");
+    const authRaw = localStorage.getItem("hirestepx_auth");
     if (authRaw) {
       const authUser = JSON.parse(authRaw);
       return {
@@ -147,7 +146,7 @@ function realSessionsToDashboard(realSessions: RealSession[], targetRole: string
   });
 }
 
-export function getSessionData(targetRole: string, supabaseSessions: RealSession[] = [], c: ColorTokens = darkColors) {
+export function getSessionData(targetRole: string, supabaseSessions: RealSession[] = []) {
   // When Supabase is configured, use ONLY Supabase sessions (localStorage is not user-scoped
   // and would leak sessions between accounts on the same browser).
   // Only use localStorage when Supabase is not configured (demo/offline mode).
@@ -430,7 +429,7 @@ export function getDailyChallenge(sessions: DashboardSession[], sk: SkillData[])
     s.type.toLowerCase().includes(challenge.type.toLowerCase()) || challenge.label === "Full Mock"
   ));
   // Also check localStorage for explicit challenge completion
-  const explicitlyCompleted = (() => { try { return localStorage.getItem(`hirloop_challenge_${today}`) === challenge.label; } catch { return false; } })();
+  const explicitlyCompleted = (() => { try { return localStorage.getItem(`hirestepx_challenge_${today}`) === challenge.label; } catch { return false; } })();
   return { ...challenge, id: `challenge-${today}`, completed: completedToday || explicitlyCompleted };
 }
 

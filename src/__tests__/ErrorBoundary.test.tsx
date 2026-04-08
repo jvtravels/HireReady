@@ -1,7 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import ErrorBoundary from "../ErrorBoundary";
-import { ThemeProvider } from "../ThemeContext";
 
 function ThrowingComponent({ shouldThrow }: { shouldThrow: boolean }) {
   if (shouldThrow) throw new Error("Test error message");
@@ -11,11 +10,9 @@ function ThrowingComponent({ shouldThrow }: { shouldThrow: boolean }) {
 describe("ErrorBoundary", () => {
   it("renders children when no error", () => {
     render(
-      <ThemeProvider>
-        <ErrorBoundary>
-          <ThrowingComponent shouldThrow={false} />
-        </ErrorBoundary>
-      </ThemeProvider>,
+      <ErrorBoundary>
+        <ThrowingComponent shouldThrow={false} />
+      </ErrorBoundary>,
     );
     expect(screen.getByText("Normal content")).toBeInTheDocument();
   });
@@ -24,11 +21,9 @@ describe("ErrorBoundary", () => {
     // Suppress React error boundary console.error
     const spy = vi.spyOn(console, "error").mockImplementation(() => {});
     render(
-      <ThemeProvider>
-        <ErrorBoundary>
-          <ThrowingComponent shouldThrow={true} />
-        </ErrorBoundary>
-      </ThemeProvider>,
+      <ErrorBoundary>
+        <ThrowingComponent shouldThrow={true} />
+      </ErrorBoundary>,
     );
     expect(screen.getByText("Something went wrong")).toBeInTheDocument();
     expect(screen.getByText("Test error message")).toBeInTheDocument();
@@ -43,11 +38,9 @@ describe("ErrorBoundary", () => {
     // We can't easily test recovery since the child will throw again,
     // but we can verify the button exists and is clickable
     render(
-      <ThemeProvider>
-        <ErrorBoundary>
-          <ThrowingComponent shouldThrow={true} />
-        </ErrorBoundary>
-      </ThemeProvider>,
+      <ErrorBoundary>
+        <ThrowingComponent shouldThrow={true} />
+      </ErrorBoundary>,
     );
     const tryAgainBtn = screen.getByText("Try Again");
     expect(tryAgainBtn).toBeInTheDocument();
@@ -58,11 +51,9 @@ describe("ErrorBoundary", () => {
   it("renders custom fallback when provided", () => {
     const spy = vi.spyOn(console, "error").mockImplementation(() => {});
     render(
-      <ThemeProvider>
-        <ErrorBoundary fallback={<div>Custom fallback</div>}>
-          <ThrowingComponent shouldThrow={true} />
-        </ErrorBoundary>
-      </ThemeProvider>,
+      <ErrorBoundary fallback={<div>Custom fallback</div>}>
+        <ThrowingComponent shouldThrow={true} />
+      </ErrorBoundary>,
     );
     expect(screen.getByText("Custom fallback")).toBeInTheDocument();
     spy.mockRestore();

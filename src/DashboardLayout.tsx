@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { Link, Outlet, useNavigate, useLocation } from "react-router-dom";
-import { font } from "./tokens";
-import { useTheme } from "./ThemeContext";
+import { c, font } from "./tokens";
 import { useAuth } from "./AuthContext";
 import { useDashboard } from "./DashboardContext";
 import { UpgradeModal } from "./dashboardComponents";
@@ -22,7 +21,6 @@ const navItems = [
 ];
 
 export default function DashboardLayout() {
-  const { c, isDark, toggleTheme } = useTheme();
   const nav = useNavigate();
   const location = useLocation();
   const { logout: authLogout, user, updateUser: authUpdateUser } = useAuth();
@@ -224,22 +222,6 @@ export default function DashboardLayout() {
               onMouseLeave={(e) => e.currentTarget.style.opacity = "1"}
             >Upgrade to Pro</button>
           )}
-        </div>
-
-        {/* Theme toggle */}
-        <div style={{ borderTop: `1px solid ${c.border}`, padding: "10px 12px 0", flexShrink: 0 }}>
-          <button onClick={toggleTheme} aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
-            style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", borderRadius: 8, border: "none", cursor: "pointer", background: "transparent", color: c.chalk, fontFamily: font.ui, fontSize: 12, fontWeight: 500, transition: "background 0.2s" }}
-            onMouseEnter={e => e.currentTarget.style.background = c.onyx}
-            onMouseLeave={e => e.currentTarget.style.background = "transparent"}
-          >
-            {isDark ? (
-              <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
-            ) : (
-              <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-            )}
-            {isDark ? "Light mode" : "Dark mode"}
-          </button>
         </div>
 
         {/* User info */}

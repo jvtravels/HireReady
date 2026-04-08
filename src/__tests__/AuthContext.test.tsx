@@ -2,7 +2,6 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, act } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { AuthProvider, useAuth, RequireAuth } from "../AuthContext";
-import { ThemeProvider } from "../ThemeContext";
 
 // Mock supabase
 vi.mock("../supabase", () => ({
@@ -38,30 +37,26 @@ describe("AuthContext", () => {
 
   it("provides initial unauthenticated state when supabase not configured", () => {
     render(
-      <ThemeProvider>
-        <MemoryRouter>
-          <AuthProvider><TestConsumer /></AuthProvider>
-        </MemoryRouter>
-      </ThemeProvider>,
+      <MemoryRouter>
+        <AuthProvider><TestConsumer /></AuthProvider>
+      </MemoryRouter>,
     );
     expect(screen.getByTestId("loading").textContent).toBe("false");
   });
 
   it("throws when useAuth used outside provider", () => {
     const spy = vi.spyOn(console, "error").mockImplementation(() => {});
-    expect(() => render(<ThemeProvider><TestConsumer /></ThemeProvider>)).toThrow("useAuth must be used within AuthProvider");
+    expect(() => render(<TestConsumer />)).toThrow("useAuth must be used within AuthProvider");
     spy.mockRestore();
   });
 
   it("RequireAuth redirects to login when not authenticated", () => {
     render(
-      <ThemeProvider>
-        <MemoryRouter initialEntries={["/dashboard"]}>
-          <AuthProvider>
-            <RequireAuth><div data-testid="protected">Protected</div></RequireAuth>
-          </AuthProvider>
-        </MemoryRouter>
-      </ThemeProvider>,
+      <MemoryRouter initialEntries={["/dashboard"]}>
+        <AuthProvider>
+          <RequireAuth><div data-testid="protected">Protected</div></RequireAuth>
+        </AuthProvider>
+      </MemoryRouter>,
     );
     // Should not render protected content
     expect(screen.queryByTestId("protected")).not.toBeInTheDocument();
@@ -76,11 +71,9 @@ describe("AuthContext", () => {
     }
 
     render(
-      <ThemeProvider>
-        <MemoryRouter>
-          <AuthProvider><LoginConsumer /></AuthProvider>
-        </MemoryRouter>
-      </ThemeProvider>,
+      <MemoryRouter>
+        <AuthProvider><LoginConsumer /></AuthProvider>
+      </MemoryRouter>,
     );
 
     expect(screen.getByTestId("loggedIn").textContent).toBe("false");
@@ -100,11 +93,9 @@ describe("AuthContext", () => {
     }
 
     render(
-      <ThemeProvider>
-        <MemoryRouter>
-          <AuthProvider><SignupConsumer /></AuthProvider>
-        </MemoryRouter>
-      </ThemeProvider>,
+      <MemoryRouter>
+        <AuthProvider><SignupConsumer /></AuthProvider>
+      </MemoryRouter>,
     );
 
     await act(async () => {
@@ -124,11 +115,9 @@ describe("AuthContext", () => {
     }
 
     render(
-      <ThemeProvider>
-        <MemoryRouter>
-          <AuthProvider><Consumer /></AuthProvider>
-        </MemoryRouter>
-      </ThemeProvider>,
+      <MemoryRouter>
+        <AuthProvider><Consumer /></AuthProvider>
+      </MemoryRouter>,
     );
 
     await act(async () => { await loginFn("test@example.com", "pass"); });
@@ -153,11 +142,9 @@ describe("AuthContext", () => {
     }
 
     render(
-      <ThemeProvider>
-        <MemoryRouter>
-          <AuthProvider><Consumer /></AuthProvider>
-        </MemoryRouter>
-      </ThemeProvider>,
+      <MemoryRouter>
+        <AuthProvider><Consumer /></AuthProvider>
+      </MemoryRouter>,
     );
 
     await act(async () => { await loginFn("test@example.com", "pass"); });
