@@ -355,11 +355,11 @@ export default function Onboarding() {
       const data = parseResumeData(text);
       setResumeText(text);
       setResumeParsed(data);
-      // Build fallback profile
+      // Build minimal fallback profile — don't use client-parsed skills (often garbage from PDFs)
       const fallback: ResumeProfile = {
-        headline: data.name || "Your Profile",
-        summary: "", yearsExperience: null, seniorityLevel: "",
-        topSkills: data.skills.slice(0, 8),
+        headline: data.name || "Analyzing...",
+        summary: data.summary || "", yearsExperience: null, seniorityLevel: "",
+        topSkills: [],
         keyAchievements: [], industries: [],
         interviewStrengths: [], interviewGaps: [],
         careerTrajectory: "",
@@ -374,6 +374,7 @@ export default function Onboarding() {
       const currentAbort = analysisAbortRef.current;
       setAiPhase("analyzing");
       let finalProfile: ResumeProfile = fallback;
+      let aiSuccess = false;
       try {
         const result = await Promise.race([
           analyzeResumeWithAI(text, targetRole || autoRole),
@@ -385,9 +386,27 @@ export default function Onboarding() {
         if (result && typeof result === "object" && "profile" in result) {
           finalProfile = result.profile;
           setAiProfile(finalProfile);
+          aiSuccess = true;
+          // AI may return a better name — prefer it
+          if (finalProfile.headline && finalProfile.headline !== "Your Profile" && !userName) {
+            // Extract name from headline if it looks like a name (not a title)
+            const headlineName = finalProfile.headline.split(/[—–|,]/)[0].trim();
+            if (headlineName.length > 2 && headlineName.length < 40) {
+              setUserName(headlineName);
+            }
+          }
         }
       } catch (analysisErr: any) {
         if (analysisErr?.message === "aborted") return; // Upload was superseded
+      }
+      // If AI failed, use client-parsed data as fallback but only the clean fields
+      if (!aiSuccess && data.skills.length > 0) {
+        // Filter out skills that look like sentence fragments
+        const cleanSkills = data.skills.filter(s => s.length < 30 && !s.includes(".") && s.split(/\s+/).length <= 4);
+        if (cleanSkills.length > 0) {
+          finalProfile = { ...fallback, topSkills: cleanSkills.slice(0, 8), headline: data.name || "Your Profile" };
+          setAiProfile(finalProfile);
+        }
       }
       setResumeParsing(false);
       setAiPhase("done");
@@ -780,7 +799,7 @@ export default function Onboarding() {
                   <div className="ob-card ob-s1-header" style={{ borderRadius: 14, padding: "20px 24px", border: `1px solid rgba(245,242,237,0.06)`, display: "flex", alignItems: "flex-start", gap: 20 }}>
                     <div className="ob-s1-header-text" style={{ flex: 1, minWidth: 0 }}>
                       <h3 style={{ fontFamily: font.display, fontSize: 22, color: c.ivory, letterSpacing: "-0.025em", lineHeight: 1.2, marginBottom: 8 }}>
-                        {aiProfile.headline || resumeParsed.name}
+                        {aiProfile.headline && aiProfile.headline !== "Analyzing..." ? aiProfile.headline : userName || resumeParsed.name || "Your Profile"}
                       </h3>
                       <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
                         {aiProfile.seniorityLevel && <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, color: c.gilt, background: "rgba(212,179,127,0.08)", border: "1px solid rgba(212,179,127,0.18)", borderRadius: 4, padding: "2px 10px" }}>{aiProfile.seniorityLevel}</span>}

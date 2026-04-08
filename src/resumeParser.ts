@@ -209,12 +209,17 @@ function extractContact(text: string): Pick<ParsedResume, "name" | "email" | "ph
   const locationMatch = text.match(/([A-Z][a-z]+(?:\s[A-Z][a-z]+)*,\s*[A-Z]{2})\b/) ||
     text.match(/([A-Z][a-z]+(?:\s[A-Z][a-z]+)*,\s*[A-Z][a-z]+(?:\s[A-Z][a-z]+)*)/);
 
-  // Name: first non-empty line that isn't an email/phone/url
+  // Name: first non-empty line that isn't an email/phone/url/section header
+  const sectionHeaderPattern = /^(contact|details|personal\s*info|personal\s*details|resume|curriculum\s*vitae|cv|bio|biodata|info|about|address|references|summary|profile|objective|about\s*me|professional\s*summary|career\s*summary|executive\s*summary|experience|work\s*history|employment|professional\s*experience|work\s*experience|career\s*history|education|academic|qualifications|degrees?|skills|technical\s*skills|core\s*competencies|competencies|technologies|tools|proficiencies|expertise|certifications?|licenses?|credentials|accreditations?|professional\s*development|projects?|achievements?|awards?|publications?|interests?|hobbies?|languages?|declaration)$/i;
   let name = "";
-  for (const line of lines.slice(0, 5)) {
+  for (const line of lines.slice(0, 8)) {
     if (line.match(/[@()\d]{4,}/) || line.match(/linkedin|http|www\./i)) continue;
     if (line.match(SECTION_PATTERNS.summary) || line.match(SECTION_PATTERNS.experience)) continue;
-    if (line.length > 2 && line.length < 60) { name = line; break; }
+    const cleaned = line.replace(/[-—:=|_*#.]+/g, "").trim();
+    if (sectionHeaderPattern.test(cleaned)) continue;
+    // Skip all-caps single/two words under 20 chars (likely section headers like "CONTACT", "SKILLS")
+    if (/^[A-Z\s]{2,}$/.test(cleaned) && cleaned.split(/\s+/).length <= 2 && cleaned.length < 20) continue;
+    if (cleaned.length > 2 && cleaned.length < 60) { name = cleaned; break; }
   }
 
   return {
