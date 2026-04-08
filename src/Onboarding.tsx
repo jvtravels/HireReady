@@ -149,7 +149,8 @@ export default function Onboarding() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [aiProfile, setAiProfile] = useState<ResumeProfile | null>(null);
   const [aiPhase, setAiPhase] = useState<"idle" | "analyzing" | "done">("idle");
-  const undoRef = useRef<{ fileName: string; resumeText: string; resumeParsed: ParsedResume | null; aiProfile: ResumeProfile | null; aiPhase: "idle" | "analyzing" | "done"; targetRole: string; targetCompany: string } | null>(null);
+  const [userName, setUserName] = useState("");
+  const undoRef = useRef<{ fileName: string; resumeText: string; resumeParsed: ParsedResume | null; aiProfile: ResumeProfile | null; aiPhase: "idle" | "analyzing" | "done"; targetRole: string; targetCompany: string; userName: string } | null>(null);
   const analysisAbortRef = useRef<AbortController | null>(null);
   const [showUndo, setShowUndo] = useState(false);
   const undoTimerRef = useRef<number>(0);
@@ -223,6 +224,7 @@ export default function Onboarding() {
       setAiProfile(fallback);
       const autoRole = data.experience?.[0]?.title || "";
       if (autoRole && !targetRole) { setTargetRole(autoRole); setRoleAutoFilled(true); }
+      if (data.name && !userName) { setUserName(data.name); }
       // AI analysis in background — abort previous if any
       analysisAbortRef.current?.abort();
       analysisAbortRef.current = new AbortController();
@@ -344,6 +346,7 @@ export default function Onboarding() {
       if (e.key === "Enter") {
         e.preventDefault();
         if (step < TOTAL_STEPS) {
+          if (step === 1 && (!resumeParsed || aiPhase !== "done" || !userName.trim() || (aiProfile?.resumeScore != null && aiProfile.resumeScore < 50))) return;
           if (step === 2 && (!targetRole.trim() || interviewFocus.length === 0)) return;
           goNext();
         } else {
@@ -368,6 +371,7 @@ export default function Onboarding() {
     const saveData: Partial<Parameters<typeof updateUser>[0]> = {
       hasCompletedOnboarding: true,
     };
+    if (userName.trim()) saveData.name = userName.trim();
     if (targetRole.trim()) saveData.targetRole = targetRole.trim();
     if (targetCompany.trim()) saveData.targetCompany = targetCompany.trim();
     if (interviewFocus.length > 0) saveData.interviewTypes = interviewFocus;
@@ -391,8 +395,11 @@ export default function Onboarding() {
   };
 
   const isStep1Busy = step === 1 && (resumeParsing || aiPhase === "analyzing");
+  const isStep1NoResume = step === 1 && !resumeParsed && !resumeParsing && aiPhase !== "analyzing";
+  const isStep1LowScore = step === 1 && aiPhase === "done" && aiProfile?.resumeScore != null && aiProfile.resumeScore < 50;
+  const isStep1NameEmpty = step === 1 && aiPhase === "done" && !userName.trim();
   const isStep2Disabled = step === 2 && (!targetRole.trim() || interviewFocus.length === 0);
-  const isContinueDisabled = isStep1Busy || isStep2Disabled;
+  const isContinueDisabled = isStep1Busy || isStep1NoResume || isStep1LowScore || isStep1NameEmpty || isStep2Disabled;
 
   return (
     <div style={{ minHeight: "100vh", background: `radial-gradient(ellipse 80% 50% at 50% 0%, rgba(212,179,127,0.03) 0%, ${c.obsidian} 70%)`, display: "flex", flexDirection: "column", position: "relative" }}>
@@ -491,12 +498,12 @@ export default function Onboarding() {
 
                   {/* Heading */}
                   <h2 style={{ fontFamily: font.display, fontSize: 32, fontWeight: 400, color: c.ivory, letterSpacing: "-0.025em", lineHeight: 1.2, marginBottom: 10 }}>
-                    Upload your resume <span style={{ fontFamily: font.ui, fontSize: 16, fontWeight: 400, color: c.stone }}>(optional)</span>
+                    Upload your resume <span style={{ color: c.ember }}>*</span>
                   </h2>
 
                   {/* Description */}
                   <p style={{ fontFamily: font.ui, fontSize: 15, color: c.stone, lineHeight: 1.7, marginBottom: 28 }}>
-                    Upload to get personalized questions from your experience, or skip to use general questions.
+                    Upload your resume to get personalized interview questions tailored to your experience.
                   </p>
 
                   {/* Drop zone — full width */}
@@ -563,7 +570,7 @@ export default function Onboarding() {
                       <button onClick={() => {
                         if (!undoRef.current) return;
                         const s = undoRef.current;
-                        setFileName(s.fileName); setResumeText(s.resumeText); setResumeParsed(s.resumeParsed); setAiProfile(s.aiProfile); setAiPhase(s.aiPhase); setTargetRole(s.targetRole); setTargetCompany(s.targetCompany);
+                        setFileName(s.fileName); setResumeText(s.resumeText); setResumeParsed(s.resumeParsed); setAiProfile(s.aiProfile); setAiPhase(s.aiPhase); setTargetRole(s.targetRole); setTargetCompany(s.targetCompany); setUserName(s.userName);
                         setShowUndo(false); clearTimeout(undoTimerRef.current); undoRef.current = null;
                       }}
                         style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: c.gilt, background: "none", border: "none", cursor: "pointer", padding: "2px 8px" }}>
@@ -580,10 +587,10 @@ export default function Onboarding() {
                   {/* Same headings as empty state */}
                   <p style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 700, color: c.gilt, textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 12 }}>Step 1 — Your Experience</p>
                   <h2 style={{ fontFamily: font.display, fontSize: 32, fontWeight: 400, color: c.ivory, letterSpacing: "-0.025em", lineHeight: 1.2, marginBottom: 10 }}>
-                    Upload your resume <span style={{ fontFamily: font.ui, fontSize: 16, fontWeight: 400, color: c.stone }}>(optional)</span>
+                    Upload your resume <span style={{ color: c.ember }}>*</span>
                   </h2>
                   <p style={{ fontFamily: font.ui, fontSize: 15, color: c.stone, lineHeight: 1.7, marginBottom: 28 }}>
-                    Upload to get personalized questions from your experience, or skip to use general questions.
+                    Upload your resume to get personalized interview questions tailored to your experience.
                   </p>
 
                   {/* Loading card — replaces the drop zone */}
@@ -617,10 +624,10 @@ export default function Onboarding() {
                   <div style={{ marginBottom: 8 }}>
                     <p style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 700, color: c.gilt, textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 12 }}>Step 1 — Your Experience</p>
                     <h2 style={{ fontFamily: font.display, fontSize: 32, fontWeight: 400, color: c.ivory, letterSpacing: "-0.025em", lineHeight: 1.2, marginBottom: 10 }}>
-                      Upload your resume <span style={{ fontFamily: font.ui, fontSize: 16, fontWeight: 400, color: c.stone }}>(optional)</span>
+                      Upload your resume <span style={{ color: c.ember }}>*</span>
                     </h2>
                     <p style={{ fontFamily: font.ui, fontSize: 15, color: c.stone, lineHeight: 1.7 }}>
-                      Upload to get personalized questions from your experience, or skip to use general questions.
+                      Upload your resume to get personalized interview questions tailored to your experience.
                     </p>
                   </div>
 
@@ -653,8 +660,8 @@ export default function Onboarding() {
                         Re-analyze
                       </button>
                       <button onClick={() => {
-                        undoRef.current = { fileName, resumeText, resumeParsed, aiProfile, aiPhase, targetRole, targetCompany };
-                        setFileName(""); setResumeText(""); setResumeParsed(null); setResumeError(""); setAiProfile(null); setAiPhase("idle"); setTargetRole(""); setTargetCompany("");
+                        undoRef.current = { fileName, resumeText, resumeParsed, aiProfile, aiPhase, targetRole, targetCompany, userName };
+                        setFileName(""); setResumeText(""); setResumeParsed(null); setResumeError(""); setAiProfile(null); setAiPhase("idle"); setTargetRole(""); setTargetCompany(""); setUserName("");
                         setShowUndo(true); clearTimeout(undoTimerRef.current);
                         undoTimerRef.current = window.setTimeout(() => { setShowUndo(false); undoRef.current = null; }, 8000);
                       }}
@@ -666,6 +673,96 @@ export default function Onboarding() {
                       </button>
                     </div>
                   </div>
+
+                  {/* Name field + Resume Score */}
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                    {/* Editable Name */}
+                    <div className="ob-card fade-up-1" style={{ borderRadius: 14, padding: "16px 20px" }}>
+                      <label htmlFor="ob-name" style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: c.ivory, display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
+                        <svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                        Your Name <span style={{ color: c.ember }}>*</span>
+                      </label>
+                      <input
+                        id="ob-name" type="text" value={userName}
+                        onChange={(e) => setUserName(e.target.value)}
+                        placeholder="Enter your name (used by AI interviewer)"
+                        style={{
+                          width: "100%", padding: "10px 14px", borderRadius: 8,
+                          background: c.graphite, border: `1.5px solid ${!userName.trim() ? c.ember : c.border}`,
+                          color: c.ivory, fontFamily: font.ui, fontSize: 14,
+                          outline: "none", transition: "border-color 0.2s", boxSizing: "border-box",
+                        }}
+                        onFocus={(e) => { e.currentTarget.style.borderColor = c.gilt; }}
+                        onBlur={(e) => { e.currentTarget.style.borderColor = !userName.trim() ? c.ember : c.border; }}
+                      />
+                      {!userName.trim() && <p style={{ fontFamily: font.ui, fontSize: 11, color: c.ember, marginTop: 4 }}>Name is required for the interview</p>}
+                      <p style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, marginTop: 4 }}>The AI interviewer will address you by this name</p>
+                    </div>
+
+                    {/* Resume Score */}
+                    <div className="ob-card fade-up-1" style={{ borderRadius: 14, padding: "16px 20px", border: `1px solid ${aiProfile.resumeScore != null && aiProfile.resumeScore < 50 ? "rgba(220,80,80,0.2)" : aiProfile.resumeScore != null && aiProfile.resumeScore >= 50 ? "rgba(122,158,126,0.2)" : "rgba(245,242,237,0.06)"}` }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 12 }}>
+                        <svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                        <h4 style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: c.ivory, margin: 0 }}>Resume Score</h4>
+                      </div>
+                      {aiProfile.resumeScore != null ? (
+                        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+                          {/* Circular score gauge */}
+                          <div style={{ position: "relative", width: 64, height: 64, flexShrink: 0 }}>
+                            <svg width="64" height="64" viewBox="0 0 64 64">
+                              <circle cx="32" cy="32" r="28" fill="none" stroke="rgba(245,242,237,0.06)" strokeWidth="5" />
+                              <circle cx="32" cy="32" r="28" fill="none"
+                                stroke={aiProfile.resumeScore >= 50 ? c.sage : c.ember}
+                                strokeWidth="5" strokeLinecap="round"
+                                strokeDasharray={`${(aiProfile.resumeScore / 100) * 175.9} 175.9`}
+                                transform="rotate(-90 32 32)"
+                                style={{ transition: "stroke-dasharray 0.6s ease" }}
+                              />
+                            </svg>
+                            <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                              <span style={{ fontFamily: font.mono, fontSize: 18, fontWeight: 700, color: aiProfile.resumeScore >= 50 ? c.sage : c.ember }}>{aiProfile.resumeScore}</span>
+                            </div>
+                          </div>
+                          <div style={{ flex: 1 }}>
+                            <p style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: aiProfile.resumeScore >= 50 ? c.sage : c.ember, marginBottom: 4 }}>
+                              {aiProfile.resumeScore >= 80 ? "Excellent" : aiProfile.resumeScore >= 65 ? "Good" : aiProfile.resumeScore >= 50 ? "Acceptable" : "Needs Improvement"}
+                            </p>
+                            <p style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, lineHeight: 1.4 }}>
+                              {aiProfile.resumeScore >= 50
+                                ? "Your resume meets the minimum standard. You can proceed to interview practice."
+                                : "Your resume score is below 50. Please improve your resume before proceeding to interview practice."}
+                            </p>
+                          </div>
+                        </div>
+                      ) : (
+                        <p style={{ fontFamily: font.ui, fontSize: 12, color: c.stone }}>Score not available — try re-analyzing</p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Resume Improvement Suggestions (shown when score < 50 OR as tips when >= 50) */}
+                  {aiProfile.improvements && aiProfile.improvements.length > 0 && aiProfile.resumeScore != null && aiProfile.resumeScore < 50 && (
+                    <div className="ob-card fade-up-2" style={{ borderRadius: 14, padding: "20px 24px", border: "1px solid rgba(220,80,80,0.15)", background: "rgba(220,80,80,0.03)" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
+                        <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={c.ember} strokeWidth="1.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                        <h4 style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: c.ember, margin: 0 }}>How to improve your resume</h4>
+                        <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, marginLeft: "auto" }}>Score must be 50+ to continue</span>
+                      </div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                        {aiProfile.improvements.map((tip, i) => (
+                          <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "10px 14px", borderRadius: 10, background: "rgba(245,242,237,0.02)", border: "1px solid rgba(245,242,237,0.04)" }}>
+                            <div style={{ width: 20, height: 20, borderRadius: 6, background: "rgba(212,179,127,0.08)", border: "1px solid rgba(212,179,127,0.18)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 1 }}>
+                              <span style={{ fontFamily: font.mono, fontSize: 10, fontWeight: 600, color: c.gilt }}>{i + 1}</span>
+                            </div>
+                            <span style={{ fontFamily: font.ui, fontSize: 12, color: c.chalk, lineHeight: 1.5 }}>{tip}</span>
+                          </div>
+                        ))}
+                      </div>
+                      <p style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, marginTop: 14, textAlign: "center" }}>
+                        Update your resume and upload again to re-check your score
+                      </p>
+                    </div>
+                  )}
 
                   {/* 3-column grid: Skills | Achievements | Strengths & Gaps */}
                   <div className="ob-s1-profile-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
@@ -1066,15 +1163,6 @@ export default function Onboarding() {
               )}
             </div>
 
-            {step === 1 && !resumeParsed && !resumeParsing && (
-              <button onClick={goNext}
-                style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.stone, background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 5, transition: "color 0.2s" }}
-                onMouseEnter={(e) => e.currentTarget.style.color = c.ivory}
-                onMouseLeave={(e) => e.currentTarget.style.color = c.stone}>
-                Skip, I'll add later
-                <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
-              </button>
-            )}
 
           </div>
         </div>

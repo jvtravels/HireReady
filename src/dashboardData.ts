@@ -559,6 +559,8 @@ export interface ResumeProfile {
   interviewStrengths: string[];
   interviewGaps: string[];
   careerTrajectory: string;
+  resumeScore?: number;
+  improvements?: string[];
 }
 
 export async function analyzeResumeWithAI(resumeText: string, targetRole?: string): Promise<{ profile: ResumeProfile; truncated?: boolean } | null> {

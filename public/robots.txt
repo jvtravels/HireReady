@@ -6,4 +6,4 @@ Disallow: /interview
 Disallow: /session/
 Disallow: /reset-password
 
-Sitemap: https://hirloop.com/sitemap.xml
+Sitemap: https://hirestepx.com/sitemap.xml
