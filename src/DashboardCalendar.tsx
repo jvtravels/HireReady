@@ -14,6 +14,7 @@ import { DataLoadingSkeleton, ProGate } from "./dashboardComponents";
 export default function CalendarPage() {
   useDocTitle("Calendar");
   const { handleStartSession: onStartSession, dataLoading, isFree, isStarter, setShowUpgradeModal, showToast, syncGoogleCalendar, googleSyncStatus, hasGoogleToken } = useDashboard();
+  const { loginWithGoogle } = useAuth();
 
   const { user } = useAuth();
   const [events, setEvents] = useState<InterviewEvent[]>(loadEvents);
@@ -181,8 +182,12 @@ export default function CalendarPage() {
         </div>
         <div style={{ display: "flex", gap: 8 }}>
           <button
-            onClick={() => {
-              if (!hasGoogleToken) { showToast("Sign in with Google to sync your calendar"); return; }
+            onClick={async () => {
+              if (!hasGoogleToken) {
+                showToast("Redirecting to Google for calendar access...");
+                await loginWithGoogle("/calendar");
+                return;
+              }
               syncGoogleCalendar();
             }}
             disabled={googleSyncStatus === "syncing"}

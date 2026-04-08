@@ -70,7 +70,7 @@ interface AuthContextType {
   loading: boolean;
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   signup: (email: string, name: string, password: string) => Promise<{ success: boolean; error?: string }>;
-  loginWithGoogle: () => Promise<{ success: boolean; error?: string }>;
+  loginWithGoogle: (returnTo?: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   updateUser: (updates: Partial<User>) => Promise<void>;
   resetPassword: (email: string) => Promise<{ success: boolean; error?: string }>;
@@ -300,13 +300,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { success: true };
   }, []);
 
-  const loginWithGoogle = useCallback(async (): Promise<{ success: boolean; error?: string }> => {
+  const loginWithGoogle = useCallback(async (returnTo?: string): Promise<{ success: boolean; error?: string }> => {
     if (!supabaseConfigured) return { success: false, error: "Google login requires Supabase configuration" };
     const client = await getSupabase();
+    const redirectPath = returnTo || "/dashboard";
     const { error } = await client.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/dashboard`,
+        redirectTo: `${window.location.origin}${redirectPath}`,
         scopes: "https://www.googleapis.com/auth/calendar.events.readonly",
         queryParams: { access_type: "offline", prompt: "consent" },
       },
