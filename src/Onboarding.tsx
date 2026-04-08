@@ -446,13 +446,11 @@ export default function Onboarding() {
     saveObForm({ targetRole, targetCompany, interviewFocus, sessionLength });
   }, [targetRole, targetCompany, interviewFocus, sessionLength]);
 
-  // ─── Step 3: Mic/Camera ───
+  // ─── Step 3: Mic ───
   const [micStatus, setMicStatus] = useState<"idle" | "requesting" | "granted" | "denied">("idle");
-  const [camStatus, setCamStatus] = useState<"idle" | "requesting" | "granted" | "denied">("idle");
   const [micLevel, setMicLevel] = useState(0);
   const [starting, setStarting] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
-  const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const animFrameRef = useRef(0);
 
@@ -593,42 +591,11 @@ export default function Onboarding() {
     ? "Click the lock icon in the address bar \u2192 Site settings \u2192 Microphone \u2192 Allow"
     : "Check your browser settings to allow microphone access";
 
-  const camStreamRef = useRef<MediaStream | null>(null);
-  const requestCamera = useCallback(async () => {
-    setCamStatus("requesting");
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-      camStreamRef.current = stream;
-      setCamStatus("granted");
-      if (streamRef.current) { stream.getTracks().forEach(t => streamRef.current!.addTrack(t)); }
-      else { streamRef.current = stream; }
-    } catch (err: any) {
-      setCamStatus("denied");
-      console.warn("Camera access denied:", err?.name, err?.message);
-    }
-  }, []);
-
-  // Attach camera stream to video element when it mounts or step changes
-  useEffect(() => {
-    if (step === 3 && camStatus === "granted" && videoRef.current && camStreamRef.current) {
-      // Check if camera tracks are still active
-      const videoTracks = camStreamRef.current.getVideoTracks();
-      if (videoTracks.length > 0 && videoTracks[0].readyState === "live") {
-        videoRef.current.srcObject = camStreamRef.current;
-      } else {
-        // Stream died (e.g., navigated away and back) — reset status
-        setCamStatus("idle");
-        camStreamRef.current = null;
-      }
-    }
-  }, [camStatus, step]);
-
   // Cleanup streams on unmount
   useEffect(() => {
     return () => {
       cancelAnimationFrame(animFrameRef.current);
       streamRef.current?.getTracks().forEach(t => t.stop());
-      camStreamRef.current?.getTracks().forEach(t => t.stop());
     };
   }, []);
 
@@ -662,8 +629,6 @@ export default function Onboarding() {
     // Allow proceeding even without mic — text input fallback exists in Interview
     cancelAnimationFrame(animFrameRef.current);
     // Don't stop mic stream — Interview component will re-use the permission grant
-    // Only stop camera stream (not needed in interview by default)
-    camStreamRef.current?.getTracks().forEach(t => t.stop());
     // Only include fields that have values — don't overwrite existing data with empty strings
     const saveData: Partial<Parameters<typeof updateUser>[0]> = {
       hasCompletedOnboarding: true,
@@ -745,7 +710,6 @@ export default function Onboarding() {
           .ob-s2-focus-grid { grid-template-columns: 1fr 1fr !important; }
           .ob-s2-bottom-row { grid-template-columns: 1fr !important; }
           .ob-s3-profile-row { flex-direction: column !important; }
-          .ob-s3-perm-row { flex-direction: column !important; gap: 12px !important; }
         }
         @media (max-height: 700px) {
           .ob-content-area { padding-top: 16px !important; padding-bottom: 16px !important; }
@@ -1328,67 +1292,36 @@ We've pre-filled your target role from your resume. Adjust if needed, then choos
                     <span style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: c.ivory }}>Permissions</span>
                   </div>
 
-                  <div className="ob-s3-perm-row" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                    {/* Mic */}
-                    <div className={micStatus !== "granted" ? "ob-mic-pulse" : undefined}
-                      style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, padding: "20px 16px", borderRadius: 12, background: micStatus === "granted" ? "rgba(122,158,126,0.04)" : "rgba(245,242,237,0.02)", border: `1px solid ${micStatus === "granted" ? "rgba(122,158,126,0.12)" : "rgba(212,179,127,0.2)"}`, textAlign: "center" }}>
-                      <div style={{ width: 44, height: 44, borderRadius: 12, background: micStatus === "granted" ? `${c.sage}12` : "rgba(245,242,237,0.03)", border: `1px solid ${micStatus === "granted" ? `${c.sage}25` : "rgba(245,242,237,0.06)"}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                        <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={micStatus === "granted" ? c.sage : c.stone} strokeWidth="1.5" strokeLinecap="round">
-                          <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-                        </svg>
-                      </div>
-                      {micStatus === "granted" ? (
-                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                          <div style={{ width: 50, height: 4, borderRadius: 2, background: "rgba(245,242,237,0.06)", overflow: "hidden" }}>
+                  <div className={micStatus !== "granted" ? "ob-mic-pulse" : undefined}
+                    style={{ display: "flex", alignItems: "center", gap: 16, padding: "20px 24px", borderRadius: 12, background: micStatus === "granted" ? "rgba(122,158,126,0.04)" : "rgba(245,242,237,0.02)", border: `1px solid ${micStatus === "granted" ? "rgba(122,158,126,0.12)" : "rgba(212,179,127,0.2)"}` }}>
+                    <div style={{ width: 44, height: 44, borderRadius: 12, background: micStatus === "granted" ? `${c.sage}12` : "rgba(245,242,237,0.03)", border: `1px solid ${micStatus === "granted" ? `${c.sage}25` : "rgba(245,242,237,0.06)"}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                      <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={micStatus === "granted" ? c.sage : c.stone} strokeWidth="1.5" strokeLinecap="round">
+                        <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                      </svg>
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <p style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: c.ivory, marginBottom: 4 }}>Microphone</p>
+                      <p style={{ fontFamily: font.ui, fontSize: 12, color: micStatus === "granted" ? c.sage : c.stone, lineHeight: 1.4 }}>
+                        {micStatus === "granted" ? "Connected — ready to go" : micStatus === "denied" ? "No worries — you can type your answers instead" : "Recommended for the best interview experience"}
+                      </p>
+                      {micStatus === "granted" && (
+                        <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 6 }}>
+                          <div style={{ width: 80, height: 4, borderRadius: 2, background: "rgba(245,242,237,0.06)", overflow: "hidden" }}>
                             <div style={{ height: "100%", borderRadius: 2, background: c.sage, width: `${Math.max(5, micLevel)}%`, transition: "width 0.1s" }} />
                           </div>
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                          <span style={{ fontFamily: font.ui, fontSize: 10, color: c.sage }}>Live</span>
                         </div>
-                      ) : (
-                        <button onClick={requestMic}
-                          style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: c.gilt, background: "rgba(212,179,127,0.08)", border: `1px solid rgba(212,179,127,0.2)`, borderRadius: 8, padding: "8px 20px", cursor: "pointer", transition: "all 0.2s" }}
-                          onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(212,179,127,0.15)"; }}
-                          onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(212,179,127,0.08)"; }}>
-                          {micStatus === "denied" ? "Retry" : "Allow Microphone"}
-                        </button>
-                      )}
-                      <p style={{ fontFamily: font.ui, fontSize: 11, color: micStatus === "granted" ? c.sage : c.stone, lineHeight: 1.3 }}>
-                        {micStatus === "granted" ? "Connected — ready to go" : micStatus === "denied" ? "No worries — you can type your answers instead" : "Recommended for best experience"}
-                      </p>
-                    </div>
-
-                    {/* Camera — shows video feed inside the card when granted */}
-                    <div style={{ position: "relative", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10, padding: camStatus === "granted" ? 0 : "20px 16px", borderRadius: 12, overflow: "hidden", background: camStatus === "granted" ? "#000" : "rgba(245,242,237,0.02)", border: `1px solid ${camStatus === "granted" ? "rgba(122,158,126,0.12)" : "rgba(245,242,237,0.06)"}`, textAlign: "center", minHeight: 160 }}>
-                      {camStatus === "granted" ? (
-                        <>
-                          <video ref={videoRef} autoPlay muted playsInline style={{ width: "100%", height: "100%", objectFit: "cover", transform: "scaleX(-1)", position: "absolute", inset: 0 }} />
-                          <div style={{ position: "absolute", bottom: 8, left: 0, right: 0, display: "flex", justifyContent: "center" }}>
-                            <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, color: c.sage, background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)", padding: "3px 10px", borderRadius: 6, display: "flex", alignItems: "center", gap: 4 }}>
-                              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-                              Camera connected
-                            </span>
-                          </div>
-                        </>
-                      ) : (
-                        <>
-                          <div style={{ width: 44, height: 44, borderRadius: 12, background: "rgba(245,242,237,0.03)", border: "1px solid rgba(245,242,237,0.06)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                            <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={c.stone} strokeWidth="1.5" strokeLinecap="round">
-                              <path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
-                            </svg>
-                          </div>
-                          <button onClick={requestCamera}
-                            style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: c.stone, background: "rgba(245,242,237,0.03)", border: `1px solid rgba(245,242,237,0.06)`, borderRadius: 8, padding: "8px 20px", cursor: "pointer", transition: "all 0.2s" }}
-                            onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(245,242,237,0.06)"; }}
-                            onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(245,242,237,0.03)"; }}>
-                            {camStatus === "denied" ? "Retry" : "Enable"}
-                          </button>
-                          <p style={{ fontFamily: font.ui, fontSize: 11, color: camStatus === "denied" ? c.ember : c.stone, lineHeight: 1.3 }}>
-                            {camStatus === "denied" ? "No worries — camera is optional" : "Optional — for a realistic feel"}
-                          </p>
-                        </>
                       )}
                     </div>
-                  </div>
+                    {micStatus !== "granted" && (
+                      <button onClick={requestMic}
+                        style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: c.gilt, background: "rgba(212,179,127,0.08)", border: `1px solid rgba(212,179,127,0.2)`, borderRadius: 8, padding: "8px 20px", cursor: "pointer", transition: "all 0.2s", flexShrink: 0 }}
+                        onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(212,179,127,0.15)"; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(212,179,127,0.08)"; }}>
+                        {micStatus === "denied" ? "Retry" : "Allow Microphone"}
+                      </button>
+                    )}
+                    </div>
                 </div>
 
                 {/* ── Your Profile Card ── */}
