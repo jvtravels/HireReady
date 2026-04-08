@@ -358,9 +358,10 @@ export default function Onboarding() {
   const navigate = useNavigate();
   const { user, updateUser } = useAuth();
 
-  // Fix #4: Redirect returning users who already completed onboarding
+  // Redirect returning users who already completed onboarding (but not during active start)
+  const startingRef = useRef(false);
   useEffect(() => {
-    if (user?.hasCompletedOnboarding) navigate("/dashboard", { replace: true });
+    if (user?.hasCompletedOnboarding && !startingRef.current) navigate("/dashboard", { replace: true });
   }, [user?.hasCompletedOnboarding, navigate]);
 
   const [step, setStep] = useState(loadObStep);
@@ -657,6 +658,7 @@ export default function Onboarding() {
   const handleStart = async () => {
     if (starting) return;
     setStarting(true);
+    startingRef.current = true;
     // Allow proceeding even without mic — text input fallback exists in Interview
     cancelAnimationFrame(animFrameRef.current);
     // Don't stop mic stream — Interview component will re-use the permission grant
