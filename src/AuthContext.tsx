@@ -240,6 +240,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.log("[auth] onAuthStateChange:", event);
         if (event === "INITIAL_SESSION") return;
         if ((event === "SIGNED_IN" || event === "TOKEN_REFRESHED") && session) {
+          // Persist Google provider token for Calendar API access
+          if (session.provider_token) {
+            try { sessionStorage.setItem("hirestepx_google_token", session.provider_token); } catch {}
+          }
           try {
             const profile = await getProfile(session.user.id);
             if (profile) {
@@ -301,7 +305,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const client = await getSupabase();
     const { error } = await client.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: `${window.location.origin}/dashboard` },
+      options: {
+        redirectTo: `${window.location.origin}/dashboard`,
+        scopes: "https://www.googleapis.com/auth/calendar.events.readonly",
+        queryParams: { access_type: "offline", prompt: "consent" },
+      },
     });
     if (error) return { success: false, error: error.message };
     return { success: true };

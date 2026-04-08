@@ -243,6 +243,46 @@ export default function DashboardHome() {
           </div>
           {returnContext && <p style={{ fontFamily: font.ui, fontSize: 14, color: c.stone, lineHeight: 1.5, marginBottom: 2, marginTop: 6 }}>{returnContext}</p>}
           {smartSchedule && <p style={{ fontFamily: font.ui, fontSize: 13, color: c.gilt, fontStyle: "italic" }}>{smartSchedule}</p>}
+          {/* ─── Next Interview Countdown Badge ─── */}
+          {(() => {
+            const nextInterview = calendarEvents
+              .filter(e => e.status === "upcoming" && daysUntilEvent(e.date, e.time) >= 0)
+              .sort((a, b) => new Date(`${a.date}T${a.time}`).getTime() - new Date(`${b.date}T${b.time}`).getTime())[0];
+            if (!nextInterview) return null;
+            const days = daysUntilEvent(nextInterview.date, nextInterview.time);
+            const isToday = days === 0;
+            const isTomorrow = days === 1;
+            const urgent = days <= 3;
+            const accentColor = isToday ? c.ember : urgent ? c.gilt : c.sage;
+            const accentBg = isToday ? "rgba(196,112,90,0.06)" : urgent ? "rgba(212,179,127,0.06)" : "rgba(122,158,126,0.06)";
+            const accentBorder = isToday ? "rgba(196,112,90,0.18)" : urgent ? "rgba(212,179,127,0.15)" : "rgba(122,158,126,0.15)";
+            return (
+              <div
+                role="button" tabIndex={0}
+                onClick={() => nav("/calendar")}
+                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") nav("/calendar"); }}
+                style={{
+                  display: "inline-flex", alignItems: "center", gap: 10,
+                  padding: "8px 16px", borderRadius: radius.pill, marginTop: 10,
+                  background: accentBg, border: `1px solid ${accentBorder}`,
+                  cursor: "pointer", transition: "all 0.2s ease",
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = isToday ? "rgba(196,112,90,0.12)" : urgent ? "rgba(212,179,127,0.12)" : "rgba(122,158,126,0.12)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = accentBg; }}
+              >
+                <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={accentColor} strokeWidth="2" strokeLinecap="round">
+                  <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+                </svg>
+                <span style={{ fontFamily: font.mono, fontSize: 12, fontWeight: 600, color: accentColor }}>
+                  {isToday ? "Interview TODAY" : isTomorrow ? "Interview TOMORROW" : `Interview in ${days}d`}
+                </span>
+                <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>
+                  {nextInterview.company}{nextInterview.company ? " · " : ""}{formatEventTime(nextInterview.time)}
+                </span>
+                <svg aria-hidden="true" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={c.stone} strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+              </div>
+            );
+          })()}
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
           <button className="shimmer-btn dash-focus" onClick={handleStartSession} title="New Session (N)" style={{

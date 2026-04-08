@@ -13,6 +13,7 @@ export interface InterviewEvent {
   notes: string;
   status: "upcoming" | "completed" | "cancelled";
   reminders: boolean;
+  google_event_id?: string;
 }
 
 export const EVENTS_KEY = "hirestepx_events";

@@ -107,6 +107,7 @@ export interface CalendarEvent {
   time: string;
   type: string;
   notes: string;
+  google_event_id?: string;
   created_at: string;
 }
 
@@ -222,4 +223,108 @@ export async function saveCalendarEvent(event: Omit<CalendarEvent, "created_at">
 export async function deleteCalendarEvent(id: string, userId: string) {
   const client = await getSupabase();
   return client.from("calendar_events").delete().eq("id", id).eq("user_id", userId);
+}
+
+/* ─── Google Calendar Sync ─── */
+
+export function getGoogleProviderToken(): string | null {
+  try { return sessionStorage.getItem("hirestepx_google_token"); } catch { return null; }
+}
+
+export function clearGoogleProviderToken() {
+  try { sessionStorage.removeItem("hirestepx_google_token"); } catch {}
+}
+
+function extractCompany(summary: string): string {
+  const withMatch = summary.match(/(?:interview|call|chat|screen)\s+(?:with|at)\s+(.+)/i);
+  if (withMatch) return withMatch[1].trim();
+  const prefixMatch = summary.match(/^(.+?)\s+(?:interview|call|chat|screen)/i);
+  if (prefixMatch) return prefixMatch[1].trim();
+  return "";
+}
+
+function detectInterviewType(summary: string, description: string): string {
+  const text = `${summary} ${description}`.toLowerCase();
+  if (text.includes("technical") || text.includes("coding")) return "Technical";
+  if (text.includes("behavioral") || text.includes("culture")) return "Behavioral";
+  if (text.includes("system design")) return "System Design";
+  if (text.includes("case study")) return "Case Study";
+  if (text.includes("phone screen")) return "Phone Screen";
+  if (text.includes("final")) return "Final Round";
+  return "Behavioral";
+}
+
+export async function fetchGoogleCalendarEvents(token: string): Promise<CalendarEvent[]> {
+  const now = new Date().toISOString();
+  const maxDate = new Date(Date.now() + 90 * 86400000).toISOString();
+  const url = `https://www.googleapis.com/calendar/v3/calendars/primary/events?` +
+    `timeMin=${encodeURIComponent(now)}&timeMax=${encodeURIComponent(maxDate)}` +
+    `&singleEvents=true&orderBy=startTime&maxResults=50&q=interview`;
+
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+
+  if (!res.ok) {
+    if (res.status === 401) {
+      clearGoogleProviderToken();
+      throw new Error("Google token expired — please sign in with Google again");
+    }
+    throw new Error(`Google Calendar API error: ${res.status}`);
+  }
+
+  const data = await res.json();
+  const items: any[] = data.items || [];
+
+  return items.map((item: any) => ({
+    id: "",
+    user_id: "",
+    title: item.summary || "Interview",
+    company: extractCompany(item.summary || ""),
+    date: (item.start?.dateTime || item.start?.date || "").split("T")[0],
+    time: item.start?.dateTime
+      ? new Date(item.start.dateTime).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })
+      : "09:00",
+    type: detectInterviewType(item.summary || "", item.description || ""),
+    notes: item.description || "",
+    google_event_id: item.id,
+    created_at: "",
+  }));
+}
+
+export async function syncGoogleEvents(userId: string): Promise<{ synced: number; error?: string }> {
+  const token = getGoogleProviderToken();
+  if (!token) return { synced: 0, error: "No Google token — please sign in with Google" };
+
+  const googleEvents = await fetchGoogleCalendarEvents(token);
+  if (googleEvents.length === 0) return { synced: 0 };
+
+  const client = await getSupabase();
+
+  const { data: existing } = await client
+    .from("calendar_events")
+    .select("google_event_id")
+    .eq("user_id", userId)
+    .not("google_event_id", "is", null);
+
+  const existingIds = new Set((existing || []).map((e: any) => e.google_event_id));
+
+  const newEvents = googleEvents
+    .filter(e => e.google_event_id && !existingIds.has(e.google_event_id))
+    .map(e => ({
+      id: crypto.randomUUID(),
+      user_id: userId,
+      title: e.title,
+      company: e.company,
+      date: e.date,
+      time: e.time,
+      type: e.type,
+      notes: e.notes,
+      google_event_id: e.google_event_id,
+    }));
+
+  if (newEvents.length === 0) return { synced: 0 };
+
+  const { error } = await client.from("calendar_events").insert(newEvents);
+  if (error) return { synced: 0, error: error.message };
+
+  return { synced: newEvents.length };
 }

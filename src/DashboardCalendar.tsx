@@ -13,7 +13,7 @@ import { DataLoadingSkeleton, ProGate } from "./dashboardComponents";
 
 export default function CalendarPage() {
   useDocTitle("Calendar");
-  const { handleStartSession: onStartSession, dataLoading, isFree, isStarter, setShowUpgradeModal, showToast } = useDashboard();
+  const { handleStartSession: onStartSession, dataLoading, isFree, isStarter, setShowUpgradeModal, showToast, syncGoogleCalendar, googleSyncStatus, hasGoogleToken } = useDashboard();
 
   const { user } = useAuth();
   const [events, setEvents] = useState<InterviewEvent[]>(loadEvents);
@@ -179,17 +179,41 @@ export default function CalendarPage() {
             Track upcoming interviews and export to your calendar
           </p>
         </div>
-        <button onClick={openNewForm} style={{
-          fontFamily: font.ui, fontSize: 13, fontWeight: 500, padding: "10px 22px",
-          borderRadius: 8, border: "none", background: c.gilt, color: c.obsidian,
-          cursor: "pointer", display: "flex", alignItems: "center", gap: 8,
-        }}
-          onMouseEnter={(e) => { e.currentTarget.style.filter = "brightness(1.15)"; }}
-          onMouseLeave={(e) => { e.currentTarget.style.filter = "brightness(1)"; }}
-        >
-          <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-          Add Interview
-        </button>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button
+            onClick={() => {
+              if (!hasGoogleToken) { showToast("Sign in with Google to sync your calendar"); return; }
+              syncGoogleCalendar();
+            }}
+            disabled={googleSyncStatus === "syncing"}
+            style={{
+              fontFamily: font.ui, fontSize: 13, fontWeight: 500, padding: "10px 22px",
+              borderRadius: 8, border: `1px solid ${c.border}`, background: "transparent", color: c.chalk,
+              cursor: googleSyncStatus === "syncing" ? "wait" : "pointer",
+              display: "flex", alignItems: "center", gap: 8,
+              opacity: googleSyncStatus === "syncing" ? 0.6 : 1,
+              transition: "border-color 0.2s ease",
+            }}
+            onMouseEnter={(e) => { if (googleSyncStatus !== "syncing") e.currentTarget.style.borderColor = c.gilt; }}
+            onMouseLeave={(e) => { e.currentTarget.style.borderColor = c.border; }}
+          >
+            <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+            </svg>
+            {googleSyncStatus === "syncing" ? "Syncing..." : "Sync Google Calendar"}
+          </button>
+          <button onClick={openNewForm} style={{
+            fontFamily: font.ui, fontSize: 13, fontWeight: 500, padding: "10px 22px",
+            borderRadius: 8, border: "none", background: c.gilt, color: c.obsidian,
+            cursor: "pointer", display: "flex", alignItems: "center", gap: 8,
+          }}
+            onMouseEnter={(e) => { e.currentTarget.style.filter = "brightness(1.15)"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.filter = "brightness(1)"; }}
+          >
+            <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Add Interview
+          </button>
+        </div>
       </div>
 
       {/* Add/Edit Form */}

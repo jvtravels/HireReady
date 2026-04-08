@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "./AuthContext";
-import { getUserSessions, getCalendarEvents } from "./supabase";
+import { getUserSessions, getCalendarEvents, syncGoogleEvents, getGoogleProviderToken } from "./supabase";
 import { type InterviewEvent, loadEvents } from "./dashboardHelpers";
 import {
   type PersistedState, type DashboardSession, type SkillData, type TrendPoint,
@@ -61,6 +61,11 @@ interface DashboardContextValue {
   badges: { id: string; label: string; description: string; icon: string; earned: boolean; progress: number }[];
   dailyChallenge: { id: string; label: string; description: string; type: string; focus?: string; difficulty: string; completed: boolean };
   practiceReminder: string | null;
+  /* Google Calendar */
+  googleSyncStatus: "idle" | "syncing" | "done" | "error";
+  googleSyncError: string | null;
+  hasGoogleToken: boolean;
+  syncGoogleCalendar: () => Promise<void>;
   /* Actions */
   handleStartSession: () => void;
   handleExport: () => void;
@@ -109,6 +114,43 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     setToast(msg);
     toastTimer.current = setTimeout(() => setToast(null), 3000);
   }, []);
+
+  // ─── Google Calendar sync state ───
+  const [googleSyncStatus, setGoogleSyncStatus] = useState<"idle" | "syncing" | "done" | "error">("idle");
+  const [googleSyncError, setGoogleSyncError] = useState<string | null>(null);
+  const [hasGoogleToken, setHasGoogleToken] = useState(() => !!getGoogleProviderToken());
+
+  const syncGoogleCalendar = useCallback(async () => {
+    if (!user?.id) return;
+    setGoogleSyncStatus("syncing");
+    setGoogleSyncError(null);
+    try {
+      const result = await syncGoogleEvents(user.id);
+      if (result.error) {
+        setGoogleSyncStatus("error");
+        setGoogleSyncError(result.error);
+        showToast(result.error);
+      } else {
+        setGoogleSyncStatus("done");
+        showToast(result.synced > 0 ? `Synced ${result.synced} interview(s) from Google Calendar` : "No new interviews found");
+        if (result.synced > 0) {
+          const events = await getCalendarEvents(user.id);
+          const mapped = events.map(e => ({
+            id: e.id, title: e.title, company: e.company,
+            date: e.date, time: e.time, type: e.type,
+            duration: 60, location: "", notes: e.notes,
+            status: "upcoming" as const, reminders: true,
+            google_event_id: e.google_event_id,
+          }));
+          setCalendarEvents(mapped);
+        }
+      }
+    } catch (err: any) {
+      setGoogleSyncStatus("error");
+      setGoogleSyncError(err.message || "Sync failed");
+      showToast("Google Calendar sync failed");
+    }
+  }, [user?.id, showToast]);
 
   // Sync persisted state when user profile loads/changes (e.g., after profile fetch completes)
   useEffect(() => {
@@ -370,6 +412,7 @@ ${skills.length > 0 ? `<h2>Skills</h2><table><tr><th>Skill</th><th>Score</th><th
     aiInsights, notifications, upcomingGoals,
     returnContext, smartSchedule, prepPlan,
     badges, dailyChallenge, practiceReminder,
+    googleSyncStatus, googleSyncError, hasGoogleToken, syncGoogleCalendar,
     handleStartSession, handleExport, handleDownload, handleExportCSV, handleExportPDF,
   }), [
     persisted, updatePersisted,
@@ -384,6 +427,7 @@ ${skills.length > 0 ? `<h2>Skills</h2><table><tr><th>Skill</th><th>Score</th><th
     aiInsights, notifications, upcomingGoals,
     returnContext, smartSchedule, prepPlan,
     badges, dailyChallenge, practiceReminder,
+    googleSyncStatus, googleSyncError, hasGoogleToken, syncGoogleCalendar,
     handleStartSession, handleExport, handleDownload, handleExportCSV, handleExportPDF,
   ]);
 
