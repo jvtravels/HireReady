@@ -264,9 +264,9 @@ export async function fetchGoogleCalendarEvents(token: string): Promise<Calendar
   const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
 
   if (!res.ok) {
-    if (res.status === 401) {
+    if (res.status === 401 || res.status === 403) {
       clearGoogleProviderToken();
-      throw new Error("Google token expired — please sign in with Google again");
+      throw new Error("Calendar access not granted — please sign in with Google again");
     }
     throw new Error(`Google Calendar API error: ${res.status}`);
   }

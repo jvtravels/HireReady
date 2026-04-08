@@ -148,6 +148,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     } catch (err: any) {
       setGoogleSyncStatus("error");
       setGoogleSyncError(err.message || "Sync failed");
+      setHasGoogleToken(!!getGoogleProviderToken()); // token may have been cleared on 401/403
       showToast("Google Calendar sync failed");
     }
   }, [user?.id, showToast]);
