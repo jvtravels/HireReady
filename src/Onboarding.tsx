@@ -7,6 +7,7 @@ import { extractResumeText, parseResumeData, type ParsedResume } from "./resumeP
 import { analyzeResumeWithAI, type ResumeProfile } from "./dashboardData";
 import { unlockAudio } from "./tts";
 import { UpgradeModal } from "./dashboardComponents";
+import { track } from "@vercel/analytics";
 
 const TOTAL_STEPS = 3;
 
@@ -259,8 +260,10 @@ function AutocompleteInput({
   useEffect(() => {
     return () => { setFocused(false); };
   }, []);
-  const filtered = focused && value.length > 0
-    ? suggestions.filter(s => s.toLowerCase().includes(value.toLowerCase()) && s.toLowerCase() !== value.toLowerCase()).slice(0, 6)
+  const filtered = focused
+    ? value.length > 0
+      ? suggestions.filter(s => s.toLowerCase().includes(value.toLowerCase()) && s.toLowerCase() !== value.toLowerCase()).slice(0, 8)
+      : suggestions.slice(0, 8) // Show popular suggestions when focused but empty
     : [];
 
   // Update dropdown position when filtered results change or input is focused
@@ -343,6 +346,12 @@ const SESSION_LENGTH_MAP: Record<string, 10 | 15 | 25> = { "10m": 10, "15m": 15,
 export default function Onboarding() {
   const navigate = useNavigate();
   const { user, updateUser } = useAuth();
+
+  // Fix #4: Redirect returning users who already completed onboarding
+  useEffect(() => {
+    if (user?.hasCompletedOnboarding) navigate("/dashboard", { replace: true });
+  }, [user?.hasCompletedOnboarding, navigate]);
+
   const [step, setStep] = useState(loadObStep);
   const [slideDir, setSlideDir] = useState<"forward" | "back">("forward");
 
@@ -358,6 +367,7 @@ export default function Onboarding() {
   const [aiProfile, setAiProfile] = useState<ResumeProfile | null>(null);
   const [aiPhase, setAiPhase] = useState<"idle" | "analyzing" | "done">("idle");
   const [userName, setUserName] = useState(user?.name || "");
+  const [scoreOverride, setScoreOverride] = useState(false); // Fix #1: allow proceeding with low score
   const undoRef = useRef<{ fileName: string; resumeText: string; resumeParsed: ParsedResume | null; aiProfile: ResumeProfile | null; aiPhase: "idle" | "analyzing" | "done"; targetRole: string; targetCompany: string; userName: string } | null>(null);
   const analysisAbortRef = useRef<AbortController | null>(null);
   const [showUndo, setShowUndo] = useState(false);
@@ -376,10 +386,12 @@ export default function Onboarding() {
     setResumeParsed(data);
     // Restore AI profile if it was saved with the resume data
     const savedAiProfile = (data as any)?.aiProfile as ResumeProfile | undefined;
+    // Prefer parsed name from resume over AI headline
+    if (data.name && !userName) setUserName(data.name);
     if (savedAiProfile && savedAiProfile.headline) {
       setAiProfile(savedAiProfile);
       setAiPhase("done");
-      if (savedAiProfile.headline && savedAiProfile.headline !== "Analyzing..." && !userName) {
+      if (!data.name && !userName && savedAiProfile.headline !== "Analyzing...") {
         setUserName(savedAiProfile.headline.split(/[—–|,]/)[0].trim().slice(0, 40));
       }
     } else {
@@ -390,15 +402,11 @@ export default function Onboarding() {
         .then(result => {
           if (result && "profile" in result) {
             setAiProfile(result.profile);
-            if (result.profile.headline && !userName) {
-              setUserName(result.profile.headline.split(/[—–|,]/)[0].trim().slice(0, 40));
-            }
           }
         })
         .catch(() => {})
         .finally(() => setAiPhase("done"));
     }
-    if (data.name && !userName) setUserName(data.name);
     if (data.experience?.[0]?.title && !targetRole) {
       setTargetRole(data.experience[0].title);
       setRoleAutoFilled(true);
@@ -409,9 +417,10 @@ export default function Onboarding() {
   const [savedForm] = useState(loadObForm);
   const [targetRole, setTargetRole] = useState(savedForm?.targetRole || user?.targetRole || "");
   const [roleAutoFilled, setRoleAutoFilled] = useState(false);
-  const [targetCompany, setTargetCompany] = useState(savedForm?.targetCompany || "");
+  const [targetCompany, setTargetCompany] = useState(savedForm?.targetCompany || user?.targetCompany || "");
   const [interviewFocus, setInterviewFocus] = useState<string[]>(savedForm?.interviewFocus?.slice(0, 1) || ["Behavioral"]);
-  const isFreeUser = !user?.subscriptionTier || user.subscriptionTier === "free";
+  const [upgradedTier, setUpgradedTier] = useState<string | null>(null); // Fix #8: local override after upgrade
+  const isFreeUser = upgradedTier ? false : (!user?.subscriptionTier || user.subscriptionTier === "free");
   const [sessionLength, setSessionLength] = useState(() => {
     const saved = savedForm?.sessionLength || "10m";
     // Free users can only use 10m
@@ -434,7 +443,7 @@ export default function Onboarding() {
   const streamRef = useRef<MediaStream | null>(null);
   const animFrameRef = useRef(0);
 
-  const goNext = () => { setSlideDir("forward"); setStep(s => { const next = Math.min(s + 1, TOTAL_STEPS); saveObStep(next); return next; }); };
+  const goNext = () => { setSlideDir("forward"); setStep(s => { const next = Math.min(s + 1, TOTAL_STEPS); saveObStep(next); track("onboarding_step", { step: next }); return next; }); };
   const goBack = () => { setSlideDir("back"); setStep(s => { const next = Math.max(s - 1, 1); saveObStep(next); return next; }); };
 
   // ─── File handling ───
@@ -482,7 +491,8 @@ export default function Onboarding() {
       setAiProfile(fallback);
       const autoRole = data.experience?.[0]?.title || "";
       if (autoRole && !targetRole) { setTargetRole(autoRole); setRoleAutoFilled(true); }
-      if (data.name && !userName) { setUserName(data.name); }
+      const parsedName = data.name || "";
+      if (parsedName && !userName) { setUserName(parsedName); }
       // AI analysis in background — abort previous if any
       analysisAbortRef.current?.abort();
       analysisAbortRef.current = new AbortController();
@@ -502,14 +512,6 @@ export default function Onboarding() {
           finalProfile = result.profile;
           setAiProfile(finalProfile);
           aiSuccess = true;
-          // AI may return a better name — prefer it
-          if (finalProfile.headline && finalProfile.headline !== "Your Profile" && !userName) {
-            // Extract name from headline if it looks like a name (not a title)
-            const headlineName = finalProfile.headline.split(/[—–|,]/)[0].trim();
-            if (headlineName.length > 2 && headlineName.length < 40) {
-              setUserName(headlineName);
-            }
-          }
         }
       } catch (analysisErr: any) {
         if (analysisErr?.message === "aborted") return; // Upload was superseded
@@ -623,7 +625,7 @@ export default function Onboarding() {
       if (e.key === "Enter") {
         e.preventDefault();
         if (step < TOTAL_STEPS) {
-          if (step === 1 && (!resumeParsed || aiPhase !== "done" || !userName.trim() || (aiProfile?.resumeScore != null && aiProfile.resumeScore < 50))) return;
+          if (step === 1 && (!resumeParsed || aiPhase !== "done" || !userName.trim() || (!scoreOverride && aiProfile?.resumeScore != null && aiProfile.resumeScore < 50))) return;
           if (step === 2 && (!targetRole.trim() || interviewFocus.length === 0)) return;
           goNext();
         } else {
@@ -670,12 +672,16 @@ export default function Onboarding() {
     }
     clearObStep();
     unlockAudio();
-    navigate("/interview?type=behavioral&difficulty=standard&mini=true");
+    // Fix #3: Use user's selected interview focus instead of hardcoded behavioral
+    const focusType = interviewFocus[0]?.toLowerCase().replace(/\s+/g, "-") || "behavioral";
+    track("onboarding_complete", { focus: focusType, sessionLength, role: targetRole, hasMic: micStatus === "granted" });
+    navigate(`/interview?type=${encodeURIComponent(focusType)}&difficulty=standard&mini=true`);
   };
 
   const isStep1Busy = step === 1 && (resumeParsing || aiPhase === "analyzing");
   const isStep1NoResume = step === 1 && !resumeParsed && !resumeParsing && aiPhase !== "analyzing";
-  const isStep1LowScore = step === 1 && aiPhase === "done" && aiProfile?.resumeScore != null && aiProfile.resumeScore < 50;
+  // Fix #1: Allow proceeding with low score if user explicitly overrides
+  const isStep1LowScore = step === 1 && !scoreOverride && aiPhase === "done" && aiProfile?.resumeScore != null && aiProfile.resumeScore < 50;
   const isStep1NameEmpty = step === 1 && aiPhase === "done" && !userName.trim();
   const isStep2Disabled = step === 2 && (!targetRole.trim() || interviewFocus.length === 0);
   const isContinueDisabled = isStep1Busy || isStep1NoResume || isStep1LowScore || isStep1NameEmpty || isStep2Disabled;
@@ -685,7 +691,7 @@ export default function Onboarding() {
       {user && !user.emailVerified && (
         <div style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 50, padding: "12px 24px", background: "rgba(212,179,127,0.1)", borderBottom: "1px solid rgba(212,179,127,0.2)", textAlign: "center", backdropFilter: "blur(8px)" }}>
           <span style={{ fontFamily: font.ui, fontSize: 13, color: c.chalk }}>
-            Please verify your email to save your progress. Check your inbox for a confirmation link.
+            Check your inbox for a verification link — your progress is saved automatically.
           </span>
         </div>
       )}
@@ -730,8 +736,8 @@ export default function Onboarding() {
 
       {/* ─── Top Bar ─── */}
       <div style={{ padding: "18px 40px", display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", borderBottom: `1px solid rgba(245,242,237,0.04)`, background: "rgba(6,6,7,0.6)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)", zIndex: 10 }}>
-        {/* Logo — left */}
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        {/* Logo — left, clickable to go home */}
+        <div onClick={() => navigate("/")} style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }} title="Back to home">
           <div style={{ width: 6, height: 6, borderRadius: 2, background: `linear-gradient(135deg, ${c.gilt}, ${c.giltDark})`, boxShadow: "0 0 8px rgba(212,179,127,0.3)" }} />
           <span style={{ fontFamily: font.display, fontSize: 17, fontWeight: 400, color: c.ivory, letterSpacing: "0.02em" }}>HireStepX</span>
         </div>
@@ -940,7 +946,7 @@ export default function Onboarding() {
                       </button>
                       <button onClick={() => {
                         undoRef.current = { fileName, resumeText, resumeParsed, aiProfile, aiPhase, targetRole, targetCompany, userName };
-                        setFileName(""); setResumeText(""); setResumeParsed(null); setResumeError(""); setAiProfile(null); setAiPhase("idle"); setTargetRole(""); setTargetCompany(""); setUserName("");
+                        setFileName(""); setResumeText(""); setResumeParsed(null); setResumeError(""); setAiProfile(null); setAiPhase("idle"); setTargetRole(""); setTargetCompany(""); setUserName(""); setScoreOverride(false);
                         setShowUndo(true); clearTimeout(undoTimerRef.current);
                         undoTimerRef.current = window.setTimeout(() => { setShowUndo(false); undoRef.current = null; }, 8000);
                       }}
@@ -1037,9 +1043,17 @@ export default function Onboarding() {
                           </div>
                         ))}
                       </div>
-                      <p style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, marginTop: 14, textAlign: "center" }}>
-                        Update your resume and upload again to re-check your score
-                      </p>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 16, marginTop: 14 }}>
+                        <p style={{ fontFamily: font.ui, fontSize: 12, color: c.stone }}>
+                          Update your resume and upload again to re-check your score
+                        </p>
+                        <button onClick={() => { setScoreOverride(true); track("onboarding_score_override", { score: aiProfile.resumeScore }); }}
+                          style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, background: "none", border: `1px solid ${c.border}`, borderRadius: 6, padding: "4px 12px", cursor: "pointer", whiteSpace: "nowrap", transition: "all 0.2s" }}
+                          onMouseEnter={(e) => { e.currentTarget.style.color = c.ivory; e.currentTarget.style.borderColor = c.chalk; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.color = c.stone; e.currentTarget.style.borderColor = c.border; }}>
+                          Proceed anyway
+                        </button>
+                      </div>
                     </div>
                   )}
 
@@ -1206,9 +1220,6 @@ We've pre-filled your target role from your resume. Adjust if needed, then choos
                       );
                     })}
                   </div>
-                  {interviewFocus.length === 0 && (
-                    <p style={{ fontFamily: font.ui, fontSize: 11, color: c.ember, marginTop: 8, paddingLeft: 36 }}>Select a focus area</p>
-                  )}
                 </div>
 
                 {/* ── Section 3: Session Length ── */}
@@ -1307,8 +1318,8 @@ We've pre-filled your target role from your resume. Adjust if needed, then choos
                           {micStatus === "denied" ? "Retry" : "Allow Microphone"}
                         </button>
                       )}
-                      <p style={{ fontFamily: font.ui, fontSize: 11, color: micStatus === "granted" ? c.sage : micStatus === "denied" ? c.ember : c.stone, lineHeight: 1.3 }}>
-                        {micStatus === "granted" ? "Connected — ready to go" : micStatus === "denied" ? micPermissionHint : "Recommended for best experience"}
+                      <p style={{ fontFamily: font.ui, fontSize: 11, color: micStatus === "granted" ? c.sage : c.stone, lineHeight: 1.3 }}>
+                        {micStatus === "granted" ? "Connected — ready to go" : micStatus === "denied" ? "No worries — you can type your answers instead" : "Recommended for best experience"}
                       </p>
                     </div>
 
@@ -1442,7 +1453,7 @@ We've pre-filled your target role from your resume. Adjust if needed, then choos
                   ) : (
                     <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polygon points="5,3 19,12 5,21"/></svg>
                   )}
-                  {starting ? "Starting..." : micStatus === "granted" ? "Start Practice Interview" : "Start Without Mic"}
+                  {starting ? "Starting..." : micStatus === "granted" ? "Start Practice Interview" : "Start with Text Input"}
                 </button>
                 {micStatus !== "granted" && (
                   <p style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, textAlign: "center", marginTop: 8 }}>
@@ -1465,7 +1476,9 @@ We've pre-filled your target role from your resume. Adjust if needed, then choos
           currentTier={user?.subscriptionTier || "free"}
           onPaymentSuccess={(tier, start, end) => {
             setShowUpgradeModal(false);
+            setUpgradedTier(tier); // Fix #8: immediately unlock session lengths
             updateUser({ subscriptionTier: tier as "starter" | "pro", subscriptionStart: start, subscriptionEnd: end });
+            track("onboarding_upgrade", { tier });
           }}
         />
       )}
