@@ -11,21 +11,49 @@ const TOTAL_STEPS = 3;
 
 /* ─── Suggestion data ─── */
 const ROLE_SUGGESTIONS = [
-  "Senior Software Engineer", "Senior Engineering Manager", "Staff Engineer", "Principal Engineer",
-  "VP of Engineering", "Director of Engineering", "Engineering Manager", "Head of Engineering", "CTO",
-  "Director of Product", "Senior Product Manager", "VP of Product", "Head of Product", "Chief Product Officer",
-  "Head of Design", "Senior UX Designer", "Design Manager", "VP of Design",
-  "Chief of Staff", "VP of Marketing", "Director of Marketing", "Head of Growth",
-  "Director of Operations", "VP of Operations", "Data Science Manager", "Head of Data",
-  "ML Engineering Manager", "Director of Analytics", "VP of Sales", "Director of Sales",
-  "Solutions Architect", "Technical Program Manager", "Senior TPM", "Director of QA", "VP of People", "Head of Talent",
+  // Engineering
+  "Software Engineer", "Senior Software Engineer", "Staff Engineer", "Principal Engineer", "Lead Software Engineer",
+  "Frontend Developer", "Backend Developer", "Full Stack Developer", "Mobile Developer", "iOS Developer", "Android Developer",
+  "DevOps Engineer", "Site Reliability Engineer", "Cloud Engineer", "Platform Engineer", "Infrastructure Engineer",
+  "Data Engineer", "Machine Learning Engineer", "AI Engineer", "ML Researcher", "Data Scientist", "Data Analyst",
+  "Security Engineer", "Cybersecurity Analyst", "QA Engineer", "Test Engineer", "SDET",
+  "Engineering Manager", "Senior Engineering Manager", "Director of Engineering", "VP of Engineering", "Head of Engineering", "CTO",
+  // Product & Design
+  "Product Manager", "Senior Product Manager", "Group Product Manager", "Director of Product", "VP of Product", "Head of Product", "Chief Product Officer",
+  "Product Designer", "UX Designer", "UI Designer", "Senior UX Designer", "UX Researcher", "Head of Design", "Design Manager", "VP of Design",
+  // Business & Operations
+  "Business Analyst", "Management Consultant", "Strategy Consultant", "Operations Manager", "Project Manager", "Program Manager",
+  "Technical Program Manager", "Senior TPM", "Scrum Master", "Agile Coach",
+  "Marketing Manager", "Digital Marketing Manager", "Growth Manager", "Content Strategist", "SEO Specialist",
+  "VP of Marketing", "Director of Marketing", "Head of Growth", "Chief Marketing Officer",
+  "Sales Executive", "Account Executive", "Business Development Manager", "VP of Sales", "Director of Sales",
+  "Customer Success Manager", "Solutions Architect", "Solutions Engineer", "Pre-Sales Engineer",
+  // Leadership
+  "Chief of Staff", "Director of Operations", "VP of Operations", "COO",
+  "Director of Analytics", "Head of Data", "Chief Data Officer",
+  "Director of QA", "VP of People", "Head of Talent", "HR Manager", "Recruiter",
+  // Finance & Accounting
+  "Financial Analyst", "Investment Analyst", "CA", "Chartered Accountant", "Auditor", "CFO",
+  // Entry Level
+  "Software Engineer Intern", "Associate Software Engineer", "Junior Developer", "Graduate Trainee", "Fresher",
 ];
 
 const COMPANY_SUGGESTIONS = [
+  // Global Tech
   "Google", "Meta", "Amazon", "Apple", "Microsoft", "Netflix", "Stripe", "Airbnb", "Uber", "Spotify",
   "Databricks", "Figma", "Notion", "Coinbase", "Salesforce", "Adobe", "Oracle", "Snowflake", "Palantir", "Shopify",
   "Square (Block)", "Atlassian", "Slack", "LinkedIn", "Twitter (X)", "Pinterest", "Snap", "Lyft", "DoorDash",
-  "Instacart", "Robinhood", "Plaid", "OpenAI", "Anthropic", "Scale AI",
+  "Instacart", "Robinhood", "Plaid", "OpenAI", "Anthropic", "Scale AI", "GitHub", "GitLab", "MongoDB", "Elastic",
+  "Cloudflare", "Twilio", "HubSpot", "Zendesk", "ServiceNow", "Workday", "Intuit", "PayPal", "Visa", "Mastercard",
+  // Indian Tech
+  "TCS", "Infosys", "Wipro", "HCL Technologies", "Tech Mahindra", "LTIMindtree", "Persistent Systems", "Mphasis",
+  "Flipkart", "Swiggy", "Zomato", "Razorpay", "PhonePe", "Paytm", "CRED", "Meesho", "Zerodha", "Groww",
+  "Ola", "Dream11", "Byju's", "Unacademy", "upGrad", "Freshworks", "Zoho", "Postman", "BrowserStack", "Chargebee",
+  "Jio", "Reliance", "Tata Digital", "Myntra", "Nykaa", "PolicyBazaar", "Cars24", "Dunzo", "Rapido", "ShareChat",
+  // Consulting & Finance
+  "McKinsey", "BCG", "Bain", "Deloitte", "Accenture", "PwC", "EY", "KPMG", "Capgemini",
+  "Goldman Sachs", "JP Morgan", "Morgan Stanley", "Deutsche Bank", "HDFC Bank", "ICICI Bank", "Kotak", "Axis Bank",
+  // Startup Stages
   "Series A Startup", "Series B Startup", "Series C+ Startup", "Pre-seed / Seed Startup", "Enterprise / Fortune 500",
 ];
 
@@ -178,6 +206,7 @@ export default function Onboarding() {
   const [micStatus, setMicStatus] = useState<"idle" | "requesting" | "granted" | "denied">("idle");
   const [camStatus, setCamStatus] = useState<"idle" | "requesting" | "granted" | "denied">("idle");
   const [micLevel, setMicLevel] = useState(0);
+  const [starting, setStarting] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const animFrameRef = useRef(0);
@@ -368,6 +397,8 @@ export default function Onboarding() {
   });
 
   const handleStart = async () => {
+    if (starting) return;
+    setStarting(true);
     // Allow proceeding even without mic — text input fallback exists in Interview
     cancelAnimationFrame(animFrameRef.current);
     // Don't stop mic stream — Interview component will re-use the permission grant
@@ -956,22 +987,22 @@ We've pre-filled your target role from your resume. Adjust if needed, then choos
                       const locked = opt.paidOnly && isFreeUser;
                       const sel = sessionLength === opt.value;
                       return (
-                        <button key={opt.value} onClick={() => { if (!locked) setSessionLength(opt.value); }}
+                        <button key={opt.value} onClick={() => { if (locked) { navigate("/#pricing"); } else { setSessionLength(opt.value); } }}
                           style={{
-                            padding: "16px 14px", borderRadius: 12, cursor: locked ? "not-allowed" : "pointer", textAlign: "center", position: "relative",
+                            padding: "16px 14px", borderRadius: 12, cursor: "pointer", textAlign: "center", position: "relative",
                             background: sel ? "rgba(212,179,127,0.08)" : "transparent",
                             border: `1.5px solid ${sel ? c.gilt : c.border}`,
                             boxShadow: sel ? "0 0 16px rgba(212,179,127,0.06)" : "none",
                             transition: "all 0.2s",
-                            opacity: locked ? 0.45 : 1,
+                            opacity: locked ? 0.5 : 1,
                           }}>
                           {opt.recommended && !locked && (
                             <span style={{ position: "absolute", top: -8, left: "50%", transform: "translateX(-50%)", fontFamily: font.ui, fontSize: 9, fontWeight: 700, color: c.obsidian, background: c.gilt, padding: "2px 8px", borderRadius: 4, letterSpacing: "0.04em", textTransform: "uppercase" }}>Recommended</span>
                           )}
                           {locked && (
-                            <span style={{ position: "absolute", top: -8, left: "50%", transform: "translateX(-50%)", fontFamily: font.ui, fontSize: 9, fontWeight: 700, color: c.ivory, background: "rgba(245,242,237,0.1)", border: "1px solid rgba(245,242,237,0.12)", padding: "2px 8px", borderRadius: 4, letterSpacing: "0.04em", textTransform: "uppercase", display: "flex", alignItems: "center", gap: 3 }}>
+                            <span style={{ position: "absolute", top: -8, left: "50%", transform: "translateX(-50%)", fontFamily: font.ui, fontSize: 9, fontWeight: 700, color: c.gilt, background: "rgba(212,179,127,0.1)", border: "1px solid rgba(212,179,127,0.2)", padding: "2px 8px", borderRadius: 4, letterSpacing: "0.04em", textTransform: "uppercase", display: "flex", alignItems: "center", gap: 3 }}>
                               <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                              Pro
+                              Upgrade
                             </span>
                           )}
                           <span style={{ fontFamily: font.ui, fontSize: 20, fontWeight: 600, color: sel ? c.gilt : c.ivory, display: "block", marginBottom: 2 }}>{opt.label}</span>
@@ -1001,79 +1032,70 @@ We've pre-filled your target role from your resume. Adjust if needed, then choos
               </div>
 
               <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-                {/* ── Permissions Card ── */}
+                {/* ── Permissions Card — side by side ── */}
                 <div className="ob-card fade-up-1" style={{ borderRadius: 16, padding: "24px 28px" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 20 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
                     <div style={{ width: 28, height: 28, borderRadius: 7, background: "rgba(212,179,127,0.06)", border: "1px solid rgba(212,179,127,0.12)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5" strokeLinecap="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>
                     </div>
                     <span style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: c.ivory }}>Permissions</span>
                   </div>
 
-                  <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                  <div className="ob-s3-perm-row" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                     {/* Mic */}
-                    <div className={micStatus !== "granted" ? "ob-mic-pulse ob-s3-perm-row" : "ob-s3-perm-row"} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", borderRadius: 10, background: micStatus === "granted" ? "rgba(122,158,126,0.04)" : "rgba(245,242,237,0.02)", border: `1px solid ${micStatus === "granted" ? "rgba(122,158,126,0.12)" : "rgba(212,179,127,0.2)"}` }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                        <div style={{ width: 38, height: 38, borderRadius: 10, background: micStatus === "granted" ? `${c.sage}12` : "rgba(245,242,237,0.03)", border: `1px solid ${micStatus === "granted" ? `${c.sage}25` : "rgba(245,242,237,0.06)"}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                          <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={micStatus === "granted" ? c.sage : c.stone} strokeWidth="1.5" strokeLinecap="round">
-                            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-                          </svg>
-                        </div>
-                        <div>
-                          <p style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.ivory }}>Microphone</p>
-                          <p style={{ fontFamily: font.ui, fontSize: 11, color: micStatus === "granted" ? c.sage : micStatus === "denied" ? c.ember : c.stone }}>
-                            {micStatus === "granted" ? "Connected — ready to go" : micStatus === "denied" ? `Denied — ${micPermissionHint}` : "Recommended for best experience"}
-                          </p>
-                        </div>
+                    <div className={micStatus !== "granted" ? "ob-mic-pulse" : undefined}
+                      style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, padding: "20px 16px", borderRadius: 12, background: micStatus === "granted" ? "rgba(122,158,126,0.04)" : "rgba(245,242,237,0.02)", border: `1px solid ${micStatus === "granted" ? "rgba(122,158,126,0.12)" : "rgba(212,179,127,0.2)"}`, textAlign: "center" }}>
+                      <div style={{ width: 44, height: 44, borderRadius: 12, background: micStatus === "granted" ? `${c.sage}12` : "rgba(245,242,237,0.03)", border: `1px solid ${micStatus === "granted" ? `${c.sage}25` : "rgba(245,242,237,0.06)"}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={micStatus === "granted" ? c.sage : c.stone} strokeWidth="1.5" strokeLinecap="round">
+                          <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                        </svg>
                       </div>
                       {micStatus === "granted" ? (
-                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                          <div style={{ width: 60, height: 4, borderRadius: 2, background: "rgba(245,242,237,0.06)", overflow: "hidden" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                          <div style={{ width: 50, height: 4, borderRadius: 2, background: "rgba(245,242,237,0.06)", overflow: "hidden" }}>
                             <div style={{ height: "100%", borderRadius: 2, background: c.sage, width: `${Math.max(5, micLevel)}%`, transition: "width 0.1s" }} />
                           </div>
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
                         </div>
                       ) : (
                         <button onClick={requestMic}
-                          style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: c.gilt, background: "rgba(212,179,127,0.08)", border: `1px solid rgba(212,179,127,0.2)`, borderRadius: 8, padding: "8px 18px", cursor: "pointer", transition: "all 0.2s" }}
+                          style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: c.gilt, background: "rgba(212,179,127,0.08)", border: `1px solid rgba(212,179,127,0.2)`, borderRadius: 8, padding: "8px 20px", cursor: "pointer", transition: "all 0.2s" }}
                           onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(212,179,127,0.15)"; }}
                           onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(212,179,127,0.08)"; }}>
                           {micStatus === "denied" ? "Retry" : "Allow Microphone"}
                         </button>
                       )}
+                      <p style={{ fontFamily: font.ui, fontSize: 11, color: micStatus === "granted" ? c.sage : micStatus === "denied" ? c.ember : c.stone, lineHeight: 1.3 }}>
+                        {micStatus === "granted" ? "Connected — ready to go" : micStatus === "denied" ? micPermissionHint : "Recommended for best experience"}
+                      </p>
                     </div>
 
                     {/* Camera */}
-                    <div className="ob-s3-perm-row" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", borderRadius: 10, background: camStatus === "granted" ? "rgba(122,158,126,0.04)" : "rgba(245,242,237,0.02)", border: `1px solid ${camStatus === "granted" ? "rgba(122,158,126,0.12)" : "rgba(245,242,237,0.06)"}` }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                        <div style={{ width: 38, height: 38, borderRadius: 10, background: camStatus === "granted" ? `${c.sage}12` : "rgba(245,242,237,0.03)", border: `1px solid ${camStatus === "granted" ? `${c.sage}25` : "rgba(245,242,237,0.06)"}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                          <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={camStatus === "granted" ? c.sage : c.stone} strokeWidth="1.5" strokeLinecap="round">
-                            <path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
-                          </svg>
-                        </div>
-                        <div>
-                          <p style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.ivory }}>Camera <span style={{ fontSize: 11, color: c.stone, fontWeight: 400 }}>(optional)</span></p>
-                          <p style={{ fontFamily: font.ui, fontSize: 11, color: camStatus === "granted" ? c.sage : camStatus === "denied" ? c.ember : c.stone }}>
-                            {camStatus === "granted" ? "Connected" : camStatus === "denied" ? "No worries — camera is optional" : "For a realistic interview feel"}
-                          </p>
-                        </div>
+                    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, padding: "20px 16px", borderRadius: 12, background: camStatus === "granted" ? "rgba(122,158,126,0.04)" : "rgba(245,242,237,0.02)", border: `1px solid ${camStatus === "granted" ? "rgba(122,158,126,0.12)" : "rgba(245,242,237,0.06)"}`, textAlign: "center" }}>
+                      <div style={{ width: 44, height: 44, borderRadius: 12, background: camStatus === "granted" ? `${c.sage}12` : "rgba(245,242,237,0.03)", border: `1px solid ${camStatus === "granted" ? `${c.sage}25` : "rgba(245,242,237,0.06)"}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={camStatus === "granted" ? c.sage : c.stone} strokeWidth="1.5" strokeLinecap="round">
+                          <path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+                        </svg>
                       </div>
                       {camStatus === "granted" ? (
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
                       ) : (
                         <button onClick={requestCamera}
-                          style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: c.stone, background: "rgba(245,242,237,0.03)", border: `1px solid rgba(245,242,237,0.06)`, borderRadius: 8, padding: "8px 18px", cursor: "pointer", transition: "all 0.2s" }}
+                          style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: c.stone, background: "rgba(245,242,237,0.03)", border: `1px solid rgba(245,242,237,0.06)`, borderRadius: 8, padding: "8px 20px", cursor: "pointer", transition: "all 0.2s" }}
                           onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(245,242,237,0.06)"; }}
                           onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(245,242,237,0.03)"; }}>
                           {camStatus === "denied" ? "Retry" : "Enable"}
                         </button>
                       )}
+                      <p style={{ fontFamily: font.ui, fontSize: 11, color: camStatus === "granted" ? c.sage : camStatus === "denied" ? c.ember : c.stone, lineHeight: 1.3 }}>
+                        {camStatus === "granted" ? "Connected" : camStatus === "denied" ? "No worries — camera is optional" : "Optional — for a realistic feel"}
+                      </p>
                     </div>
                   </div>
 
                   {/* Camera preview */}
                   {camStatus === "granted" && (
-                    <div style={{ marginTop: 16, borderRadius: 10, overflow: "hidden", background: "#000", aspectRatio: "16/9", maxHeight: 140 }}>
+                    <div style={{ marginTop: 12, borderRadius: 10, overflow: "hidden", background: "#000", aspectRatio: "16/9", maxHeight: 120 }}>
                       <video ref={videoRef} autoPlay muted playsInline style={{ width: "100%", height: "100%", objectFit: "cover", transform: "scaleX(-1)" }} />
                     </div>
                   )}
@@ -1159,19 +1181,23 @@ We've pre-filled your target role from your resume. Adjust if needed, then choos
                 </button>
               ) : (
                 <>
-                <button onClick={handleStart}
+                <button onClick={handleStart} disabled={starting}
                   style={{
                     fontFamily: font.ui, fontSize: 15, fontWeight: 600, padding: "14px 40px", borderRadius: 10, border: "none",
-                    background: `linear-gradient(135deg, ${c.gilt}, ${c.giltDark})`,
-                    color: c.obsidian,
-                    cursor: "pointer",
+                    background: starting ? "rgba(212,179,127,0.15)" : `linear-gradient(135deg, ${c.gilt}, ${c.giltDark})`,
+                    color: starting ? "rgba(212,179,127,0.4)" : c.obsidian,
+                    cursor: starting ? "not-allowed" : "pointer",
                     transition: "all 0.25s ease", display: "inline-flex", alignItems: "center", gap: 8,
-                    boxShadow: "0 8px 24px rgba(212,179,127,0.2)",
+                    boxShadow: starting ? "none" : "0 8px 24px rgba(212,179,127,0.2)",
                   }}
-                  onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 12px 32px rgba(212,179,127,0.3)"; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 8px 24px rgba(212,179,127,0.2)"; }}>
-                  <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polygon points="5,3 19,12 5,21"/></svg>
-                  {micStatus === "granted" ? "Start Practice Interview" : "Start Without Mic"}
+                  onMouseEnter={(e) => { if (!starting) { e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 12px 32px rgba(212,179,127,0.3)"; } }}
+                  onMouseLeave={(e) => { if (!starting) { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 8px 24px rgba(212,179,127,0.2)"; } }}>
+                  {starting ? (
+                    <div style={{ width: 16, height: 16, border: "2.5px solid rgba(212,179,127,0.3)", borderTopColor: c.gilt, borderRadius: "50%", animation: "spin 1s linear infinite" }} />
+                  ) : (
+                    <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polygon points="5,3 19,12 5,21"/></svg>
+                  )}
+                  {starting ? "Starting..." : micStatus === "granted" ? "Start Practice Interview" : "Start Without Mic"}
                 </button>
                 {micStatus !== "granted" && (
                   <p style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, textAlign: "center", marginTop: 8 }}>
