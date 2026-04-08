@@ -285,15 +285,57 @@ export default function Onboarding() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [aiProfile, setAiProfile] = useState<ResumeProfile | null>(null);
   const [aiPhase, setAiPhase] = useState<"idle" | "analyzing" | "done">("idle");
-  const [userName, setUserName] = useState("");
+  const [userName, setUserName] = useState(user?.name || "");
   const undoRef = useRef<{ fileName: string; resumeText: string; resumeParsed: ParsedResume | null; aiProfile: ResumeProfile | null; aiPhase: "idle" | "analyzing" | "done"; targetRole: string; targetCompany: string; userName: string } | null>(null);
   const analysisAbortRef = useRef<AbortController | null>(null);
   const [showUndo, setShowUndo] = useState(false);
   const undoTimerRef = useRef<number>(0);
 
+  // ─── Restore resume from user profile on mount/refresh ───
+  const resumeRestoredRef = useRef(false);
+  useEffect(() => {
+    if (resumeRestoredRef.current || resumeParsed || resumeParsing) return;
+    if (!user?.resumeFileName || !user?.resumeText) return;
+    resumeRestoredRef.current = true;
+    setFileName(user.resumeFileName);
+    setResumeText(user.resumeText);
+    // Restore parsed data from DB
+    const data = user.resumeData || parseResumeData(user.resumeText);
+    setResumeParsed(data);
+    // Restore AI profile if it was saved with the resume data
+    const savedAiProfile = (data as any)?.aiProfile as ResumeProfile | undefined;
+    if (savedAiProfile && savedAiProfile.headline) {
+      setAiProfile(savedAiProfile);
+      setAiPhase("done");
+      if (savedAiProfile.headline && savedAiProfile.headline !== "Analyzing..." && !userName) {
+        setUserName(savedAiProfile.headline.split(/[—–|,]/)[0].trim().slice(0, 40));
+      }
+    } else {
+      // No AI profile saved — re-analyze
+      setAiPhase("analyzing");
+      const autoRole = data.experience?.[0]?.title || "";
+      analyzeResumeWithAI(user.resumeText, targetRole || autoRole)
+        .then(result => {
+          if (result && "profile" in result) {
+            setAiProfile(result.profile);
+            if (result.profile.headline && !userName) {
+              setUserName(result.profile.headline.split(/[—–|,]/)[0].trim().slice(0, 40));
+            }
+          }
+        })
+        .catch(() => {})
+        .finally(() => setAiPhase("done"));
+    }
+    if (data.name && !userName) setUserName(data.name);
+    if (data.experience?.[0]?.title && !targetRole) {
+      setTargetRole(data.experience[0].title);
+      setRoleAutoFilled(true);
+    }
+  }, [user?.resumeFileName, user?.resumeText]);
+
   // ─── Step 2: Profile (restored from localStorage if available) ───
   const [savedForm] = useState(loadObForm);
-  const [targetRole, setTargetRole] = useState(savedForm?.targetRole || "");
+  const [targetRole, setTargetRole] = useState(savedForm?.targetRole || user?.targetRole || "");
   const [roleAutoFilled, setRoleAutoFilled] = useState(false);
   const [targetCompany, setTargetCompany] = useState(savedForm?.targetCompany || "");
   const [interviewFocus, setInterviewFocus] = useState<string[]>(savedForm?.interviewFocus?.slice(0, 1) || ["Behavioral"]);
