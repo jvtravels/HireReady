@@ -281,7 +281,19 @@ function AutocompleteInput({
   useEffect(() => {
     if (filtered.length > 0 && inputRef.current) {
       const rect = inputRef.current.getBoundingClientRect();
-      setDropdownPos({ top: rect.bottom + 4, left: rect.left, width: rect.width });
+      const vw = window.innerWidth;
+      const pad = 8; // min distance from viewport edge
+      let left = rect.left;
+      let width = rect.width;
+      // Clamp width so dropdown doesn't exceed viewport
+      if (width > vw - pad * 2) width = vw - pad * 2;
+      // Clamp left so dropdown stays within viewport
+      if (left < pad) left = pad;
+      if (left + width > vw - pad) left = vw - pad - width;
+      // If dropdown would overflow bottom, show above input
+      const spaceBelow = window.innerHeight - rect.bottom - 4;
+      const top = spaceBelow < 120 ? Math.max(pad, rect.top - 224) : rect.bottom + 4;
+      setDropdownPos({ top, left, width });
     }
   }, [filtered.length, focused, value]);
 
@@ -380,6 +392,7 @@ export default function Onboarding() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [aiProfile, setAiProfile] = useState<ResumeProfile | null>(null);
   const [aiPhase, setAiPhase] = useState<"idle" | "analyzing" | "done">("idle");
+  const [analysisStage, setAnalysisStage] = useState(0);
   const [userName, setUserName] = useState(user?.name || "");
   const undoRef = useRef<{ fileName: string; resumeText: string; resumeParsed: ParsedResume | null; aiProfile: ResumeProfile | null; aiPhase: "idle" | "analyzing" | "done"; targetRole: string; targetCompany: string; userName: string } | null>(null);
   const analysisAbortRef = useRef<AbortController | null>(null);
@@ -447,10 +460,23 @@ export default function Onboarding() {
     saveObForm({ targetRole, targetCompany, interviewFocus, sessionLength });
   }, [targetRole, targetCompany, interviewFocus, sessionLength]);
 
+  // Progress stage timer for resume analysis
+  useEffect(() => {
+    if (aiPhase !== "analyzing" && !resumeParsing) { setAnalysisStage(0); return; }
+    setAnalysisStage(0);
+    const timers = [
+      setTimeout(() => setAnalysisStage(1), 2000),
+      setTimeout(() => setAnalysisStage(2), 6000),
+      setTimeout(() => setAnalysisStage(3), 12000),
+    ];
+    return () => timers.forEach(clearTimeout);
+  }, [aiPhase, resumeParsing]);
+
   // ─── Step 3: Mic ───
   const [micStatus, setMicStatus] = useState<"idle" | "requesting" | "granted" | "denied">("idle");
   const [micLevel, setMicLevel] = useState(0);
   const [starting, setStarting] = useState(false);
+  const [launching, setLaunching] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const streamRef = useRef<MediaStream | null>(null);
   const animFrameRef = useRef(0);
@@ -664,6 +690,9 @@ export default function Onboarding() {
     const FOCUS_TO_TYPE: Record<string, string> = { "Behavioral": "behavioral", "Strategic": "strategic", "Technical Leadership": "technical", "Case Study": "case-study" };
     const focusType = FOCUS_TO_TYPE[interviewFocus[0]] || "behavioral";
     track("onboarding_complete", { focus: focusType, sessionLength, role: targetRole, hasMic: micStatus === "granted" });
+    // Show launch animation before navigating
+    setLaunching(true);
+    await new Promise(r => setTimeout(r, 1400));
     navigate(`/interview?type=${encodeURIComponent(focusType)}&difficulty=standard&mini=true`);
   };
 
@@ -697,6 +726,8 @@ export default function Onboarding() {
         .fade-up-2 { animation: fadeUp 0.35s ease-out 80ms both; }
         .fade-up-3 { animation: fadeUp 0.35s ease-out 160ms both; }
         @keyframes toastIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes launchIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+        @keyframes launchPulse { 0% { transform: scale(1); opacity: 0.8; } 50% { transform: scale(1.15); opacity: 1; } 100% { transform: scale(1); opacity: 0.8; } }
         .ob-card { background: rgba(17,17,19,0.7); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid rgba(245,242,237,0.06); }
         .ob-card-gold { background: linear-gradient(135deg, rgba(17,17,19,0.8) 0%, rgba(212,179,127,0.06) 100%); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid rgba(212,179,127,0.1); }
         .ob-drop:hover { border-color: rgba(212,179,127,0.35) !important; background: rgba(212,179,127,0.02) !important; }
@@ -878,23 +909,45 @@ export default function Onboarding() {
                   </p>
 
                   {/* Loading card — replaces the drop zone */}
-                  <div className="ob-card" style={{ borderRadius: 16, padding: "64px 32px", textAlign: "center", border: `1px solid rgba(245,242,237,0.06)` }}>
+                  <div className="ob-card" style={{ borderRadius: 16, padding: "48px 32px", textAlign: "center", border: `1px solid rgba(245,242,237,0.06)` }}>
                     <div style={{ width: 60, height: 60, borderRadius: 16, margin: "0 auto 24px", background: "rgba(212,179,127,0.06)", border: "1px solid rgba(212,179,127,0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                       <div style={{ width: 24, height: 24, border: "2.5px solid rgba(212,179,127,0.2)", borderTopColor: c.gilt, borderRadius: "50%", animation: "spin 1s linear infinite" }} />
                     </div>
-                    <h3 style={{ fontFamily: font.display, fontSize: 28, fontWeight: 400, color: c.ivory, marginBottom: 14, letterSpacing: "-0.02em" }}>Building your profile</h3>
-                    <p style={{ fontFamily: font.ui, fontSize: 15, color: c.stone, lineHeight: 1.7, maxWidth: 440, margin: "0 auto 8px" }}>
-                      AI is analyzing your experience, skills, and achievements to create a personalized candidate profile...
-                    </p>
+                    <h3 style={{ fontFamily: font.display, fontSize: 28, fontWeight: 400, color: c.ivory, marginBottom: 20, letterSpacing: "-0.02em" }}>Building your profile</h3>
+
+                    {/* Stage indicators */}
+                    <div style={{ maxWidth: 300, margin: "0 auto 20px", display: "flex", flexDirection: "column", gap: 10, textAlign: "left" }}>
+                      {[
+                        { label: "Extracting text", icon: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg> },
+                        { label: "Identifying skills & experience", icon: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> },
+                        { label: "Analyzing strengths & gaps", icon: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/></svg> },
+                        { label: "Generating your profile", icon: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> },
+                      ].map((stage, i) => {
+                        const done = analysisStage > i;
+                        const active = analysisStage === i;
+                        return (
+                          <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, opacity: active ? 1 : done ? 0.5 : 0.2, transition: "opacity 0.4s ease" }}>
+                            <div style={{ width: 24, height: 24, borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, color: done ? c.sage : active ? c.gilt : c.stone, background: done ? "rgba(122,158,126,0.08)" : active ? "rgba(212,179,127,0.08)" : "transparent" }}>
+                              {done ? (
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                              ) : active ? (
+                                <div style={{ width: 10, height: 10, border: "1.5px solid rgba(212,179,127,0.3)", borderTopColor: c.gilt, borderRadius: "50%", animation: "spin 1s linear infinite" }} />
+                              ) : stage.icon}
+                            </div>
+                            <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: active ? 500 : 400, color: done ? c.sage : active ? c.ivory : c.stone }}>{stage.label}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+
                     {/* Progress bar */}
-                    <div style={{ maxWidth: 320, margin: "20px auto 0", height: 4, borderRadius: 2, background: "rgba(245,242,237,0.06)", overflow: "hidden" }}>
+                    <div style={{ maxWidth: 300, margin: "0 auto", height: 3, borderRadius: 2, background: "rgba(245,242,237,0.06)", overflow: "hidden" }}>
                       <div className="ob-progress-bar" style={{ height: "100%", borderRadius: 2, background: `linear-gradient(90deg, ${c.gilt}, ${c.giltDark})` }} />
                     </div>
-                    <p style={{ fontFamily: font.ui, fontSize: 12, color: "rgba(154,149,144,0.5)", marginTop: 8 }}>Usually 10–20 seconds</p>
                     {fileName && (
-                      <div style={{ display: "inline-flex", alignItems: "center", gap: 8, marginTop: 20, padding: "8px 16px", borderRadius: 8, background: c.graphite, border: `1px solid ${c.border}` }}>
-                        <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.stone} strokeWidth="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-                        <span style={{ fontFamily: font.ui, fontSize: 14, color: c.ivory }}>{fileName}</span>
+                      <div style={{ display: "inline-flex", alignItems: "center", gap: 8, marginTop: 16, padding: "6px 14px", borderRadius: 8, background: c.graphite, border: `1px solid ${c.border}` }}>
+                        <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={c.stone} strokeWidth="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                        <span style={{ fontFamily: font.ui, fontSize: 12, color: c.stone }}>{fileName}</span>
                       </div>
                     )}
                   </div>
@@ -983,7 +1036,7 @@ export default function Onboarding() {
                     </div>
 
                     {/* Resume Score */}
-                    <div className="ob-card fade-up-1" style={{ borderRadius: 14, padding: "16px 20px", border: `1px solid ${aiProfile.resumeScore != null && aiProfile.resumeScore < 50 ? "rgba(220,80,80,0.2)" : aiProfile.resumeScore != null && aiProfile.resumeScore >= 50 ? "rgba(122,158,126,0.2)" : "rgba(245,242,237,0.06)"}` }}>
+                    <div className="ob-card fade-up-1" style={{ borderRadius: 14, padding: "16px 20px", border: `1px solid ${aiProfile.resumeScore != null && aiProfile.resumeScore < 50 ? "rgba(212,179,127,0.2)" : aiProfile.resumeScore != null && aiProfile.resumeScore >= 50 ? "rgba(122,158,126,0.2)" : "rgba(245,242,237,0.06)"}` }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 12 }}>
                         <svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
                         <h4 style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: c.ivory, margin: 0 }}>Resume Score</h4>
@@ -995,7 +1048,7 @@ export default function Onboarding() {
                             <svg width="64" height="64" viewBox="0 0 64 64">
                               <circle cx="32" cy="32" r="28" fill="none" stroke="rgba(245,242,237,0.06)" strokeWidth="5" />
                               <circle cx="32" cy="32" r="28" fill="none"
-                                stroke={aiProfile.resumeScore >= 50 ? c.sage : c.ember}
+                                stroke={aiProfile.resumeScore >= 50 ? c.sage : c.gilt}
                                 strokeWidth="5" strokeLinecap="round"
                                 strokeDasharray={`${(aiProfile.resumeScore / 100) * 175.9} 175.9`}
                                 transform="rotate(-90 32 32)"
@@ -1003,17 +1056,17 @@ export default function Onboarding() {
                               />
                             </svg>
                             <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                              <span style={{ fontFamily: font.mono, fontSize: 18, fontWeight: 700, color: aiProfile.resumeScore >= 50 ? c.sage : c.ember }}>{aiProfile.resumeScore}</span>
+                              <span style={{ fontFamily: font.mono, fontSize: 18, fontWeight: 700, color: aiProfile.resumeScore >= 50 ? c.sage : c.gilt }}>{aiProfile.resumeScore}</span>
                             </div>
                           </div>
                           <div style={{ flex: 1 }}>
-                            <p style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: aiProfile.resumeScore >= 50 ? c.sage : c.ember, marginBottom: 4 }}>
-                              {aiProfile.resumeScore >= 80 ? "Excellent" : aiProfile.resumeScore >= 65 ? "Good" : aiProfile.resumeScore >= 50 ? "Acceptable" : "Needs Improvement"}
+                            <p style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: aiProfile.resumeScore >= 50 ? c.sage : c.gilt, marginBottom: 4 }}>
+                              {aiProfile.resumeScore >= 80 ? "Excellent" : aiProfile.resumeScore >= 65 ? "Good" : aiProfile.resumeScore >= 50 ? "Acceptable" : "Room to Grow"}
                             </p>
                             <p style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, lineHeight: 1.4 }}>
                               {aiProfile.resumeScore >= 50
                                 ? "Your resume meets the minimum standard. You can proceed to interview practice."
-                                : "We've identified areas to strengthen. You can still practice — check the tips below to improve."}
+                                : "A few tweaks could make your resume stronger. Practice interviews will help too!"}
                             </p>
                           </div>
                         </div>
@@ -1025,11 +1078,11 @@ export default function Onboarding() {
 
                   {/* Resume Improvement Suggestions (shown when score < 50 OR as tips when >= 50) */}
                   {aiProfile.improvements && aiProfile.improvements.length > 0 && aiProfile.resumeScore != null && aiProfile.resumeScore < 50 && (
-                    <div className="ob-card fade-up-2" style={{ borderRadius: 14, padding: "20px 24px", border: "1px solid rgba(220,80,80,0.15)", background: "rgba(220,80,80,0.03)" }}>
+                    <div className="ob-card fade-up-2" style={{ borderRadius: 14, padding: "20px 24px", border: "1px solid rgba(212,179,127,0.12)", background: "rgba(212,179,127,0.02)" }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
-                        <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={c.ember} strokeWidth="1.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-                        <h4 style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: c.ember, margin: 0 }}>How to improve your resume</h4>
-                        <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, marginLeft: "auto" }}>Tips to strengthen your resume</span>
+                        <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4m0-4h.01"/></svg>
+                        <h4 style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: c.gilt, margin: 0 }}>Quick wins for your resume</h4>
+                        <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, marginLeft: "auto" }}>Small changes, big impact</span>
                       </div>
                       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                         {aiProfile.improvements.map((tip, i) => (
@@ -1042,7 +1095,7 @@ export default function Onboarding() {
                         ))}
                       </div>
                       <p style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, marginTop: 14, textAlign: "center" }}>
-                        Update your resume and upload again to re-check your score — or continue to practice anyway.
+                        Try these tips and re-upload, or continue — practicing will help just as much!
                       </p>
                     </div>
                   )}
@@ -1273,46 +1326,40 @@ We've pre-filled your target role from your resume. Adjust if needed, then choos
                 </p>
               </div>
 
-              <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-                {/* ── Permissions Card — side by side ── */}
-                <div className="ob-card fade-up-1" style={{ borderRadius: 16, padding: "24px 28px" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
-                    <div style={{ width: 28, height: 28, borderRadius: 7, background: "rgba(212,179,127,0.06)", border: "1px solid rgba(212,179,127,0.12)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5" strokeLinecap="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>
-                    </div>
-                    <span style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: c.ivory }}>Permissions</span>
+              <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+                {/* ── Mic Permission — compact inline bar ── */}
+                <div className={`ob-card fade-up-1 ${micStatus !== "granted" ? "ob-mic-pulse" : ""}`} style={{
+                  borderRadius: 12, padding: "14px 20px",
+                  display: "flex", alignItems: "center", gap: 14,
+                  border: `1px solid ${micStatus === "granted" ? "rgba(122,158,126,0.15)" : "rgba(212,179,127,0.15)"}`,
+                  background: micStatus === "granted" ? "rgba(122,158,126,0.03)" : undefined,
+                }}>
+                  <div style={{ width: 34, height: 34, borderRadius: 9, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, background: micStatus === "granted" ? "rgba(122,158,126,0.08)" : "rgba(245,242,237,0.03)", border: `1px solid ${micStatus === "granted" ? "rgba(122,158,126,0.2)" : "rgba(245,242,237,0.06)"}` }}>
+                    <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={micStatus === "granted" ? c.sage : c.stone} strokeWidth="1.5" strokeLinecap="round">
+                      <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                    </svg>
                   </div>
-
-                  <div className={micStatus !== "granted" ? "ob-mic-pulse" : undefined}
-                    style={{ display: "flex", alignItems: "center", gap: 16, padding: "20px 24px", borderRadius: 12, background: micStatus === "granted" ? "rgba(122,158,126,0.04)" : "rgba(245,242,237,0.02)", border: `1px solid ${micStatus === "granted" ? "rgba(122,158,126,0.12)" : "rgba(212,179,127,0.2)"}` }}>
-                    <div style={{ width: 44, height: 44, borderRadius: 12, background: micStatus === "granted" ? `${c.sage}12` : "rgba(245,242,237,0.03)", border: `1px solid ${micStatus === "granted" ? `${c.sage}25` : "rgba(245,242,237,0.06)"}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                      <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={micStatus === "granted" ? c.sage : c.stone} strokeWidth="1.5" strokeLinecap="round">
-                        <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-                      </svg>
-                    </div>
-                    <div style={{ flex: 1 }}>
-                      <p style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: c.ivory, marginBottom: 4 }}>Microphone</p>
-                      <p style={{ fontFamily: font.ui, fontSize: 12, color: micStatus === "granted" ? c.sage : c.stone, lineHeight: 1.4 }}>
-                        {micStatus === "granted" ? "Connected — ready to go" : micStatus === "denied" ? `No worries — you can type your answers instead. ${micPermissionHint}` : "Recommended for the best interview experience"}
-                      </p>
-                      {micStatus === "granted" && (
-                        <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 6 }}>
-                          <div style={{ width: 80, height: 4, borderRadius: 2, background: "rgba(245,242,237,0.06)", overflow: "hidden" }}>
-                            <div style={{ height: "100%", borderRadius: 2, background: c.sage, width: `${Math.max(5, micLevel)}%`, transition: "width 0.1s" }} />
-                          </div>
-                          <span style={{ fontFamily: font.ui, fontSize: 10, color: c.sage }}>Live</span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <span style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: micStatus === "granted" ? c.sage : c.ivory }}>
+                      {micStatus === "granted" ? "Microphone connected" : micStatus === "denied" ? "Mic denied — you can type instead" : "Microphone"}
+                    </span>
+                    {micStatus === "granted" && (
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4 }}>
+                        <div style={{ width: 60, height: 3, borderRadius: 2, background: "rgba(245,242,237,0.06)", overflow: "hidden" }}>
+                          <div style={{ height: "100%", borderRadius: 2, background: c.sage, width: `${Math.max(5, micLevel)}%`, transition: "width 0.1s" }} />
                         </div>
-                      )}
-                    </div>
-                    {micStatus !== "granted" && (
-                      <button onClick={requestMic}
-                        style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: c.gilt, background: "rgba(212,179,127,0.08)", border: `1px solid rgba(212,179,127,0.2)`, borderRadius: 8, padding: "8px 20px", cursor: "pointer", transition: "all 0.2s", flexShrink: 0 }}
-                        onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(212,179,127,0.15)"; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(212,179,127,0.08)"; }}>
-                        {micStatus === "denied" ? "Retry" : "Allow Microphone"}
-                      </button>
+                        <span style={{ fontFamily: font.ui, fontSize: 9, color: c.sage }}>Live</span>
+                      </div>
                     )}
-                    </div>
+                  </div>
+                  {micStatus !== "granted" && (
+                    <button onClick={requestMic}
+                      style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: c.gilt, background: "rgba(212,179,127,0.08)", border: `1px solid rgba(212,179,127,0.2)`, borderRadius: 8, padding: "7px 16px", cursor: "pointer", transition: "all 0.2s", flexShrink: 0 }}
+                      onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(212,179,127,0.15)"; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(212,179,127,0.08)"; }}>
+                      {micStatus === "denied" ? "Retry" : "Allow"}
+                    </button>
+                  )}
                 </div>
 
                 {/* ── Your Profile Card ── */}
@@ -1438,6 +1485,32 @@ We've pre-filled your target role from your resume. Adjust if needed, then choos
           </div>
         </div>
       </div>
+      {/* Launch overlay */}
+      {launching && (
+        <div style={{
+          position: "fixed", inset: 0, zIndex: 200,
+          display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+          background: c.obsidian,
+          animation: "launchIn 0.4s ease",
+        }}>
+          <div style={{
+            width: 64, height: 64, borderRadius: 16, marginBottom: 24,
+            background: `linear-gradient(135deg, rgba(212,179,127,0.15), rgba(212,179,127,0.05))`,
+            border: "1px solid rgba(212,179,127,0.25)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            animation: "launchPulse 1.2s ease-in-out infinite",
+          }}>
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="2" strokeLinecap="round"><polygon points="5,3 19,12 5,21"/></svg>
+          </div>
+          <h2 style={{ fontFamily: font.display, fontSize: 28, fontWeight: 400, color: c.ivory, marginBottom: 8, letterSpacing: "-0.02em" }}>
+            Let's go!
+          </h2>
+          <p style={{ fontFamily: font.ui, fontSize: 14, color: c.stone }}>
+            Launching your {interviewFocus[0]?.toLowerCase() || "practice"} interview...
+          </p>
+        </div>
+      )}
+
       {showUpgradeModal && (
         <UpgradeModal
           onClose={() => setShowUpgradeModal(false)}
