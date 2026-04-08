@@ -9,160 +9,231 @@ import { unlockAudio } from "./tts";
 
 const TOTAL_STEPS = 3;
 
-/* ─── Suggestion data ─── */
+/* ─── Suggestion data (India-focused) ─── */
 const ROLE_SUGGESTIONS = [
   // Software Engineering
   "Software Engineer", "Senior Software Engineer", "Staff Engineer", "Principal Engineer", "Lead Software Engineer",
   "Software Developer", "Senior Software Developer", "Application Developer", "Systems Engineer",
-  "Frontend Developer", "Senior Frontend Developer", "Frontend Engineer", "React Developer", "Angular Developer", "Vue.js Developer",
-  "Backend Developer", "Senior Backend Developer", "Backend Engineer", "Java Developer", "Python Developer", "Node.js Developer", "Go Developer", ".NET Developer",
-  "Full Stack Developer", "Senior Full Stack Developer", "Full Stack Engineer", "MERN Stack Developer", "MEAN Stack Developer",
-  "Mobile Developer", "iOS Developer", "Senior iOS Developer", "Android Developer", "Senior Android Developer", "React Native Developer", "Flutter Developer",
-  "Embedded Software Engineer", "Firmware Engineer", "Systems Programmer", "Rust Developer", "C++ Developer",
-  // DevOps & Infrastructure
-  "DevOps Engineer", "Senior DevOps Engineer", "Site Reliability Engineer", "SRE Manager", "Cloud Engineer", "Cloud Architect",
-  "Platform Engineer", "Infrastructure Engineer", "Network Engineer", "Systems Administrator", "Release Engineer",
-  "Kubernetes Engineer", "AWS Solutions Architect", "Azure Engineer", "GCP Engineer",
+  "Frontend Developer", "Senior Frontend Developer", "React Developer", "Angular Developer", "Vue.js Developer",
+  "Backend Developer", "Senior Backend Developer", "Java Developer", "Python Developer", "Node.js Developer", "Go Developer", ".NET Developer",
+  "Full Stack Developer", "Senior Full Stack Developer", "MERN Stack Developer", "MEAN Stack Developer",
+  "Mobile Developer", "iOS Developer", "Android Developer", "React Native Developer", "Flutter Developer",
+  "Embedded Software Engineer", "Firmware Engineer", "C++ Developer", "Rust Developer",
+  // DevOps & Cloud
+  "DevOps Engineer", "Senior DevOps Engineer", "Site Reliability Engineer", "Cloud Engineer", "Cloud Architect",
+  "Platform Engineer", "Infrastructure Engineer", "Network Engineer", "Systems Administrator",
+  "Kubernetes Engineer", "AWS Solutions Architect", "Azure Engineer",
   // Data & AI/ML
-  "Data Engineer", "Senior Data Engineer", "Lead Data Engineer", "Data Architect",
-  "Data Scientist", "Senior Data Scientist", "Lead Data Scientist", "Research Scientist",
-  "Data Analyst", "Senior Data Analyst", "Business Intelligence Analyst", "BI Developer",
-  "Machine Learning Engineer", "Senior ML Engineer", "AI Engineer", "AI/ML Lead", "ML Researcher", "NLP Engineer", "Computer Vision Engineer",
-  "Deep Learning Engineer", "MLOps Engineer", "AI Product Manager",
-  // Security
-  "Security Engineer", "Senior Security Engineer", "Application Security Engineer", "Cloud Security Engineer",
-  "Cybersecurity Analyst", "Penetration Tester", "Security Architect", "CISO", "SOC Analyst",
+  "Data Engineer", "Senior Data Engineer", "Data Architect",
+  "Data Scientist", "Senior Data Scientist", "Research Scientist",
+  "Data Analyst", "Senior Data Analyst", "Business Intelligence Analyst", "BI Developer", "MIS Executive",
+  "Machine Learning Engineer", "Senior ML Engineer", "AI Engineer", "AI/ML Lead", "NLP Engineer", "Computer Vision Engineer",
+  "MLOps Engineer", "AI Product Manager",
   // QA & Testing
   "QA Engineer", "Senior QA Engineer", "QA Lead", "Test Engineer", "SDET", "Automation Engineer", "Performance Engineer",
-  "QA Manager", "Director of QA", "Test Architect",
+  "QA Manager", "Test Architect",
+  // Security
+  "Security Engineer", "Cybersecurity Analyst", "SOC Analyst", "Penetration Tester", "Security Architect", "CISO",
   // Engineering Leadership
   "Tech Lead", "Engineering Manager", "Senior Engineering Manager", "Director of Engineering",
-  "VP of Engineering", "SVP of Engineering", "Head of Engineering", "CTO", "Co-founder & CTO",
+  "VP of Engineering", "Head of Engineering", "CTO", "Co-founder & CTO",
   // Product
   "Associate Product Manager", "Product Manager", "Senior Product Manager", "Lead Product Manager",
   "Group Product Manager", "Director of Product", "VP of Product", "Head of Product", "Chief Product Officer",
   "Technical Product Manager", "Product Owner", "Product Analyst", "Growth Product Manager",
   // Design
-  "Product Designer", "Senior Product Designer", "Lead Product Designer", "Staff Product Designer",
-  "UX Designer", "Senior UX Designer", "UI Designer", "Senior UI Designer", "UX/UI Designer",
-  "UX Researcher", "Senior UX Researcher", "Design Researcher", "Interaction Designer",
-  "Visual Designer", "Motion Designer", "Brand Designer", "Design Systems Designer",
-  "Head of Design", "Design Manager", "Design Director", "VP of Design", "Chief Design Officer",
-  // Business & Operations
+  "Product Designer", "Senior Product Designer", "UX Designer", "Senior UX Designer", "UI Designer", "UX/UI Designer",
+  "UX Researcher", "Visual Designer", "Motion Designer", "Graphic Designer",
+  "Head of Design", "Design Manager", "Design Director",
+  // Business Analysis & Consulting
   "Business Analyst", "Senior Business Analyst", "Management Consultant", "Strategy Consultant", "Technology Consultant",
+  "SAP Consultant", "Salesforce Consultant", "ERP Consultant", "Functional Consultant", "Domain Consultant",
+  // Project & Program Management
+  "Project Manager", "Senior Project Manager", "Program Manager", "Technical Program Manager",
+  "Scrum Master", "Agile Coach", "Delivery Manager", "Engagement Manager", "Client Partner",
+  // Operations & Supply Chain
   "Operations Manager", "Operations Analyst", "Supply Chain Manager", "Logistics Manager",
-  "Project Manager", "Senior Project Manager", "Program Manager", "Technical Program Manager", "Senior TPM",
-  "Scrum Master", "Agile Coach", "Delivery Manager", "Release Train Engineer",
+  "Procurement Manager", "Warehouse Manager", "Planning Manager", "Category Manager",
   // Marketing
-  "Marketing Manager", "Senior Marketing Manager", "Digital Marketing Manager", "Performance Marketing Manager",
-  "Growth Manager", "Growth Hacker", "Content Strategist", "Content Manager", "Copywriter",
-  "SEO Specialist", "SEM Specialist", "Social Media Manager", "Brand Manager", "Communications Manager",
-  "VP of Marketing", "Director of Marketing", "Head of Growth", "Chief Marketing Officer", "CMO",
+  "Marketing Manager", "Digital Marketing Manager", "Performance Marketing Manager",
+  "Growth Manager", "Content Strategist", "Content Writer", "Copywriter",
+  "SEO Specialist", "SEM Specialist", "Social Media Manager", "Brand Manager",
+  "VP of Marketing", "Head of Growth", "Chief Marketing Officer",
   // Sales & BD
-  "Sales Executive", "Senior Sales Executive", "Account Executive", "Senior Account Executive",
-  "Sales Manager", "Regional Sales Manager", "Enterprise Sales", "Inside Sales Representative",
+  "Sales Executive", "Senior Sales Executive", "Account Executive",
+  "Sales Manager", "Regional Sales Manager", "Area Sales Manager", "Zonal Sales Manager",
   "Business Development Manager", "Business Development Executive", "BD Lead",
-  "VP of Sales", "Director of Sales", "Head of Sales", "Chief Revenue Officer",
-  "Customer Success Manager", "Senior CSM", "Account Manager", "Key Account Manager",
-  "Solutions Architect", "Solutions Engineer", "Pre-Sales Engineer", "Sales Engineer", "Technical Account Manager",
+  "Key Account Manager", "Enterprise Sales Manager", "Inside Sales Representative",
+  "Customer Success Manager", "Account Manager", "Solutions Architect", "Pre-Sales Consultant",
+  "VP of Sales", "Head of Sales", "Chief Revenue Officer",
   // HR & People
-  "HR Manager", "Senior HR Manager", "HR Business Partner", "HRBP",
-  "Recruiter", "Senior Recruiter", "Technical Recruiter", "Talent Acquisition Lead", "Talent Acquisition Manager",
-  "VP of People", "Head of Talent", "Head of People", "CHRO", "Chief People Officer",
-  "Learning & Development Manager", "Compensation & Benefits Manager", "People Operations Manager",
+  "HR Executive", "HR Manager", "Senior HR Manager", "HR Business Partner",
+  "Recruiter", "Technical Recruiter", "Talent Acquisition Lead", "Talent Acquisition Manager",
+  "L&D Manager", "Training Manager", "Compensation & Benefits Manager", "People Operations Manager",
+  "Head of HR", "VP of People", "CHRO",
   // Finance & Accounting
+  "CA", "Chartered Accountant", "CA Inter", "CA Articleship",
   "Financial Analyst", "Senior Financial Analyst", "Investment Analyst", "Investment Banking Analyst",
-  "CA", "Chartered Accountant", "CPA", "Auditor", "Internal Auditor", "Tax Consultant",
-  "FP&A Analyst", "Controller", "Treasury Analyst", "Risk Analyst", "Compliance Officer",
-  "Finance Manager", "Director of Finance", "VP of Finance", "CFO",
+  "Auditor", "Internal Auditor", "Statutory Auditor", "Tax Consultant", "GST Consultant",
+  "Accounts Executive", "Accounts Manager", "FP&A Analyst", "Treasury Analyst",
+  "Risk Analyst", "Credit Analyst", "Compliance Officer",
+  "Finance Manager", "Finance Controller", "VP of Finance", "CFO",
+  // Banking & Insurance
+  "Bank PO", "Bank Clerk", "Relationship Manager", "Branch Manager", "Wealth Manager",
+  "Credit Manager", "Loan Officer", "Underwriter", "Claims Manager",
+  "Insurance Agent", "Actuarial Analyst",
   // Legal
-  "Legal Counsel", "Corporate Lawyer", "General Counsel", "Legal Associate", "Compliance Manager",
+  "Legal Counsel", "Corporate Lawyer", "Legal Associate", "Company Secretary", "CS", "Compliance Manager",
+  // Government & PSU
+  "IAS Officer", "IPS Officer", "IFS Officer", "UPSC Aspirant",
+  "SSC CGL", "Bank PO (IBPS/SBI)", "RBI Grade B", "SEBI Grade A",
+  "PSU Engineer", "GATE Qualified Engineer", "Government Scientist",
+  // Teaching & Education
+  "Teacher", "Lecturer", "Assistant Professor", "Professor",
+  "Academic Coordinator", "Principal", "Education Counselor", "Curriculum Designer",
+  "Corporate Trainer", "Subject Matter Expert",
+  // Healthcare
+  "Doctor", "MBBS", "MD", "Surgeon", "Dentist",
+  "Pharmacist", "Medical Representative", "Clinical Research Associate",
+  "Hospital Administrator", "Healthcare Manager",
+  // Civil & Mechanical Engineering
+  "Civil Engineer", "Site Engineer", "Structural Engineer", "Construction Manager",
+  "Mechanical Engineer", "Design Engineer", "Manufacturing Engineer", "Production Manager",
+  "Quality Engineer", "Quality Manager", "Six Sigma Black Belt",
+  // Electrical & Electronics
+  "Electrical Engineer", "Electronics Engineer", "VLSI Engineer", "Chip Design Engineer",
+  "Control Systems Engineer", "Power Systems Engineer", "Instrumentation Engineer",
+  // Media & Content
+  "Journalist", "Editor", "Content Creator", "Video Editor", "Social Media Influencer",
+  "Public Relations Manager", "Corporate Communications Manager",
   // Executive Leadership
-  "Chief of Staff", "Director of Operations", "VP of Operations", "COO",
-  "Director of Analytics", "Head of Data", "Chief Data Officer",
-  "CEO", "Co-founder", "Managing Director", "General Manager",
-  // Entry Level & Internships
-  "Software Engineer Intern", "Product Management Intern", "Data Science Intern", "Design Intern", "Marketing Intern",
+  "CEO", "Co-founder", "Managing Director", "General Manager", "Chief of Staff", "COO",
+  // Entry Level & Freshers
+  "Software Engineer Intern", "Data Science Intern", "Product Intern", "Design Intern", "Marketing Intern",
   "Associate Software Engineer", "Junior Developer", "Junior Data Analyst",
-  "Graduate Trainee", "Management Trainee", "Fresher", "Campus Hire",
+  "Graduate Engineer Trainee (GET)", "Management Trainee", "Fresher", "Campus Hire",
+  "Apprentice", "Trainee Engineer",
   // Freelance & Contract
-  "Freelance Developer", "Contract Engineer", "Independent Consultant", "Technical Advisor",
+  "Freelance Developer", "Freelance Designer", "Independent Consultant", "Contract Engineer",
 ];
 
 const COMPANY_SUGGESTIONS = [
-  // FAANG & Big Tech
-  "Google", "Meta", "Amazon", "Apple", "Microsoft", "Netflix",
-  // Tech Giants
-  "Alphabet", "IBM", "Intel", "AMD", "NVIDIA", "Qualcomm", "Samsung", "Sony", "Tesla", "SpaceX",
-  "Cisco", "VMware", "Dell Technologies", "HP", "Lenovo",
-  // Cloud & SaaS
-  "Salesforce", "Adobe", "Oracle", "SAP", "ServiceNow", "Workday", "Intuit", "Atlassian",
-  "Snowflake", "Databricks", "MongoDB", "Elastic", "Confluent", "HashiCorp", "Datadog",
-  "Cloudflare", "Fastly", "Akamai", "DigitalOcean", "Vercel", "Netlify",
-  "HubSpot", "Zendesk", "Freshworks", "Zoho", "Monday.com", "Asana", "ClickUp",
-  // Fintech
-  "Stripe", "PayPal", "Square (Block)", "Visa", "Mastercard", "Plaid", "Robinhood",
-  "Coinbase", "Binance", "Revolut", "Wise", "Klarna", "Affirm", "Brex", "Ramp", "Chime", "SoFi",
-  // Consumer Tech
-  "Airbnb", "Uber", "Lyft", "DoorDash", "Instacart", "Spotify", "Pinterest", "Snap",
-  "Twitter (X)", "Reddit", "Discord", "Twitch", "TikTok (ByteDance)", "LinkedIn",
-  "Shopify", "Etsy", "eBay", "Walmart Labs", "Target Tech",
-  // AI & ML
-  "OpenAI", "Anthropic", "Google DeepMind", "Scale AI", "Hugging Face", "Cohere", "Stability AI",
-  "Databricks", "C3.ai", "DataRobot", "H2O.ai", "Weights & Biases",
-  // Dev Tools
-  "GitHub", "GitLab", "JetBrains", "Postman", "BrowserStack", "Figma", "Notion", "Miro",
-  "Twilio", "SendGrid", "Segment", "LaunchDarkly", "PagerDuty", "Sentry",
-  // Enterprise
-  "Palantir", "Splunk", "CrowdStrike", "Palo Alto Networks", "Fortinet", "Okta", "Zscaler",
-  // Indian IT Services
+  // Global Tech (with India offices)
+  "Google", "Microsoft", "Amazon", "Meta", "Apple", "Netflix",
+  "Adobe", "Oracle", "SAP", "Salesforce", "ServiceNow", "Intuit", "Atlassian",
+  "IBM", "Cisco", "Intel", "NVIDIA", "Qualcomm", "Samsung", "Dell Technologies", "HP", "VMware", "Lenovo",
+  "LinkedIn", "Uber", "Spotify", "Twitter (X)", "Airbnb", "Shopify",
+  "Snowflake", "Databricks", "MongoDB", "Elastic", "Cloudflare", "Datadog", "HashiCorp",
+  "Stripe", "PayPal", "Visa", "Mastercard",
+  "GitHub", "GitLab", "JetBrains", "Figma", "Notion", "Twilio",
+  "OpenAI", "Anthropic", "Google DeepMind", "Scale AI",
+  "Goldman Sachs", "JP Morgan", "Morgan Stanley", "Deutsche Bank", "Barclays", "Citi", "HSBC", "UBS", "Credit Suisse",
+  "BlackRock", "Two Sigma", "Citadel", "Jane Street", "DE Shaw", "Tower Research Capital", "WorldQuant",
+  // Indian IT Services & Consulting
   "TCS", "Infosys", "Wipro", "HCL Technologies", "Tech Mahindra", "LTIMindtree",
-  "Persistent Systems", "Mphasis", "Mindtree", "Coforge", "L&T Infotech", "Cyient",
-  "Cognizant", "Capgemini India", "Accenture India",
-  // Indian Startups & Unicorns
-  "Flipkart", "Swiggy", "Zomato", "Razorpay", "PhonePe", "Paytm", "CRED", "Meesho",
-  "Zerodha", "Groww", "Ola", "Rapido", "Dunzo", "Urban Company",
-  "Dream11", "MPL", "Games24x7",
-  "Byju's", "Unacademy", "upGrad", "Physics Wallah", "Vedantu", "Scaler",
-  "Postman", "BrowserStack", "Chargebee", "Freshworks", "Zoho", "Druva", "Icertis",
-  "Jio", "Reliance Digital", "Tata Digital", "Tata 1mg",
-  "Myntra", "Nykaa", "Lenskart", "Mamaearth", "boAt", "Sugar Cosmetics",
-  "PolicyBazaar", "Cars24", "CarDekho", "Spinny", "Droom",
-  "ShareChat", "Koo", "Dailyhunt", "Josh",
+  "Persistent Systems", "Mphasis", "Coforge", "L&T Technology Services", "Cyient", "KPIT Technologies",
+  "Mindtree", "Hexaware", "Zensar Technologies", "Sonata Software", "Birlasoft", "NIIT Technologies",
+  "Cognizant", "Capgemini", "Accenture", "Deloitte", "PwC", "EY", "KPMG",
+  "ThoughtWorks", "Publicis Sapient", "Mu Sigma", "Fractal Analytics", "Tiger Analytics", "AbsolutData",
+  "Happiest Minds", "Mphasis", "iGate", "Sasken Technologies", "Tata Elxsi", "Amdocs",
+  // Indian Startups — E-commerce & Consumer
+  "Flipkart", "Myntra", "Meesho", "Nykaa", "Lenskart", "FirstCry", "Purplle",
+  "BigBasket", "Blinkit", "JioMart", "Swiggy Instamart", "Zepto", "BlinkIt",
+  "Mamaearth", "boAt", "Sugar Cosmetics", "Bewakoof", "Licious", "Country Delight",
+  // Indian Startups — Food & Delivery
+  "Swiggy", "Zomato", "Dunzo", "EatSure (Rebel Foods)", "Box8", "FreshMenu",
+  // Indian Startups — Fintech
+  "Razorpay", "PhonePe", "Paytm", "CRED", "Zerodha", "Groww",
   "Slice", "Jupiter", "Fi Money", "Uni Cards", "KreditBee", "Lendingkart",
-  "Ather Energy", "Ola Electric", "Okinawa", "Yulu",
-  "Delhivery", "Shiprocket", "Ecom Express", "XpressBees",
-  "INDmoney", "Smallcase", "Niyo", "Open Financial",
-  // Indian Banks & Financial
-  "HDFC Bank", "ICICI Bank", "Kotak Mahindra Bank", "Axis Bank", "State Bank of India",
-  "Yes Bank", "IndusInd Bank", "Federal Bank", "RBL Bank", "IDFC First Bank",
-  "Bajaj Finserv", "Bajaj Finance", "HDFC Life", "ICICI Prudential", "SBI Life",
-  "NSE", "BSE", "SEBI", "RBI",
-  // Consulting
+  "INDmoney", "Smallcase", "Niyo", "Open Financial", "Cashfree", "Instamojo",
+  "BharatPe", "MobiKwik", "Freecharge", "LazyPay", "ZestMoney", "Rupeek",
+  "Pine Labs", "Mswipe", "Razorpay POS", "PayU", "Juspay", "Simpl",
+  "Paytm Money", "Upstox", "Angel One", "5paisa", "Motilal Oswal",
+  // Indian Startups — Mobility & Logistics
+  "Ola", "Rapido", "Uber India", "BluSmart",
+  "Ather Energy", "Ola Electric", "Revolt Motors", "Yulu", "Bounce",
+  "Delhivery", "Shiprocket", "Ecom Express", "XpressBees", "Shadowfax", "Porter", "Rivigo",
+  "BlackBuck", "Vahak", "Blowhorn",
+  // Indian Startups — EdTech
+  "Byju's", "Unacademy", "upGrad", "Physics Wallah", "Vedantu", "Scaler",
+  "Simplilearn", "Great Learning", "WhiteHat Jr", "Toppr", "Doubtnut",
+  "Allen Digital", "Testbook", "Adda247", "Gradeup", "PrepLadder",
+  // Indian Startups — HealthTech
+  "Practo", "PharmEasy", "Tata 1mg", "NetMeds", "MFine", "Pristyn Care",
+  "HealthifyMe", "CureFit (cult.fit)", "Innovaccer", "Niramai", "mfine",
+  // Indian Startups — SaaS & Dev Tools
+  "Freshworks", "Zoho", "Postman", "BrowserStack", "Chargebee", "Druva", "Icertis",
+  "CleverTap", "WebEngage", "MoEngage", "Haptik", "Yellow.ai", "Gupshup",
+  "Leadsquared", "Whatfix", "Mindtickle", "Darwinbox", "GreyTip", "Keka HR",
+  "Razorpay (SaaS)", "Uniphore", "Observe.AI", "Hasura", "Appsmith", "ToolJet",
+  "InMobi", "Glance", "Apna", "Pratilipi", "Koo",
+  // Indian Startups — Social & Media
+  "ShareChat", "Dailyhunt", "Josh", "Kuku FM", "Pocket FM",
+  // Indian Startups — Real Estate & PropTech
+  "Housing.com", "99acres", "MagicBricks", "NoBroker", "Square Yards",
+  "Lodha Group", "Prestige Group", "Godrej Properties", "Sobha",
+  // Indian Startups — Travel & Hospitality
+  "MakeMyTrip", "Goibibo", "OYO Rooms", "Yatra", "Cleartrip",
+  "EaseMyTrip", "ixigo", "RedBus", "Treebo", "FabHotels",
+  // Indian Startups — Insurance
+  "PolicyBazaar", "Acko", "Digit Insurance", "Star Health", "Turtlemint", "Plum",
+  // Indian Startups — Auto & Classifieds
+  "Cars24", "CarDekho", "Spinny", "Droom", "CarTrade", "OLX India", "Quikr",
+  // Indian Banks
+  "State Bank of India (SBI)", "HDFC Bank", "ICICI Bank", "Kotak Mahindra Bank", "Axis Bank",
+  "Punjab National Bank", "Bank of Baroda", "Canara Bank", "Union Bank", "Indian Bank",
+  "Yes Bank", "IndusInd Bank", "Federal Bank", "RBL Bank", "IDFC First Bank", "Bandhan Bank",
+  "South Indian Bank", "City Union Bank", "Karur Vysya Bank", "DCB Bank",
+  // NBFCs & Financial Services
+  "Bajaj Finance", "Bajaj Finserv", "HDFC Ltd", "L&T Finance", "Shriram Finance",
+  "Muthoot Finance", "Manappuram Finance", "Mahindra Finance", "IIFL Finance",
+  "HDFC Life", "ICICI Prudential", "SBI Life", "Max Life", "Tata AIA",
+  "HDFC AMC", "ICICI Prudential AMC", "SBI Mutual Fund", "Nippon India AMC", "Kotak AMC",
+  // Stock Exchanges & Regulators
+  "NSE", "BSE", "SEBI", "RBI", "IRDAI", "NABARD", "SIDBI",
+  "NSDL", "CDSL", "CRISIL", "ICRA", "CARE Ratings",
+  // Consulting (India presence)
   "McKinsey", "BCG", "Bain", "Deloitte", "Accenture", "PwC", "EY", "KPMG",
-  "Oliver Wyman", "Roland Berger", "Strategy&", "LEK Consulting", "ZS Associates",
-  "Booz Allen Hamilton", "Alvarez & Marsal", "FTI Consulting",
-  // Global Banks & Finance
-  "Goldman Sachs", "JP Morgan", "Morgan Stanley", "Deutsche Bank", "Barclays",
-  "Citi", "Bank of America", "UBS", "Credit Suisse", "HSBC",
-  "BlackRock", "Fidelity", "Vanguard", "Charles Schwab", "Two Sigma", "Citadel", "Jane Street", "DE Shaw",
-  // Healthcare & Pharma
-  "Johnson & Johnson", "Pfizer", "Novartis", "Roche", "AstraZeneca",
-  "Dr. Reddy's", "Sun Pharma", "Cipla", "Biocon", "Lupin",
-  // E-commerce & Retail
-  "Walmart", "Target", "Costco", "IKEA", "Decathlon",
-  "Amazon India", "Flipkart", "BigBasket", "Blinkit", "JioMart",
+  "Oliver Wyman", "ZS Associates", "Strategy&", "Kearney", "Roland Berger",
+  "Alvarez & Marsal", "Grant Thornton", "BDO India",
+  // Pharma & Healthcare Companies
+  "Sun Pharma", "Dr. Reddy's", "Cipla", "Lupin", "Aurobindo Pharma", "Biocon",
+  "Divis Labs", "Torrent Pharma", "Zydus Lifesciences", "Glenmark", "Alkem Labs",
+  "Mankind Pharma", "Ipca Labs", "Natco Pharma", "Piramal Pharma",
+  "Pfizer India", "Novartis India", "AstraZeneca India", "Abbott India", "GSK India",
+  // FMCG
+  "Hindustan Unilever (HUL)", "ITC", "Nestle India", "P&G India", "Colgate-Palmolive India",
+  "Dabur", "Marico", "Godrej Consumer Products", "Emami", "Britannia",
+  "Parle Products", "Amul (GCMMF)", "Haldiram's", "Tata Consumer Products",
+  "Patanjali", "Bisleri", "Paperboat", "Raw Pressery",
   // Telecom
-  "Jio", "Airtel", "Vodafone Idea", "BSNL",
-  "Verizon", "AT&T", "T-Mobile",
+  "Jio (Reliance)", "Airtel (Bharti)", "Vodafone Idea", "BSNL", "MTNL",
+  "Jio Platforms", "Airtel Digital", "Tata Communications",
   // Automotive
-  "Tata Motors", "Mahindra", "Maruti Suzuki", "Hyundai India", "MG Motor",
-  "Toyota", "BMW", "Mercedes-Benz", "Volkswagen",
+  "Tata Motors", "Mahindra & Mahindra", "Maruti Suzuki", "Hyundai India", "Kia India",
+  "Hero MotoCorp", "Bajaj Auto", "TVS Motor", "Royal Enfield (Eicher)",
+  "Ashok Leyland", "Force Motors", "MG Motor India", "Skoda-VW India",
+  "Toyota India", "Honda India", "Mercedes-Benz India", "BMW India", "Audi India",
+  "Tata Technologies", "KPIT Technologies", "Bosch India", "Continental India",
   // Conglomerates
-  "Tata Group", "Reliance Industries", "Adani Group", "Mahindra Group", "Godrej", "Aditya Birla Group",
+  "Tata Group", "Reliance Industries", "Adani Group", "Mahindra Group",
+  "Godrej Group", "Aditya Birla Group", "Bharti Enterprises", "Vedanta", "JSW Group",
+  "L&T (Larsen & Toubro)", "BHEL", "ONGC", "NTPC", "Indian Oil (IOCL)",
+  "GAIL", "BPCL", "HPCL", "Coal India", "Power Grid", "SAIL",
+  // Defence & Aerospace
+  "HAL", "BEL", "DRDO", "ISRO", "BDL", "BEML",
+  // Media & Entertainment
+  "Star India (Disney+Hotstar)", "Sony India", "Zee Entertainment", "Viacom18",
+  "Times Group", "HT Media", "NDTV", "Network18",
+  "T-Series", "Yash Raj Films", "Dharma Productions",
+  // E-commerce & Retail (India)
+  "Amazon India", "Flipkart", "Reliance Retail", "Tata CLiQ", "Snapdeal",
+  "DMart (Avenue Supermarts)", "Reliance Trends", "Shoppers Stop", "Lifestyle",
+  "Decathlon India", "IKEA India", "H&M India", "Zara India",
+  "Croma", "Vijay Sales", "Poorvika",
   // Startup Stages
   "Pre-seed / Seed Startup", "Series A Startup", "Series B Startup", "Series C+ Startup",
-  "Bootstrapped Startup", "Enterprise / Fortune 500", "Government / PSU",
+  "Bootstrapped Startup", "Enterprise / MNC", "Government / PSU",
 ];
 
 /* ─── Autocomplete Input Component ─── */
