@@ -2,13 +2,6 @@
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 
-/* Lazy-import PostHog to avoid ERR_MODULE_NOT_FOUND crashing the function */
-async function safeCapture(distinctId: string, event: string, properties?: Record<string, unknown>): Promise<void> {
-  try { const m = await import("./_posthog.js"); m.safeCapture(distinctId, event, properties); } catch { /* never block */ }
-}
-async function safeCaptureError(err: unknown, distinctId?: string): Promise<void> {
-  try { const m = await import("./_posthog.js"); m.safeCaptureError(err, distinctId); } catch { /* never block */ }
-}
 
 /* ─── Inline rate limiting (Node.js ESM can't resolve extensionless imports) ─── */
 const UPSTASH_URL = (process.env.UPSTASH_REDIS_REST_URL || "").trim();
@@ -156,10 +149,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const order = await response.json();
 
-    if (resolvedUserId) {
-      safeCapture(resolvedUserId, "order_created", { plan, amount: price.amount, currency: "INR", order_id: order.id });
-    }
-
     return res.status(200).json({
       orderId: order.id,
       amount: order.amount,
@@ -170,7 +159,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
   } catch (err) {
     console.error("Order creation error:", err);
-    safeCaptureError(err, authenticatedUserId || "unknown");
     return res.status(500).json({ error: "Internal error" });
   }
 }

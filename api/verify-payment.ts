@@ -3,13 +3,6 @@
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { createHmac } from "crypto";
-/* Lazy-import PostHog to avoid ERR_MODULE_NOT_FOUND crashing the function */
-async function safeCapture(distinctId: string, event: string, properties?: Record<string, unknown>): Promise<void> {
-  try { const m = await import("./_posthog.js"); m.safeCapture(distinctId, event, properties); } catch { /* never block */ }
-}
-async function safeCaptureError(err: unknown, distinctId?: string): Promise<void> {
-  try { const m = await import("./_posthog.js"); m.safeCaptureError(err, distinctId); } catch { /* never block */ }
-}
 
 /* ─── Inline rate limiting (Node.js ESM can't resolve extensionless imports) ─── */
 const UPSTASH_URL = (process.env.UPSTASH_REDIS_REST_URL || "").trim();
@@ -276,7 +269,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (expectedSignature !== razorpay_signature) {
       console.error("Payment signature mismatch for order", razorpay_order_id.slice(0, 8) + "...");
-      safeCapture(userId, "payment_failed", { plan, reason: "signature_mismatch" });
       return res.status(400).json({ error: "Payment verification failed" });
     }
 
@@ -291,7 +283,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const orderData = await orderRes.json();
     if (orderData.amount !== PLAN_AMOUNT[plan]) {
       console.error("Plan/amount mismatch for order", razorpay_order_id.slice(0, 8) + "...");
-      safeCapture(userId, "payment_failed", { plan, reason: "amount_mismatch" });
       return res.status(400).json({ error: "Plan does not match payment amount" });
     }
 
@@ -401,8 +392,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
-    safeCapture(userId, "payment_verified", { plan, tier, amount: PLAN_AMOUNT[plan], currency: "INR", razorpay_payment_id, subscription_end: end.toISOString() });
-
     return res.status(200).json({
       success: true,
       subscriptionTier: tier,
@@ -412,7 +401,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
   } catch (err) {
     console.error("Payment verification error:", err);
-    safeCaptureError(err, userId);
     return res.status(500).json({ error: "Internal error" });
   }
 }

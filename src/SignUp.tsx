@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { track } from "@vercel/analytics";
-import { capture } from "./analytics";
+
 import { c, font } from "./tokens";
 import { useAuth } from "./AuthContext";
 import { getSupabase, supabaseConfigured } from "./supabase";
@@ -123,7 +123,6 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
     setError("");
     setLoading(true);
     track(isLogin ? "login_submit" : "signup_submit");
-    capture(isLogin ? "login_submit" : "signup_submit");
     try {
       if (isLogin) {
         const result = await login(email, password);

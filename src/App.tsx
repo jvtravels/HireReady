@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { track } from "@vercel/analytics";
-import { capture } from "./analytics";
+
 import { c, font } from "./tokens";
 import { useAuth, hasStoredSession, getLastRoute } from "./AuthContext";
 import { useSEO, webAppJsonLd, faqJsonLd } from "./useSEO";
@@ -301,7 +301,7 @@ function HeroCTA() {
         borderRadius: 12, cursor: "pointer", letterSpacing: "0.02em", textDecoration: "none",
         display: "inline-flex", alignItems: "center", gap: 8,
       }}
-        onClick={() => { track("cta_click", { cta: isLoggedIn ? "hero_go_to_dashboard" : "hero_get_started" }); capture("cta_click", { cta: isLoggedIn ? "hero_go_to_dashboard" : "hero_get_started" }); }}>
+        onClick={() => { track("cta_click", { cta: isLoggedIn ? "hero_go_to_dashboard" : "hero_get_started" }); }}>
         {isLoggedIn ? "Go to Dashboard" : "Get Started Free"}
       </Link>
       <button onClick={() => { document.getElementById("how-it-works")?.scrollIntoView({ behavior: "smooth" }); }}
@@ -327,7 +327,7 @@ function BottomCTA() {
       borderRadius: 14, cursor: "pointer", letterSpacing: "0.02em", textDecoration: "none",
       display: "inline-flex", alignItems: "center",
     }}
-      onClick={() => { track("cta_click", { cta: isLoggedIn ? "final_go_to_dashboard" : "final_get_started" }); capture("cta_click", { cta: isLoggedIn ? "final_go_to_dashboard" : "final_get_started" }); }}>
+      onClick={() => { track("cta_click", { cta: isLoggedIn ? "final_go_to_dashboard" : "final_get_started" }); }}>
       {isLoggedIn ? "Go to Dashboard" : "Get Started Free"}
     </Link>
   );
@@ -1517,7 +1517,6 @@ function PricingCard({ plan, delay }: { plan: (typeof plans)[0]; delay: number }
 
   const handleClick = async () => {
     track("cta_click", { cta: `pricing_${plan.name.toLowerCase()}`, plan: plan.name });
-    capture("cta_click", { cta: `pricing_${plan.name.toLowerCase()}`, plan: plan.name });
     if (plan.price === "Free") {
       navigate(isLoggedIn ? "/session/new" : "/signup");
       return;
@@ -1876,12 +1875,10 @@ function EmailCapture() {
       existing.push({ email, ts: new Date().toISOString() });
       localStorage.setItem("hirestepx_waitlist", JSON.stringify(existing));
       track("waitlist_signup", { email });
-      capture("waitlist_signup", { email });
       setStatus("done");
     } catch {
       // If Supabase insert fails (table doesn't exist yet), still count as success
       track("waitlist_signup", { email });
-      capture("waitlist_signup", { email });
       setStatus("done");
     }
   };

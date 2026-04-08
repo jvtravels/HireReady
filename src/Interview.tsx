@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { track } from "@vercel/analytics";
-import { capture } from "./analytics";
+
 import { c, font } from "./tokens";
 import { useAuth } from "./AuthContext";
 import type { User } from "./AuthContext";
@@ -1106,7 +1106,6 @@ export default function Interview() {
     }
 
     track("session_complete", { type: interviewType, score, difficulty: interviewDifficulty });
-    capture("session_complete", { type: interviewType, score, difficulty: interviewDifficulty });
 
     // Clear draft and track practice timestamp
     try { localStorage.removeItem(draftKey); } catch {}

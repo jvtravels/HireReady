@@ -1,12 +1,7 @@
 /* Vercel Serverless Function — Cancel Subscription */
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-async function safeCapture(distinctId: string, event: string, properties?: Record<string, unknown>): Promise<void> {
-  try { const m = await import("./_posthog.js"); m.safeCapture(distinctId, event, properties); } catch { /* never block */ }
-}
-async function safeCaptureError(err: unknown, distinctId?: string): Promise<void> {
-  try { const m = await import("./_posthog.js"); m.safeCaptureError(err, distinctId); } catch { /* never block */ }
-}
+
 
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || "";
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
@@ -90,12 +85,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(500).json({ error: "Failed to cancel subscription" });
     }
 
-    safeCapture(userId, "subscription_cancelled");
-
     return res.status(200).json({ success: true });
   } catch (err) {
     console.error("Cancel subscription error:", err);
-    safeCaptureError(err, userId);
     return res.status(500).json({ error: "Internal error" });
   }
 }

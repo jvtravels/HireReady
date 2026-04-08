@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useCallback, useEffect, useRef, type ReactNode } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { getSupabase, preloadSupabase, supabaseConfigured, getProfile, upsertProfile, type Profile } from "./supabase";
-import { identifyUser, resetUser, setUserProperties } from "./analytics";
+
 import type { Session } from "@supabase/supabase-js";
 import type { ParsedResume } from "./resumeParser";
 
@@ -318,23 +318,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { success: true };
   }, []);
 
-  // PostHog: identify user when logged in, reset on logout
-  useEffect(() => {
-    if (user) {
-      identifyUser(user.id, { email: user.email, name: user.name });
-      setUserProperties({
-        subscription_tier: user.subscriptionTier || "free",
-        target_role: user.targetRole || "",
-        target_company: user.targetCompany || "",
-        has_completed_onboarding: user.hasCompletedOnboarding,
-      });
-    }
-  }, [user?.id, user?.subscriptionTier]);
-
   const logout = useCallback(async () => {
     if (supabaseConfigured) { const client = await getSupabase(); await client.auth.signOut(); }
     setUser(null);
-    resetUser();
     clearLastRoute();
   }, []);
 

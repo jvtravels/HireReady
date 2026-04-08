@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { track } from "@vercel/analytics";
-import { capture } from "./analytics";
+
 import { c, font } from "./tokens";
 import { useAuth } from "./AuthContext";
 import { unlockAudio, prefetchTTS } from "./tts";
@@ -382,7 +382,6 @@ export default function SessionSetup() {
     // Unlock audio playback on this user gesture so TTS can auto-play on the interview page
     unlockAudio();
     track("session_start", { type: selectedType, difficulty, focus: selectedFocus });
-    capture("session_start", { type: selectedType, difficulty, focus: selectedFocus });
     // Stop test streams before navigating
     micStream?.getTracks().forEach(t => t.stop());
     videoStream?.getTracks().forEach(t => t.stop());

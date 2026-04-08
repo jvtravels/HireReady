@@ -5,12 +5,7 @@
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { createHmac } from "crypto";
-async function safeCapture(distinctId: string, event: string, properties?: Record<string, unknown>): Promise<void> {
-  try { const m = await import("./_posthog.js"); m.safeCapture(distinctId, event, properties); } catch { /* never block */ }
-}
-async function safeCaptureError(err: unknown, distinctId?: string): Promise<void> {
-  try { const m = await import("./_posthog.js"); m.safeCaptureError(err, distinctId); } catch { /* never block */ }
-}
+
 
 const RAZORPAY_WEBHOOK_SECRET = (process.env.RAZORPAY_WEBHOOK_SECRET || "").trim();
 const RAZORPAY_KEY_ID = (process.env.RAZORPAY_KEY_ID || "").trim();
@@ -179,13 +174,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       } catch {}
     }
 
-    safeCapture(userId, "webhook_payment_activated", { plan, tier, amount, currency: "INR", razorpay_payment_id: paymentId, subscription_end: end.toISOString() });
-
     console.log(`[webhook] Activated ${tier} for user ${userId.slice(0, 8)}...`);
     return res.status(200).json({ received: true, activated: true, tier });
   } catch (err) {
     console.error("[webhook] Error:", err);
-    safeCaptureError(err);
     return res.status(500).json({ error: "Internal error" });
   }
 }
