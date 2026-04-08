@@ -139,7 +139,7 @@ function ParticleCanvas() {
    NAV
    ═══════════════════════════════════════════════ */
 function Nav() {
-  const { c } = useTheme();
+  const { c, isDark, toggleTheme } = useTheme();
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
@@ -162,7 +162,7 @@ function Nav() {
     <nav aria-label="Main navigation" style={{
       position: "fixed", top: 0, left: 0, right: 0, zIndex: 100, padding: "0 48px", height: 72,
       display: "flex", alignItems: "center", justifyContent: "space-between",
-      background: scrolled ? "rgba(6,6,7,0.72)" : "transparent",
+      background: scrolled ? (isDark ? "rgba(6,6,7,0.72)" : "rgba(250,250,248,0.85)") : "transparent",
       backdropFilter: scrolled ? "blur(32px) saturate(180%)" : "none",
       WebkitBackdropFilter: scrolled ? "blur(32px) saturate(180%)" : "none",
       borderBottom: scrolled ? `1px solid ${c.border}` : "1px solid transparent",
@@ -202,6 +202,17 @@ function Nav() {
             {item}
           </a>
         ))}
+        <button onClick={toggleTheme} aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
+          style={{ background: "none", border: `1px solid ${c.border}`, borderRadius: 8, padding: 7, cursor: "pointer", color: c.stone, display: "flex", alignItems: "center", justifyContent: "center", transition: "color 0.2s, border-color 0.2s" }}
+          onMouseEnter={e => { e.currentTarget.style.color = c.ivory; e.currentTarget.style.borderColor = c.borderHover; }}
+          onMouseLeave={e => { e.currentTarget.style.color = c.stone; e.currentTarget.style.borderColor = c.border; }}
+        >
+          {isDark ? (
+            <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+          ) : (
+            <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+          )}
+        </button>
         {isLoggedIn ? (
           <>
             <Link to="/dashboard" className="premium-btn" style={{
@@ -263,7 +274,7 @@ function Nav() {
             }
           }}
           style={{
-          position: "fixed", inset: 0, background: "rgba(6,6,7,0.95)", backdropFilter: "blur(20px)",
+          position: "fixed", inset: 0, background: isDark ? "rgba(6,6,7,0.95)" : "rgba(250,250,248,0.97)", backdropFilter: "blur(20px)",
           zIndex: 101, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 28,
           outline: "none",
         }} onClick={() => setMobileOpen(false)}>
@@ -274,6 +285,15 @@ function Nav() {
               {item}
             </a>
           ))}
+          <button onClick={(e) => { e.stopPropagation(); toggleTheme(); }} aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
+            style={{ background: "none", border: `1px solid ${c.border}`, borderRadius: 10, padding: "8px 20px", cursor: "pointer", color: c.stone, fontFamily: font.ui, fontSize: 14, display: "flex", alignItems: "center", gap: 8 }}>
+            {isDark ? (
+              <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+            ) : (
+              <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+            )}
+            {isDark ? "Light mode" : "Dark mode"}
+          </button>
           <div style={{ width: 40, height: 1, background: c.border, margin: "4px 0" }} />
           {isLoggedIn ? (
             <>
