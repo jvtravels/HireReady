@@ -5,7 +5,12 @@
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { createHmac } from "crypto";
-import { safeCapture, safeCaptureError } from "./_posthog";
+async function safeCapture(distinctId: string, event: string, properties?: Record<string, unknown>): Promise<void> {
+  try { const m = await import("./_posthog.js"); m.safeCapture(distinctId, event, properties); } catch { /* never block */ }
+}
+async function safeCaptureError(err: unknown, distinctId?: string): Promise<void> {
+  try { const m = await import("./_posthog.js"); m.safeCaptureError(err, distinctId); } catch { /* never block */ }
+}
 
 const RAZORPAY_WEBHOOK_SECRET = (process.env.RAZORPAY_WEBHOOK_SECRET || "").trim();
 const RAZORPAY_KEY_ID = (process.env.RAZORPAY_KEY_ID || "").trim();

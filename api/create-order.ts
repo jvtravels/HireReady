@@ -2,7 +2,13 @@
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 
-import { safeCapture, safeCaptureError } from "./_posthog";
+/* Lazy-import PostHog to avoid ERR_MODULE_NOT_FOUND crashing the function */
+async function safeCapture(distinctId: string, event: string, properties?: Record<string, unknown>): Promise<void> {
+  try { const m = await import("./_posthog.js"); m.safeCapture(distinctId, event, properties); } catch { /* never block */ }
+}
+async function safeCaptureError(err: unknown, distinctId?: string): Promise<void> {
+  try { const m = await import("./_posthog.js"); m.safeCaptureError(err, distinctId); } catch { /* never block */ }
+}
 
 /* ─── Inline rate limiting (Node.js ESM can't resolve extensionless imports) ─── */
 const UPSTASH_URL = (process.env.UPSTASH_REDIS_REST_URL || "").trim();

@@ -1,7 +1,12 @@
 /* Vercel Serverless Function — Reactivate Subscription (undo cancel-at-period-end) */
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { safeCapture, safeCaptureError } from "./_posthog";
+async function safeCapture(distinctId: string, event: string, properties?: Record<string, unknown>): Promise<void> {
+  try { const m = await import("./_posthog.js"); m.safeCapture(distinctId, event, properties); } catch { /* never block */ }
+}
+async function safeCaptureError(err: unknown, distinctId?: string): Promise<void> {
+  try { const m = await import("./_posthog.js"); m.safeCaptureError(err, distinctId); } catch { /* never block */ }
+}
 
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || "";
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
