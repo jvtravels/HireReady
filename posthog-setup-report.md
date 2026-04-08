@@ -1,7 +1,7 @@
 <wizard-report>
 # PostHog post-wizard report
 
-The wizard has completed a deep integration of PostHog analytics into the Hirloop project. A shared `posthog-node` client was created in `api/_posthog.ts` for all Vercel serverless API routes. Seven server-side events were instrumented across five critical API routes covering the full payment lifecycle, subscription management, and account deletion. Exception capture was also added to all error handlers so crashes in these routes are automatically tracked. Environment variables for both the server-side (`POSTHOG_API_KEY`, `POSTHOG_HOST`) and client-side (`VITE_POSTHOG_KEY`, `VITE_POSTHOG_HOST`) SDKs were written to `.env`.
+The wizard has completed a deep integration of PostHog analytics into the HireStepX project. A shared `posthog-node` client was created in `api/_posthog.ts` for all Vercel serverless API routes. Seven server-side events were instrumented across five critical API routes covering the full payment lifecycle, subscription management, and account deletion. Exception capture was also added to all error handlers so crashes in these routes are automatically tracked. Environment variables for both the server-side (`POSTHOG_API_KEY`, `POSTHOG_HOST`) and client-side (`VITE_POSTHOG_KEY`, `VITE_POSTHOG_HOST`) SDKs were written to `.env`.
 
 | Event | Description | File |
 |---|---|---|

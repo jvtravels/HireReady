@@ -29,7 +29,7 @@ function setLink(rel: string, href: string) {
   el.href = href;
 }
 
-const JSON_LD_ID = "hirloop-jsonld";
+const JSON_LD_ID = "hirestepx-jsonld";
 
 export function useSEO({ title, description, canonical, ogImage, ogType, jsonLd }: SEOProps) {
   useEffect(() => {
@@ -48,7 +48,7 @@ export function useSEO({ title, description, canonical, ogImage, ogType, jsonLd 
       setMeta("twitter:image", ogImage, "name");
     }
 
-    const canonicalUrl = canonical || `https://hirloop.com${window.location.pathname}`;
+    const canonicalUrl = canonical || `https://hirestepx.com${window.location.pathname}`;
     setLink("canonical", canonicalUrl);
     setMeta("og:url", canonicalUrl, "property");
 
@@ -94,13 +94,13 @@ export function articleJsonLd(opts: {
     dateModified: opts.datePublished,
     author: {
       "@type": "Organization",
-      name: opts.author || "Hirloop",
-      url: "https://hirloop.com",
+      name: opts.author || "HireStepX",
+      url: "https://hirestepx.com",
     },
     publisher: {
       "@type": "Organization",
-      name: "Hirloop",
-      url: "https://hirloop.com",
+      name: "HireStepX",
+      url: "https://hirestepx.com",
     },
     mainEntityOfPage: { "@type": "WebPage", "@id": opts.url },
   };
@@ -122,9 +122,9 @@ export function webAppJsonLd(): Record<string, unknown> {
   return {
     "@context": "https://schema.org",
     "@type": "WebApplication",
-    name: "Hirloop",
+    name: "HireStepX",
     description: "AI-powered mock interview platform with real-time feedback, score tracking, and personalized coaching.",
-    url: "https://hirloop.com",
+    url: "https://hirestepx.com",
     applicationCategory: "EducationalApplication",
     operatingSystem: "Web",
     offers: {

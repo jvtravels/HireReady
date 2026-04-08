@@ -60,8 +60,8 @@ describe("Interview", () => {
       );
     });
 
-    // Should show Hirloop branding
-    expect(screen.getByText("Hirloop")).toBeInTheDocument();
+    // Should show HireStepX branding
+    expect(screen.getByText("HireStepX")).toBeInTheDocument();
     // Should show timer starting at 00:00
     expect(screen.getAllByText("00:00").length).toBeGreaterThanOrEqual(1);
   });

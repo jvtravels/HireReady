@@ -173,7 +173,7 @@ function Nav() {
     }}>
       <style>{`@keyframes navSlideDown { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }`}</style>
       <div style={{ fontFamily: font.display, fontSize: 22, fontWeight: 400, letterSpacing: "0.02em", color: c.ivory, cursor: "pointer" }}>
-        Hirloop
+        HireStepX
       </div>
 
       {/* Mobile hamburger */}
@@ -1050,7 +1050,7 @@ function ProductMockup({ type, showChrome = false }: { type: "upload" | "intervi
       <div style={{ height: 38, background: c.obsidian, borderBottom: `1px solid ${c.border}`, display: "flex", alignItems: "center", padding: "0 14px", gap: 6 }}>
         {[0.4, 0.3, 0.3].map((o, i) => <div key={i} style={{ width: 8, height: 8, borderRadius: "50%", background: isDark ? `rgba(245,242,237,${o * 0.4})` : `rgba(0,0,0,${o * 0.3})` }} />)}
         <div style={{ flex: 1, textAlign: "center" }}>
-          <span style={{ fontFamily: font.ui, fontSize: 10, color: c.stone, letterSpacing: "0.02em" }}>hirloop.com</span>
+          <span style={{ fontFamily: font.ui, fontSize: 10, color: c.stone, letterSpacing: "0.02em" }}>hirestepx.com</span>
         </div>
       </div>
       <div style={{ padding: 24 }}>{content}</div>
@@ -1213,7 +1213,7 @@ function FeaturesSection() {
   return (
     <section id="features" ref={ref} className="reveal landing-section" style={{ padding: "160px 40px 80px", maxWidth: 1100, margin: "0 auto" }}>
       <div style={{ textAlign: "center", marginBottom: 80 }}>
-        <p style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: c.gilt, marginBottom: 16 }}>Why Hirloop</p>
+        <p style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: c.gilt, marginBottom: 16 }}>Why HireStepX</p>
         <h2 className="text-glow" style={{ fontFamily: font.display, fontSize: "clamp(32px, 4vw, 48px)", fontWeight: 400, letterSpacing: "-0.02em", color: c.ivory, lineHeight: 1.15 }}>
           Everything you need to ace the interview
         </h2>
@@ -1409,7 +1409,7 @@ function ScorePreview() {
    TESTIMONIALS — gradient-border cards + images
    ═══════════════════════════════════════════════ */
 const testimonials = [
-  { quote: "I was mass-applying and getting nowhere. After a week of practice on Hirloop, I started getting callbacks — and landed an offer at my top choice.", name: "Marcus T.", role: "Software Engineer", image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=500&fit=crop&crop=face", result: "Landed dream job at Google" },
+  { quote: "I was mass-applying and getting nowhere. After a week of practice on HireStepX, I started getting callbacks — and landed an offer at my top choice.", name: "Marcus T.", role: "Software Engineer", image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=500&fit=crop&crop=face", result: "Landed dream job at Google" },
   { quote: "Switching careers from teaching to product management felt impossible. The AI caught gaps I didn't know I had. Three weeks later, I had two offers.", name: "Dana R.", role: "Career Changer → PM", image: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&h=500&fit=crop&crop=face", result: "Career switch success" },
   { quote: "The feedback was brutally specific — told me I was using filler words 15 times per answer. Fixed that, and my next interview felt completely different.", name: "Priya K.", role: "Data Analyst, Recent Grad", image: "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=400&h=500&fit=crop&crop=face", result: "First job out of college" },
 ];
@@ -1602,7 +1602,7 @@ function PricingCard({ plan, delay }: { plan: (typeof plans)[0]; delay: number }
           key: data.keyId,
           amount: data.amount,
           currency: data.currency,
-          name: "Hirloop",
+          name: "HireStepX",
           description: data.description,
           order_id: data.orderId,
           prefill: { email: user?.email || "", name: user?.name || "" },
@@ -1705,7 +1705,7 @@ function ForTeamsBanner() {
         <div style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: "40%", background: "url(https://images.unsplash.com/photo-1497366216548-37526070297c?w=600&q=80) center/cover no-repeat", maskImage: "linear-gradient(to right, transparent, black 40%)", WebkitMaskImage: "linear-gradient(to right, transparent, black 40%)", opacity: 0.12 }} />
         <div style={{ position: "relative", zIndex: 1 }}>
           <p style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: c.gilt, marginBottom: 12 }}>Coming Soon</p>
-          <h3 style={{ fontFamily: font.display, fontSize: 28, fontWeight: 400, color: c.ivory, letterSpacing: "-0.01em", lineHeight: 1.25, marginBottom: 8 }}>Hirloop for Teams</h3>
+          <h3 style={{ fontFamily: font.display, fontSize: 28, fontWeight: 400, color: c.ivory, letterSpacing: "-0.01em", lineHeight: 1.25, marginBottom: 8 }}>HireStepX for Teams</h3>
           <p style={{ fontFamily: font.ui, fontSize: 14, color: c.stone, lineHeight: 1.6, maxWidth: 440 }}>Career coaches, bootcamps, and universities — we're building team plans with client management and analytics. Interested? Let us know.</p>
         </div>
         <button className="shimmer-btn" style={{
@@ -1778,13 +1778,13 @@ function TrustBadges() {
    FAQ
    ═══════════════════════════════════════════════ */
 const LANDING_FAQS = [
-  { question: "Is Hirloop free to use?", answer: "Yes! Our free plan includes 3 full AI mock interview sessions with real-time feedback, score tracking, and detailed performance reports. No credit card required." },
+  { question: "Is HireStepX free to use?", answer: "Yes! Our free plan includes 3 full AI mock interview sessions with real-time feedback, score tracking, and detailed performance reports. No credit card required." },
   { question: "How does the AI mock interview work?", answer: "You pick a role, company, and interview type (technical, behavioral, or case study). Our AI interviewer asks role-specific questions, listens to your answers via microphone, and gives instant feedback on content, delivery, and structure." },
-  { question: "What types of interviews can I practice?", answer: "Hirloop covers technical interviews (DSA, system design), behavioral interviews (STAR method), HR rounds, case study interviews, and company-specific formats for Google, Amazon, TCS, Infosys, Flipkart, Razorpay, and more." },
+  { question: "What types of interviews can I practice?", answer: "HireStepX covers technical interviews (DSA, system design), behavioral interviews (STAR method), HR rounds, case study interviews, and company-specific formats for Google, Amazon, TCS, Infosys, Flipkart, Razorpay, and more." },
   { question: "Can I practice for specific companies like TCS, Infosys, or Google?", answer: "Absolutely. Select your target company during session setup and our AI tailors questions to match that company's known interview patterns, difficulty level, and evaluation criteria." },
-  { question: "How is Hirloop different from practicing with friends?", answer: "Hirloop provides consistent, unbiased scoring across communication, technical depth, and problem-solving. You get objective metrics to track improvement over time — something human practice partners can't reliably offer." },
+  { question: "How is HireStepX different from practicing with friends?", answer: "HireStepX provides consistent, unbiased scoring across communication, technical depth, and problem-solving. You get objective metrics to track improvement over time — something human practice partners can't reliably offer." },
   { question: "Is my interview data private and secure?", answer: "Yes. Your data is stored securely via Supabase with row-level security. Recordings and transcripts are never shared with employers or third parties. You can delete your data at any time from Settings." },
-  { question: "Does Hirloop work on mobile?", answer: "Hirloop is a web app that works on any modern browser — desktop, tablet, or mobile. For the best experience during mock interviews, we recommend using a laptop or desktop with a microphone." },
+  { question: "Does HireStepX work on mobile?", answer: "HireStepX is a web app that works on any modern browser — desktop, tablet, or mobile. For the best experience during mock interviews, we recommend using a laptop or desktop with a microphone." },
   { question: "How do I track my progress?", answer: "Your dashboard shows score trends, session history, and detailed analytics across categories like communication, technical accuracy, and confidence. You can see exactly where you're improving." },
 ];
 
@@ -2022,7 +2022,7 @@ function Footer() {
       <div className="footer-grid" style={{ display: "grid", gridTemplateColumns: "1.5fr repeat(4, 1fr)", gap: 48, marginBottom: 48 }}>
         {/* Brand column */}
         <div>
-          <span style={{ fontFamily: font.ui, fontSize: 18, fontWeight: 600, color: c.ivory, letterSpacing: "0.04em", display: "block", marginBottom: 12 }}>Hirloop</span>
+          <span style={{ fontFamily: font.ui, fontSize: 18, fontWeight: 600, color: c.ivory, letterSpacing: "0.04em", display: "block", marginBottom: 12 }}>HireStepX</span>
           <p style={{ fontFamily: font.ui, fontSize: 13, color: c.stone, lineHeight: 1.6, marginBottom: 20, maxWidth: 220 }}>
             AI-powered mock interviews for job seekers at every level. A Silva Vitalis LLC product.
           </p>
@@ -2100,7 +2100,7 @@ export default function App() {
   }, [isLoggedIn, loading, user, navigate]);
 
   useSEO({
-    title: "Hirloop — AI Mock Interviews & Career Coaching for India",
+    title: "HireStepX — AI Mock Interviews & Career Coaching for India",
     description: "Practice mock interviews with AI, get real-time feedback, track your scores, and land your dream job. Free for students and freshers in India.",
     ogType: "website",
     jsonLd: { "@context": "https://schema.org", "@graph": [webAppJsonLd(), faqJsonLd(LANDING_FAQS)] },

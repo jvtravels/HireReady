@@ -75,29 +75,29 @@ function ScrollToTop() {
 }
 
 const ROUTE_TITLES: Record<string, string> = {
-  "/": "Hirloop — AI Mock Interviews",
-  "/signup": "Sign Up — Hirloop",
-  "/login": "Log In — Hirloop",
-  "/onboarding": "Get Started — Hirloop",
-  "/onboarding/complete": "You're Ready — Hirloop",
-  "/dashboard": "Dashboard — Hirloop",
-  "/sessions": "Sessions — Hirloop",
-  "/calendar": "Calendar — Hirloop",
-  "/analytics": "Analytics — Hirloop",
-  "/resume": "Resume — Hirloop",
-  "/settings": "Settings — Hirloop",
-  "/session/new": "New Session — Hirloop",
-  "/interview": "Interview — Hirloop",
-  "/reset-password": "Reset Password — Hirloop",
-  "/terms": "Terms of Service — Hirloop",
-  "/privacy": "Privacy Policy — Hirloop",
-  "/blog": "Blog — Hirloop",
+  "/": "HireStepX — AI Mock Interviews",
+  "/signup": "Sign Up — HireStepX",
+  "/login": "Log In — HireStepX",
+  "/onboarding": "Get Started — HireStepX",
+  "/onboarding/complete": "You're Ready — HireStepX",
+  "/dashboard": "Dashboard — HireStepX",
+  "/sessions": "Sessions — HireStepX",
+  "/calendar": "Calendar — HireStepX",
+  "/analytics": "Analytics — HireStepX",
+  "/resume": "Resume — HireStepX",
+  "/settings": "Settings — HireStepX",
+  "/session/new": "New Session — HireStepX",
+  "/interview": "Interview — HireStepX",
+  "/reset-password": "Reset Password — HireStepX",
+  "/terms": "Terms of Service — HireStepX",
+  "/privacy": "Privacy Policy — HireStepX",
+  "/blog": "Blog — HireStepX",
 };
 
 function DocumentTitle() {
   const { pathname } = useLocation();
   useEffect(() => {
-    const title = ROUTE_TITLES[pathname] || (pathname.startsWith("/session/") ? "Session Details — Hirloop" : pathname.startsWith("/blog/") ? "Blog — Hirloop" : "Hirloop");
+    const title = ROUTE_TITLES[pathname] || (pathname.startsWith("/session/") ? "Session Details — HireStepX" : pathname.startsWith("/blog/") ? "Blog — HireStepX" : "HireStepX");
     document.title = title;
   }, [pathname]);
   return null;

@@ -13,8 +13,8 @@ const RAZORPAY_KEY_SECRET = (process.env.RAZORPAY_KEY_SECRET || "").trim();
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || "";
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 const RESEND_API_KEY = (process.env.RESEND_API_KEY || "").trim();
-const FROM_EMAIL = process.env.FROM_EMAIL || "Hirloop <onboarding@resend.dev>";
-const APP_URL = (process.env.APP_URL || "https://hirloop.vercel.app").replace(/\/$/, "");
+const FROM_EMAIL = process.env.FROM_EMAIL || "HireStepX <onboarding@resend.dev>";
+const APP_URL = (process.env.APP_URL || "https://hirestepx.vercel.app").replace(/\/$/, "");
 
 const PLAN_DURATION: Record<string, number> = { weekly: 7, monthly: 30 };
 const PLAN_TIER: Record<string, string> = { weekly: "starter", monthly: "pro" };
@@ -168,7 +168,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             from: FROM_EMAIL,
             to: [notes.email],
             subject: `Payment confirmed — ${tier} plan activated`,
-            html: `<p>Hi ${safeName}, your Hirloop <strong>${tier}</strong> plan is now active until ${end.toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}.</p><p><a href="${APP_URL}/dashboard">Start Practicing</a></p>`,
+            html: `<p>Hi ${safeName}, your HireStepX <strong>${tier}</strong> plan is now active until ${end.toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}.</p><p><a href="${APP_URL}/dashboard">Start Practicing</a></p>`,
           }),
         });
       } catch {}

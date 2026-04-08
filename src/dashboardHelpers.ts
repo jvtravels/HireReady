@@ -57,7 +57,7 @@ export function generateICS(event: InterviewEvent): string {
   return [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//Hirloop//EN",
+    "PRODID:-//HireStepX//EN",
     "BEGIN:VEVENT",
     `DTSTART:${fmt(start)}`,
     `DTEND:${fmt(end)}`,

@@ -947,8 +947,8 @@ export default function Interview() {
   // Update document.title with current phase for accessibility
   useEffect(() => {
     const phaseLabel = phase === "thinking" ? "Preparing" : phase === "speaking" ? "AI Speaking" : phase === "listening" ? "Your Turn" : "Complete";
-    document.title = `${phaseLabel} — Hirloop Interview`;
-    return () => { document.title = "Hirloop"; };
+    document.title = `${phaseLabel} — HireStepX Interview`;
+    return () => { document.title = "HireStepX"; };
   }, [phase]);
 
   // Auto-scroll transcript (only if user is near bottom, not reading earlier messages)
@@ -1253,7 +1253,7 @@ export default function Interview() {
       }}>
         <div className="interview-header-left" style={{ display: "flex", alignItems: "center", gap: 14 }}>
           <span style={{ fontFamily: font.ui, fontSize: 14, fontWeight: 600, color: c.ivory, letterSpacing: "0.04em" }}>
-            Hirloop
+            HireStepX
           </span>
           <div style={{ width: 1, height: 18, background: c.border }} />
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>

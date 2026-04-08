@@ -54,7 +54,7 @@ const posts: BlogPost[] = [
       { question: "What is the Google interview acceptance rate?", answer: "Google's acceptance rate is approximately 0.2-0.5%, making it one of the most competitive employers globally." },
     ],
     relatedSlugs: ["behavioral-interview-questions-freshers", "system-design-interview-preparation", "amazon-leadership-principles-interview"],
-    cta: "Practice these exact questions with Hirloop's AI interviewer — get scored feedback on each answer in minutes.",
+    cta: "Practice these exact questions with HireStepX's AI interviewer — get scored feedback on each answer in minutes.",
   },
   {
     slug: "flipkart-interview-prep-guide",
@@ -79,7 +79,7 @@ const posts: BlogPost[] = [
       { question: "What is Flipkart SDE-1 salary in 2025?", answer: "Flipkart SDE-1 salary ranges from ₹18-28 LPA including base, bonus, and ESOPs." },
     ],
     relatedSlugs: ["top-10-google-interview-questions", "razorpay-interview-experience", "system-design-interview-preparation"],
-    cta: "Simulate a full Flipkart interview loop on Hirloop — behavioral, technical, and system design rounds with AI scoring.",
+    cta: "Simulate a full Flipkart interview loop on HireStepX — behavioral, technical, and system design rounds with AI scoring.",
   },
   {
     slug: "behavioral-interview-questions-freshers",
@@ -105,7 +105,7 @@ const posts: BlogPost[] = [
       { question: "How many behavioral questions should freshers prepare?", answer: "Prepare 8-10 strong STAR stories that can be adapted across different questions. Most behavioral questions map to themes like teamwork, leadership, conflict, failure, and initiative." },
     ],
     relatedSlugs: ["tcs-interview-questions-freshers-2025", "how-to-introduce-yourself-in-interview", "hr-interview-questions-answers-india"],
-    cta: "Practice your behavioral answers with Hirloop's AI interviewer — it'll score your STAR structure, clarity, and confidence in real-time.",
+    cta: "Practice your behavioral answers with HireStepX's AI interviewer — it'll score your STAR structure, clarity, and confidence in real-time.",
   },
   {
     slug: "razorpay-interview-experience",
@@ -129,7 +129,7 @@ const posts: BlogPost[] = [
       { question: "What is Razorpay SDE-2 salary?", answer: "Razorpay SDE-2 salary ranges from ₹28-45 LPA including base pay, bonuses, and ESOPs." },
     ],
     relatedSlugs: ["flipkart-interview-prep-guide", "system-design-interview-preparation", "ace-case-study-interviews"],
-    cta: "Run a Razorpay-style interview on Hirloop — system design, behavioral, and technical rounds tailored to fintech.",
+    cta: "Run a Razorpay-style interview on HireStepX — system design, behavioral, and technical rounds tailored to fintech.",
   },
   {
     slug: "ace-case-study-interviews",
@@ -154,7 +154,7 @@ const posts: BlogPost[] = [
       { question: "What is the MECE framework?", answer: "MECE stands for Mutually Exclusive, Collectively Exhaustive. It means breaking a problem into categories that don't overlap and together cover all possibilities. It's the foundation of structured problem-solving in consulting." },
     ],
     relatedSlugs: ["top-10-google-interview-questions", "salary-negotiation-tips-india", "tell-me-about-yourself-best-answer"],
-    cta: "Practice case study interviews on Hirloop — the AI will play the interviewer, give you data when asked, and score your structure and recommendation.",
+    cta: "Practice case study interviews on HireStepX — the AI will play the interviewer, give you data when asked, and score your structure and recommendation.",
   },
   // ═══════════════════════════════════════════
   // NEW HIGH-VOLUME SEO POSTS
@@ -180,10 +180,10 @@ const posts: BlogPost[] = [
     faqs: [
       { question: "What is TCS NQT cutoff for 2025?", answer: "TCS NQT doesn't have a fixed cutoff. Candidates are placed in bands — Ninja (lowest), Digital (mid), and Prime (highest) — based on their overall score with heavy emphasis on the coding section." },
       { question: "Is TCS interview easy for freshers?", answer: "TCS interviews are moderate in difficulty. The NQT aptitude test is the main filter. Technical and HR rounds are straightforward if you know CS fundamentals and can discuss your projects clearly." },
-      { question: "How to prepare for TCS NQT in 2 weeks?", answer: "Focus on: (1) Solve 50+ coding problems in your strongest language, (2) Practice 20 aptitude questions daily, (3) Review CS fundamentals — DBMS, OOP, OS, networking. Use Hirloop to practice behavioral answers." },
+      { question: "How to prepare for TCS NQT in 2 weeks?", answer: "Focus on: (1) Solve 50+ coding problems in your strongest language, (2) Practice 20 aptitude questions daily, (3) Review CS fundamentals — DBMS, OOP, OS, networking. Use HireStepX to practice behavioral answers." },
     ],
     relatedSlugs: ["behavioral-interview-questions-freshers", "infosys-interview-questions-2025", "wipro-interview-questions-answers"],
-    cta: "Practice TCS interview questions with Hirloop's AI — get instant feedback on your technical explanations and HR answers.",
+    cta: "Practice TCS interview questions with HireStepX's AI — get instant feedback on your technical explanations and HR answers.",
   },
   {
     slug: "infosys-interview-questions-2025",
@@ -209,7 +209,7 @@ const posts: BlogPost[] = [
       { question: "How is Infosys interview different from TCS?", answer: "Infosys focuses more on conceptual understanding and coding ability, while TCS emphasizes aptitude scores. Infosys also has the InfyTQ certification path which TCS doesn't offer." },
     ],
     relatedSlugs: ["tcs-interview-questions-freshers-2025", "wipro-interview-questions-answers", "behavioral-interview-questions-freshers"],
-    cta: "Simulate an Infosys interview on Hirloop — practice technical explanations and HR answers with AI-powered feedback.",
+    cta: "Simulate an Infosys interview on HireStepX — practice technical explanations and HR answers with AI-powered feedback.",
   },
   {
     slug: "how-to-introduce-yourself-in-interview",
@@ -236,7 +236,7 @@ const posts: BlogPost[] = [
       { question: "How to introduce yourself as a fresher with no experience?", answer: "Lead with your education and specialization, then highlight college projects, internships, hackathons, or relevant coursework. End with what excites you about the role. No experience ≠ nothing to say." },
     ],
     relatedSlugs: ["behavioral-interview-questions-freshers", "tell-me-about-yourself-best-answer", "hr-interview-questions-answers-india"],
-    cta: "Practice your self-introduction with Hirloop's AI — get instant feedback on pacing, clarity, and filler words.",
+    cta: "Practice your self-introduction with HireStepX's AI — get instant feedback on pacing, clarity, and filler words.",
   },
   {
     slug: "tell-me-about-yourself-best-answer",
@@ -263,7 +263,7 @@ const posts: BlogPost[] = [
       { question: "What is the best answer for tell me about yourself for experienced professionals?", answer: "Lead with your current role and a quantified achievement, briefly mention your career trajectory, then explain why this specific opportunity interests you. Focus on impact, not job descriptions." },
     ],
     relatedSlugs: ["how-to-introduce-yourself-in-interview", "hr-interview-questions-answers-india", "behavioral-interview-questions-freshers"],
-    cta: "Practice your 'tell me about yourself' answer with Hirloop — the AI will score your structure, relevance, and delivery in real-time.",
+    cta: "Practice your 'tell me about yourself' answer with HireStepX — the AI will score your structure, relevance, and delivery in real-time.",
   },
   {
     slug: "wipro-interview-questions-answers",
@@ -288,7 +288,7 @@ const posts: BlogPost[] = [
       { question: "What is the difference between Wipro Elite and Turbo?", answer: "Elite NTH (₹3.5 LPA) is for general engineering roles, while Turbo (₹6.5 LPA) targets strong coders with an additional hard coding round. Both share the same initial aptitude test." },
     ],
     relatedSlugs: ["tcs-interview-questions-freshers-2025", "infosys-interview-questions-2025", "behavioral-interview-questions-freshers"],
-    cta: "Practice Wipro interview questions on Hirloop — simulate technical, aptitude, and HR rounds with AI scoring.",
+    cta: "Practice Wipro interview questions on HireStepX — simulate technical, aptitude, and HR rounds with AI scoring.",
   },
   {
     slug: "hr-interview-questions-answers-india",
@@ -314,7 +314,7 @@ const posts: BlogPost[] = [
       { question: "Should I negotiate salary in an HR interview?", answer: "Yes, but tactfully. Research market rates, give a range (not a single number), and express that you value the total package including learning and growth opportunities." },
     ],
     relatedSlugs: ["how-to-introduce-yourself-in-interview", "tell-me-about-yourself-best-answer", "salary-negotiation-tips-india"],
-    cta: "Practice HR interview questions with Hirloop — the AI evaluates your answers for clarity, confidence, and professionalism.",
+    cta: "Practice HR interview questions with HireStepX — the AI evaluates your answers for clarity, confidence, and professionalism.",
   },
   {
     slug: "amazon-leadership-principles-interview",
@@ -340,7 +340,7 @@ const posts: BlogPost[] = [
       { question: "What is Amazon SDE-1 salary in India?", answer: "Amazon SDE-1 salary in India (2025) is ₹22-35 LPA including base, signing bonus, and RSUs. Bangalore and Hyderabad are the primary locations." },
     ],
     relatedSlugs: ["top-10-google-interview-questions", "system-design-interview-preparation", "behavioral-interview-questions-freshers"],
-    cta: "Practice Amazon Leadership Principle questions on Hirloop — the AI maps each answer to specific LPs and scores your STAR structure.",
+    cta: "Practice Amazon Leadership Principle questions on HireStepX — the AI maps each answer to specific LPs and scores your STAR structure.",
   },
   {
     slug: "system-design-interview-preparation",
@@ -358,7 +358,7 @@ const posts: BlogPost[] = [
       { heading: "Top 15 System Design Questions", content: "Most-asked across Google, Amazon, Flipkart, and startups:\n\n1. Design URL Shortener (like bit.ly)\n2. Design a Chat Application (like WhatsApp)\n3. Design a News Feed (like Facebook/Instagram)\n4. Design a Rate Limiter\n5. Design a Notification System\n6. Design Twitter/X\n7. Design YouTube (video streaming at scale)\n8. Design an E-commerce System (like Flipkart)\n9. Design a Payment System (like Razorpay)\n10. Design a Search Autocomplete\n11. Design a Ride-Sharing Service (like Uber/Ola)\n12. Design a File Storage System (like Google Drive)\n13. Design a Distributed Cache\n14. Design a Job Scheduler\n15. Design a Metrics/Monitoring System" },
       { heading: "Key Concepts You Must Know", content: "• Load Balancing — Round-robin, consistent hashing, L4 vs L7\n• Caching — Redis/Memcached, cache-aside vs write-through, eviction policies\n• Database — SQL vs NoSQL, sharding strategies, replication\n• Message Queues — Kafka, RabbitMQ, async processing\n• CDN — How CDNs work, cache invalidation\n• Consistency Models — Strong, eventual, causal consistency\n• CAP Theorem — You can't have all three: choose two\n• API Design — REST vs GraphQL, rate limiting, pagination\n• Microservices — Service discovery, circuit breakers, saga pattern" },
       { heading: "India-Specific Tips", content: "Indian tech interviews often include constraints that US interviews don't:\n\n• COD (Cash on Delivery) handling in e-commerce systems\n• UPI/IMPS payment integration in payment systems\n• Multi-language/script support (Hindi, Tamil, Bengali)\n• Low-bandwidth optimization for tier-2/3 city users\n• India's data localization requirements (RBI mandates for financial data)\n• Spike handling for events like Flipkart Big Billion Days or IPL streaming\n\nMentioning these shows domain awareness and impresses Indian interviewers." },
-      { heading: "Preparation Timeline (4 Weeks)", content: "Week 1: Learn the fundamentals — caching, databases, load balancing, message queues\nWeek 2: Practice 3 classic problems (URL shortener, chat app, news feed)\nWeek 3: Practice 3 harder problems (payment system, search, ride-sharing)\nWeek 4: Mock interviews — practice explaining your design out loud\n\nResources: System Design Primer (GitHub), Designing Data-Intensive Applications (book), Hirloop's AI system design interviews" },
+      { heading: "Preparation Timeline (4 Weeks)", content: "Week 1: Learn the fundamentals — caching, databases, load balancing, message queues\nWeek 2: Practice 3 classic problems (URL shortener, chat app, news feed)\nWeek 3: Practice 3 harder problems (payment system, search, ride-sharing)\nWeek 4: Mock interviews — practice explaining your design out loud\n\nResources: System Design Primer (GitHub), Designing Data-Intensive Applications (book), HireStepX's AI system design interviews" },
     ],
     faqs: [
       { question: "When do system design interviews start in the interview process?", answer: "System design rounds are typically required for SDE-2 (3+ years experience) and above. Some companies like Google and Amazon include a simplified version for SDE-1 as well." },
@@ -366,7 +366,7 @@ const posts: BlogPost[] = [
       { question: "What if I get a system I've never designed before?", answer: "Use the framework: clarify requirements, estimate scale, draw high-level components, and deep-dive where the interviewer guides you. The process matters more than the specific system." },
     ],
     relatedSlugs: ["top-10-google-interview-questions", "amazon-leadership-principles-interview", "flipkart-interview-prep-guide"],
-    cta: "Practice system design interviews on Hirloop — explain your architecture to the AI and get feedback on your approach, tradeoffs, and communication.",
+    cta: "Practice system design interviews on HireStepX — explain your architecture to the AI and get feedback on your approach, tradeoffs, and communication.",
   },
   {
     slug: "salary-negotiation-tips-india",
@@ -392,7 +392,7 @@ const posts: BlogPost[] = [
       { question: "What if they say the offer is non-negotiable?", answer: "Ask about other components: joining bonus, ESOPs, flexible work, title, or learning budget. If everything is truly fixed, evaluate the total package against your alternatives." },
     ],
     relatedSlugs: ["hr-interview-questions-answers-india", "tell-me-about-yourself-best-answer", "ace-case-study-interviews"],
-    cta: "Practice salary negotiation conversations with Hirloop's AI — simulate the back-and-forth and build your confidence before the real thing.",
+    cta: "Practice salary negotiation conversations with HireStepX's AI — simulate the back-and-forth and build your confidence before the real thing.",
   },
 ];
 
@@ -410,7 +410,7 @@ function BlogIndex({ navigate }: { navigate: (path: string) => void }) {
   const [activeCategory, setActiveCategory] = useState("All");
 
   useSEO({
-    title: "Interview Prep Blog — Hirloop",
+    title: "Interview Prep Blog — HireStepX",
     description: "Company-specific interview preparation guides, question banks, and career strategies for Indian job seekers. Google, Amazon, TCS, Infosys, Flipkart, and more.",
     ogType: "website",
   });
@@ -424,7 +424,7 @@ function BlogIndex({ navigate }: { navigate: (path: string) => void }) {
       {/* Nav */}
       <nav style={{ padding: "20px 40px", borderBottom: `1px solid ${c.border}`, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <Link to="/" style={{ textDecoration: "none" }}>
-          <span style={{ fontFamily: font.display, fontSize: 22, fontWeight: 400, color: c.ivory, letterSpacing: "0.02em" }}>Hirloop</span>
+          <span style={{ fontFamily: font.display, fontSize: 22, fontWeight: 400, color: c.ivory, letterSpacing: "0.02em" }}>HireStepX</span>
         </Link>
         <Link to="/signup" style={{
           fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.obsidian,
@@ -568,7 +568,7 @@ function BlogIndex({ navigate }: { navigate: (path: string) => void }) {
 /* ─── Single blog post ─── */
 function BlogPostPage({ post }: { post: BlogPost }) {
   const { c } = useTheme();
-  const url = `https://hirloop.com/blog/${post.slug}`;
+  const url = `https://hirestepx.com/blog/${post.slug}`;
   const related = getRelatedPosts(post.relatedSlugs);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
@@ -578,7 +578,7 @@ function BlogPostPage({ post }: { post: BlogPost }) {
   const combinedLd = faqLd ? { ...articleLd, "@graph": [articleLd, faqLd] } : articleLd;
 
   useSEO({
-    title: `${post.title} — Hirloop`,
+    title: `${post.title} — HireStepX`,
     description: post.metaDescription,
     canonical: url,
     ogImage: post.heroImage,
@@ -592,7 +592,7 @@ function BlogPostPage({ post }: { post: BlogPost }) {
       <nav style={{ padding: "20px 40px", borderBottom: `1px solid ${c.border}`, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <Link to="/" style={{ textDecoration: "none" }}>
-            <span style={{ fontFamily: font.display, fontSize: 22, fontWeight: 400, color: c.ivory, letterSpacing: "0.02em" }}>Hirloop</span>
+            <span style={{ fontFamily: font.display, fontSize: 22, fontWeight: 400, color: c.ivory, letterSpacing: "0.02em" }}>HireStepX</span>
           </Link>
           <span style={{ color: c.stone, fontSize: 14 }}>/</span>
           <Link to="/blog" style={{ textDecoration: "none", fontFamily: font.ui, fontSize: 13, color: c.stone }}>Blog</Link>
@@ -628,7 +628,7 @@ function BlogPostPage({ post }: { post: BlogPost }) {
         <span style={{ color: c.stone, fontSize: 10 }}>·</span>
         <span style={{ fontFamily: font.ui, fontSize: 12, color: c.stone }}>{new Date(post.datePublished).toLocaleDateString("en-IN", { month: "long", day: "numeric", year: "numeric" })}</span>
         <span style={{ color: c.stone, fontSize: 10 }}>·</span>
-        <span style={{ fontFamily: font.ui, fontSize: 12, color: c.gilt }}>Hirloop Team</span>
+        <span style={{ fontFamily: font.ui, fontSize: 12, color: c.gilt }}>HireStepX Team</span>
       </div>
 
       <article style={{ maxWidth: 720, margin: "0 auto", padding: "0 40px 80px" }}>

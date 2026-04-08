@@ -6,9 +6,9 @@ import type { VercelRequest, VercelResponse } from "@vercel/node";
 const SUPABASE_URL = process.env.SUPABASE_URL || "";
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 const RESEND_API_KEY = (process.env.RESEND_API_KEY || "").trim();
-const FROM_EMAIL = process.env.FROM_EMAIL || "Hirloop <onboarding@resend.dev>";
+const FROM_EMAIL = process.env.FROM_EMAIL || "HireStepX <onboarding@resend.dev>";
 const CRON_SECRET = (process.env.CRON_SECRET || "").trim();
-const APP_URL = (process.env.APP_URL || "https://hirloop.vercel.app").replace(/\/$/, "");
+const APP_URL = (process.env.APP_URL || "https://hirestepx.vercel.app").replace(/\/$/, "");
 
 function escapeHtml(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -63,7 +63,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const emailBody = JSON.stringify({
         from: FROM_EMAIL,
         to: [profile.email],
-        subject: `Your Hirloop ${tier} plan expires in ${daysLeft} day${daysLeft !== 1 ? "s" : ""}`,
+        subject: `Your HireStepX ${tier} plan expires in ${daysLeft} day${daysLeft !== 1 ? "s" : ""}`,
         html: `
 <!DOCTYPE html>
 <html>
@@ -73,7 +73,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     <tr><td align="center">
       <table width="560" cellpadding="0" cellspacing="0" style="background:#141416;border-radius:16px;border:1px solid #2A2A2C;overflow:hidden;">
         <tr><td style="padding:32px 40px 24px;border-bottom:1px solid #2A2A2C;">
-          <span style="font-size:18px;font-weight:600;color:#F0EDE8;letter-spacing:0.06em;">Hirloop</span>
+          <span style="font-size:18px;font-weight:600;color:#F0EDE8;letter-spacing:0.06em;">HireStepX</span>
         </td></tr>
         <tr><td style="padding:32px 40px;">
           <h1 style="margin:0 0 8px;font-size:20px;font-weight:600;color:#F0EDE8;">Your subscription expires soon</h1>

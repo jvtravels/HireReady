@@ -1,4 +1,4 @@
-/* ─── Hirloop Design Tokens ─── */
+/* ─── HireStepX Design Tokens ─── */
 /* Light & Dark mode design system */
 
 export interface ColorTokens {

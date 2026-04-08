@@ -50,8 +50,8 @@ function getAllowedOrigin(origin: string): string {
 }
 
 const PRICE_MAP: Record<string, { amount: number; name: string; description: string }> = {
-  weekly:  { amount: 4900,   name: "Hirloop Starter",          description: "Weekly Plan — ₹49/week · 10 sessions" },
-  monthly: { amount: 14900,  name: "Hirloop Pro",              description: "Monthly Plan — ₹149/month · Unlimited" },
+  weekly:  { amount: 4900,   name: "HireStepX Starter",          description: "Weekly Plan — ₹49/week · 10 sessions" },
+  monthly: { amount: 14900,  name: "HireStepX Pro",              description: "Monthly Plan — ₹149/month · Unlimited" },
 };
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -88,7 +88,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   if (!RAZORPAY_KEY_ID || !RAZORPAY_KEY_SECRET) {
     console.error("Missing Razorpay env vars:", { hasKeyId: !!RAZORPAY_KEY_ID, hasKeySecret: !!RAZORPAY_KEY_SECRET });
-    return res.status(503).json({ error: "Payments not configured. Please contact support@hirloop.com" });
+    return res.status(503).json({ error: "Payments not configured. Please contact support@hirestepx.com" });
   }
 
   // Verify auth
@@ -144,7 +144,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       console.error("Razorpay error:", response.status, errText);
       const detail = response.status === 401
         ? "Payment gateway credentials are invalid. Please contact support."
-        : "Could not create payment order. Please try again or contact support@hirloop.com";
+        : "Could not create payment order. Please try again or contact support@hirestepx.com";
       return res.status(502).json({ error: detail });
     }
 

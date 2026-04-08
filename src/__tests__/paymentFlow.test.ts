@@ -11,8 +11,8 @@ import { createHmac } from "crypto";
 const RAZORPAY_KEY_SECRET = "test_secret_key_12345";
 
 const PRICE_MAP: Record<string, { amount: number; name: string }> = {
-  weekly: { amount: 4900, name: "Hirloop Starter" },
-  monthly: { amount: 14900, name: "Hirloop Pro" },
+  weekly: { amount: 4900, name: "HireStepX Starter" },
+  monthly: { amount: 14900, name: "HireStepX Pro" },
 };
 
 const PLAN_TIER: Record<string, string> = {
@@ -156,7 +156,7 @@ describe("Payment Flow", () => {
         JSON.parse(htmlResponse);
         parsedOk = true;
       } catch {
-        errorMsg = "Payment server error. Please try again or contact support@hirloop.com";
+        errorMsg = "Payment server error. Please try again or contact support@hirestepx.com";
       }
 
       expect(parsedOk).toBe(false);

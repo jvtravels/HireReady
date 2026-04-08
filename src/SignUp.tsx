@@ -199,7 +199,7 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
       if (result.success) {
         setResetSent(true);
       } else {
-        setError(result.error || "Failed to send reset email. Try again or contact support@hirloop.com");
+        setError(result.error || "Failed to send reset email. Try again or contact support@hirestepx.com");
       }
     } finally {
       setLoading(false);
@@ -222,7 +222,7 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
             fontFamily: font.display, fontSize: 24, fontWeight: 400,
             color: c.ivory, letterSpacing: "0.02em",
           }}>
-            Hirloop
+            HireStepX
           </span>
         </Link>
 
