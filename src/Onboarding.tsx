@@ -1227,7 +1227,7 @@ We've pre-filled your target role from your resume. Adjust if needed, then choos
                       const locked = opt.paidOnly && isFreeUser;
                       const sel = sessionLength === opt.value;
                       return (
-                        <button key={opt.value} onClick={() => { if (locked) { navigate("/#pricing"); } else { setSessionLength(opt.value); } }}
+                        <button key={opt.value} onClick={() => { if (locked) { window.open("/#pricing", "_blank"); } else { setSessionLength(opt.value); } }}
                           style={{
                             padding: "16px 14px", borderRadius: 12, cursor: "pointer", textAlign: "center", position: "relative",
                             background: sel ? "rgba(212,179,127,0.08)" : "transparent",
