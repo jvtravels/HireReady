@@ -56,7 +56,7 @@ function useMouse() {
 /* ═══════════════════════════════════════════════
    PARTICLE CANVAS
    ═══════════════════════════════════════════════ */
-function ParticleCanvas() {
+function ParticleCanvas({ isDark }: { isDark: boolean }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   useEffect(() => {
@@ -87,7 +87,9 @@ function ParticleCanvas() {
     const ps: P[] = [];
     const w = () => cachedW;
     const h = () => cachedH;
-    const cols = ["rgba(212,179,127,", "rgba(245,242,237,", "rgba(197,192,186,"];
+    const cols = isDark
+      ? ["rgba(212,179,127,", "rgba(245,242,237,", "rgba(197,192,186,"]
+      : ["rgba(184,146,62,", "rgba(26,26,26,", "rgba(142,137,131,"];
 
     for (let i = 0; i < COUNT; i++) {
       ps.push({ x: Math.random() * w(), y: Math.random() * h(), vx: (Math.random() - 0.5) * 0.25, vy: -Math.random() * 0.35 - 0.08, r: Math.random() * 2.2 + 0.4, o: Math.random() * 0.45 + 0.08, od: (Math.random() - 0.5) * 0.004, c: cols[Math.floor(Math.random() * cols.length)] });
@@ -96,7 +98,7 @@ function ParticleCanvas() {
     const draw = () => {
       ctx.clearRect(0, 0, w(), h());
       const g = ctx.createRadialGradient(w() / 2, h() * 0.3, 0, w() / 2, h() * 0.3, w() * 0.45);
-      g.addColorStop(0, "rgba(212,179,127,0.035)");
+      g.addColorStop(0, isDark ? "rgba(212,179,127,0.035)" : "rgba(184,146,62,0.025)");
       g.addColorStop(1, "transparent");
       ctx.fillStyle = g;
       ctx.fillRect(0, 0, w(), h());
@@ -119,7 +121,7 @@ function ParticleCanvas() {
             const d = Math.sqrt(dx * dx + dy * dy);
             if (d < 100) {
               ctx.beginPath(); ctx.moveTo(ps[i].x, ps[i].y); ctx.lineTo(ps[j].x, ps[j].y);
-              ctx.strokeStyle = `rgba(212,179,127,${0.025 * (1 - d / 100)})`; ctx.lineWidth = 0.5; ctx.stroke();
+              ctx.strokeStyle = isDark ? `rgba(212,179,127,${0.025 * (1 - d / 100)})` : `rgba(184,146,62,${0.02 * (1 - d / 100)})`; ctx.lineWidth = 0.5; ctx.stroke();
             }
           }
         }
@@ -315,7 +317,7 @@ function Nav() {
 
 /* ─── Auth-aware CTA ─── */
 function HeroCTA() {
-  const { c } = useTheme();
+  const { c, isDark } = useTheme();
   const { isLoggedIn } = useAuth();
   return (
     <div className="hero-cta" style={{ display: "flex", gap: 16, animation: "fadeInUp 0.8s ease 2.2s both", marginBottom: 40 }}>
@@ -330,12 +332,12 @@ function HeroCTA() {
       <button onClick={() => { document.getElementById("how-it-works")?.scrollIntoView({ behavior: "smooth" }); }}
         style={{
         fontFamily: font.ui, fontSize: 15, fontWeight: 500, padding: "16px 36px",
-        borderRadius: 12, border: `1px solid rgba(255,255,255,0.10)`, background: "rgba(255,255,255,0.03)",
+        borderRadius: 12, border: `1px solid ${c.border}`, background: "transparent",
         color: c.chalk, cursor: "pointer", transition: "all 0.35s cubic-bezier(0.16, 1, 0.3, 1)",
         backdropFilter: "blur(12px)",
       }}
-        onMouseEnter={(e) => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.18)"; e.currentTarget.style.color = c.ivory; e.currentTarget.style.background = "rgba(255,255,255,0.06)"; }}
-        onMouseLeave={(e) => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.10)"; e.currentTarget.style.color = c.chalk; e.currentTarget.style.background = "rgba(255,255,255,0.03)"; }}>
+        onMouseEnter={(e) => { e.currentTarget.style.borderColor = c.borderHover; e.currentTarget.style.color = c.ivory; e.currentTarget.style.background = c.glow; }}
+        onMouseLeave={(e) => { e.currentTarget.style.borderColor = c.border; e.currentTarget.style.color = c.chalk; e.currentTarget.style.background = "transparent"; }}>
         See How It Works
       </button>
     </div>
@@ -361,7 +363,7 @@ function BottomCTA() {
    ═══════════════════════════════════════════════ */
 
 function Hero() {
-  const { c } = useTheme();
+  const { c, isDark } = useTheme();
   const parallaxOffset = useParallax(0.1);
   const mouse = useMouse();
   const [wordsVisible, setWordsVisible] = useState<number[]>([]);
@@ -381,7 +383,7 @@ function Hero() {
       position: "relative", minHeight: "100vh", display: "flex", alignItems: "center",
       justifyContent: "center", overflow: "hidden",
     }}>
-      <ParticleCanvas />
+      <ParticleCanvas isDark={isDark} />
       <div className="landing-hero" style={{ display: "flex", alignItems: "center", maxWidth: 1200, width: "100%", padding: "140px 48px 100px", position: "relative" }}>
 
       {/* Mesh gradient */}
@@ -389,7 +391,9 @@ function Hero() {
         position: "absolute", top: "40%", left: "50%",
         transform: `translate(calc(-50% + ${mx}px), calc(-50% + ${my}px))`,
         width: 900, height: 900, borderRadius: "50%",
-        background: `conic-gradient(from 180deg, rgba(212,179,127,0.06), rgba(122,158,126,0.03), rgba(196,112,90,0.02), rgba(212,179,127,0.06))`,
+        background: isDark
+          ? `conic-gradient(from 180deg, rgba(212,179,127,0.06), rgba(122,158,126,0.03), rgba(196,112,90,0.02), rgba(212,179,127,0.06))`
+          : `conic-gradient(from 180deg, rgba(184,146,62,0.04), rgba(45,122,58,0.02), rgba(196,112,90,0.015), rgba(184,146,62,0.04))`,
         filter: "blur(80px)", pointerEvents: "none",
         animation: "meshRotate 30s linear infinite",
       }} />
@@ -399,7 +403,7 @@ function Hero() {
         <div key={size} style={{
           position: "absolute", top: "50%", left: "60%",
           transform: `translate(-50%, -50%) translateY(${parallaxOffset * (0.5 - i * 0.15)}px)`,
-          width: size, height: size, border: `1px solid rgba(245,242,237,${0.04 - i * 0.01})`,
+          width: size, height: size, border: `1px solid ${c.border}`,
           borderRadius: "50%", pointerEvents: "none",
         }} />
       ))}
@@ -498,7 +502,7 @@ function Hero() {
 
 /* Hero floating score card */
 function HeroMockup() {
-  const { c } = useTheme();
+  const { c, isDark } = useTheme();
   const [step, setStep] = useState(0);
   useEffect(() => {
     const timers = [
@@ -520,7 +524,7 @@ function HeroMockup() {
       }}>
         {/* Window chrome */}
         <div style={{ height: 38, background: c.obsidian, borderBottom: `1px solid ${c.border}`, display: "flex", alignItems: "center", padding: "0 14px", gap: 6 }}>
-          {[0.15, 0.1, 0.1].map((o, i) => <div key={i} style={{ width: 8, height: 8, borderRadius: "50%", background: `rgba(245,242,237,${o})` }} />)}
+          {[0.4, 0.3, 0.3].map((o, i) => <div key={i} style={{ width: 8, height: 8, borderRadius: "50%", background: isDark ? `rgba(245,242,237,${o * 0.4})` : `rgba(0,0,0,${o * 0.3})` }} />)}
           <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
             <span style={{ width: 6, height: 6, borderRadius: "50%", background: c.sage, animation: "giltPulse 1.5s ease-in-out infinite" }} />
             <span style={{ fontFamily: font.ui, fontSize: 10, color: c.stone }}>Live Session — Software Engineer</span>
@@ -1032,7 +1036,7 @@ function HowItWorks() {
 }
 
 function ProductMockup({ type, showChrome = false }: { type: "upload" | "interview" | "feedback"; showChrome?: boolean }) {
-  const { c } = useTheme();
+  const { c, isDark } = useTheme();
   const content = (
     <>
       {type === "upload" && <MockupUpload />}
@@ -1046,7 +1050,7 @@ function ProductMockup({ type, showChrome = false }: { type: "upload" | "intervi
   return (
     <div className="mockup-window" style={{ background: c.graphite, borderRadius: 14, border: `1px solid ${c.border}`, overflow: "hidden", boxShadow: "0 24px 80px rgba(0,0,0,0.4)" }}>
       <div style={{ height: 38, background: c.obsidian, borderBottom: `1px solid ${c.border}`, display: "flex", alignItems: "center", padding: "0 14px", gap: 6 }}>
-        {[0.15, 0.1, 0.1].map((o, i) => <div key={i} style={{ width: 8, height: 8, borderRadius: "50%", background: `rgba(245,242,237,${o})` }} />)}
+        {[0.4, 0.3, 0.3].map((o, i) => <div key={i} style={{ width: 8, height: 8, borderRadius: "50%", background: isDark ? `rgba(245,242,237,${o * 0.4})` : `rgba(0,0,0,${o * 0.3})` }} />)}
         <div style={{ flex: 1, textAlign: "center" }}>
           <span style={{ fontFamily: font.ui, fontSize: 10, color: c.stone, letterSpacing: "0.02em" }}>hirloop.com</span>
         </div>
@@ -1143,7 +1147,7 @@ function MockupFeedback() {
    DEMO VIDEO
    ═══════════════════════════════════════════════ */
 function DemoVideoSection() {
-  const { c } = useTheme();
+  const { c, isDark } = useTheme();
   const ref = useReveal<HTMLElement>();
   return (
     <section ref={ref} className="reveal landing-section" style={{ padding: "140px 40px", maxWidth: 960, margin: "0 auto" }}>
@@ -1160,8 +1164,8 @@ function DemoVideoSection() {
         onMouseLeave={(e) => { e.currentTarget.style.borderColor = c.border; e.currentTarget.style.boxShadow = "none"; }}>
         {/* Video preview */}
         <div style={{ position: "absolute", inset: 0, background: `linear-gradient(135deg, ${c.obsidian} 0%, ${c.graphite} 50%, ${c.obsidian} 100%)`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <div style={{ position: "absolute", top: "20%", left: "10%", width: 300, height: 300, borderRadius: "50%", background: "radial-gradient(circle, rgba(212,179,127,0.04) 0%, transparent 70%)", pointerEvents: "none" }} />
-          <div style={{ position: "absolute", bottom: "15%", right: "15%", width: 200, height: 200, borderRadius: "50%", background: "radial-gradient(circle, rgba(122,158,126,0.04) 0%, transparent 70%)", pointerEvents: "none" }} />
+          <div style={{ position: "absolute", top: "20%", left: "10%", width: 300, height: 300, borderRadius: "50%", background: isDark ? "radial-gradient(circle, rgba(212,179,127,0.04) 0%, transparent 70%)" : "radial-gradient(circle, rgba(184,146,62,0.03) 0%, transparent 70%)", pointerEvents: "none" }} />
+          <div style={{ position: "absolute", bottom: "15%", right: "15%", width: 200, height: 200, borderRadius: "50%", background: isDark ? "radial-gradient(circle, rgba(122,158,126,0.04) 0%, transparent 70%)" : "radial-gradient(circle, rgba(45,122,58,0.03) 0%, transparent 70%)", pointerEvents: "none" }} />
           <div style={{ position: "absolute", inset: 40, display: "flex", alignItems: "center", justifyContent: "center", opacity: 0.25 }}>
             <div style={{ width: "70%", maxWidth: 500, background: c.graphite, borderRadius: 10, border: `1px solid ${c.border}`, padding: 24, textAlign: "left" }}>
               <div style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: c.ivory, marginBottom: 12 }}>Live Session</div>
@@ -1181,9 +1185,9 @@ function DemoVideoSection() {
         {/* Play button */}
         <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(6,6,7,0.2)", zIndex: 2 }}>
           <div className="video-play-btn" style={{
-            width: 80, height: 80, borderRadius: "50%", background: "rgba(245,242,237,0.08)",
+            width: 80, height: 80, borderRadius: "50%", background: isDark ? "rgba(245,242,237,0.08)" : "rgba(0,0,0,0.06)",
             backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)",
-            border: "1px solid rgba(245,242,237,0.15)", display: "flex", alignItems: "center", justifyContent: "center",
+            border: `1px solid ${c.border}`, display: "flex", alignItems: "center", justifyContent: "center",
           }}>
             <svg aria-hidden="true" width="28" height="28" viewBox="0 0 24 24" fill={c.ivory} style={{ marginLeft: 3 }}><polygon points="5,3 19,12 5,21" /></svg>
           </div>
@@ -1549,7 +1553,7 @@ function PricingSection() {
 }
 
 function PricingCard({ plan, delay }: { plan: (typeof plans)[0]; delay: number }) {
-  const { c } = useTheme();
+  const { c, isDark } = useTheme();
   const ref = useReveal<HTMLDivElement>();
   const navigate = useNavigate();
   const { user, isLoggedIn, updateUser } = useAuth();
@@ -1666,18 +1670,18 @@ function PricingCard({ plan, delay }: { plan: (typeof plans)[0]; delay: number }
       </ul>
       <button onClick={handleClick} disabled={loading} className={plan.featured ? "shimmer-btn premium-btn" : ""} style={{
         width: "100%", fontFamily: font.ui, fontSize: 14, fontWeight: 600, padding: "14px 24px",
-        borderRadius: 12, border: plan.featured ? "none" : `1px solid rgba(255,255,255,0.08)`,
-        background: plan.featured ? undefined : "rgba(255,255,255,0.03)", color: plan.featured ? c.obsidian : c.chalk,
+        borderRadius: 12, border: plan.featured ? "none" : `1px solid ${c.border}`,
+        background: plan.featured ? undefined : "transparent", color: plan.featured ? c.obsidian : c.chalk,
         cursor: loading ? "wait" : "pointer", transition: "all 0.35s cubic-bezier(0.16, 1, 0.3, 1)", position: "relative",
         opacity: loading ? 0.7 : 1,
       }}
         onMouseEnter={(e) => {
           if (plan.featured) { e.currentTarget.style.filter = "brightness(1.15)"; }
-          else { e.currentTarget.style.borderColor = c.chalk; e.currentTarget.style.color = c.ivory; e.currentTarget.style.background = "rgba(245,242,237,0.03)"; }
+          else { e.currentTarget.style.borderColor = c.chalk; e.currentTarget.style.color = c.ivory; e.currentTarget.style.background = c.glow; }
         }}
         onMouseLeave={(e) => {
           if (plan.featured) { e.currentTarget.style.filter = "brightness(1)"; }
-          else { e.currentTarget.style.borderColor = c.borderHover; e.currentTarget.style.color = c.chalk; e.currentTarget.style.background = "transparent"; }
+          else { e.currentTarget.style.borderColor = c.border; e.currentTarget.style.color = c.chalk; e.currentTarget.style.background = "transparent"; }
         }}>
         {loading ? "Redirecting to checkout..." : plan.cta}
       </button>
@@ -1803,7 +1807,7 @@ function FAQSection() {
         {LANDING_FAQS.map((faq, i) => {
           const isOpen = openIndex === i;
           return (
-            <div key={i} style={{ borderBottom: "1px solid #1a1a1b", overflow: "hidden" }}>
+            <div key={i} style={{ borderBottom: `1px solid ${c.border}`, overflow: "hidden" }}>
               <button
                 onClick={() => setOpenIndex(isOpen ? null : i)}
                 aria-expanded={isOpen}
@@ -1844,7 +1848,7 @@ function FAQSection() {
    FINAL CTA
    ═══════════════════════════════════════════════ */
 function FinalCTA() {
-  const { c } = useTheme();
+  const { c, isDark } = useTheme();
   const ref = useReveal<HTMLElement>();
 
   return (
@@ -1864,7 +1868,7 @@ function FinalCTA() {
         {/* Dark overlay */}
         <div style={{ position: "absolute", inset: 0, background: `linear-gradient(90deg, ${c.obsidian}E6 0%, ${c.obsidian}99 50%, transparent 100%)` }} />
         {/* Gilt glow */}
-        <div style={{ position: "absolute", top: "50%", right: "20%", transform: "translateY(-50%)", width: 400, height: 400, borderRadius: "50%", background: "radial-gradient(ellipse at center, rgba(212,179,127,0.08) 0%, transparent 70%)", pointerEvents: "none" }} />
+        <div style={{ position: "absolute", top: "50%", right: "20%", transform: "translateY(-50%)", width: 400, height: 400, borderRadius: "50%", background: isDark ? "radial-gradient(ellipse at center, rgba(212,179,127,0.08) 0%, transparent 70%)" : "radial-gradient(ellipse at center, rgba(184,146,62,0.06) 0%, transparent 70%)", pointerEvents: "none" }} />
 
         <div style={{ position: "relative", zIndex: 1, padding: "64px 60px", maxWidth: 560 }}>
           <p className="text-glow" style={{ fontFamily: font.display, fontSize: "clamp(32px, 4vw, 52px)", fontWeight: 400, lineHeight: 1.15, letterSpacing: "-0.03em", color: c.ivory, marginBottom: 20 }}>
@@ -1903,7 +1907,7 @@ function FinalCTA() {
    EMAIL CAPTURE
    ═══════════════════════════════════════════════ */
 function EmailCapture() {
-  const { c } = useTheme();
+  const { c, isDark } = useTheme();
   const ref = useReveal<HTMLElement>();
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<"idle" | "sending" | "done" | "error">("idle");
@@ -1938,7 +1942,7 @@ function EmailCapture() {
         background: c.graphite, borderRadius: 16, border: `1px solid ${c.border}`,
         padding: "48px 40px", position: "relative", overflow: "hidden",
       }}>
-        <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: 400, height: 400, borderRadius: "50%", background: "radial-gradient(ellipse, rgba(212,179,127,0.06), transparent 70%)", pointerEvents: "none" }} />
+        <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: 400, height: 400, borderRadius: "50%", background: isDark ? "radial-gradient(ellipse, rgba(212,179,127,0.06), transparent 70%)" : "radial-gradient(ellipse, rgba(184,146,62,0.04), transparent 70%)", pointerEvents: "none" }} />
         <div style={{ position: "relative", zIndex: 1 }}>
           <p style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: c.gilt, marginBottom: 12 }}>Stay Updated</p>
           <h3 style={{ fontFamily: font.display, fontSize: "clamp(24px, 3vw, 32px)", fontWeight: 400, color: c.ivory, letterSpacing: "-0.02em", lineHeight: 1.2, marginBottom: 8 }}>
