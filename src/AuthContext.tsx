@@ -197,6 +197,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         const { data: { session } } = await client.auth.getSession();
         if (session) {
+          // Capture Google provider token if present (after OAuth redirect)
+          if (session.provider_token) {
+            try { sessionStorage.setItem("hirestepx_google_token", session.provider_token); } catch {}
+          }
           console.log("[auth] session restore from local JWT");
           try {
             const profile = await getProfile(session.user.id);
