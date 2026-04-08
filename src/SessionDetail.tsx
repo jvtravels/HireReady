@@ -1042,6 +1042,27 @@ export default function SessionDetail() {
           </div>
         )}
 
+        {/* ═══ Practice Again CTA ═══ */}
+        {session && (
+          <div style={{
+            display: "flex", alignItems: "center", justifyContent: "center", gap: 12, flexWrap: "wrap",
+          }}>
+            <button onClick={() => navigate(`/session/new?type=${session.type}`)}
+              style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, padding: "12px 28px", borderRadius: 8, border: "none", background: `linear-gradient(135deg, ${c.gilt}, ${c.giltDark})`, color: c.obsidian, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 8, boxShadow: shadow.sm, transition: "all 0.2s" }}
+              onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-1px)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.transform = "translateY(0)"; }}>
+              <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polygon points="5,3 19,12 5,21"/></svg>
+              Practice Again
+            </button>
+            <button onClick={() => navigate("/dashboard")}
+              style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, padding: "12px 28px", borderRadius: 8, border: `1px solid ${c.border}`, background: "transparent", color: c.chalk, cursor: "pointer", transition: "all 0.2s" }}
+              onMouseEnter={(e) => { e.currentTarget.style.borderColor = c.chalk; }}
+              onMouseLeave={(e) => { e.currentTarget.style.borderColor = c.border; }}>
+              Back to Dashboard
+            </button>
+          </div>
+        )}
+
         {/* Mobile responsive style for response analysis */}
         <style>{`
           @media (max-width: 640px) {

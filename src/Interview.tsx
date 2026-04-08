@@ -169,7 +169,7 @@ const LiveCaptions = React.memo(function LiveCaptions({ text, isTyping, speaking
   if (!isTyping && !displayText) return null;
 
   return (
-    <div style={{ width: "100%" }} aria-live="off" aria-label="AI interviewer speaking">
+    <div style={{ width: "100%" }} aria-live="polite" aria-label="AI interviewer speaking">
       <p style={{
         fontFamily: font.ui, fontSize: 14, color: c.chalk,
         lineHeight: 1.75, margin: 0, minHeight: 22,
@@ -511,6 +511,7 @@ export default function Interview() {
               console.warn("[speech] too many restarts, falling back to text input");
               setSpeechUnavailable(true);
               setMicError("Speech recognition keeps stopping. Type your answer below.");
+              toast("Mic issues detected — switching to text input.", "info");
               setTimeout(() => textareaRef.current?.focus(), 100);
               return;
             }
@@ -1067,7 +1068,7 @@ export default function Interview() {
           .iv-info-bar { flex-wrap: wrap; gap: 8px !important; padding: 10px 16px !important; }
           .iv-center { padding: 16px !important; }
           .iv-controls { padding: 8px 12px !important; gap: 6px !important; }
-          .iv-controls button[style*="width: 48px"] { width: 40px !important; height: 40px !important; }
+          .iv-controls button[style*="width: 48px"] { width: 44px !important; height: 44px !important; }
           .iv-controls .iv-hide-mobile { display: none !important; }
           .iv-transcript-panel { width: 100% !important; max-width: none !important; }
         }
@@ -1256,6 +1257,7 @@ export default function Interview() {
                       value={currentTranscript}
                       onChange={(e) => setCurrentTranscript(e.target.value)}
                       placeholder="Type your answer here..."
+                      maxLength={3000}
                       autoFocus
                       style={{
                         width: "100%", minHeight: 70, fontFamily: font.ui, fontSize: 13, color: c.ivory,

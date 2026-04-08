@@ -351,7 +351,8 @@ export default function SessionSetup() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [searchParams] = useSearchParams();
-  const preselectedType = searchParams.get("type");
+  const rawPreselected = searchParams.get("type");
+  const preselectedType = interviewTypes.some(t => t.id === rawPreselected) ? rawPreselected : null;
   const [draft] = useState(() => loadDraft(user?.id));
   const [showDraftBanner, setShowDraftBanner] = useState(!!draft);
 
@@ -726,7 +727,12 @@ export default function SessionSetup() {
                     style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: c.gilt, background: "rgba(212,179,127,0.08)", border: `1px solid rgba(212,179,127,0.2)`, borderRadius: 8, padding: "7px 16px", cursor: "pointer", transition: "all 0.2s", flexShrink: 0 }}
                     onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(212,179,127,0.15)"; }}
                     onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(212,179,127,0.08)"; }}>
-                    {micStatus === "denied" ? "Retry" : "Allow"}
+                    {micStatus === "requesting" ? (
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                        <div style={{ width: 12, height: 12, border: "2px solid rgba(212,179,127,0.3)", borderTopColor: c.gilt, borderRadius: "50%", animation: "spin 1s linear infinite" }} />
+                        Requesting...
+                      </span>
+                    ) : micStatus === "denied" ? "Retry" : "Allow"}
                   </button>
                 )}
               </div>
