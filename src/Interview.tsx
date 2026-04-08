@@ -79,22 +79,28 @@ const WaveformVisualizer = React.memo(function WaveformVisualizer({ active, colo
 /* ─── Dot Grid Visualizer (AI speaking) ─── */
 const DOT_GRID_SIZE = 7;
 const DOT_COUNT = DOT_GRID_SIZE * DOT_GRID_SIZE;
-const DotGridVisualizer = React.memo(function DotGridVisualizer({ active }: { active: boolean }) {
+const DotGridVisualizer = React.memo(function DotGridVisualizer({ active, thinking }: { active: boolean; thinking?: boolean }) {
   const [dots, setDots] = useState<number[]>(Array(DOT_COUNT).fill(0.15));
 
   useEffect(() => {
-    if (!active) { setDots(Array(DOT_COUNT).fill(0.15)); return; }
+    if (!active && !thinking) { setDots(Array(DOT_COUNT).fill(0.15)); return; }
+    const interval = active ? 80 : 200; // slower pulse for thinking
     const id = setInterval(() => {
       setDots(prev => prev.map((_, i) => {
         const row = Math.floor(i / DOT_GRID_SIZE);
         const col = i % DOT_GRID_SIZE;
         const distFromCenter = Math.sqrt((row - 3) ** 2 + (col - 3) ** 2);
+        if (thinking && !active) {
+          // Gentle breathing — slow wave from center
+          const breath = Math.sin(Date.now() / 800 + distFromCenter * 0.4) * 0.3 + 0.5;
+          return 0.1 + breath * 0.3 * (1 - distFromCenter / 6);
+        }
         const wave = Math.sin(Date.now() / 300 + distFromCenter * 0.8) * 0.5 + 0.5;
         return 0.15 + wave * 0.85 * (1 - distFromCenter / 5) + Math.random() * 0.15;
       }));
-    }, 80);
+    }, interval);
     return () => clearInterval(id);
-  }, [active]);
+  }, [active, thinking]);
 
   return (
     <div style={{ display: "grid", gridTemplateColumns: `repeat(${DOT_GRID_SIZE}, 1fr)`, gap: 5, width: 100, height: 100 }}>
@@ -102,9 +108,9 @@ const DotGridVisualizer = React.memo(function DotGridVisualizer({ active }: { ac
         <div key={i} style={{
           width: 8, height: 8, borderRadius: "50%",
           background: c.gilt,
-          opacity: active ? Math.min(0.9, scale) : 0.1,
-          transform: `scale(${active ? 0.5 + scale * 0.5 : 0.6})`,
-          transition: active ? "all 0.1s ease" : "all 0.6s ease",
+          opacity: active ? Math.min(0.9, scale) : thinking ? Math.min(0.4, scale + 0.05) : 0.1,
+          transform: `scale(${active ? 0.5 + scale * 0.5 : thinking ? 0.5 + scale * 0.3 : 0.6})`,
+          transition: active ? "all 0.1s ease" : "all 0.3s ease",
         }} />
       ))}
     </div>
@@ -340,7 +346,7 @@ export default function Interview() {
 
   // End interview modal
   const [showEndModal, setShowEndModal] = useState(false);
-  const endModalTriggerRef = useRef<HTMLButtonElement>(null);
+  const endModalTriggerRef = useRef<HTMLSpanElement>(null);
 
   // Multi-tab guard: prevent two interview tabs from running concurrently
   const [tabConflict, setTabConflict] = useState(false);
@@ -562,7 +568,7 @@ export default function Interview() {
     return () => clearInterval(timer);
   }, [phase, isPaused]);
 
-  // Answer timer (when user is "speaking") with max 300s (5 min)
+  // Answer timer (when user is "speaking") with max 120s (2 min)
   // Pauses when tab is backgrounded to prevent surprise auto-advance
   const handleNextRef = useRef<() => void>(() => {});
   const tabVisibleRef = useRef(true);
@@ -580,6 +586,7 @@ export default function Interview() {
       if (!tabVisibleRef.current || isPaused) return t; // pause when tab hidden or interview paused
       const next = t + 1;
       if (next >= 120) {
+        toast("Time's up — moving to the next question.", "info");
         handleNextRef.current();
         return t;
       }
@@ -820,6 +827,8 @@ export default function Interview() {
       } else if ((e.key === "Enter" || e.key === " ") && phase === "speaking") {
         e.preventDefault();
         skipSpeaking();
+      } else if (e.key === "Enter" && phase === "done") {
+        handleEnd();
       }
       // Alt+key shortcuts
       if (e.altKey) {
@@ -1057,7 +1066,9 @@ export default function Interview() {
         @media (max-width: 600px) {
           .iv-info-bar { flex-wrap: wrap; gap: 8px !important; padding: 10px 16px !important; }
           .iv-center { padding: 16px !important; }
-          .iv-controls { padding: 12px 16px !important; gap: 8px !important; }
+          .iv-controls { padding: 8px 12px !important; gap: 6px !important; }
+          .iv-controls button[style*="width: 48px"] { width: 40px !important; height: 40px !important; }
+          .iv-controls .iv-hide-mobile { display: none !important; }
           .iv-transcript-panel { width: 100% !important; max-width: none !important; }
         }
       `}</style>
@@ -1148,7 +1159,7 @@ export default function Interview() {
               transition: "all 0.4s ease",
               boxShadow: phase === "speaking" ? "0 0 40px rgba(212,179,127,0.08)" : "none",
             }}>
-              <DotGridVisualizer active={phase === "speaking"} />
+              <DotGridVisualizer active={phase === "speaking"} thinking={phase === "thinking"} />
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <span style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: c.ivory }}>AI Interviewer</span>
@@ -1190,10 +1201,8 @@ export default function Interview() {
             )}
             {phase === "speaking" ? (
               <LiveCaptions text={step?.aiText || ""} isTyping={true} speakingDuration={step?.speakingDuration} />
-            ) : step?.aiText && (showCaptions || phase !== "listening") ? (
-              <p style={{ fontFamily: font.ui, fontSize: 14, color: c.chalk, lineHeight: 1.75, margin: 0 }}>{step.aiText}</p>
-            ) : showCaptions && step?.aiText ? (
-              <p style={{ fontFamily: font.ui, fontSize: 14, color: c.chalk, lineHeight: 1.75, margin: 0, opacity: 0.5, fontStyle: "italic" }}>{step.aiText}</p>
+            ) : step?.aiText ? (
+              <p style={{ fontFamily: font.ui, fontSize: 14, color: c.chalk, lineHeight: 1.75, margin: 0, opacity: phase === "listening" && !showCaptions ? 0.55 : 1 }}>{step.aiText}</p>
             ) : null}
 
             {/* Per-question time bar (visible during listening) */}
@@ -1388,18 +1397,20 @@ export default function Interview() {
           onClick={() => { if (aiVoiceEnabled) ttsCancelRef.current?.(); setAiVoiceEnabled(v => !v); }}
         />
 
-        {/* Captions toggle */}
-        <ControlButton
-          icon={
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-              <rect x="2" y="4" width="20" height="16" rx="2"/>
-              <path d="M7 15h4m6 0h-2m-8-4h10"/>
-            </svg>
-          }
-          label={showCaptions ? "Hide captions (Alt+K)" : "Show captions (Alt+K)"}
-          active={showCaptions}
-          onClick={() => setShowCaptions(c => !c)}
-        />
+        {/* Captions toggle (hidden on small mobile) */}
+        <span className="iv-hide-mobile">
+          <ControlButton
+            icon={
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <rect x="2" y="4" width="20" height="16" rx="2"/>
+                <path d="M7 15h4m6 0h-2m-8-4h10"/>
+              </svg>
+            }
+            label={showCaptions ? "Hide captions (Alt+K)" : "Show captions (Alt+K)"}
+            active={showCaptions}
+            onClick={() => setShowCaptions(c => !c)}
+          />
+        </span>
 
         {/* Transcript toggle */}
         <ControlButton
@@ -1417,7 +1428,7 @@ export default function Interview() {
         />
 
         {/* Divider */}
-        <div style={{ width: 1, height: 24, background: "rgba(245,242,237,0.08)", margin: "0 4px" }} />
+        <div className="iv-hide-mobile" style={{ width: 1, height: 24, background: "rgba(245,242,237,0.08)", margin: "0 4px" }} />
 
         {/* Pause */}
         {phase !== "done" && !evaluating && (
@@ -1458,7 +1469,6 @@ export default function Interview() {
           </button>
         ) : phase === "done" ? (
           <button
-            ref={endModalTriggerRef}
             onClick={handleEnd}
             disabled={evaluating}
             style={{
@@ -1477,17 +1487,30 @@ export default function Interview() {
 
         {/* End Interview (when not done) */}
         {phase !== "done" && (
-          <ControlButton
-            icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>}
-            label="End interview"
-            danger
-            onClick={() => setShowEndModal(true)}
-          />
+          <span ref={endModalTriggerRef} style={{ display: "inline-flex" }}>
+            <ControlButton
+              icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>}
+              label="End interview"
+              danger
+              onClick={() => { ttsCancelRef.current?.(); ttsCancelRef.current = null; setShowEndModal(true); }}
+            />
+          </span>
         )}
       </footer>
 
       {/* ─── Transcript Slide-Over Panel ─── */}
       {showTranscript && (
+        <>
+        {/* Backdrop (visible on mobile) */}
+        <div
+          onClick={() => setShowTranscript(false)}
+          style={{
+            position: "fixed", inset: 0, zIndex: 49,
+            background: "rgba(0,0,0,0.5)",
+            backdropFilter: "blur(2px)",
+            animation: "fadeUp 0.15s ease",
+          }}
+        />
         <div className="iv-transcript-panel" style={{
           position: "fixed", top: 0, right: 0, bottom: 0,
           width: 380, maxWidth: "100vw",
@@ -1538,6 +1561,7 @@ export default function Interview() {
             ))}
           </div>
         </div>
+        </>
       )}
 
       {/* End Interview Modal */}
@@ -1547,9 +1571,9 @@ export default function Interview() {
           aria-modal="true"
           aria-labelledby="end-modal-title"
           tabIndex={-1}
-          onClick={(e) => { if (e.target === e.currentTarget) { e.stopPropagation(); setShowEndModal(false); endModalTriggerRef.current?.focus(); } }}
+          onClick={(e) => { if (e.target === e.currentTarget) { e.stopPropagation(); setShowEndModal(false); endModalTriggerRef.current?.querySelector("button")?.focus(); } }}
           onKeyDown={(e) => {
-            if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); setShowEndModal(false); endModalTriggerRef.current?.focus(); return; }
+            if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); setShowEndModal(false); endModalTriggerRef.current?.querySelector("button")?.focus(); return; }
             if (e.key === "Tab") {
               const modal = e.currentTarget.querySelector("[data-modal-content]") as HTMLElement;
               if (!modal) return;
@@ -1600,7 +1624,7 @@ export default function Interview() {
               </div>
             )}
             <div style={{ display: "flex", gap: 12, justifyContent: "center" }}>
-              <button onClick={() => { setShowEndModal(false); endModalTriggerRef.current?.focus(); }}
+              <button onClick={() => { setShowEndModal(false); endModalTriggerRef.current?.querySelector("button")?.focus(); }}
                 style={{
                   fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.ivory,
                   background: "rgba(245,242,237,0.04)", border: `1px solid ${c.border}`,

@@ -33,7 +33,11 @@ export default function DashboardLayout() {
     syncError, setSyncError,
     toast, calendarEvents, recentSessions,
     handleStartSession, handleExport,
+    refreshSessions,
   } = useDashboard();
+
+  // Refetch sessions on mount (e.g. returning from interview)
+  useEffect(() => { refreshSessions(); }, [refreshSessions]);
 
   const hasUrgentInterview = useMemo(() =>
     calendarEvents.some(e => e.status === "upcoming" && daysUntilEvent(e.date, e.time) >= 0 && daysUntilEvent(e.date, e.time) <= 3),

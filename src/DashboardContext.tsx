@@ -72,6 +72,7 @@ interface DashboardContextValue {
   handleDownload: () => void;
   handleExportCSV: () => void;
   handleExportPDF: () => void;
+  refreshSessions: () => void;
 }
 
 const DashboardContext = createContext<DashboardContextValue | null>(null);
@@ -231,24 +232,30 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     return () => { cancelled = true; clearTimeout(timeout); };
   }, [user?.id]);
 
+  // Refetch sessions from Supabase (called on visibility change and route navigation)
+  const refreshSessions = useCallback(() => {
+    if (!user?.id) return;
+    getUserSessions(user.id).then(sessions => {
+      const mapped = sessions.map(s => ({
+        id: s.id, date: s.date, type: s.type, difficulty: s.difficulty,
+        focus: s.focus, duration: s.duration, score: s.score, questions: s.questions,
+        ai_feedback: s.ai_feedback, skill_scores: s.skill_scores,
+      }));
+      setSupabaseSessions(mapped);
+      try { localStorage.setItem(`hirestepx_cache_sessions_${user.id}`, JSON.stringify(mapped)); } catch {}
+    }).catch(() => {});
+  }, [user?.id]);
+
   // Auto-refresh data when user returns to tab (e.g. after completing an interview)
   useEffect(() => {
     if (!user?.id) return;
     const handleVisibility = () => {
       if (document.visibilityState !== "visible") return;
-      getUserSessions(user.id).then(sessions => {
-        const mapped = sessions.map(s => ({
-          id: s.id, date: s.date, type: s.type, difficulty: s.difficulty,
-          focus: s.focus, duration: s.duration, score: s.score, questions: s.questions,
-          ai_feedback: s.ai_feedback, skill_scores: s.skill_scores,
-        }));
-        setSupabaseSessions(mapped);
-        try { localStorage.setItem(`hirestepx_cache_sessions_${user.id}`, JSON.stringify(mapped)); } catch {}
-      }).catch(() => {});
+      refreshSessions();
     };
     document.addEventListener("visibilitychange", handleVisibility);
     return () => document.removeEventListener("visibilitychange", handleVisibility);
-  }, [user?.id]);
+  }, [user?.id, refreshSessions]);
 
   // Session data
   const { recentSessions, scoreTrend, skills, overallStats, hasData } = useMemo(
@@ -415,6 +422,7 @@ ${skills.length > 0 ? `<h2>Skills</h2><table><tr><th>Skill</th><th>Score</th><th
     badges, dailyChallenge, practiceReminder,
     googleSyncStatus, googleSyncError, hasGoogleToken, syncGoogleCalendar,
     handleStartSession, handleExport, handleDownload, handleExportCSV, handleExportPDF,
+    refreshSessions,
   }), [
     persisted, updatePersisted,
     recentSessions, scoreTrend, skills, overallStats, hasData,
@@ -430,6 +438,7 @@ ${skills.length > 0 ? `<h2>Skills</h2><table><tr><th>Skill</th><th>Score</th><th
     badges, dailyChallenge, practiceReminder,
     googleSyncStatus, googleSyncError, hasGoogleToken, syncGoogleCalendar,
     handleStartSession, handleExport, handleDownload, handleExportCSV, handleExportPDF,
+    refreshSessions,
   ]);
 
   return <DashboardContext.Provider value={value}>{children}</DashboardContext.Provider>;
