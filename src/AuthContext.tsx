@@ -85,7 +85,9 @@ function profileToUser(profile: Profile, session: Session): User {
     email: profile.email || session.user.email || "",
     targetRole: profile.target_role || "",
     resumeFileName: profile.resume_file_name || null,
-    hasCompletedOnboarding: profile.has_completed_onboarding != null ? !!(profile.has_completed_onboarding) : !!(profile.target_role),
+    hasCompletedOnboarding: profile.has_completed_onboarding != null
+      ? !!(profile.has_completed_onboarding)
+      : !!(profile.practice_timestamps && profile.practice_timestamps.length > 0),
     targetCompany: profile.target_company || undefined,
     industry: profile.industry || undefined,
     learningStyle: (profile.learning_style as "direct" | "encouraging") || "direct",
