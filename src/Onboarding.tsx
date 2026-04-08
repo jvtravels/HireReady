@@ -160,8 +160,14 @@ export default function Onboarding() {
   const [targetRole, setTargetRole] = useState(savedForm?.targetRole || "");
   const [roleAutoFilled, setRoleAutoFilled] = useState(false);
   const [targetCompany, setTargetCompany] = useState(savedForm?.targetCompany || "");
-  const [interviewFocus, setInterviewFocus] = useState<string[]>(savedForm?.interviewFocus || ["Behavioral"]);
-  const [sessionLength, setSessionLength] = useState(savedForm?.sessionLength || "15m");
+  const [interviewFocus, setInterviewFocus] = useState<string[]>(savedForm?.interviewFocus?.slice(0, 1) || ["Behavioral"]);
+  const isFreeUser = !user?.subscriptionTier || user.subscriptionTier === "free";
+  const [sessionLength, setSessionLength] = useState(() => {
+    const saved = savedForm?.sessionLength || "10m";
+    // Free users can only use 10m
+    if (isFreeUser && saved !== "10m") return "10m";
+    return saved;
+  });
 
   // Auto-save form data on changes
   useEffect(() => {
@@ -856,7 +862,7 @@ export default function Onboarding() {
                   Set up your practice session
                 </h2>
                 <p style={{ fontFamily: font.ui, fontSize: 15, color: c.stone, lineHeight: 1.7 }}>
-                  {resumeParsed ? "We've pre-filled some details from your resume. Adjust anything before your first session." : "Tell us about the role you're targeting so the AI can tailor every question."}
+We've pre-filled your target role from your resume. Adjust if needed, then choose your interview focus.
                 </p>
               </div>
 
@@ -894,7 +900,7 @@ export default function Onboarding() {
                     </div>
                     <span style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: c.ivory }}>Interview Focus <span style={{ color: c.ember, fontWeight: 400 }}>*</span></span>
                   </div>
-                  <p style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, marginBottom: 16, paddingLeft: 36 }}>Select the areas you want the AI to focus on. This directly shapes your questions.</p>
+                  <p style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, marginBottom: 16, paddingLeft: 36 }}>Choose what you want to practice. AI will prepare questions based on your selection.</p>
                   <div className="ob-s2-focus-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                     {[
                       { value: "Behavioral", icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>, desc: "Leadership, decision-making, conflict resolution" },
@@ -902,9 +908,9 @@ export default function Onboarding() {
                       { value: "Technical Leadership", icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>, desc: "Architecture, system design, tech strategy" },
                       { value: "Case Study", icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>, desc: "Problem-solving, analytical frameworks" },
                     ].map(opt => {
-                      const sel = interviewFocus.includes(opt.value);
+                      const sel = interviewFocus[0] === opt.value;
                       return (
-                        <button key={opt.value} className="ob-focus-card" onClick={() => setInterviewFocus(prev => prev.includes(opt.value) ? prev.filter(v => v !== opt.value) : [...prev, opt.value])}
+                        <button key={opt.value} className="ob-focus-card" onClick={() => setInterviewFocus([opt.value])}
                           style={{
                             padding: "14px 18px", borderRadius: 12, cursor: "pointer", transition: "all 0.2s ease", textAlign: "left",
                             background: sel ? "rgba(212,179,127,0.08)" : "transparent",
@@ -915,16 +921,20 @@ export default function Onboarding() {
                           <div style={{ width: 36, height: 36, borderRadius: 9, background: sel ? "rgba(212,179,127,0.1)" : "rgba(245,242,237,0.03)", border: `1px solid ${sel ? "rgba(212,179,127,0.2)" : "rgba(245,242,237,0.06)"}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                             {opt.icon}
                           </div>
-                          <div>
+                          <div style={{ flex: 1 }}>
                             <span style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: c.ivory, display: "block" }}>{opt.value}</span>
                             <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, lineHeight: 1.4 }}>{opt.desc}</span>
+                          </div>
+                          {/* Radio indicator */}
+                          <div style={{ width: 18, height: 18, borderRadius: "50%", border: `2px solid ${sel ? c.gilt : "rgba(245,242,237,0.12)"}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                            {sel && <div style={{ width: 8, height: 8, borderRadius: "50%", background: c.gilt }} />}
                           </div>
                         </button>
                       );
                     })}
                   </div>
                   {interviewFocus.length === 0 && (
-                    <p style={{ fontFamily: font.ui, fontSize: 11, color: c.ember, marginTop: 8, paddingLeft: 36 }}>Select at least one focus area</p>
+                    <p style={{ fontFamily: font.ui, fontSize: 11, color: c.ember, marginTop: 8, paddingLeft: 36 }}>Select a focus area</p>
                   )}
                 </div>
 
@@ -938,22 +948,31 @@ export default function Onboarding() {
                   </div>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
                     {[
-                      { value: "10m", label: "10 min", desc: "Quick practice", sub: "2–3 questions" },
-                      { value: "15m", label: "15 min", desc: "Standard session", sub: "4–5 questions", recommended: true },
-                      { value: "25m", label: "25 min", desc: "Deep dive", sub: "6–8 questions" },
+                      { value: "10m", label: "10 min", desc: "Quick practice", sub: "2–3 questions", paidOnly: false },
+                      { value: "15m", label: "15 min", desc: "Standard session", sub: "4–5 questions", recommended: true, paidOnly: true },
+                      { value: "25m", label: "25 min", desc: "Deep dive", sub: "6–8 questions", paidOnly: true },
                     ].map(opt => {
+                      const isFreeUser = !user?.subscriptionTier || user.subscriptionTier === "free";
+                      const locked = opt.paidOnly && isFreeUser;
                       const sel = sessionLength === opt.value;
                       return (
-                        <button key={opt.value} onClick={() => setSessionLength(opt.value)}
+                        <button key={opt.value} onClick={() => { if (!locked) setSessionLength(opt.value); }}
                           style={{
-                            padding: "16px 14px", borderRadius: 12, cursor: "pointer", textAlign: "center", position: "relative",
+                            padding: "16px 14px", borderRadius: 12, cursor: locked ? "not-allowed" : "pointer", textAlign: "center", position: "relative",
                             background: sel ? "rgba(212,179,127,0.08)" : "transparent",
                             border: `1.5px solid ${sel ? c.gilt : c.border}`,
                             boxShadow: sel ? "0 0 16px rgba(212,179,127,0.06)" : "none",
                             transition: "all 0.2s",
+                            opacity: locked ? 0.45 : 1,
                           }}>
-                          {opt.recommended && (
+                          {opt.recommended && !locked && (
                             <span style={{ position: "absolute", top: -8, left: "50%", transform: "translateX(-50%)", fontFamily: font.ui, fontSize: 9, fontWeight: 700, color: c.obsidian, background: c.gilt, padding: "2px 8px", borderRadius: 4, letterSpacing: "0.04em", textTransform: "uppercase" }}>Recommended</span>
+                          )}
+                          {locked && (
+                            <span style={{ position: "absolute", top: -8, left: "50%", transform: "translateX(-50%)", fontFamily: font.ui, fontSize: 9, fontWeight: 700, color: c.ivory, background: "rgba(245,242,237,0.1)", border: "1px solid rgba(245,242,237,0.12)", padding: "2px 8px", borderRadius: 4, letterSpacing: "0.04em", textTransform: "uppercase", display: "flex", alignItems: "center", gap: 3 }}>
+                              <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                              Pro
+                            </span>
                           )}
                           <span style={{ fontFamily: font.ui, fontSize: 20, fontWeight: 600, color: sel ? c.gilt : c.ivory, display: "block", marginBottom: 2 }}>{opt.label}</span>
                           <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: sel ? c.ivory : c.chalk, display: "block", marginBottom: 2 }}>{opt.desc}</span>
