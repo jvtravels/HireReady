@@ -643,15 +643,19 @@ export default function Onboarding() {
       saveData.resumeData = (aiProfile || resumeParsed) as unknown as ParsedResume;
     }
     setSaveStatus("saving");
-    try {
-      await updateUser(saveData);
+    if (Object.keys(saveData).length > 0) {
+      try {
+        await Promise.race([
+          updateUser(saveData),
+          new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), 8000)),
+        ]);
+        setSaveStatus("saved");
+      } catch (err) {
+        console.warn("[handleStart] save failed or timed out, proceeding anyway:", err);
+        setSaveStatus("error");
+      }
+    } else {
       setSaveStatus("saved");
-    } catch (err) {
-      console.error("[handleStart] save failed:", err);
-      setSaveStatus("error");
-      setStarting(false);
-      startingRef.current = false;
-      return;
     }
     clearObStep();
     unlockAudio();
