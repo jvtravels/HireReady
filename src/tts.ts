@@ -475,6 +475,96 @@ async function speakWithProxy(
   };
 }
 
+/* ─── Deepgram TTS (fallback before browser) ─── */
+let _cachedDeepgramKey: string | null = null;
+let _deepgramKeyExpiry = 0;
+
+async function getDeepgramApiKey(): Promise<string | null> {
+  if (_cachedDeepgramKey && Date.now() < _deepgramKeyExpiry - API_KEY_TTL * 0.2) return _cachedDeepgramKey;
+  try {
+    const { authHeaders } = await import("./supabase");
+    const headers = await authHeaders();
+    const res = await fetch("/api/stt-token", { method: "POST", headers });
+    if (!res.ok) return null;
+    const data = await res.json();
+    _cachedDeepgramKey = data.apiKey || null;
+    _deepgramKeyExpiry = Date.now() + API_KEY_TTL;
+    return _cachedDeepgramKey;
+  } catch {
+    return null;
+  }
+}
+
+async function speakWithDeepgram(
+  text: string,
+  onEnd: () => void,
+  onError: () => void,
+): Promise<{ cancel: () => void }> {
+  let audio: HTMLAudioElement | null = null;
+  let settled = false;
+  const settle = (cb: () => void) => { if (!settled) { settled = true; cb(); } };
+
+  try {
+    const apiKey = await getDeepgramApiKey();
+    if (!apiKey) {
+      console.warn("[TTS-DG] no API key");
+      settle(onError);
+      return { cancel: () => {} };
+    }
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 12_000);
+
+    const res = await fetch("https://api.deepgram.com/v1/speak?model=aura-asteria-en&encoding=mp3", {
+      method: "POST",
+      headers: {
+        "Authorization": `Token ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ text: text.trim().slice(0, 2000) }),
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+
+    if (!res.ok) {
+      console.warn("[TTS-DG] API error:", res.status);
+      settle(onError);
+      return { cancel: () => {} };
+    }
+
+    const blob = await res.blob();
+    if (!blob || blob.size < 100) {
+      console.warn("[TTS-DG] empty audio");
+      settle(onError);
+      return { cancel: () => {} };
+    }
+
+    const url = URL.createObjectURL(blob);
+    audio = new Audio(url);
+    audio.onended = () => { URL.revokeObjectURL(url); settle(onEnd); };
+    audio.onerror = () => { URL.revokeObjectURL(url); settle(onError); };
+    await audio.play();
+    console.log("[TTS-DG] playing Deepgram audio");
+  } catch (err: any) {
+    if (err.name === "AbortError") return { cancel: () => {} };
+    console.warn("[TTS-DG] error:", err?.message || err);
+    settle(onError);
+    return { cancel: () => {} };
+  }
+
+  const capturedAudio = audio;
+  return {
+    cancel: () => {
+      settled = true;
+      if (capturedAudio) {
+        capturedAudio.pause();
+        capturedAudio.onended = null;
+        capturedAudio.onerror = null;
+      }
+    },
+  };
+}
+
 /* ─── Browser TTS (fallback) ─── */
 function speakWithBrowser(
   text: string,
@@ -554,19 +644,29 @@ export async function speak(
   const settings = loadTTSSettings();
   let handle: { cancel: () => void };
 
+  // Deepgram fallback (before browser TTS)
+    const deepgramFallback = async () => {
+      console.warn("Trying Deepgram TTS fallback");
+      handle = await speakWithDeepgram(text, onEnd, () => {
+        console.warn("Deepgram TTS failed, falling back to browser TTS");
+        speakWithBrowser(text, onEnd, onError);
+      });
+      _activeCancel = handle.cancel;
+    };
+
   if (settings.provider === "cartesia") {
     const hasPrefetch = _prefetchCache.has(text);
     if (hasPrefetch) {
-      handle = await speakWithProxy(text, settings.voiceId, onEnd, () => {
-        console.warn("Cartesia REST failed, falling back to browser TTS");
-        speakWithBrowser(text, onEnd, onError);
+      handle = await speakWithProxy(text, settings.voiceId, onEnd, async () => {
+        console.warn("Cartesia REST failed, trying Deepgram");
+        await deepgramFallback();
       });
     } else {
       handle = await speakWithWebSocket(text, settings.voiceId, onEnd, async () => {
         console.warn("Cartesia WebSocket failed, falling back to REST");
-        handle = await speakWithProxy(text, settings.voiceId, onEnd, () => {
-          console.warn("Cartesia REST also failed, falling back to browser TTS");
-          speakWithBrowser(text, onEnd, onError);
+        handle = await speakWithProxy(text, settings.voiceId, onEnd, async () => {
+          console.warn("Cartesia REST also failed, trying Deepgram");
+          await deepgramFallback();
         });
         _activeCancel = handle.cancel;
       });
