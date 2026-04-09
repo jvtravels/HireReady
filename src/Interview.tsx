@@ -13,6 +13,7 @@ import type { InterviewStep } from "./interviewScripts";
 import { scriptsByType, defaultScript, getMiniScript, getScript } from "./interviewScripts";
 import { saveSessionResult, fetchLLMQuestions, fetchLLMEvaluation, fetchFollowUp, retryQueuedEvals } from "./interviewAPI";
 import type { SessionResult } from "./interviewAPI";
+import { createDeepgramSTT, type DeepgramSTTHandle } from "./deepgramSTT";
 
 /* Script definitions and generators imported from ./interviewScripts */
 
@@ -330,6 +331,7 @@ export default function Interview() {
 
   // Speech recognition
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
+  const deepgramRef = useRef<DeepgramSTTHandle | null>(null);
   const [currentTranscript, setCurrentTranscript] = useState("");
   const [phase, setPhase] = useState<"thinking" | "speaking" | "listening" | "done">("thinking");
   const [elapsed, setElapsed] = useState(draftRef.current?.elapsed || 0);
@@ -445,20 +447,69 @@ export default function Interview() {
     return () => {
       ttsCancelRef.current?.();
       recognitionRef.current?.stop();
+      deepgramRef.current?.abort();
     };
   }, [aiVoiceEnabled]);
 
   // Start/stop speech recognition based on phase
+  // Tries Deepgram (WebSocket streaming) first, falls back to Web Speech API
   useEffect(() => {
     if (phase === "listening" && !isMuted) {
-      // Reset restart counter for each new listening phase
       recognitionRestartCountRef.current = 0;
       let stopped = false;
-      const recognition = createSpeechRecognition();
-      if (!recognition) {
-        setSpeechUnavailable(true);
-      }
-      if (recognition) {
+
+      // ── Deepgram STT (primary) ──
+      let deepgramCleanup: (() => void) | null = null;
+      const tryDeepgram = async () => {
+        if (stopped) return;
+        const handle = await createDeepgramSTT({
+          onTranscript: (finalText, interim) => {
+            if (!stopped) setCurrentTranscript(finalText + interim);
+          },
+          onError: (error) => {
+            if (stopped) return;
+            if (error === "not-allowed") {
+              setMicError("Microphone access denied. Check browser permissions.");
+              setSpeechUnavailable(true);
+              setShowCaptions(true);
+              setTimeout(() => textareaRef.current?.focus(), 100);
+            } else {
+              // Deepgram network error — fall back to Web Speech API
+              console.warn("[Deepgram] error, falling back to Web Speech API:", error);
+              deepgramRef.current = null;
+              startWebSpeechAPI();
+            }
+          },
+          onEnd: () => {
+            if (stopped || interviewEndedRef.current) return;
+            // Deepgram disconnected — try one reconnect, then fall back
+            console.warn("[Deepgram] connection ended, falling back to Web Speech API");
+            deepgramRef.current = null;
+            startWebSpeechAPI();
+          },
+        });
+        if (stopped) { handle?.abort(); return; }
+        if (handle) {
+          deepgramRef.current = handle;
+          deepgramCleanup = () => {
+            handle.stop();
+            deepgramRef.current = null;
+          };
+        } else {
+          // Deepgram unavailable (no API key or setup failure) — use Web Speech API
+          console.log("[STT] Deepgram unavailable, using Web Speech API");
+          startWebSpeechAPI();
+        }
+      };
+
+      // ── Web Speech API (fallback) ──
+      function startWebSpeechAPI() {
+        if (stopped) return;
+        const recognition = createSpeechRecognition();
+        if (!recognition) {
+          setSpeechUnavailable(true);
+          return;
+        }
         let finalText = "";
         recognition.onresult = (event: SpeechRecognitionEvent) => {
           let interim = "";
@@ -477,10 +528,9 @@ export default function Interview() {
           if (error === "not-allowed") {
             setMicError("Microphone access denied. Check browser permissions.");
             setSpeechUnavailable(true);
-            setShowCaptions(true); // Auto-enable captions when mic unavailable
+            setShowCaptions(true);
             setTimeout(() => textareaRef.current?.focus(), 100);
           } else if (error === "no-speech") {
-            // Silence — auto-restarts, but track consecutive no-speech errors
             noSpeechCountRef.current += 1;
             if (noSpeechCountRef.current >= 3) {
               setMicError("No speech detected after multiple attempts. Type your answer below.");
@@ -499,7 +549,7 @@ export default function Interview() {
         };
         recognition.onresult = ((origOnResult) => {
           return (event: SpeechRecognitionEvent) => {
-            noSpeechCountRef.current = 0; // reset on successful recognition
+            noSpeechCountRef.current = 0;
             recognitionRestartCountRef.current = 0;
             origOnResult(event);
           };
@@ -516,9 +566,7 @@ export default function Interview() {
               setTimeout(() => textareaRef.current?.focus(), 100);
               return;
             }
-            try {
-              recognition.start();
-            } catch (e) {
+            try { recognition.start(); } catch (e) {
               console.warn("[speech] restart failed, enabling text fallback:", e);
               setSpeechUnavailable(true);
               setMicError("Speech recognition stopped unexpectedly. Type your answer below.");
@@ -531,26 +579,31 @@ export default function Interview() {
           setMicError("Could not start speech recognition. Try refreshing.");
         }
         recognitionRef.current = recognition;
-
-        // Safety timeout: if no speech detected for 30s, offer text fallback
-        const safetyTimer = setTimeout(() => {
-          if (!stopped && phase === "listening") {
-            console.warn("[interview] Listening safety timeout — enabling text fallback");
-            setSpeechUnavailable(true);
-            setMicError("Having trouble hearing you? Type your answer instead.");
-            setTimeout(() => textareaRef.current?.focus(), 100);
-          }
-        }, 30_000);
-
-        return () => {
-          clearTimeout(safetyTimer);
-          stopped = true;
-          recognition?.stop();
-          recognitionRef.current = null;
-        };
       }
-      return;
+
+      // Start with Deepgram
+      tryDeepgram();
+
+      // Safety timeout: if no speech detected for 30s, offer text fallback
+      const safetyTimer = setTimeout(() => {
+        if (!stopped && phase === "listening") {
+          console.warn("[interview] Listening safety timeout — enabling text fallback");
+          setSpeechUnavailable(true);
+          setMicError("Having trouble hearing you? Type your answer instead.");
+          setTimeout(() => textareaRef.current?.focus(), 100);
+        }
+      }, 30_000);
+
+      return () => {
+        clearTimeout(safetyTimer);
+        stopped = true;
+        deepgramCleanup?.();
+        recognitionRef.current?.stop();
+        recognitionRef.current = null;
+      };
     } else {
+      deepgramRef.current?.abort();
+      deepgramRef.current = null;
       recognitionRef.current?.stop();
       recognitionRef.current = null;
     }

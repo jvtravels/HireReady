@@ -47,6 +47,7 @@ export default async function handler(req: Request): Promise<Response> {
     upstash,
     llm: (process.env.GROQ_API_KEY || process.env.GEMINI_API_KEY) ? "ok" : "missing",
     tts: process.env.GCP_TTS_API_KEY ? "ok" : "missing",
+    stt: process.env.DEEPGRAM_API_KEY ? "ok" : "missing",
     payments: process.env.RAZORPAY_KEY_ID ? "ok" : "missing",
     email: process.env.RESEND_API_KEY ? "ok" : "missing",
   };
