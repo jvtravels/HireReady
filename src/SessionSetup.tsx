@@ -244,6 +244,7 @@ export default function SessionSetup() {
   // Launch
   const [starting, setStarting] = useState(false);
   const [launching, setLaunching] = useState(false);
+  const [countdown, setCountdown] = useState<number | null>(null);
   const [saveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
 
   const canProceedStep1 = !!targetRole.trim() && interviewFocus.length > 0;
@@ -286,9 +287,13 @@ export default function SessionSetup() {
     const introText = introByType[focusType] || introByType.behavioral;
     prefetchTTS(introText);
     setLaunching(true);
+    setCountdown(3);
+    setTimeout(() => setCountdown(2), 1000);
+    setTimeout(() => setCountdown(1), 2000);
     setTimeout(() => {
+      setCountdown(0);
       navigate(`/interview?type=${focusType}&focus=${focusType}&difficulty=standard${targetCompany ? `&company=${encodeURIComponent(targetCompany)}` : ""}&role=${encodeURIComponent(targetRole)}&length=${sessionLength}`);
-    }, 1200);
+    }, 3000);
   };
 
   const goBack = () => { if (step > 1) setStep(step - 1); else navigate("/dashboard"); };
@@ -303,6 +308,8 @@ export default function SessionSetup() {
         @keyframes spin { to { transform: rotate(360deg); } }
         @keyframes launchIn { from { opacity: 0; } to { opacity: 1; } }
         @keyframes launchPulse { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.08); opacity: 0.85; } }
+        @keyframes countdownPop { from { transform: scale(0.5); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        @keyframes countdownFade { 0% { opacity: 1; transform: scale(1); } 80% { opacity: 1; } 100% { opacity: 0.6; transform: scale(0.95); } }
         .ob-card { background: ${c.graphite}; border: 1px solid ${c.border}; }
         .ob-mic-pulse { animation: pulse 2s ease-in-out infinite; }
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
@@ -692,28 +699,51 @@ export default function SessionSetup() {
         </div>
       </div>
 
-      {/* Launch overlay */}
-      {launching && (
+      {/* Countdown overlay */}
+      {launching && countdown !== null && (
         <div style={{
           position: "fixed", inset: 0, zIndex: 200,
           display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
           background: c.obsidian, animation: "launchIn 0.4s ease",
         }}>
-          <div style={{
-            width: 64, height: 64, borderRadius: 16, marginBottom: 24,
-            background: `linear-gradient(135deg, rgba(212,179,127,0.15), rgba(212,179,127,0.05))`,
-            border: "1px solid rgba(212,179,127,0.25)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            animation: "launchPulse 1.2s ease-in-out infinite",
-          }}>
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="2" strokeLinecap="round"><polygon points="5,3 19,12 5,21"/></svg>
-          </div>
-          <h2 style={{ fontFamily: font.display, fontSize: 28, fontWeight: 400, color: c.ivory, marginBottom: 8, letterSpacing: "-0.02em" }}>
-            Let's go!
-          </h2>
-          <p style={{ fontFamily: font.ui, fontSize: 14, color: c.stone }}>
-            Launching your {interviewFocus[0]?.toLowerCase() || "practice"} interview...
-          </p>
+          {countdown > 0 ? (
+            <>
+              <div key={countdown} style={{
+                width: 120, height: 120, borderRadius: "50%",
+                background: `linear-gradient(135deg, rgba(212,179,127,0.12), rgba(212,179,127,0.04))`,
+                border: "2px solid rgba(212,179,127,0.3)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                marginBottom: 32,
+                animation: "countdownPop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)",
+              }}>
+                <span style={{
+                  fontFamily: font.display, fontSize: 56, fontWeight: 600,
+                  color: c.gilt, lineHeight: 1,
+                  animation: "countdownFade 1s ease",
+                }}>
+                  {countdown}
+                </span>
+              </div>
+              <p style={{ fontFamily: font.ui, fontSize: 15, color: c.stone, letterSpacing: "0.02em" }}>
+                Get ready...
+              </p>
+            </>
+          ) : (
+            <>
+              <div style={{
+                width: 64, height: 64, borderRadius: 16, marginBottom: 24,
+                background: `linear-gradient(135deg, rgba(212,179,127,0.15), rgba(212,179,127,0.05))`,
+                border: "1px solid rgba(212,179,127,0.25)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                animation: "launchPulse 1.2s ease-in-out infinite",
+              }}>
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="2" strokeLinecap="round"><polygon points="5,3 19,12 5,21"/></svg>
+              </div>
+              <h2 style={{ fontFamily: font.display, fontSize: 28, fontWeight: 400, color: c.ivory, marginBottom: 8, letterSpacing: "-0.02em" }}>
+                Let's go!
+              </h2>
+            </>
+          )}
         </div>
       )}
 
