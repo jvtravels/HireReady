@@ -447,6 +447,18 @@ export default function Interview() {
     return () => ch.close();
   }, []);
 
+  // Prevent accidental navigation/close during active interview
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      if (!interviewEndedRef.current) {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, []);
+
   // Offline + save status + mic error
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const [saveWarning, setSaveWarning] = useState("");
@@ -1348,13 +1360,29 @@ export default function Interview() {
                 {phase === "thinking" ? "Preparing..." : phase === "speaking" ? "Speaking..." : phase === "listening" ? "Listening" : "Complete"}
               </span>
             </div>
+            {phase === "listening" && !isMuted && !speechUnavailable && (
+              <div style={{
+                display: "flex", alignItems: "center", gap: 6, padding: "4px 12px",
+                borderRadius: 100, background: "rgba(122,158,126,0.08)", border: "1px solid rgba(122,158,126,0.15)",
+                animation: "fadeUp 0.3s ease",
+              }}>
+                <div style={{ width: 6, height: 6, borderRadius: "50%", background: c.sage, animation: "recordPulse 1s ease-in-out infinite" }} />
+                <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, color: c.sage, letterSpacing: "0.05em", textTransform: "uppercase" }}>Recording</span>
+              </div>
+            )}
             {phase === "speaking" && (
               <button onClick={skipSpeaking} style={{
-                fontFamily: font.mono, fontSize: 10, color: c.stone, background: "none",
-                border: "none", cursor: "pointer", padding: "2px 0", opacity: 0.5,
-                transition: "opacity 0.2s",
-              }} onMouseEnter={e => (e.currentTarget.style.opacity = "1")} onMouseLeave={e => (e.currentTarget.style.opacity = "0.5")}>
-                Press Enter to skip ›
+                fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: c.chalk,
+                background: "rgba(245,242,237,0.06)", border: `1px solid ${c.border}`,
+                borderRadius: 8, padding: "6px 16px", cursor: "pointer",
+                display: "inline-flex", alignItems: "center", gap: 6,
+                transition: "all 0.2s",
+                marginTop: 4,
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = "rgba(245,242,237,0.1)"; e.currentTarget.style.borderColor = "rgba(245,242,237,0.15)"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = "rgba(245,242,237,0.06)"; e.currentTarget.style.borderColor = c.border; }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polygon points="5 4 15 12 5 20 5 4"/><line x1="19" y1="5" x2="19" y2="19"/></svg>
+                Skip · Enter
               </button>
             )}
           </div>
@@ -1693,7 +1721,7 @@ export default function Interview() {
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 2 }}>
                     <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, color: msg.speaker === "ai" ? c.gilt : c.sage }}>
-                      {msg.speaker === "ai" ? "Interviewer" : "You"}
+                      {msg.speaker === "ai" ? interviewerName : "You"}
                     </span>
                     <span style={{ fontFamily: font.mono, fontSize: 9, color: c.stone }}>{msg.time}</span>
                   </div>

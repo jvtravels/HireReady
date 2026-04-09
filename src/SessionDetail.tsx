@@ -320,7 +320,7 @@ export default function SessionDetail() {
   }, [session, type, dateLabel, durationMin, speechMetrics]);
 
   const handleCopy = useCallback(() => {
-    navigator.clipboard.writeText(generateExportText()).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); });
+    navigator.clipboard.writeText(generateExportText()).then(() => { setCopied(true); toast("Report copied to clipboard", "success"); setTimeout(() => setCopied(false), 2000); });
   }, [generateExportText]);
 
   const handleDownload = useCallback(() => {
