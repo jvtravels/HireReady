@@ -369,6 +369,7 @@ export default function Interview() {
   const [micError, setMicError] = useState("");
   const [usedFallbackScore, setUsedFallbackScore] = useState(false);
   const [evalTimedOut, setEvalTimedOut] = useState(false);
+  const [lastSessionId, setLastSessionId] = useState<string | null>(null);
   const noSpeechCountRef = useRef(0);
   const recognitionRestartCountRef = useRef(0);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -960,6 +961,7 @@ export default function Interview() {
     }
 
     sessionId = crypto.randomUUID();
+    setLastSessionId(sessionId);
     let localOk = false;
     let cloudOk = false;
     try {
@@ -1694,33 +1696,59 @@ export default function Interview() {
           display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
           background: "rgba(0,0,0,0.85)", backdropFilter: "blur(8px)",
         }}>
-          <div style={{ width: 48, height: 48, border: `3px solid ${c.border}`, borderTopColor: c.gilt, borderRadius: "50%", animation: "spin 0.8s linear infinite", marginBottom: 24 }} />
-          <h3 style={{ fontFamily: font.ui, fontSize: 18, fontWeight: 600, color: c.ivory, marginBottom: 8 }}>Analyzing your performance...</h3>
-          <p style={{ fontFamily: font.ui, fontSize: 13, color: c.stone }}>AI is evaluating your answers and generating personalized feedback</p>
-          <p style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, opacity: 0.7, marginTop: 4 }}>
-            {evalElapsed < 10 ? "This usually takes 10\u201330 seconds." : evalElapsed < 25 ? `Almost there... (${evalElapsed}s)` : `Taking longer than usual... (${evalElapsed}s)`}
-          </p>
-          <div style={{ width: 200, height: 3, borderRadius: 2, background: c.border, marginTop: 16, overflow: "hidden" }}>
-            <div style={{ height: "100%", borderRadius: 2, background: c.gilt, transition: "width 1s ease", width: `${Math.min(95, (evalElapsed / 30) * 100)}%` }} />
-          </div>
-          {(usedFallbackScore || evalTimedOut) && (
-            <div style={{ marginTop: 16, padding: "10px 16px", borderRadius: 8, background: evalTimedOut ? "rgba(196,112,90,0.06)" : "rgba(212,179,127,0.06)", border: `1px solid ${evalTimedOut ? "rgba(196,112,90,0.15)" : "rgba(212,179,127,0.12)"}`, maxWidth: 400, display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
-              <p style={{ fontFamily: font.ui, fontSize: 12, color: evalTimedOut ? c.ember : c.gilt, margin: 0 }}>
-                {evalTimedOut ? "Evaluation timed out" : "AI evaluation unavailable"} — using estimated score.
+          {!(usedFallbackScore || evalTimedOut) ? (
+            <>
+              <div style={{ width: 48, height: 48, border: `3px solid ${c.border}`, borderTopColor: c.gilt, borderRadius: "50%", animation: "spin 0.8s linear infinite", marginBottom: 24 }} />
+              <h3 style={{ fontFamily: font.ui, fontSize: 18, fontWeight: 600, color: c.ivory, marginBottom: 8 }}>Analyzing your performance...</h3>
+              <p style={{ fontFamily: font.ui, fontSize: 13, color: c.stone }}>AI is evaluating your answers and generating personalized feedback</p>
+              <p style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, opacity: 0.7, marginTop: 4 }}>
+                {evalElapsed < 10 ? "This usually takes 10\u201330 seconds." : evalElapsed < 25 ? `Almost there... (${evalElapsed}s)` : `Taking longer than usual... (${evalElapsed}s)`}
               </p>
-              <button
-                onClick={() => { setEvalTimedOut(false); setUsedFallbackScore(false); setEvaluating(false); interviewEndedRef.current = false; handleEnd(); }}
-                style={{
-                  fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: c.ivory,
-                  background: "rgba(212,179,127,0.1)", border: `1px solid rgba(212,179,127,0.2)`,
-                  borderRadius: 8, padding: "6px 16px", cursor: "pointer",
-                }}
-              >
-                Retry Evaluation
-              </button>
-            </div>
+              <div style={{ width: 200, height: 3, borderRadius: 2, background: c.border, marginTop: 16, overflow: "hidden" }}>
+                <div style={{ height: "100%", borderRadius: 2, background: c.gilt, transition: "width 1s ease", width: `${Math.min(95, (evalElapsed / 30) * 100)}%` }} />
+              </div>
+            </>
+          ) : (
+            <>
+              <div style={{ width: 56, height: 56, borderRadius: 14, background: "rgba(212,179,127,0.06)", border: "1px solid rgba(212,179,127,0.15)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 20 }}>
+                <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              </div>
+              <h3 style={{ fontFamily: font.ui, fontSize: 18, fontWeight: 600, color: c.ivory, marginBottom: 8 }}>
+                {evalTimedOut ? "Evaluation timed out" : "AI evaluation unavailable"}
+              </h3>
+              <p style={{ fontFamily: font.ui, fontSize: 13, color: c.stone, marginBottom: 20, textAlign: "center", maxWidth: 360 }}>
+                Your session has been saved with an estimated score. You can retry the AI evaluation or continue to your results.
+              </p>
+              <div style={{ display: "flex", gap: 12 }}>
+                <button
+                  onClick={() => { setEvalTimedOut(false); setUsedFallbackScore(false); setEvaluating(false); interviewEndedRef.current = false; handleEnd(); }}
+                  style={{
+                    fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.ivory,
+                    background: "rgba(212,179,127,0.1)", border: `1px solid rgba(212,179,127,0.2)`,
+                    borderRadius: 10, padding: "10px 20px", cursor: "pointer", transition: "all 0.2s",
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(212,179,127,0.2)"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(212,179,127,0.1)"; }}
+                >
+                  Retry Evaluation
+                </button>
+                <button
+                  onClick={() => { setEvaluating(false); if (lastSessionId) navigate(`/session/${lastSessionId}`); else navigate("/dashboard"); }}
+                  style={{
+                    fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: c.obsidian,
+                    background: `linear-gradient(135deg, ${c.gilt}, ${c.giltDark})`,
+                    border: "none", borderRadius: 10, padding: "10px 24px", cursor: "pointer",
+                    boxShadow: "0 4px 16px rgba(212,179,127,0.2)", transition: "all 0.2s",
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-1px)"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.transform = "translateY(0)"; }}
+                >
+                  View Results
+                </button>
+              </div>
+            </>
           )}
-          {saveWarning && (
+          {saveWarning && !(usedFallbackScore || evalTimedOut) && (
             <div role="alert" style={{ marginTop: 12, padding: "12px 20px", borderRadius: 10, background: "rgba(196,112,90,0.1)", border: "1px solid rgba(196,112,90,0.2)", maxWidth: 400 }}>
               <p style={{ fontFamily: font.ui, fontSize: 12, color: c.ember, margin: 0 }}>{saveWarning}</p>
             </div>
