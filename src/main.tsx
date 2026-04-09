@@ -7,6 +7,7 @@ import { DashboardProvider } from "./DashboardContext";
 import { ToastProvider } from "./Toast";
 import NotFound from "./NotFound";
 import ErrorBoundary, { RouteErrorBoundary } from "./ErrorBoundary";
+import { useDomainRedirect } from "./useDomainRedirect";
 
 // Lazy-load non-critical modules
 const App = lazy(() => import("./App"));
@@ -78,6 +79,12 @@ function ScrollToTop() {
   return null;
 }
 
+// Redirect to correct domain when SPA navigates cross-domain
+function DomainRedirect() {
+  useDomainRedirect();
+  return null;
+}
+
 function FocusManager() {
   const { pathname } = useLocation();
   useEffect(() => {
@@ -135,6 +142,7 @@ createRoot(document.getElementById("root")!).render(
       <ErrorBoundary>
       <BrowserRouter>
         <ScrollToTop />
+        <DomainRedirect />
         <FocusManager />
         <DocumentTitle />
         <a href="#main-content" className="skip-to-content">Skip to content</a>
