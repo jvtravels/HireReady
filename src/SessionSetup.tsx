@@ -246,6 +246,7 @@ export default function SessionSetup() {
   const [launching, setLaunching] = useState(false);
   const [countdown, setCountdown] = useState<number | null>(null);
   const [saveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [useResume, setUseResume] = useState(true);
 
   const canProceedStep1 = !!targetRole.trim() && interviewFocus.length > 0;
 
@@ -292,7 +293,7 @@ export default function SessionSetup() {
     setTimeout(() => setCountdown(1), 2000);
     setTimeout(() => {
       setCountdown(0);
-      navigate(`/interview?type=${focusType}&focus=${focusType}&difficulty=standard${targetCompany ? `&company=${encodeURIComponent(targetCompany)}` : ""}&role=${encodeURIComponent(targetRole)}&length=${sessionLength}`);
+      navigate(`/interview?type=${focusType}&focus=${focusType}&difficulty=standard${targetCompany ? `&company=${encodeURIComponent(targetCompany)}` : ""}&role=${encodeURIComponent(targetRole)}&length=${sessionLength}${useResume ? "" : "&useResume=false"}`);
     }, 3000);
   };
 
@@ -620,6 +621,21 @@ export default function SessionSetup() {
                       </div>
                     ))}
                   </div>
+                  {user?.resumeText && (
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", borderRadius: 10, background: "rgba(245,242,237,0.02)", border: `1px solid ${c.border}`, marginTop: 16 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={c.stone} strokeWidth="1.5" strokeLinecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                        <span style={{ fontFamily: font.ui, fontSize: 12, color: c.chalk }}>Use resume for personalized questions</span>
+                      </div>
+                      <div onClick={() => setUseResume(!useResume)} style={{
+                        width: 36, height: 20, borderRadius: 10, padding: 2,
+                        background: useResume ? c.sage : c.border,
+                        transition: "background 0.2s", cursor: "pointer",
+                      }}>
+                        <div style={{ width: 16, height: 16, borderRadius: "50%", background: c.ivory, transform: useResume ? "translateX(16px)" : "translateX(0)", transition: "transform 0.2s" }} />
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

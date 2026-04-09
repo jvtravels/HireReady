@@ -2,6 +2,11 @@ import { memo, useState } from "react";
 import { c, font } from "./tokens";
 import type { SkillData, TrendPoint } from "./dashboardTypes";
 
+/* ─── Humanize camelCase skill names ─── */
+function humanize(s: string) {
+  return s.replace(/([a-z])([A-Z])/g, "$1 $2").replace(/^./, c => c.toUpperCase());
+}
+
 /* ─── Score Trend Chart with tooltips ─── */
 export const ScoreTrendChart = memo(function ScoreTrendChart({ data }: { data: TrendPoint[] }) {
   const [hovered, setHovered] = useState<number | null>(null);
@@ -67,7 +72,7 @@ export const ScoreTrendChart = memo(function ScoreTrendChart({ data }: { data: T
 
 /* ─── Skill Radar ─── */
 export const SkillRadar = memo(function SkillRadar({ skills: s }: { skills: SkillData[] }) {
-  const size = 200, cx = size / 2, cy = size / 2, r = 70;
+  const size = 260, cx = size / 2, cy = size / 2, r = 95;
   const n = s.length;
   const getPoint = (i: number, val: number) => {
     const angle = (Math.PI * 2 * i) / n - Math.PI / 2;
@@ -78,20 +83,23 @@ export const SkillRadar = memo(function SkillRadar({ skills: s }: { skills: Skil
   const prevPolygon = s.map((sk, i) => getPoint(i, sk.prev)).map(p => `${p.x},${p.y}`).join(" ");
 
   return (
-    <svg width="100%" viewBox={`0 0 ${size} ${size}`} style={{ display: "block" }} role="img" aria-label={`Skill radar: ${s.map(sk => `${sk.name} ${sk.score}`).join(", ")}`}>
+    <svg width="100%" viewBox={`0 0 ${size} ${size}`} style={{ display: "block" }} role="img" aria-label={`Skill radar: ${s.map(sk => `${humanize(sk.name)} ${sk.score}`).join(", ")}`}>
       {[25, 50, 75, 100].map((v) => (
-        <polygon key={v} points={Array.from({ length: n }).map((_, i) => getPoint(i, v)).map(p => `${p.x},${p.y}`).join(" ")} fill="none" stroke={c.border} strokeWidth="1" />
+        <polygon key={v} points={Array.from({ length: n }).map((_, i) => getPoint(i, v)).map(p => `${p.x},${p.y}`).join(" ")} fill="none" stroke={c.border} strokeWidth="0.5" strokeOpacity="0.5" />
       ))}
-      {s.map((_, i) => { const p = getPoint(i, 100); return <line key={i} x1={cx} y1={cy} x2={p.x} y2={p.y} stroke={c.border} strokeWidth="1" />; })}
-      <polygon points={prevPolygon} fill="rgba(212,179,127,0.05)" stroke={c.stone} strokeWidth="1" strokeDasharray="3 3" />
+      {s.map((_, i) => { const p = getPoint(i, 100); return <line key={i} x1={cx} y1={cy} x2={p.x} y2={p.y} stroke={c.border} strokeWidth="0.5" strokeOpacity="0.5" />; })}
+      <polygon points={prevPolygon} fill="rgba(212,179,127,0.04)" stroke={c.stone} strokeWidth="1" strokeDasharray="3 3" strokeOpacity="0.4" />
       <polygon points={polygon} fill="rgba(212,179,127,0.1)" stroke={c.gilt} strokeWidth="1.5" />
       {s.map((sk, i) => {
         const p = getPoint(i, sk.score);
-        const lp = getPoint(i, 115);
+        const lp = getPoint(i, 120);
         return (
           <g key={sk.name}>
-            <circle cx={p.x} cy={p.y} r="3" fill={c.gilt} />
-            <text x={lp.x} y={lp.y} textAnchor="middle" dominantBaseline="middle" fontFamily={font.ui} fontSize="8" fontWeight="500" fill={c.stone}><title>{sk.name}</title>{sk.name.split(" ")[0]}</text>
+            <circle cx={p.x} cy={p.y} r="3.5" fill={c.gilt} stroke={c.obsidian} strokeWidth="1" />
+            <text x={lp.x} y={lp.y} textAnchor="middle" dominantBaseline="middle"
+              fontFamily={font.ui} fontSize="7" fontWeight="500" fill={c.stone} letterSpacing="0.02em">
+              {humanize(sk.name)}
+            </text>
           </g>
         );
       })}

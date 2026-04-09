@@ -1,41 +1,41 @@
-/* Vercel Serverless Function — Razorpay Order Creation */
+/* Vercel Serverless Function — Razorpay Subscription Creation */
+/* Creates a recurring subscription instead of a one-time order for auto-renewal */
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 
 
-/* ─── Inline rate limiting (Node.js ESM can't resolve extensionless imports) ─── */
+/* ─── Inline rate limiting via Upstash Redis ─── */
 const UPSTASH_URL = (process.env.UPSTASH_REDIS_REST_URL || "").trim();
 const UPSTASH_TOKEN = (process.env.UPSTASH_REDIS_REST_TOKEN || "").trim();
-const orderRateMap = new Map<string, { count: number; reset: number }>();
 
 async function isRateLimited(ip: string, limit: number, windowMs: number): Promise<boolean> {
-  if (UPSTASH_URL && UPSTASH_TOKEN) {
-    try {
-      const key = `rl:create-order:${ip}`;
-      const windowSec = Math.ceil(windowMs / 1000);
-      const res = await fetch(`${UPSTASH_URL}/pipeline`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${UPSTASH_TOKEN}`, "Content-Type": "application/json" },
-        body: JSON.stringify([["INCR", key], ["EXPIRE", key, windowSec]]),
-      });
-      if (res.ok) {
-        const results = await res.json();
-        return (results[0]?.result ?? 1) > limit;
-      }
-    } catch { /* fall through to in-memory */ }
-  }
-  const now = Date.now();
-  const entry = orderRateMap.get(ip);
-  if (!entry || now > entry.reset) {
-    orderRateMap.set(ip, { count: 1, reset: now + windowMs });
+  if (!UPSTASH_URL || !UPSTASH_TOKEN) {
+    console.warn("[create-subscription] Rate limiting disabled: UPSTASH_REDIS_REST_URL / UPSTASH_REDIS_REST_TOKEN not set");
     return false;
   }
-  entry.count++;
-  return entry.count > limit;
+  try {
+    const key = `rl:create-sub:${ip}`;
+    const windowSec = Math.ceil(windowMs / 1000);
+    const res = await fetch(`${UPSTASH_URL}/pipeline`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${UPSTASH_TOKEN}`, "Content-Type": "application/json" },
+      body: JSON.stringify([["INCR", key], ["EXPIRE", key, windowSec]]),
+    });
+    if (res.ok) {
+      const results = await res.json();
+      return (results[0]?.result ?? 1) > limit;
+    }
+    return false;
+  } catch (err) {
+    console.error("[create-subscription] Rate limit check failed:", err);
+    return false;
+  }
 }
 
 const RAZORPAY_KEY_ID = (process.env.RAZORPAY_KEY_ID || "").trim();
 const RAZORPAY_KEY_SECRET = (process.env.RAZORPAY_KEY_SECRET || "").trim();
+const RAZORPAY_PLAN_WEEKLY = (process.env.RAZORPAY_PLAN_WEEKLY || "").trim();
+const RAZORPAY_PLAN_MONTHLY = (process.env.RAZORPAY_PLAN_MONTHLY || "").trim();
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || "";
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || "";
 
@@ -47,9 +47,9 @@ function getAllowedOrigin(origin: string): string {
   return "";
 }
 
-const PRICE_MAP: Record<string, { amount: number; name: string; description: string }> = {
-  weekly:  { amount: 4900,   name: "HireStepX Starter",          description: "Weekly Plan — ₹49/week · 10 sessions" },
-  monthly: { amount: 14900,  name: "HireStepX Pro",              description: "Monthly Plan — ₹149/month · Unlimited" },
+const PLAN_MAP: Record<string, { planId: string; name: string; description: string; amount: number }> = {
+  weekly:  { planId: RAZORPAY_PLAN_WEEKLY,  name: "HireStepX Starter", description: "Weekly Plan — ₹49/week · 10 sessions · Auto-renews",  amount: 4900 },
+  monthly: { planId: RAZORPAY_PLAN_MONTHLY, name: "HireStepX Pro",     description: "Monthly Plan — ₹149/month · Unlimited · Auto-renews", amount: 14900 },
 };
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -64,18 +64,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === "OPTIONS") return res.status(204).end();
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
-  // Body size check
   const bodyContentLength = parseInt((req.headers["content-length"] as string) || "0", 10);
-  if (bodyContentLength > 1048576) {
-    return res.status(413).json({ error: "Request too large" });
-  }
+  if (bodyContentLength > 1048576) return res.status(413).json({ error: "Request too large" });
+  if (!origin) return res.status(403).json({ error: "Forbidden" });
 
-  // CSRF: validate Origin header on state-changing requests
-  if (!origin) {
-    return res.status(403).json({ error: "Forbidden" });
-  }
-
-  // Rate limiting: 5 order creations per minute per IP
   const ip = (req.headers["x-real-ip"] as string)?.trim()
     || (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim()
     || "unknown";
@@ -85,7 +77,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   if (!RAZORPAY_KEY_ID || !RAZORPAY_KEY_SECRET) {
-    console.error("Missing Razorpay env vars:", { hasKeyId: !!RAZORPAY_KEY_ID, hasKeySecret: !!RAZORPAY_KEY_SECRET });
     return res.status(503).json({ error: "Payments not configured. Please contact support@hirestepx.com" });
   }
 
@@ -112,52 +103,59 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (typeof plan !== "string" || !["weekly", "monthly"].includes(plan)) {
       return res.status(400).json({ error: "Invalid plan" });
     }
-    const price = PRICE_MAP[plan];
-    if (!price) return res.status(400).json({ error: "Invalid plan" });
+    const planConfig = PLAN_MAP[plan];
+    if (!planConfig || !planConfig.planId) {
+      console.error(`[create-subscription] Missing Razorpay plan ID for "${plan}". Set RAZORPAY_PLAN_WEEKLY / RAZORPAY_PLAN_MONTHLY env vars.`);
+      return res.status(503).json({ error: "Subscription plans not configured. Please contact support@hirestepx.com" });
+    }
 
     const auth = Buffer.from(`${RAZORPAY_KEY_ID}:${RAZORPAY_KEY_SECRET}`).toString("base64");
-    const receipt = `${plan}_${Date.now()}`.slice(0, 40);
-
-    const notes: Record<string, string> = { plan };
-    // Prefer server-verified userId over client-provided value
     const resolvedUserId = authenticatedUserId || (typeof userId === "string" ? userId : "");
-    if (resolvedUserId.length > 0 && resolvedUserId.length <= 200) notes.userId = resolvedUserId;
-    if (typeof email === "string" && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) notes.email = email;
 
     const ac = new AbortController();
     const acTimer = setTimeout(() => ac.abort(), 10_000);
-    const response = await fetch("https://api.razorpay.com/v1/orders", {
+
+    const subscriptionPayload: Record<string, unknown> = {
+      plan_id: planConfig.planId,
+      total_count: plan === "weekly" ? 52 : 12, // 1 year of renewals
+      customer_notify: 1,
+      notes: {
+        plan,
+        ...(resolvedUserId ? { userId: resolvedUserId } : {}),
+        ...(typeof email === "string" && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? { email } : {}),
+      },
+    };
+
+    const response = await fetch("https://api.razorpay.com/v1/subscriptions", {
       method: "POST",
       headers: {
         "Authorization": `Basic ${auth}`,
         "Content-Type": "application/json",
       },
       signal: ac.signal,
-      body: JSON.stringify({ amount: price.amount, currency: "INR", receipt, notes }),
+      body: JSON.stringify(subscriptionPayload),
     });
     clearTimeout(acTimer);
 
     if (!response.ok) {
       const errText = await response.text().catch(() => "");
-      console.error("Razorpay error:", response.status, errText);
-      const detail = response.status === 401
-        ? "Payment gateway credentials are invalid. Please contact support."
-        : "Could not create payment order. Please try again or contact support@hirestepx.com";
-      return res.status(502).json({ error: detail });
+      console.error("Razorpay subscription error:", response.status, errText);
+      return res.status(502).json({ error: "Could not create subscription. Please try again or contact support@hirestepx.com" });
     }
 
-    const order = await response.json();
+    const subscription = await response.json();
 
     return res.status(200).json({
-      orderId: order.id,
-      amount: order.amount,
-      currency: order.currency,
+      subscriptionId: subscription.id,
+      amount: planConfig.amount,
+      currency: "INR",
       keyId: RAZORPAY_KEY_ID,
-      name: price.name,
-      description: price.description,
+      name: planConfig.name,
+      description: planConfig.description,
+      status: subscription.status,
     });
   } catch (err) {
-    console.error("Order creation error:", err);
+    console.error("Subscription creation error:", err);
     return res.status(500).json({ error: "Internal error" });
   }
 }

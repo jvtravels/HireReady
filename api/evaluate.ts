@@ -46,7 +46,7 @@ export default async function handler(req: Request): Promise<Response> {
   }
 
   try {
-    const { transcript, type, difficulty, role, company, questions } = await req.json();
+    const { transcript, type, difficulty, role, company, questions, resumeText } = await req.json();
 
     if (!transcript || !Array.isArray(transcript) || transcript.length === 0 ||
         !transcript.every((t: unknown) => typeof t === "object" && t !== null && typeof (t as any).speaker === "string" && typeof (t as any).text === "string")) {
@@ -82,6 +82,10 @@ export default async function handler(req: Request): Promise<Response> {
       ? `\nOriginal questions asked:\n${questions.slice(0, 10).map((q: unknown, i: number) => `${i + 1}. ${sanitizeForLLM(q, 300)}`).join("\n")}\n`
       : "";
 
+    const resumeContext = typeof resumeText === "string" && resumeText.length > 0
+      ? `\nCandidate's resume summary (use to personalize feedback — reference their stated experience when relevant):\n${sanitizeForLLM(resumeText, 1500)}\n`
+      : "";
+
     // Role-specific skill weighting guidance
     const skillWeightingMap: Record<string, string> = {
       technical: "For this technical interview, weight technicalDepth and problemSolving highest. Communication and structure are secondary.",
@@ -96,7 +100,7 @@ export default async function handler(req: Request): Promise<Response> {
     const skillWeighting = skillWeightingMap[interviewType] || "Weight all skills equally for this case study interview.";
 
     const prompt = `You are an expert interview coach evaluating a mock ${interviewType} interview for a ${interviewRole} candidate.${company ? ` Company: ${sanitizeForLLM(company, 100)}.` : ""} Difficulty: ${sanitizeForLLM(difficulty, 20) || "standard"}.
-${questionsContext}
+${questionsContext}${resumeContext}
 Transcript:
 ${formattedTranscript}
 

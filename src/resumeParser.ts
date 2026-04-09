@@ -393,7 +393,7 @@ export async function extractResumeText(file: File): Promise<string> {
     text = await readTxt(file);
     // If it's binary garbage, return a helpful message
     if (text.includes("\x00") || text.includes("\ufffd")) {
-      throw new Error("Old .doc format not supported. Please save as .docx or .pdf.");
+      throw new Error("Old .doc format is not supported. Please convert to .docx or PDF first (open in Word or Google Docs \u2192 Save As).");
     }
   } else if (name.endsWith(".pdf")) {
     text = await readPdf(file);

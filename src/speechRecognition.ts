@@ -22,11 +22,16 @@ export interface SpeechRecognitionResultList {
   [index: number]: { isFinal: boolean; 0: { transcript: string } };
 }
 
+/** Detect iOS/iPadOS (Safari Web Speech API has different behavior) */
+export const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+  (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+
 export function createSpeechRecognition(): SpeechRecognitionInstance | null {
   const SR = (window as unknown as Record<string, unknown>).SpeechRecognition || (window as unknown as Record<string, unknown>).webkitSpeechRecognition;
   if (!SR) return null;
   const recognition = new (SR as new () => SpeechRecognitionInstance)();
-  recognition.continuous = true;
+  // iOS Safari doesn't support continuous mode well — use single-shot with manual restart
+  recognition.continuous = !isIOS;
   recognition.interimResults = true;
   recognition.lang = "en-US";
   return recognition;

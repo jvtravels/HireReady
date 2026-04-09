@@ -572,6 +572,72 @@ export default function DashboardHome() {
         );
       })()}
 
+      {/* ─── Resume Insights ─── */}
+      {(() => {
+        const resumeProfile = (user?.resumeData as any)?.aiProfile as
+          | import("./dashboardData").ResumeProfile
+          | undefined;
+        if (!resumeProfile?.resumeScore) return null;
+        const score = resumeProfile.resumeScore!;
+        const scoreColor = score >= 65 ? c.sage : score >= 50 ? c.gilt : c.ember;
+        const circumference = 2 * Math.PI * 28; // r=28
+        const dashOffset = circumference - (score / 100) * circumference;
+        return (
+          <div style={{ ...card, padding: "20px 28px", marginBottom: sp["2xl"], display: "flex", alignItems: "center", gap: 24, flexWrap: "wrap" }} className="gradient-border-card">
+            {/* Score arc */}
+            <div style={{ position: "relative", width: 64, height: 64, flexShrink: 0 }}>
+              <svg width="64" height="64" viewBox="0 0 64 64">
+                <circle cx="32" cy="32" r="28" fill="none" stroke="rgba(245,242,237,0.06)" strokeWidth="3" />
+                <circle cx="32" cy="32" r="28" fill="none" stroke={scoreColor} strokeWidth="3"
+                  strokeLinecap="round" strokeDasharray={circumference} strokeDashoffset={dashOffset}
+                  transform="rotate(-90 32 32)" style={{ transition: "stroke-dashoffset 0.6s cubic-bezier(0.16,1,0.3,1)" }} />
+              </svg>
+              <span style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: font.mono, fontSize: 18, fontWeight: 700, color: scoreColor }}>{score}</span>
+            </div>
+
+            {/* Details */}
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6, flexWrap: "wrap" }}>
+                {sectionTitle("Resume Score", 16)}
+                {user?.resumeFileName && (
+                  <span style={{ fontFamily: font.mono, fontSize: 11, color: c.stone, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 180 }}>{user.resumeFileName}</span>
+                )}
+              </div>
+
+              {/* Top skills pills */}
+              {resumeProfile.topSkills && resumeProfile.topSkills.length > 0 && (
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
+                  {resumeProfile.topSkills.slice(0, 3).map((skill) => (
+                    <span key={skill} style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 500, color: c.chalk, padding: "3px 10px", borderRadius: radius.pill, background: "rgba(245,242,237,0.05)", border: "1px solid rgba(245,242,237,0.08)" }}>{skill}</span>
+                  ))}
+                </div>
+              )}
+
+              {/* Focus areas */}
+              {resumeProfile.interviewGaps && resumeProfile.interviewGaps.length > 0 && (
+                <p style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, margin: 0, marginBottom: score < 50 ? 8 : 0 }}>
+                  Focus areas: {resumeProfile.interviewGaps.slice(0, 2).join(", ")}
+                </p>
+              )}
+
+              {/* Low score nudge */}
+              {score < 50 && (
+                <p style={{ fontFamily: font.ui, fontSize: 12, color: c.ember, margin: 0, fontWeight: 500 }}>
+                  Your resume needs work —{" "}
+                  <span role="link" tabIndex={0} onClick={() => nav("/resume")} onKeyDown={(e) => { if (e.key === "Enter") nav("/resume"); }}
+                    style={{ textDecoration: "underline", textUnderlineOffset: 2, cursor: "pointer", color: c.ember }}>improve it now</span>
+                </p>
+              )}
+            </div>
+
+            {/* View link */}
+            <button onClick={() => nav("/resume")} style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.gilt, background: "none", border: "none", cursor: "pointer", textDecoration: "underline", textUnderlineOffset: 2, flexShrink: 0, whiteSpace: "nowrap" }}>
+              View full profile
+            </button>
+          </div>
+        );
+      })()}
+
       {/* ─── Row 1: Score Trend | Skill Breakdown ─── */}
       <SectionErrorBoundary label="charts">
       <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "2fr 1fr", gap: sp["2xl"], marginBottom: sp["2xl"] }}>

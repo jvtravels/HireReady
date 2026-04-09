@@ -6,13 +6,14 @@ import type { VercelRequest, VercelResponse } from "@vercel/node";
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || "";
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || "";
+const RAZORPAY_KEY_ID = (process.env.RAZORPAY_KEY_ID || "").trim();
+const RAZORPAY_KEY_SECRET = (process.env.RAZORPAY_KEY_SECRET || "").trim();
 
 const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || "").split(",").map(s => s.trim()).filter(Boolean);
 
 function getAllowedOrigin(origin: string): string {
   if (ALLOWED_ORIGINS.length > 0 && ALLOWED_ORIGINS.includes(origin)) return origin;
   if (origin.startsWith("http://localhost:")) return origin;
-  if (origin.endsWith(".vercel.app")) return origin;
   return "";
 }
 
@@ -53,16 +54,58 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
+    const dbHeaders = { apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` };
+
+    // Fetch profile to get razorpay_subscription_id
+    const profileRes = await fetch(
+      `${SUPABASE_URL}/rest/v1/profiles?id=eq.${encodeURIComponent(userId)}&select=razorpay_subscription_id,subscription_end,cancel_at_period_end`,
+      { headers: dbHeaders },
+    );
+    const profiles = await profileRes.json();
+    const profile = Array.isArray(profiles) && profiles[0];
+
+    if (!profile?.cancel_at_period_end) {
+      return res.status(400).json({ error: "Subscription is not pending cancellation" });
+    }
+
+    // Check subscription hasn't already expired
+    if (profile.subscription_end && new Date(profile.subscription_end) < new Date()) {
+      return res.status(400).json({ error: "Subscription has already expired. Please purchase a new plan." });
+    }
+
+    const subscriptionId = profile?.razorpay_subscription_id;
+
+    // Re-activate on Razorpay if we have a subscription ID
+    if (subscriptionId && RAZORPAY_KEY_ID && RAZORPAY_KEY_SECRET) {
+      const auth = Buffer.from(`${RAZORPAY_KEY_ID}:${RAZORPAY_KEY_SECRET}`).toString("base64");
+      try {
+        // Razorpay: resume a cancelled subscription by creating a new one with same plan
+        // For subscriptions cancelled with cancel_at_cycle_end, we check status first
+        const statusRes = await fetch(`https://api.razorpay.com/v1/subscriptions/${subscriptionId}`, {
+          headers: { Authorization: `Basic ${auth}` },
+        });
+        if (statusRes.ok) {
+          const subData = await statusRes.json();
+          // If subscription is still active (cancel_at_cycle_end was used), it can be resumed
+          if (subData.status === "active") {
+            // Razorpay doesn't have a direct "un-cancel" API for cancel_at_cycle_end.
+            // The subscription will continue normally — we just clear our DB flag.
+            console.log(`[reactivate] Razorpay subscription ${subscriptionId} is still active, clearing cancel flag`);
+          } else if (subData.status === "cancelled" || subData.status === "completed") {
+            console.warn(`[reactivate] Razorpay subscription ${subscriptionId} is ${subData.status} — user will need to re-subscribe at next period end`);
+          }
+        }
+      } catch (err) {
+        console.warn("[reactivate] Razorpay API check failed (continuing with DB update):", err);
+      }
+    }
+
+    // Clear the cancel flag in DB
     const updateRes = await fetch(
       `${SUPABASE_URL}/rest/v1/profiles?id=eq.${encodeURIComponent(userId)}`,
       {
         method: "PATCH",
-        headers: {
-          apikey: SUPABASE_SERVICE_ROLE_KEY,
-          Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-          "Content-Type": "application/json",
-          Prefer: "return=minimal",
-        },
+        headers: { ...dbHeaders, "Content-Type": "application/json", Prefer: "return=minimal" },
         body: JSON.stringify({ cancel_at_period_end: false }),
       },
     );

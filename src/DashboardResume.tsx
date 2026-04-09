@@ -7,6 +7,25 @@ import { extractResumeText, parseResumeData, type ParsedResume } from "./resumeP
 import { type ResumeProfile, analyzeResumeWithAI } from "./dashboardData";
 import { DataLoadingSkeleton } from "./dashboardComponents";
 
+/* ─── Resume Version History (localStorage) ─── */
+const RESUME_HISTORY_KEY = "hirestepx_resume_history";
+interface ResumeVersion { fileName: string; date: string; resumeScore?: number; }
+function saveResumeVersion(fileName: string, resumeScore?: number) {
+  try {
+    const raw = localStorage.getItem(RESUME_HISTORY_KEY);
+    const history: ResumeVersion[] = raw ? JSON.parse(raw) : [];
+    history.unshift({ fileName, date: new Date().toISOString(), resumeScore });
+    // Keep last 10 versions
+    localStorage.setItem(RESUME_HISTORY_KEY, JSON.stringify(history.slice(0, 10)));
+  } catch {}
+}
+function getResumeHistory(): ResumeVersion[] {
+  try {
+    const raw = localStorage.getItem(RESUME_HISTORY_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch { return []; }
+}
+
 export default function DashboardResume() {
   useDocTitle("Resume");
   const { user, updateUser } = useAuth();
@@ -57,7 +76,7 @@ export default function DashboardResume() {
           .then(result => {
             if (result?.profile) {
               setProfile(result.profile);
-              updateUser({ resumeData: result.profile as unknown as ParsedResume });
+              updateUser({ resumeData: { ...result.profile, _type: "ai" } as unknown as ParsedResume });
             }
             setPhase("done");
           })
@@ -89,7 +108,7 @@ export default function DashboardResume() {
         .then(result => {
           if (result?.profile) {
             setProfile(result.profile);
-            updateUser({ resumeData: result.profile as unknown as ParsedResume });
+            updateUser({ resumeData: { ...result.profile, _type: "ai" } as unknown as ParsedResume });
           }
           setPhase("done");
         })
@@ -108,6 +127,11 @@ export default function DashboardResume() {
     if (!file) return;
     if (file.size > 10 * 1024 * 1024) {
       setErrorMsg("File too large — please upload a file under 10 MB.");
+      setPhase("error");
+      return;
+    }
+    if (file.name.toLowerCase().endsWith(".doc")) {
+      setErrorMsg("Old .doc format is not supported. Please convert to .docx or PDF first (open in Word or Google Docs → Save As).");
       setPhase("error");
       return;
     }
@@ -143,7 +167,8 @@ export default function DashboardResume() {
       setProfile(result.profile);
       setAnalysisSource("ai");
       setTruncated(!!result.truncated);
-      updateUser({ resumeData: result.profile as unknown as ParsedResume });
+      updateUser({ resumeData: { ...result.profile, _type: "ai" } as unknown as ParsedResume });
+      saveResumeVersion(file.name, result.profile.resumeScore);
       setPhase("done");
     } else {
       setErrorMsg("AI analysis unavailable — showing basic profile from your resume. You can re-analyze anytime.");
@@ -158,7 +183,8 @@ export default function DashboardResume() {
       };
       setProfile(fallback);
       setAnalysisSource("fallback");
-      updateUser({ resumeData: fallback as unknown as ParsedResume });
+      updateUser({ resumeData: { ...fallback, _type: "fallback" } as unknown as ParsedResume });
+      saveResumeVersion(file.name);
       setPhase("done");
     }
   };
@@ -187,7 +213,7 @@ export default function DashboardResume() {
         setProfile(result.profile);
         setAnalysisSource("ai");
         setTruncated(!!result.truncated);
-        updateUser({ resumeData: result.profile as unknown as ParsedResume });
+        updateUser({ resumeData: { ...result.profile, _type: "ai" } as unknown as ParsedResume });
       } else {
         setErrorMsg("AI couldn't extract structured data. Try re-uploading a cleaner PDF or DOCX.");
       }
@@ -335,7 +361,7 @@ export default function DashboardResume() {
         {truncated && (
           <p style={{ fontFamily: font.ui, fontSize: 11, color: c.gilt, marginTop: 8, display: "flex", alignItems: "center", gap: 6 }}>
             <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-            Only the first 3,000 characters were analyzed. For best results, keep your resume concise.
+            Your resume was truncated to fit the analysis window. For best results, keep your resume to 2 pages.
           </p>
         )}
         {analysisSource === "fallback" && resumeText && (
@@ -380,6 +406,34 @@ export default function DashboardResume() {
           </div>
         )}
       </div>
+
+      {/* Resume version history */}
+      {(() => {
+        const history = getResumeHistory();
+        if (history.length < 2) return null;
+        return (
+          <div style={{ background: c.graphite, borderRadius: 14, border: `1px solid ${c.border}`, padding: "16px 24px", marginBottom: 14 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+              <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.stone} strokeWidth="1.5"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+              <h3 style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: c.ivory }}>Version History</h3>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              {history.slice(0, 5).map((v, i) => (
+                <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 0", borderBottom: i < Math.min(history.length, 5) - 1 ? `1px solid ${c.border}` : "none" }}>
+                  <span style={{ fontFamily: font.ui, fontSize: 11, color: i === 0 ? c.chalk : c.stone, flex: 1 }}>
+                    {v.fileName}
+                    {i === 0 && <span style={{ fontFamily: font.ui, fontSize: 9, color: c.sage, marginLeft: 6, fontWeight: 600 }}>CURRENT</span>}
+                  </span>
+                  {v.resumeScore != null && (
+                    <span style={{ fontFamily: font.mono, fontSize: 10, fontWeight: 600, color: v.resumeScore >= 65 ? c.sage : v.resumeScore >= 40 ? c.gilt : c.ember }}>{v.resumeScore}/100</span>
+                  )}
+                  <span style={{ fontFamily: font.mono, fontSize: 10, color: c.stone }}>{new Date(v.date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
 
       {profile?.topSkills && profile.topSkills.length > 0 && (
         <div style={{ background: c.graphite, borderRadius: 14, border: `1px solid ${c.border}`, padding: "20px 24px", marginBottom: 14 }}>
@@ -455,6 +509,35 @@ export default function DashboardResume() {
                   </div>
                 ))}
               </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {profile?.resumeScore != null && (
+        <div style={{ background: c.graphite, borderRadius: 14, border: `1px solid ${c.border}`, padding: "20px 24px", marginBottom: 14 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={profile.resumeScore >= 65 ? c.sage : c.gilt} strokeWidth="1.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              <h3 style={{ fontFamily: font.ui, fontSize: 14, fontWeight: 600, color: c.ivory }}>Resume Quality</h3>
+            </div>
+            <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
+              <span style={{ fontFamily: font.mono, fontSize: 24, fontWeight: 700, color: profile.resumeScore >= 65 ? c.sage : profile.resumeScore >= 40 ? c.gilt : c.ember }}>{profile.resumeScore}</span>
+              <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>/100</span>
+            </div>
+          </div>
+          <div style={{ height: 6, background: c.obsidian, borderRadius: 3, overflow: "hidden", marginBottom: profile.improvements && profile.improvements.length > 0 ? 16 : 0 }}>
+            <div style={{ height: "100%", width: `${profile.resumeScore}%`, background: profile.resumeScore >= 65 ? c.sage : profile.resumeScore >= 40 ? c.gilt : c.ember, borderRadius: 3, transition: "width 0.4s ease" }} />
+          </div>
+          {profile.improvements && profile.improvements.length > 0 && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.stone, textTransform: "uppercase", letterSpacing: "0.05em" }}>How to improve</span>
+              {profile.improvements.map((tip, i) => (
+                <div key={i} style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "10px 14px", borderRadius: 8, background: c.obsidian, border: `1px solid ${c.border}` }}>
+                  <span style={{ fontFamily: font.mono, fontSize: 10, fontWeight: 700, color: c.gilt, background: "rgba(212,179,127,0.08)", borderRadius: 4, padding: "2px 6px", flexShrink: 0, marginTop: 1 }}>{i + 1}</span>
+                  <span style={{ fontFamily: font.ui, fontSize: 12.5, color: c.chalk, lineHeight: 1.5 }}>{tip}</span>
+                </div>
+              ))}
             </div>
           )}
         </div>

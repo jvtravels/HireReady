@@ -37,6 +37,7 @@ vi.mock("../supabase", () => ({
   getAuthToken: vi.fn(() => Promise.resolve("mock-token")),
   authHeaders: vi.fn(() => Promise.resolve({ "Content-Type": "application/json", Authorization: "Bearer mock-token" })),
   getGoogleProviderToken: vi.fn(() => null),
+  getPaymentHistory: vi.fn(() => Promise.resolve([])),
 }));
 
 vi.mock("../tts", () => ({
@@ -90,7 +91,6 @@ function setUser(overrides: Record<string, any> = {}) {
     resumeFileName: null,
     resumeText: null,
     resumeData: null,
-    avatarUrl: null,
     ...overrides,
   };
 }

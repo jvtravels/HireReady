@@ -21,6 +21,7 @@ export interface SessionResult {
   ai_feedback?: string;
   skill_scores?: Record<string, number> | null;
   ideal_answers?: { question: string; ideal: string; candidateSummary: string }[];
+  resumeUsed?: boolean;
 }
 
 export interface EvaluationResult {
@@ -123,6 +124,7 @@ export async function fetchLLMEvaluation(params: {
   transcript: { speaker: string; text: string }[];
   type: string; difficulty: string; role: string; company?: string;
   questions?: string[];
+  resumeText?: string;
 }, timeoutMs = 35000): Promise<EvaluationResult | null> {
   // Client-side rate limit: max 5 evaluations per 60s
   if (!checkRateLimit("evaluate", 5, 60_000)) {
@@ -203,6 +205,7 @@ export async function retryQueuedEvals(): Promise<void> {
             role: data.role as string,
             company: data.company as string | undefined,
             questions: data.questions as string[] | undefined,
+            resumeText: data.resumeText as string | undefined,
           });
           if (result) {
             try {

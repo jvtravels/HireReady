@@ -56,6 +56,7 @@ export interface User {
   targetCompany?: string;
   industry?: string;
   learningStyle?: "direct" | "encouraging";
+  experienceLevel?: string;
   preferredSessionLength?: 10 | 15 | 25;
   interviewDate?: string;
   interviewFocus?: string[];
@@ -65,7 +66,6 @@ export interface User {
   practiceTimestamps?: string[];
   resumeText?: string;
   resumeData?: ParsedResume;
-  avatarUrl?: string;
   subscriptionTier?: "free" | "starter" | "pro" | "team";
   subscriptionStart?: string;
   subscriptionEnd?: string;
@@ -105,13 +105,13 @@ function profileToUser(profile: Profile, session: Session): User {
     targetCompany: profile.target_company || undefined,
     industry: profile.industry || undefined,
     learningStyle: (profile.learning_style as "direct" | "encouraging") || "direct",
+    experienceLevel: profile.experience_level || undefined,
     preferredSessionLength: (profile.preferred_session_length as 10 | 15 | 25) || undefined,
     interviewTypes: profile.interview_types || undefined,
     interviewDate: profile.interview_date || undefined,
     practiceTimestamps: profile.practice_timestamps || [],
     resumeText: profile.resume_text || undefined,
     resumeData: (profile.resume_data as unknown as ParsedResume) || undefined,
-    avatarUrl: profile.avatar_url || undefined,
     subscriptionTier: (() => {
       const tier = (profile.subscription_tier as "free" | "starter" | "pro" | "team") || "free";
       // Auto-downgrade expired subscriptions
@@ -173,7 +173,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         id: session.user.id,
         email: session.user.email || "",
         name: meta.name || meta.full_name || "",
-        avatar_url: meta.avatar_url || meta.picture || "",
       };
       console.log("[auth] ensureProfile: creating profile");
       const { error } = await upsertProfile(newProfile);
@@ -193,7 +192,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         targetRole: "",
         resumeFileName: null,
         hasCompletedOnboarding: false,
-        avatarUrl: newProfile.avatar_url || undefined,
         emailVerified: !!session.user.email_confirmed_at,
       };
       setUser(newUser);
@@ -361,13 +359,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (updates.industry !== undefined) profileUpdates.industry = updates.industry;
     if (updates.interviewDate !== undefined) profileUpdates.interview_date = updates.interviewDate;
     if (updates.learningStyle !== undefined) profileUpdates.learning_style = updates.learningStyle;
+    if (updates.experienceLevel !== undefined) profileUpdates.experience_level = updates.experienceLevel;
     if (updates.resumeFileName !== undefined) profileUpdates.resume_file_name = updates.resumeFileName || "";
     if (updates.resumeText !== undefined) profileUpdates.resume_text = updates.resumeText || "";
     if (updates.resumeData !== undefined) profileUpdates.resume_data = (updates.resumeData as unknown as Record<string, unknown>) || null;
     if (updates.preferredSessionLength !== undefined) profileUpdates.preferred_session_length = updates.preferredSessionLength;
     if (updates.interviewTypes !== undefined) profileUpdates.interview_types = updates.interviewTypes;
     if (updates.practiceTimestamps !== undefined) profileUpdates.practice_timestamps = updates.practiceTimestamps;
-    if (updates.avatarUrl !== undefined) profileUpdates.avatar_url = updates.avatarUrl;
     if (updates.cancelAtPeriodEnd !== undefined) profileUpdates.cancel_at_period_end = updates.cancelAtPeriodEnd;
     if (updates.hasCompletedOnboarding !== undefined) {
       profileUpdates.has_completed_onboarding = updates.hasCompletedOnboarding;

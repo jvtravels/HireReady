@@ -2,13 +2,14 @@ import { createContext, useContext, useState, useEffect, useCallback, useMemo, u
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "./AuthContext";
 import { getUserSessions, getCalendarEvents, syncGoogleEvents, getGoogleProviderToken } from "./supabase";
+import { scheduleEventNotifications } from "./interviewNotifications";
 import { type InterviewEvent, loadEvents } from "./dashboardHelpers";
 import {
   type PersistedState, type DashboardSession, type SkillData, type TrendPoint,
   type RealSession,
   FREE_SESSION_LIMIT, STARTER_WEEKLY_LIMIT,
   loadState, saveState, getSessionData,
-  generatePersonalizedInsights, generateNotifications, generateGoals,
+  generateFallbackInsights, generateNotifications, generateGoals,
   getReturnContext, getSmartScheduleSuggestion, getPrepPlan,
   computeWeekActivity, computeStreak, computeReadiness, daysUntil,
   generateReport, scoreLabel,
@@ -144,6 +145,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
             google_event_id: e.google_event_id,
           }));
           setCalendarEvents(mapped);
+          scheduleEventNotifications(mapped);
         }
       }
     } catch (err: any) {
@@ -212,6 +214,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
           duration: 60, location: "", status: "upcoming" as const, reminders: true,
         }));
         setCalendarEvents(mapped);
+        scheduleEventNotifications(mapped);
         try { localStorage.setItem(eventsCacheKey, JSON.stringify(mapped)); } catch {}
       }).catch(() => {
         if (cancelled) return;
@@ -266,8 +269,64 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
   const weekActivity = useMemo(() => computeWeekActivity(recentSessions), [recentSessions]);
   const currentStreak = useMemo(() => computeStreak(recentSessions), [recentSessions]);
 
-  // Personalized data (memoized to avoid re-computation on every render)
-  const aiInsights = useMemo(() => generatePersonalizedInsights(user, skills), [user, skills]);
+  // Personalized AI insights — LLM for paid users, templates for free
+  const fallbackInsights = useMemo(() => generateFallbackInsights(user, skills), [user, skills]);
+  const [llmInsights, setLlmInsights] = useState<{ type: string; text: string }[] | null>(null);
+  const insightsFetchedRef = useRef<string>("");
+
+  useEffect(() => {
+    if (!user?.id || skills.length === 0 || recentSessions.length === 0) return;
+    const tier = user.subscriptionTier || "free";
+    if (tier === "free") { setLlmInsights(null); return; }
+
+    // Cache key based on session count — regenerate when new sessions added
+    const cacheKey = `hirestepx_insights_${user.id}_${recentSessions.length}`;
+    if (insightsFetchedRef.current === cacheKey) return;
+    insightsFetchedRef.current = cacheKey;
+
+    // Check localStorage cache (TTL: 24 hours)
+    try {
+      const cached = localStorage.getItem(cacheKey);
+      if (cached) {
+        const { insights, ts } = JSON.parse(cached);
+        if (Date.now() - ts < 86400000) { setLlmInsights(insights); return; }
+      }
+    } catch {}
+
+    // Fetch from API
+    (async () => {
+      try {
+        const { authHeaders } = await import("./supabase");
+        const hdrs = await authHeaders();
+        const res = await fetch("/api/generate-insights", {
+          method: "POST",
+          headers: hdrs,
+          body: JSON.stringify({
+            role: user.targetRole,
+            company: user.targetCompany,
+            industry: user.industry,
+            sessionCount: recentSessions.length,
+            skills: skills.map(s => ({ name: s.name, score: s.score, prev: s.prev })),
+            recentSessions: recentSessions.slice(0, 5).map(s => ({
+              type: s.type, score: s.score, date: s.date,
+              topStrength: s.topStrength, topWeakness: s.topWeakness,
+            })),
+          }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.insights && data.insights.length > 0) {
+            setLlmInsights(data.insights);
+            try { localStorage.setItem(cacheKey, JSON.stringify({ insights: data.insights, ts: Date.now() })); } catch {}
+          }
+        }
+      } catch {
+        // Silently fall back to template insights
+      }
+    })();
+  }, [user, skills, recentSessions]);
+
+  const aiInsights = llmInsights || fallbackInsights;
   const notifications = useMemo(() => generateNotifications(user, currentStreak, weekActivity, recentSessions), [user, currentStreak, weekActivity, recentSessions]);
   const upcomingGoals = useMemo(() => generateGoals(user, weekActivity, skills), [user, weekActivity, skills]);
   const returnContext = useMemo(() => getReturnContext(recentSessions), [recentSessions]);

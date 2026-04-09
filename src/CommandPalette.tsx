@@ -109,7 +109,17 @@ export default function CommandPalette({ onStartSession, onExport, sessions = []
   return (
     <>
       <div onClick={() => setOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 200, backdropFilter: "blur(2px)" }} />
-      <div role="dialog" aria-modal="true" aria-label="Command palette" style={{
+      <div role="dialog" aria-modal="true" aria-label="Command palette"
+        onKeyDown={(e) => {
+          if (e.key !== "Tab") return;
+          const container = e.currentTarget;
+          const focusable = container.querySelectorAll<HTMLElement>("input, button, [tabindex]");
+          if (focusable.length === 0) return;
+          const first = focusable[0], last = focusable[focusable.length - 1];
+          if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+          else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+        }}
+        style={{
         position: "fixed", top: "20%", left: "50%", transform: "translateX(-50%)",
         width: "100%", maxWidth: 480, background: c.graphite, border: `1px solid ${c.borderHover}`,
         borderRadius: 14, boxShadow: "0 16px 64px rgba(0,0,0,0.5)", zIndex: 201,

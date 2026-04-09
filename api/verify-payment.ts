@@ -4,35 +4,32 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { createHmac } from "crypto";
 
-/* ─── Inline rate limiting (Node.js ESM can't resolve extensionless imports) ─── */
+/* ─── Inline rate limiting via Upstash Redis ─── */
 const UPSTASH_URL = (process.env.UPSTASH_REDIS_REST_URL || "").trim();
 const UPSTASH_TOKEN = (process.env.UPSTASH_REDIS_REST_TOKEN || "").trim();
-const verifyRateMap = new Map<string, { count: number; reset: number }>();
 
 async function isRateLimited(ip: string, limit: number, windowMs: number): Promise<boolean> {
-  if (UPSTASH_URL && UPSTASH_TOKEN) {
-    try {
-      const key = `rl:verify-payment:${ip}`;
-      const windowSec = Math.ceil(windowMs / 1000);
-      const res = await fetch(`${UPSTASH_URL}/pipeline`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${UPSTASH_TOKEN}`, "Content-Type": "application/json" },
-        body: JSON.stringify([["INCR", key], ["EXPIRE", key, windowSec]]),
-      });
-      if (res.ok) {
-        const results = await res.json();
-        return (results[0]?.result ?? 1) > limit;
-      }
-    } catch { /* fall through to in-memory */ }
-  }
-  const now = Date.now();
-  const entry = verifyRateMap.get(ip);
-  if (!entry || now > entry.reset) {
-    verifyRateMap.set(ip, { count: 1, reset: now + windowMs });
+  if (!UPSTASH_URL || !UPSTASH_TOKEN) {
+    console.warn("[verify-payment] Rate limiting disabled: UPSTASH_REDIS_REST_URL / UPSTASH_REDIS_REST_TOKEN not set");
     return false;
   }
-  entry.count++;
-  return entry.count > limit;
+  try {
+    const key = `rl:verify-payment:${ip}`;
+    const windowSec = Math.ceil(windowMs / 1000);
+    const res = await fetch(`${UPSTASH_URL}/pipeline`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${UPSTASH_TOKEN}`, "Content-Type": "application/json" },
+      body: JSON.stringify([["INCR", key], ["EXPIRE", key, windowSec]]),
+    });
+    if (res.ok) {
+      const results = await res.json();
+      return (results[0]?.result ?? 1) > limit;
+    }
+    return false;
+  } catch (err) {
+    console.error("[verify-payment] Rate limit check failed:", err);
+    return false;
+  }
 }
 
 const RAZORPAY_KEY_ID = (process.env.RAZORPAY_KEY_ID || "").trim();
@@ -49,7 +46,6 @@ const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || "").split(",").map(s => 
 function getAllowedOrigin(origin: string): string {
   if (ALLOWED_ORIGINS.length > 0 && ALLOWED_ORIGINS.includes(origin)) return origin;
   if (origin.startsWith("http://localhost:")) return origin;
-  if (ALLOWED_ORIGINS.length === 0 && origin.endsWith(".vercel.app")) return origin;
   return "";
 }
 
@@ -246,44 +242,72 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const { razorpay_order_id, razorpay_payment_id, razorpay_signature, plan } = req.body;
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature, razorpay_subscription_id, plan } = req.body;
 
-    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature || !plan) {
-      return res.status(400).json({ error: "Missing payment details" });
+    if (!razorpay_payment_id || !razorpay_signature || !plan) {
+      return res.status(400).json({ error: "Missing payment details", code: "MISSING_FIELDS" });
+    }
+
+    // For subscriptions, order_id may not be present — subscription_id is used instead
+    if (!razorpay_order_id && !razorpay_subscription_id) {
+      return res.status(400).json({ error: "Missing order or subscription ID", code: "MISSING_IDENTIFIER" });
     }
 
     // Validate format of Razorpay IDs (prevent injection)
     const razorpayIdPattern = /^[a-zA-Z0-9_]{6,50}$/;
-    if (!razorpayIdPattern.test(razorpay_order_id) || !razorpayIdPattern.test(razorpay_payment_id) || typeof razorpay_signature !== "string" || razorpay_signature.length > 128) {
-      return res.status(400).json({ error: "Invalid payment details format" });
+    if (
+      !razorpayIdPattern.test(razorpay_payment_id)
+      || (razorpay_order_id && !razorpayIdPattern.test(razorpay_order_id))
+      || (razorpay_subscription_id && !razorpayIdPattern.test(razorpay_subscription_id))
+      || typeof razorpay_signature !== "string" || razorpay_signature.length > 128
+    ) {
+      return res.status(400).json({ error: "Invalid payment details format", code: "INVALID_FORMAT" });
     }
 
     if (typeof plan !== "string" || !PLAN_TIER[plan]) {
-      return res.status(400).json({ error: "Invalid plan" });
+      return res.status(400).json({ error: "Invalid plan", code: "INVALID_PLAN" });
     }
 
     // 1. Verify Razorpay signature (HMAC-SHA256)
+    // Subscriptions sign: payment_id|subscription_id; orders sign: order_id|payment_id
+    const signPayload = razorpay_subscription_id
+      ? `${razorpay_payment_id}|${razorpay_subscription_id}`
+      : `${razorpay_order_id}|${razorpay_payment_id}`;
     const expectedSignature = createHmac("sha256", RAZORPAY_KEY_SECRET)
-      .update(`${razorpay_order_id}|${razorpay_payment_id}`)
+      .update(signPayload)
       .digest("hex");
 
     if (expectedSignature !== razorpay_signature) {
-      console.error("Payment signature mismatch for order", razorpay_order_id.slice(0, 8) + "...");
-      return res.status(400).json({ error: "Payment verification failed" });
+      console.error("Payment signature mismatch for", (razorpay_order_id || razorpay_subscription_id || "").slice(0, 8) + "...");
+      return res.status(400).json({ error: "Payment signature verification failed", code: "SIGNATURE_MISMATCH" });
     }
 
-    // 2. Verify plan matches the actual order amount with Razorpay
+    // 2. Verify plan matches the actual order/subscription amount with Razorpay
     const rzpAuth = Buffer.from(`${RAZORPAY_KEY_ID}:${RAZORPAY_KEY_SECRET}`).toString("base64");
-    const orderRes = await fetch(`https://api.razorpay.com/v1/orders/${razorpay_order_id}`, {
-      headers: { Authorization: `Basic ${rzpAuth}` },
-    });
-    if (!orderRes.ok) {
-      return res.status(400).json({ error: "Could not verify order details" });
-    }
-    const orderData = await orderRes.json();
-    if (orderData.amount !== PLAN_AMOUNT[plan]) {
-      console.error("Plan/amount mismatch for order", razorpay_order_id.slice(0, 8) + "...");
-      return res.status(400).json({ error: "Plan does not match payment amount" });
+    if (razorpay_order_id) {
+      const orderRes = await fetch(`https://api.razorpay.com/v1/orders/${razorpay_order_id}`, {
+        headers: { Authorization: `Basic ${rzpAuth}` },
+      });
+      if (!orderRes.ok) {
+        return res.status(400).json({ error: "Could not verify order details", code: "ORDER_FETCH_FAILED" });
+      }
+      const orderData = await orderRes.json();
+      if (orderData.amount !== PLAN_AMOUNT[plan]) {
+        console.error("Plan/amount mismatch for order", razorpay_order_id.slice(0, 8) + "...");
+        return res.status(400).json({ error: "Plan does not match payment amount", code: "AMOUNT_MISMATCH" });
+      }
+    } else if (razorpay_subscription_id) {
+      // For subscriptions, verify the subscription exists and is active
+      const subRes = await fetch(`https://api.razorpay.com/v1/subscriptions/${razorpay_subscription_id}`, {
+        headers: { Authorization: `Basic ${rzpAuth}` },
+      });
+      if (!subRes.ok) {
+        return res.status(400).json({ error: "Could not verify subscription details", code: "SUBSCRIPTION_FETCH_FAILED" });
+      }
+      const subData = await subRes.json();
+      if (!["active", "authenticated", "created"].includes(subData.status)) {
+        return res.status(400).json({ error: "Subscription is not active", code: "SUBSCRIPTION_INACTIVE" });
+      }
     }
 
     // 3. Duplicate check FIRST — before any state mutations
@@ -310,20 +334,40 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
       const currentEnd = current.subscription_end ? new Date(current.subscription_end) : null;
       const isActive = currentEnd && currentEnd > new Date();
-      const tierRank: Record<string, number> = { free: 0, starter: 1, pro: 2, team: 3 };
+      const tierRank: Record<string, number> = { free: 0, starter: 1, pro: 2 };
       const newTier = PLAN_TIER[plan];
       if (isActive && (tierRank[current.subscription_tier] || 0) > (tierRank[newTier] || 0)) {
         return res.status(400).json({ error: `You already have an active ${current.subscription_tier} plan. Downgrading is not supported — wait for it to expire or contact support.` });
       }
     }
 
-    // 4. Calculate subscription dates — extend from current end if still active
+    // 4. Calculate subscription dates with mid-cycle upgrade proration
     const now = new Date();
     const currentEnd = current?.subscription_end ? new Date(current.subscription_end) : null;
-    const base = currentEnd && currentEnd > now ? currentEnd : now;
-    const end = new Date(base);
-    end.setDate(end.getDate() + PLAN_DURATION[plan]);
     const tier = PLAN_TIER[plan];
+    const tierRankForProration: Record<string, number> = { free: 0, starter: 1, pro: 2 };
+    const isUpgrade = current && currentEnd && currentEnd > now
+      && (tierRankForProration[current.subscription_tier] || 0) < (tierRankForProration[tier] || 0);
+
+    let end: Date;
+    let proratedDays = 0;
+    if (isUpgrade && currentEnd) {
+      // Credit remaining days from current plan proportionally
+      const remainingMs = currentEnd.getTime() - now.getTime();
+      const remainingDays = Math.max(0, Math.ceil(remainingMs / 86400000));
+      const currentPlanDuration = current.subscription_tier === "starter" ? 7 : 30;
+      const currentPlanAmount = current.subscription_tier === "starter" ? 4900 : 14900;
+      const newPlanAmount = PLAN_AMOUNT[plan];
+      // Convert remaining days to credit ratio and add proportional bonus days
+      proratedDays = Math.floor((remainingDays / currentPlanDuration) * (currentPlanAmount / newPlanAmount) * PLAN_DURATION[plan]);
+      end = new Date(now);
+      end.setDate(end.getDate() + PLAN_DURATION[plan] + proratedDays);
+    } else {
+      // Extend from current end if still active (same tier renewal)
+      const base = currentEnd && currentEnd > now ? currentEnd : now;
+      end = new Date(base);
+      end.setDate(end.getDate() + PLAN_DURATION[plan]);
+    }
 
     // 5. Store payment record FIRST (critical — must succeed before activating subscription)
     const paymentRecordRes = await fetch(`${SUPABASE_URL}/rest/v1/payments`, {
@@ -371,6 +415,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           subscription_start: now.toISOString(),
           subscription_end: end.toISOString(),
           razorpay_payment_id,
+          ...(razorpay_subscription_id ? { razorpay_subscription_id } : {}),
+          cancel_at_period_end: false,
         }),
       },
     );
@@ -381,23 +427,54 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(500).json({ error: "Failed to activate subscription" });
     }
 
-    // 6c. Send confirmation email (non-critical — don't fail payment if email fails)
+    // 6c. Send confirmation email with retry (non-critical — don't fail payment if email fails)
     let emailSent = false;
     if (userEmail) {
-      try {
-        await sendPaymentEmail(userEmail, userName, plan, tier, razorpay_payment_id, now.toISOString(), end.toISOString());
-        emailSent = true;
-      } catch (emailErr) {
-        console.error("Confirmation email failed (non-critical):", emailErr);
+      for (let attempt = 0; attempt < 2; attempt++) {
+        try {
+          await sendPaymentEmail(userEmail, userName, plan, tier, razorpay_payment_id, now.toISOString(), end.toISOString());
+          emailSent = true;
+          break;
+        } catch (emailErr) {
+          console.error(`Confirmation email attempt ${attempt + 1} failed:`, emailErr);
+          if (attempt === 0) await new Promise(r => setTimeout(r, 1000));
+        }
+      }
+      if (!emailSent) {
+        console.error(`[verify-payment] Email permanently failed for user ${userId.slice(0, 8)}, payment ${razorpay_payment_id.slice(0, 8)}`);
       }
     }
+
+    // Fetch receipt/invoice URL from Razorpay payment (best-effort)
+    // Razorpay provides a short_url on invoices that is customer-facing (no auth needed)
+    let receiptUrl: string | null = null;
+    try {
+      const paymentRes = await fetch(`https://api.razorpay.com/v1/payments/${razorpay_payment_id}`, {
+        headers: { Authorization: `Basic ${rzpAuth}` },
+      });
+      if (paymentRes.ok) {
+        const paymentData = await paymentRes.json();
+        if (paymentData.invoice_id) {
+          const invoiceRes = await fetch(`https://api.razorpay.com/v1/invoices/${paymentData.invoice_id}`, {
+            headers: { Authorization: `Basic ${rzpAuth}` },
+          });
+          if (invoiceRes.ok) {
+            const invoiceData = await invoiceRes.json();
+            receiptUrl = invoiceData.short_url || null;
+          }
+        }
+      }
+    } catch {}
 
     return res.status(200).json({
       success: true,
       subscriptionTier: tier,
       subscriptionStart: now.toISOString(),
       subscriptionEnd: end.toISOString(),
+      paymentId: razorpay_payment_id,
       emailSent,
+      receiptUrl,
+      ...(proratedDays > 0 ? { proratedBonusDays: proratedDays } : {}),
     });
   } catch (err) {
     console.error("Payment verification error:", err);

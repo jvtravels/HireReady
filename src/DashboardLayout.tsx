@@ -231,13 +231,9 @@ export default function DashboardLayout() {
         {/* User info */}
         <div style={{ borderTop: `1px solid ${c.border}`, marginTop: 8, padding: "14px 12px 16px", flexShrink: 0 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10 }}>
-            {user?.avatarUrl ? (
-              <img src={user.avatarUrl} alt={displayName} style={{ width: 34, height: 34, borderRadius: "50%", objectFit: "cover" }} />
-            ) : (
-              <div style={{ width: 34, height: 34, borderRadius: "50%", background: "rgba(212,179,127,0.12)", border: `1px solid rgba(212,179,127,0.2)`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <span style={{ fontFamily: font.ui, fontSize: 14, fontWeight: 600, color: c.gilt }}>{(displayName || "?")[0].toUpperCase()}</span>
-              </div>
-            )}
+            <div style={{ width: 34, height: 34, borderRadius: "50%", background: "rgba(212,179,127,0.12)", border: `1px solid rgba(212,179,127,0.2)`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <span style={{ fontFamily: font.ui, fontSize: 14, fontWeight: 600, color: c.gilt }}>{(displayName || "?")[0].toUpperCase()}</span>
+            </div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <p style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: c.ivory, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{displayName}</p>
               <p style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "100%" }}>{user?.targetRole || persisted.targetRole || "Set your target role"}</p>
@@ -326,7 +322,23 @@ export default function DashboardLayout() {
       {showShortcuts && (
         <>
           <div onClick={() => setShowShortcuts(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 90 }} />
-          <div role="dialog" aria-modal="true" aria-label="Keyboard shortcuts" style={{
+          <div role="dialog" aria-modal="true" aria-label="Keyboard shortcuts"
+            ref={(el) => {
+              if (!el) return;
+              const closeBtn = el.querySelector<HTMLButtonElement>("button");
+              closeBtn?.focus();
+              const trap = (e: KeyboardEvent) => {
+                if (e.key !== "Tab") return;
+                const focusable = el.querySelectorAll<HTMLElement>("button, [tabindex]");
+                if (focusable.length === 0) return;
+                const first = focusable[0], last = focusable[focusable.length - 1];
+                if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+                else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+              };
+              el.addEventListener("keydown", trap);
+              (el as any)._cleanupTrap = () => el.removeEventListener("keydown", trap);
+            }}
+            style={{
             position: "fixed", top: "50%", left: "50%", transform: "translate(-50%, -50%)",
             background: c.graphite, border: `1px solid ${c.border}`, borderRadius: 14,
             padding: "28px 32px", zIndex: 91, minWidth: 280,

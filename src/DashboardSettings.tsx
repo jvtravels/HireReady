@@ -1,76 +1,120 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { c, font } from "./tokens";
+import { c, font, shadow, gradient } from "./tokens";
 import { useAuth } from "./AuthContext";
 import { useDocTitle } from "./useDocTitle";
-import { authHeaders, supabaseConfigured, getSupabase } from "./supabase";
-import { loadTTSSettings, saveTTSSettings, fetchCartesiaVoices, getCachedVoices, speak, type TTSSettings, type CartesiaVoice } from "./tts";
+import { authHeaders, supabaseConfigured, getSupabase, getPaymentHistory, type PaymentRecord } from "./supabase";
 import type { PersistedState } from "./dashboardTypes";
 import { useDashboard } from "./DashboardContext";
 import { DataLoadingSkeleton } from "./dashboardComponents";
+import { notificationsSupported, getNotifPermission, requestNotifPermission, getNotifPreference, setNotifPreference, scheduleEventNotifications } from "./interviewNotifications";
 
-/* ─── Shared Styles ─── */
-const sectionStyle = {
-  background: c.graphite,
-  borderRadius: 14,
+/* ─── Section Icons ─── */
+const icons = {
+  account: <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>,
+  interview: <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg>,
+  notifications: <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>,
+  plan: <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>,
+};
+
+const SECTIONS = [
+  { id: "account", label: "Account", icon: icons.account },
+  { id: "interview", label: "Interview", icon: icons.interview },
+  { id: "notifications", label: "Notifications", icon: icons.notifications },
+  { id: "plan", label: "Plan & Data", icon: icons.plan },
+] as const;
+
+
+/* ─── Premium Shared Styles ─── */
+const cardStyle: React.CSSProperties = {
+  background: `linear-gradient(180deg, ${c.graphite} 0%, rgba(14,14,16,0.98) 100%)`,
+  borderRadius: 16,
   border: `1px solid ${c.border}`,
-  padding: "28px 32px",
-  marginBottom: 20,
-} as const;
+  padding: "32px 36px",
+  marginBottom: 24,
+  boxShadow: shadow.sm,
+  position: "relative",
+  overflow: "hidden",
+};
+
+const sectionHeader: React.CSSProperties = {
+  display: "flex", alignItems: "center", gap: 14, marginBottom: 8,
+};
 
 const sectionTitle: React.CSSProperties = {
-  fontFamily: font.ui, fontSize: 16, fontWeight: 600, color: c.ivory, marginBottom: 4,
+  fontFamily: font.display, fontSize: 22, fontWeight: 400, color: c.ivory, letterSpacing: "0.01em",
 };
 
 const sectionDesc: React.CSSProperties = {
-  fontFamily: font.ui, fontSize: 12, color: c.stone, marginBottom: 24, lineHeight: 1.5,
+  fontFamily: font.ui, fontSize: 13, color: c.stone, marginBottom: 32, lineHeight: 1.6, paddingLeft: 50,
 };
 
 const labelStyle: React.CSSProperties = {
-  fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: c.chalk, display: "block", marginBottom: 6,
+  fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.stone, display: "block", marginBottom: 8,
+  letterSpacing: "0.04em", textTransform: "uppercase",
 };
 
 const inputStyle: React.CSSProperties = {
-  width: "100%", padding: "10px 14px", borderRadius: 8,
+  width: "100%", padding: "12px 16px", borderRadius: 10,
   background: c.obsidian, border: `1px solid ${c.border}`,
   color: c.ivory, fontFamily: font.ui, fontSize: 13, outline: "none", boxSizing: "border-box",
+  transition: "border-color 0.2s ease, box-shadow 0.2s ease",
 };
 
-const focusIn = (e: React.FocusEvent<HTMLInputElement>) => { e.currentTarget.style.borderColor = c.gilt; };
-const focusOut = (e: React.FocusEvent<HTMLInputElement>) => { e.currentTarget.style.borderColor = c.border; };
+const focusIn = (e: React.FocusEvent<HTMLInputElement>) => {
+  e.currentTarget.style.borderColor = "rgba(212,179,127,0.4)";
+  e.currentTarget.style.boxShadow = "0 0 0 3px rgba(212,179,127,0.08)";
+};
+const focusOutBase = (e: React.FocusEvent<HTMLInputElement>) => {
+  e.currentTarget.style.borderColor = c.border;
+  e.currentTarget.style.boxShadow = "none";
+};
 
 const chipBtn = (active: boolean): React.CSSProperties => ({
-  padding: "10px 14px", borderRadius: 8, cursor: "pointer",
-  background: active ? "rgba(212,179,127,0.08)" : c.obsidian,
-  border: `1.5px solid ${active ? c.gilt : c.border}`,
-  textAlign: "left", transition: "all 0.15s ease",
+  padding: "14px 16px", borderRadius: 12, cursor: "pointer",
+  background: active ? "rgba(212,179,127,0.06)" : "rgba(6,6,7,0.6)",
+  border: `1.5px solid ${active ? "rgba(212,179,127,0.35)" : c.border}`,
+  textAlign: "left", transition: "all 0.2s ease",
+  boxShadow: active ? "0 0 0 1px rgba(212,179,127,0.08)" : "none",
+  position: "relative",
 });
 
 const chipLabel = (active: boolean): React.CSSProperties => ({
-  fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: active ? c.ivory : c.chalk, display: "block", marginBottom: 2,
+  fontFamily: font.ui, fontSize: 12, fontWeight: 600,
+  color: active ? c.gilt : c.chalk, display: "flex", alignItems: "center", gap: 8, marginBottom: 3,
 });
 
-const chipDesc: React.CSSProperties = { fontFamily: font.ui, fontSize: 10, color: c.stone };
+const chipDesc: React.CSSProperties = { fontFamily: font.ui, fontSize: 10, color: c.stone, paddingLeft: 22 };
 
-const PREVIEW_TEXT = "Tell me about a time you led a cross-functional team through a challenging project.";
+/* ─── Radio Dot for chips ─── */
+function RadioDot({ active }: { active: boolean }) {
+  return (
+    <span style={{
+      width: 14, height: 14, borderRadius: "50%", flexShrink: 0,
+      border: `1.5px solid ${active ? c.gilt : "rgba(255,255,255,0.12)"}`,
+      display: "flex", alignItems: "center", justifyContent: "center",
+      transition: "border-color 0.2s ease",
+    }}>
+      {active && <span style={{ width: 6, height: 6, borderRadius: "50%", background: c.gilt }} />}
+    </span>
+  );
+}
 
-const SECTIONS = [
-  { id: "account", label: "Account" },
-  { id: "interview", label: "Interview" },
-  { id: "voice", label: "AI Voice" },
-  { id: "notifications", label: "Notifications" },
-  { id: "plan", label: "Plan & Data" },
-] as const;
+/* ─── Decorative line ─── */
+function Divider() {
+  return (
+    <div style={{ height: 1, background: `linear-gradient(90deg, transparent, ${c.border}, transparent)`, margin: "28px 0" }} />
+  );
+}
 
 export default function SettingsPage() {
   useDocTitle("Settings");
   const { user: authUser, logout: authLogout, updateUser: authUpdateUser, resetPassword } = useAuth();
-  const { persisted, updatePersisted: onUpdate, handleExportCSV: onExportCSV, dataLoading, showToast, setShowUpgradeModal } = useDashboard();
+  const { persisted, updatePersisted: onUpdate, handleExportCSV: onExportCSV, dataLoading, showToast, setShowUpgradeModal, calendarEvents } = useDashboard();
   const onLogout = () => { authLogout(); };
 
   // Profile
   const [editName, setEditName] = useState(persisted.userName);
   const [editRole, setEditRole] = useState(persisted.targetRole);
-  const [editDate, setEditDate] = useState(persisted.interviewDate);
   const [editCompany, setEditCompany] = useState(authUser?.targetCompany || "");
   const [editIndustry, setEditIndustry] = useState(authUser?.industry || "");
   const [saved, setSaved] = useState(false);
@@ -85,21 +129,10 @@ export default function SettingsPage() {
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [deleteMsg, setDeleteMsg] = useState("");
 
-  // TTS
-  const [ttsSettings, setTtsSettings] = useState<TTSSettings>(loadTTSSettings);
-  const [previewVoice, setPreviewVoice] = useState<string | null>(null);
-  const [previewCancel, setPreviewCancel] = useState<{ cancel: () => void } | null>(null);
-  const [voiceAccent, setVoiceAccent] = useState<"en" | "en_IN">("en_IN");
-  const [cartesiaVoices, setCartesiaVoices] = useState<CartesiaVoice[]>(getCachedVoices);
-
-  useEffect(() => { fetchCartesiaVoices(voiceAccent).then(setCartesiaVoices); }, [voiceAccent]);
 
   // Password
   const [resetSent, setResetSent] = useState(false);
   const [resetLoading, setResetLoading] = useState(false);
-
-  // Avatar upload
-  const [avatarUploading, setAvatarUploading] = useState(false);
 
   // Export
   const [exporting, setExporting] = useState(false);
@@ -108,17 +141,40 @@ export default function SettingsPage() {
   const pillsRef = useRef<HTMLDivElement>(null);
   const [activeSection, setActiveSection] = useState<string>("account");
 
-  const isDirty = editName !== persisted.userName || editRole !== persisted.targetRole || editDate !== persisted.interviewDate || editCompany !== (authUser?.targetCompany || "") || editIndustry !== (authUser?.industry || "");
+  // Billing history
+  const [payments, setPayments] = useState<PaymentRecord[]>([]);
+  const [paymentsLoading, setPaymentsLoading] = useState(false);
+  const paymentsLoadedRef = useRef(false);
+  useEffect(() => {
+    if (activeSection !== "plan" || paymentsLoadedRef.current || !authUser?.id) return;
+    paymentsLoadedRef.current = true;
+    setPaymentsLoading(true);
+    getPaymentHistory(authUser.id).then(setPayments).finally(() => setPaymentsLoading(false));
+  }, [activeSection, authUser?.id]);
+
+  const isDirty = editName !== persisted.userName || editRole !== persisted.targetRole || editCompany !== (authUser?.targetCompany || "") || editIndustry !== (authUser?.industry || "");
+
+  // Auto-save on blur for text fields
+  const focusOut = useCallback((e: React.FocusEvent<HTMLInputElement>) => {
+    focusOutBase(e);
+    setTimeout(() => {
+      if (editName !== persisted.userName || editRole !== persisted.targetRole || editCompany !== (authUser?.targetCompany || "") || editIndustry !== (authUser?.industry || "")) {
+        onUpdate({ userName: editName, targetRole: editRole });
+        authUpdateUser({ name: editName, targetRole: editRole, targetCompany: editCompany, industry: editIndustry });
+        showToast("Saved");
+      }
+    }, 0);
+  }, [editName, editRole, editCompany, editIndustry, persisted.userName, persisted.targetRole, authUser?.targetCompany, authUser?.industry, onUpdate, authUpdateUser, showToast]);
 
   // Auto-save dirty profile fields when switching tabs
   const switchSection = useCallback((id: string) => {
     if (isDirty) {
-      onUpdate({ userName: editName, targetRole: editRole, interviewDate: editDate });
-      authUpdateUser({ name: editName, targetRole: editRole, interviewDate: editDate, targetCompany: editCompany, industry: editIndustry });
+      onUpdate({ userName: editName, targetRole: editRole });
+      authUpdateUser({ name: editName, targetRole: editRole, targetCompany: editCompany, industry: editIndustry });
       showToast("Profile saved");
     }
     setActiveSection(id);
-  }, [isDirty, editName, editRole, editDate, editCompany, editIndustry, onUpdate, authUpdateUser, showToast]);
+  }, [isDirty, editName, editRole, editCompany, editIndustry, onUpdate, authUpdateUser, showToast]);
 
   // Keyboard navigation for pills
   const handlePillKeyDown = (e: React.KeyboardEvent, idx: number) => {
@@ -147,17 +203,15 @@ export default function SettingsPage() {
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [isDirty, editName, editRole, editDate, editCompany, editIndustry]);
+  }, [isDirty, editName, editRole, editCompany, editIndustry]);
 
-  // Cleanup voice preview
-  useEffect(() => { return () => { previewCancel?.cancel(); }; }, [previewCancel]);
 
   if (dataLoading) return <DataLoadingSkeleton />;
 
   const handleSave = async () => {
     setSaving(true); setSaved(false);
-    onUpdate({ userName: editName, targetRole: editRole, interviewDate: editDate });
-    await authUpdateUser({ name: editName, targetRole: editRole, interviewDate: editDate, targetCompany: editCompany, industry: editIndustry });
+    onUpdate({ userName: editName, targetRole: editRole });
+    await authUpdateUser({ name: editName, targetRole: editRole, targetCompany: editCompany, industry: editIndustry });
     setSaving(false); setSaved(true);
     showToast("Profile saved");
     setTimeout(() => setSaved(false), 3000);
@@ -165,16 +219,6 @@ export default function SettingsPage() {
 
   const autoSave = (updates: Partial<PersistedState>) => onUpdate(updates);
 
-  const handlePreviewVoice = async (voiceId: string) => {
-    previewCancel?.cancel();
-    if (previewVoice === voiceId) { setPreviewVoice(null); setPreviewCancel(null); return; }
-    setPreviewVoice(voiceId);
-    const original = loadTTSSettings();
-    saveTTSSettings({ ...original, provider: "cartesia", voiceId });
-    const handle = await speak(PREVIEW_TEXT, () => { setPreviewVoice(null); setPreviewCancel(null); }, () => { setPreviewVoice(null); setPreviewCancel(null); });
-    saveTTSSettings(original);
-    setPreviewCancel(handle);
-  };
 
   const handlePasswordReset = async () => {
     if (!authUser?.email) return;
@@ -187,105 +231,121 @@ export default function SettingsPage() {
 
   const Toggle = ({ on, onToggle }: { on: boolean; onToggle: () => void }) => (
     <button onClick={onToggle} aria-pressed={on} style={{
-      width: 40, height: 22, borderRadius: 11, border: "none", cursor: "pointer",
-      background: on ? c.gilt : c.border, padding: 2, transition: "background 0.2s ease", position: "relative",
+      width: 44, height: 24, borderRadius: 12, border: "none", cursor: "pointer",
+      background: on ? `linear-gradient(135deg, ${c.gilt}, ${c.giltDark})` : "rgba(255,255,255,0.06)",
+      padding: 3, transition: "background 0.25s ease", position: "relative",
     }}>
-      <div style={{ width: 18, height: 18, borderRadius: "50%", background: on ? c.obsidian : c.stone, transition: "transform 0.2s ease", transform: on ? "translateX(18px)" : "translateX(0)" }} />
+      <div style={{
+        width: 18, height: 18, borderRadius: "50%",
+        background: on ? c.obsidian : c.stone,
+        transition: "transform 0.25s cubic-bezier(0.16, 1, 0.3, 1)",
+        transform: on ? "translateX(20px)" : "translateX(0)",
+        boxShadow: on ? "0 1px 3px rgba(0,0,0,0.3)" : "none",
+      }} />
     </button>
   );
 
   const difficultyVal = persisted.defaultDifficulty || "standard";
   const learningVal = authUser?.learningStyle || "direct";
-  const sessionLenVal = authUser?.preferredSessionLength || 15;
+  const experienceVal = authUser?.experienceLevel || "";
+  const tierLabel = (authUser?.subscriptionTier || "free").charAt(0).toUpperCase() + (authUser?.subscriptionTier || "free").slice(1);
 
   return (
-    <div style={{ maxWidth: 720, margin: "0 auto" }}>
-      {/* Header */}
-      <h2 style={{ fontFamily: font.ui, fontSize: 22, fontWeight: 600, color: c.ivory, marginBottom: 4 }}>Settings</h2>
-      <p style={{ fontFamily: font.ui, fontSize: 13, color: c.stone, marginBottom: 20 }}>Manage your account, preferences, and subscription</p>
+    <div style={{ maxWidth: 780, margin: "0 auto" }}>
+      {/* ── Page Header ── */}
+      <div style={{ marginBottom: 36 }}>
+        <h2 style={{ fontFamily: font.display, fontSize: 32, fontWeight: 400, color: c.ivory, marginBottom: 6, letterSpacing: "0.01em" }}>Settings</h2>
+        <p style={{ fontFamily: font.ui, fontSize: 14, color: c.stone, lineHeight: 1.5 }}>
+          Manage your account, interview preferences, and subscription
+        </p>
+      </div>
 
-      {/* Section pills */}
-      <div ref={pillsRef} role="tablist" aria-label="Settings sections" className="settings-pills" style={{ display: "flex", gap: 6, marginBottom: 28, overflowX: "auto", paddingBottom: 2 }}>
+      {/* ── Section Navigation ── */}
+      <div ref={pillsRef} role="tablist" aria-label="Settings sections" className="settings-pills" style={{
+        display: "flex", gap: 4, marginBottom: 32, overflowX: "auto", paddingBottom: 2,
+        borderBottom: `1px solid ${c.border}`, paddingRight: 2,
+      }}>
         {SECTIONS.map((s, i) => (
           <button key={s.id} role="tab" aria-selected={activeSection === s.id} tabIndex={activeSection === s.id ? 0 : -1}
             onClick={() => switchSection(s.id)} onKeyDown={(e) => handlePillKeyDown(e, i)}
             style={{
-              fontFamily: font.ui, fontSize: 12, fontWeight: 500, whiteSpace: "nowrap",
-              padding: "7px 16px", borderRadius: 20, cursor: "pointer", transition: "all 0.15s",
-              background: activeSection === s.id ? "rgba(212,179,127,0.1)" : "transparent",
-              border: `1px solid ${activeSection === s.id ? "rgba(212,179,127,0.25)" : c.border}`,
-              color: activeSection === s.id ? c.gilt : c.stone,
-            }}>
+              fontFamily: font.ui, fontSize: 13, fontWeight: 500, whiteSpace: "nowrap",
+              padding: "10px 16px", cursor: "pointer", transition: "all 0.2s ease",
+              background: "transparent", borderRadius: 0,
+              border: "none", borderBottom: `2px solid ${activeSection === s.id ? c.gilt : "transparent"}`,
+              color: activeSection === s.id ? c.ivory : c.stone,
+              display: "flex", alignItems: "center", gap: 8,
+              marginBottom: -1,
+            }}
+            onMouseEnter={(e) => { if (activeSection !== s.id) e.currentTarget.style.color = c.chalk; }}
+            onMouseLeave={(e) => { if (activeSection !== s.id) e.currentTarget.style.color = c.stone; }}
+          >
+            <span style={{ opacity: activeSection === s.id ? 1 : 0.5, transition: "opacity 0.2s", color: activeSection === s.id ? c.gilt : "currentColor" }}>{s.icon}</span>
             {s.label}
           </button>
         ))}
       </div>
 
       {/* ═══════════════════ ACCOUNT ═══════════════════ */}
-      {activeSection === "account" && <div style={sectionStyle}>
-        <h3 style={sectionTitle}>Account</h3>
-        <p style={sectionDesc}>Your profile photo, name, and login credentials</p>
+      {activeSection === "account" && <div style={cardStyle}>
+        {/* Decorative gradient accent */}
+        <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 1, background: `linear-gradient(90deg, transparent, rgba(212,179,127,0.2), transparent)` }} />
 
-        {/* Avatar row */}
-        <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 28 }}>
-          <div style={{ position: "relative", flexShrink: 0 }}>
-            {authUser?.avatarUrl ? (
-              <img src={authUser.avatarUrl} alt="Profile" style={{ width: 64, height: 64, borderRadius: "50%", objectFit: "cover", border: `2px solid ${c.border}`, opacity: avatarUploading ? 0.4 : 1, transition: "opacity 0.2s" }} />
-            ) : (
-              <div style={{ width: 64, height: 64, borderRadius: "50%", background: "rgba(212,179,127,0.08)", border: `2px solid ${c.border}`, display: "flex", alignItems: "center", justifyContent: "center", opacity: avatarUploading ? 0.4 : 1, transition: "opacity 0.2s" }}>
-                <span style={{ fontFamily: font.display, fontSize: 26, color: c.gilt }}>{(persisted.userName || "?")[0].toUpperCase()}</span>
-              </div>
-            )}
-            {avatarUploading && <div style={{ position: "absolute", inset: 0, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center" }}><span style={{ fontFamily: font.ui, fontSize: 9, color: c.gilt }}>...</span></div>}
-            <label title="Upload avatar" style={{
-              position: "absolute", bottom: -2, right: -2, width: 24, height: 24, borderRadius: "50%",
-              background: c.graphite, border: `1.5px solid ${c.border}`, cursor: "pointer",
-              display: "flex", alignItems: "center", justifyContent: "center",
-            }}>
-              <svg aria-hidden="true" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={c.chalk} strokeWidth="2.5" strokeLinecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-              <input type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (!file) return;
-                if (file.size > 2 * 1024 * 1024) { showToast("Image must be under 2 MB"); return; }
-                setAvatarUploading(true);
-                const reader = new FileReader();
-                reader.onload = async () => {
-                  try { await authUpdateUser({ avatarUrl: reader.result as string }); showToast("Avatar updated"); }
-                  catch { showToast("Avatar upload failed"); }
-                  finally { setAvatarUploading(false); }
-                };
-                reader.onerror = () => { showToast("Failed to read image"); setAvatarUploading(false); };
-                reader.readAsDataURL(file);
-              }} />
-            </label>
+        <div style={sectionHeader}>
+          <div style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(212,179,127,0.06)", border: `1px solid rgba(212,179,127,0.12)`, display: "flex", alignItems: "center", justifyContent: "center", color: c.gilt }}>
+            {icons.account}
           </div>
-          <div style={{ flex: 1 }}>
-            <p style={{ fontFamily: font.ui, fontSize: 16, fontWeight: 600, color: c.ivory }}>{persisted.userName}</p>
-            <p style={{ fontFamily: font.ui, fontSize: 12, color: c.stone }}>{authUser?.email}</p>
+          <h3 style={sectionTitle}>Account</h3>
+        </div>
+        <p style={sectionDesc}>Your personal details and login credentials</p>
+
+        {/* User identity card */}
+        <div style={{
+          display: "flex", alignItems: "center", gap: 20, marginBottom: 32,
+          padding: "20px 24px", borderRadius: 14,
+          background: gradient.surfaceCard,
+          border: `1px solid ${c.border}`,
+        }}>
+          <div style={{
+            width: 56, height: 56, borderRadius: 14, flexShrink: 0,
+            background: "rgba(212,179,127,0.06)", border: `1px solid rgba(212,179,127,0.15)`,
+            display: "flex", alignItems: "center", justifyContent: "center",
+          }}>
+            <span style={{ fontFamily: font.display, fontSize: 24, color: c.gilt }}>{(persisted.userName || "?")[0].toUpperCase()}</span>
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <p style={{ fontFamily: font.ui, fontSize: 16, fontWeight: 600, color: c.ivory, marginBottom: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{persisted.userName}</p>
+            <p style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{authUser?.email}</p>
+          </div>
+          <div style={{
+            padding: "5px 12px", borderRadius: 8,
+            background: authUser?.subscriptionTier === "pro" ? "rgba(122,158,126,0.08)" : "rgba(212,179,127,0.08)",
+            border: `1px solid ${authUser?.subscriptionTier === "pro" ? "rgba(122,158,126,0.15)" : "rgba(212,179,127,0.15)"}`,
+          }}>
+            <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, color: authUser?.subscriptionTier === "pro" ? c.sage : c.gilt, letterSpacing: "0.04em", textTransform: "uppercase" }}>{tierLabel}</span>
           </div>
         </div>
 
-        {/* Form fields — 2-column grid */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }} className="settings-form-grid">
+        {/* Form */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }} className="settings-form-grid">
           <div>
-            <label style={labelStyle}>Full Name</label>
-            <input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} maxLength={60}
+            <label htmlFor="settings-name" style={labelStyle}>Full Name</label>
+            <input id="settings-name" type="text" value={editName} onChange={(e) => setEditName(e.target.value)} maxLength={60}
               style={inputStyle} onFocus={focusIn} onBlur={focusOut} />
           </div>
           <div>
-            <label style={labelStyle}>Email</label>
-            <input type="email" value={authUser?.email || ""} readOnly
-              style={{ ...inputStyle, color: c.stone, cursor: "default" }} />
-            <span style={{ fontFamily: font.ui, fontSize: 10, color: c.stone, marginTop: 4, display: "block" }}>Contact <a href="mailto:support@hirestepx.com" style={{ color: c.gilt, textDecoration: "none" }}>support@hirestepx.com</a> to change email</span>
+            <label htmlFor="settings-email" style={labelStyle}>Email</label>
+            <input id="settings-email" type="email" value={authUser?.email || ""} readOnly
+              style={{ ...inputStyle, color: c.stone, cursor: "default", opacity: 0.7 }} />
           </div>
           <div>
-            <label style={labelStyle}>Target Company</label>
-            <input type="text" value={editCompany} onChange={(e) => setEditCompany(e.target.value)} maxLength={60} placeholder="e.g. Google"
+            <label htmlFor="settings-company" style={labelStyle}>Target Company</label>
+            <input id="settings-company" type="text" value={editCompany} onChange={(e) => setEditCompany(e.target.value)} maxLength={60} placeholder="e.g. Google"
               style={inputStyle} onFocus={focusIn} onBlur={focusOut} />
           </div>
           <div>
-            <label style={labelStyle}>Industry</label>
-            <input type="text" value={editIndustry} onChange={(e) => setEditIndustry(e.target.value)} maxLength={60} placeholder="e.g. FinTech"
+            <label htmlFor="settings-industry" style={labelStyle}>Industry</label>
+            <input id="settings-industry" type="text" value={editIndustry} onChange={(e) => setEditIndustry(e.target.value)} maxLength={60} placeholder="e.g. FinTech"
               style={inputStyle} onFocus={focusIn} onBlur={focusOut} />
           </div>
         </div>
@@ -293,100 +353,134 @@ export default function SettingsPage() {
         {/* Save bar */}
         <div style={{ display: "flex", gap: 12, marginTop: 24, alignItems: "center" }}>
           <button onClick={handleSave} disabled={saving || !isDirty} className="shimmer-btn"
-            style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, padding: "10px 28px", borderRadius: 8, border: "none", background: c.gilt, color: c.obsidian, cursor: (saving || !isDirty) ? "not-allowed" : "pointer", opacity: (saving || !isDirty) ? 0.45 : 1, transition: "opacity 0.15s" }}>
-            {saving ? "Saving..." : saved ? "Saved ✓" : "Save Changes"}
+            style={{
+              fontFamily: font.ui, fontSize: 13, fontWeight: 600, padding: "11px 32px", borderRadius: 10,
+              border: "none", cursor: (saving || !isDirty) ? "not-allowed" : "pointer",
+              background: (saving || !isDirty) ? "rgba(212,179,127,0.15)" : `linear-gradient(135deg, ${c.gilt}, ${c.giltDark})`,
+              color: (saving || !isDirty) ? c.stone : c.obsidian,
+              transition: "all 0.2s ease", letterSpacing: "0.02em",
+            }}>
+            {saving ? "Saving..." : saved ? "Saved" : "Save Changes"}
           </button>
-          {isDirty && <span style={{ fontFamily: font.ui, fontSize: 11, color: c.gilt }}>Unsaved changes</span>}
-          {saved && <span style={{ fontFamily: font.ui, fontSize: 11, color: c.sage, display: "flex", alignItems: "center", gap: 4 }}>
-            <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>Saved
+          {isDirty && <span style={{ fontFamily: font.ui, fontSize: 11, color: c.gilt, display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{ width: 5, height: 5, borderRadius: "50%", background: c.gilt }} />Unsaved changes
           </span>}
-          <kbd style={{ marginLeft: "auto", fontFamily: font.mono, fontSize: 10, color: c.stone, background: "rgba(245,242,237,0.04)", border: `1px solid ${c.border}`, borderRadius: 4, padding: "2px 6px" }}>⌘S</kbd>
+          {saved && <span style={{ fontFamily: font.ui, fontSize: 11, color: c.sage, display: "flex", alignItems: "center", gap: 4 }}>
+            <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          </span>}
+          <kbd style={{ marginLeft: "auto", fontFamily: font.mono, fontSize: 10, color: c.stone, background: "rgba(245,242,237,0.03)", border: `1px solid ${c.border}`, borderRadius: 6, padding: "3px 8px" }}>&#8984;S</kbd>
         </div>
 
+        <Divider />
+
         {/* Password */}
-        <div style={{ marginTop: 24, paddingTop: 20, borderTop: `1px solid ${c.border}`, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div>
-            <span style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.ivory, display: "block", marginBottom: 2 }}>Password</span>
-            <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>Reset via email link</span>
+            <span style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: c.ivory, display: "block", marginBottom: 3 }}>Password</span>
+            <span style={{ fontFamily: font.ui, fontSize: 12, color: c.stone }}>Reset via email link</span>
           </div>
           <button onClick={handlePasswordReset} disabled={resetLoading || resetSent}
-            style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: resetSent ? c.sage : c.gilt, background: resetSent ? "rgba(122,158,126,0.06)" : "rgba(212,179,127,0.06)", border: `1px solid ${resetSent ? "rgba(122,158,126,0.15)" : "rgba(212,179,127,0.15)"}`, borderRadius: 10, padding: "8px 18px", cursor: (resetLoading || resetSent) ? "default" : "pointer", opacity: resetLoading ? 0.6 : 1 }}>
-            {resetLoading ? "Sending..." : resetSent ? "Email Sent ✓" : "Reset Password"}
+            style={{
+              fontFamily: font.ui, fontSize: 12, fontWeight: 600, letterSpacing: "0.02em",
+              color: resetSent ? c.sage : c.ivory,
+              background: resetSent ? "rgba(122,158,126,0.08)" : "rgba(245,242,237,0.04)",
+              border: `1px solid ${resetSent ? "rgba(122,158,126,0.2)" : c.border}`,
+              borderRadius: 10, padding: "9px 20px", cursor: (resetLoading || resetSent) ? "default" : "pointer",
+              opacity: resetLoading ? 0.6 : 1, transition: "all 0.2s ease",
+            }}
+            onMouseEnter={(e) => { if (!resetLoading && !resetSent) e.currentTarget.style.background = "rgba(245,242,237,0.06)"; }}
+            onMouseLeave={(e) => { if (!resetLoading && !resetSent) e.currentTarget.style.background = "rgba(245,242,237,0.04)"; }}
+          >
+            {resetLoading ? "Sending..." : resetSent ? "Email Sent" : "Reset Password"}
           </button>
         </div>
       </div>}
 
       {/* ═══════════════════ INTERVIEW ═══════════════════ */}
-      {activeSection === "interview" && <div style={sectionStyle}>
-        <h3 style={sectionTitle}>Interview Preferences</h3>
-        <p style={sectionDesc}>Configure your target role, difficulty, and session format. Changes save automatically.</p>
+      {activeSection === "interview" && <div style={cardStyle}>
+        <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 1, background: `linear-gradient(90deg, transparent, rgba(212,179,127,0.2), transparent)` }} />
 
-        {/* Target role + date */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }} className="settings-form-grid">
+        <div style={sectionHeader}>
+          <div style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(212,179,127,0.06)", border: `1px solid rgba(212,179,127,0.12)`, display: "flex", alignItems: "center", justifyContent: "center", color: c.gilt }}>
+            {icons.interview}
+          </div>
+          <h3 style={sectionTitle}>Interview Preferences</h3>
+        </div>
+        <p style={sectionDesc}>Configure your target role and interview difficulty</p>
+
+        {/* Target role + Feedback style — side by side */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginBottom: 24 }} className="settings-form-grid">
           <div>
-            <label style={labelStyle}>Target Role</label>
-            <input type="text" value={editRole} onChange={(e) => setEditRole(e.target.value)} maxLength={80}
+            <label htmlFor="settings-role" style={labelStyle}>Target Role</label>
+            <input id="settings-role" type="text" value={editRole} onChange={(e) => setEditRole(e.target.value)} maxLength={80}
               style={inputStyle} onFocus={focusIn} onBlur={focusOut} />
           </div>
           <div>
-            <label style={labelStyle}>Interview Date</label>
-            <input type="date" value={editDate} onChange={(e) => setEditDate(e.target.value)}
-              style={{ ...inputStyle, colorScheme: "dark" }} onFocus={focusIn} onBlur={focusOut} />
+            <label style={labelStyle}>Feedback Style</label>
+            <div style={{ display: "flex", gap: 10 }}>
+              {([
+                { id: "direct" as const, label: "Direct" },
+                { id: "encouraging" as const, label: "Encouraging" },
+              ]).map(s => (
+                <button key={s.id} onClick={() => { authUpdateUser({ learningStyle: s.id }); showToast("Feedback style updated"); }}
+                  style={{ ...chipBtn(learningVal === s.id), flex: 1, padding: "11px 14px" }}
+                  onMouseEnter={(e) => { if (learningVal !== s.id) e.currentTarget.style.borderColor = "rgba(255,255,255,0.12)"; }}
+                  onMouseLeave={(e) => { if (learningVal !== s.id) e.currentTarget.style.borderColor = c.border; }}>
+                  <span style={{ ...chipLabel(learningVal === s.id), marginBottom: 0 }}><RadioDot active={learningVal === s.id} />{s.label}</span>
+                </button>
+              ))}
+            </div>
           </div>
         </div>
         {isDirty && (
-          <div style={{ display: "flex", gap: 12, marginTop: 16, marginBottom: 28, alignItems: "center" }}>
+          <div style={{ display: "flex", gap: 12, marginBottom: 24, alignItems: "center" }}>
             <button onClick={handleSave} disabled={saving}
-              style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, padding: "10px 28px", borderRadius: 8, border: "none", background: c.gilt, color: c.obsidian, cursor: saving ? "not-allowed" : "pointer", opacity: saving ? 0.45 : 1, transition: "opacity 0.15s" }}>
+              style={{
+                fontFamily: font.ui, fontSize: 13, fontWeight: 600, padding: "11px 32px", borderRadius: 10,
+                border: "none", background: `linear-gradient(135deg, ${c.gilt}, ${c.giltDark})`,
+                color: c.obsidian, cursor: saving ? "not-allowed" : "pointer", opacity: saving ? 0.6 : 1,
+              }}>
               {saving ? "Saving..." : "Save Changes"}
             </button>
-            <span style={{ fontFamily: font.ui, fontSize: 11, color: c.gilt }}>Unsaved changes</span>
+            <span style={{ fontFamily: font.ui, fontSize: 11, color: c.gilt, display: "flex", alignItems: "center", gap: 6 }}>
+              <span style={{ width: 5, height: 5, borderRadius: "50%", background: c.gilt }} />Unsaved changes
+            </span>
           </div>
         )}
-        {!isDirty && <div style={{ marginBottom: 28 }} />}
 
-        {/* Difficulty */}
-        <label style={{ ...labelStyle, marginBottom: 10 }}>Default Difficulty</label>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 24 }} className="settings-chip-grid">
-          {[
-            { id: "warmup", label: "Warm-up", desc: "Confidence-building" },
-            { id: "standard", label: "Standard", desc: "Realistic pacing" },
-            { id: "intense", label: "Intense", desc: "High pressure" },
-          ].map(d => (
-            <button key={d.id} onClick={() => { autoSave({ defaultDifficulty: d.id }); showToast("Difficulty updated"); }} style={chipBtn(difficultyVal === d.id)}>
-              <span style={chipLabel(difficultyVal === d.id)}>{d.label}</span>
-              <span style={chipDesc}>{d.desc}</span>
-            </button>
-          ))}
-        </div>
-
-        {/* Feedback style + Session length — side by side */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }} className="settings-form-grid">
+        {/* Difficulty + Experience — side by side */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }} className="settings-form-grid">
           <div>
-            <label style={{ ...labelStyle, marginBottom: 10 }}>Feedback Style</label>
+            <label style={labelStyle}>Difficulty</label>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {([
-                { id: "direct" as const, label: "Direct", desc: "Straightforward critique" },
-                { id: "encouraging" as const, label: "Encouraging", desc: "Supportive framing" },
-              ]).map(s => (
-                <button key={s.id} onClick={() => { authUpdateUser({ learningStyle: s.id }); showToast("Feedback style updated"); }} style={chipBtn(learningVal === s.id)}>
-                  <span style={chipLabel(learningVal === s.id)}>{s.label}</span>
-                  <span style={chipDesc}>{s.desc}</span>
+              {[
+                { id: "warmup", label: "Warm-up", desc: "Confidence-building" },
+                { id: "standard", label: "Standard", desc: "Realistic pacing" },
+                { id: "intense", label: "Intense", desc: "High pressure" },
+              ].map(d => (
+                <button key={d.id} onClick={() => { autoSave({ defaultDifficulty: d.id }); showToast("Difficulty updated"); }} style={chipBtn(difficultyVal === d.id)}
+                  onMouseEnter={(e) => { if (difficultyVal !== d.id) e.currentTarget.style.borderColor = "rgba(255,255,255,0.12)"; }}
+                  onMouseLeave={(e) => { if (difficultyVal !== d.id) e.currentTarget.style.borderColor = c.border; }}>
+                  <span style={chipLabel(difficultyVal === d.id)}><RadioDot active={difficultyVal === d.id} />{d.label}</span>
+                  <span style={chipDesc}>{d.desc}</span>
                 </button>
               ))}
             </div>
           </div>
           <div>
-            <label style={{ ...labelStyle, marginBottom: 10 }}>Session Length</label>
+            <label style={labelStyle}>Experience Level</label>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {([
-                { id: 10 as const, label: "10 min", desc: "Quick practice" },
-                { id: 15 as const, label: "15 min", desc: "Standard session" },
-                { id: 25 as const, label: "25 min", desc: "Deep dive" },
-              ]).map(s => (
-                <button key={s.id} onClick={() => { authUpdateUser({ preferredSessionLength: s.id }); showToast("Session length updated"); }} style={chipBtn(sessionLenVal === s.id)}>
-                  <span style={chipLabel(sessionLenVal === s.id)}>{s.label}</span>
-                  <span style={chipDesc}>{s.desc}</span>
+              {[
+                { id: "entry", label: "Entry", desc: "0-2 years" },
+                { id: "mid", label: "Mid", desc: "3-5 years" },
+                { id: "senior", label: "Senior", desc: "6-10 years" },
+                { id: "lead", label: "Lead+", desc: "10+ years" },
+              ].map(d => (
+                <button key={d.id} onClick={() => { authUpdateUser({ experienceLevel: d.id }); showToast("Experience level updated"); }} style={chipBtn(experienceVal === d.id)}
+                  onMouseEnter={(e) => { if (experienceVal !== d.id) e.currentTarget.style.borderColor = "rgba(255,255,255,0.12)"; }}
+                  onMouseLeave={(e) => { if (experienceVal !== d.id) e.currentTarget.style.borderColor = c.border; }}>
+                  <span style={chipLabel(experienceVal === d.id)}><RadioDot active={experienceVal === d.id} />{d.label}</span>
+                  <span style={chipDesc}>{d.desc}</span>
                 </button>
               ))}
             </div>
@@ -394,347 +488,440 @@ export default function SettingsPage() {
         </div>
       </div>}
 
-      {/* ═══════════════════ AI VOICE ═══════════════════ */}
-      {activeSection === "voice" && <div style={sectionStyle}>
-        <h3 style={sectionTitle}>AI Interviewer Voice</h3>
-        <p style={sectionDesc}>Ultra-low latency Cartesia voices included free. Click play to preview before selecting.</p>
-
-        <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
-          {([
-            { id: "cartesia" as const, label: "Cartesia Voice", desc: "Ultra-low latency" },
-            { id: "browser" as const, label: "Browser Voice", desc: "Built-in fallback" },
-          ]).map(p => (
-            <button key={p.id} onClick={() => { const u = { ...ttsSettings, provider: p.id }; setTtsSettings(u); saveTTSSettings(u); }}
-              style={{ ...chipBtn(ttsSettings.provider === p.id), flex: 1 }}>
-              <span style={chipLabel(ttsSettings.provider === p.id)}>{p.label}</span>
-              <span style={chipDesc}>{p.desc}</span>
-            </button>
-          ))}
-        </div>
-
-        {ttsSettings.provider === "cartesia" && (
-          <>
-          <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
-            {([
-              { id: "en" as const, label: "English (US)", desc: "American accent" },
-              { id: "en_IN" as const, label: "English (India)", desc: "Indian accent" },
-            ]).map(a => (
-              <button key={a.id} onClick={() => setVoiceAccent(a.id)}
-                style={{ ...chipBtn(voiceAccent === a.id), flex: 1 }}>
-                <span style={chipLabel(voiceAccent === a.id)}>{a.label}</span>
-                <span style={chipDesc}>{a.desc}</span>
-              </button>
-            ))}
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }} className="settings-form-grid">
-            {cartesiaVoices.map(v => {
-              const sel = ttsSettings.voiceId === v.id;
-              const playing = previewVoice === v.id;
-              return (
-                <div key={v.id} style={{
-                  display: "flex", alignItems: "center", gap: 10,
-                  padding: "10px 14px", borderRadius: 8,
-                  background: sel ? "rgba(212,179,127,0.08)" : c.obsidian,
-                  border: `1px solid ${sel ? c.gilt : c.border}`,
-                  transition: "all 0.15s",
-                }}>
-                  <button onClick={() => handlePreviewVoice(v.id)} aria-label={playing ? `Stop ${v.name}` : `Preview ${v.name}`}
-                    style={{
-                      width: 30, height: 30, borderRadius: "50%", border: "none", cursor: "pointer", flexShrink: 0,
-                      background: playing ? "rgba(212,179,127,0.15)" : "rgba(245,242,237,0.04)",
-                      display: "flex", alignItems: "center", justifyContent: "center", transition: "background 0.15s",
-                    }}>
-                    {playing
-                      ? <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill={c.gilt}><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>
-                      : <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill={c.chalk}><polygon points="5 3 19 12 5 21 5 3"/></svg>
-                    }
-                  </button>
-                  <button onClick={() => { const u = { ...ttsSettings, voiceId: v.id, voiceName: v.name }; setTtsSettings(u); saveTTSSettings(u); showToast(`Voice: ${v.name}`); }}
-                    style={{ flex: 1, background: "none", border: "none", cursor: "pointer", textAlign: "left", padding: 0 }}>
-                    <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: sel ? c.ivory : c.chalk, display: "block", marginBottom: 1 }}>{v.name}</span>
-                    <span style={chipDesc}>{v.desc}</span>
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-          </>
-        )}
-
-        {ttsSettings.provider === "browser" && (
-          <p style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, padding: "14px 16px", borderRadius: 8, background: c.obsidian, border: `1px solid ${c.border}`, lineHeight: 1.6 }}>
-            Using your browser's built-in speech. Quality varies by browser and OS. Switch to Cartesia Voice for ultra-low latency premium voices — free with your account.
-          </p>
-        )}
-      </div>}
 
       {/* ═══════════════════ NOTIFICATIONS ═══════════════════ */}
-      {activeSection === "notifications" && <div style={sectionStyle}>
-        <h3 style={sectionTitle}>Notifications</h3>
+      {activeSection === "notifications" && <div style={cardStyle}>
+        <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 1, background: `linear-gradient(90deg, transparent, rgba(212,179,127,0.2), transparent)` }} />
+
+        <div style={sectionHeader}>
+          <div style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(212,179,127,0.06)", border: `1px solid rgba(212,179,127,0.12)`, display: "flex", alignItems: "center", justifyContent: "center", color: c.gilt }}>
+            {icons.notifications}
+          </div>
+          <h3 style={sectionTitle}>Notifications</h3>
+        </div>
         <p style={sectionDesc}>Control how and when HireStepX reaches out to you</p>
+
+        <div style={{
+          padding: "14px 18px", borderRadius: 10, marginBottom: 24,
+          background: "rgba(212,179,127,0.03)", border: `1px solid rgba(212,179,127,0.1)`,
+          display: "flex", alignItems: "center", gap: 12,
+        }}>
+          <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          <span style={{ fontFamily: font.ui, fontSize: 12, color: c.gilt, lineHeight: 1.5 }}>Email delivery coming soon. Your preferences will be saved for when notifications launch.</span>
+        </div>
+
+        {/* ─── Push notifications for upcoming interviews ─── */}
+        {notificationsSupported() && (() => {
+          const pushOn = getNotifPreference();
+          const perm = getNotifPermission();
+          return (
+            <div style={{
+              display: "flex", alignItems: "center", justifyContent: "space-between",
+              padding: "18px 0", borderBottom: `1px solid ${c.border}`,
+            }}>
+              <div>
+                <span style={{ fontFamily: font.ui, fontSize: 14, fontWeight: 500, color: c.ivory, display: "block", marginBottom: 3 }}>Interview reminders</span>
+                <span style={{ fontFamily: font.ui, fontSize: 12, color: c.stone }}>
+                  {perm === "denied" ? "Browser notifications blocked — enable in browser settings" : "Push notification 30 min before scheduled interviews"}
+                </span>
+              </div>
+              <Toggle on={pushOn && perm === "granted"} onToggle={async () => {
+                if (pushOn) {
+                  setNotifPreference(false);
+                  showToast("Interview reminders off");
+                } else {
+                  const granted = await requestNotifPermission();
+                  if (granted) {
+                    setNotifPreference(true);
+                    scheduleEventNotifications(calendarEvents);
+                    showToast("Interview reminders on — you'll be notified 30 min before");
+                  } else {
+                    showToast("Notification permission denied by browser");
+                  }
+                }
+              }} />
+            </div>
+          );
+        })()}
 
         {[
           { label: "Email notifications", desc: "Session reminders and progress updates", key: "emailNotifs" as const, on: persisted.emailNotifs !== false },
           { label: "Streak reminders", desc: "Get nudged before you lose your streak", key: "streakReminder" as const, on: persisted.streakReminder !== false },
           { label: "Weekly digest", desc: "Summary of your weekly progress every Monday", key: "weeklyDigest" as const, on: persisted.weeklyDigest || false },
         ].map((item, i, arr) => (
-          <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 0", borderBottom: i < arr.length - 1 ? `1px solid ${c.border}` : "none" }}>
+          <div key={i} style={{
+            display: "flex", alignItems: "center", justifyContent: "space-between",
+            padding: "18px 0",
+            borderBottom: i < arr.length - 1 ? `1px solid ${c.border}` : "none",
+          }}>
             <div>
-              <span style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.ivory, display: "block", marginBottom: 2 }}>{item.label}</span>
-              <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>{item.desc}</span>
+              <span style={{ fontFamily: font.ui, fontSize: 14, fontWeight: 500, color: c.ivory, display: "block", marginBottom: 3 }}>{item.label}</span>
+              <span style={{ fontFamily: font.ui, fontSize: 12, color: c.stone }}>{item.desc}</span>
             </div>
             <Toggle on={item.on} onToggle={() => { autoSave({ [item.key]: !item.on }); showToast(`${item.label} ${item.on ? "off" : "on"}`); }} />
           </div>
         ))}
-
       </div>}
 
-      {/* ═══════════════════ PLAN & DATA ═══════════════════ */}
-      {activeSection === "plan" && <div style={sectionStyle}>
-        <h3 style={sectionTitle}>Plan & Data</h3>
+      {/* ═══════════════════ PLAN & BILLING ═══════════════════ */}
+      {activeSection === "plan" && <div style={cardStyle}>
+        <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 1, background: `linear-gradient(90deg, transparent, rgba(212,179,127,0.2), transparent)` }} />
+
+        <div style={sectionHeader}>
+          <div style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(212,179,127,0.06)", border: `1px solid rgba(212,179,127,0.12)`, display: "flex", alignItems: "center", justifyContent: "center", color: c.gilt }}>
+            {icons.plan}
+          </div>
+          <h3 style={sectionTitle}>Plan & Billing</h3>
+        </div>
         <p style={sectionDesc}>Manage your subscription, export data, or delete your account</p>
 
-        {/* Subscription */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 20, alignItems: "start", marginBottom: 24 }} className="settings-form-grid">
-          <div style={{ padding: "16px 20px", borderRadius: 10, background: c.obsidian, border: `1px solid ${c.border}` }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-              <span style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: c.ivory }}>Current Plan</span>
-              <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                {authUser?.cancelAtPeriodEnd && (
-                  <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 500, padding: "3px 8px", borderRadius: 5, background: "rgba(196,112,90,0.1)", color: c.ember }}>Cancelling</span>
-                )}
-                <span style={{
-                  fontFamily: font.ui, fontSize: 11, fontWeight: 600, padding: "4px 10px", borderRadius: 10,
-                  background: authUser?.subscriptionTier === "pro" ? "rgba(122,158,126,0.12)" : authUser?.subscriptionTier === "starter" ? "rgba(212,179,127,0.12)" : "rgba(245,242,237,0.06)",
-                  color: authUser?.subscriptionTier === "pro" ? c.sage : authUser?.subscriptionTier === "starter" ? c.gilt : c.stone,
-                }}>
-                  {(authUser?.subscriptionTier || "free").charAt(0).toUpperCase() + (authUser?.subscriptionTier || "free").slice(1)}
-                </span>
-              </div>
+        {/* Subscription card */}
+        <div style={{
+          padding: "24px 28px", borderRadius: 14, marginBottom: 32,
+          background: gradient.surfaceCard, border: `1px solid ${c.border}`,
+        }}>
+          {/* Plan name + badge row */}
+          <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 20 }}>
+            <div style={{
+              width: 44, height: 44, borderRadius: 12, flexShrink: 0,
+              background: authUser?.subscriptionTier === "pro" ? "rgba(122,158,126,0.06)" : "rgba(212,179,127,0.06)",
+              border: `1px solid ${authUser?.subscriptionTier === "pro" ? "rgba(122,158,126,0.15)" : "rgba(212,179,127,0.15)"}`,
+              display: "flex", alignItems: "center", justifyContent: "center",
+            }}>
+              <span style={{ fontFamily: font.display, fontSize: 20, color: authUser?.subscriptionTier === "pro" ? c.sage : c.gilt }}>{tierLabel[0]}</span>
             </div>
-
-            {authUser?.subscriptionTier && authUser.subscriptionTier !== "free" && authUser.subscriptionStart && authUser.subscriptionEnd && (() => {
-              const start = new Date(authUser.subscriptionStart!).getTime();
-              const end = new Date(authUser.subscriptionEnd!).getTime();
-              const now = Date.now();
-              const progress = Math.min(100, Math.max(0, ((now - start) / (end - start)) * 100));
-              const daysLeft = Math.max(0, Math.ceil((end - now) / 86400000));
-              return (
-                <>
-                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-                    <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>Started</span>
-                    <span style={{ fontFamily: font.ui, fontSize: 11, color: c.chalk }}>{new Date(authUser.subscriptionStart!).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</span>
-                  </div>
-                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12 }}>
-                    <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>Expires</span>
-                    <span style={{ fontFamily: font.ui, fontSize: 11, color: c.chalk }}>{new Date(authUser.subscriptionEnd!).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</span>
-                  </div>
-                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-                    <span style={{ fontFamily: font.ui, fontSize: 10, color: c.stone }}>Billing period</span>
-                    <span style={{ fontFamily: font.ui, fontSize: 10, color: daysLeft <= 3 ? c.ember : c.stone }}>
-                      {daysLeft > 0 ? `${daysLeft} day${daysLeft !== 1 ? "s" : ""} left` : "Expired"}
-                    </span>
-                  </div>
-                  <div style={{ height: 4, borderRadius: 2, background: c.border }}>
-                    <div style={{ height: "100%", borderRadius: 2, background: daysLeft <= 3 ? c.ember : c.gilt, width: `${progress}%`, transition: "width 0.3s" }} />
-                  </div>
-                </>
-              );
-            })()}
-
-            {(!authUser?.subscriptionTier || authUser.subscriptionTier === "free") && (
-              <p style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, margin: 0 }}>Free plan — 3 total sessions. Upgrade for more.</p>
-            )}
-          </div>
-
-          <div style={{ display: "flex", flexDirection: "column", gap: 8, minWidth: 140 }}>
+            <div style={{ flex: 1 }}>
+              <span style={{
+                fontFamily: font.display, fontSize: 22, fontWeight: 400, letterSpacing: "0.01em",
+                color: authUser?.subscriptionTier === "pro" ? c.sage : authUser?.subscriptionTier === "starter" ? c.gilt : c.chalk,
+              }}>
+                {tierLabel}
+              </span>
+              {authUser?.cancelAtPeriodEnd && (
+                <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, padding: "3px 10px", borderRadius: 6, background: "rgba(196,112,90,0.08)", color: c.ember, letterSpacing: "0.02em", marginLeft: 10, verticalAlign: "middle" }}>Cancelling</span>
+              )}
+              {!authUser?.cancelAtPeriodEnd && (authUser as any)?.subscriptionPaused && (
+                <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, padding: "3px 10px", borderRadius: 6, background: "rgba(212,179,127,0.08)", color: c.gilt, letterSpacing: "0.02em", marginLeft: 10, verticalAlign: "middle" }}>Paused</span>
+              )}
+            </div>
             {(!authUser?.subscriptionTier || authUser.subscriptionTier !== "pro") && !confirmCancel && (
               <button onClick={() => setShowUpgradeModal(true)}
-                style={{ padding: "11px 20px", borderRadius: 8, border: "none", cursor: "pointer", background: `linear-gradient(135deg, ${c.gilt}, ${c.giltDark})`, color: c.obsidian, fontFamily: font.ui, fontSize: 13, fontWeight: 600 }}>
+                style={{
+                  padding: "10px 22px", borderRadius: 10, border: "none", cursor: "pointer",
+                  background: `linear-gradient(135deg, ${c.gilt}, ${c.giltDark})`,
+                  color: c.obsidian, fontFamily: font.ui, fontSize: 12, fontWeight: 600, letterSpacing: "0.02em",
+                  boxShadow: shadow.glow, transition: "all 0.2s ease", flexShrink: 0,
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.boxShadow = shadow.glowStrong; }}
+                onMouseLeave={(e) => { e.currentTarget.style.boxShadow = shadow.glow; }}>
                 {authUser?.subscriptionTier === "starter" ? "Upgrade to Pro" : "Upgrade Plan"}
               </button>
             )}
-            {authUser?.subscriptionTier && authUser.subscriptionTier !== "free" && (
-              authUser.cancelAtPeriodEnd ? (
-                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  <span style={{ fontFamily: font.ui, fontSize: 11, color: c.ember }}>
-                    Cancels {authUser.subscriptionEnd ? new Date(authUser.subscriptionEnd).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "at period end"}
-                  </span>
-                  <button disabled={cancelLoading} onClick={async () => {
-                    setCancelLoading(true); setCancelMsg("");
-                    try {
-                      const hdrs = await Promise.race([authHeaders(), new Promise<never>((_, rej) => setTimeout(() => rej(new Error("Auth timeout")), 5000))]);
-                      const ctrl = new AbortController();
-                      const timer = setTimeout(() => ctrl.abort(), 15000);
-                      const res = await fetch("/api/reactivate-subscription", { method: "POST", headers: hdrs, signal: ctrl.signal });
-                      clearTimeout(timer);
-                      if (res.ok) { const data = await res.json(); if (data.success) { authUpdateUser({ cancelAtPeriodEnd: false }); setCancelMsg(""); showToast("Plan reactivated"); } else { showToast(data.error || "Failed"); } }
-                      else { const d = await res.json().catch(() => ({})); showToast(d.error || `Failed (${res.status})`); }
-                    } catch (err) { const msg = err instanceof DOMException && err.name === "AbortError" ? "Request timed out." : (err instanceof Error ? err.message : "Network error."); setCancelMsg(msg); showToast(msg); } finally { setCancelLoading(false); }
-                  }}
-                    style={{ padding: "8px 20px", borderRadius: 10, border: "none", cursor: "pointer", background: c.sage, color: "#fff", fontFamily: font.ui, fontSize: 12, fontWeight: 600, opacity: cancelLoading ? 0.6 : 1 }}>
-                    {cancelLoading ? "Reactivating..." : "Reactivate Plan"}
-                  </button>
-                </div>
-              ) : !confirmCancel ? (
-                <button onClick={() => setConfirmCancel(true)}
-                  style={{ padding: "10px 20px", borderRadius: 8, cursor: "pointer", background: "transparent", border: `1px solid rgba(196,112,90,0.18)`, color: c.ember, fontFamily: font.ui, fontSize: 12, fontWeight: 500, transition: "background 0.15s" }}
-                  onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(196,112,90,0.08)"; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}>
-                  Cancel Plan
-                </button>
-              ) : (
-                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  <span style={{ fontFamily: font.ui, fontSize: 11, color: c.ember }}>You'll keep benefits until your plan expires.</span>
-                  <button disabled={cancelLoading} onClick={async () => {
-                    setCancelLoading(true); setCancelMsg("");
-                    try {
-                      const hdrs = await Promise.race([authHeaders(), new Promise<never>((_, rej) => setTimeout(() => rej(new Error("Auth timeout")), 5000))]);
-                      const ctrl = new AbortController();
-                      const timer = setTimeout(() => ctrl.abort(), 15000);
-                      const res = await fetch("/api/cancel-subscription", { method: "POST", headers: hdrs, signal: ctrl.signal });
-                      clearTimeout(timer);
-                      if (res.ok) { const data = await res.json(); if (data.success) { authUpdateUser({ cancelAtPeriodEnd: true }); setCancelMsg(""); setConfirmCancel(false); showToast("Plan will cancel at end of period"); } else { setCancelMsg(data.error || "Failed."); showToast(data.error || "Cancellation failed"); } }
-                      else { const d = await res.json().catch(() => ({})); setCancelMsg(d.error || `Error (${res.status}).`); showToast(d.error || "Cancellation failed"); }
-                    } catch (err) { const msg = err instanceof DOMException && err.name === "AbortError" ? "Request timed out." : "Network error."; setCancelMsg(msg); showToast(msg); } finally { setCancelLoading(false); }
-                  }}
-                    style={{ padding: "6px 14px", borderRadius: 10, border: "none", cursor: "pointer", background: c.ember, color: "#fff", fontFamily: font.ui, fontSize: 11, fontWeight: 600, opacity: cancelLoading ? 0.6 : 1 }}>
-                    {cancelLoading ? "Cancelling..." : "Yes, Cancel"}
-                  </button>
-                  <button onClick={() => setConfirmCancel(false)}
-                    style={{ padding: "6px 14px", borderRadius: 10, cursor: "pointer", background: "transparent", border: `1px solid ${c.border}`, color: c.stone, fontFamily: font.ui, fontSize: 11, transition: "background 0.15s" }}
-                    onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(245,242,237,0.06)"; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}>
-                    Keep Plan
-                  </button>
-                </div>
-              )
-            )}
           </div>
-        </div>
-        {cancelMsg && <p style={{ fontFamily: font.ui, fontSize: 12, color: cancelMsg.includes("ancelled") ? c.sage : c.ember, marginTop: -16, marginBottom: 16 }}>{cancelMsg}</p>}
 
-        {/* Recent Subscription */}
-        <label style={{ ...labelStyle, marginBottom: 12, fontSize: 13, fontWeight: 600, color: c.ivory }}>Recent Subscription</label>
-        <div style={{ borderRadius: 10, background: c.obsidian, border: `1px solid ${c.border}`, overflow: "hidden", marginBottom: 28 }}>
-          {authUser?.subscriptionTier && authUser.subscriptionTier !== "free" && authUser.subscriptionStart ? (
-            <div style={{ padding: "14px 18px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                <div style={{ width: 32, height: 32, borderRadius: 8, background: "rgba(122,158,126,0.08)", border: `1px solid rgba(122,158,126,0.15)`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                  <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="2" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+          {authUser?.subscriptionTier && authUser.subscriptionTier !== "free" && authUser.subscriptionStart && authUser.subscriptionEnd && (() => {
+            const start = new Date(authUser.subscriptionStart!).getTime();
+            const end = new Date(authUser.subscriptionEnd!).getTime();
+            const now = Date.now();
+            const progress = Math.min(100, Math.max(0, ((now - start) / (end - start)) * 100));
+            const daysLeft = Math.max(0, Math.ceil((end - now) / 86400000));
+            return (
+              <>
+                {/* Progress bar */}
+                <div style={{ marginBottom: 12 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8 }}>
+                    <span style={{ fontFamily: font.ui, fontSize: 12, color: c.chalk, fontWeight: 500 }}>
+                      {new Date(authUser.subscriptionStart!).toLocaleDateString("en-IN", { day: "numeric", month: "short" })} — {new Date(authUser.subscriptionEnd!).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                    </span>
+                    <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: (authUser as any)?.subscriptionPaused ? c.gilt : daysLeft <= 3 ? c.ember : c.gilt }}>
+                      {(authUser as any)?.subscriptionPaused ? "Paused" : daysLeft > 0 ? `${daysLeft} days left` : "Expired"}
+                    </span>
+                  </div>
+                  <div style={{ height: 4, borderRadius: 2, background: "rgba(255,255,255,0.04)" }}>
+                    <div style={{ height: "100%", borderRadius: 2, background: (authUser as any)?.subscriptionPaused ? c.stone : daysLeft <= 3 ? c.ember : `linear-gradient(90deg, ${c.gilt}, ${c.giltDark})`, width: `${progress}%`, transition: "width 0.3s" }} />
+                  </div>
                 </div>
-                <div>
-                  <span style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.ivory, display: "block", marginBottom: 2 }}>
-                    {authUser.subscriptionTier.charAt(0).toUpperCase() + authUser.subscriptionTier.slice(1)} Plan
+
+                {/* Cancel / Reactivate actions */}
+                {authUser.cancelAtPeriodEnd ? (
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 16, padding: "12px 16px", borderRadius: 10, background: "rgba(196,112,90,0.03)", border: `1px solid rgba(196,112,90,0.08)` }}>
+                    <span style={{ fontFamily: font.ui, fontSize: 12, color: c.ember }}>
+                      Cancels {authUser.subscriptionEnd ? new Date(authUser.subscriptionEnd).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "at period end"}
+                    </span>
+                    <button disabled={cancelLoading} onClick={async () => {
+                      setCancelLoading(true); setCancelMsg("");
+                      try {
+                        const hdrs = await Promise.race([authHeaders(), new Promise<never>((_, rej) => setTimeout(() => rej(new Error("Auth timeout")), 5000))]);
+                        const ctrl = new AbortController();
+                        const timer = setTimeout(() => ctrl.abort(), 15000);
+                        const res = await fetch("/api/reactivate-subscription", { method: "POST", headers: hdrs, signal: ctrl.signal });
+                        clearTimeout(timer);
+                        if (res.ok) { const data = await res.json(); if (data.success) { authUpdateUser({ cancelAtPeriodEnd: false }); setCancelMsg(""); showToast("Plan reactivated"); } else { showToast(data.error || "Failed"); } }
+                        else { const d = await res.json().catch(() => ({})); showToast(d.error || `Failed (${res.status})`); }
+                      } catch (err) { const msg = err instanceof DOMException && err.name === "AbortError" ? "Request timed out." : (err instanceof Error ? err.message : "Network error."); setCancelMsg(msg); showToast(msg); } finally { setCancelLoading(false); }
+                    }}
+                      style={{ padding: "8px 20px", borderRadius: 8, border: "none", cursor: "pointer", background: c.sage, color: "#fff", fontFamily: font.ui, fontSize: 12, fontWeight: 600, opacity: cancelLoading ? 0.6 : 1, transition: "opacity 0.2s", flexShrink: 0 }}>
+                      {cancelLoading ? "Reactivating..." : "Reactivate Plan"}
+                    </button>
+                  </div>
+                ) : !confirmCancel ? (
+                  <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 12 }}>
+                    <button onClick={async () => {
+                      setCancelLoading(true);
+                      try {
+                        const hdrs = await Promise.race([authHeaders(), new Promise<never>((_, rej) => setTimeout(() => rej(new Error("Auth timeout")), 5000))]);
+                        const isPaused = !!(authUser as any)?.subscriptionPaused;
+                        const action = isPaused ? "resume" : "pause";
+                        const res = await fetch("/api/pause-subscription", { method: "POST", headers: hdrs, body: JSON.stringify({ action }) });
+                        if (res.ok) { const data = await res.json(); if (data.success) { authUpdateUser({ subscriptionPaused: action === "pause" } as any); showToast(action === "pause" ? "Subscription paused" : "Subscription resumed"); } else { showToast(data.error || "Failed"); } }
+                        else { const d = await res.json().catch(() => ({})); showToast(d.error || "Failed"); }
+                      } catch { showToast("Network error"); } finally { setCancelLoading(false); }
+                    }}
+                      style={{ padding: "8px 18px", borderRadius: 8, cursor: "pointer", background: "transparent", border: `1px solid ${c.border}`, color: c.stone, fontFamily: font.ui, fontSize: 11, fontWeight: 500, transition: "all 0.15s" }}
+                      onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(245,242,237,0.04)"; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}>
+                      {(authUser as any)?.subscriptionPaused ? "Resume Plan" : "Pause Plan"}
+                    </button>
+                    <button onClick={() => setConfirmCancel(true)}
+                      style={{ padding: "8px 18px", borderRadius: 8, cursor: "pointer", background: "transparent", border: `1px solid rgba(196,112,90,0.12)`, color: c.ember, fontFamily: font.ui, fontSize: 11, fontWeight: 500, transition: "all 0.15s" }}
+                      onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(196,112,90,0.06)"; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}>
+                      Cancel Plan
+                    </button>
+                  </div>
+                ) : (
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 16, padding: "12px 16px", borderRadius: 10, background: "rgba(196,112,90,0.03)", border: `1px solid rgba(196,112,90,0.08)` }}>
+                    <span style={{ fontFamily: font.ui, fontSize: 12, color: c.ember, lineHeight: 1.4 }}>You'll keep benefits until your plan expires.</span>
+                    <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+                      <button onClick={() => setConfirmCancel(false)}
+                        style={{ padding: "8px 16px", borderRadius: 8, cursor: "pointer", background: "transparent", border: `1px solid ${c.border}`, color: c.stone, fontFamily: font.ui, fontSize: 11, transition: "background 0.15s" }}
+                        onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(245,242,237,0.04)"; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}>
+                        Keep Plan
+                      </button>
+                      <button disabled={cancelLoading} onClick={async () => {
+                        setCancelLoading(true); setCancelMsg("");
+                        try {
+                          const hdrs = await Promise.race([authHeaders(), new Promise<never>((_, rej) => setTimeout(() => rej(new Error("Auth timeout")), 5000))]);
+                          const ctrl = new AbortController();
+                          const timer = setTimeout(() => ctrl.abort(), 15000);
+                          const res = await fetch("/api/cancel-subscription", { method: "POST", headers: hdrs, signal: ctrl.signal });
+                          clearTimeout(timer);
+                          if (res.ok) { const data = await res.json(); if (data.success) { authUpdateUser({ cancelAtPeriodEnd: true }); setCancelMsg(""); setConfirmCancel(false); showToast("Plan will cancel at end of period"); } else { setCancelMsg(data.error || "Failed."); showToast(data.error || "Cancellation failed"); } }
+                          else { const d = await res.json().catch(() => ({})); setCancelMsg(d.error || `Error (${res.status}).`); showToast(d.error || "Cancellation failed"); }
+                        } catch (err) { const msg = err instanceof DOMException && err.name === "AbortError" ? "Request timed out." : "Network error."; setCancelMsg(msg); showToast(msg); } finally { setCancelLoading(false); }
+                      }}
+                        style={{ padding: "8px 18px", borderRadius: 8, border: "none", cursor: "pointer", background: c.ember, color: "#fff", fontFamily: font.ui, fontSize: 11, fontWeight: 600, opacity: cancelLoading ? 0.6 : 1 }}>
+                        {cancelLoading ? "Cancelling..." : "Yes, Cancel"}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </>
+            );
+          })()}
+
+          {/* Payment method management link */}
+          {authUser?.subscriptionTier && authUser.subscriptionTier !== "free" && (
+            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 12 }}>
+              <a href="https://razorpay.com/support/#request/merchant" target="_blank" rel="noopener noreferrer"
+                style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 500, color: c.stone, textDecoration: "none", display: "flex", alignItems: "center", gap: 6, transition: "color 0.15s" }}
+                onMouseEnter={(e) => { e.currentTarget.style.color = c.gilt; }}
+                onMouseLeave={(e) => { e.currentTarget.style.color = c.stone; }}>
+                <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+                Manage Payment Method
+                <svg aria-hidden="true" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+              </a>
+            </div>
+          )}
+
+          {(!authUser?.subscriptionTier || authUser.subscriptionTier === "free") && (
+            <p style={{ fontFamily: font.ui, fontSize: 13, color: c.stone, margin: 0, lineHeight: 1.5 }}>Free plan — 3 total sessions. Upgrade for unlimited practice.</p>
+          )}
+        </div>
+        {cancelMsg && <p style={{ fontFamily: font.ui, fontSize: 12, color: cancelMsg.includes("ancelled") ? c.sage : c.ember, marginTop: -24, marginBottom: 24 }}>{cancelMsg}</p>}
+
+        {/* Billing History */}
+        <label style={{ ...labelStyle, marginBottom: 14 }}>Billing History</label>
+        <div style={{ borderRadius: 14, background: "rgba(6,6,7,0.5)", border: `1px solid ${c.border}`, overflow: "hidden", marginBottom: 32 }}>
+          {paymentsLoading ? (
+            <div style={{ padding: "32px 24px", textAlign: "center" }}>
+              <span style={{ fontFamily: font.ui, fontSize: 13, color: c.stone }}>Loading payment history...</span>
+            </div>
+          ) : payments.length > 0 ? (
+            <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
+              <div style={{ minWidth: 480 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 80px 100px 70px", gap: 8, padding: "12px 20px", borderBottom: `1px solid ${c.border}` }}>
+                {["Date", "Period", "Plan", "Amount", "Status"].map(h => (
+                  <span key={h} style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, color: c.stone, textTransform: "uppercase", letterSpacing: "0.06em" }}>{h}</span>
+                ))}
+              </div>
+              {payments.map((p, i) => (
+                <div key={p.id} style={{ display: "grid", gridTemplateColumns: "1fr 1fr 80px 100px 70px", gap: 8, padding: "14px 20px", borderBottom: i < payments.length - 1 ? `1px solid ${c.border}` : "none", alignItems: "center" }}>
+                  <span style={{ fontFamily: font.ui, fontSize: 12, color: c.chalk }}>
+                    {new Date(p.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
                   </span>
                   <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>
-                    {new Date(authUser.subscriptionStart).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
-                    {authUser.subscriptionEnd && ` — ${new Date(authUser.subscriptionEnd).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}`}
+                    {p.subscription_start ? new Date(p.subscription_start).toLocaleDateString("en-IN", { day: "numeric", month: "short" }) : "\u2014"}
+                    {p.subscription_end ? ` \u2013 ${new Date(p.subscription_end).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}` : ""}
+                  </span>
+                  <span style={{ fontFamily: font.ui, fontSize: 12, color: c.ivory, fontWeight: 500 }}>
+                    {p.tier ? p.tier.charAt(0).toUpperCase() + p.tier.slice(1) : p.plan}
+                  </span>
+                  <span style={{ fontFamily: font.mono, fontSize: 12, color: c.chalk }}>
+                    \u20B9{Math.round(p.amount / 100)}
+                  </span>
+                  <span style={{
+                    fontFamily: font.ui, fontSize: 10, fontWeight: 600, padding: "3px 8px", borderRadius: 6, display: "inline-block", textAlign: "center",
+                    color: p.status === "completed" ? c.sage : c.ember,
+                    background: p.status === "completed" ? "rgba(122,158,126,0.08)" : "rgba(196,112,90,0.08)",
+                  }}>
+                    {p.status === "completed" ? "Paid" : p.status}
                   </span>
                 </div>
+              ))}
               </div>
-              <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 500, color: authUser.cancelAtPeriodEnd ? c.ember : c.sage, background: authUser.cancelAtPeriodEnd ? "rgba(196,112,90,0.08)" : "rgba(122,158,126,0.08)", padding: "3px 10px", borderRadius: 5 }}>{authUser.cancelAtPeriodEnd ? "Cancelled" : "Paid"}</span>
             </div>
           ) : (
-            <div style={{ padding: "20px 18px", textAlign: "center" }}>
-              <span style={{ fontFamily: font.ui, fontSize: 12, color: c.stone }}>No payments yet. Upgrade your plan to see billing history here.</span>
+            <div style={{ padding: "32px 24px", textAlign: "center" }}>
+              <span style={{ fontFamily: font.ui, fontSize: 13, color: c.stone }}>No payment history yet</span>
             </div>
           )}
         </div>
 
         {/* Data & Privacy */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 28 }} className="settings-form-grid">
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 16px", borderRadius: 8, background: c.obsidian, border: `1px solid ${c.border}` }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        <label style={{ ...labelStyle, marginBottom: 14 }}>Data & Privacy</label>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 32 }} className="settings-form-grid">
+          <div style={{
+            display: "flex", alignItems: "center", justifyContent: "space-between",
+            padding: "16px 20px", borderRadius: 12,
+            background: "rgba(6,6,7,0.5)", border: `1px solid ${c.border}`,
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <div style={{ width: 32, height: 32, borderRadius: 8, background: "rgba(122,158,126,0.06)", border: `1px solid rgba(122,158,126,0.12)`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+              </div>
               <div>
-                <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: c.ivory, display: "block" }}>Resume data</span>
-                <span style={{ fontFamily: font.ui, fontSize: 10, color: c.stone }}>Encrypted (AES-256)</span>
+                <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: c.ivory, display: "block", marginBottom: 1 }}>Resume data</span>
+                <span style={{ fontFamily: font.ui, fontSize: 10, color: c.stone }}>Row-level security</span>
               </div>
             </div>
-            <span style={{ fontFamily: font.ui, fontSize: 11, color: c.sage, fontWeight: 500 }}>Protected</span>
+            <span style={{ fontFamily: font.mono, fontSize: 10, color: c.sage, fontWeight: 600, letterSpacing: "0.04em", textTransform: "uppercase" }}>Protected</span>
           </div>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 16px", borderRadius: 8, background: c.obsidian, border: `1px solid ${c.border}` }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          <div style={{
+            display: "flex", alignItems: "center", justifyContent: "space-between",
+            padding: "16px 20px", borderRadius: 12,
+            background: "rgba(6,6,7,0.5)", border: `1px solid ${c.border}`,
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <div style={{ width: 32, height: 32, borderRadius: 8, background: "rgba(212,179,127,0.06)", border: `1px solid rgba(212,179,127,0.12)`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              </div>
               <div>
-                <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: c.ivory, display: "block" }}>Export all data</span>
+                <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: c.ivory, display: "block", marginBottom: 1 }}>Export all data</span>
                 <span style={{ fontFamily: font.ui, fontSize: 10, color: c.stone }}>Sessions & transcripts</span>
               </div>
             </div>
             <button disabled={exporting} onClick={async () => { setExporting(true); try { await onExportCSV(); } finally { setExporting(false); } }}
-              style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 500, color: c.gilt, background: "rgba(212,179,127,0.06)", border: `1px solid rgba(212,179,127,0.15)`, borderRadius: 10, padding: "6px 14px", cursor: exporting ? "default" : "pointer", opacity: exporting ? 0.6 : 1 }}
-              onMouseEnter={(e) => { if (!exporting) e.currentTarget.style.background = "rgba(212,179,127,0.12)"; }}
+              style={{
+                fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.gilt, letterSpacing: "0.02em",
+                background: "rgba(212,179,127,0.06)", border: `1px solid rgba(212,179,127,0.15)`,
+                borderRadius: 8, padding: "7px 16px", cursor: exporting ? "default" : "pointer",
+                opacity: exporting ? 0.6 : 1, transition: "all 0.15s",
+              }}
+              onMouseEnter={(e) => { if (!exporting) e.currentTarget.style.background = "rgba(212,179,127,0.1)"; }}
               onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(212,179,127,0.06)"; }}>
               {exporting ? "Exporting..." : "Export CSV"}
             </button>
           </div>
         </div>
 
-        {/* Log out & Delete */}
-        <div style={{ paddingTop: 20, borderTop: `1px solid ${c.border}` }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-            <div>
-              <span style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.ivory, display: "block", marginBottom: 2 }}>Log out</span>
-              <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>Sign out on this device</span>
-            </div>
-            <button onClick={onLogout} style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: c.ember, background: "transparent", border: `1px solid rgba(196,112,90,0.18)`, borderRadius: 10, padding: "8px 20px", cursor: "pointer", transition: "background 0.15s" }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(196,112,90,0.08)"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}>
-              Log out
-            </button>
-          </div>
+        <Divider />
 
-          <div style={{ borderTop: `1px solid ${c.border}`, paddingTop: 16, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <div>
-              <span style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.ivory, display: "block", marginBottom: 2 }}>Delete account</span>
-              <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>Permanently remove all data</span>
-            </div>
-            {!confirmDelete ? (
-              <button onClick={() => { setConfirmDelete(true); setDeleteEmailInput(""); setDeleteMsg(""); }}
-                style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: c.ember, background: "transparent", border: `1px solid rgba(196,112,90,0.18)`, borderRadius: 10, padding: "8px 20px", cursor: "pointer", transition: "background 0.15s" }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(196,112,90,0.08)"; }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}>
-                Delete Account
-              </button>
-            ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "flex-end" }}>
-                <input type="email" value={deleteEmailInput} onChange={(e) => setDeleteEmailInput(e.target.value)}
-                  placeholder="Type your email to confirm" aria-label="Confirm email for account deletion"
-                  style={{ fontFamily: font.ui, fontSize: 12, color: c.chalk, background: c.obsidian, border: `1px solid rgba(196,112,90,0.2)`, borderRadius: 10, padding: "8px 12px", outline: "none", minWidth: 200 }}
-                  onFocus={(e) => { e.currentTarget.style.borderColor = c.ember; }}
-                  onBlur={(e) => { e.currentTarget.style.borderColor = "rgba(196,112,90,0.2)"; }} />
-                <div style={{ display: "flex", gap: 8 }}>
-                  <button onClick={() => { setConfirmDelete(false); setDeleteEmailInput(""); }}
-                    style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, background: "transparent", border: `1px solid ${c.border}`, borderRadius: 10, padding: "8px 14px", cursor: "pointer", transition: "background 0.15s" }}
-                    onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(245,242,237,0.06)"; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}>
-                    Cancel
-                  </button>
-                  <button disabled={deleteLoading || deleteEmailInput.toLowerCase() !== (authUser?.email || "").toLowerCase()} onClick={async () => {
-                    setDeleteLoading(true); setDeleteMsg("");
-                    try {
-                      const hdrs = await Promise.race([authHeaders(), new Promise<never>((_, rej) => setTimeout(() => rej(new Error("Auth timeout")), 5000))]);
-                      const ctrl = new AbortController();
-                      const t = setTimeout(() => ctrl.abort(), 15000);
-                      const res = await fetch("/api/delete-account", { method: "POST", headers: hdrs, signal: ctrl.signal });
-                      clearTimeout(t);
-                      if (res.ok || res.status === 207) { localStorage.clear(); onLogout(); }
-                      else { const d = await res.json().catch(() => ({})); setDeleteMsg(d.error || "Failed. Try again."); setDeleteLoading(false); }
-                    } catch (err) {
-                      setDeleteMsg(err instanceof DOMException && err.name === "AbortError" ? "Timed out. Try again." : "Network error.");
-                      setDeleteLoading(false);
-                    }
-                  }}
-                    style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: "#fff", background: c.ember, border: "none", borderRadius: 10, padding: "8px 20px", cursor: "pointer", opacity: (deleteLoading || deleteEmailInput.toLowerCase() !== (authUser?.email || "").toLowerCase()) ? 0.4 : 1 }}>
-                    {deleteLoading ? "Deleting..." : "Confirm Delete"}
-                  </button>
-                </div>
-              </div>
-            )}
+        {/* Log out */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+          <div>
+            <span style={{ fontFamily: font.ui, fontSize: 14, fontWeight: 600, color: c.ivory, display: "block", marginBottom: 3 }}>Log out</span>
+            <span style={{ fontFamily: font.ui, fontSize: 12, color: c.stone }}>Sign out on this device</span>
           </div>
-          {deleteMsg && <p style={{ fontFamily: font.ui, fontSize: 12, color: c.ember, marginTop: 8 }}>{deleteMsg}</p>}
+          <button onClick={onLogout} style={{
+            fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: c.chalk, letterSpacing: "0.02em",
+            background: "rgba(245,242,237,0.04)", border: `1px solid ${c.border}`,
+            borderRadius: 10, padding: "10px 24px", cursor: "pointer", transition: "all 0.15s",
+          }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(245,242,237,0.06)"; e.currentTarget.style.color = c.ivory; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(245,242,237,0.04)"; e.currentTarget.style.color = c.chalk; }}>
+            Log out
+          </button>
         </div>
+
+        {/* Delete account */}
+        <div style={{
+          padding: "20px 24px", borderRadius: 12, marginTop: 12,
+          background: "rgba(196,112,90,0.02)", border: `1px solid rgba(196,112,90,0.08)`,
+          display: "flex", justifyContent: "space-between", alignItems: "center",
+        }}>
+          <div>
+            <span style={{ fontFamily: font.ui, fontSize: 14, fontWeight: 600, color: c.ember, display: "block", marginBottom: 3 }}>Delete account</span>
+            <span style={{ fontFamily: font.ui, fontSize: 12, color: c.stone }}>Permanently remove all data. This cannot be undone.</span>
+          </div>
+          {!confirmDelete ? (
+            <button onClick={() => { setConfirmDelete(true); setDeleteEmailInput(""); setDeleteMsg(""); }}
+              style={{
+                fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: c.ember, letterSpacing: "0.02em",
+                background: "transparent", border: `1px solid rgba(196,112,90,0.2)`,
+                borderRadius: 10, padding: "10px 24px", cursor: "pointer", transition: "all 0.15s", flexShrink: 0,
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(196,112,90,0.06)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}>
+              Delete Account
+            </button>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 10, alignItems: "flex-end", flexShrink: 0 }}>
+              <input type="email" value={deleteEmailInput} onChange={(e) => setDeleteEmailInput(e.target.value)}
+                placeholder="Type your email to confirm" aria-label="Confirm email for account deletion"
+                style={{
+                  fontFamily: font.ui, fontSize: 12, color: c.chalk, background: c.obsidian,
+                  border: `1px solid rgba(196,112,90,0.2)`, borderRadius: 10, padding: "10px 14px", outline: "none", minWidth: 220,
+                  transition: "border-color 0.2s, box-shadow 0.2s",
+                }}
+                onFocus={(e) => { e.currentTarget.style.borderColor = c.ember; e.currentTarget.style.boxShadow = "0 0 0 3px rgba(196,112,90,0.08)"; }}
+                onBlur={(e) => { e.currentTarget.style.borderColor = "rgba(196,112,90,0.2)"; e.currentTarget.style.boxShadow = "none"; }} />
+              <div style={{ display: "flex", gap: 10 }}>
+                <button onClick={() => { setConfirmDelete(false); setDeleteEmailInput(""); }}
+                  style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: c.stone, background: "transparent", border: `1px solid ${c.border}`, borderRadius: 10, padding: "9px 18px", cursor: "pointer", transition: "background 0.15s" }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(245,242,237,0.04)"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}>
+                  Cancel
+                </button>
+                <button disabled={deleteLoading || deleteEmailInput.toLowerCase() !== (authUser?.email || "").toLowerCase()} onClick={async () => {
+                  setDeleteLoading(true); setDeleteMsg("");
+                  try {
+                    const hdrs = await Promise.race([authHeaders(), new Promise<never>((_, rej) => setTimeout(() => rej(new Error("Auth timeout")), 5000))]);
+                    const ctrl = new AbortController();
+                    const t = setTimeout(() => ctrl.abort(), 15000);
+                    const res = await fetch("/api/delete-account", { method: "POST", headers: hdrs, signal: ctrl.signal });
+                    clearTimeout(t);
+                    if (res.ok || res.status === 207) { localStorage.clear(); onLogout(); }
+                    else { const d = await res.json().catch(() => ({})); setDeleteMsg(d.error || "Failed. Try again."); setDeleteLoading(false); }
+                  } catch (err) {
+                    setDeleteMsg(err instanceof DOMException && err.name === "AbortError" ? "Timed out. Try again." : "Network error.");
+                    setDeleteLoading(false);
+                  }
+                }}
+                  style={{
+                    fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: "#fff", background: c.ember,
+                    border: "none", borderRadius: 10, padding: "9px 24px", cursor: "pointer",
+                    opacity: (deleteLoading || deleteEmailInput.toLowerCase() !== (authUser?.email || "").toLowerCase()) ? 0.4 : 1,
+                    transition: "opacity 0.15s",
+                  }}>
+                  {deleteLoading ? "Deleting..." : "Confirm Delete"}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+        {deleteMsg && <p style={{ fontFamily: font.ui, fontSize: 12, color: c.ember, marginTop: 12 }}>{deleteMsg}</p>}
       </div>}
     </div>
   );

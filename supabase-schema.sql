@@ -18,10 +18,17 @@ create table if not exists profiles (
   resume_text text default '',
   practice_timestamps jsonb default '[]'::jsonb,
   avatar_url text default '',
-  subscription_tier text default 'free' check (subscription_tier in ('free', 'starter', 'pro', 'team')),
+  subscription_tier text default 'free' check (subscription_tier in ('free', 'starter', 'pro')),
   subscription_start timestamptz,
   subscription_end timestamptz,
   cancel_at_period_end boolean default false,
+  subscription_paused boolean default false,
+  razorpay_payment_id text,
+  razorpay_subscription_id text,
+  has_completed_onboarding boolean default false,
+  preferred_session_length integer,
+  interview_types jsonb default '[]'::jsonb,
+  resume_data jsonb,
   created_at timestamptz default now()
 );
 
@@ -55,6 +62,34 @@ create table if not exists calendar_events (
   created_at timestamptz default now()
 );
 
+-- 4. Feedback
+create table if not exists feedback (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references profiles(id) on delete cascade not null,
+  session_id text references sessions(id) on delete cascade not null,
+  rating text check (rating in ('helpful', 'too_harsh', 'too_generous', 'inaccurate')) not null,
+  comment text default '',
+  session_score integer default 0,
+  session_type text default '',
+  created_at timestamptz default now()
+);
+
+-- 5. Payments
+create table if not exists payments (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references profiles(id) on delete cascade not null,
+  razorpay_payment_id text unique not null,
+  razorpay_order_id text default '',
+  plan text not null,
+  tier text not null,
+  amount integer not null,
+  currency text default 'INR',
+  status text default 'completed',
+  subscription_start timestamptz,
+  subscription_end timestamptz,
+  created_at timestamptz default now()
+);
+
 -- ═══════════════════════════════════════════════════════
 -- Row Level Security (RLS)
 -- Users can only access their own data
@@ -63,6 +98,8 @@ create table if not exists calendar_events (
 alter table profiles enable row level security;
 alter table sessions enable row level security;
 alter table calendar_events enable row level security;
+alter table feedback enable row level security;
+alter table payments enable row level security;
 
 -- Profiles: users can read/update their own profile
 create policy "Users can view own profile" on profiles
@@ -89,6 +126,20 @@ create policy "Users can delete own events" on calendar_events
   for delete using (auth.uid() = user_id);
 create policy "Users can update own events" on calendar_events
   for update using (auth.uid() = user_id);
+
+-- Feedback: users can CRUD their own feedback
+create policy "Users can view own feedback" on feedback
+  for select using (auth.uid() = user_id);
+create policy "Users can insert own feedback" on feedback
+  for insert with check (auth.uid() = user_id);
+create policy "Users can update own feedback" on feedback
+  for update using (auth.uid() = user_id);
+create policy "Users can delete own feedback" on feedback
+  for delete using (auth.uid() = user_id);
+
+-- Payments: users can only view their own payments (insert via service role only)
+create policy "Users can view own payments" on payments
+  for select using (auth.uid() = user_id);
 
 -- ═══════════════════════════════════════════════════════
 -- Auto-create profile on signup

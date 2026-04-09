@@ -100,3 +100,30 @@ test.describe("Auth Redirects", () => {
     await expect(page).toHaveURL(/\/login/, { timeout: 5000 });
   });
 });
+
+test.describe("Auth — Form Validation", () => {
+  test("signup rejects short password", async ({ page }) => {
+    await page.goto("/signup");
+    await page.locator("#signup-name").fill("Test User");
+    await page.locator("#signup-email").fill("test@example.com");
+    const pw = page.locator("input[type=password]").first();
+    await pw.fill("abc");
+    await expect(page.getByText("Weak")).toBeVisible({ timeout: 3000 });
+  });
+
+  test("login form shows error on empty submit", async ({ page }) => {
+    await page.goto("/login");
+    await page.locator("button[type=submit]").click();
+    // HTML5 validation should prevent submission
+    const email = page.locator("#signup-email");
+    await expect(email).toBeFocused();
+  });
+
+  test("signup and login pages are navigable between each other", async ({ page }) => {
+    await page.goto("/signup");
+    await page.getByText("Log in").click();
+    await expect(page).toHaveURL(/\/login/);
+    await page.getByText("Sign up").click();
+    await expect(page).toHaveURL(/\/signup/);
+  });
+});

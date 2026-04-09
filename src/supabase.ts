@@ -80,6 +80,7 @@ export interface Profile {
   cancel_at_period_end: boolean;
   has_completed_onboarding: boolean;
   razorpay_payment_id: string | null;
+  razorpay_subscription_id: string | null;
   created_at: string;
 }
 
@@ -139,8 +140,8 @@ export async function upsertProfile(profile: Partial<Profile> & { id: string }) 
     const missingCol = result.error.message.match(/Could not find the '(\w+)' column/)?.[1];
     if (missingCol && missingCol in updates) {
       console.warn(`[supabase] column '${missingCol}' missing, retrying without it`);
-      const { [missingCol]: _removed, ...safeUpdates } = updates;
-      const { [missingCol]: _removed2, ...safeProfile } = profile;
+      const { [missingCol]: _removed, ...safeUpdates } = updates as Record<string, unknown>;
+      const { [missingCol]: _removed2, ...safeProfile } = profile as Record<string, unknown>;
       if (Object.keys(safeUpdates).length > 0) {
         const retryResult = await client.from("profiles").update(safeUpdates).eq("id", id);
         if (retryResult.error) {
@@ -225,6 +226,39 @@ export async function getSessionFeedback(sessionId: string, userId: string): Pro
   return data;
 }
 
+/* ─── Payment history helpers ─── */
+
+export interface PaymentRecord {
+  id: string;
+  user_id: string;
+  razorpay_payment_id: string;
+  razorpay_order_id: string;
+  plan: string;
+  tier: string;
+  amount: number;
+  currency: string;
+  status: string;
+  subscription_start: string;
+  subscription_end: string;
+  created_at: string;
+}
+
+export async function getPaymentHistory(userId: string): Promise<PaymentRecord[]> {
+  if (!supabaseConfigured) return [];
+  const client = await getSupabase();
+  const { data, error } = await client
+    .from("payments")
+    .select("*")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false })
+    .limit(50);
+  if (error) {
+    console.warn("[supabase] getPaymentHistory error:", error.message);
+    return [];
+  }
+  return (data || []) as PaymentRecord[];
+}
+
 /* ─── Calendar helpers ─── */
 
 export async function getCalendarEvents(userId: string): Promise<CalendarEvent[]> {
@@ -239,7 +273,47 @@ export async function getCalendarEvents(userId: string): Promise<CalendarEvent[]
 
 export async function saveCalendarEvent(event: Omit<CalendarEvent, "created_at">) {
   const client = await getSupabase();
-  return client.from("calendar_events").insert(event);
+  const result = await client.from("calendar_events").insert(event);
+
+  // Push to Google Calendar if connected (best-effort, non-blocking)
+  const googleToken = getGoogleProviderToken();
+  if (googleToken && event.title && event.date) {
+    pushEventToGoogleCalendar(googleToken, event).catch(() => {});
+  }
+
+  return result;
+}
+
+/** Push a HireStepX event to Google Calendar (two-way sync) */
+async function pushEventToGoogleCalendar(
+  token: string,
+  event: { title: string; date: string; time?: string; notes?: string; company?: string },
+): Promise<void> {
+  const startDateTime = event.time
+    ? `${event.date}T${event.time}:00`
+    : `${event.date}T09:00:00`;
+  const endDate = new Date(startDateTime);
+  endDate.setHours(endDate.getHours() + 1);
+
+  const calEvent = {
+    summary: event.title + (event.company ? ` — ${event.company}` : ""),
+    description: (event.notes || "") + "\n\nCreated by HireStepX",
+    start: { dateTime: startDateTime, timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone },
+    end: { dateTime: endDate.toISOString().replace("Z", ""), timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone },
+  };
+
+  const res = await fetch("https://www.googleapis.com/calendar/v3/calendars/primary/events", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify(calEvent),
+  });
+
+  if (res.status === 401 || res.status === 403) {
+    clearGoogleProviderToken();
+  }
+  if (!res.ok) {
+    console.warn("[calendar] Failed to push event to Google Calendar:", res.status);
+  }
 }
 
 export async function deleteCalendarEvent(id: string, userId: string) {
@@ -250,11 +324,11 @@ export async function deleteCalendarEvent(id: string, userId: string) {
 /* ─── Google Calendar Sync ─── */
 
 export function getGoogleProviderToken(): string | null {
-  try { return sessionStorage.getItem("hirestepx_google_token"); } catch { return null; }
+  try { return localStorage.getItem("hirestepx_google_token"); } catch { return null; }
 }
 
 export function clearGoogleProviderToken() {
-  try { sessionStorage.removeItem("hirestepx_google_token"); } catch {}
+  try { localStorage.removeItem("hirestepx_google_token"); } catch {}
 }
 
 function extractCompany(summary: string): string {
@@ -281,7 +355,7 @@ export async function fetchGoogleCalendarEvents(token: string): Promise<Calendar
   const maxDate = new Date(Date.now() + 90 * 86400000).toISOString();
   const url = `https://www.googleapis.com/calendar/v3/calendars/primary/events?` +
     `timeMin=${encodeURIComponent(now)}&timeMax=${encodeURIComponent(maxDate)}` +
-    `&singleEvents=true&orderBy=startTime&maxResults=50&q=interview`;
+    `&singleEvents=true&orderBy=startTime&maxResults=50`;
 
   const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
 
@@ -295,8 +369,13 @@ export async function fetchGoogleCalendarEvents(token: string): Promise<Calendar
 
   const data = await res.json();
   const items: any[] = data.items || [];
+  const interviewKeywords = /interview|round|screen|onsite|recruiter|hiring|placement|assessment|walkthrough/i;
+  const filtered = items.filter((item: any) => {
+    const text = `${item.summary || ""} ${item.description || ""}`;
+    return interviewKeywords.test(text);
+  });
 
-  return items.map((item: any) => ({
+  return filtered.map((item: any) => ({
     id: "",
     user_id: "",
     title: item.summary || "Interview",

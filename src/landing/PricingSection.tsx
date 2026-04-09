@@ -13,7 +13,7 @@ export function PricingSection() {
       <div style={{ textAlign: "center", marginBottom: 80 }}>
         <p style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: c.gilt, marginBottom: 16 }}>Pricing</p>
         <h2 className="text-glow" style={{ fontFamily: font.display, fontSize: "clamp(32px, 4vw, 48px)", fontWeight: 400, letterSpacing: "-0.02em", color: c.ivory, lineHeight: 1.15, marginBottom: 16 }}>Transparent. No surprises.</h2>
-        <p style={{ fontFamily: font.ui, fontSize: 15, color: c.stone, lineHeight: 1.6, maxWidth: 460, margin: "0 auto" }}>Start free. Upgrade when you're ready. No auto-renewal traps.</p>
+        <p style={{ fontFamily: font.ui, fontSize: 15, color: c.stone, lineHeight: 1.6, maxWidth: 460, margin: "0 auto" }}>Start free. Upgrade when you're ready. Cancel anytime.</p>
       </div>
       <div className="pricing-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16, alignItems: "start" }}>
         {plans.map((p, i) => <PricingCard key={p.name} plan={p} delay={i} />)}
@@ -40,17 +40,40 @@ function PricingCard({ plan, delay }: { plan: (typeof plans)[0]; delay: number }
     setLoading(true);
     setError("");
     try {
-      const res = await fetch("/api/create-order", {
+      // Try subscription (auto-renewal) first, fall back to one-time order
+      let useSubscription = false;
+      let data: any;
+
+      const authHdrs = await import("../supabase").then(m => m.authHeaders());
+      const subRes = await fetch("/api/create-subscription", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: authHdrs,
         body: JSON.stringify({ plan: plan.planId, userId: user?.id, email: user?.email }),
       });
-      const data = await res.json();
-      if (!data.orderId) {
-        setError(data.error || "Checkout unavailable. Please try again.");
+      const subData = await subRes.json();
+      if (subData.subscriptionId) {
+        useSubscription = true;
+        data = subData;
+      } else if (subRes.status === 503) {
+        // Subscription plans not configured — show error
+        setError(subData.error || "Subscriptions are temporarily unavailable. Please try again later.");
         setLoading(false);
         return;
+      } else {
+        // Fall back to one-time order for non-config errors
+        const orderRes = await fetch("/api/create-order", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ plan: plan.planId, userId: user?.id, email: user?.email }),
+        });
+        data = await orderRes.json();
+        if (!data.orderId) {
+          setError(data.error || "Checkout unavailable. Please try again.");
+          setLoading(false);
+          return;
+        }
       }
+
       // Dynamically load Razorpay if not already loaded
       if (!(window as any).Razorpay) {
         try {
@@ -68,21 +91,53 @@ function PricingCard({ plan, delay }: { plan: (typeof plans)[0]; delay: number }
         }
       }
       {
-        const options = {
+        const options: Record<string, unknown> = {
           key: data.keyId,
-          amount: data.amount,
-          currency: data.currency,
           name: "HireStepX",
           description: data.description,
-          order_id: data.orderId,
           prefill: { email: user?.email || "", name: user?.name || "" },
           theme: { color: "#D4B37F" },
-          handler: async (response: { razorpay_payment_id: string; razorpay_order_id: string; razorpay_signature: string }) => {
+          modal: { ondismiss: () => setLoading(false) },
+        };
+
+        if (useSubscription) {
+          options.subscription_id = data.subscriptionId;
+          options.handler = async (response: { razorpay_payment_id: string; razorpay_subscription_id: string; razorpay_signature: string }) => {
             try {
-              const authHeaders = await import("../supabase").then(m => m.authHeaders());
+              const authHdrs = await import("../supabase").then(m => m.authHeaders());
               const verifyRes = await fetch("/api/verify-payment", {
                 method: "POST",
-                headers: authHeaders,
+                headers: authHdrs,
+                body: JSON.stringify({
+                  razorpay_payment_id: response.razorpay_payment_id,
+                  razorpay_subscription_id: response.razorpay_subscription_id,
+                  razorpay_signature: response.razorpay_signature,
+                  plan: plan.planId,
+                }),
+              });
+              const verifyData = await verifyRes.json();
+              if (verifyData.success) {
+                updateUser({ subscriptionTier: verifyData.subscriptionTier, subscriptionStart: verifyData.subscriptionStart, subscriptionEnd: verifyData.subscriptionEnd });
+                navigate("/dashboard?payment=success");
+              } else {
+                setError(verifyData.error || "Payment verification failed.");
+                setLoading(false);
+              }
+            } catch {
+              setError("Payment verification failed. Contact support.");
+              setLoading(false);
+            }
+          };
+        } else {
+          options.amount = data.amount;
+          options.currency = data.currency;
+          options.order_id = data.orderId;
+          options.handler = async (response: { razorpay_payment_id: string; razorpay_order_id: string; razorpay_signature: string }) => {
+            try {
+              const authHdrs = await import("../supabase").then(m => m.authHeaders());
+              const verifyRes = await fetch("/api/verify-payment", {
+                method: "POST",
+                headers: authHdrs,
                 body: JSON.stringify({
                   razorpay_order_id: response.razorpay_order_id,
                   razorpay_payment_id: response.razorpay_payment_id,
@@ -102,9 +157,9 @@ function PricingCard({ plan, delay }: { plan: (typeof plans)[0]; delay: number }
               setError("Payment verification failed. Contact support.");
               setLoading(false);
             }
-          },
-          modal: { ondismiss: () => setLoading(false) },
-        };
+          };
+        }
+
         const rzp = new (window as any).Razorpay(options);
         rzp.on("payment.failed", () => { setError("Payment failed. Please try again."); setLoading(false); });
         rzp.open();
