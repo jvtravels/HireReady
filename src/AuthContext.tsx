@@ -431,7 +431,7 @@ export function RequireAuth({ children }: { children: ReactNode }) {
         return;
       }
       navigate("/login", { replace: true, state: { from: location.pathname } });
-    } else if (user && !user.hasCompletedOnboarding && !["/onboarding", "/interview", "/onboarding/complete"].includes(location.pathname)) {
+    } else if (user && !user.hasCompletedOnboarding && !["/onboarding", "/interview", "/onboarding/complete"].includes(location.pathname) && !location.pathname.startsWith("/session/") && location.pathname !== "/dashboard") {
       navigate("/onboarding", { replace: true });
     }
   }, [isLoggedIn, loading, user, navigate, location.pathname]);
@@ -446,7 +446,7 @@ export function RequireAuth({ children }: { children: ReactNode }) {
     </div>
   );
   if (!isLoggedIn) return null;
-  if (user && !user.hasCompletedOnboarding && !["/onboarding", "/interview", "/onboarding/complete"].includes(location.pathname)) return null;
+  if (user && !user.hasCompletedOnboarding && !["/onboarding", "/interview", "/onboarding/complete"].includes(location.pathname) && !location.pathname.startsWith("/session/") && location.pathname !== "/dashboard") return null;
 
   return <>{children}</>;
 }
