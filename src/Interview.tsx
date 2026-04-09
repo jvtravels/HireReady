@@ -257,7 +257,7 @@ export default function Interview() {
     }
   }
 
-  const fallbackScript = isMiniMode ? getMiniScript(user) : getScript(interviewType, interviewDifficulty, user);
+  const fallbackScript = isMiniMode ? getMiniScript(user, targetCompany) : getScript(interviewType, interviewDifficulty, user);
   const [interviewScript, setInterviewScript] = useState<InterviewStep[]>(
     draftRef.current?.script && draftRef.current.script.length > 0 ? draftRef.current.script : fallbackScript
   );

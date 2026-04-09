@@ -85,12 +85,14 @@ export const scriptsByType: Record<string, InterviewStep[]> = {
 export const defaultScript = scriptsByType.behavioral;
 
 /** Generate a 3-question quick onboarding interview script */
-export function getMiniScript(user: User | null): InterviewStep[] {
+export function getMiniScript(user: User | null, company?: string): InterviewStep[] {
   const name = user?.name?.split(" ")[0] || "";
   const role = user?.targetRole || "the role";
+  const targetCompany = company || user?.targetCompany || "";
   const hasResume = !!user?.resumeFileName;
   const latestRole = user?.resumeData?.experience?.[0];
 
+  const companyContext = targetCompany ? ` at ${targetCompany}` : "";
   const resumeContext = hasResume && latestRole
     ? ` I've reviewed your resume — I can see you were ${latestRole.title}${latestRole.company ? ` at ${latestRole.company}` : ""}. I'll reference your background in my questions.`
     : "";
@@ -108,7 +110,7 @@ export function getMiniScript(user: User | null): InterviewStep[] {
     : `If you joined a new team tomorrow as a ${role} and found that velocity had dropped 40% over the last quarter, what would be your first three steps?`;
 
   return [
-    { type: "intro", aiText: `Hi${name ? ` ${name}` : ""}! Welcome to HireStepX. This is a quick 3-question practice round for the ${role} position.${resumeContext} I'll ask you real interview questions and give you a score at the end. Ready? Let's go.`, thinkingDuration: 800, speakingDuration: 5000, waitForUser: true },
+    { type: "intro", aiText: `Hi${name ? ` ${name}` : ""}! Welcome to HireStepX. This is a quick 3-question practice round for the ${role} position${companyContext}.${resumeContext} I'll ask you real interview questions and give you a score at the end. Ready? Let's go.`, thinkingDuration: 800, speakingDuration: 5000, waitForUser: true },
     { type: "question", aiText: q1, thinkingDuration: 1200, speakingDuration: 4000, waitForUser: true, scoreNote: "STAR structure, decision-making clarity, outcome" },
     { type: "question", aiText: q2, thinkingDuration: 1200, speakingDuration: 3500, waitForUser: true, scoreNote: "Collaboration, communication, conflict resolution" },
     { type: "question", aiText: q3, thinkingDuration: 1200, speakingDuration: 4000, waitForUser: true, scoreNote: "Analytical thinking, prioritization, leadership approach" },
