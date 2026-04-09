@@ -730,15 +730,17 @@ export default function Interview() {
     document.addEventListener("visibilitychange", onVisibility);
     return () => document.removeEventListener("visibilitychange", onVisibility);
   }, []);
+  // Reset timer on each new question step
   useEffect(() => {
-    if (phase !== "listening") {
-      if (phase !== "speaking") setAnswerTimer(0);
-      return;
-    }
+    setAnswerTimer(0);
+  }, [currentStep]);
+  // Run timer during all question phases (thinking → speaking → listening)
+  useEffect(() => {
+    if (phase === "done") return;
     const timer = setInterval(() => setAnswerTimer(t => {
-      if (!tabVisibleRef.current) return t; // pause when tab hidden
+      if (!tabVisibleRef.current) return t;
       const next = t + 1;
-      if (next >= 120) {
+      if (next >= 120 && phase === "listening") {
         toast("Time's up — moving to the next question.", "info");
         handleNextRef.current();
         return t;
@@ -1379,8 +1381,8 @@ export default function Interview() {
               <p style={{ fontFamily: font.ui, fontSize: 14, color: c.chalk, lineHeight: 1.75, margin: 0, opacity: phase === "listening" && !showCaptions ? 0.55 : 1 }}>{step.aiText}</p>
             ) : null}
 
-            {/* Per-question time bar (visible during listening) */}
-            {phase === "listening" && (
+            {/* Per-question 2-minute timer */}
+            {phase !== "done" && (
               <div style={{ marginTop: 16 }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
                   <span style={{ fontFamily: font.ui, fontSize: 10, color: timeRemaining <= 15 ? c.ember : timeRemaining <= 30 ? c.gilt : c.stone }}>
