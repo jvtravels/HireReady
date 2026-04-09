@@ -45,6 +45,22 @@ export default function DashboardSessions() {
   const visible = filtered.slice(0, showCount);
   const hasMore = filtered.length > showCount;
 
+  const exportCSV = () => {
+    const header = "Date,Type,Role,Score,Change,Duration,Top Strength,Top Weakness\n";
+    const rows = filtered.map(s =>
+      [s.dateLabel, s.type, s.role, s.score, s.change, s.duration, s.topStrength, s.topWeakness]
+        .map(v => `"${String(v).replace(/"/g, '""')}"`)
+        .join(",")
+    ).join("\n");
+    const blob = new Blob([header + rows], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `hirestepx-sessions-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   if (sessions.length === 0) {
     return (
       <div style={{ margin: "0 auto", textAlign: "center", padding: "60px 20px" }}>
@@ -74,14 +90,24 @@ export default function DashboardSessions() {
           <h2 style={{ fontFamily: font.ui, fontSize: 22, fontWeight: 600, color: c.ivory, marginBottom: 4 }}>Sessions</h2>
           <p style={{ fontFamily: font.ui, fontSize: 13, color: c.stone }}>{sessions.length} session{sessions.length !== 1 ? "s" : ""} completed</p>
         </div>
-        <button onClick={handleStartSession} className="shimmer-btn"
-          style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, padding: "10px 24px", borderRadius: 8, border: "none", background: c.gilt, color: c.obsidian, cursor: "pointer", display: "flex", alignItems: "center", gap: 8 }}
-          onMouseEnter={(e) => { e.currentTarget.style.filter = "brightness(1.15)"; }}
-          onMouseLeave={(e) => { e.currentTarget.style.filter = "brightness(1)"; }}
-        >
-          <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
-          New Session
-        </button>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button onClick={exportCSV} title="Export sessions as CSV"
+            style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, padding: "10px 16px", borderRadius: 8, border: `1px solid ${c.border}`, background: "transparent", color: c.stone, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, transition: "all 0.2s" }}
+            onMouseEnter={(e) => { e.currentTarget.style.borderColor = c.borderHover; e.currentTarget.style.color = c.chalk; }}
+            onMouseLeave={(e) => { e.currentTarget.style.borderColor = c.border; e.currentTarget.style.color = c.stone; }}
+          >
+            <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Export
+          </button>
+          <button onClick={handleStartSession} className="shimmer-btn"
+            style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, padding: "10px 24px", borderRadius: 8, border: "none", background: c.gilt, color: c.obsidian, cursor: "pointer", display: "flex", alignItems: "center", gap: 8 }}
+            onMouseEnter={(e) => { e.currentTarget.style.filter = "brightness(1.15)"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.filter = "brightness(1)"; }}
+          >
+            <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
+            New Session
+          </button>
+        </div>
       </div>
 
       <div style={{ display: "flex", gap: 12, marginBottom: 20, flexWrap: "wrap", alignItems: "center" }}>

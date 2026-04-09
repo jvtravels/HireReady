@@ -3,6 +3,7 @@
 import type { InterviewStep } from "./interviewScripts";
 import { saveSession } from "./supabase";
 import { openIDB, loadFromIDB, deleteFromIDB } from "./interviewIDB";
+import { checkRateLimit } from "./rateLimit";
 
 const RESULTS_KEY = "hirestepx_sessions";
 const IDB_STORE = "drafts";
@@ -75,6 +76,10 @@ export async function fetchLLMQuestions(params: {
   type: string; focus?: string; difficulty: string; role: string;
   company?: string; industry?: string; resumeText?: string;
 }): Promise<InterviewStep[] | null> {
+  // Client-side rate limit: max 3 question generations per 60s
+  if (!checkRateLimit("generate-questions", 3, 60_000)) {
+    throw new Error("Too many requests. Please wait a moment and try again.");
+  }
   const attempt = async (): Promise<InterviewStep[] | null> => {
     const headers = await import("./supabase").then(m => m.authHeaders());
     const res = await fetch("/api/generate-questions", {
@@ -119,6 +124,10 @@ export async function fetchLLMEvaluation(params: {
   type: string; difficulty: string; role: string; company?: string;
   questions?: string[];
 }, timeoutMs = 35000): Promise<EvaluationResult | null> {
+  // Client-side rate limit: max 5 evaluations per 60s
+  if (!checkRateLimit("evaluate", 5, 60_000)) {
+    throw new Error("Too many requests. Please wait a moment and try again.");
+  }
   try {
     const headers = await import("./supabase").then(m => m.authHeaders());
     const controller = new AbortController();
@@ -150,6 +159,8 @@ export async function fetchLLMEvaluation(params: {
 export async function fetchFollowUp(params: {
   question: string; answer: string; type: string; role: string;
 }): Promise<{ needsFollowUp: boolean; followUpText: string } | null> {
+  // Client-side rate limit: max 10 follow-ups per 60s
+  if (!checkRateLimit("follow-up", 10, 60_000)) return null;
   try {
     const headers = await import("./supabase").then(m => m.authHeaders());
     const controller = new AbortController();

@@ -54,6 +54,11 @@ export default function CalendarPage() {
     }).catch(() => {});
   }, [user?.id]);
 
+  const updateEvents = (next: InterviewEvent[]) => {
+    setEvents(next);
+    saveEvents(next);
+  };
+
   if (dataLoading) return <DataLoadingSkeleton />;
   if (isFree || isStarter) return <ProGate feature="Interview Calendar" onUpgrade={() => setShowUpgradeModal(true)} />;
 

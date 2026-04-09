@@ -176,14 +176,15 @@ function loadPreviousSession(currentId: string): LocalSession | null {
 }
 
 /* ─── Reusable Section Card ─── */
-function Section({ children, className }: { children: React.ReactNode; className?: string }) {
+function Section({ children, className, animIndex = 0 }: { children: React.ReactNode; className?: string; animIndex?: number }) {
   return (
-    <div className={className} style={{
+    <div className={`sd-anim ${className || ""}`} style={{
       background: c.graphite,
       borderRadius: 16,
       border: `1px solid ${c.border}`,
       padding: "28px 32px",
       marginBottom: 16,
+      animationDelay: `${0.1 + animIndex * 0.06}s`,
     }}>
       {children}
     </div>
@@ -331,12 +332,54 @@ export default function SessionDetail() {
     URL.revokeObjectURL(url);
   }, [generateExportText, session]);
 
-  /* ─── Loading / Not Found ─── */
+  /* ─── Loading Skeleton ─── */
   if (loading) {
+    const Bone = ({ w, h, r, mb }: { w: string; h: number; r?: number; mb?: number }) => (
+      <div style={{ width: w, height: h, borderRadius: r ?? 8, background: `linear-gradient(90deg, ${c.graphite} 25%, rgba(255,255,255,0.04) 50%, ${c.graphite} 75%)`, backgroundSize: "200% 100%", animation: "shimmer 1.5s ease-in-out infinite", marginBottom: mb ?? 0 }} />
+    );
     return (
-      <div style={{ minHeight: "100vh", background: c.obsidian, display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <div style={{ width: 40, height: 40, border: `2px solid ${c.border}`, borderTopColor: c.gilt, borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
-        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      <div style={{ minHeight: "100vh", background: c.obsidian, fontFamily: font.ui }}>
+        <div style={{ position: "fixed", top: 0, left: 0, right: 0, height: 300, background: gradient.meshBg, pointerEvents: "none", zIndex: 0 }} />
+        <div style={{ position: "relative", zIndex: 1, maxWidth: 860, margin: "0 auto", padding: "32px 24px 80px" }}>
+          {/* Header skeleton */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 32 }}>
+            <div>
+              <Bone w="60px" h={14} mb={16} />
+              <Bone w="320px" h={28} mb={10} />
+              <Bone w="200px" h={14} />
+            </div>
+            <div style={{ textAlign: "center" }}>
+              <Bone w="72px" h={72} r={36} />
+            </div>
+          </div>
+          {/* Action bar skeleton */}
+          <div style={{ display: "flex", gap: 8, marginBottom: 24 }}>
+            <Bone w="80px" h={32} />
+            <Bone w="100px" h={32} />
+          </div>
+          {/* Metrics skeleton */}
+          <div style={{ background: c.graphite, borderRadius: 16, border: `1px solid ${c.border}`, padding: "28px 32px", marginBottom: 16 }}>
+            <Bone w="200px" h={18} mb={20} />
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
+              {[0,1,2,3].map(i => <Bone key={i} w="100%" h={120} r={12} />)}
+            </div>
+          </div>
+          {/* Performance skeleton */}
+          <div style={{ background: c.graphite, borderRadius: 16, border: `1px solid ${c.border}`, padding: "28px 32px", marginBottom: 16 }}>
+            <Bone w="180px" h={18} mb={20} />
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+              <Bone w="100%" h={260} r={14} />
+              <Bone w="100%" h={260} r={14} />
+            </div>
+          </div>
+          {/* Response analysis skeleton */}
+          <div style={{ background: c.graphite, borderRadius: 16, border: `1px solid ${c.border}`, padding: "28px 32px" }}>
+            <Bone w="160px" h={18} mb={20} />
+            <Bone w="100%" h={140} r={14} mb={16} />
+            <Bone w="100%" h={140} r={14} />
+          </div>
+        </div>
+        <style>{`@keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }`}</style>
       </div>
     );
   }
@@ -373,7 +416,7 @@ export default function SessionDetail() {
       <div style={{ position: "relative", zIndex: 1, maxWidth: 860, margin: "0 auto", padding: "32px 24px 80px" }}>
 
         {/* ═══ HEADER ═══ */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 32 }}>
+        <div className="sd-anim" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 32, animationDelay: "0s" }}>
           <div>
             <button onClick={() => { if (window.history.length > 1) navigate(-1); else navigate("/dashboard"); }} style={{
               display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: c.stone,
@@ -397,14 +440,14 @@ export default function SessionDetail() {
           {/* Overall Score Circle */}
           <div style={{ textAlign: "center", flexShrink: 0 }}>
             <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: c.stone, display: "block", marginBottom: 8 }}>Overall Score</span>
-            <div style={{
+            <div role="img" aria-label={`Score ${session.score} out of 100 — ${scoreLabel(session.score)}`} style={{
               width: 72, height: 72, borderRadius: "50%",
               border: `3px solid ${scoreLabelColor(session.score)}`,
               display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
               boxShadow: `0 0 24px ${scoreLabelColor(session.score)}20`,
             }}>
-              <span style={{ fontFamily: font.mono, fontSize: 24, fontWeight: 700, color: c.ivory, lineHeight: 1 }}>{session.score}</span>
-              <span style={{ fontSize: 9, color: scoreLabelColor(session.score), fontWeight: 600 }}>/100</span>
+              <span aria-hidden="true" style={{ fontFamily: font.mono, fontSize: 24, fontWeight: 700, color: c.ivory, lineHeight: 1 }}>{session.score}</span>
+              <span aria-hidden="true" style={{ fontSize: 9, color: scoreLabelColor(session.score), fontWeight: 600 }}>/100</span>
             </div>
             <span title={scoreTip(session.score)} style={{ fontSize: 11, fontWeight: 600, color: scoreLabelColor(session.score), marginTop: 6, display: "block", cursor: "help" }}>
               {scoreLabel(session.score)}
@@ -413,7 +456,7 @@ export default function SessionDetail() {
         </div>
 
         {/* Action bar */}
-        <div style={{ display: "flex", gap: 8, marginBottom: 24 }}>
+        <div className="sd-anim" style={{ display: "flex", gap: 8, marginBottom: 24, animationDelay: "0.05s" }}>
           <button onClick={handleCopy} aria-label="Copy report" style={{
             padding: "7px 14px", borderRadius: 8, fontSize: 12, fontWeight: 500,
             background: copied ? "rgba(122,158,126,0.08)" : "transparent",
@@ -436,7 +479,7 @@ export default function SessionDetail() {
 
         {/* ═══ CORE OBJECTIVE METRICS ═══ */}
         {speechMetrics && (
-          <Section>
+          <Section animIndex={0}>
             <SectionTitle icon={
               <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="2" strokeLinecap="round"><path d="M12 20v-6M6 20V10M18 20V4"/></svg>
             }>Core Objective Metrics</SectionTitle>
@@ -546,7 +589,7 @@ export default function SessionDetail() {
 
         {/* ═══ PERFORMANCE ANALYSIS ═══ */}
         {skillEntries.length > 0 && (
-          <Section>
+          <Section animIndex={1}>
             <SectionTitle icon={
               <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
             }>Performance Analysis</SectionTitle>
@@ -606,20 +649,20 @@ export default function SessionDetail() {
                             </div>
                           </div>
                           {/* Your score dot */}
-                          <div style={{
+                          <div title={`You: Technical ${technicalScore}, Delivery ${deliveryScore}`} style={{
                             position: "absolute", left: `${dotX}%`, top: `${dotY}%`,
                             width: 14, height: 14, borderRadius: "50%",
                             background: c.gilt, border: `2px solid ${c.giltLight}`,
                             transform: "translate(-50%, -50%)", zIndex: 2,
-                            boxShadow: `0 0 12px ${c.gilt}40`,
+                            boxShadow: `0 0 12px ${c.gilt}40`, cursor: "help",
                           }} />
                           {/* Cohort dot */}
                           {historicalAvg && (
-                            <div style={{
+                            <div title={`Your Avg: Technical ${cohortTechnical}, Delivery ${cohortDelivery}`} style={{
                               position: "absolute", left: `${cohortTechnical}%`, top: `${100 - cohortDelivery}%`,
                               width: 10, height: 10, borderRadius: "50%",
                               background: c.stone, border: `2px solid rgba(142,137,131,0.4)`,
-                              transform: "translate(-50%, -50%)", zIndex: 1,
+                              transform: "translate(-50%, -50%)", zIndex: 1, cursor: "help",
                             }} />
                           )}
                         </div>
@@ -666,12 +709,12 @@ export default function SessionDetail() {
                             <span style={{ fontSize: 10, fontWeight: 600, color: c.chalk }}>Your Score</span>
                             <span style={{ fontFamily: font.mono, fontSize: 10, color: c.chalk }}>{score}/100</span>
                           </div>
-                          <div style={{ height: 6, borderRadius: 3, background: "rgba(255,255,255,0.04)", overflow: "hidden" }}>
+                          <div role="meter" aria-label={`${name}: ${score} out of 100 (${scoreLabel(score)})`} aria-valuenow={score} aria-valuemin={0} aria-valuemax={100} style={{ height: 6, borderRadius: 3, background: "rgba(255,255,255,0.04)", overflow: "hidden" }}>
                             <div style={{ width: `${score}%`, height: "100%", borderRadius: 3, background: `linear-gradient(90deg, ${scoreLabelColor(score)}, ${scoreLabelColor(score)}CC)`, transition: "width 0.6s ease" }} />
                           </div>
                         </div>
                         {/* Your Average bar */}
-                        {avgScore !== undefined && (
+                        {avgScore !== undefined ? (
                           <div>
                             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 2 }}>
                               <span style={{ fontSize: 10, color: c.stone }}>Your Average</span>
@@ -680,6 +723,10 @@ export default function SessionDetail() {
                             <div style={{ height: 4, borderRadius: 2, background: "rgba(255,255,255,0.04)", overflow: "hidden" }}>
                               <div style={{ width: `${avgScore}%`, height: "100%", borderRadius: 2, background: c.stone, opacity: 0.5 }} />
                             </div>
+                          </div>
+                        ) : (
+                          <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 2 }}>
+                            <span style={{ fontSize: 10, color: c.stone, fontStyle: "italic" }}>First session — keep practicing to see trends</span>
                           </div>
                         )}
                         {reason && <p style={{ fontSize: 10, color: c.stone, marginTop: 4, lineHeight: 1.4, fontStyle: "italic" }}>"{reason}"</p>}
@@ -717,7 +764,7 @@ export default function SessionDetail() {
 
         {/* ═══ RESPONSE ANALYSIS — Per-question breakdown ═══ */}
         {session.ideal_answers && session.ideal_answers.length > 0 && (
-          <Section>
+          <Section animIndex={2}>
             <SectionTitle icon={
               <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="2" strokeLinecap="round"><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg>
             }>Response Analysis</SectionTitle>
@@ -790,7 +837,7 @@ export default function SessionDetail() {
 
         {/* ═══ AI COACH SUMMARY ═══ */}
         {session.ai_feedback && (
-          <Section className="session-detail-card">
+          <Section className="session-detail-card" animIndex={3}>
             <SectionTitle icon={
               <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v2m0 18v2m-9-11h2m18 0h2M5.6 5.6l1.4 1.4m9.9 9.9l1.4 1.4M5.6 18.4l1.4-1.4m9.9-9.9l1.4-1.4"/></svg>
             }>AI Coach Summary</SectionTitle>
@@ -868,7 +915,7 @@ export default function SessionDetail() {
 
         {/* ═══ TRANSCRIPT (collapsible) ═══ */}
         {session.transcript && session.transcript.length > 0 && (
-          <Section>
+          <Section animIndex={4}>
             <div
               onClick={() => setShowTranscript(v => !v)}
               style={{ display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer" }}
@@ -920,7 +967,7 @@ export default function SessionDetail() {
 
         {/* ═══ FEEDBACK ON AI EVALUATION ═══ */}
         {session.ai_feedback && (
-          <div style={{ background: c.graphite, borderRadius: 16, border: `1px solid ${c.border}`, padding: "18px 28px", marginBottom: 16 }}>
+          <div className="sd-anim" style={{ background: c.graphite, borderRadius: 16, border: `1px solid ${c.border}`, padding: "18px 28px", marginBottom: 16, animationDelay: "0.4s" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
               <span style={{ fontSize: 13, fontWeight: 500, color: c.stone }}>
                 {feedbackSaved ? "Thanks for your feedback!" : "Was this evaluation helpful?"}
@@ -964,7 +1011,7 @@ export default function SessionDetail() {
 
         {/* ═══ SESSION COMPARISON ═══ */}
         {prevSession && (
-          <Section>
+          <Section animIndex={5}>
             <SectionTitle icon={
               <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="2" strokeLinecap="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
             }>vs Previous Session</SectionTitle>
@@ -997,7 +1044,7 @@ export default function SessionDetail() {
           const nextType = typeRotation[(currentIdx + 1) % typeRotation.length] || "behavioral";
           const nextDifficulty = session.score >= 85 ? "intense" : session.score < 70 ? "warmup" : "standard";
           return (
-            <div style={{ background: `linear-gradient(135deg, rgba(212,179,127,0.05) 0%, ${c.graphite} 100%)`, borderRadius: 16, border: `1px solid rgba(212,179,127,0.1)`, padding: "28px 32px", marginBottom: 16 }}>
+            <div className="sd-anim" style={{ background: `linear-gradient(135deg, rgba(212,179,127,0.05) 0%, ${c.graphite} 100%)`, borderRadius: 16, border: `1px solid rgba(212,179,127,0.1)`, padding: "28px 32px", marginBottom: 16, animationDelay: "0.5s" }}>
               <h3 style={{ fontSize: 16, fontWeight: 600, color: c.ivory, marginBottom: 8 }}>What's Next?</h3>
               {weakest && (
                 <p style={{ fontSize: 13, color: c.stone, lineHeight: 1.5, marginBottom: 16 }}>
@@ -1021,52 +1068,51 @@ export default function SessionDetail() {
                   Back to Dashboard
                 </button>
               </div>
+
+              {/* Inline upgrade CTA for free users */}
+              {user && (!user.subscriptionTier || user.subscriptionTier === "free") && (
+                <div style={{ marginTop: 16, padding: "14px 18px", borderRadius: 10, background: "rgba(212,179,127,0.04)", border: `1px solid rgba(212,179,127,0.1)`, display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
+                  <span style={{ fontSize: 12, color: c.stone }}>Unlock unlimited sessions & detailed analytics</span>
+                  <button onClick={() => { window.location.href = "/#pricing"; }}
+                    style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, padding: "6px 16px", borderRadius: 6, border: `1px solid rgba(212,179,127,0.2)`, background: "transparent", color: c.gilt, cursor: "pointer", whiteSpace: "nowrap" }}>
+                    Upgrade
+                  </button>
+                </div>
+              )}
             </div>
           );
         })()}
 
-        {/* ═══ UPGRADE CTA ═══ */}
-        {user && (!user.subscriptionTier || user.subscriptionTier === "free") && (
-          <div style={{
-            background: c.graphite, borderRadius: 16, border: `1px solid rgba(212,179,127,0.12)`,
-            padding: "20px 28px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 16,
-          }}>
-            <div>
-              <p style={{ fontSize: 14, fontWeight: 600, color: c.ivory, marginBottom: 4 }}>Unlock Unlimited Practice</p>
-              <p style={{ fontSize: 12, color: c.stone, margin: 0 }}>Get unlimited sessions, detailed analytics, and priority AI feedback.</p>
-            </div>
-            <button onClick={() => { window.location.href = "/#pricing"; }}
-              style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, padding: "10px 24px", borderRadius: 8, border: "none", background: `linear-gradient(135deg, ${c.gilt}, ${c.giltDark})`, color: c.obsidian, cursor: "pointer", whiteSpace: "nowrap", boxShadow: shadow.sm }}>
-              Upgrade Now
-            </button>
-          </div>
-        )}
-
-        {/* ═══ Practice Again CTA ═══ */}
-        {session && (
-          <div style={{
-            display: "flex", alignItems: "center", justifyContent: "center", gap: 12, flexWrap: "wrap",
-          }}>
-            <button onClick={() => navigate(`/session/new?type=${session.type}`)}
-              style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, padding: "12px 28px", borderRadius: 8, border: "none", background: `linear-gradient(135deg, ${c.gilt}, ${c.giltDark})`, color: c.obsidian, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 8, boxShadow: shadow.sm, transition: "all 0.2s" }}
-              onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-1px)"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.transform = "translateY(0)"; }}>
-              <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polygon points="5,3 19,12 5,21"/></svg>
-              Practice Again
-            </button>
-            <button onClick={() => navigate("/dashboard")}
-              style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, padding: "12px 28px", borderRadius: 8, border: `1px solid ${c.border}`, background: "transparent", color: c.chalk, cursor: "pointer", transition: "all 0.2s" }}
-              onMouseEnter={(e) => { e.currentTarget.style.borderColor = c.chalk; }}
-              onMouseLeave={(e) => { e.currentTarget.style.borderColor = c.border; }}>
-              Back to Dashboard
-            </button>
-          </div>
-        )}
-
-        {/* Mobile responsive style for response analysis */}
+        {/* Animations & Mobile responsive styles */}
         <style>{`
-          @media (max-width: 640px) {
-            .session-detail-outer [style*="gridTemplateColumns: 1fr 1fr"] {
+          @keyframes fadeSlideUp {
+            from { opacity: 0; transform: translateY(16px); }
+            to { opacity: 1; transform: translateY(0); }
+          }
+          .sd-anim { opacity: 0; animation: fadeSlideUp 0.5s ease-out forwards; }
+          @media (max-width: 768px) {
+            .session-detail-outer [style*="gridTemplateColumns: 1fr 1fr"],
+            .session-detail-outer [style*="gridTemplateColumns:1fr 1fr"] {
+              grid-template-columns: 1fr !important;
+            }
+            .session-detail-outer [style*="repeat(auto-fit"] {
+              grid-template-columns: 1fr 1fr !important;
+            }
+            .session-detail-outer [style*="maxWidth: 860"] {
+              padding-left: 16px !important;
+              padding-right: 16px !important;
+            }
+            .session-detail-outer [style*="padding: \"28px 32px\""],
+            .session-detail-card {
+              padding: 18px 16px !important;
+            }
+          }
+          @media (max-width: 480px) {
+            .session-detail-outer [style*="repeat(auto-fit"] {
+              grid-template-columns: 1fr !important;
+            }
+            .session-detail-outer [style*="gridTemplateColumns: 1fr 1fr 1fr"],
+            .session-detail-outer [style*="gridTemplateColumns:1fr 1fr 1fr"] {
               grid-template-columns: 1fr !important;
             }
           }

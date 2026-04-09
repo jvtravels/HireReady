@@ -91,6 +91,7 @@ function profileToUser(profile: Profile, session: Session): User {
   const completed = profile.has_completed_onboarding != null
     ? !!(profile.has_completed_onboarding)
     : !!(profile.practice_timestamps && profile.practice_timestamps.length > 0)
+      || !!(profile.resume_file_name && profile.target_role)
       || getLocalOnboardingDone(profile.id);
   // Persist to localStorage so it survives refresh even if Supabase column doesn't exist yet
   if (completed) setLocalOnboardingDone(profile.id);

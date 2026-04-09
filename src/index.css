@@ -70,6 +70,28 @@ body {
   border: 0;
 }
 
+/* ─── Skip to Content ─── */
+.skip-to-content {
+  position: fixed;
+  top: -100%;
+  left: 16px;
+  z-index: 9999;
+  padding: 12px 24px;
+  background: #D4B37F;
+  color: #060607;
+  font-family: "Inter", system-ui, sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 0 0 8px 8px;
+  text-decoration: none;
+  transition: top 0.2s ease;
+}
+.skip-to-content:focus {
+  top: 0;
+  outline: 2px solid #D4B37F;
+  outline-offset: 2px;
+}
+
 /* ─── Mobile Touch Targets ─── */
 @media (pointer: coarse) {
   input, select, textarea { min-height: 44px; }

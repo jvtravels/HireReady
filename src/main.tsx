@@ -24,6 +24,13 @@ if (typeof requestIdleCallback !== "undefined") {
   }, 100);
 }
 
+// Register service worker for offline resilience
+if ("serviceWorker" in navigator && import.meta.env.PROD) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js").catch(() => {});
+  });
+}
+
 const TempoHost = lazy(() => {
   if (typeof window !== "undefined" && window.location.pathname.startsWith("/tempo-host")) {
     const base = "..";
@@ -71,6 +78,24 @@ function ScrollToTop() {
   return null;
 }
 
+function FocusManager() {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    // Move focus to main content on route change for screen readers
+    const main = document.getElementById("main-content");
+    if (main) {
+      main.focus({ preventScroll: true });
+    }
+    // Announce page change via live region
+    const announcer = document.getElementById("route-announcer");
+    if (announcer) {
+      const title = document.title.replace(" — HireStepX", "");
+      announcer.textContent = `Navigated to ${title}`;
+    }
+  }, [pathname]);
+  return null;
+}
+
 const ROUTE_TITLES: Record<string, string> = {
   "/": "HireStepX — AI Mock Interviews",
   "/signup": "Sign Up — HireStepX",
@@ -110,10 +135,14 @@ createRoot(document.getElementById("root")!).render(
       <ErrorBoundary>
       <BrowserRouter>
         <ScrollToTop />
+        <FocusManager />
         <DocumentTitle />
+        <a href="#main-content" className="skip-to-content">Skip to content</a>
+        <div id="route-announcer" role="status" aria-live="assertive" aria-atomic="true" className="sr-only" />
         <AuthProvider>
         <ToastProvider>
           <Suspense fallback={<LoadingFallback />}>
+            <div id="main-content" tabIndex={-1} style={{ outline: "none" }}>
             <Routes>
               <Route path="/" element={<div className="page-enter"><App /></div>} />
               <Route path="/signup" element={<div className="page-enter"><SignUp /></div>} />
@@ -139,6 +168,7 @@ createRoot(document.getElementById("root")!).render(
               <Route path="/page/:slug" element={<div className="page-enter"><PlaceholderPage /></div>} />
               <Route path="*" element={<div className="page-enter"><NotFound /></div>} />
             </Routes>
+            </div>
           </Suspense>
         </ToastProvider>
         </AuthProvider>
