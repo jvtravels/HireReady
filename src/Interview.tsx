@@ -54,15 +54,46 @@ function createSpeechRecognition(): SpeechRecognitionInstance | null {
   return recognition;
 }
 
-/* ─── Waveform Visualizer (user speaking) ─── */
-const WaveformVisualizer = React.memo(function WaveformVisualizer({ active, color, barCount = 16 }: { active: boolean; color: string; barCount?: number }) {
+/* ─── Real Mic-Level Waveform Visualizer ─── */
+const WaveformVisualizer = React.memo(function WaveformVisualizer({ active, color, barCount = 16, stream }: { active: boolean; color: string; barCount?: number; stream?: MediaStream | null }) {
   const [bars, setBars] = useState<number[]>(Array(barCount).fill(0.1));
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const ctxRef = useRef<AudioContext | null>(null);
 
   useEffect(() => {
-    if (!active) { setBars(Array(barCount).fill(0.1)); return; }
-    const id = setInterval(() => setBars(prev => prev.map(() => 0.15 + Math.random() * 0.85)), 96);
-    return () => clearInterval(id);
-  }, [active, barCount]);
+    if (!active || !stream) { setBars(Array(barCount).fill(0.1)); return; }
+    let cancelled = false;
+    const ctx = new AudioContext();
+    const analyser = ctx.createAnalyser();
+    analyser.fftSize = 64;
+    const source = ctx.createMediaStreamSource(stream);
+    source.connect(analyser);
+    ctxRef.current = ctx;
+    analyserRef.current = analyser;
+    const dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+    const update = () => {
+      if (cancelled) return;
+      analyser.getByteFrequencyData(dataArray);
+      const newBars: number[] = [];
+      const step = Math.floor(dataArray.length / barCount);
+      for (let i = 0; i < barCount; i++) {
+        const idx = Math.min(i * step, dataArray.length - 1);
+        newBars.push(0.08 + (dataArray[idx] / 255) * 0.92);
+      }
+      setBars(newBars);
+      requestAnimationFrame(update);
+    };
+    requestAnimationFrame(update);
+
+    return () => {
+      cancelled = true;
+      source.disconnect();
+      ctx.close().catch(() => {});
+      analyserRef.current = null;
+      ctxRef.current = null;
+    };
+  }, [active, stream, barCount]);
 
   return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 3, height: 40 }}>
@@ -70,9 +101,60 @@ const WaveformVisualizer = React.memo(function WaveformVisualizer({ active, colo
         <div key={i} style={{
           width: 3, borderRadius: 2, height: `${h * 100}%`, background: color,
           opacity: active ? 0.8 : 0.15,
-          transition: active ? "height 0.08s ease" : "height 0.5s ease, opacity 0.5s ease",
+          transition: active ? "height 0.06s ease" : "height 0.5s ease, opacity 0.5s ease",
         }} />
       ))}
+    </div>
+  );
+});
+
+/* ─── Interviewer Names (deterministic per session) ─── */
+const INTERVIEWER_NAMES = [
+  "Arjun Mehta", "Priya Sharma", "David Chen", "Sarah Williams", "Rohan Kapoor",
+  "Ananya Patel", "James Mitchell", "Kavya Nair", "Michael Torres", "Neha Gupta",
+  "Benjamin Kofman", "Aisha Rahman", "Chris Anderson", "Deepika Iyer", "Alex Morgan",
+];
+function getInterviewerName(seed: string): string {
+  let hash = 0;
+  for (let i = 0; i < seed.length; i++) hash = ((hash << 5) - hash + seed.charCodeAt(i)) | 0;
+  return INTERVIEWER_NAMES[Math.abs(hash) % INTERVIEWER_NAMES.length];
+}
+
+/* ─── Network Indicator ─── */
+const NetworkIndicator = React.memo(function NetworkIndicator() {
+  const [quality, setQuality] = useState<"excellent" | "good" | "poor">("excellent");
+  useEffect(() => {
+    const check = () => {
+      const conn = (navigator as any).connection;
+      if (conn) {
+        const dl = conn.downlink ?? 10;
+        const rtt = conn.rtt ?? 0;
+        if (dl >= 5 && rtt < 100) setQuality("excellent");
+        else if (dl >= 1 && rtt < 300) setQuality("good");
+        else setQuality("poor");
+      } else {
+        setQuality(navigator.onLine ? "excellent" : "poor");
+      }
+    };
+    check();
+    const conn = (navigator as any).connection;
+    conn?.addEventListener?.("change", check);
+    window.addEventListener("online", check);
+    window.addEventListener("offline", check);
+    const id = setInterval(check, 10_000);
+    return () => {
+      conn?.removeEventListener?.("change", check);
+      window.removeEventListener("online", check);
+      window.removeEventListener("offline", check);
+      clearInterval(id);
+    };
+  }, []);
+  const colors = { excellent: c.sage, good: c.gilt, poor: c.ember };
+  const labels = { excellent: "Excellent", good: "Good", poor: "Poor" };
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 5, padding: "3px 10px", borderRadius: 100, background: "rgba(245,242,237,0.04)", border: `1px solid ${colors[quality]}30` }}>
+      <div style={{ width: 6, height: 6, borderRadius: "50%", background: colors[quality], boxShadow: `0 0 6px ${colors[quality]}60` }} />
+      <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 500, color: colors[quality] }}>{labels[quality]}</span>
     </div>
   );
 });
@@ -378,7 +460,8 @@ export default function Interview() {
   const nextBtnRef = useRef<HTMLButtonElement>(null);
   const [evaluating, setEvaluating] = useState(false);
   const [evalElapsed, setEvalElapsed] = useState(0);
-  const [isPaused, setIsPaused] = useState(false);
+  const micStreamRef = useRef<MediaStream | null>(null);
+  const interviewerName = React.useMemo(() => getInterviewerName(`${interviewType}-${interviewFocus}-${targetCompany}-${user?.id || ""}`), [interviewType, interviewFocus, targetCompany, user?.id]);
   const [microFeedback, setMicroFeedback] = useState<string | null>(null);
 
   // Eval elapsed timer
@@ -609,6 +692,21 @@ export default function Interview() {
     }
   }, [phase, isMuted]);
 
+  // Capture mic stream for real waveform visualizer
+  useEffect(() => {
+    if (phase !== "listening" || isMuted) { micStreamRef.current = null; return; }
+    let cancelled = false;
+    navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+      if (cancelled) { stream.getTracks().forEach(t => t.stop()); return; }
+      micStreamRef.current = stream;
+    }).catch(() => {});
+    return () => {
+      cancelled = true;
+      micStreamRef.current?.getTracks().forEach(t => t.stop());
+      micStreamRef.current = null;
+    };
+  }, [phase, isMuted]);
+
   // User answer simulation
   const [answerTimer, setAnswerTimer] = useState(0);
 
@@ -616,12 +714,12 @@ export default function Interview() {
   const totalQuestions = interviewScript.filter(s => s.type === "question" || s.type === "follow-up").length;
   const currentQuestionNum = interviewScript.slice(0, currentStep + 1).filter(s => s.type === "question" || s.type === "follow-up").length;
 
-  // Timer (pauses when interview is paused)
+  // Timer
   useEffect(() => {
-    if (phase === "done" || isPaused) return;
+    if (phase === "done") return;
     const timer = setInterval(() => setElapsed(e => e + 1), 1000);
     return () => clearInterval(timer);
-  }, [phase, isPaused]);
+  }, [phase]);
 
   // Answer timer (when user is "speaking") with max 120s (2 min)
   // Pauses when tab is backgrounded to prevent surprise auto-advance
@@ -638,7 +736,7 @@ export default function Interview() {
       return;
     }
     const timer = setInterval(() => setAnswerTimer(t => {
-      if (!tabVisibleRef.current || isPaused) return t; // pause when tab hidden or interview paused
+      if (!tabVisibleRef.current) return t; // pause when tab hidden
       const next = t + 1;
       if (next >= 120) {
         toast("Time's up — moving to the next question.", "info");
@@ -1155,39 +1253,64 @@ export default function Interview() {
 
       {/* ─── Top Info Bar ─── */}
       <header className="iv-info-bar" style={{
-        display: "flex", alignItems: "center", justifyContent: "space-between",
-        padding: "10px 24px", borderBottom: `1px solid rgba(245,242,237,0.04)`,
+        display: "flex", flexDirection: "column",
+        borderBottom: `1px solid rgba(245,242,237,0.04)`,
         background: "rgba(6,6,7,0.6)", backdropFilter: "blur(12px)",
         zIndex: 10, flexShrink: 0,
       }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <span style={{ fontFamily: font.display, fontSize: 15, fontWeight: 400, color: c.ivory, letterSpacing: "0.02em" }}>
-            HireStepX
-          </span>
-          <div style={{ width: 1, height: 16, background: "rgba(245,242,237,0.08)" }} />
-          {displayCompany && (
-            <>
-              <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: c.ivory }}>{displayCompany}</span>
-              <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>·</span>
-            </>
-          )}
-          <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: c.chalk }}>{displayRole}</span>
-          <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>·</span>
-          <span style={{ fontFamily: font.ui, fontSize: 11, color: c.gilt }}>{displayFocus}</span>
-        </div>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 24px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <span style={{ fontFamily: font.display, fontSize: 15, fontWeight: 400, color: c.ivory, letterSpacing: "0.02em" }}>
+              HireStepX
+            </span>
+            <div style={{ width: 1, height: 16, background: "rgba(245,242,237,0.08)" }} />
+            {displayCompany && (
+              <>
+                <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: c.ivory }}>{displayCompany}</span>
+                <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>·</span>
+              </>
+            )}
+            <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: c.chalk }}>{displayRole}</span>
+            <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>·</span>
+            <span style={{ fontFamily: font.ui, fontSize: 11, color: c.gilt }}>{displayFocus}</span>
+          </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          {llmLoading && currentStep <= 1 && (
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <NetworkIndicator />
+            {llmLoading && currentStep <= 1 && (
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <div style={{ width: 10, height: 10, border: "1.5px solid rgba(212,179,127,0.3)", borderTopColor: c.gilt, borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
+                <span style={{ fontFamily: font.ui, fontSize: 10, color: c.stone }}>Generating...</span>
+              </div>
+            )}
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <div style={{ width: 10, height: 10, border: "1.5px solid rgba(212,179,127,0.3)", borderTopColor: c.gilt, borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
-              <span style={{ fontFamily: font.ui, fontSize: 10, color: c.stone }}>Generating...</span>
+              <div style={{ width: 6, height: 6, borderRadius: "50%", background: phase === "done" ? c.stone : c.sage, animation: phase !== "done" ? "recordPulse 1.5s ease-in-out infinite" : "none" }} />
+              <span style={{ fontFamily: font.mono, fontSize: 12, fontWeight: 500, color: c.ivory }}>{formatTime(elapsed)}</span>
             </div>
-          )}
-          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <div style={{ width: 6, height: 6, borderRadius: "50%", background: phase === "done" ? c.stone : c.sage, animation: phase !== "done" ? "recordPulse 1.5s ease-in-out infinite" : "none" }} />
-            <span style={{ fontFamily: font.mono, fontSize: 12, fontWeight: 500, color: c.ivory }}>{formatTime(elapsed)}</span>
           </div>
         </div>
+        {/* Question progress in header */}
+        {phase !== "done" && (
+          <div style={{ padding: "0 24px 10px" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+              <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.ivory }}>
+                Question {currentQuestionNum} of {totalQuestions}
+              </span>
+              <span style={{ fontFamily: font.mono, fontSize: 10, color: c.stone }}>
+                {Math.round((currentQuestionNum / totalQuestions) * 100)}%
+              </span>
+            </div>
+            <div style={{ display: "flex", gap: 3, height: 3 }}>
+              {Array.from({ length: totalQuestions }).map((_, i) => (
+                <div key={i} style={{
+                  flex: 1, borderRadius: 2, height: 3,
+                  background: i < currentQuestionNum ? c.gilt : i === currentQuestionNum ? "rgba(212,179,127,0.4)" : "rgba(245,242,237,0.08)",
+                  transition: "all 0.4s ease",
+                }} />
+              ))}
+            </div>
+          </div>
+        )}
       </header>
 
       {/* ─── Center Stage ─── */}
@@ -1198,9 +1321,6 @@ export default function Interview() {
         position: "relative",
       }}>
         <div style={{ width: "100%", maxWidth: 560, display: "flex", flexDirection: "column", alignItems: "center", gap: 20 }}>
-
-          {/* Question Progress Bar */}
-          {phase !== "done" && <QuestionProgressBar current={currentQuestionNum} total={totalQuestions} />}
 
           {/* AI Avatar — Dot Grid */}
           <div style={{
@@ -1217,15 +1337,13 @@ export default function Interview() {
             }}>
               <DotGridVisualizer active={phase === "speaking"} thinking={phase === "thinking"} />
             </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: c.ivory }}>AI Interviewer</span>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+              <span style={{ fontFamily: font.ui, fontSize: 15, fontWeight: 600, color: c.ivory }}>{interviewerName}</span>
               <span aria-live="polite" aria-atomic="true" role="status" style={{
-                fontFamily: font.ui, fontSize: 10, fontWeight: 500,
-                padding: "2px 10px", borderRadius: 100,
+                fontFamily: font.ui, fontSize: 11, fontWeight: 500,
                 color: phase === "speaking" ? c.gilt : phase === "listening" ? c.sage : c.stone,
-                background: phase === "speaking" ? "rgba(212,179,127,0.08)" : phase === "listening" ? "rgba(122,158,126,0.08)" : "rgba(245,242,237,0.03)",
               }}>
-                {phase === "thinking" ? "Preparing..." : phase === "speaking" ? "Speaking" : phase === "listening" ? "Listening" : "Complete"}
+                {phase === "thinking" ? "Preparing..." : phase === "speaking" ? "Speaking..." : phase === "listening" ? "Listening" : "Complete"}
               </span>
             </div>
             {phase === "speaking" && (
@@ -1301,7 +1419,7 @@ export default function Interview() {
                     {speechUnavailable ? "Type your answer" : isMuted ? "Muted" : "Your answer"}
                   </span>
                 </div>
-                <WaveformVisualizer active={!isMuted && !speechUnavailable} color={c.sage} barCount={14} />
+                <WaveformVisualizer active={!isMuted && !speechUnavailable} color={c.sage} barCount={14} stream={micStreamRef.current} />
               </div>
 
               <div style={{ minHeight: 60, marginBottom: 10 }}>
@@ -1360,6 +1478,25 @@ export default function Interview() {
                   </>
                 )}
               </div>
+              {/* Next Question button inline */}
+              <button
+                ref={nextBtnRef}
+                onClick={handleNextQuestion}
+                style={{
+                  fontFamily: font.ui, fontSize: 13, fontWeight: 600, width: "100%",
+                  padding: "12px 24px", borderRadius: 10, marginTop: 8,
+                  background: `linear-gradient(135deg, ${c.gilt}, ${c.giltDark})`,
+                  border: "none", color: c.obsidian, cursor: "pointer",
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: 7,
+                  transition: "all 0.2s ease",
+                  boxShadow: "0 4px 16px rgba(212,179,127,0.2)",
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 6px 20px rgba(212,179,127,0.3)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 4px 16px rgba(212,179,127,0.2)"; }}
+              >
+                {currentStep < interviewScript.length - 1 ? "Next Question" : "Finish"}
+                <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+              </button>
             </div>
           )}
 
@@ -1383,6 +1520,22 @@ export default function Interview() {
                   {evalTimedOut ? "AI evaluation timed out" : "AI evaluation unavailable"} — score is estimated from session metrics
                 </p>
               )}
+              {/* View Feedback button inline */}
+              <button
+                onClick={handleEnd}
+                disabled={evaluating}
+                style={{
+                  fontFamily: font.ui, fontSize: 13, fontWeight: 600, width: "100%",
+                  padding: "12px 24px", borderRadius: 10, marginTop: 8,
+                  background: `linear-gradient(135deg, ${c.gilt}, ${c.giltDark})`,
+                  border: "none", color: c.obsidian, cursor: "pointer",
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: 7,
+                  transition: "all 0.2s ease",
+                }}
+              >
+                View Feedback
+                <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+              </button>
             </div>
           )}
 
@@ -1454,21 +1607,6 @@ export default function Interview() {
           onClick={() => { if (aiVoiceEnabled) ttsCancelRef.current?.(); setAiVoiceEnabled(v => !v); }}
         />
 
-        {/* Captions toggle (hidden on small mobile) */}
-        <span className="iv-hide-mobile">
-          <ControlButton
-            icon={
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                <rect x="2" y="4" width="20" height="16" rx="2"/>
-                <path d="M7 15h4m6 0h-2m-8-4h10"/>
-              </svg>
-            }
-            label={showCaptions ? "Hide captions (Alt+K)" : "Show captions (Alt+K)"}
-            active={showCaptions}
-            onClick={() => setShowCaptions(c => !c)}
-          />
-        </span>
-
         {/* Transcript toggle */}
         <ControlButton
           icon={
@@ -1484,74 +1622,19 @@ export default function Interview() {
           onClick={() => setShowTranscript(t => !t)}
         />
 
-        {/* Divider */}
-        <div className="iv-hide-mobile" style={{ width: 1, height: 24, background: "rgba(245,242,237,0.08)", margin: "0 4px" }} />
-
-        {/* Pause */}
-        {phase !== "done" && !evaluating && (
-          <ControlButton
-            icon={isPaused ? (
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-            ) : (
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
-            )}
-            label={isPaused ? "Resume" : "Pause"}
-            active={isPaused}
-            onClick={() => {
-              if (!isPaused) { ttsCancelRef.current?.(); recognitionRef.current?.stop(); }
-              setIsPaused(p => !p);
-            }}
-          />
-        )}
-
-        {/* Next Question / Finish / View Feedback */}
-        {phase === "listening" ? (
-          <button
-            ref={nextBtnRef}
-            onClick={handleNextQuestion}
-            style={{
-              fontFamily: font.ui, fontSize: 13, fontWeight: 600,
-              padding: "10px 24px", borderRadius: 10,
-              background: `linear-gradient(135deg, ${c.gilt}, ${c.giltDark})`,
-              border: "none", color: c.obsidian, cursor: "pointer",
-              display: "flex", alignItems: "center", gap: 7,
-              transition: "all 0.2s ease",
-              boxShadow: "0 4px 16px rgba(212,179,127,0.2)",
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 6px 20px rgba(212,179,127,0.3)"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 4px 16px rgba(212,179,127,0.2)"; }}
-          >
-            {currentStep < interviewScript.length - 1 ? "Next Question" : "Finish"}
-            <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
-          </button>
-        ) : phase === "done" ? (
-          <button
-            onClick={handleEnd}
-            disabled={evaluating}
-            style={{
-              fontFamily: font.ui, fontSize: 13, fontWeight: 600,
-              padding: "10px 24px", borderRadius: 10,
-              background: `linear-gradient(135deg, ${c.gilt}, ${c.giltDark})`,
-              border: "none", color: c.obsidian, cursor: "pointer",
-              display: "flex", alignItems: "center", gap: 7,
-              transition: "all 0.2s ease",
-            }}
-          >
-            View Feedback
-            <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
-          </button>
-        ) : null}
-
         {/* End Interview (when not done) */}
         {phase !== "done" && (
-          <span ref={endModalTriggerRef} style={{ display: "inline-flex" }}>
-            <ControlButton
-              icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>}
-              label="End interview"
-              danger
-              onClick={() => { ttsCancelRef.current?.(); ttsCancelRef.current = null; setShowEndModal(true); }}
-            />
-          </span>
+          <>
+            <div className="iv-hide-mobile" style={{ width: 1, height: 24, background: "rgba(245,242,237,0.08)", margin: "0 4px" }} />
+            <span ref={endModalTriggerRef} style={{ display: "inline-flex" }}>
+              <ControlButton
+                icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>}
+                label="End interview"
+                danger
+                onClick={() => { ttsCancelRef.current?.(); ttsCancelRef.current = null; setShowEndModal(true); }}
+              />
+            </span>
+          </>
         )}
       </footer>
 
@@ -1704,40 +1787,6 @@ export default function Interview() {
                 End Interview
               </button>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* Pause overlay */}
-      {isPaused && !evaluating && (
-        <div style={{
-          position: "fixed", inset: 0, zIndex: 150,
-          display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-          background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)",
-        }}>
-          <div style={{
-            background: c.graphite, borderRadius: 16, border: `1px solid ${c.border}`,
-            padding: "32px", maxWidth: 360, width: "90%", textAlign: "center",
-          }}>
-            <svg aria-hidden="true" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5" strokeLinecap="round" style={{ marginBottom: 16 }}>
-              <rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>
-            </svg>
-            <h3 style={{ fontFamily: font.ui, fontSize: 18, fontWeight: 600, color: c.ivory, marginBottom: 8 }}>Interview Paused</h3>
-            <p style={{ fontFamily: font.ui, fontSize: 13, color: c.stone, marginBottom: 20 }}>
-              Take your time. Your progress is saved.
-            </p>
-            <button
-              onClick={() => setIsPaused(false)}
-              autoFocus
-              style={{
-                fontFamily: font.ui, fontSize: 14, fontWeight: 600,
-                padding: "10px 32px", borderRadius: 10,
-                background: `linear-gradient(135deg, ${c.gilt}, ${c.giltDark})`,
-                border: "none", color: c.obsidian, cursor: "pointer",
-              }}
-            >
-              Resume Interview
-            </button>
           </div>
         </div>
       )}
