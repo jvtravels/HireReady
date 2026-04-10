@@ -236,7 +236,7 @@ export default function ComingSoon() {
 
           <p style={{
             fontFamily: font.ui, fontSize: "clamp(16px, 2vw, 19px)",
-            color: c.stone, lineHeight: 1.7, maxWidth: 560, margin: "0 auto 48px",
+            color: c.stone, lineHeight: 1.7, maxWidth: 560, margin: "0 auto 32px",
           }}>
             Practice mock interviews with AI. Get real-time voice feedback, detailed scoring, and personalized coaching to land your dream job.
           </p>
@@ -339,7 +339,7 @@ export default function ComingSoon() {
 
         {/* ─── Feature Preview Cards ─── */}
         <div className="cs-features" style={{
-          display: "flex", gap: 20, marginTop: 72, marginBottom: 80,
+          display: "flex", gap: 20, marginTop: 32, marginBottom: 80,
           animation: "fadeInUp 0.8s ease 0.8s both",
         }}>
           {FEATURES.map((f, i) => (
