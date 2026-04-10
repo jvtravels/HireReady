@@ -11,6 +11,7 @@ import { useDomainRedirect } from "./useDomainRedirect";
 
 // Lazy-load non-critical modules
 const App = lazy(() => import("./App"));
+const ComingSoon = lazy(() => import("./ComingSoon"));
 const Analytics = lazy(() => import("@vercel/analytics/react").then(m => ({ default: m.Analytics })));
 const SpeedInsights = lazy(() => import("@vercel/speed-insights/react").then(m => ({ default: m.SpeedInsights })));
 
@@ -132,6 +133,14 @@ function DocumentTitle() {
   return null;
 }
 
+// Show Coming Soon on the marketing domain, full landing on app/localhost
+const isAppDomain = typeof window !== "undefined" && (
+  window.location.hostname === "app.hirestepx.com" ||
+  window.location.hostname === "localhost" ||
+  window.location.hostname === "127.0.0.1" ||
+  window.location.hostname.includes("vercel.app")
+);
+
 const isTempoHostRoute = window.location.pathname.startsWith("/tempo-host");
 
 createRoot(document.getElementById("root")!).render(
@@ -152,7 +161,7 @@ createRoot(document.getElementById("root")!).render(
           <Suspense fallback={<LoadingFallback />}>
             <div id="main-content" tabIndex={-1} style={{ outline: "none" }}>
             <Routes>
-              <Route path="/" element={<div className="page-enter"><App /></div>} />
+              <Route path="/" element={isAppDomain ? <div className="page-enter"><App /></div> : <div className="page-enter"><ComingSoon /></div>} />
               <Route path="/signup" element={<div className="page-enter"><SignUp /></div>} />
               <Route path="/login" element={<div className="page-enter"><SignUp isLogin /></div>} />
               <Route path="/onboarding" element={<RequireAuth><div className="page-enter"><Onboarding /></div></RequireAuth>} />

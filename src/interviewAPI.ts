@@ -222,7 +222,6 @@ export async function retryQueuedEvals(): Promise<void> {
               }
             } catch {}
             await deleteFromIDB(key);
-            console.log("[eval-retry] successfully retried:", key);
           }
         } catch {}
       }

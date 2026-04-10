@@ -313,7 +313,6 @@ export default function Interview() {
           };
         } else {
           // Deepgram unavailable (no API key or setup failure) — use Web Speech API
-          console.log("[STT] Deepgram unavailable, using Web Speech API");
           startWebSpeechAPI();
         }
       };
@@ -548,11 +547,9 @@ export default function Interview() {
 
       if (aiVoiceEnabled) {
         const instanceId = ++ttsInstanceIdRef.current;
-        console.log("[interview] TTS speak() called for step", currentStep, "instance", instanceId);
         speak(step.aiText, onSpeechEnd, onSpeechEnd).then(handle => {
           // Only assign cancel if this is still the active TTS instance
           if (ttsInstanceIdRef.current === instanceId) {
-            console.log("[interview] TTS speak() resolved for step", currentStep);
             ttsCancelRef.current = handle.cancel;
           } else {
             // Stale instance — cancel it immediately
@@ -839,7 +836,6 @@ export default function Interview() {
             sessionId: Date.now().toString(36),
             queuedAt: Date.now(),
           });
-          console.log("[eval] queued for offline retry:", retryKey);
         }
       }
     } else {

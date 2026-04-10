@@ -180,7 +180,6 @@ function resetWsIdleTimer() {
   if (_wsIdleTimer) clearTimeout(_wsIdleTimer);
   _wsIdleTimer = setTimeout(() => {
     if (_persistentWs && _persistentWs.readyState === WebSocket.OPEN) {
-      console.log("[TTS-WS] closing idle connection");
       _persistentWs.close();
     }
     _persistentWs = null;
@@ -217,7 +216,6 @@ async function getOrCreateWs(apiKey: string): Promise<WebSocket | null> {
       _persistentWsReady = true;
       _persistentWsApiKey = apiKey;
       resetWsIdleTimer();
-      console.log("[TTS-WS] persistent connection opened");
       resolve(ws);
     };
     ws.onerror = () => {
@@ -253,7 +251,6 @@ async function speakWithWebSocket(
 
   const checkPlaybackComplete = () => {
     if (allChunksReceived && chunksPlayed >= totalChunksScheduled) {
-      console.log(`[TTS-WS] playback complete, ${chunksReceived} chunks`);
       resetWsIdleTimer();
       settle(onEnd);
     }
@@ -322,10 +319,8 @@ async function speakWithWebSocket(
           };
 
           if (chunksReceived === 1) {
-            console.log(`[TTS-WS] first chunk received, playing immediately`);
           }
         } else if (msg.type === "done" || msg.done) {
-          console.log(`[TTS-WS] all chunks received (${chunksReceived})`);
           allChunksReceived = true;
           // Don't close WS — reuse for next question
           if (totalChunksScheduled === 0) settle(onEnd);
@@ -359,7 +354,6 @@ async function speakWithWebSocket(
     ws.addEventListener("close", closeHandler, { once: true });
 
     // Send the utterance
-    console.log("[TTS-WS] sending text on persistent connection");
     ws.send(JSON.stringify({
       context_id: contextId,
       model_id: "sonic-3",
@@ -410,12 +404,10 @@ async function speakWithProxy(
     // Check pre-fetch cache first
     const cached = consumePrefetch(text);
     if (cached) {
-      console.log("[TTS] using pre-fetched audio");
       blob = await cached;
     }
 
     if (!blob) {
-      console.log("[TTS] starting REST fetch...");
       const { authHeaders } = await import("./supabase");
       const headers = await authHeaders();
 
@@ -454,7 +446,6 @@ async function speakWithProxy(
     };
 
     await audio.play();
-    console.log("[TTS] playing via REST fallback");
   } catch (err: any) {
     if (err.name === "AbortError") return { cancel: () => {} };
     settle(onError);
@@ -544,7 +535,6 @@ async function speakWithDeepgram(
     audio.onended = () => { URL.revokeObjectURL(url); settle(onEnd); };
     audio.onerror = () => { URL.revokeObjectURL(url); settle(onError); };
     await audio.play();
-    console.log("[TTS-DG] playing Deepgram audio");
   } catch (err: any) {
     if (err.name === "AbortError") return { cancel: () => {} };
     console.warn("[TTS-DG] error:", err?.message || err);

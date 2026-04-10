@@ -174,7 +174,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         email: session.user.email || "",
         name: meta.name || meta.full_name || "",
       };
-      console.log("[auth] ensureProfile: creating profile");
       const { error } = await upsertProfile(newProfile);
       if (error) {
         console.error("[auth] ensureProfile failed, trying insert:", error.message);
@@ -215,14 +214,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (session.provider_token) {
             try { sessionStorage.setItem("hirestepx_google_token", session.provider_token); } catch {}
           }
-          console.log("[auth] session restore from local JWT");
           try {
             const profile = await getProfile(session.user.id);
             if (profile) {
-              console.log("[auth] profile loaded");
               setUser(profileToUser(profile, session));
             } else {
-              console.log("[auth] no profile found on load, signing out");
               setUser(null);
               await client.auth.signOut().catch(() => {});
             }
@@ -232,7 +228,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             await client.auth.signOut().catch(() => {});
           }
         } else {
-          console.log("[auth] no local session found");
           setUser(null);
         }
         clearTimeout(safetyTimer);
@@ -255,7 +250,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       // Listen for auth state changes
       const { data: { subscription } } = client.auth.onAuthStateChange(async (event, session) => {
-        console.log("[auth] onAuthStateChange:", event);
         if (event === "INITIAL_SESSION") return;
         if ((event === "SIGNED_IN" || event === "TOKEN_REFRESHED") && session) {
           // Persist Google provider token for Calendar API access
@@ -347,7 +341,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return next;
     });
 
-    if (!supabaseConfigured) { console.log("[updateUser] skipped: supabase not configured"); return; }
+    if (!supabaseConfigured) { return; }
 
     // Persist to Supabase — use ID captured from state setter to avoid stale closure
     if (!currentId) { console.warn("[updateUser] skipped: no user ID"); return; }
@@ -372,7 +366,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (updates.hasCompletedOnboarding) setLocalOnboardingDone(currentId);
     }
 
-    console.log("[updateUser] upserting profile:", Object.keys(profileUpdates));
     await upsertProfile(profileUpdates);
   }, []);
 
@@ -420,13 +413,8 @@ export function RequireAuth({ children }: { children: ReactNode }) {
       // Wait and retry before redirecting — don't log the user out prematurely.
       if (hasStoredSession() && retryCount.current < 3) {
         retryCount.current++;
-        console.log("[auth] session token exists in storage, retrying...", retryCount.current);
         // Trigger a re-check by getting the session again
-        getSupabase().then(c => c.auth.getSession()).then(({ data: { session } }) => {
-          if (!session) {
-            console.log("[auth] retry: still no session after re-check");
-          }
-        });
+        getSupabase().then(c => c.auth.getSession());
         return;
       }
       navigate("/login", { replace: true, state: { from: location.pathname } });

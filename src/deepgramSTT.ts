@@ -120,7 +120,6 @@ export async function createDeepgramSTT(
 
   ws.onopen = () => {
     if (aborted) { ws.close(); return; }
-    console.log("[Deepgram] WebSocket connected");
 
     // Set up audio capture via ScriptProcessorNode
     audioCtx = new AudioContext({ sampleRate });
