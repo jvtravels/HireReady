@@ -203,7 +203,7 @@ export default function ComingSoon() {
 
         {/* ─── Hero ─── */}
         <div style={{
-          textAlign: "center", paddingTop: 80, paddingBottom: 48,
+          textAlign: "center", paddingTop: 80, paddingBottom: 16,
           animation: "fadeInUp 0.8s ease 0.2s both",
         }}>
           <div style={{
@@ -245,7 +245,7 @@ export default function ComingSoon() {
         {/* ─── Countdown ─── */}
         <div className="cs-countdown" style={{
           display: "flex", justifyContent: "center", gap: 36,
-          marginBottom: 56,
+          marginBottom: 40,
           animation: "fadeInUp 0.8s ease 0.4s both",
         }}>
           {[
