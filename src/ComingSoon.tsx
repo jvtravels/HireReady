@@ -177,7 +177,7 @@ export default function ComingSoon() {
         .cs-card:hover { border-color: rgba(212,179,127,0.2) !important; transform: translateY(-4px) !important; }
         .cs-input:focus { border-color: ${c.gilt} !important; box-shadow: 0 0 0 3px rgba(212,179,127,0.1) !important; }
         @media (max-width: 768px) {
-          .cs-hero-title { font-size: clamp(32px, 8vw, 48px) !important; }
+          .cs-hero-title { font-size: clamp(28px, 7vw, 42px) !important; white-space: normal !important; }
           .cs-features { flex-direction: column !important; }
           .cs-countdown { gap: 24px !important; }
           .cs-countdown-item { min-width: 70px !important; }
@@ -221,9 +221,9 @@ export default function ComingSoon() {
           </div>
 
           <h1 className="cs-hero-title" style={{
-            fontFamily: font.display, fontSize: "clamp(40px, 5vw, 64px)",
+            fontFamily: font.display, fontSize: "clamp(36px, 5vw, 56px)",
             fontWeight: 400, lineHeight: 1.1, letterSpacing: "-0.03em",
-            color: c.ivory, margin: "0 auto 20px", maxWidth: 700,
+            color: c.ivory, margin: "0 auto 20px", maxWidth: 800, whiteSpace: "nowrap",
           }}>
             Your AI interview coach is{" "}
             <span style={{
@@ -235,10 +235,10 @@ export default function ComingSoon() {
           </h1>
 
           <p style={{
-            fontFamily: font.ui, fontSize: "clamp(16px, 2vw, 19px)",
-            color: c.stone, lineHeight: 1.7, maxWidth: 560, margin: "0 auto 32px",
+            fontFamily: font.ui, fontSize: "clamp(15px, 1.8vw, 17px)",
+            color: c.stone, lineHeight: 1.7, maxWidth: 480, margin: "0 auto 32px",
           }}>
-            Practice mock interviews with AI. Get real-time voice feedback, detailed scoring, and personalized coaching to land your dream job.
+            Practice mock interviews with AI. Get real-time feedback, detailed scoring, and coaching to land your dream job.
           </p>
         </div>
 
