@@ -81,7 +81,7 @@ export async function saveSessionResult(result: SessionResult, userId?: string):
 /** Fetch LLM-generated interview questions */
 export async function fetchLLMQuestions(params: {
   type: string; focus?: string; difficulty: string; role: string;
-  company?: string; industry?: string; resumeText?: string;
+  company?: string; industry?: string; resumeText?: string; language?: string;
 }): Promise<InterviewStep[] | null> {
   // Client-side rate limit: max 3 question generations per 60s
   if (!checkRateLimit("generate-questions", 3, 60_000)) {
@@ -130,7 +130,7 @@ export async function fetchLLMEvaluation(params: {
   transcript: { speaker: string; text: string }[];
   type: string; difficulty: string; role: string; company?: string;
   questions?: string[];
-  resumeText?: string;
+  resumeText?: string; language?: string;
 }, timeoutMs = 35000): Promise<EvaluationResult | null> {
   // Client-side rate limit: max 5 evaluations per 60s
   if (!checkRateLimit("evaluate", 5, 60_000)) {

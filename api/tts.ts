@@ -37,7 +37,7 @@ export default async function handler(req: Request): Promise<Response> {
   }
 
   try {
-    const { text, voiceId } = await req.json();
+    const { text, voiceId, language } = await req.json();
 
     if (!text || typeof text !== "string") {
       return new Response(JSON.stringify({ error: "Missing text" }), { status: 400, headers });
@@ -66,7 +66,7 @@ export default async function handler(req: Request): Promise<Response> {
         model_id: "sonic-3",
         transcript: trimmedText,
         voice: { mode: "id", id: voice },
-        language: "en",
+        language: (typeof language === "string" && ["en", "hi"].includes(language)) ? language : "en",
         output_format: {
           container: "mp3",
           sample_rate: 48000,

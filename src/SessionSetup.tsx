@@ -232,6 +232,7 @@ export default function SessionSetup() {
     return ["Behavioral"];
   });
   const [sessionLength, setSessionLength] = useState("10m");
+  const [interviewLanguage, setInterviewLanguage] = useState("en");
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const isFreeUser = !user?.subscriptionTier || user.subscriptionTier === "free";
 
@@ -293,7 +294,7 @@ export default function SessionSetup() {
     setTimeout(() => setCountdown(1), 2000);
     setTimeout(() => {
       setCountdown(0);
-      navigate(`/interview?type=${focusType}&focus=${focusType}&difficulty=standard${targetCompany ? `&company=${encodeURIComponent(targetCompany)}` : ""}&role=${encodeURIComponent(targetRole)}&length=${sessionLength}${useResume ? "" : "&useResume=false"}`);
+      navigate(`/interview?type=${focusType}&focus=${focusType}&difficulty=standard${targetCompany ? `&company=${encodeURIComponent(targetCompany)}` : ""}&role=${encodeURIComponent(targetRole)}&length=${sessionLength}${useResume ? "" : "&useResume=false"}${interviewLanguage !== "en" ? `&language=${interviewLanguage}` : ""}`);
     }, 3000);
   };
 
@@ -515,6 +516,39 @@ export default function SessionSetup() {
                           <span style={{ fontFamily: font.ui, fontSize: 20, fontWeight: 600, color: sel ? c.gilt : c.ivory, display: "block", marginBottom: 2 }}>{opt.label}</span>
                           <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: sel ? c.ivory : c.chalk, display: "block", marginBottom: 2 }}>{opt.desc}</span>
                           <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>{opt.sub}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* ── Section 4: Interview Language ── */}
+                <div className="ob-card fade-up-4" style={{ borderRadius: 16, padding: "24px 28px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                    <div style={{ width: 28, height: 28, borderRadius: 7, background: "rgba(212,179,127,0.06)", border: "1px solid rgba(212,179,127,0.12)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                    </div>
+                    <span style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: c.ivory }}>Interview Language</span>
+                  </div>
+                  <p style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, marginBottom: 16, paddingLeft: 36 }}>Choose the language for your interview. AI will ask and evaluate in your selected language.</p>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, paddingLeft: 36 }}>
+                    {[
+                      { value: "en", label: "English", desc: "Default" },
+                      { value: "hi", label: "Hindi", desc: "हिन्दी" },
+                      { value: "hinglish", label: "Hinglish", desc: "Hindi + English" },
+                    ].map(opt => {
+                      const sel = interviewLanguage === opt.value;
+                      return (
+                        <button key={opt.value} onClick={() => setInterviewLanguage(opt.value)}
+                          style={{
+                            padding: "14px 12px", borderRadius: 12, cursor: "pointer", textAlign: "center", position: "relative",
+                            background: sel ? "rgba(212,179,127,0.08)" : "transparent",
+                            border: `1.5px solid ${sel ? c.gilt : c.border}`,
+                            boxShadow: sel ? "0 0 16px rgba(212,179,127,0.06)" : "none",
+                            transition: "all 0.2s",
+                          }}>
+                          <span style={{ fontFamily: font.ui, fontSize: 14, fontWeight: 600, color: sel ? c.gilt : c.ivory, display: "block", marginBottom: 2 }}>{opt.label}</span>
+                          <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>{opt.desc}</span>
                         </button>
                       );
                     })}

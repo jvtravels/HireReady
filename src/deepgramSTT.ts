@@ -37,6 +37,7 @@ export interface DeepgramSTTCallbacks {
  */
 export async function createDeepgramSTT(
   callbacks: DeepgramSTTCallbacks,
+  options?: { language?: string },
 ): Promise<DeepgramSTTHandle | null> {
   const apiKey = await getDeepgramApiKey();
   if (!apiKey) {
@@ -57,10 +58,11 @@ export async function createDeepgramSTT(
   const trackSettings = stream.getAudioTracks()[0]?.getSettings();
   const sampleRate = trackSettings?.sampleRate || 48000;
 
+  const dgLang = options?.language === "hi" || options?.language === "hinglish" ? "hi" : "en-US";
   const wsUrl =
     `wss://api.deepgram.com/v1/listen` +
     `?model=nova-2` +
-    `&language=en-US` +
+    `&language=${dgLang}` +
     `&smart_format=true` +
     `&interim_results=true` +
     `&punctuate=true` +

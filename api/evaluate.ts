@@ -46,7 +46,7 @@ export default async function handler(req: Request): Promise<Response> {
   }
 
   try {
-    const { transcript, type, difficulty, role, company, questions, resumeText } = await req.json();
+    const { transcript, type, difficulty, role, company, questions, resumeText, language } = await req.json();
 
     if (!transcript || !Array.isArray(transcript) || transcript.length === 0 ||
         !transcript.every((t: unknown) => typeof t === "object" && t !== null && typeof (t as any).speaker === "string" && typeof (t as any).text === "string")) {
@@ -86,6 +86,13 @@ export default async function handler(req: Request): Promise<Response> {
       ? `\nCandidate's resume summary (use to personalize feedback — reference their stated experience when relevant):\n${sanitizeForLLM(resumeText, 1500)}\n`
       : "";
 
+    const sanitizedLang = sanitizeForLLM(language, 20);
+    const languageNote = sanitizedLang === "hi"
+      ? "\nIMPORTANT: The interview was conducted in Hindi. Evaluate the candidate's Hindi communication quality. Provide feedback in English but cite Hindi quotes from their answers."
+      : sanitizedLang === "hinglish"
+      ? "\nIMPORTANT: The interview was conducted in Hinglish (Hindi-English mix). This is natural for Indian professionals. Do NOT penalize for language mixing — evaluate content quality. Provide feedback in English but cite their actual Hinglish quotes."
+      : "";
+
     // Role-specific skill weighting guidance
     const skillWeightingMap: Record<string, string> = {
       technical: "For this technical interview, weight technicalDepth and problemSolving highest. Communication and structure are secondary.",
@@ -99,7 +106,7 @@ export default async function handler(req: Request): Promise<Response> {
     };
     const skillWeighting = skillWeightingMap[interviewType] || "Weight all skills equally for this case study interview.";
 
-    const prompt = `You are an expert interview coach evaluating a mock ${interviewType} interview for a ${interviewRole} candidate.${company ? ` Company: ${sanitizeForLLM(company, 100)}.` : ""} Difficulty: ${sanitizeForLLM(difficulty, 20) || "standard"}.
+    const prompt = `You are an expert interview coach evaluating a mock ${interviewType} interview for a ${interviewRole} candidate.${company ? ` Company: ${sanitizeForLLM(company, 100)}.` : ""} Difficulty: ${sanitizeForLLM(difficulty, 20) || "standard"}.${languageNote}
 ${questionsContext}${resumeContext}
 Transcript:
 ${formattedTranscript}

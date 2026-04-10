@@ -5,7 +5,7 @@ import { track } from "@vercel/analytics";
 import { c, font } from "./tokens";
 import { useAuth } from "./AuthContext";
 import type { User } from "./AuthContext";
-import { speak, prefetchTTS, cleanupTTS } from "./tts";
+import { speak, prefetchTTS, cleanupTTS, setTTSLanguage } from "./tts";
 import { saveSession, getAuthToken } from "./supabase";
 import { useToast } from "./Toast";
 import { saveToIDB, loadFromIDB, deleteFromIDB } from "./interviewIDB";
@@ -42,6 +42,7 @@ export default function Interview() {
   const targetCompany = searchParams.get("company") || "";
   const isMiniMode = searchParams.get("mini") === "true";
   const shouldUseResume = searchParams.get("useResume") !== "false";
+  const interviewLanguage = searchParams.get("language") || "en";
   // Restore draft if resuming
   const draftKey = `hirestepx_interview_draft_${user?.id || "anon"}`;
   const isResuming = searchParams.get("resume") === "true";
@@ -95,6 +96,12 @@ export default function Interview() {
   // Note: Subscription limits are enforced server-side via checkSessionLimit() in
   // generate-questions, evaluate, and analyze-resume API endpoints. No client-side
   // re-validation needed here — it would add latency without improving security.
+  // Set TTS language for non-English interviews
+  useEffect(() => {
+    if (interviewLanguage !== "en") setTTSLanguage(interviewLanguage);
+    return () => { if (interviewLanguage !== "en") setTTSLanguage("en"); };
+  }, [interviewLanguage]);
+
   useEffect(() => {
     if (isMiniMode) return; // Mini mode uses built-in script, no LLM fetch
     // Skip LLM fetch if offline — use fallback script immediately
@@ -112,6 +119,7 @@ export default function Interview() {
       company: targetCompany || user?.targetCompany,
       industry: user?.industry,
       resumeText: shouldUseResume ? user?.resumeText : undefined,
+      language: interviewLanguage !== "en" ? interviewLanguage : undefined,
     }).then(questions => {
       if (cancelled) return;
       if (questions && questions.length > 0 && currentStepRef.current === 0) {
@@ -303,7 +311,7 @@ export default function Interview() {
             deepgramRef.current = null;
             startWebSpeechAPI();
           },
-        });
+        }, { language: interviewLanguage });
         if (stopped) { handle?.abort(); return; }
         if (handle) {
           deepgramRef.current = handle;
@@ -808,6 +816,7 @@ export default function Interview() {
           company: user?.targetCompany,
           questions: originalQuestions,
           resumeText: shouldUseResume ? user?.resumeText : undefined,
+          language: interviewLanguage !== "en" ? interviewLanguage : undefined,
         });
         if (evaluation) {
           score = Math.min(100, Math.max(0, evaluation.overallScore || fallbackScore));

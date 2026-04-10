@@ -28,6 +28,7 @@ export interface TTSSettings {
   provider: "cartesia" | "browser";
   voiceId: string;
   voiceName: string;
+  language?: string;
 }
 
 export interface CartesiaVoice {
@@ -95,6 +96,13 @@ export function saveTTSSettings(settings: TTSSettings) {
   try {
     localStorage.setItem(TTS_SETTINGS_KEY, JSON.stringify(settings));
   } catch {}
+}
+
+/** Set TTS language for the current session (e.g., "en", "hi") */
+export function setTTSLanguage(lang: string) {
+  const settings = loadTTSSettings();
+  settings.language = lang === "hinglish" ? "hi" : lang;
+  saveTTSSettings(settings);
 }
 
 /* ─── Cartesia API Key Cache ─── */
@@ -359,7 +367,7 @@ async function speakWithWebSocket(
       model_id: "sonic-3",
       transcript: text.trim().slice(0, 2000),
       voice: { mode: "id", id: voiceId },
-      language: "en",
+      language: loadTTSSettings().language || "en",
       output_format: {
         container: "raw",
         encoding: "pcm_f32le",
@@ -414,7 +422,7 @@ async function speakWithProxy(
       const res = await fetch("/api/tts", {
         method: "POST",
         headers,
-        body: JSON.stringify({ text, voiceId }),
+        body: JSON.stringify({ text, voiceId, language: loadTTSSettings().language }),
         signal: controller.signal,
       });
 
