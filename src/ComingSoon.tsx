@@ -131,16 +131,17 @@ export default function ComingSoon() {
   const launchDate = new Date("2026-05-15T00:00:00+05:30");
   const countdown = useCountdown(launchDate);
 
-  // Fetch waitlist count
+  // Fetch waitlist count — defer to avoid blocking FCP
   useEffect(() => {
-    (async () => {
+    const id = setTimeout(async () => {
       if (!supabaseConfigured) return;
       try {
         const client = await getSupabase();
         const { count: c } = await client.from("waitlist").select("*", { count: "exact", head: true });
         if (c !== null) setCount(c);
       } catch { /* ignore */ }
-    })();
+    }, status === "done" ? 0 : 2000);
+    return () => clearTimeout(id);
   }, [status]);
 
   const handleSubmit = async (e: React.FormEvent) => {
