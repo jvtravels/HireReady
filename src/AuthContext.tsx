@@ -162,8 +162,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!supabaseConfigured) return;
 
-    // Start loading the Supabase SDK in the background
-    preloadSupabase();
+    // Start loading the Supabase SDK — defer on marketing domain to avoid blocking FCP
+    const isMarketing = typeof window !== "undefined" &&
+      !window.location.hostname.includes("app.") &&
+      !window.location.hostname.includes("localhost") &&
+      !window.location.hostname.includes("127.0.0.1") &&
+      !window.location.hostname.includes("vercel.app");
+    if (isMarketing) {
+      setTimeout(preloadSupabase, 2000);
+    } else {
+      preloadSupabase();
+    }
 
     // Helper: build a new user from session metadata and seed the profiles table
     async function ensureProfile(session: Session) {

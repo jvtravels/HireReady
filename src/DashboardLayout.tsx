@@ -10,6 +10,16 @@ import CommandPalette from "./CommandPalette";
 
 const modKey = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform) ? "⌘" : "Ctrl+";
 
+/* ─── Prefetch route chunks on nav hover ─── */
+const prefetchMap: Record<string, () => void> = {
+  dashboard: () => { import("./DashboardHome"); },
+  sessions: () => { import("./DashboardSessions"); },
+  calendar: () => { import("./DashboardCalendar"); },
+  analytics: () => { import("./DashboardAnalytics"); },
+  resume: () => { import("./DashboardResume"); },
+  settings: () => { import("./DashboardSettings"); },
+};
+
 /* ─── Sidebar Nav Items ─── */
 const navItems = [
   { id: "dashboard", path: "/dashboard", label: "Dashboard", icon: <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg> },
@@ -163,7 +173,7 @@ export default function DashboardLayout() {
               }}
               onFocus={(e) => e.currentTarget.style.boxShadow = `0 0 0 2px ${c.gilt}40`}
               onBlur={(e) => e.currentTarget.style.boxShadow = "none"}
-              onMouseEnter={(e) => { if (activeNav !== item.id) e.currentTarget.style.background = "rgba(245,242,237,0.03)"; }}
+              onMouseEnter={(e) => { if (activeNav !== item.id) e.currentTarget.style.background = "rgba(245,242,237,0.03)"; prefetchMap[item.id]?.(); }}
               onMouseLeave={(e) => { if (activeNav !== item.id) e.currentTarget.style.background = "transparent"; }}
             >
               {item.icon}
