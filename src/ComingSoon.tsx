@@ -383,18 +383,19 @@ export default function ComingSoon() {
             background: "rgba(212,179,127,0.04)", border: `1px solid ${c.border}`,
           }}>
             <div style={{ display: "flex" }}>
-              {["#D4B37F", "#7A9E7E", "#C4705A", "#7E8D98"].map((color, i) => (
-                <div key={i} style={{
-                  width: 28, height: 28, borderRadius: "50%",
-                  background: `linear-gradient(135deg, ${color}, ${color}88)`,
+              {[
+                "https://images.unsplash.com/photo-1618568949733-46cbb00e1a38?w=80&h=80&fit=crop&crop=face",
+                "https://images.unsplash.com/photo-1594744803329-e58b31de8bf5?w=80&h=80&fit=crop&crop=face",
+                "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=80&h=80&fit=crop&crop=face",
+                "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=80&h=80&fit=crop&crop=face",
+                "https://images.unsplash.com/photo-1633332755192-727a05c4013d?w=80&h=80&fit=crop&crop=face",
+              ].map((src, i) => (
+                <img key={i} src={src} alt="" aria-hidden="true" width={32} height={32} style={{
+                  width: 32, height: 32, borderRadius: "50%",
                   border: `2px solid ${c.obsidian}`,
-                  marginLeft: i > 0 ? -8 : 0,
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  fontSize: 11, fontWeight: 600, color: c.obsidian,
-                  fontFamily: font.ui,
-                }}>
-                  {["J", "A", "P", "R"][i]}
-                </div>
+                  marginLeft: i > 0 ? -10 : 0,
+                  objectFit: "cover",
+                }} />
               ))}
             </div>
             <span style={{ fontFamily: font.ui, fontSize: 13, color: c.chalk }}>
