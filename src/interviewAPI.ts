@@ -20,7 +20,11 @@ export interface SessionResult {
   transcript?: { speaker: string; text: string; time: string }[];
   ai_feedback?: string;
   skill_scores?: Record<string, number> | null;
-  ideal_answers?: { question: string; ideal: string; candidateSummary: string }[];
+  ideal_answers?: { question: string; ideal: string; candidateSummary: string; rating?: string; starBreakdown?: Record<string, string>; workedWell?: string; toImprove?: string }[];
+  starAnalysis?: { overall: number; breakdown: Record<string, number>; tip: string };
+  strengths?: string[];
+  improvements?: string[];
+  nextSteps?: string[];
   resumeUsed?: boolean;
 }
 
@@ -30,7 +34,9 @@ export interface EvaluationResult {
   strengths: string[];
   improvements: string[];
   feedback: string;
-  idealAnswers?: { question: string; ideal: string; candidateSummary: string }[];
+  idealAnswers?: { question: string; ideal: string; candidateSummary: string; rating?: string; starBreakdown?: Record<string, string>; workedWell?: string; toImprove?: string }[];
+  starAnalysis?: { overall: number; breakdown: Record<string, number>; tip: string };
+  nextSteps?: string[];
 }
 
 /** Save session to localStorage + Supabase with fallback */

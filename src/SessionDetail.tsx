@@ -52,8 +52,10 @@ function ratingBadge(rating: string | undefined): { label: string; color: string
 /* ─── Speech metrics computed from transcript ─── */
 
 const FILLER_WORDS = ["um", "uh", "like", "you know", "basically", "actually", "literally", "right", "so", "well", "i mean", "kind of", "sort of"];
+const HEDGING_PHRASES = ["i think", "i guess", "maybe", "probably", "i believe", "perhaps", "not sure", "i suppose", "might be", "could be"];
+const POWER_WORDS = ["achieved", "led", "built", "delivered", "increased", "reduced", "launched", "drove", "improved", "designed", "implemented", "scaled", "optimized", "managed", "created", "transformed"];
 
-function computeSpeechMetrics(transcript: { speaker: string; text: string }[] | undefined, durationSec: number) {
+function computeSpeechMetrics(transcript: { speaker: string; text: string; time?: string }[] | undefined, durationSec: number) {
   if (!transcript || transcript.length === 0) return null;
   const userEntries = transcript.filter(t => t.speaker === "user");
   if (userEntries.length === 0) return null;
@@ -64,7 +66,6 @@ function computeSpeechMetrics(transcript: { speaker: string; text: string }[] | 
   const userMinutes = Math.max(1, durationSec / 60 * 0.5); // ~50% of time is user speaking
 
   // Filler words
-  const lowerText = ` ${userText.toLowerCase()} `;
   let fillerCount = 0;
   for (const filler of FILLER_WORDS) {
     const regex = new RegExp(`\\b${filler}\\b`, "gi");
@@ -77,7 +78,6 @@ function computeSpeechMetrics(transcript: { speaker: string; text: string }[] | 
   const pace = Math.round(wordCount / userMinutes);
 
   // Silence ratio — approximate from answer lengths vs total time
-  const avgWordsPerAnswer = wordCount / Math.max(1, userEntries.length);
   const estimatedSpeakingTime = (wordCount / 150) * 60; // at 150 wpm
   const silenceRatio = Math.max(0, Math.min(100, Math.round((1 - estimatedSpeakingTime / Math.max(1, durationSec * 0.5)) * 100)));
 
@@ -95,7 +95,47 @@ function computeSpeechMetrics(transcript: { speaker: string; text: string }[] | 
   }
   fillerBreakdown.sort((a, b) => b.count - a.count);
 
-  return { fillerCount, fillerPerMin: Math.round(fillerPerMin * 10) / 10, pace, silenceRatio, energy, wordCount, fillerBreakdown };
+  // Hedging language detection
+  const lowerText = userText.toLowerCase();
+  let hedgingCount = 0;
+  const hedgingBreakdown: { phrase: string; count: number }[] = [];
+  for (const phrase of HEDGING_PHRASES) {
+    const regex = new RegExp(`\\b${phrase}\\b`, "gi");
+    const matches = userText.match(regex);
+    if (matches && matches.length > 0) {
+      hedgingCount += matches.length;
+      hedgingBreakdown.push({ phrase, count: matches.length });
+    }
+  }
+  hedgingBreakdown.sort((a, b) => b.count - a.count);
+
+  // Power words / action verbs count
+  let powerWordCount = 0;
+  for (const pw of POWER_WORDS) {
+    const regex = new RegExp(`\\b${pw}\\w*\\b`, "gi");
+    const matches = userText.match(regex);
+    if (matches) powerWordCount += matches.length;
+  }
+
+  // Confidence score (0-100): combines vocabulary, structure, power words, anti-hedging
+  const fillerPenalty = Math.min(30, fillerPerMin * 5);
+  const hedgingPenalty = Math.min(20, hedgingCount * 3);
+  const powerBonus = Math.min(20, powerWordCount * 4);
+  const lengthBonus = Math.min(15, (wordCount / Math.max(1, userEntries.length) / 50) * 15); // ~50 words/answer = full bonus
+  const confidence = Math.max(0, Math.min(100, Math.round(50 + powerBonus + lengthBonus - fillerPenalty - hedgingPenalty + vocabularyRichness * 0.2)));
+
+  // Per-answer word counts for response consistency
+  const answerLengths = userEntries.map(e => e.text.split(/\s+/).filter(Boolean).length);
+  const avgAnswerLength = Math.round(answerLengths.reduce((a, b) => a + b, 0) / answerLengths.length);
+  const answerConsistency = answerLengths.length > 1
+    ? Math.round(100 - (Math.sqrt(answerLengths.reduce((sum, len) => sum + Math.pow(len - avgAnswerLength, 2), 0) / answerLengths.length) / avgAnswerLength * 100))
+    : 100;
+
+  return {
+    fillerCount, fillerPerMin: Math.round(fillerPerMin * 10) / 10, pace, silenceRatio, energy, wordCount, fillerBreakdown,
+    hedgingCount, hedgingBreakdown, powerWordCount, confidence: Math.max(0, Math.min(100, answerConsistency > 0 ? confidence : confidence - 10)),
+    avgAnswerLength, answerConsistency: Math.max(0, Math.min(100, answerConsistency)),
+  };
 }
 
 /* ─── Compute historical averages from localStorage for benchmarking ─── */
@@ -135,6 +175,7 @@ interface IdealAnswer {
   rating?: string;
   workedWell?: string;
   toImprove?: string;
+  starBreakdown?: Record<string, string>;
 }
 
 interface LocalSession {
@@ -150,6 +191,7 @@ interface LocalSession {
   ai_feedback?: string;
   skill_scores?: Record<string, number | { score: number; reason?: string }> | null;
   ideal_answers?: IdealAnswer[];
+  starAnalysis?: { overall: number; breakdown: Record<string, number>; tip: string };
   strengths?: string[];
   improvements?: string[];
   nextSteps?: string[];
@@ -291,6 +333,10 @@ export default function SessionDetail() {
       lines.push(`  Speaking Pace: ${speechMetrics.pace} wpm`);
       lines.push(`  Silence Ratio: ${speechMetrics.silenceRatio}%`);
       lines.push(`  Energy: ${speechMetrics.energy}/100`);
+      lines.push(`  Confidence: ${speechMetrics.confidence}/100`);
+      lines.push(`  Hedging Phrases: ${speechMetrics.hedgingCount}`);
+      lines.push(`  Power Words: ${speechMetrics.powerWordCount}`);
+      lines.push(`  Avg Answer Length: ${speechMetrics.avgAnswerLength} words`);
       lines.push("");
     }
     if (session.skill_scores) {
@@ -583,6 +629,119 @@ export default function SessionDetail() {
                 </div>
                 <div style={{ fontSize: 10, color: c.stone }}>Target: 130–180 wpm</div>
               </div>
+
+              {/* Confidence Score */}
+              <div style={{ padding: "16px 18px", borderRadius: 12, background: c.obsidian, border: `1px solid ${c.border}` }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
+                  <div>
+                    <span style={{ fontSize: 11, fontWeight: 600, color: c.chalk, display: "block" }}>Confidence</span>
+                    <span style={{ fontSize: 10, color: c.stone }}>Assertiveness Score</span>
+                  </div>
+                  <span style={{ fontFamily: font.mono, fontSize: 24, fontWeight: 700, color: speechMetrics.confidence >= 70 ? c.sage : speechMetrics.confidence >= 50 ? c.gilt : c.ember }}>
+                    {speechMetrics.confidence}<span style={{ fontSize: 14, color: c.stone }}>/100</span>
+                  </span>
+                </div>
+                <div style={{ display: "flex", gap: 8, marginBottom: 6 }}>
+                  <div style={{ flex: 1, padding: "4px 8px", borderRadius: 6, background: "rgba(122,158,126,0.08)", border: "1px solid rgba(122,158,126,0.15)", textAlign: "center" }}>
+                    <span style={{ fontSize: 9, color: c.stone, display: "block" }}>Power Words</span>
+                    <span style={{ fontFamily: font.mono, fontSize: 13, fontWeight: 600, color: c.sage }}>{speechMetrics.powerWordCount}</span>
+                  </div>
+                  <div style={{ flex: 1, padding: "4px 8px", borderRadius: 6, background: "rgba(196,112,90,0.08)", border: "1px solid rgba(196,112,90,0.15)", textAlign: "center" }}>
+                    <span style={{ fontSize: 9, color: c.stone, display: "block" }}>Hedging</span>
+                    <span style={{ fontFamily: font.mono, fontSize: 13, fontWeight: 600, color: speechMetrics.hedgingCount > 3 ? c.ember : c.chalk }}>{speechMetrics.hedgingCount}</span>
+                  </div>
+                </div>
+                <div style={{ fontSize: 10, color: c.stone }}>
+                  {speechMetrics.confidence >= 70 ? "Strong and assertive delivery." : speechMetrics.confidence >= 50 ? "Moderate. Reduce hedging, add action verbs." : "Low. Replace \"I think\" with definitive statements."}
+                </div>
+              </div>
+
+              {/* Hedging Breakdown */}
+              {speechMetrics.hedgingBreakdown.length > 0 && (
+                <div style={{ padding: "16px 18px", borderRadius: 12, background: c.obsidian, border: `1px solid ${c.border}` }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
+                    <div>
+                      <span style={{ fontSize: 11, fontWeight: 600, color: c.chalk, display: "block" }}>Hedging Language</span>
+                      <span style={{ fontSize: 10, color: c.stone }}>Uncertainty Phrases</span>
+                    </div>
+                    <span style={{ fontSize: 10, fontWeight: 600, color: speechMetrics.hedgingCount <= 2 ? c.sage : c.ember, background: speechMetrics.hedgingCount <= 2 ? "rgba(122,158,126,0.1)" : "rgba(196,112,90,0.1)", padding: "1px 6px", borderRadius: 4 }}>
+                      {speechMetrics.hedgingCount} total
+                    </span>
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                    {speechMetrics.hedgingBreakdown.slice(0, 5).map(({ phrase, count }) => (
+                      <div key={phrase} style={{ display: "flex", justifyContent: "space-between", fontSize: 10 }}>
+                        <span style={{ color: c.chalk }}>"{phrase}"</span>
+                        <span style={{ fontFamily: font.mono, color: c.ember }}>{count}x</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{ fontSize: 10, color: c.stone, marginTop: 6 }}>Tip: Replace with "I did", "We achieved", "The result was"</div>
+                </div>
+              )}
+
+              {/* Answer Consistency */}
+              <div style={{ padding: "16px 18px", borderRadius: 12, background: c.obsidian, border: `1px solid ${c.border}` }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
+                  <div>
+                    <span style={{ fontSize: 11, fontWeight: 600, color: c.chalk, display: "block" }}>Answer Depth</span>
+                    <span style={{ fontSize: 10, color: c.stone }}>Avg. Words per Answer</span>
+                  </div>
+                  <span style={{ fontFamily: font.mono, fontSize: 24, fontWeight: 700, color: speechMetrics.avgAnswerLength >= 40 ? c.sage : speechMetrics.avgAnswerLength >= 20 ? c.gilt : c.ember }}>
+                    {speechMetrics.avgAnswerLength}
+                  </span>
+                </div>
+                <div style={{ display: "flex", gap: 8, marginBottom: 6 }}>
+                  <div style={{ flex: 1, padding: "4px 8px", borderRadius: 6, background: "rgba(255,255,255,0.02)", border: `1px solid ${c.border}`, textAlign: "center" }}>
+                    <span style={{ fontSize: 9, color: c.stone, display: "block" }}>Consistency</span>
+                    <span style={{ fontFamily: font.mono, fontSize: 13, fontWeight: 600, color: speechMetrics.answerConsistency >= 70 ? c.sage : c.gilt }}>{speechMetrics.answerConsistency}%</span>
+                  </div>
+                  <div style={{ flex: 1, padding: "4px 8px", borderRadius: 6, background: "rgba(255,255,255,0.02)", border: `1px solid ${c.border}`, textAlign: "center" }}>
+                    <span style={{ fontSize: 9, color: c.stone, display: "block" }}>Total Words</span>
+                    <span style={{ fontFamily: font.mono, fontSize: 13, fontWeight: 600, color: c.chalk }}>{speechMetrics.wordCount}</span>
+                  </div>
+                </div>
+                <div style={{ fontSize: 10, color: c.stone }}>Target: 40–80 words per answer</div>
+              </div>
+            </div>
+          </Section>
+        )}
+
+        {/* ═══ STAR METHOD ANALYSIS ═══ */}
+        {session.starAnalysis && (
+          <Section animIndex={1}>
+            <SectionTitle icon={
+              <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="2" strokeLinecap="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            }>STAR Method Analysis</SectionTitle>
+
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 16 }}>
+              {(["situation", "task", "action", "result"] as const).map(component => {
+                const score = session.starAnalysis!.breakdown[component];
+                const label = component.charAt(0).toUpperCase() + component.slice(1);
+                return (
+                  <div key={component} style={{ padding: "16px 14px", borderRadius: 12, background: c.obsidian, border: `1px solid ${c.border}`, textAlign: "center" }}>
+                    <div style={{ width: 40, height: 40, borderRadius: "50%", margin: "0 auto 8px", display: "flex", alignItems: "center", justifyContent: "center", background: `conic-gradient(${score >= 70 ? c.sage : score >= 50 ? c.gilt : c.ember} ${score * 3.6}deg, rgba(255,255,255,0.05) 0deg)` }}>
+                      <div style={{ width: 30, height: 30, borderRadius: "50%", background: c.obsidian, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        <span style={{ fontFamily: font.mono, fontSize: 12, fontWeight: 700, color: score >= 70 ? c.sage : score >= 50 ? c.gilt : c.ember }}>{score}</span>
+                      </div>
+                    </div>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: c.ivory, display: "block" }}>{label}</span>
+                    <span style={{ fontSize: 9, color: c.stone }}>
+                      {component === "situation" ? "Context Setting" : component === "task" ? "Your Role" : component === "action" ? "Steps Taken" : "Impact & Metrics"}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 16px", borderRadius: 10, background: "rgba(212,179,127,0.04)", border: "1px solid rgba(212,179,127,0.1)" }}>
+              <span style={{ fontFamily: font.mono, fontSize: 28, fontWeight: 700, color: session.starAnalysis.overall >= 70 ? c.sage : session.starAnalysis.overall >= 50 ? c.gilt : c.ember }}>
+                {session.starAnalysis.overall}<span style={{ fontSize: 14, color: c.stone }}>/100</span>
+              </span>
+              <div style={{ flex: 1 }}>
+                <span style={{ fontSize: 12, fontWeight: 600, color: c.ivory, display: "block" }}>Overall STAR Score</span>
+                <span style={{ fontSize: 11, color: c.stone }}>{session.starAnalysis.tip}</span>
+              </div>
             </div>
           </Section>
         )}
@@ -813,6 +972,21 @@ export default function SessionDetail() {
                                 <strong>Worked well:</strong> {item.workedWell}
                               </div>
                             )}
+                          </div>
+                        )}
+                        {/* STAR component badges per answer */}
+                        {item.starBreakdown && (
+                          <div style={{ display: "flex", gap: 6, marginTop: 10, flexWrap: "wrap" }}>
+                            {(["situation", "task", "action", "result"] as const).map(comp => {
+                              const status = item.starBreakdown![comp];
+                              const colors = { present: { bg: "rgba(122,158,126,0.12)", text: c.sage, icon: "\u2713" }, partial: { bg: "rgba(212,179,127,0.12)", text: c.gilt, icon: "\u25CB" }, missing: { bg: "rgba(196,112,90,0.12)", text: c.ember, icon: "\u2717" } };
+                              const style = colors[status as keyof typeof colors] || colors.missing;
+                              return (
+                                <span key={comp} style={{ fontSize: 9, fontWeight: 600, padding: "2px 8px", borderRadius: 4, background: style.bg, color: style.text }}>
+                                  {style.icon} {comp.charAt(0).toUpperCase() + comp.slice(1)}
+                                </span>
+                              );
+                            })}
                           </div>
                         )}
                       </div>

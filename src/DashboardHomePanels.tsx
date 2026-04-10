@@ -320,7 +320,7 @@ export function AchievementsSection({ badges, isMobile }: { badges: Badge[]; isM
 /* ─── Charts Row (Score Trend + Skill Radar) ─── */
 
 export interface ChartsRowProps {
-  scoreTrend: { date: string; score: number }[];
+  scoreTrend: { date: string; score: number; type: string }[];
   skills: { name: string; score: number; prev: number; color: string }[];
   isMobile: boolean;
   onStartSession: () => void;

@@ -789,7 +789,11 @@ export default function Interview() {
     const hasRealAnswers = transcript.some(t => t.speaker === "user" && !t.text.startsWith("["));
     const hasAnyAnswers = transcript.some(t => t.speaker === "user");
     score = fallbackScore;
-    let idealAnswers: { question: string; ideal: string; candidateSummary: string }[] = [];
+    let idealAnswers: { question: string; ideal: string; candidateSummary: string; rating?: string; starBreakdown?: Record<string, string>; workedWell?: string; toImprove?: string }[] = [];
+    let starAnalysis: { overall: number; breakdown: Record<string, number>; tip: string } | undefined;
+    let strengths: string[] | undefined;
+    let improvements: string[] | undefined;
+    let nextSteps: string[] | undefined;
 
     if (hasAnyAnswers) {
       try {
@@ -812,6 +816,10 @@ export default function Interview() {
             ? Object.fromEntries(Object.entries(evaluation.skillScores).map(([k, v]) => [k, typeof v === "object" && v !== null && "score" in (v as any) ? (v as any).score : v]))
             : {};
           idealAnswers = Array.isArray(evaluation.idealAnswers) ? evaluation.idealAnswers : [];
+          if (evaluation.starAnalysis && typeof evaluation.starAnalysis === "object") starAnalysis = evaluation.starAnalysis;
+          if (Array.isArray(evaluation.strengths)) strengths = evaluation.strengths;
+          if (Array.isArray(evaluation.improvements)) improvements = evaluation.improvements;
+          if (Array.isArray(evaluation.nextSteps)) nextSteps = evaluation.nextSteps;
         } else {
           setUsedFallbackScore(true);
         }
@@ -861,6 +869,10 @@ export default function Interview() {
         ai_feedback: aiFeedback,
         skill_scores: skillScores,
         ideal_answers: idealAnswers.length > 0 ? idealAnswers : undefined,
+        starAnalysis,
+        strengths,
+        improvements,
+        nextSteps,
         resumeUsed: !!user?.resumeText,
       }, user?.id);
       localOk = saveResult.localOk;
