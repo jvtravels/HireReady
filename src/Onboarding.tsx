@@ -320,6 +320,11 @@ export default function Onboarding() {
           finalProfile = result.profile;
           setAiProfile(finalProfile);
           aiSuccess = true;
+          // Auto-fill role from AI headline if client parser didn't extract one
+          if (!targetRole && !autoRole && finalProfile.headline) {
+            setTargetRole(finalProfile.headline);
+            setRoleAutoFilled(true);
+          }
         }
       } catch (analysisErr: any) {
         if (analysisErr?.message === "aborted") return; // Upload was superseded
