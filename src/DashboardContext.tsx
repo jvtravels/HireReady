@@ -16,10 +16,9 @@ import {
   computeBadges, getDailyChallenge, getPracticeReminder,
 } from "./dashboardData";
 
-interface DashboardContextValue {
-  /* State */
-  persisted: PersistedState;
-  updatePersisted: (updates: Partial<PersistedState>) => void;
+/* ─── Sub-context types ─── */
+
+interface SessionsContextValue {
   recentSessions: DashboardSession[];
   scoreTrend: TrendPoint[];
   skills: SkillData[];
@@ -29,7 +28,10 @@ interface DashboardContextValue {
   currentStreak: number;
   readinessScore: number;
   calendarEvents: InterviewEvent[];
-  /* Subscription */
+  refreshSessions: () => void;
+}
+
+interface SubscriptionContextValue {
   isFree: boolean;
   isStarter: boolean;
   isPro: boolean;
@@ -38,7 +40,9 @@ interface DashboardContextValue {
   sessionsRemaining: number;
   starterRemaining: number;
   sessionsThisWeek: number;
-  /* UI state */
+}
+
+interface UIContextValue {
   showUpgradeModal: boolean;
   setShowUpgradeModal: (v: boolean) => void;
   dataLoading: boolean;
@@ -49,7 +53,11 @@ interface DashboardContextValue {
   setSyncError: (v: string) => void;
   toast: string | null;
   showToast: (msg: string) => void;
-  /* Derived */
+}
+
+interface CoreContextValue {
+  persisted: PersistedState;
+  updatePersisted: (updates: Partial<PersistedState>) => void;
   displayName: string;
   isNewUser: boolean;
   daysLeft: number;
@@ -62,34 +70,66 @@ interface DashboardContextValue {
   badges: { id: string; label: string; description: string; icon: string; earned: boolean; progress: number }[];
   dailyChallenge: { id: string; label: string; description: string; type: string; focus?: string; difficulty: string; completed: boolean };
   practiceReminder: string | null;
-  /* Google Calendar */
   googleSyncStatus: "idle" | "syncing" | "done" | "error";
   googleSyncError: string | null;
   hasGoogleToken: boolean;
   syncGoogleCalendar: () => Promise<void>;
-  /* Actions */
   handleStartSession: () => void;
   handleExport: () => void;
   handleDownload: () => void;
   handleExportCSV: () => void;
   handleExportPDF: () => void;
-  refreshSessions: () => void;
 }
 
-const DashboardContext = createContext<DashboardContextValue | null>(null);
+/* ─── Contexts ─── */
 
-export function useDashboard() {
-  const ctx = useContext(DashboardContext);
-  if (!ctx) throw new Error("useDashboard must be used within DashboardProvider");
+const SessionsContext = createContext<SessionsContextValue | null>(null);
+const SubscriptionContext = createContext<SubscriptionContextValue | null>(null);
+const UIContext = createContext<UIContextValue | null>(null);
+const CoreContext = createContext<CoreContextValue | null>(null);
+
+/* ─── Focused hooks ─── */
+
+export function useDashboardSessions() {
+  const ctx = useContext(SessionsContext);
+  if (!ctx) throw new Error("useDashboardSessions must be used within DashboardProvider");
   return ctx;
 }
 
+export function useDashboardSubscription() {
+  const ctx = useContext(SubscriptionContext);
+  if (!ctx) throw new Error("useDashboardSubscription must be used within DashboardProvider");
+  return ctx;
+}
+
+export function useDashboardUI() {
+  const ctx = useContext(UIContext);
+  if (!ctx) throw new Error("useDashboardUI must be used within DashboardProvider");
+  return ctx;
+}
+
+export function useDashboardCore() {
+  const ctx = useContext(CoreContext);
+  if (!ctx) throw new Error("useDashboardCore must be used within DashboardProvider");
+  return ctx;
+}
+
+/** Backward-compatible aggregate hook — returns all properties from all sub-contexts */
+export function useDashboard() {
+  const sessions = useDashboardSessions();
+  const subscription = useDashboardSubscription();
+  const ui = useDashboardUI();
+  const core = useDashboardCore();
+  return { ...sessions, ...subscription, ...ui, ...core };
+}
+
+/* ─── Provider ─── */
+
 export function DashboardProvider({ children }: { children: ReactNode }) {
   const nav = useNavigate();
-  const { logout: authLogout, user, updateUser: authUpdateUser } = useAuth();
+  const { user, updateUser: authUpdateUser } = useAuth();
   const [persisted, setPersisted] = useState<PersistedState>(() => {
     const local = loadState();
-    // Merge with auth user profile (Supabase data takes precedence over empty localStorage)
     if (user) {
       return {
         ...local,
@@ -148,15 +188,15 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
           scheduleEventNotifications(mapped);
         }
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       setGoogleSyncStatus("error");
-      setGoogleSyncError(err.message || "Sync failed");
-      setHasGoogleToken(!!getGoogleProviderToken()); // token may have been cleared on 401/403
+      setGoogleSyncError(err instanceof Error ? err.message : "Sync failed");
+      setHasGoogleToken(!!getGoogleProviderToken());
       showToast("Google Calendar sync failed");
     }
   }, [user?.id, showToast]);
 
-  // Sync persisted state when user profile loads/changes (e.g., after profile fetch completes)
+  // Sync persisted state when user profile loads/changes
   useEffect(() => {
     if (!user) return;
     setPersisted(prev => {
@@ -190,12 +230,10 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
           focus: s.focus, duration: s.duration, score: s.score, questions: s.questions,
           ai_feedback: s.ai_feedback, skill_scores: s.skill_scores,
         }));
-        // Always update from Supabase (including when sessions are deleted)
         setSupabaseSessions(mapped);
         try { localStorage.setItem(sessionsCacheKey, JSON.stringify(mapped)); } catch {}
       }).catch(() => {
         if (cancelled) return;
-        // Fallback to cached sessions
         try {
           const cached = localStorage.getItem(sessionsCacheKey);
           if (cached) {
@@ -230,12 +268,11 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
       if (!cancelled) setDataLoading(false);
     });
 
-    // Safety timeout — never stay stuck on loading skeleton
     const timeout = setTimeout(() => { if (!cancelled) setDataLoading(false); }, 10000);
     return () => { cancelled = true; clearTimeout(timeout); };
   }, [user?.id]);
 
-  // Refetch sessions from Supabase (called on visibility change and route navigation)
+  // Refetch sessions from Supabase
   const refreshSessions = useCallback(() => {
     if (!user?.id) return;
     getUserSessions(user.id).then(sessions => {
@@ -249,7 +286,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     }).catch(() => {});
   }, [user?.id]);
 
-  // Auto-refresh data when user returns to tab (e.g. after completing an interview)
+  // Auto-refresh data when user returns to tab
   useEffect(() => {
     if (!user?.id) return;
     const handleVisibility = () => {
@@ -269,7 +306,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
   const weekActivity = useMemo(() => computeWeekActivity(recentSessions), [recentSessions]);
   const currentStreak = useMemo(() => computeStreak(recentSessions), [recentSessions]);
 
-  // Personalized AI insights — LLM for paid users, templates for free
+  // Personalized AI insights
   const fallbackInsights = useMemo(() => generateFallbackInsights(user, skills), [user, skills]);
   const [llmInsights, setLlmInsights] = useState<{ type: string; text: string }[] | null>(null);
   const insightsFetchedRef = useRef<string>("");
@@ -279,12 +316,10 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     const tier = user.subscriptionTier || "free";
     if (tier === "free") { setLlmInsights(null); return; }
 
-    // Cache key based on session count — regenerate when new sessions added
     const cacheKey = `hirestepx_insights_${user.id}_${recentSessions.length}`;
     if (insightsFetchedRef.current === cacheKey) return;
     insightsFetchedRef.current = cacheKey;
 
-    // Check localStorage cache (TTL: 24 hours)
     try {
       const cached = localStorage.getItem(cacheKey);
       if (cached) {
@@ -293,7 +328,6 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
       }
     } catch {}
 
-    // Fetch from API
     (async () => {
       try {
         const { authHeaders } = await import("./supabase");
@@ -463,42 +497,54 @@ ${skills.length > 0 ? `<h2>Skills</h2><table><tr><th>Skill</th><th>Score</th><th
     showToast("PDF export opened — use Save as PDF in print dialog");
   }, [persisted.userName, overallStats, skills, recentSessions, showToast]);
 
-  const value: DashboardContextValue = useMemo(() => ({
-    persisted, updatePersisted,
+  /* ─── Memoized sub-context values ─── */
+
+  const sessionsValue: SessionsContextValue = useMemo(() => ({
     recentSessions, scoreTrend, skills, overallStats, hasData,
     weekActivity, currentStreak, readinessScore,
-    calendarEvents,
+    calendarEvents, refreshSessions,
+  }), [recentSessions, scoreTrend, skills, overallStats, hasData, weekActivity, currentStreak, readinessScore, calendarEvents, refreshSessions]);
+
+  const subscriptionValue: SubscriptionContextValue = useMemo(() => ({
     isFree, isStarter, isPro, atSessionLimit,
     sessionsUsed, sessionsRemaining, starterRemaining, sessionsThisWeek,
+  }), [isFree, isStarter, isPro, atSessionLimit, sessionsUsed, sessionsRemaining, starterRemaining, sessionsThisWeek]);
+
+  const uiValue: UIContextValue = useMemo(() => ({
     showUpgradeModal, setShowUpgradeModal,
     dataLoading, isMobile,
     paymentBanner, setPaymentBanner,
     syncError, setSyncError,
     toast, showToast,
+  }), [showUpgradeModal, dataLoading, isMobile, paymentBanner, syncError, toast, showToast]);
+
+  const coreValue: CoreContextValue = useMemo(() => ({
+    persisted, updatePersisted,
     displayName, isNewUser, daysLeft,
     aiInsights, notifications, upcomingGoals,
     returnContext, smartSchedule, prepPlan,
     badges, dailyChallenge, practiceReminder,
     googleSyncStatus, googleSyncError, hasGoogleToken, syncGoogleCalendar,
     handleStartSession, handleExport, handleDownload, handleExportCSV, handleExportPDF,
-    refreshSessions,
   }), [
     persisted, updatePersisted,
-    recentSessions, scoreTrend, skills, overallStats, hasData,
-    weekActivity, currentStreak, readinessScore,
-    calendarEvents,
-    isFree, isStarter, isPro, atSessionLimit,
-    sessionsUsed, sessionsRemaining, starterRemaining, sessionsThisWeek,
-    showUpgradeModal, dataLoading, isMobile,
-    paymentBanner, syncError, toast, showToast,
     displayName, isNewUser, daysLeft,
     aiInsights, notifications, upcomingGoals,
     returnContext, smartSchedule, prepPlan,
     badges, dailyChallenge, practiceReminder,
     googleSyncStatus, googleSyncError, hasGoogleToken, syncGoogleCalendar,
     handleStartSession, handleExport, handleDownload, handleExportCSV, handleExportPDF,
-    refreshSessions,
   ]);
 
-  return <DashboardContext.Provider value={value}>{children}</DashboardContext.Provider>;
+  return (
+    <SessionsContext.Provider value={sessionsValue}>
+      <SubscriptionContext.Provider value={subscriptionValue}>
+        <UIContext.Provider value={uiValue}>
+          <CoreContext.Provider value={coreValue}>
+            {children}
+          </CoreContext.Provider>
+        </UIContext.Provider>
+      </SubscriptionContext.Provider>
+    </SessionsContext.Provider>
+  );
 }

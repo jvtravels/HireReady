@@ -11,7 +11,7 @@ import { useToast } from "./Toast";
 import { saveToIDB, loadFromIDB, deleteFromIDB } from "./interviewIDB";
 import type { InterviewStep } from "./interviewScripts";
 import { scriptsByType, defaultScript, getMiniScript, getScript } from "./interviewScripts";
-import { saveSessionResult, fetchLLMQuestions, fetchLLMEvaluation, fetchFollowUp, retryQueuedEvals } from "./interviewAPI";
+import { saveSessionResult, fetchLLMQuestions, fetchLLMEvaluation, fetchFollowUp, retryQueuedEvals, getAdaptiveHints } from "./interviewAPI";
 import type { SessionResult } from "./interviewAPI";
 import { createDeepgramSTT, type DeepgramSTTHandle } from "./deepgramSTT";
 import {
@@ -26,6 +26,21 @@ import {
 } from "./InterviewPanels";
 import { createSpeechRecognition } from "./speechRecognition";
 import type { SpeechRecognitionInstance, SpeechRecognitionEvent } from "./speechRecognition";
+
+/* ─── Skill score helper ─── */
+function extractScore(raw: unknown): number {
+  if (typeof raw === "number") return raw;
+  if (typeof raw === "object" && raw !== null && "score" in raw) return (raw as { score: number }).score;
+  return 0;
+}
+
+/* ─── Draft data shape (for IDB restore) ─── */
+interface InterviewDraft {
+  transcript: { speaker: "ai" | "user"; text: string; time: string }[];
+  currentStep: number;
+  elapsed: number;
+  script?: import("./interviewScripts").InterviewStep[];
+}
 
 /* ═══════════════════════════════════════════════
    INTERVIEW SCREEN
@@ -46,7 +61,7 @@ export default function Interview() {
   // Restore draft if resuming
   const draftKey = `hirestepx_interview_draft_${user?.id || "anon"}`;
   const isResuming = searchParams.get("resume") === "true";
-  const draftRef = useRef<{ transcript: any[]; currentStep: number; elapsed: number; script?: InterviewStep[] } | null>(null);
+  const draftRef = useRef<InterviewDraft | null>(null);
   if (isResuming && !draftRef.current) {
     try {
       const raw = localStorage.getItem(draftKey);
@@ -74,8 +89,8 @@ export default function Interview() {
   useEffect(() => {
     if (!isResuming || draftRef.current) return;
     loadFromIDB(draftKey).then(data => {
-      if (data && typeof data === "object" && "transcript" in (data as any)) {
-        const d = data as any;
+      if (data && typeof data === "object" && "transcript" in data) {
+        const d = data as InterviewDraft;
         draftRef.current = d;
         setCurrentStep(d.currentStep || 0);
         setTranscript(d.transcript || []);
@@ -111,6 +126,17 @@ export default function Interview() {
       return;
     }
     let cancelled = false;
+
+    // Adaptive question selection — analyze past sessions for weak skills
+    let adaptiveHints: { weakSkills: string[]; pastTopics: string[] } = { weakSkills: [], pastTopics: [] };
+    try {
+      const cached = localStorage.getItem(`hirestepx_cache_sessions_${user?.id}`);
+      if (cached) {
+        const pastSessions = JSON.parse(cached);
+        adaptiveHints = getAdaptiveHints(pastSessions);
+      }
+    } catch { /* silent */ }
+
     fetchLLMQuestions({
       type: interviewType,
       focus: interviewFocus,
@@ -120,6 +146,8 @@ export default function Interview() {
       industry: user?.industry,
       resumeText: shouldUseResume ? user?.resumeText : undefined,
       language: interviewLanguage !== "en" ? interviewLanguage : undefined,
+      pastTopics: adaptiveHints.pastTopics.length > 0 ? adaptiveHints.pastTopics : undefined,
+      weakSkills: adaptiveHints.weakSkills.length > 0 ? adaptiveHints.weakSkills : undefined,
     }).then(questions => {
       if (cancelled) return;
       if (questions && questions.length > 0 && currentStepRef.current === 0) {
@@ -346,7 +374,7 @@ export default function Interview() {
           }
           setCurrentTranscript(finalText + interim);
         };
-        recognition.onerror = (event: any) => {
+        recognition.onerror = (event: { error: string }) => {
           const error = event?.error || "unknown";
           if (error === "not-allowed") {
             setMicError("Microphone access denied. Check browser permissions.");
@@ -822,7 +850,7 @@ export default function Interview() {
           score = Math.min(100, Math.max(0, evaluation.overallScore || fallbackScore));
           aiFeedback = evaluation.feedback || "";
           skillScores = evaluation.skillScores && typeof evaluation.skillScores === "object"
-            ? Object.fromEntries(Object.entries(evaluation.skillScores).map(([k, v]) => [k, typeof v === "object" && v !== null && "score" in (v as any) ? (v as any).score : v]))
+            ? Object.fromEntries(Object.entries(evaluation.skillScores).map(([k, v]) => [k, extractScore(v)]))
             : {};
           idealAnswers = Array.isArray(evaluation.idealAnswers) ? evaluation.idealAnswers : [];
           if (evaluation.starAnalysis && typeof evaluation.starAnalysis === "object") starAnalysis = evaluation.starAnalysis;

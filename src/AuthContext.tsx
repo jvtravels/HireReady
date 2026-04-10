@@ -70,6 +70,8 @@ export interface User {
   subscriptionStart?: string;
   subscriptionEnd?: string;
   cancelAtPeriodEnd?: boolean;
+  subscriptionPaused?: boolean;
+  referralCode?: string;
   emailVerified: boolean;
 }
 
@@ -123,6 +125,7 @@ function profileToUser(profile: Profile, session: Session): User {
     subscriptionStart: profile.subscription_start || undefined,
     subscriptionEnd: profile.subscription_end || undefined,
     cancelAtPeriodEnd: profile.cancel_at_period_end || false,
+    referralCode: profile.referral_code || undefined,
     emailVerified: !!session.user.email_confirmed_at,
   };
 }

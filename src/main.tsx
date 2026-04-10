@@ -37,9 +37,9 @@ const TempoHost = lazy(() => {
   if (typeof window !== "undefined" && window.location.pathname.startsWith("/tempo-host")) {
     const base = "..";
     const path = ".tempo/tempo-host";
-    return import(/* @vite-ignore */ `${base}/${path}`).catch(() => ({ default: () => null as any }));
+    return import(/* @vite-ignore */ `${base}/${path}`).catch(() => ({ default: () => null }));
   }
-  return Promise.resolve({ default: () => null as any });
+  return Promise.resolve({ default: () => null });
 });
 const LegalPage = lazy(() => import("./LegalPage"));
 const SignUp = lazy(() => import("./SignUp"));
@@ -69,6 +69,7 @@ const ResetPassword = lazy(() => import("./ResetPassword"));
 const SessionDetail = lazy(() => import("./SessionDetail"));
 const PlaceholderPage = lazy(() => import("./PlaceholderPage"));
 const BlogPage = lazy(() => import("./BlogPage"));
+const PublicProfile = lazy(() => import("./PublicProfile"));
 
 function LoadingFallback() {
   return (
@@ -199,6 +200,7 @@ createRoot(document.getElementById("root")!).render(
               <Route path="/session/:id" element={<RequireAuth><div className="page-enter"><RouteErrorBoundary><SessionDetail /></RouteErrorBoundary></div></RequireAuth>} />
               <Route path="/blog" element={<div className="page-enter"><BlogPage /></div>} />
               <Route path="/blog/:slug" element={<div className="page-enter"><BlogPage /></div>} />
+              <Route path="/profile/:userId" element={<div className="page-enter"><PublicProfile /></div>} />
               <Route path="/page/:slug" element={<div className="page-enter"><PlaceholderPage /></div>} />
               <Route path="*" element={<div className="page-enter"><NotFound /></div>} />
             </Routes>

@@ -81,6 +81,8 @@ export interface Profile {
   has_completed_onboarding: boolean;
   razorpay_payment_id: string | null;
   razorpay_subscription_id: string | null;
+  referral_code: string | null;
+  referred_by: string | null;
   created_at: string;
 }
 
@@ -145,7 +147,7 @@ export async function upsertProfile(profile: Partial<Profile> & { id: string }) 
       if (Object.keys(safeUpdates).length > 0) {
         const retryResult = await client.from("profiles").update(safeUpdates).eq("id", id);
         if (retryResult.error) {
-          const upsertResult = await client.from("profiles").upsert({ id, ...safeUpdates } as any, { onConflict: "id" });
+          const upsertResult = await client.from("profiles").upsert({ id, ...safeUpdates } as Record<string, unknown>, { onConflict: "id" });
           if (upsertResult.error) {
             console.error("[supabase] upsert also failed:", upsertResult.error.message, upsertResult.error.code);
           }
@@ -368,14 +370,15 @@ export async function fetchGoogleCalendarEvents(token: string): Promise<Calendar
   }
 
   const data = await res.json();
-  const items: any[] = data.items || [];
+  type GoogleCalendarItem = { id?: string; summary?: string; description?: string; start?: { dateTime?: string; date?: string } };
+  const items: GoogleCalendarItem[] = data.items || [];
   const interviewKeywords = /interview|round|screen|onsite|recruiter|hiring|placement|assessment|walkthrough/i;
-  const filtered = items.filter((item: any) => {
+  const filtered = items.filter(item => {
     const text = `${item.summary || ""} ${item.description || ""}`;
     return interviewKeywords.test(text);
   });
 
-  return filtered.map((item: any) => ({
+  return filtered.map(item => ({
     id: "",
     user_id: "",
     title: item.summary || "Interview",
@@ -406,7 +409,7 @@ export async function syncGoogleEvents(userId: string): Promise<{ synced: number
     .eq("user_id", userId)
     .not("google_event_id", "is", null);
 
-  const existingIds = new Set((existing || []).map((e: any) => e.google_event_id));
+  const existingIds = new Set((existing || []).map((e: { google_event_id: string | null }) => e.google_event_id));
 
   const newEvents = googleEvents
     .filter(e => e.google_event_id && !existingIds.has(e.google_event_id))

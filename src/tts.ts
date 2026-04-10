@@ -376,8 +376,8 @@ async function speakWithWebSocket(
       add_timestamps: false,
     }));
 
-  } catch (err: any) {
-    console.warn("[TTS-WS] setup error:", err?.message || err);
+  } catch (err: unknown) {
+    console.warn("[TTS-WS] setup error:", err instanceof Error ? err.message : err);
     closeCtx();
     return speakWithProxy(text, voiceId, onEnd, onError);
   }
@@ -454,8 +454,8 @@ async function speakWithProxy(
     };
 
     await audio.play();
-  } catch (err: any) {
-    if (err.name === "AbortError") return { cancel: () => {} };
+  } catch (err: unknown) {
+    if (err instanceof Error && err.name === "AbortError") return { cancel: () => {} };
     settle(onError);
     return { cancel: () => {} };
   }
@@ -543,9 +543,9 @@ async function speakWithDeepgram(
     audio.onended = () => { URL.revokeObjectURL(url); settle(onEnd); };
     audio.onerror = () => { URL.revokeObjectURL(url); settle(onError); };
     await audio.play();
-  } catch (err: any) {
-    if (err.name === "AbortError") return { cancel: () => {} };
-    console.warn("[TTS-DG] error:", err?.message || err);
+  } catch (err: unknown) {
+    if (err instanceof Error && err.name === "AbortError") return { cancel: () => {} };
+    console.warn("[TTS-DG] error:", err instanceof Error ? err.message : err);
     settle(onError);
     return { cancel: () => {} };
   }

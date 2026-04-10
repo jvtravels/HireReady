@@ -14,6 +14,7 @@ const icons = {
   interview: <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg>,
   notifications: <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>,
   plan: <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>,
+  referral: <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>,
 };
 
 const SECTIONS = [
@@ -21,6 +22,7 @@ const SECTIONS = [
   { id: "interview", label: "Interview", icon: icons.interview },
   { id: "notifications", label: "Notifications", icon: icons.notifications },
   { id: "plan", label: "Plan & Data", icon: icons.plan },
+  { id: "referral", label: "Referral", icon: icons.referral },
 ] as const;
 
 
@@ -600,7 +602,7 @@ export default function SettingsPage() {
               {authUser?.cancelAtPeriodEnd && (
                 <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, padding: "3px 10px", borderRadius: 6, background: "rgba(196,112,90,0.08)", color: c.ember, letterSpacing: "0.02em", marginLeft: 10, verticalAlign: "middle" }}>Cancelling</span>
               )}
-              {!authUser?.cancelAtPeriodEnd && (authUser as any)?.subscriptionPaused && (
+              {!authUser?.cancelAtPeriodEnd && authUser?.subscriptionPaused && (
                 <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, padding: "3px 10px", borderRadius: 6, background: "rgba(212,179,127,0.08)", color: c.gilt, letterSpacing: "0.02em", marginLeft: 10, verticalAlign: "middle" }}>Paused</span>
               )}
             </div>
@@ -633,12 +635,12 @@ export default function SettingsPage() {
                     <span style={{ fontFamily: font.ui, fontSize: 12, color: c.chalk, fontWeight: 500 }}>
                       {new Date(authUser.subscriptionStart!).toLocaleDateString("en-IN", { day: "numeric", month: "short" })} — {new Date(authUser.subscriptionEnd!).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
                     </span>
-                    <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: (authUser as any)?.subscriptionPaused ? c.gilt : daysLeft <= 3 ? c.ember : c.gilt }}>
-                      {(authUser as any)?.subscriptionPaused ? "Paused" : daysLeft > 0 ? `${daysLeft} days left` : "Expired"}
+                    <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: authUser?.subscriptionPaused ? c.gilt : daysLeft <= 3 ? c.ember : c.gilt }}>
+                      {authUser?.subscriptionPaused ? "Paused" : daysLeft > 0 ? `${daysLeft} days left` : "Expired"}
                     </span>
                   </div>
                   <div style={{ height: 4, borderRadius: 2, background: "rgba(255,255,255,0.04)" }}>
-                    <div style={{ height: "100%", borderRadius: 2, background: (authUser as any)?.subscriptionPaused ? c.stone : daysLeft <= 3 ? c.ember : `linear-gradient(90deg, ${c.gilt}, ${c.giltDark})`, width: `${progress}%`, transition: "width 0.3s" }} />
+                    <div style={{ height: "100%", borderRadius: 2, background: authUser?.subscriptionPaused ? c.stone : daysLeft <= 3 ? c.ember : `linear-gradient(90deg, ${c.gilt}, ${c.giltDark})`, width: `${progress}%`, transition: "width 0.3s" }} />
                   </div>
                 </div>
 
@@ -670,17 +672,17 @@ export default function SettingsPage() {
                       setCancelLoading(true);
                       try {
                         const hdrs = await Promise.race([authHeaders(), new Promise<never>((_, rej) => setTimeout(() => rej(new Error("Auth timeout")), 5000))]);
-                        const isPaused = !!(authUser as any)?.subscriptionPaused;
+                        const isPaused = !!authUser?.subscriptionPaused;
                         const action = isPaused ? "resume" : "pause";
                         const res = await fetch("/api/pause-subscription", { method: "POST", headers: hdrs, body: JSON.stringify({ action }) });
-                        if (res.ok) { const data = await res.json(); if (data.success) { authUpdateUser({ subscriptionPaused: action === "pause" } as any); showToast(action === "pause" ? "Subscription paused" : "Subscription resumed"); } else { showToast(data.error || "Failed"); } }
+                        if (res.ok) { const data = await res.json(); if (data.success) { authUpdateUser({ subscriptionPaused: action === "pause" });showToast(action === "pause" ? "Subscription paused" : "Subscription resumed"); } else { showToast(data.error || "Failed"); } }
                         else { const d = await res.json().catch(() => ({})); showToast(d.error || "Failed"); }
                       } catch { showToast("Network error"); } finally { setCancelLoading(false); }
                     }}
                       style={{ padding: "8px 18px", borderRadius: 8, cursor: "pointer", background: "transparent", border: `1px solid ${c.border}`, color: c.stone, fontFamily: font.ui, fontSize: 11, fontWeight: 500, transition: "all 0.15s" }}
                       onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(245,242,237,0.04)"; }}
                       onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}>
-                      {(authUser as any)?.subscriptionPaused ? "Resume Plan" : "Pause Plan"}
+                      {authUser?.subscriptionPaused ? "Resume Plan" : "Pause Plan"}
                     </button>
                     <button onClick={() => setConfirmCancel(true)}
                       style={{ padding: "8px 18px", borderRadius: 8, cursor: "pointer", background: "transparent", border: `1px solid rgba(196,112,90,0.12)`, color: c.ember, fontFamily: font.ui, fontSize: 11, fontWeight: 500, transition: "all 0.15s" }}
@@ -923,6 +925,146 @@ export default function SettingsPage() {
         </div>
         {deleteMsg && <p style={{ fontFamily: font.ui, fontSize: 12, color: c.ember, marginTop: 12 }}>{deleteMsg}</p>}
       </div>}
+
+      {/* ═══════════════════ REFERRAL ═══════════════════ */}
+      {activeSection === "referral" && <ReferralSection showToast={showToast} />}
+    </div>
+  );
+}
+
+/* ─── Referral Section Component ─── */
+
+function ReferralSection({ showToast }: { showToast: (msg: string) => void }) {
+  const { user } = useAuth();
+  const [referralCode, setReferralCode] = useState<string | null>(null);
+  const [stats, setStats] = useState({ total: 0, redeemed: 0, rewarded: 0 });
+  const [loading, setLoading] = useState(true);
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    (async () => {
+      try {
+        const { authHeaders: getHeaders } = await import("./supabase");
+        const headers = await getHeaders();
+        const res = await fetch("/api/referral", { headers });
+        if (res.ok) {
+          const data = await res.json();
+          setReferralCode(data.code);
+          setStats(data.stats);
+        }
+      } catch {
+        // silent
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [user?.id]);
+
+  const referralLink = referralCode ? `${window.location.origin}/signup?ref=${referralCode}` : "";
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(referralLink);
+    setCopied(true);
+    showToast("Referral link copied!");
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleShareWhatsApp = () => {
+    const text = `Hey! I've been using HireStepX to practice for interviews with AI - it's really helped me improve. Try it out: ${referralLink}`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
+  };
+
+  const cardStyle: React.CSSProperties = {
+    position: "relative", borderRadius: 16, padding: "32px 28px",
+    background: "rgba(6,6,7,0.6)", border: `1px solid ${c.border}`,
+    boxShadow: shadow.md,
+  };
+  const labelStyle: React.CSSProperties = { fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.stone, letterSpacing: "0.06em", textTransform: "uppercase" as const, display: "block", marginBottom: 10 };
+  const sectionHeader: React.CSSProperties = { display: "flex", alignItems: "center", gap: 14, marginBottom: 28 };
+
+  if (loading) {
+    return <div style={cardStyle}><span style={{ fontFamily: font.ui, fontSize: 13, color: c.stone }}>Loading referral info...</span></div>;
+  }
+
+  return (
+    <div style={cardStyle}>
+      <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 1, background: `linear-gradient(90deg, transparent, rgba(122,158,126,0.2), transparent)` }} />
+
+      <div style={sectionHeader}>
+        <div style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(122,158,126,0.06)", border: `1px solid rgba(122,158,126,0.12)`, display: "flex", alignItems: "center", justifyContent: "center", color: c.sage }}>
+          {icons.referral}
+        </div>
+        <div>
+          <h3 style={{ fontFamily: font.display, fontSize: 20, color: c.ivory, margin: 0 }}>Invite Friends</h3>
+          <p style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, margin: "2px 0 0" }}>Share your referral link and earn rewards</p>
+        </div>
+      </div>
+
+      {/* Referral Code Display */}
+      <label style={labelStyle}>Your Referral Code</label>
+      <div style={{
+        display: "flex", alignItems: "center", gap: 12, marginBottom: 24,
+        padding: "16px 20px", borderRadius: 12,
+        background: "rgba(122,158,126,0.04)", border: `1px solid rgba(122,158,126,0.12)`,
+      }}>
+        <span style={{ fontFamily: font.mono, fontSize: 18, fontWeight: 600, color: c.sage, letterSpacing: "0.08em", flex: 1 }}>
+          {referralCode || "---"}
+        </span>
+        <button onClick={handleCopy} style={{
+          fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: copied ? c.sage : c.gilt,
+          background: copied ? "rgba(122,158,126,0.1)" : "rgba(212,179,127,0.06)",
+          border: `1px solid ${copied ? "rgba(122,158,126,0.2)" : "rgba(212,179,127,0.15)"}`,
+          borderRadius: 8, padding: "8px 16px", cursor: "pointer", transition: "all 0.15s",
+        }}>
+          {copied ? "Copied!" : "Copy Link"}
+        </button>
+      </div>
+
+      {/* Share Buttons */}
+      <label style={labelStyle}>Share via</label>
+      <div style={{ display: "flex", gap: 12, marginBottom: 28 }}>
+        <button onClick={handleShareWhatsApp} style={{
+          fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: "#25D366",
+          background: "rgba(37,211,102,0.06)", border: "1px solid rgba(37,211,102,0.15)",
+          borderRadius: 10, padding: "12px 20px", cursor: "pointer", transition: "all 0.15s",
+          display: "flex", alignItems: "center", gap: 8,
+        }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="#25D366"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.625.846 5.059 2.284 7.034L.789 23.492a.5.5 0 0 0 .611.611l4.458-1.495A11.948 11.948 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-2.316 0-4.473-.754-6.217-2.03l-.352-.264-3.652 1.224 1.224-3.652-.264-.352A9.954 9.954 0 0 1 2 12C2 6.486 6.486 2 12 2s10 4.486 10 10-4.486 10-10 10z"/></svg>
+          WhatsApp
+        </button>
+        <button onClick={() => {
+          const subject = "Try HireStepX - AI Mock Interviews";
+          const body = `Hey!\n\nI've been using HireStepX to practice for interviews with AI interviewers. It gives detailed feedback on STAR method, speech analytics, and more.\n\nSign up with my referral link: ${referralLink}`;
+          window.open(`mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
+        }} style={{
+          fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: c.chalk,
+          background: "rgba(245,242,237,0.04)", border: `1px solid ${c.border}`,
+          borderRadius: 10, padding: "12px 20px", cursor: "pointer", transition: "all 0.15s",
+          display: "flex", alignItems: "center", gap: 8,
+        }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+          Email
+        </button>
+      </div>
+
+      {/* Stats */}
+      <label style={labelStyle}>Referral Stats</label>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+        {[
+          { label: "Invited", value: stats.total, color: c.chalk },
+          { label: "Signed Up", value: stats.redeemed, color: c.sage },
+          { label: "Rewards", value: stats.rewarded, color: c.gilt },
+        ].map(s => (
+          <div key={s.label} style={{
+            textAlign: "center", padding: "20px 12px", borderRadius: 12,
+            background: "rgba(6,6,7,0.5)", border: `1px solid ${c.border}`,
+          }}>
+            <span style={{ fontFamily: font.mono, fontSize: 24, fontWeight: 600, color: s.color, display: "block", marginBottom: 4 }}>{s.value}</span>
+            <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>{s.label}</span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

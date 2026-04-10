@@ -311,6 +311,7 @@ export default function DashboardHome() {
                 }
               }} style={{ position: "absolute", top: "calc(100% + 6px)", right: 0, minWidth: 200, background: c.graphite, border: `1px solid ${c.borderHover}`, borderRadius: radius.md, padding: "6px 0", zIndex: 50, boxShadow: "0 8px 32px rgba(0,0,0,0.4)" }}>
                 {[
+                  { label: "Share Profile", icon: <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>, action: () => { const url = `${window.location.origin}/profile/${user?.id}`; navigator.clipboard.writeText(url); setShareTooltip(true); setTimeout(() => setShareTooltip(false), 2000); } },
                   { label: "Share Progress", icon: <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>, action: () => { handleExport(); setShareTooltip(true); setTimeout(() => setShareTooltip(false), 2000); } },
                   { label: "Export as JSON", icon: <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>, action: handleDownload },
                   { label: "Export as PDF", icon: <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>, action: handleExportPDF },
@@ -576,9 +577,7 @@ export default function DashboardHome() {
 
       {/* ─── Resume Insights ─── */}
       {(() => {
-        const resumeProfile = (user?.resumeData as any)?.aiProfile as
-          | import("./dashboardData").ResumeProfile
-          | undefined;
+        const resumeProfile = (user?.resumeData as (import("./resumeParser").ParsedResume & { aiProfile?: import("./dashboardData").ResumeProfile }) | undefined)?.aiProfile;
         if (!resumeProfile?.resumeScore) return null;
         const score = resumeProfile.resumeScore!;
         const scoreColor = score >= 65 ? c.sage : score >= 50 ? c.gilt : c.ember;

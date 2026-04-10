@@ -181,7 +181,7 @@ export default function Onboarding() {
     const data = user.resumeData || parseResumeData(user.resumeText);
     setResumeParsed(data);
     // Restore AI profile if it was saved with the resume data
-    const savedAiProfile = (data as any)?.aiProfile as ResumeProfile | undefined;
+    const savedAiProfile = (data as ParsedResume & { aiProfile?: ResumeProfile })?.aiProfile;
     // Prefer parsed name from resume over AI headline
     if (data.name && !userName) setUserName(data.name);
     if (savedAiProfile && savedAiProfile.headline) {
@@ -326,8 +326,8 @@ export default function Onboarding() {
             setRoleAutoFilled(true);
           }
         }
-      } catch (analysisErr: any) {
-        if (analysisErr?.message === "aborted") return; // Upload was superseded
+      } catch (analysisErr: unknown) {
+        if (analysisErr instanceof Error && analysisErr.message === "aborted") return; // Upload was superseded
       }
       // If AI failed, use client-parsed data as fallback but only the clean fields
       if (!aiSuccess && data.skills.length > 0) {
@@ -357,8 +357,8 @@ export default function Onboarding() {
         console.error("[onboarding] Failed to save resume to profile:", saveErr);
         setSaveStatus("error");
       }
-    } catch (err: any) {
-      setResumeError(err.message || "Failed to parse resume");
+    } catch (err: unknown) {
+      setResumeError(err instanceof Error ? err.message : "Failed to parse resume");
       setResumeText(""); setResumeParsed(null);
     } finally {
       setResumeParsing(false);

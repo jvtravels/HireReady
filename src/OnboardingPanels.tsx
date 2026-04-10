@@ -580,11 +580,11 @@ export function SessionSetupStep({ targetRole, targetCompany, interviewFocus, se
             <span style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: c.ivory }}>Session Length</span>
           </div>
           <div className="ob-s2-session-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
-            {[
+            {(([
               { value: "10m", label: "10 min", desc: "Quick practice", sub: "2-3 questions", paidOnly: false },
               { value: "15m", label: "15 min", desc: "Standard session", sub: "4-5 questions", recommended: true, paidOnly: true },
               { value: "25m", label: "25 min", desc: "Deep dive", sub: "6-8 questions", paidOnly: true },
-            ].map(opt => {
+            ] as { value: string; label: string; desc: string; sub: string; paidOnly: boolean; recommended?: boolean }[])).map(opt => {
               const locked = opt.paidOnly && isFreeUser;
               const sel = sessionLength === opt.value;
               return (
@@ -597,7 +597,7 @@ export function SessionSetupStep({ targetRole, targetCompany, interviewFocus, se
                     transition: "all 0.2s",
                     opacity: locked ? 0.5 : 1,
                   }}>
-                  {(opt as any).recommended && !locked && (
+                  {opt.recommended && !locked && (
                     <span style={{ position: "absolute", top: -8, left: "50%", transform: "translateX(-50%)", fontFamily: font.ui, fontSize: 9, fontWeight: 700, color: c.obsidian, background: c.gilt, padding: "2px 8px", borderRadius: 4, letterSpacing: "0.04em", textTransform: "uppercase" }}>Recommended</span>
                   )}
                   {locked && (

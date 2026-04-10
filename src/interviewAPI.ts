@@ -78,10 +78,60 @@ export async function saveSessionResult(result: SessionResult, userId?: string):
   return { localOk, cloudOk };
 }
 
+/**
+ * Analyze recent sessions to identify weak skills and past question topics.
+ * Used for spaced repetition / adaptive question selection.
+ */
+export function getAdaptiveHints(sessions: { skill_scores?: Record<string, unknown> | null; questions?: number; type?: string; date?: string }[]): {
+  weakSkills: string[];
+  pastTopics: string[];
+  suggestedFocus?: string;
+} {
+  if (!sessions || sessions.length === 0) return { weakSkills: [], pastTopics: [] };
+
+  // Extract all skill scores from recent sessions (most recent first)
+  const skillAgg: Record<string, { scores: number[]; lastSeen: number }> = {};
+  const topicSet = new Set<string>();
+
+  sessions.slice(0, 20).forEach((s, idx) => {
+    if (s.type) topicSet.add(s.type);
+    if (!s.skill_scores || typeof s.skill_scores !== "object") return;
+    for (const [name, raw] of Object.entries(s.skill_scores)) {
+      const score = typeof raw === "number" ? raw : typeof raw === "object" && raw !== null && "score" in raw ? (raw as { score: number }).score : 0;
+      if (!skillAgg[name]) skillAgg[name] = { scores: [], lastSeen: idx };
+      skillAgg[name].scores.push(score);
+      if (idx < skillAgg[name].lastSeen) skillAgg[name].lastSeen = idx;
+    }
+  });
+
+  // Find weak skills: low average score OR haven't been tested recently
+  const weakSkills: { name: string; priority: number }[] = [];
+  for (const [name, { scores, lastSeen }] of Object.entries(skillAgg)) {
+    const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
+    // Priority = low score + recency penalty (skills not tested recently get boosted)
+    const recencyBoost = Math.min(lastSeen * 5, 30); // up to 30 points for stale skills
+    const priority = (100 - avg) + recencyBoost;
+    if (avg < 70 || lastSeen > 5) {
+      weakSkills.push({ name, priority });
+    }
+  }
+
+  weakSkills.sort((a, b) => b.priority - a.priority);
+
+  const suggestedFocus = weakSkills.length > 0 ? weakSkills[0].name : undefined;
+
+  return {
+    weakSkills: weakSkills.slice(0, 5).map(s => s.name),
+    pastTopics: Array.from(topicSet).slice(0, 10),
+    suggestedFocus,
+  };
+}
+
 /** Fetch LLM-generated interview questions */
 export async function fetchLLMQuestions(params: {
   type: string; focus?: string; difficulty: string; role: string;
   company?: string; industry?: string; resumeText?: string; language?: string;
+  pastTopics?: string[]; weakSkills?: string[];
 }): Promise<InterviewStep[] | null> {
   // Client-side rate limit: max 3 question generations per 60s
   if (!checkRateLimit("generate-questions", 3, 60_000)) {

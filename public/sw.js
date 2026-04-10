@@ -1,6 +1,8 @@
 /* HireStepX Service Worker — offline shell + asset caching */
 
-const CACHE_NAME = "hirestepx-v1";
+// Build timestamp injected at deploy — forces cache refresh on new deploys
+const BUILD_TS = "__BUILD_TS__";
+const CACHE_NAME = `hirestepx-${BUILD_TS}`;
 const SHELL_ASSETS = ["/", "/index.html"];
 
 self.addEventListener("install", (event) => {

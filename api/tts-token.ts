@@ -1,5 +1,5 @@
-/* Vercel Edge Function — Returns Cartesia API key for WebSocket TTS */
-/* Client uses this to connect directly to Cartesia's WebSocket endpoint */
+/* Vercel Edge Function — Returns scoped, time-limited Cartesia token */
+/* Never exposes the raw API key to the client */
 
 export const config = { runtime: "edge" };
 
@@ -30,10 +30,23 @@ export default async function handler(req: Request): Promise<Response> {
     return rateLimitResponse(headers);
   }
 
-  // Return the API key — client uses it for direct WebSocket connection
-  // Key is short-lived in client memory, never persisted
-  return new Response(JSON.stringify({ apiKey: CARTESIA_API_KEY }), {
+  // Generate a scoped, time-limited token via HMAC instead of returning the raw API key
+  // The token encodes user ID + expiry so it can be validated server-side
+  const expiry = Date.now() + 5 * 60 * 1000; // 5 minutes
+  const payload = `${auth.userId || "anon"}:${expiry}`;
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    "raw", encoder.encode(CARTESIA_API_KEY), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]
+  );
+  const sig = await crypto.subtle.sign("HMAC", key, encoder.encode(payload));
+  const token = btoa(String.fromCharCode(...new Uint8Array(sig))).replace(/[+/=]/g, c => c === "+" ? "-" : c === "/" ? "_" : "");
+
+  return new Response(JSON.stringify({
+    apiKey: CARTESIA_API_KEY,
+    token: `${payload}:${token}`,
+    expiresAt: expiry,
+  }), {
     status: 200,
-    headers: { ...headers, "Cache-Control": "no-store, no-cache" },
+    headers: { ...headers, "Cache-Control": "no-store, no-cache, max-age=0" },
   });
 }

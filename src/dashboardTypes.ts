@@ -11,6 +11,7 @@ export interface DashboardSession {
   score: number;
   change: number;
   duration: string;
+  difficulty?: string;
   topStrength: string;
   topWeakness: string;
   feedback: string;

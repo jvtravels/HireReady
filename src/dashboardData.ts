@@ -21,6 +21,13 @@ async function withRetry<T>(fn: () => Promise<T>, retries = 2, delayMs = 1000): 
 export { scoreLabel };
 export type { UserContext, DashboardSession, SkillData, TrendPoint, PersistedState };
 
+/* ─── Skill score helper ─── */
+function extractScore(raw: unknown): number {
+  if (typeof raw === "number") return raw;
+  if (typeof raw === "object" && raw !== null && "score" in raw) return (raw as { score: number }).score;
+  return 0;
+}
+
 /* ─── Constants ─── */
 export const FREE_SESSION_LIMIT = 3;
 export const STARTER_WEEKLY_LIMIT = 10;
@@ -172,7 +179,7 @@ export function getSessionData(targetRole: string, supabaseSessions: RealSession
     real.forEach(rs => {
       if (rs.skill_scores) {
         Object.entries(rs.skill_scores).forEach(([name, raw]) => {
-          const score = typeof raw === "object" && raw !== null && "score" in (raw as any) ? (raw as any).score : raw;
+          const score = extractScore(raw);
           if (typeof score !== "number" || isNaN(score)) return;
           if (!skillMap[name]) skillMap[name] = [];
           skillMap[name].push(score);
@@ -339,7 +346,7 @@ export function getPrepPlan(user: UserContext, sessions: DashboardSession[], sk?
   const weakest = theSkills.length > 0 ? [...theSkills].sort((a, b) => a.score - b.score)[0] : null;
 
   const types = new Set(sessions.map(s => s.type));
-  const hasIntense = sessions.some(s => (s as any).difficulty === "intense" || (s as any).difficulty === "hard");
+  const hasIntense = sessions.some(s => s.difficulty === "intense" || s.difficulty === "hard");
   const consecutiveHigh = (() => {
     let max = 0, cur = 0;
     for (const s of sessions) { if (s.score >= 85) { cur++; max = Math.max(max, cur); } else cur = 0; }

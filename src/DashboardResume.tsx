@@ -83,13 +83,14 @@ export default function DashboardResume() {
           .catch(() => setPhase("done"))
           .finally(() => { analyzingRef.current = false; });
       } else if (stored.name || stored.skills) {
-        const parsed = stored as any;
+        type LegacyResume = { name?: string; summary?: string; skills?: string[]; experience?: { bullets?: string[] }[] };
+        const parsed = stored as unknown as LegacyResume;
         const fallback: ResumeProfile = {
           headline: parsed.name || "Resume uploaded",
           summary: parsed.summary || "Your resume has been uploaded and will be used to personalize your interview questions.",
           yearsExperience: null, seniorityLevel: "",
           topSkills: (parsed.skills || []).slice(0, 8),
-          keyAchievements: (parsed.experience || []).flatMap((e: any) => e.bullets || []).slice(0, 5),
+          keyAchievements: (parsed.experience || []).flatMap(e => e.bullets || []).slice(0, 5),
           industries: [], interviewStrengths: [], interviewGaps: [], careerTrajectory: "",
         };
         setProfile(fallback);
@@ -149,8 +150,8 @@ export default function DashboardResume() {
       setResumeText(text);
       updatePersisted({ resumeFileName: file.name });
       updateUser({ resumeFileName: file.name, resumeText: text });
-    } catch (err: any) {
-      setErrorMsg(err.message || "Failed to parse resume");
+    } catch (err: unknown) {
+      setErrorMsg(err instanceof Error ? err.message : "Failed to parse resume");
       setPhase("error");
       return;
     }
@@ -178,7 +179,7 @@ export default function DashboardResume() {
         summary: parsed.summary || "Your resume has been uploaded and will be used to personalize your interview questions.",
         yearsExperience: null, seniorityLevel: "",
         topSkills: (parsed.skills || []).slice(0, 8),
-        keyAchievements: (parsed.experience || []).flatMap((e: any) => e.bullets || []).slice(0, 5),
+        keyAchievements: (parsed.experience || []).flatMap(e => e.bullets || []).slice(0, 5),
         industries: [], interviewStrengths: [], interviewGaps: [], careerTrajectory: "",
       };
       setProfile(fallback);

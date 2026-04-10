@@ -1,6 +1,12 @@
 import React, { useState, useEffect, useRef } from "react";
 import { c, font } from "./tokens";
 
+declare global {
+  interface Navigator {
+    connection?: { effectiveType?: string; downlink?: number; rtt?: number; addEventListener?: (event: string, cb: () => void) => void; removeEventListener?: (event: string, cb: () => void) => void };
+  }
+}
+
 /* ─── Real Mic-Level Waveform Visualizer ─── */
 export const WaveformVisualizer = React.memo(function WaveformVisualizer({ active, color, barCount = 16, stream }: { active: boolean; color: string; barCount?: number; stream?: MediaStream | null }) {
   const [bars, setBars] = useState<number[]>(Array(barCount).fill(0.1));
@@ -72,7 +78,7 @@ export const NetworkIndicator = React.memo(function NetworkIndicator() {
   const [quality, setQuality] = useState<"excellent" | "good" | "poor">("excellent");
   useEffect(() => {
     const check = () => {
-      const conn = (navigator as any).connection;
+      const conn = navigator.connection;
       if (conn) {
         const dl = conn.downlink ?? 10;
         const rtt = conn.rtt ?? 0;
@@ -84,7 +90,7 @@ export const NetworkIndicator = React.memo(function NetworkIndicator() {
       }
     };
     check();
-    const conn = (navigator as any).connection;
+    const conn = navigator.connection;
     conn?.addEventListener?.("change", check);
     window.addEventListener("online", check);
     window.addEventListener("offline", check);

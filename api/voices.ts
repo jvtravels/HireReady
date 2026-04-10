@@ -8,7 +8,8 @@ import { corsHeaders, validateOrigin, withRequestId } from "./_shared";
 declare const process: { env: Record<string, string | undefined> };
 const CARTESIA_API_KEY = process.env.CARTESIA_API_KEY || "";
 
-const cache: Record<string, { data: any; expiry: number }> = {};
+type VoiceEntry = { id: string; name: string; desc: string; gender: string; language: string };
+const cache: Record<string, { data: VoiceEntry[]; expiry: number }> = {};
 
 export default async function handler(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") {
@@ -64,7 +65,7 @@ export default async function handler(req: Request): Promise<Response> {
     // Cartesia returns { data: [...], has_more } for paginated, or flat array
     const rawVoices = Array.isArray(body) ? body : (body.data || []);
 
-    const voices = rawVoices.map((v: any) => ({
+    const voices = rawVoices.map((v: { id?: string; name?: string; description?: string; gender?: string; language?: string }) => ({
       id: v.id,
       name: v.name,
       desc: v.description || "",

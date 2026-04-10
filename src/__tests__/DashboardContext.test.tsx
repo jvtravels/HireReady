@@ -64,7 +64,7 @@ describe("DashboardContext", () => {
 
   it("throws when used outside provider", () => {
     const spy = vi.spyOn(console, "error").mockImplementation(() => {});
-    expect(() => render(<TestConsumer />)).toThrow("useDashboard must be used within DashboardProvider");
+    expect(() => render(<TestConsumer />)).toThrow("must be used within DashboardProvider");
     spy.mockRestore();
   });
 

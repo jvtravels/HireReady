@@ -13,7 +13,8 @@ async function getDeepgramApiKey(): Promise<string | null> {
     if (!res.ok) return null;
     const data = await res.json();
     _cachedApiKey = data.apiKey || null;
-    _apiKeyExpiry = Date.now() + API_KEY_TTL;
+    // Use server-provided expiry if available, otherwise fall back to local TTL
+    _apiKeyExpiry = data.expiresAt || (Date.now() + API_KEY_TTL);
     return _cachedApiKey;
   } catch {
     return null;

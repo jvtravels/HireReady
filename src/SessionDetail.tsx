@@ -7,6 +7,18 @@ import { useToast } from "./Toast";
 
 const RESULTS_KEY = "hirestepx_sessions";
 
+/* ─── Skill score helpers ─── */
+type SkillScoreValue = number | { score: number; reason?: string };
+function extractScore(raw: unknown): number {
+  if (typeof raw === "number") return raw;
+  if (typeof raw === "object" && raw !== null && "score" in raw) return (raw as SkillScoreValue & { score: number }).score;
+  return 0;
+}
+function extractReason(raw: unknown): string {
+  if (typeof raw === "object" && raw !== null && "reason" in raw) return (raw as { reason?: string }).reason || "";
+  return "";
+}
+
 /* ─── Helpers ─── */
 
 function scoreLabelColor(score: number) {
@@ -151,7 +163,7 @@ function computeHistoricalAverages(): { avgScore: number; avgSkills: Record<stri
     for (const sess of sessions) {
       if (!sess.skill_scores) continue;
       for (const [name, raw] of Object.entries(sess.skill_scores)) {
-        const score = typeof raw === "object" && raw !== null && "score" in (raw as any) ? (raw as any).score : raw;
+        const score = extractScore(raw);
         if (typeof score !== "number") continue;
         if (!skillTotals[name]) skillTotals[name] = { sum: 0, count: 0 };
         skillTotals[name].sum += score;
@@ -342,8 +354,8 @@ export default function SessionDetail() {
     if (session.skill_scores) {
       lines.push("SKILL SCORES");
       Object.entries(session.skill_scores).forEach(([name, raw]) => {
-        const score = typeof raw === "object" && raw !== null && "score" in (raw as any) ? (raw as any).score : raw;
-        const reason = typeof raw === "object" && raw !== null && "reason" in (raw as any) ? (raw as any).reason : "";
+        const score = extractScore(raw);
+        const reason = extractReason(raw);
         lines.push(`  ${name}: ${score}/100${reason ? ` — ${reason}` : ""}`);
       });
       lines.push("");
@@ -470,7 +482,7 @@ export default function SessionDetail() {
     if (skills.length > 0) {
       const startX = W / 2 - (skills.length * 120) / 2;
       skills.forEach(([name, raw], i) => {
-        const score = typeof raw === "object" && raw !== null && "score" in (raw as any) ? (raw as any).score : raw;
+        const score = extractScore(raw);
         const x = startX + i * 120 + 60;
         ctx.fillStyle = "#8E8983";
         ctx.font = "500 10px 'Inter', sans-serif";
@@ -595,14 +607,14 @@ export default function SessionDetail() {
 
   const skillEntries = session.skill_scores
     ? Object.entries(session.skill_scores).map(([name, raw]) => {
-        const score = typeof raw === "object" && raw !== null && "score" in (raw as any) ? (raw as any).score : raw;
-        const reason = typeof raw === "object" && raw !== null && "reason" in (raw as any) ? (raw as any).reason : undefined;
-        return { name, score: typeof score === "number" ? score : 0, reason };
+        const score = extractScore(raw);
+        const reason = extractReason(raw) || undefined;
+        return { name, score, reason };
       }).filter(e => !isNaN(e.score))
     : [];
 
   const prevSkillMap = prevSession?.skill_scores
-    ? Object.fromEntries(Object.entries(prevSession.skill_scores).map(([k, v]) => [k, typeof v === "object" && v !== null && "score" in (v as any) ? (v as any).score : v]))
+    ? Object.fromEntries(Object.entries(prevSession.skill_scores).map(([k, v]) => [k, extractScore(v)]))
     : {};
 
   return (

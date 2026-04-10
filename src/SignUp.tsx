@@ -78,6 +78,7 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(() => getRememberMe());
   const [emailSuggestion, setEmailSuggestion] = useState("");
+  const referralParam = new URLSearchParams(location.search).get("ref");
   const firstInputRef = useRef<HTMLInputElement>(null);
 
   // Common email domain typo detection
@@ -106,7 +107,7 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
   useEffect(() => {
     if (isLoggedIn && user) {
       const defaultDest = user.hasCompletedOnboarding ? "/dashboard" : "/onboarding";
-      const from = (location.state as any)?.from || defaultDest;
+      const from = (location.state as { from?: string } | null)?.from || defaultDest;
       const dest = planParam ? `${from}?plan=${planParam}` : from;
       navigate(dest, { replace: true });
     }
@@ -156,6 +157,14 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
         const client = await getSupabase();
         const { data: { session } } = await client.auth.getSession();
         if (session) {
+          // Apply referral code if present
+          if (referralParam) {
+            try {
+              const { authHeaders } = await import("./supabase");
+              const hdrs = await authHeaders();
+              await fetch("/api/referral", { method: "POST", headers: hdrs, body: JSON.stringify({ code: referralParam }) });
+            } catch { /* best-effort */ }
+          }
           // Auto-logged in — useEffect redirect will handle navigation
           return;
         }

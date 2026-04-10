@@ -132,7 +132,7 @@ async function readPdf(file: File): Promise<string> {
   for (let i = 1; i <= pdf.numPages; i++) {
     const page = await pdf.getPage(i);
     const content = await page.getTextContent();
-    const items = content.items as any[];
+    const items = content.items as { str?: string; transform?: number[] }[];
 
     // Reconstruct text with line breaks by detecting Y-position changes
     // PDF text items have transform[5] = Y position (higher = higher on page)

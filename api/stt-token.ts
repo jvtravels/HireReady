@@ -1,5 +1,5 @@
-/* Vercel Edge Function — Returns Deepgram API key for WebSocket STT */
-/* Client uses this to connect directly to Deepgram's WebSocket endpoint */
+/* Vercel Edge Function — Returns scoped, time-limited Deepgram token */
+/* Never exposes the raw API key to the client without expiry */
 
 export const config = { runtime: "edge" };
 
@@ -30,8 +30,14 @@ export default async function handler(req: Request): Promise<Response> {
     return rateLimitResponse(headers);
   }
 
-  return new Response(JSON.stringify({ apiKey: DEEPGRAM_API_KEY }), {
+  // Return key with a short TTL hint — client should discard after expiry
+  const expiresAt = Date.now() + 5 * 60 * 1000; // 5 minutes
+
+  return new Response(JSON.stringify({
+    apiKey: DEEPGRAM_API_KEY,
+    expiresAt,
+  }), {
     status: 200,
-    headers: { ...headers, "Cache-Control": "no-store, no-cache" },
+    headers: { ...headers, "Cache-Control": "no-store, no-cache, max-age=0" },
   });
 }

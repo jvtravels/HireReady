@@ -133,7 +133,7 @@ export async function callLLM(opts: LLMOptions, timeoutMs = 15000): Promise<LLMR
   }
 }
 
-export function extractJSON(text: string): any {
+export function extractJSON(text: string): unknown {
   // Try direct parse first
   try { return JSON.parse(text); } catch {}
   // Strip markdown code fences

@@ -6,6 +6,12 @@ import { useAuth } from "../AuthContext";
 import { useReveal } from "../hooks";
 import { plans } from "../landingData";
 
+declare global {
+  interface Window {
+    Razorpay?: new (options: Record<string, unknown>) => { open: () => void; on: (event: string, cb: () => void) => void };
+  }
+}
+
 export function PricingSection() {
   const ref = useReveal<HTMLElement>();
   return (
@@ -42,7 +48,7 @@ function PricingCard({ plan, delay }: { plan: (typeof plans)[0]; delay: number }
     try {
       // Try subscription (auto-renewal) first, fall back to one-time order
       let useSubscription = false;
-      let data: any;
+      let data: { orderId?: string; subscriptionId?: string; keyId?: string; amount?: number; currency?: string; description?: string; error?: string } | null;
 
       const authHdrs = await import("../supabase").then(m => m.authHeaders());
       try {
@@ -70,16 +76,17 @@ function PricingCard({ plan, delay }: { plan: (typeof plans)[0]; delay: number }
           headers: authHdrs,
           body: JSON.stringify({ plan: plan.planId, userId: user?.id, email: user?.email }),
         });
-        data = await orderRes.json();
-        if (!data.orderId) {
-          setError(data.error || "Checkout unavailable. Please try again.");
+        const orderData = await orderRes.json() as { orderId?: string; subscriptionId?: string; keyId?: string; amount?: number; currency?: string; description?: string; error?: string };
+        data = orderData;
+        if (!orderData?.orderId) {
+          setError(orderData?.error || "Checkout unavailable. Please try again.");
           setLoading(false);
           return;
         }
       }
 
       // Dynamically load Razorpay if not already loaded
-      if (!(window as any).Razorpay) {
+      if (!window.Razorpay) {
         try {
           await new Promise<void>((resolve, reject) => {
             const s = document.createElement("script");
@@ -94,7 +101,10 @@ function PricingCard({ plan, delay }: { plan: (typeof plans)[0]; delay: number }
           return;
         }
       }
+      if (!data) { setError("Checkout unavailable. Please try again."); setLoading(false); return; }
+      if (!window.Razorpay) { setError("Payment system not available. Please refresh."); setLoading(false); return; }
       {
+        const RazorpayClass = window.Razorpay;
         const options: Record<string, unknown> = {
           key: data.keyId,
           name: "HireStepX",
@@ -164,7 +174,7 @@ function PricingCard({ plan, delay }: { plan: (typeof plans)[0]; delay: number }
           };
         }
 
-        const rzp = new (window as any).Razorpay(options);
+        const rzp = new RazorpayClass(options);
         rzp.on("payment.failed", () => { setError("Payment failed. Please try again."); setLoading(false); });
         rzp.open();
       }

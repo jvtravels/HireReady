@@ -49,7 +49,7 @@ export default async function handler(req: Request): Promise<Response> {
     const { transcript, type, difficulty, role, company, questions, resumeText, language } = await req.json();
 
     if (!transcript || !Array.isArray(transcript) || transcript.length === 0 ||
-        !transcript.every((t: unknown) => typeof t === "object" && t !== null && typeof (t as any).speaker === "string" && typeof (t as any).text === "string")) {
+        !transcript.every((t: unknown) => typeof t === "object" && t !== null && typeof (t as { speaker?: unknown; text?: unknown }).speaker === "string" && typeof (t as { speaker?: unknown; text?: unknown }).text === "string")) {
       return new Response(JSON.stringify({ error: "Missing or malformed transcript" }), { status: 400, headers });
     }
 

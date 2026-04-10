@@ -5,6 +5,12 @@ import type { DashboardSession } from "./dashboardTypes";
 import { useAuth } from "./AuthContext";
 import { FREE_SESSION_LIMIT, STARTER_WEEKLY_LIMIT } from "./dashboardData";
 
+declare global {
+  interface Window {
+    Razorpay?: new (options: Record<string, unknown>) => { open: () => void; on: (event: string, cb: () => void) => void };
+  }
+}
+
 /* ─── Skeleton Loading ─── */
 export function DashboardSkeleton() {
   return (
@@ -100,6 +106,10 @@ const ALL_PLANS = [
 export function UpgradeModal({ onClose, sessionsUsed, user, currentTier, onPaymentSuccess }: { onClose: () => void; sessionsUsed: number; user?: { id?: string; email?: string; name?: string } | null; currentTier: string; onPaymentSuccess: (tier: string, start: string, end: string) => void }) {
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState("");
+  const [promoCode, setPromoCode] = useState("");
+  const [promoResult, setPromoResult] = useState<{ valid: boolean; discount_percent?: number; discount_amount?: number; final_amount?: number; code?: string } | null>(null);
+  const [promoLoading, setPromoLoading] = useState(false);
+  const [promoError, setPromoError] = useState("");
   // Store Razorpay response + plan in state so useEffect handles verification
   // (fetch inside Razorpay's handler callback doesn't work reliably)
   const [pendingVerification, setPendingVerification] = useState<{
@@ -193,7 +203,7 @@ export function UpgradeModal({ onClose, sessionsUsed, user, currentTier, onPayme
         setLoading(null);
         return;
       }
-      if (!(window as any).Razorpay) {
+      if (!window.Razorpay) {
         // Dynamically load Razorpay checkout script with timeout
         try {
           await new Promise<void>((resolve, reject) => {
@@ -211,12 +221,12 @@ export function UpgradeModal({ onClose, sessionsUsed, user, currentTier, onPayme
         }
       }
 
-      if (!(window as any).Razorpay) {
+      if (!window.Razorpay) {
         setError("Payment system not available. Please refresh and try again.");
         setLoading(null);
         return;
       }
-      const rzp = new (window as any).Razorpay({
+      const rzp = new window.Razorpay({
         key: data.keyId,
         amount: data.amount,
         currency: data.currency,
@@ -296,6 +306,38 @@ export function UpgradeModal({ onClose, sessionsUsed, user, currentTier, onPayme
               )}
               <button onClick={() => { setError(""); setVerifyRetries(0); }} style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.gilt, background: "none", border: `1px solid rgba(212,179,127,0.3)`, borderRadius: 10, padding: "4px 12px", cursor: "pointer" }}>Dismiss</button>
             </div>
+          </div>
+        )}
+
+        {/* Promo Code */}
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
+          <input type="text" value={promoCode} onChange={(e) => { setPromoCode(e.target.value.toUpperCase()); setPromoError(""); setPromoResult(null); }}
+            placeholder="Promo code" aria-label="Promo code"
+            style={{ fontFamily: font.mono, fontSize: 12, color: c.ivory, background: c.obsidian, border: `1px solid ${promoResult?.valid ? "rgba(122,158,126,0.4)" : c.border}`, borderRadius: 8, padding: "8px 12px", flex: 1, outline: "none", letterSpacing: "0.04em" }}
+          />
+          <button disabled={promoLoading || !promoCode.trim()} onClick={async () => {
+            setPromoLoading(true); setPromoError("");
+            try {
+              const hdrs = await import("./supabase").then(m => m.authHeaders());
+              const res = await fetch("/api/validate-promo", { method: "POST", headers: hdrs, body: JSON.stringify({ code: promoCode.trim(), plan: "monthly" }) });
+              const data = await res.json();
+              if (data.valid) { setPromoResult(data); } else { setPromoError(data.error || "Invalid code"); setPromoResult(null); }
+            } catch { setPromoError("Could not validate code"); }
+            finally { setPromoLoading(false); }
+          }} style={{
+            fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.gilt, background: "rgba(212,179,127,0.06)",
+            border: `1px solid rgba(212,179,127,0.15)`, borderRadius: 8, padding: "8px 14px", cursor: promoLoading ? "wait" : "pointer", opacity: !promoCode.trim() ? 0.5 : 1,
+          }}>
+            {promoLoading ? "..." : "Apply"}
+          </button>
+        </div>
+        {promoError && <p style={{ fontFamily: font.ui, fontSize: 11, color: c.ember, marginBottom: 12, marginTop: -8 }}>{promoError}</p>}
+        {promoResult?.valid && (
+          <div style={{ background: "rgba(122,158,126,0.06)", border: `1px solid rgba(122,158,126,0.15)`, borderRadius: 8, padding: "8px 14px", marginBottom: 16, marginTop: -8, display: "flex", alignItems: "center", gap: 8 }}>
+            <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+            <span style={{ fontFamily: font.ui, fontSize: 12, color: c.sage, fontWeight: 500 }}>
+              {promoResult.discount_percent ? `${promoResult.discount_percent}% off` : `₹${Math.round((promoResult.discount_amount || 0) / 100)} off`} applied!
+            </span>
           </div>
         )}
 

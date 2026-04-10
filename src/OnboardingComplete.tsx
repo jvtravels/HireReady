@@ -19,7 +19,7 @@ export default function OnboardingComplete() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
-  const state = (location.state as any) || {};
+  const state = (location.state as { score?: number; aiFeedback?: string; skillScores?: Record<string, number> } | null) || {};
   const score: number = state.score || 72;
   const aiFeedback: string = state.aiFeedback || "";
   const skillScores: Record<string, number> | null = state.skillScores || null;

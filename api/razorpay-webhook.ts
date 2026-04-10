@@ -87,7 +87,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(400).json({ error: "Invalid signature" });
   }
 
-  let event: any;
+  let event: { event?: string; payload?: { subscription?: { entity?: Record<string, unknown> }; payment?: { entity?: Record<string, unknown> } } };
   try {
     event = JSON.parse(rawBody);
   } catch {
@@ -136,7 +136,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const end = new Date(now);
         end.setDate(end.getDate() + (PLAN_DURATION[plan] || 30));
 
-        await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${encodeURIComponent(userId)}`, {
+        const activateRes = await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${encodeURIComponent(userId)}`, {
           method: "PATCH",
           headers: { ...dbHeaders, "Content-Type": "application/json", Prefer: "return=minimal" },
           body: JSON.stringify({
@@ -147,6 +147,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             cancel_at_period_end: false,
           }),
         });
+
+        if (!activateRes.ok) {
+          console.error("[webhook] subscription.activated profile update failed:", activateRes.status);
+          return res.status(500).json({ error: "Profile update failed" });
+        }
 
         console.log(`[webhook] subscription.activated: ${tier} for user ${userId.slice(0, 8)}`);
         return res.status(200).json({ received: true, activated: true, tier });
@@ -182,7 +187,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const end = new Date(base);
         end.setDate(end.getDate() + (PLAN_DURATION[plan] || 30));
 
-        await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${encodeURIComponent(userId)}`, {
+        const renewRes = await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${encodeURIComponent(userId)}`, {
           method: "PATCH",
           headers: { ...dbHeaders, "Content-Type": "application/json", Prefer: "return=minimal" },
           body: JSON.stringify({
@@ -193,6 +198,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             cancel_at_period_end: false,
           }),
         });
+
+        if (!renewRes.ok) {
+          console.error("[webhook] subscription.charged profile update failed:", renewRes.status);
+          return res.status(500).json({ error: "Profile update failed" });
+        }
 
         // Log payment record
         if (paymentId) {
@@ -240,7 +250,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       if (eventType === "subscription.halted") {
         // Payment failed after all retries — downgrade to free
-        await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${encodeURIComponent(userId)}`, {
+        const haltRes = await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${encodeURIComponent(userId)}`, {
           method: "PATCH",
           headers: { ...dbHeaders, "Content-Type": "application/json", Prefer: "return=minimal" },
           body: JSON.stringify({
@@ -249,13 +259,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           }),
         });
 
+        if (!haltRes.ok) {
+          console.error("[webhook] subscription.halted profile update failed:", haltRes.status);
+          return res.status(500).json({ error: "Profile update failed" });
+        }
+
         console.log(`[webhook] subscription.halted: downgraded user ${userId.slice(0, 8)} to free`);
         return res.status(200).json({ received: true, downgraded: true });
       }
 
       if (eventType === "subscription.cancelled" || eventType === "subscription.completed") {
         // User cancelled or all charges completed — mark cancel_at_period_end
-        await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${encodeURIComponent(userId)}`, {
+        const cancelRes = await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${encodeURIComponent(userId)}`, {
           method: "PATCH",
           headers: { ...dbHeaders, "Content-Type": "application/json", Prefer: "return=minimal" },
           body: JSON.stringify({
@@ -264,17 +279,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           }),
         });
 
+        if (!cancelRes.ok) {
+          console.error("[webhook] ${eventType} profile update failed:", cancelRes.status);
+          return res.status(500).json({ error: "Profile update failed" });
+        }
+
         console.log(`[webhook] ${eventType}: user ${userId.slice(0, 8)} subscription ending at period end`);
         return res.status(200).json({ received: true, cancelled: true });
       }
 
       if (eventType === "subscription.paused" || eventType === "subscription.resumed") {
         const paused = eventType === "subscription.paused";
-        await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${encodeURIComponent(userId)}`, {
+        const pauseRes = await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${encodeURIComponent(userId)}`, {
           method: "PATCH",
           headers: { ...dbHeaders, "Content-Type": "application/json", Prefer: "return=minimal" },
           body: JSON.stringify({ subscription_paused: paused }),
         });
+
+        if (!pauseRes.ok) {
+          console.error("[webhook] ${eventType} profile update failed:", pauseRes.status);
+          return res.status(500).json({ error: "Profile update failed" });
+        }
 
         console.log(`[webhook] ${eventType}: user ${userId.slice(0, 8)} subscription ${paused ? "paused" : "resumed"}`);
         return res.status(200).json({ received: true, paused });

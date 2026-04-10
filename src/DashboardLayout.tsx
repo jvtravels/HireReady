@@ -345,7 +345,7 @@ export default function DashboardLayout() {
                 else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
               };
               el.addEventListener("keydown", trap);
-              (el as any)._cleanupTrap = () => el.removeEventListener("keydown", trap);
+              (el as HTMLElement & { _cleanupTrap?: () => void })._cleanupTrap = () => el.removeEventListener("keydown", trap);
             }}
             style={{
             position: "fixed", top: "50%", left: "50%", transform: "translate(-50%, -50%)",

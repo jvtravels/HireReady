@@ -26,6 +26,8 @@ create table if not exists profiles (
   razorpay_payment_id text,
   razorpay_subscription_id text,
   has_completed_onboarding boolean default false,
+  referral_code text unique,
+  referred_by text,
   preferred_session_length integer,
   interview_types jsonb default '[]'::jsonb,
   resume_data jsonb,
@@ -91,6 +93,51 @@ create table if not exists payments (
 );
 
 -- ═══════════════════════════════════════════════════════
+-- Performance Indexes
+-- ═══════════════════════════════════════════════════════
+
+create index if not exists idx_profiles_tier_end on profiles(subscription_tier, subscription_end);
+create index if not exists idx_sessions_user_created on sessions(user_id, created_at);
+create index if not exists idx_sessions_user_date on sessions(user_id, date);
+create index if not exists idx_payments_razorpay_id on payments(razorpay_payment_id);
+create index if not exists idx_calendar_events_user on calendar_events(user_id, date);
+create index if not exists idx_feedback_session on feedback(session_id);
+
+-- ═══════════════════════════════════════════════════════
+-- 6. Referral codes
+-- ═══════════════════════════════════════════════════════
+
+create table if not exists referrals (
+  id uuid primary key default gen_random_uuid(),
+  referrer_id uuid references profiles(id) on delete cascade not null,
+  referral_code text unique not null,
+  referred_email text,
+  referred_id uuid references profiles(id) on delete set null,
+  status text default 'pending' check (status in ('pending', 'redeemed', 'rewarded')),
+  reward_granted boolean default false,
+  created_at timestamptz default now()
+);
+
+create index if not exists idx_referrals_code on referrals(referral_code);
+create index if not exists idx_referrals_referrer on referrals(referrer_id);
+
+-- 7. Promo / coupon codes
+create table if not exists promo_codes (
+  id uuid primary key default gen_random_uuid(),
+  code text unique not null,
+  discount_percent integer default 0 check (discount_percent between 0 and 100),
+  discount_amount integer default 0,
+  valid_from timestamptz default now(),
+  valid_until timestamptz,
+  max_uses integer default 0,
+  current_uses integer default 0,
+  applicable_plans text[] default '{}',
+  created_at timestamptz default now()
+);
+
+create index if not exists idx_promo_codes_code on promo_codes(code);
+
+-- ═══════════════════════════════════════════════════════
 -- Row Level Security (RLS)
 -- Users can only access their own data
 -- ═══════════════════════════════════════════════════════
@@ -140,6 +187,18 @@ create policy "Users can delete own feedback" on feedback
 -- Payments: users can only view their own payments (insert via service role only)
 create policy "Users can view own payments" on payments
   for select using (auth.uid() = user_id);
+
+-- Referrals: users can view/create their own referrals
+alter table referrals enable row level security;
+create policy "Users can view own referrals" on referrals
+  for select using (auth.uid() = referrer_id);
+create policy "Users can insert own referrals" on referrals
+  for insert with check (auth.uid() = referrer_id);
+
+-- Promo codes: anyone can read (validation is server-side)
+alter table promo_codes enable row level security;
+create policy "Anyone can view promo codes" on promo_codes
+  for select using (true);
 
 -- ═══════════════════════════════════════════════════════
 -- Auto-create profile on signup

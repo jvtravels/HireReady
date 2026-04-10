@@ -51,7 +51,7 @@ export default async function handler(req: Request) {
     }
 
     const sessionsContext = Array.isArray(recentSessions)
-      ? recentSessions.slice(0, 5).map((s: any) => ({
+      ? recentSessions.slice(0, 5).map((s: { type?: string; score?: number; date?: string; topStrength?: string; topWeakness?: string }) => ({
           type: s.type, score: s.score, date: s.date,
           topStrength: s.topStrength, topWeakness: s.topWeakness,
         }))
@@ -64,7 +64,7 @@ CANDIDATE CONTEXT:
 ${company ? `- Target company: ${company}` : ""}
 ${industry ? `- Industry: ${industry}` : ""}
 - Total sessions completed: ${sessionCount || 0}
-- Skill scores (0-100): ${JSON.stringify(skills.map((s: any) => ({ name: s.name, score: s.score, previousScore: s.prev })))}
+- Skill scores (0-100): ${JSON.stringify(skills.map((s: { name?: string; score?: number; prev?: number }) => ({ name: s.name, score: s.score, previousScore: s.prev })))}
 - Recent sessions: ${JSON.stringify(sessionsContext)}
 
 RULES:
@@ -90,10 +90,10 @@ Return ONLY the JSON array, no other text.`;
 
     // Validate and sanitize
     const validTypes = new Set(["strength", "weakness", "tip", "pattern"]);
-    const insights = parsed
-      .filter((i: any) => i && typeof i.text === "string" && validTypes.has(i.type))
+    const insights = (parsed as { type?: string; text?: string }[])
+      .filter(i => i && typeof i.text === "string" && validTypes.has(i.type ?? ""))
       .slice(0, 4)
-      .map((i: any) => ({ type: i.type, text: i.text.slice(0, 200) }));
+      .map(i => ({ type: i.type, text: i.text!.slice(0, 200) }));
 
     return new Response(JSON.stringify({ insights, model: result.model }), { status: 200, headers });
   } catch (err) {
