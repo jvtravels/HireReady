@@ -521,7 +521,7 @@ export default function SessionDetail() {
     if (!session) return;
     // Download certificate first so user can attach it
     await handleDownloadCertificate();
-    const scoreText = session.score >= 85 ? "Strong" : session.score >= 70 ? "Good" : "Developing";
+    const scoreText = scoreLabel(session.score);
     const text = encodeURIComponent(
       `Just completed a ${normalizeType(session.type)} mock interview on HireStepX and scored ${session.score}/100 (${scoreText})!\n\n` +
       `AI-powered interview practice is a game-changer for preparation.\n\n#InterviewPrep #HireStepX #MockInterview #CareerGrowth`
@@ -529,17 +529,148 @@ export default function SessionDetail() {
     window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent("https://app.hirestepx.com")}&text=${text}`, "_blank", "noopener,noreferrer");
   }, [session, handleDownloadCertificate]);
 
-  const handleShareWhatsApp = useCallback(() => {
+  /* ─── Score Card Image Generator (for sharing) ─── */
+  const generateScoreCard = useCallback(async (): Promise<Blob | null> => {
+    if (!session) return null;
+    const W = 600, H = 400;
+    const canvas = document.createElement("canvas");
+    canvas.width = W; canvas.height = H;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return null;
+
+    // Background
+    const bg = ctx.createLinearGradient(0, 0, W, H);
+    bg.addColorStop(0, "#060607");
+    bg.addColorStop(0.5, "#111113");
+    bg.addColorStop(1, "#0a0a0c");
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, W, H);
+
+    // Subtle border
+    ctx.strokeStyle = "rgba(212,179,127,0.3)";
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(12, 12, W - 24, H - 24);
+
+    // Brand
+    ctx.textAlign = "left";
+    ctx.fillStyle = "#D4B37F";
+    ctx.font = "italic 20px Georgia, serif";
+    ctx.fillText("HireStepX", 32, 48);
+
+    // Interview type tag
+    const typeText = normalizeType(session.type);
+    ctx.fillStyle = "rgba(212,179,127,0.08)";
+    ctx.font = "500 11px 'Inter', sans-serif";
+    const tagW = ctx.measureText(typeText).width + 20;
+    ctx.beginPath();
+    ctx.roundRect(32, 58, tagW, 22, 4);
+    ctx.fill();
+    ctx.strokeStyle = "rgba(212,179,127,0.2)";
+    ctx.lineWidth = 0.5;
+    ctx.stroke();
+    ctx.fillStyle = "#D4B37F";
+    ctx.textAlign = "left";
+    ctx.fillText(typeText, 42, 73);
+
+    // Score circle (center-right area)
+    const scoreColor = session.score >= 85 ? "#7A9E7E" : session.score >= 75 ? "#D4B37F" : "#C4705A";
+    const cx = 480, cy = 120;
+    // Score arc (filled percentage)
+    ctx.beginPath();
+    ctx.arc(cx, cy, 52, 0, Math.PI * 2);
+    ctx.strokeStyle = "rgba(255,255,255,0.05)";
+    ctx.lineWidth = 6;
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(cx, cy, 52, -Math.PI / 2, -Math.PI / 2 + (Math.PI * 2 * session.score / 100));
+    ctx.strokeStyle = scoreColor;
+    ctx.lineWidth = 6;
+    ctx.lineCap = "round";
+    ctx.stroke();
+    ctx.textAlign = "center";
+    ctx.fillStyle = "#F5F2ED";
+    ctx.font = "700 28px 'JetBrains Mono', monospace";
+    ctx.fillText(String(session.score), cx, cy + 6);
+    ctx.fillStyle = scoreColor;
+    ctx.font = "600 10px 'Inter', sans-serif";
+    ctx.fillText("/100", cx, cy + 24);
+    ctx.fillText(scoreLabel(session.score), cx, cy + 60);
+
+    // Candidate name
+    ctx.textAlign = "left";
+    ctx.fillStyle = "#F5F2ED";
+    ctx.font = "500 18px 'Inter', sans-serif";
+    ctx.fillText(user?.name || "Candidate", 32, 130);
+
+    // Date and duration
+    ctx.fillStyle = "#8E8983";
+    ctx.font = "400 11px 'Inter', sans-serif";
+    const dateStr = new Date(session.date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+    ctx.fillText(`${dateStr}  ·  ${Math.round(session.duration / 60)} min`, 32, 150);
+
+    // Skill bars
+    const skills = session.skill_scores ? Object.entries(session.skill_scores).slice(0, 4) : [];
+    if (skills.length > 0) {
+      ctx.fillStyle = "#8E8983";
+      ctx.font = "600 9px 'Inter', sans-serif";
+      ctx.letterSpacing = "1px";
+      ctx.fillText("SKILLS", 32, 195);
+
+      skills.forEach(([name, raw], i) => {
+        const score = extractScore(raw);
+        const y = 215 + i * 36;
+        const barColor = score >= 85 ? "#7A9E7E" : score >= 75 ? "#D4B37F" : "#C4705A";
+
+        ctx.fillStyle = "#CCC7C0";
+        ctx.font = "400 11px 'Inter', sans-serif";
+        ctx.letterSpacing = "0px";
+        ctx.fillText(name.replace(/([A-Z])/g, " $1").trim(), 32, y);
+
+        // Bar background
+        ctx.fillStyle = "rgba(255,255,255,0.04)";
+        ctx.beginPath();
+        ctx.roundRect(32, y + 6, 380, 8, 4);
+        ctx.fill();
+        // Bar fill
+        ctx.fillStyle = barColor;
+        ctx.beginPath();
+        ctx.roundRect(32, y + 6, Math.max(4, 380 * score / 100), 8, 4);
+        ctx.fill();
+
+        // Score number
+        ctx.fillStyle = "#8E8983";
+        ctx.font = "600 10px 'JetBrains Mono', monospace";
+        ctx.fillText(String(score), 420, y + 14);
+      });
+    }
+
+    // Footer CTA
+    ctx.fillStyle = "rgba(212,179,127,0.4)";
+    ctx.font = "400 10px 'Inter', sans-serif";
+    ctx.letterSpacing = "0px";
+    ctx.fillText("Practice interviews with AI  ·  app.hirestepx.com", 32, H - 28);
+
+    return new Promise(resolve => canvas.toBlob(resolve, "image/png"));
+  }, [session, user]);
+
+  const handleShareWhatsApp = useCallback(async () => {
     if (!session) return;
-    const scoreText = session.score >= 85 ? "Strong" : session.score >= 70 ? "Good" : "Developing";
-    const text = encodeURIComponent(
-      `I just completed a ${normalizeType(session.type)} mock interview on HireStepX!\n\n` +
-      `Score: ${session.score}/100 (${scoreText})\n` +
-      `Duration: ${Math.round(session.duration / 60)} min\n\n` +
-      `Practice your interviews with AI: https://app.hirestepx.com`
-    );
-    window.open(`https://wa.me/?text=${text}`, "_blank", "noopener,noreferrer");
-  }, [session]);
+    // Try sharing with image via Web Share API, fall back to text-only
+    const blob = await generateScoreCard();
+    const scoreText = scoreLabel(session.score);
+    const text = `I just completed a ${normalizeType(session.type)} mock interview on HireStepX!\n\nScore: ${session.score}/100 (${scoreText})\nDuration: ${Math.round(session.duration / 60)} min\n\nPractice your interviews with AI: https://app.hirestepx.com`;
+
+    if (blob && navigator.canShare?.({ files: [new File([blob], "score.png", { type: "image/png" })] })) {
+      try {
+        await navigator.share({
+          text,
+          files: [new File([blob], `HireStepX_Score_${session.score}.png`, { type: "image/png" })],
+        });
+        return;
+      } catch { /* user cancelled or share failed — fall through to wa.me */ }
+    }
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank", "noopener,noreferrer");
+  }, [session, generateScoreCard]);
 
   /* ─── Loading Skeleton ─── */
   if (loading) {
