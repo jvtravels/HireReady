@@ -16,7 +16,7 @@ export function StatusToasts({ tabConflict, isOffline, micError }: {
 }) {
   if (!tabConflict && !isOffline && !micError) return null;
   return (
-    <div style={{ position: "fixed", top: 12, left: "50%", transform: "translateX(-50%)", zIndex: 100, display: "flex", flexDirection: "column", gap: 8, maxWidth: 500, width: "90%" }}>
+    <div style={{ position: "fixed", top: "max(12px, env(safe-area-inset-top, 0px))", left: "50%", transform: "translateX(-50%)", zIndex: 100, display: "flex", flexDirection: "column", gap: 8, maxWidth: 500, width: "min(90%, calc(100vw - 32px))" }}>
       {tabConflict && (
         <div role="alert" style={{ padding: "8px 16px", borderRadius: 10, background: "rgba(212,179,127,0.12)", border: "1px solid rgba(212,179,127,0.25)", display: "flex", alignItems: "center", gap: 8, backdropFilter: "blur(8px)" }}>
           <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="2" strokeLinecap="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>

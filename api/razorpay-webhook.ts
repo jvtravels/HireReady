@@ -4,7 +4,7 @@
 /* ensures the subscription is still activated. */
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { createHmac } from "crypto";
+import { createHmac, timingSafeEqual } from "crypto";
 
 
 const RAZORPAY_WEBHOOK_SECRET = (process.env.RAZORPAY_WEBHOOK_SECRET || "").trim();
@@ -81,7 +81,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     .update(rawBody)
     .digest("hex");
 
-  if (expectedSignature !== signature) {
+  // Use timing-safe comparison to prevent timing attacks on signature verification
+  const sigBuffer = Buffer.from(signature);
+  const expectedBuffer = Buffer.from(expectedSignature);
+  if (sigBuffer.length !== expectedBuffer.length || !timingSafeEqual(sigBuffer, expectedBuffer)) {
     clearGlobal();
     console.error("[webhook] Signature mismatch");
     return res.status(400).json({ error: "Invalid signature" });
@@ -239,7 +242,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 from: FROM_EMAIL,
                 to: [profileEmail],
                 subject: `Subscription renewed — ${tier} plan extended`,
-                html: `<p>Hi ${safeName}, your HireStepX <strong>${tier}</strong> plan has been auto-renewed and is active until ${end.toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}.</p><p><a href="${APP_URL}/dashboard">Continue Practicing</a></p>`,
+                html: `<p>Hi ${safeName}, your HireStepX <strong>${tier}</strong> plan has been auto-renewed and is active until ${end.toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}.</p><p><a href="${APP_URL}/dashboard">Continue Practicing</a></p><p style="margin-top:16px;font-size:11px;color:#6B6560;"><a href="${APP_URL}/dashboard?tab=settings" style="color:#9A9590;">Manage subscription</a> · <a href="${APP_URL}/dashboard?tab=settings" style="color:#9A9590;">Unsubscribe</a></p>`,
               }),
             });
           } catch (emailErr) { console.error("[webhook] Renewal email failed:", emailErr); }
@@ -411,7 +414,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             from: FROM_EMAIL,
             to: [notes.email],
             subject: `Payment confirmed — ${tier} plan activated`,
-            html: `<p>Hi ${safeName}, your HireStepX <strong>${tier}</strong> plan is now active until ${end.toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}.</p><p><a href="${APP_URL}/dashboard">Start Practicing</a></p>`,
+            html: `<p>Hi ${safeName}, your HireStepX <strong>${tier}</strong> plan is now active until ${end.toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}.</p><p><a href="${APP_URL}/dashboard">Start Practicing</a></p><p style="margin-top:16px;font-size:11px;color:#6B6560;"><a href="${APP_URL}/dashboard?tab=settings" style="color:#9A9590;">Manage subscription</a> · <a href="${APP_URL}/dashboard?tab=settings" style="color:#9A9590;">Unsubscribe</a></p>`,
           }),
         });
       } catch (emailErr) { console.error("[webhook] Payment email failed:", emailErr); }

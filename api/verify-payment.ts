@@ -161,6 +161,9 @@ async function sendPaymentEmail(
           <p style="margin:0;font-size:11px;color:#6B6560;line-height:1.5;">
             This is a payment confirmation from HireStepX. If you did not make this purchase, please contact us immediately by replying to this email.
           </p>
+          <p style="margin:8px 0 0;font-size:11px;color:#6B6560;">
+            <a href="${APP_URL}/dashboard?tab=settings" style="color:#9A9590;text-decoration:underline;">Manage subscription</a> · <a href="${APP_URL}/dashboard?tab=settings" style="color:#9A9590;text-decoration:underline;">Unsubscribe</a>
+          </p>
         </td></tr>
 
       </table>

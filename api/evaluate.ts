@@ -2,7 +2,7 @@
 
 export const config = { runtime: "edge" };
 
-import { handleCorsPreflightOrMethod, corsHeaders, isRateLimited, getClientIp, rateLimitResponse, verifyAuth, unauthorizedResponse, checkSessionLimit, validateOrigin, sanitizeForLLM, withRequestId } from "./_shared";
+import { handleCorsPreflightOrMethod, corsHeaders, isRateLimited, getClientIp, rateLimitResponse, verifyAuth, unauthorizedResponse, checkSessionLimit, validateOrigin, sanitizeForLLM, withRequestId, checkLLMQuota } from "./_shared";
 import { callLLM, extractJSON } from "./_llm";
 
 declare const process: { env: Record<string, string | undefined> };
@@ -37,6 +37,14 @@ export default async function handler(req: Request): Promise<Response> {
     const limit = await checkSessionLimit(auth.userId);
     if (!limit.allowed) {
       return new Response(JSON.stringify({ error: limit.reason }), { status: 403, headers });
+    }
+  }
+
+  // Per-user daily LLM quota
+  if (auth.userId) {
+    const quota = await checkLLMQuota(auth.userId, "evaluate");
+    if (!quota.allowed) {
+      return new Response(JSON.stringify({ error: quota.reason }), { status: 429, headers });
     }
   }
 

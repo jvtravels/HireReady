@@ -138,7 +138,8 @@ export default function Interview() {
       }
     } catch { /* silent */ }
 
-    fetchLLMQuestions({
+    // Wrap LLM fetch with 30s timeout to prevent hanging
+    const llmPromise = fetchLLMQuestions({
       type: interviewType,
       focus: interviewFocus,
       difficulty: interviewDifficulty,
@@ -150,7 +151,9 @@ export default function Interview() {
       pastTopics: adaptiveHints.pastTopics.length > 0 ? adaptiveHints.pastTopics : undefined,
       weakSkills: adaptiveHints.weakSkills.length > 0 ? adaptiveHints.weakSkills : undefined,
       jobDescription: jobDescription || undefined,
-    }).then(questions => {
+    });
+    const timeoutPromise = new Promise<null>((_, reject) => setTimeout(() => reject(new Error("Question generation timed out")), 30_000));
+    Promise.race([llmPromise, timeoutPromise]).then(questions => {
       if (cancelled) return;
       if (questions && questions.length > 0 && currentStepRef.current === 0) {
         setInterviewScript(questions);

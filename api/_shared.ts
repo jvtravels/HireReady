@@ -151,34 +151,45 @@ export async function checkSessionLimit(userId: string): Promise<{ allowed: bool
 
     if (tier === "pro" || tier === "team") { clearTimeout(timer); return { allowed: true }; }
 
-    // Count sessions
-    const sessionsRes = await fetch(
-      `${SUPABASE_URL}/rest/v1/sessions?user_id=eq.${encodeURIComponent(userId)}&select=id,created_at`,
-      { headers: { apikey: SERVICE_ROLE_KEY, Authorization: `Bearer ${SERVICE_ROLE_KEY}` }, signal: ac.signal },
-    );
-    clearTimeout(timer);
-    if (!sessionsRes.ok) { console.error("Session limit check: sessions fetch failed", sessionsRes.status); return { allowed: false, reason: "Could not verify session limit. Please try again." }; }
-    const sessions = await sessionsRes.json();
-    if (!Array.isArray(sessions)) return { allowed: false, reason: "Could not verify session limit. Please try again." };
-
     if (tier === "free") {
-      if (sessions.length >= FREE_SESSION_LIMIT) {
+      // Count total sessions at DB level
+      const sessionsRes = await fetch(
+        `${SUPABASE_URL}/rest/v1/sessions?user_id=eq.${encodeURIComponent(userId)}&select=id`,
+        { headers: { apikey: SERVICE_ROLE_KEY, Authorization: `Bearer ${SERVICE_ROLE_KEY}`, Prefer: "count=exact" }, signal: ac.signal },
+      );
+      clearTimeout(timer);
+      if (!sessionsRes.ok) { console.error("Session limit check: sessions fetch failed", sessionsRes.status); return { allowed: false, reason: "Could not verify session limit. Please try again." }; }
+      // Use content-range header for count (more efficient than parsing all rows)
+      const range = sessionsRes.headers.get("content-range");
+      const totalCount = range ? parseInt(range.split("/")[1] || "0", 10) : ((await sessionsRes.json()) as unknown[]).length;
+
+      if (totalCount >= FREE_SESSION_LIMIT) {
         return { allowed: false, reason: `Free plan limit reached (${FREE_SESSION_LIMIT} sessions). Upgrade to continue.` };
       }
       // Atomic in-flight check: prevent race condition with concurrent sessions
       const inFlight = await incrementInFlightCounter(userId, "free", 300);
-      if (inFlight !== null && sessions.length + inFlight > FREE_SESSION_LIMIT) {
+      if (inFlight !== null && totalCount + inFlight > FREE_SESSION_LIMIT) {
         return { allowed: false, reason: `Free plan limit reached (${FREE_SESSION_LIMIT} sessions). Upgrade to continue.` };
       }
     } else if (tier === "starter") {
-      // Count sessions this week (UTC-based for serverless consistency)
+      // Count sessions this week at DB level (UTC-based)
       const now2 = new Date();
       const weekStart = new Date(now2.getTime() - now2.getUTCDay() * 86400000);
       weekStart.setUTCHours(0, 0, 0, 0);
-      const thisWeek = sessions.filter((s: { created_at: string }) => new Date(s.created_at) >= weekStart).length;
+      const weekISO = weekStart.toISOString();
+      const sessionsRes = await fetch(
+        `${SUPABASE_URL}/rest/v1/sessions?user_id=eq.${encodeURIComponent(userId)}&created_at=gte.${encodeURIComponent(weekISO)}&select=id`,
+        { headers: { apikey: SERVICE_ROLE_KEY, Authorization: `Bearer ${SERVICE_ROLE_KEY}`, Prefer: "count=exact" }, signal: ac.signal },
+      );
+      clearTimeout(timer);
+      if (!sessionsRes.ok) { console.error("Session limit check: sessions fetch failed", sessionsRes.status); return { allowed: false, reason: "Could not verify session limit. Please try again." }; }
+      const range = sessionsRes.headers.get("content-range");
+      const thisWeek = range ? parseInt(range.split("/")[1] || "0", 10) : ((await sessionsRes.json()) as unknown[]).length;
       if (thisWeek >= STARTER_WEEKLY_LIMIT) {
         return { allowed: false, reason: `Starter plan limit reached (${STARTER_WEEKLY_LIMIT}/week). Upgrade to Pro for unlimited.` };
       }
+    } else {
+      clearTimeout(timer);
     }
 
     return { allowed: true };
@@ -318,6 +329,38 @@ export function sanitizeForLLM(s: unknown, maxLen = 200): string {
     .replace(/<[^>]+>/g, "")
     .slice(0, maxLen)
     .trim();
+}
+
+/* ─── Per-User Daily LLM Quota ─── */
+
+const DAILY_LLM_LIMITS: Record<string, number> = { free: 10, starter: 30, pro: 100, team: 200 };
+
+export async function checkLLMQuota(userId: string, endpoint: string): Promise<{ allowed: boolean; reason?: string }> {
+  // Get user tier
+  const tier = await getSubscriptionTier(userId);
+  const dailyLimit = DAILY_LLM_LIMITS[tier] || DAILY_LLM_LIMITS.free;
+
+  // Use Redis if available, otherwise allow (fail open to not block users)
+  if (!UPSTASH_URL || !UPSTASH_TOKEN) return { allowed: true };
+
+  const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+  const key = `llm_quota:${userId}:${today}:${endpoint}`;
+  try {
+    const res = await fetch(`${UPSTASH_URL}/pipeline`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${UPSTASH_TOKEN}`, "Content-Type": "application/json" },
+      body: JSON.stringify([["INCR", key], ["EXPIRE", key, 86400]]),
+    });
+    if (!res.ok) return { allowed: true }; // fail open
+    const results = await res.json();
+    const count = results[0]?.result ?? 1;
+    if (count > dailyLimit) {
+      return { allowed: false, reason: `Daily AI usage limit reached (${dailyLimit} calls/day for ${tier} plan). Upgrade for more, or try again tomorrow.` };
+    }
+    return { allowed: true };
+  } catch {
+    return { allowed: true }; // fail open
+  }
 }
 
 /* ─── Request ID Helper ─── */
