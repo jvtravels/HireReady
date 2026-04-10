@@ -2,7 +2,7 @@
 /* Server-side signature verification + Supabase subscription update */
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { createHmac } from "crypto";
+import { createHmac, timingSafeEqual } from "crypto";
 
 /* ─── Inline rate limiting via Upstash Redis ─── */
 const UPSTASH_URL = (process.env.UPSTASH_REDIS_REST_URL || "").trim();
@@ -281,16 +281,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .update(signPayload)
       .digest("hex");
 
-    if (expectedSignature !== razorpay_signature) {
+    const sigBuf = Buffer.from(razorpay_signature);
+    const expectedBuf = Buffer.from(expectedSignature);
+    if (sigBuf.length !== expectedBuf.length || !timingSafeEqual(sigBuf, expectedBuf)) {
       console.error("Payment signature mismatch for", (razorpay_order_id || razorpay_subscription_id || "").slice(0, 8) + "...");
       return res.status(400).json({ error: "Payment signature verification failed", code: "SIGNATURE_MISMATCH" });
     }
 
     // 2. Verify plan matches the actual order/subscription amount with Razorpay
     const rzpAuth = Buffer.from(`${RAZORPAY_KEY_ID}:${RAZORPAY_KEY_SECRET}`).toString("base64");
+    const rzpAc = new AbortController();
+    const rzpTimer = setTimeout(() => rzpAc.abort(), 8000);
+    try {
     if (razorpay_order_id) {
       const orderRes = await fetch(`https://api.razorpay.com/v1/orders/${razorpay_order_id}`, {
-        headers: { Authorization: `Basic ${rzpAuth}` },
+        headers: { Authorization: `Basic ${rzpAuth}` }, signal: rzpAc.signal,
       });
       if (!orderRes.ok) {
         return res.status(400).json({ error: "Could not verify order details", code: "ORDER_FETCH_FAILED" });
@@ -303,7 +308,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     } else if (razorpay_subscription_id) {
       // For subscriptions, verify the subscription exists and is active
       const subRes = await fetch(`https://api.razorpay.com/v1/subscriptions/${razorpay_subscription_id}`, {
-        headers: { Authorization: `Basic ${rzpAuth}` },
+        headers: { Authorization: `Basic ${rzpAuth}` }, signal: rzpAc.signal,
       });
       if (!subRes.ok) {
         return res.status(400).json({ error: "Could not verify subscription details", code: "SUBSCRIPTION_FETCH_FAILED" });
@@ -313,6 +318,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(400).json({ error: "Subscription is not active", code: "SUBSCRIPTION_INACTIVE" });
       }
     }
+    } catch (rzpErr) {
+      if (rzpErr instanceof DOMException && rzpErr.name === "AbortError") {
+        return res.status(504).json({ error: "Payment verification timed out. Please retry.", code: "RAZORPAY_TIMEOUT" });
+      }
+      throw rzpErr;
+    } finally { clearTimeout(rzpTimer); }
 
     // 3. Duplicate check FIRST — before any state mutations
     // Check payments table for any user with this payment ID (cross-user replay)

@@ -14,6 +14,16 @@ import { scriptsByType, defaultScript, getMiniScript, getScript } from "./interv
 import { saveSessionResult, fetchLLMQuestions, fetchLLMEvaluation, fetchFollowUp, retryQueuedEvals, getAdaptiveHints } from "./interviewAPI";
 import type { SessionResult } from "./interviewAPI";
 import { createDeepgramSTT, type DeepgramSTTHandle } from "./deepgramSTT";
+
+/** UUID generator with fallback for older browsers / insecure contexts */
+function safeUUID(): string {
+  try { return safeUUID(); } catch { /* fallback */ }
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  bytes[6] = (bytes[6] & 0x0f) | 0x40; // version 4
+  bytes[8] = (bytes[8] & 0x3f) | 0x80; // variant
+  const hex = Array.from(bytes, b => b.toString(16).padStart(2, "0")).join("");
+  return `${hex.slice(0,8)}-${hex.slice(8,12)}-${hex.slice(12,16)}-${hex.slice(16,20)}-${hex.slice(20)}`;
+}
 import {
   WaveformVisualizer, NetworkIndicator, DotGridVisualizer,
   QuestionProgressBar, LiveCaptions, ControlButton,
@@ -803,7 +813,7 @@ export default function Interview() {
     setEvaluating(true);
 
     // Safety timeout: if handleEnd hangs for any reason, force-dismiss overlay and navigate
-    let sessionId = crypto.randomUUID();
+    let sessionId = safeUUID();
     let score = 0;
     let aiFeedback = "";
     let skillScores: Record<string, number> | null = null;
@@ -893,7 +903,7 @@ export default function Interview() {
       setUsedFallbackScore(true);
     }
 
-    sessionId = crypto.randomUUID();
+    sessionId = safeUUID();
     setLastSessionId(sessionId);
     let localOk = false;
     let cloudOk = false;

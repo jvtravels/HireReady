@@ -87,6 +87,7 @@ export async function verifyAuth(req: Request): Promise<{ authenticated: boolean
     clearTimeout(timer);
     if (!res.ok) return { authenticated: false };
     const user = await res.json();
+    if (!user.id || typeof user.id !== "string") return { authenticated: false };
     return { authenticated: true, userId: user.id };
   } catch {
     return { authenticated: false };

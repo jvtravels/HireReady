@@ -67,6 +67,11 @@ const FILLER_WORDS = ["um", "uh", "like", "you know", "basically", "actually", "
 const HEDGING_PHRASES = ["i think", "i guess", "maybe", "probably", "i believe", "perhaps", "not sure", "i suppose", "might be", "could be"];
 const POWER_WORDS = ["achieved", "led", "built", "delivered", "increased", "reduced", "launched", "drove", "improved", "designed", "implemented", "scaled", "optimized", "managed", "created", "transformed"];
 
+// Pre-compiled regexes to avoid recompilation on every render
+const FILLER_REGEXES = FILLER_WORDS.map(w => ({ word: w, regex: new RegExp(`\\b${w}\\b`, "gi") }));
+const HEDGING_REGEXES = HEDGING_PHRASES.map(p => ({ phrase: p, regex: new RegExp(`\\b${p}\\b`, "gi") }));
+const POWER_REGEXES = POWER_WORDS.map(w => ({ word: w, regex: new RegExp(`\\b${w}\\w*\\b`, "gi") }));
+
 function computeSpeechMetrics(transcript: { speaker: string; text: string; time?: string }[] | undefined, durationSec: number) {
   if (!transcript || transcript.length === 0) return null;
   const userEntries = transcript.filter(t => t.speaker === "user");
@@ -79,8 +84,8 @@ function computeSpeechMetrics(transcript: { speaker: string; text: string; time?
 
   // Filler words
   let fillerCount = 0;
-  for (const filler of FILLER_WORDS) {
-    const regex = new RegExp(`\\b${filler}\\b`, "gi");
+  for (const { regex } of FILLER_REGEXES) {
+    regex.lastIndex = 0;
     const matches = userText.match(regex);
     if (matches) fillerCount += matches.length;
   }
@@ -100,19 +105,18 @@ function computeSpeechMetrics(transcript: { speaker: string; text: string; time?
 
   // Per-filler breakdown
   const fillerBreakdown: { word: string; count: number }[] = [];
-  for (const filler of FILLER_WORDS) {
-    const regex = new RegExp(`\\b${filler}\\b`, "gi");
+  for (const { word, regex } of FILLER_REGEXES) {
+    regex.lastIndex = 0;
     const matches = userText.match(regex);
-    if (matches && matches.length > 0) fillerBreakdown.push({ word: filler, count: matches.length });
+    if (matches && matches.length > 0) fillerBreakdown.push({ word, count: matches.length });
   }
   fillerBreakdown.sort((a, b) => b.count - a.count);
 
   // Hedging language detection
-  const lowerText = userText.toLowerCase();
   let hedgingCount = 0;
   const hedgingBreakdown: { phrase: string; count: number }[] = [];
-  for (const phrase of HEDGING_PHRASES) {
-    const regex = new RegExp(`\\b${phrase}\\b`, "gi");
+  for (const { phrase, regex } of HEDGING_REGEXES) {
+    regex.lastIndex = 0;
     const matches = userText.match(regex);
     if (matches && matches.length > 0) {
       hedgingCount += matches.length;
@@ -123,8 +127,8 @@ function computeSpeechMetrics(transcript: { speaker: string; text: string; time?
 
   // Power words / action verbs count
   let powerWordCount = 0;
-  for (const pw of POWER_WORDS) {
-    const regex = new RegExp(`\\b${pw}\\w*\\b`, "gi");
+  for (const { regex } of POWER_REGEXES) {
+    regex.lastIndex = 0;
     const matches = userText.match(regex);
     if (matches) powerWordCount += matches.length;
   }

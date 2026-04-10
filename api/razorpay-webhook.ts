@@ -122,6 +122,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (!subscription) return res.status(400).json({ error: "Missing subscription entity" });
 
       const subscriptionId = subscription.id;
+      if (typeof subscriptionId !== "string" || !/^sub_[A-Za-z0-9]+$/.test(subscriptionId)) {
+        console.error("[webhook] Invalid subscription ID format:", subscriptionId);
+        return res.status(400).json({ error: "Invalid subscription ID format" });
+      }
       const notes = subscription.notes || {};
       const plan = notes.plan;
       const userId = notes.userId;
@@ -319,6 +323,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const paymentId = payment.id;
+    if (typeof paymentId !== "string" || !/^pay_[A-Za-z0-9]+$/.test(paymentId)) {
+      console.error("[webhook] Invalid payment ID format:", paymentId);
+      return res.status(400).json({ error: "Invalid payment ID format" });
+    }
     const orderId = payment.order_id;
     const amount = payment.amount;
     const notes = payment.notes || {};

@@ -1,6 +1,14 @@
 /* ─── Text-to-Speech Service ─── */
 /* Uses server-side Cartesia TTS proxy (ultra-low latency) with Web Speech API fallback */
 
+function safeUUID(): string {
+  try { return safeUUID(); } catch { /* fallback */ }
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  bytes[6] = (bytes[6] & 0x0f) | 0x40; bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const hex = Array.from(bytes, b => b.toString(16).padStart(2, "0")).join("");
+  return `${hex.slice(0,8)}-${hex.slice(8,12)}-${hex.slice(12,16)}-${hex.slice(16,20)}-${hex.slice(20)}`;
+}
+
 /* Unlock audio playback — call this on a user gesture (button click)
    before navigating to pages that auto-play audio. This creates a
    silent AudioContext that satisfies the browser's autoplay policy. */
@@ -280,7 +288,7 @@ async function speakWithWebSocket(
     audioCtx = new AudioContext({ sampleRate: WS_SAMPLE_RATE });
     nextStartTime = audioCtx.currentTime;
     const capturedCtx = audioCtx;
-    const contextId = crypto.randomUUID();
+    const contextId = safeUUID();
 
     // Timeout: if no data in 10s, fall back
     const wsTimeout = setTimeout(() => {

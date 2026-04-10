@@ -85,7 +85,8 @@ Return ONLY the JSON array, no other text.`;
     const parsed = extractJSON(result.text);
 
     if (!Array.isArray(parsed)) {
-      return new Response(JSON.stringify({ insights: [], error: "Failed to parse insights" }), { status: 200, headers });
+      console.error("[generate-insights] LLM returned non-array:", typeof parsed);
+      return new Response(JSON.stringify({ insights: [], error: "Failed to parse insights" }), { status: 502, headers });
     }
 
     // Validate and sanitize
@@ -98,6 +99,6 @@ Return ONLY the JSON array, no other text.`;
     return new Response(JSON.stringify({ insights, model: result.model }), { status: 200, headers });
   } catch (err) {
     console.error("[generate-insights] Error:", err);
-    return new Response(JSON.stringify({ insights: [], error: "Failed to generate insights" }), { status: 200, headers });
+    return new Response(JSON.stringify({ insights: [], error: "Failed to generate insights" }), { status: 500, headers });
   }
 }

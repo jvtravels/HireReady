@@ -34,7 +34,7 @@ export default async function handler(req: Request): Promise<Response> {
 
   // Fetch profile (limited fields — no sensitive data)
   const profileRes = await fetch(
-    `${SUPABASE_URL}/rest/v1/profiles?id=eq.${encodeURIComponent(userId)}&select=name,target_role,target_company,created_at`,
+    `${SUPABASE_URL}/rest/v1/profiles?id=eq.${encodeURIComponent(userId)}&select=name,target_role,target_company,created_at,is_profile_public`,
     { headers: dbHeaders },
   );
   const profiles = await profileRes.json();
@@ -43,6 +43,11 @@ export default async function handler(req: Request): Promise<Response> {
   }
 
   const profile = profiles[0];
+
+  // Privacy check — only show profile if user has opted in (default: public for backward compat)
+  if (profile.is_profile_public === false) {
+    return new Response(JSON.stringify({ error: "This profile is private" }), { status: 403, headers });
+  }
 
   // Fetch session stats (aggregated — no raw transcripts)
   const sessionsRes = await fetch(

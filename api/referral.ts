@@ -53,13 +53,27 @@ export default async function handler(req: Request): Promise<Response> {
     let code = Array.isArray(profiles) && profiles[0]?.referral_code;
 
     if (!code) {
-      // Generate and save a new code
-      code = generateCode();
-      await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${encodeURIComponent(auth.userId)}`, {
+      // Generate a unique code with collision check (retry up to 5 times)
+      for (let attempt = 0; attempt < 5; attempt++) {
+        code = generateCode();
+        const existsRes = await fetch(
+          `${SUPABASE_URL}/rest/v1/profiles?referral_code=eq.${encodeURIComponent(code)}&select=id`,
+          { headers: dbHeaders },
+        );
+        const existsRows = await existsRes.json();
+        if (Array.isArray(existsRows) && existsRows.length === 0) break; // unique
+        if (attempt === 4) {
+          return new Response(JSON.stringify({ error: "Could not generate unique code, please retry" }), { status: 500, headers });
+        }
+      }
+      const saveRes = await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${encodeURIComponent(auth.userId)}`, {
         method: "PATCH",
         headers: { ...dbHeaders, Prefer: "return=minimal" },
         body: JSON.stringify({ referral_code: code }),
       });
+      if (!saveRes.ok) {
+        return new Response(JSON.stringify({ error: "Failed to save referral code" }), { status: 500, headers });
+      }
     }
 
     // Count successful referrals
@@ -78,6 +92,10 @@ export default async function handler(req: Request): Promise<Response> {
   }
 
   // POST — apply referral code
+  const contentLength = parseInt(req.headers.get("content-length") || "0", 10);
+  if (contentLength > 10240) {
+    return new Response(JSON.stringify({ error: "Request too large" }), { status: 413, headers });
+  }
   const body = await req.json().catch(() => ({}));
   const referralCode = (body as { code?: string }).code?.trim().toUpperCase();
 
@@ -112,15 +130,19 @@ export default async function handler(req: Request): Promise<Response> {
     return new Response(JSON.stringify({ error: "Already used a referral code" }), { status: 409, headers });
   }
 
-  // Apply referral
-  await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${encodeURIComponent(auth.userId)}`, {
+  // Apply referral — check result
+  const applyRes = await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${encodeURIComponent(auth.userId)}`, {
     method: "PATCH",
     headers: { ...dbHeaders, Prefer: "return=minimal" },
     body: JSON.stringify({ referred_by: referralCode }),
   });
+  if (!applyRes.ok) {
+    console.error("[referral] Failed to apply referral:", applyRes.status);
+    return new Response(JSON.stringify({ error: "Failed to apply referral code" }), { status: 500, headers });
+  }
 
-  // Create referral record
-  await fetch(`${SUPABASE_URL}/rest/v1/referrals`, {
+  // Create referral record — check result
+  const recordRes = await fetch(`${SUPABASE_URL}/rest/v1/referrals`, {
     method: "POST",
     headers: { ...dbHeaders, Prefer: "return=minimal" },
     body: JSON.stringify({
@@ -130,6 +152,10 @@ export default async function handler(req: Request): Promise<Response> {
       status: "redeemed",
     }),
   });
+  if (!recordRes.ok) {
+    console.error("[referral] Failed to create referral record:", recordRes.status);
+    // Don't fail — profile was already updated, record is supplementary
+  }
 
   return new Response(JSON.stringify({ success: true }), { status: 200, headers });
 

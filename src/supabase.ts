@@ -1,5 +1,13 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+function safeUUID(): string {
+  try { return safeUUID(); } catch { /* fallback */ }
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  bytes[6] = (bytes[6] & 0x0f) | 0x40; bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const hex = Array.from(bytes, b => b.toString(16).padStart(2, "0")).join("");
+  return `${hex.slice(0,8)}-${hex.slice(8,12)}-${hex.slice(12,16)}-${hex.slice(16,20)}-${hex.slice(20)}`;
+}
+
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "";
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || "";
 
@@ -414,7 +422,7 @@ export async function syncGoogleEvents(userId: string): Promise<{ synced: number
   const newEvents = googleEvents
     .filter(e => e.google_event_id && !existingIds.has(e.google_event_id))
     .map(e => ({
-      id: crypto.randomUUID(),
+      id: safeUUID(),
       user_id: userId,
       title: e.title,
       company: e.company,
