@@ -87,7 +87,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(400).json({ error: "Invalid signature" });
   }
 
-  let event: { event?: string; payload?: { subscription?: { entity?: Record<string, unknown> }; payment?: { entity?: Record<string, unknown> } } };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Razorpay webhook payload is dynamic external data
+  let event: any;
   try {
     event = JSON.parse(rawBody);
   } catch {

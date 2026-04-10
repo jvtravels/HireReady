@@ -133,7 +133,8 @@ export async function callLLM(opts: LLMOptions, timeoutMs = 15000): Promise<LLMR
   }
 }
 
-export function extractJSON(text: string): unknown {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- JSON parse result is inherently untyped
+export function extractJSON(text: string): any {
   // Try direct parse first
   try { return JSON.parse(text); } catch {}
   // Strip markdown code fences
