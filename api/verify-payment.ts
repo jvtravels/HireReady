@@ -49,10 +49,10 @@ function getAllowedOrigin(origin: string): string {
   return "";
 }
 
-const PLAN_DURATION: Record<string, number> = { weekly: 7, monthly: 0 }; // monthly uses setMonth() below
-const PLAN_TIER: Record<string, string> = { weekly: "starter", monthly: "pro" };
-const PLAN_AMOUNT: Record<string, number> = { weekly: 4900, monthly: 14900 };
-const PLAN_LABEL: Record<string, string> = { weekly: "Starter (₹49/week)", monthly: "Pro (₹149/month)" };
+const PLAN_DURATION: Record<string, number> = { weekly: 7, monthly: 0, "yearly-starter": 365, "yearly-pro": 365 }; // monthly uses setMonth() below
+const PLAN_TIER: Record<string, string> = { weekly: "starter", monthly: "pro", "yearly-starter": "starter", "yearly-pro": "pro" };
+const PLAN_AMOUNT: Record<string, number> = { weekly: 4900, monthly: 14900, "yearly-starter": 203900, "yearly-pro": 143000 };
+const PLAN_LABEL: Record<string, string> = { weekly: "Starter (₹49/week)", monthly: "Pro (₹149/month)", "yearly-starter": "Starter Annual (₹2,039/year)", "yearly-pro": "Pro Annual (₹1,430/year)" };
 
 function escapeHtml(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -76,7 +76,8 @@ async function sendPaymentEmail(
   const planLabel = PLAN_LABEL[plan] || tier;
   const start = new Date(startDate).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" });
   const end = new Date(endDate).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" });
-  const amount = plan === "monthly" ? "₹149" : "₹49";
+  const amountMap: Record<string, string> = { weekly: "₹49", monthly: "₹149", "yearly-starter": "₹2,039", "yearly-pro": "₹1,430" };
+  const amount = amountMap[plan] || "₹149";
 
   try {
     const emailAc = new AbortController();
@@ -359,11 +360,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const currentPlanAmount = current.subscription_tier === "starter" ? 4900 : 14900;
       const newPlanAmount = PLAN_AMOUNT[plan];
       // Convert remaining days to credit ratio and add proportional bonus days
-      const newPlanDays = plan === "monthly" ? 30 : PLAN_DURATION[plan]; // approximate for proration calc
+      const isAnnual = plan.startsWith("yearly-");
+      const newPlanDays = plan === "monthly" ? 30 : isAnnual ? 365 : PLAN_DURATION[plan];
       proratedDays = Math.floor((remainingDays / currentPlanDuration) * (currentPlanAmount / newPlanAmount) * newPlanDays);
       end = new Date(now);
       if (plan === "monthly") {
         end.setMonth(end.getMonth() + 1);
+      } else if (isAnnual) {
+        end.setFullYear(end.getFullYear() + 1);
       } else {
         end.setDate(end.getDate() + PLAN_DURATION[plan]);
       }
@@ -374,6 +378,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       end = new Date(base);
       if (plan === "monthly") {
         end.setMonth(end.getMonth() + 1);
+      } else if (plan.startsWith("yearly-")) {
+        end.setFullYear(end.getFullYear() + 1);
       } else {
         end.setDate(end.getDate() + PLAN_DURATION[plan]);
       }

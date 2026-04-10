@@ -1,0 +1,37 @@
+<svg width="1200" height="630" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#060607"/>
+      <stop offset="100%" stop-color="#111113"/>
+    </linearGradient>
+    <linearGradient id="gilt" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#D4B37F"/>
+      <stop offset="100%" stop-color="#E8D5AE"/>
+    </linearGradient>
+    <linearGradient id="sage" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#7A9E7E"/>
+      <stop offset="100%" stop-color="#5A7E5E"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <!-- Top accent line -->
+  <rect x="0" y="0" width="1200" height="3" fill="url(#gilt)" opacity="0.6"/>
+  <!-- Logo area -->
+  <text x="80" y="120" font-family="Georgia, serif" font-size="42" fill="#F5F2ED" font-weight="400">HireStep<tspan fill="#D4B37F">X</tspan></text>
+  <!-- Tagline -->
+  <text x="80" y="240" font-family="Arial, sans-serif" font-size="52" fill="#F5F2ED" font-weight="600">AI Mock Interviews</text>
+  <text x="80" y="300" font-family="Arial, sans-serif" font-size="52" fill="#D4B37F" font-weight="600">That Actually Prepare You</text>
+  <!-- Features -->
+  <text x="80" y="400" font-family="Arial, sans-serif" font-size="24" fill="#9A9590">Voice interviews  |  STAR scoring  |  Speech analytics</text>
+  <text x="80" y="440" font-family="Arial, sans-serif" font-size="24" fill="#9A9590">Hindi &amp; Hinglish  |  TCS, Google, Amazon &amp; more</text>
+  <!-- CTA -->
+  <rect x="80" y="490" width="260" height="56" rx="12" fill="url(#gilt)"/>
+  <text x="130" y="527" font-family="Arial, sans-serif" font-size="20" fill="#060607" font-weight="700">Start Practicing Free</text>
+  <!-- Score visual -->
+  <circle cx="980" cy="315" r="120" fill="none" stroke="#1E1E20" stroke-width="12"/>
+  <circle cx="980" cy="315" r="120" fill="none" stroke="url(#sage)" stroke-width="12" stroke-dasharray="603" stroke-dashoffset="151" stroke-linecap="round" transform="rotate(-90 980 315)"/>
+  <text x="980" y="305" font-family="Arial, sans-serif" font-size="64" fill="#F5F2ED" font-weight="700" text-anchor="middle">85</text>
+  <text x="980" y="340" font-family="Arial, sans-serif" font-size="18" fill="#9A9590" text-anchor="middle">Score</text>
+  <!-- Bottom accent -->
+  <rect x="0" y="627" width="1200" height="3" fill="url(#gilt)" opacity="0.3"/>
+</svg>

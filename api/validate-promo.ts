@@ -9,7 +9,7 @@ declare const process: { env: Record<string, string | undefined> };
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || "";
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 
-const PLAN_AMOUNT: Record<string, number> = { weekly: 4900, monthly: 14900 };
+const PLAN_AMOUNT: Record<string, number> = { weekly: 4900, monthly: 14900, "yearly-starter": 203900, "yearly-pro": 143000 };
 
 export default async function handler(req: Request): Promise<Response> {
   const earlyResponse = handleCorsPreflightOrMethod(req);
@@ -78,12 +78,21 @@ export default async function handler(req: Request): Promise<Response> {
 
   const finalAmount = Math.max(0, originalAmount - discountAmount);
 
-  // Increment usage counter
-  await fetch(`${SUPABASE_URL}/rest/v1/promo_codes?id=eq.${promo.id}`, {
-    method: "PATCH",
-    headers: { ...dbHeaders, Prefer: "return=minimal" },
-    body: JSON.stringify({ current_uses: promo.current_uses + 1 }),
-  });
+  // Atomic increment usage counter with conditional check to prevent TOCTOU race.
+  // Only increment if current_uses still matches what we read (optimistic lock).
+  const incrRes = await fetch(
+    `${SUPABASE_URL}/rest/v1/promo_codes?id=eq.${promo.id}&current_uses=eq.${promo.current_uses}`,
+    {
+      method: "PATCH",
+      headers: { ...dbHeaders, Prefer: "return=representation" },
+      body: JSON.stringify({ current_uses: promo.current_uses + 1 }),
+    },
+  );
+  const incrRows = await incrRes.json();
+  if (!Array.isArray(incrRows) || incrRows.length === 0) {
+    // Another request incremented concurrently — re-check limit
+    return new Response(JSON.stringify({ valid: false, error: "Promo code is busy, please try again" }), { status: 409, headers });
+  }
 
   return new Response(JSON.stringify({
     valid: true,

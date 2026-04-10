@@ -30,6 +30,8 @@ export default async function handler(req: Request): Promise<Response> {
     Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
   };
 
+  try {
+
   // Fetch profile (limited fields — no sensitive data)
   const profileRes = await fetch(
     `${SUPABASE_URL}/rest/v1/profiles?id=eq.${encodeURIComponent(userId)}&select=name,target_role,target_company,created_at`,
@@ -92,4 +94,9 @@ export default async function handler(req: Request): Promise<Response> {
     status: 200,
     headers: { ...headers, "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600" },
   });
+
+  } catch (err) {
+    console.error("[public-profile] Error:", err);
+    return new Response(JSON.stringify({ error: "Internal error" }), { status: 500, headers });
+  }
 }

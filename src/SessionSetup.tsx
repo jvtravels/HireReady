@@ -248,6 +248,7 @@ export default function SessionSetup() {
   const [countdown, setCountdown] = useState<number | null>(null);
   const [saveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [useResume, setUseResume] = useState(true);
+  const [jobDescription, setJobDescription] = useState("");
 
   const canProceedStep1 = !!targetRole.trim() && interviewFocus.length > 0;
 
@@ -294,7 +295,7 @@ export default function SessionSetup() {
     setTimeout(() => setCountdown(1), 2000);
     setTimeout(() => {
       setCountdown(0);
-      navigate(`/interview?type=${focusType}&focus=${focusType}&difficulty=standard${targetCompany ? `&company=${encodeURIComponent(targetCompany)}` : ""}&role=${encodeURIComponent(targetRole)}&length=${sessionLength}${useResume ? "" : "&useResume=false"}${interviewLanguage !== "en" ? `&language=${interviewLanguage}` : ""}`);
+      navigate(`/interview?type=${focusType}&focus=${focusType}&difficulty=standard${targetCompany ? `&company=${encodeURIComponent(targetCompany)}` : ""}&role=${encodeURIComponent(targetRole)}&length=${sessionLength}${useResume ? "" : "&useResume=false"}${interviewLanguage !== "en" ? `&language=${interviewLanguage}` : ""}${jobDescription.trim() ? `&jd=${encodeURIComponent(jobDescription.trim().slice(0, 2000))}` : ""}`);
     }, 3000);
   };
 
@@ -670,6 +671,39 @@ export default function SessionSetup() {
                       </div>
                     </div>
                   )}
+
+                  {/* Job Description Paste */}
+                  <div style={{ marginTop: 16 }}>
+                    <div onClick={() => setJobDescription(prev => prev || " ")} style={{
+                      display: "flex", alignItems: "center", gap: 8, cursor: "pointer", padding: "10px 0",
+                    }}>
+                      <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={c.stone} strokeWidth="1.5" strokeLinecap="round">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
+                      </svg>
+                      <span style={{ fontFamily: font.ui, fontSize: 12, color: c.chalk }}>
+                        {jobDescription.trim() ? "Job description added" : "Paste a job description (optional)"}
+                      </span>
+                      {jobDescription.trim() && <span style={{ fontFamily: font.ui, fontSize: 10, color: c.sage }}>&#10003;</span>}
+                    </div>
+                    {jobDescription !== "" && (
+                      <textarea
+                        value={jobDescription}
+                        onChange={(e) => setJobDescription(e.target.value)}
+                        placeholder="Paste the job posting here — questions will be tailored to this specific role..."
+                        rows={4}
+                        maxLength={2000}
+                        style={{
+                          width: "100%", fontFamily: font.ui, fontSize: 12, color: c.chalk,
+                          background: "rgba(6,6,7,0.5)", border: `1px solid ${c.border}`,
+                          borderRadius: 10, padding: "12px 14px", outline: "none", resize: "vertical",
+                          lineHeight: 1.6, boxSizing: "border-box",
+                        }}
+                        onFocus={(e) => { e.currentTarget.style.borderColor = c.gilt; }}
+                        onBlur={(e) => { e.currentTarget.style.borderColor = c.border; if (!e.currentTarget.value.trim()) setJobDescription(""); }}
+                        autoFocus
+                      />
+                    )}
+                  </div>
                 </div>
               </div>
             </div>

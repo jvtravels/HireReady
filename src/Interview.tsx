@@ -58,6 +58,7 @@ export default function Interview() {
   const isMiniMode = searchParams.get("mini") === "true";
   const shouldUseResume = searchParams.get("useResume") !== "false";
   const interviewLanguage = searchParams.get("language") || "en";
+  const jobDescription = searchParams.get("jd") || "";
   // Restore draft if resuming
   const draftKey = `hirestepx_interview_draft_${user?.id || "anon"}`;
   const isResuming = searchParams.get("resume") === "true";
@@ -148,6 +149,7 @@ export default function Interview() {
       language: interviewLanguage !== "en" ? interviewLanguage : undefined,
       pastTopics: adaptiveHints.pastTopics.length > 0 ? adaptiveHints.pastTopics : undefined,
       weakSkills: adaptiveHints.weakSkills.length > 0 ? adaptiveHints.weakSkills : undefined,
+      jobDescription: jobDescription || undefined,
     }).then(questions => {
       if (cancelled) return;
       if (questions && questions.length > 0 && currentStepRef.current === 0) {

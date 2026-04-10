@@ -23,20 +23,20 @@ function extractReason(raw: unknown): string {
 
 function scoreLabelColor(score: number) {
   if (score >= 85) return c.sage;
-  if (score >= 70) return c.gilt;
+  if (score >= 75) return c.gilt;
   return c.ember;
 }
 
 function scoreLabel(score: number) {
   if (score >= 85) return "Strong";
-  if (score >= 70) return "Good";
-  return "Developing";
+  if (score >= 75) return "Good";
+  return "Needs work";
 }
 
 function scoreTip(score: number) {
   if (score >= 85) return "Strong: Interview-ready performance";
-  if (score >= 70) return "Good: Solid foundation, minor areas to refine";
-  return "Developing: Key areas need practice before interviews";
+  if (score >= 75) return "Good: Solid foundation, minor areas to refine";
+  return "Needs work: Key areas need practice before interviews";
 }
 
 function normalizeType(type: string): string {

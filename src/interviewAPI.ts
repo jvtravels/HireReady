@@ -131,7 +131,7 @@ export function getAdaptiveHints(sessions: { skill_scores?: Record<string, unkno
 export async function fetchLLMQuestions(params: {
   type: string; focus?: string; difficulty: string; role: string;
   company?: string; industry?: string; resumeText?: string; language?: string;
-  pastTopics?: string[]; weakSkills?: string[];
+  pastTopics?: string[]; weakSkills?: string[]; jobDescription?: string;
 }): Promise<InterviewStep[] | null> {
   // Client-side rate limit: max 3 question generations per 60s
   if (!checkRateLimit("generate-questions", 3, 60_000)) {

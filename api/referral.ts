@@ -41,6 +41,8 @@ export default async function handler(req: Request): Promise<Response> {
     "Content-Type": "application/json",
   };
 
+  try {
+
   if (req.method === "GET") {
     // Get or create referral code for this user
     const profileRes = await fetch(
@@ -130,4 +132,9 @@ export default async function handler(req: Request): Promise<Response> {
   });
 
   return new Response(JSON.stringify({ success: true }), { status: 200, headers });
+
+  } catch (err) {
+    console.error("[referral] Error:", err);
+    return new Response(JSON.stringify({ error: "Internal error" }), { status: 500, headers });
+  }
 }

@@ -97,13 +97,20 @@ export function DataLoadingSkeleton() {
 }
 
 /* ─── Upgrade Modal ─── */
-const ALL_PLANS = [
+const MONTHLY_PLANS = [
   { id: "free", tier: "free", name: "Free", price: "\u20B90", period: "", desc: `${FREE_SESSION_LIMIT} sessions total`, features: [`${FREE_SESSION_LIMIT} mock interviews`, "Behavioral questions", "Basic score & feedback"], featured: false },
   { id: "weekly", tier: "starter", name: "Starter", price: "\u20B949", period: "/week", desc: `${STARTER_WEEKLY_LIMIT} sessions per week`, features: [`${STARTER_WEEKLY_LIMIT} sessions/week`, "All question types", "Detailed feedback & skill scores", "Resume analysis", "PDF export"], featured: false },
   { id: "monthly", tier: "pro", name: "Pro", price: "\u20B9149", period: "/mo", desc: "Best value \u2014 unlimited prep", features: ["Unlimited sessions", "Full AI coaching feedback", "Performance analytics & trends", "Interview calendar", "Export PDF, CSV, JSON"], featured: true },
 ];
 
+const ANNUAL_PLANS = [
+  { id: "free", tier: "free", name: "Free", price: "\u20B90", period: "", desc: `${FREE_SESSION_LIMIT} sessions total`, features: [`${FREE_SESSION_LIMIT} mock interviews`, "Behavioral questions", "Basic score & feedback"], featured: false },
+  { id: "yearly-starter", tier: "starter", name: "Starter", price: "\u20B92,039", period: "/year", desc: `${STARTER_WEEKLY_LIMIT} sessions per week`, features: [`${STARTER_WEEKLY_LIMIT} sessions/week`, "All question types", "Detailed feedback & skill scores", "Resume analysis", "PDF export", "Save 20% vs weekly"], featured: false },
+  { id: "yearly-pro", tier: "pro", name: "Pro", price: "\u20B91,430", period: "/year", desc: "Best value \u2014 unlimited prep", features: ["Unlimited sessions", "Full AI coaching feedback", "Performance analytics & trends", "Interview calendar", "Export PDF, CSV, JSON", "Save 20% vs monthly"], featured: true },
+];
+
 export function UpgradeModal({ onClose, sessionsUsed, user, currentTier, onPaymentSuccess }: { onClose: () => void; sessionsUsed: number; user?: { id?: string; email?: string; name?: string } | null; currentTier: string; onPaymentSuccess: (tier: string, start: string, end: string) => void }) {
+  const [billingCycle, setBillingCycle] = useState<"monthly" | "annual">("monthly");
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [promoCode, setPromoCode] = useState("");
@@ -319,7 +326,7 @@ export function UpgradeModal({ onClose, sessionsUsed, user, currentTier, onPayme
             setPromoLoading(true); setPromoError("");
             try {
               const hdrs = await import("./supabase").then(m => m.authHeaders());
-              const res = await fetch("/api/validate-promo", { method: "POST", headers: hdrs, body: JSON.stringify({ code: promoCode.trim(), plan: "monthly" }) });
+              const res = await fetch("/api/validate-promo", { method: "POST", headers: hdrs, body: JSON.stringify({ code: promoCode.trim(), plan: billingCycle === "annual" ? "yearly-pro" : "monthly" }) });
               const data = await res.json();
               if (data.valid) { setPromoResult(data); } else { setPromoError(data.error || "Invalid code"); setPromoResult(null); }
             } catch { setPromoError("Could not validate code"); }
@@ -341,8 +348,21 @@ export function UpgradeModal({ onClose, sessionsUsed, user, currentTier, onPayme
           </div>
         )}
 
+        {/* Billing toggle */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, marginBottom: 18 }}>
+          <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: billingCycle === "monthly" ? 600 : 400, color: billingCycle === "monthly" ? c.ivory : c.stone, cursor: "pointer" }} onClick={() => setBillingCycle("monthly")}>Monthly</span>
+          <button onClick={() => setBillingCycle(prev => prev === "monthly" ? "annual" : "monthly")} aria-label="Toggle billing cycle"
+            style={{ width: 44, height: 24, borderRadius: 12, border: `1px solid ${c.borderHover}`, background: billingCycle === "annual" ? "rgba(122,158,126,0.2)" : c.obsidian, position: "relative", cursor: "pointer", transition: "background 0.2s", padding: 0 }}>
+            <div style={{ width: 18, height: 18, borderRadius: "50%", background: billingCycle === "annual" ? c.sage : c.stone, position: "absolute", top: 2, left: billingCycle === "annual" ? 23 : 2, transition: "left 0.2s, background 0.2s" }} />
+          </button>
+          <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: billingCycle === "annual" ? 600 : 400, color: billingCycle === "annual" ? c.ivory : c.stone, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }} onClick={() => setBillingCycle("annual")}>
+            Annual
+            <span style={{ fontFamily: font.mono, fontSize: 9, fontWeight: 700, color: c.sage, background: "rgba(122,158,126,0.1)", border: `1px solid rgba(122,158,126,0.2)`, borderRadius: 4, padding: "2px 6px", letterSpacing: "0.04em" }}>SAVE 20%</span>
+          </span>
+        </div>
+
         <div className="upgrade-plans-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
-          {ALL_PLANS.map((plan) => {
+          {(billingCycle === "annual" ? ANNUAL_PLANS : MONTHLY_PLANS).map((plan) => {
             const isCurrent = plan.tier === currentTier;
             return (
             <div key={plan.id} style={{

@@ -48,8 +48,10 @@ function getAllowedOrigin(origin: string): string {
 }
 
 const PRICE_MAP: Record<string, { amount: number; name: string; description: string }> = {
-  weekly:  { amount: 4900,   name: "HireStepX Starter",          description: "Weekly Plan — ₹49/week · 10 sessions" },
-  monthly: { amount: 14900,  name: "HireStepX Pro",              description: "Monthly Plan — ₹149/month · Unlimited" },
+  weekly:           { amount: 4900,   name: "HireStepX Starter",          description: "Weekly Plan — ₹49/week · 10 sessions" },
+  monthly:          { amount: 14900,  name: "HireStepX Pro",              description: "Monthly Plan — ₹149/month · Unlimited" },
+  "yearly-starter": { amount: 203900, name: "HireStepX Starter Annual",   description: "Annual Starter — ₹2,039/year · 10 sessions/week" },
+  "yearly-pro":     { amount: 143000, name: "HireStepX Pro Annual",       description: "Annual Pro — ₹1,430/year · Unlimited" },
 };
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -109,7 +111,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     const { plan, userId, email } = req.body;
-    if (typeof plan !== "string" || !["weekly", "monthly"].includes(plan)) {
+    if (typeof plan !== "string" || !PRICE_MAP[plan]) {
       return res.status(400).json({ error: "Invalid plan" });
     }
     const price = PRICE_MAP[plan];
