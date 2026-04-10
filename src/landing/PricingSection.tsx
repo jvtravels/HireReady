@@ -45,25 +45,29 @@ function PricingCard({ plan, delay }: { plan: (typeof plans)[0]; delay: number }
       let data: any;
 
       const authHdrs = await import("../supabase").then(m => m.authHeaders());
-      const subRes = await fetch("/api/create-subscription", {
-        method: "POST",
-        headers: authHdrs,
-        body: JSON.stringify({ plan: plan.planId, userId: user?.id, email: user?.email }),
-      });
-      const subData = await subRes.json();
-      if (subData.subscriptionId) {
-        useSubscription = true;
-        data = subData;
-      } else if (subRes.status === 503) {
-        // Subscription plans not configured — show error
-        setError(subData.error || "Subscriptions are temporarily unavailable. Please try again later.");
-        setLoading(false);
-        return;
-      } else {
-        // Fall back to one-time order for non-config errors
+      try {
+        const subRes = await fetch("/api/create-subscription", {
+          method: "POST",
+          headers: authHdrs,
+          body: JSON.stringify({ plan: plan.planId, userId: user?.id, email: user?.email }),
+        });
+        const subData = await subRes.json();
+        if (subData.subscriptionId) {
+          useSubscription = true;
+          data = subData;
+        } else {
+          // Subscription failed (503 = not configured, or other error) — fall back to one-time order
+          data = null;
+        }
+      } catch {
+        data = null;
+      }
+
+      if (!data) {
+        // Fall back to one-time order
         const orderRes = await fetch("/api/create-order", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: authHdrs,
           body: JSON.stringify({ plan: plan.planId, userId: user?.id, email: user?.email }),
         });
         data = await orderRes.json();

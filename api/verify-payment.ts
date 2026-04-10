@@ -49,7 +49,7 @@ function getAllowedOrigin(origin: string): string {
   return "";
 }
 
-const PLAN_DURATION: Record<string, number> = { weekly: 7, monthly: 30 };
+const PLAN_DURATION: Record<string, number> = { weekly: 7, monthly: 0 }; // monthly uses setMonth() below
 const PLAN_TIER: Record<string, string> = { weekly: "starter", monthly: "pro" };
 const PLAN_AMOUNT: Record<string, number> = { weekly: 4900, monthly: 14900 };
 const PLAN_LABEL: Record<string, string> = { weekly: "Starter (₹49/week)", monthly: "Pro (₹149/month)" };
@@ -359,14 +359,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const currentPlanAmount = current.subscription_tier === "starter" ? 4900 : 14900;
       const newPlanAmount = PLAN_AMOUNT[plan];
       // Convert remaining days to credit ratio and add proportional bonus days
-      proratedDays = Math.floor((remainingDays / currentPlanDuration) * (currentPlanAmount / newPlanAmount) * PLAN_DURATION[plan]);
+      const newPlanDays = plan === "monthly" ? 30 : PLAN_DURATION[plan]; // approximate for proration calc
+      proratedDays = Math.floor((remainingDays / currentPlanDuration) * (currentPlanAmount / newPlanAmount) * newPlanDays);
       end = new Date(now);
-      end.setDate(end.getDate() + PLAN_DURATION[plan] + proratedDays);
+      if (plan === "monthly") {
+        end.setMonth(end.getMonth() + 1);
+      } else {
+        end.setDate(end.getDate() + PLAN_DURATION[plan]);
+      }
+      end.setDate(end.getDate() + proratedDays);
     } else {
       // Extend from current end if still active (same tier renewal)
       const base = currentEnd && currentEnd > now ? currentEnd : now;
       end = new Date(base);
-      end.setDate(end.getDate() + PLAN_DURATION[plan]);
+      if (plan === "monthly") {
+        end.setMonth(end.getMonth() + 1);
+      } else {
+        end.setDate(end.getDate() + PLAN_DURATION[plan]);
+      }
     }
 
     // 5. Store payment record FIRST (critical — must succeed before activating subscription)
