@@ -115,12 +115,39 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const price = PRICE_MAP[plan];
     if (!price) return res.status(400).json({ error: "Invalid plan" });
 
+    // Idempotency: prevent duplicate orders for same user+plan within 30s
+    const resolvedUserId = authenticatedUserId || (typeof userId === "string" ? userId : "");
+    const idempotencyKey = `order:${resolvedUserId}:${plan}`;
+    if (UPSTASH_URL && UPSTASH_TOKEN && resolvedUserId) {
+      try {
+        const dedupRes = await fetch(`${UPSTASH_URL}/pipeline`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${UPSTASH_TOKEN}`, "Content-Type": "application/json" },
+          body: JSON.stringify([["SET", idempotencyKey, "1", "NX", "EX", 30], ["GET", `${idempotencyKey}:oid`]]),
+        });
+        if (dedupRes.ok) {
+          const results = await dedupRes.json();
+          const wasSet = results[0]?.result; // null = key already existed (duplicate)
+          const cachedOrderId = results[1]?.result;
+          if (!wasSet && cachedOrderId) {
+            // Return cached order instead of creating duplicate
+            return res.status(200).json({
+              orderId: cachedOrderId,
+              amount: price.amount,
+              currency: "INR",
+              keyId: RAZORPAY_KEY_ID,
+              name: price.name,
+              description: price.description,
+            });
+          }
+        }
+      } catch (dedupErr) { console.warn("[create-order] Idempotency check failed:", dedupErr); }
+    }
+
     const auth = Buffer.from(`${RAZORPAY_KEY_ID}:${RAZORPAY_KEY_SECRET}`).toString("base64");
     const receipt = `${plan}_${Date.now()}`.slice(0, 40);
 
     const notes: Record<string, string> = { plan };
-    // Prefer server-verified userId over client-provided value
-    const resolvedUserId = authenticatedUserId || (typeof userId === "string" ? userId : "");
     if (resolvedUserId.length > 0 && resolvedUserId.length <= 200) notes.userId = resolvedUserId;
     if (typeof email === "string" && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) notes.email = email;
 
@@ -147,6 +174,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const order = await response.json();
+
+    // Cache order ID for idempotency dedup
+    if (UPSTASH_URL && UPSTASH_TOKEN && resolvedUserId) {
+      fetch(`${UPSTASH_URL}/SET/${encodeURIComponent(`${idempotencyKey}:oid`)}/${encodeURIComponent(order.id)}?EX=30`, {
+        headers: { Authorization: `Bearer ${UPSTASH_TOKEN}` },
+      }).catch(() => {});
+    }
 
     return res.status(200).json({
       orderId: order.id,

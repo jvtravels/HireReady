@@ -474,7 +474,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           }
         }
       }
-    } catch {}
+    } catch (receiptErr) { console.warn("[verify-payment] Receipt fetch failed:", receiptErr); }
 
     return res.status(200).json({
       success: true,

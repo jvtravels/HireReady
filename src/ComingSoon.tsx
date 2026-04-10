@@ -127,8 +127,18 @@ export default function ComingSoon() {
   const [status, setStatus] = useState<"idle" | "sending" | "done" | "error">("idle");
   const [count, setCount] = useState<number | null>(null);
 
-  // Launch date — adjust as needed
-  const launchDate = new Date("2026-05-15T00:00:00+05:30");
+  // Launch date — configurable via env var, auto-extends if past
+  const launchDate = (() => {
+    const configured = import.meta.env.VITE_LAUNCH_DATE;
+    const date = configured ? new Date(configured) : new Date("2026-05-15T00:00:00+05:30");
+    // If launch date has passed, show countdown to 30 days from now
+    if (date.getTime() <= Date.now()) {
+      const future = new Date();
+      future.setDate(future.getDate() + 30);
+      return future;
+    }
+    return date;
+  })();
   const countdown = useCountdown(launchDate);
 
   // Fetch waitlist count — defer to avoid blocking FCP

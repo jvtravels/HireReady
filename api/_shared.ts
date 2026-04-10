@@ -100,6 +100,28 @@ export function unauthorizedResponse(headers: Record<string, string>): Response 
   });
 }
 
+/* ─── Atomic In-Flight Session Counter (prevents race condition) ─── */
+
+const UPSTASH_URL_SHARED = (process.env.UPSTASH_REDIS_REST_URL || "").trim();
+const UPSTASH_TOKEN_SHARED = (process.env.UPSTASH_REDIS_REST_TOKEN || "").trim();
+
+async function incrementInFlightCounter(userId: string, tier: string, ttlSec: number): Promise<number | null> {
+  if (!UPSTASH_URL_SHARED || !UPSTASH_TOKEN_SHARED) return null;
+  try {
+    const key = `inflight:${tier}:${userId}`;
+    const res = await fetch(`${UPSTASH_URL_SHARED}/pipeline`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${UPSTASH_TOKEN_SHARED}`, "Content-Type": "application/json" },
+      body: JSON.stringify([["INCR", key], ["EXPIRE", key, ttlSec]]),
+    });
+    if (res.ok) {
+      const results = await res.json();
+      return (results[0]?.result ?? 1) - 1; // subtract 1 because INCR includes current request
+    }
+    return null;
+  } catch { return null; }
+}
+
 /* ─── Session Limit Check ─── */
 
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
@@ -141,6 +163,11 @@ export async function checkSessionLimit(userId: string): Promise<{ allowed: bool
 
     if (tier === "free") {
       if (sessions.length >= FREE_SESSION_LIMIT) {
+        return { allowed: false, reason: `Free plan limit reached (${FREE_SESSION_LIMIT} sessions). Upgrade to continue.` };
+      }
+      // Atomic in-flight check: prevent race condition with concurrent sessions
+      const inFlight = await incrementInFlightCounter(userId, "free", 300);
+      if (inFlight !== null && sessions.length + inFlight > FREE_SESSION_LIMIT) {
         return { allowed: false, reason: `Free plan limit reached (${FREE_SESSION_LIMIT} sessions). Upgrade to continue.` };
       }
     } else if (tier === "starter") {

@@ -24,6 +24,18 @@ function escapeHtml(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
+// Vercel config: disable body parsing so we can access raw body for signature verification
+export const config = { api: { bodyParser: false } };
+
+function getRawBody(req: VercelRequest): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    req.on("data", (chunk: Buffer) => chunks.push(chunk));
+    req.on("end", () => resolve(Buffer.concat(chunks).toString("utf8")));
+    req.on("error", reject);
+  });
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Global timeout — ensure we respond before Vercel's 10s limit
   const globalTimeout = setTimeout(() => {
@@ -40,14 +52,31 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(503).json({ error: "Webhook not configured" });
   }
 
-  // Verify Razorpay webhook signature
+  // Verify Razorpay webhook signature using raw body (preserves original key order)
   const signature = req.headers["x-razorpay-signature"] as string;
   if (!signature) {
     clearGlobal();
     return res.status(400).json({ error: "Missing signature" });
   }
 
-  const rawBody = typeof req.body === "string" ? req.body : JSON.stringify(req.body);
+  let rawBody: string;
+  try {
+    // If bodyParser is disabled, read raw stream; otherwise fall back to stringified body
+    rawBody = typeof req.body === "string" ? req.body
+      : req.body && typeof req.body === "object" && !Buffer.isBuffer(req.body)
+        ? JSON.stringify(req.body) // fallback if bodyParser wasn't actually disabled
+        : await getRawBody(req);
+  } catch (bodyErr) {
+    clearGlobal();
+    console.error("[webhook] Failed to read body:", bodyErr);
+    return res.status(400).json({ error: "Invalid body" });
+  }
+
+  if (rawBody.length > 1048576) {
+    clearGlobal();
+    return res.status(413).json({ error: "Body too large" });
+  }
+
   const expectedSignature = createHmac("sha256", RAZORPAY_WEBHOOK_SECRET)
     .update(rawBody)
     .digest("hex");
@@ -58,7 +87,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(400).json({ error: "Invalid signature" });
   }
 
-  const event = typeof req.body === "string" ? JSON.parse(req.body) : req.body;
+  let event: any;
+  try {
+    event = JSON.parse(rawBody);
+  } catch {
+    clearGlobal();
+    return res.status(400).json({ error: "Invalid JSON" });
+  }
   const eventType = event?.event;
 
   const HANDLED_EVENTS = [
@@ -196,7 +231,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 html: `<p>Hi ${safeName}, your HireStepX <strong>${tier}</strong> plan has been auto-renewed and is active until ${end.toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}.</p><p><a href="${APP_URL}/dashboard">Continue Practicing</a></p>`,
               }),
             });
-          } catch {}
+          } catch (emailErr) { console.error("[webhook] Renewal email failed:", emailErr); }
         }
 
         console.log(`[webhook] subscription.charged: renewed ${tier} for user ${userId.slice(0, 8)}`);
@@ -353,7 +388,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             html: `<p>Hi ${safeName}, your HireStepX <strong>${tier}</strong> plan is now active until ${end.toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}.</p><p><a href="${APP_URL}/dashboard">Start Practicing</a></p>`,
           }),
         });
-      } catch {}
+      } catch (emailErr) { console.error("[webhook] Payment email failed:", emailErr); }
     }
 
     console.log(`[webhook] Activated ${tier} for user ${userId.slice(0, 8)}...`);

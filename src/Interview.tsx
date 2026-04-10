@@ -906,7 +906,7 @@ export default function Interview() {
         updateUser(updates),
         new Promise(r => setTimeout(r, 5000)),
       ]);
-    } catch {}
+    } catch (err) { console.error("[interview] Profile update failed:", err); }
 
     // Brief delay to show save warning before navigating
     if (!localOk || !cloudOk) {

@@ -19,7 +19,7 @@ export async function saveToIDB(key: string, data: unknown): Promise<void> {
     tx.objectStore(IDB_STORE).put(data, key);
     tx.oncomplete = () => db.close();
     tx.onerror = () => db.close();
-  } catch {}
+  } catch (err) { console.warn("[IDB] saveToIDB failed:", err); }
 }
 
 export async function loadFromIDB(key: string): Promise<unknown | null> {
@@ -43,5 +43,5 @@ export async function deleteFromIDB(key: string): Promise<void> {
     tx.objectStore(IDB_STORE).delete(key);
     tx.oncomplete = () => db.close();
     tx.onerror = () => db.close();
-  } catch {}
+  } catch (err) { console.warn("[IDB] deleteFromIDB failed:", err); }
 }

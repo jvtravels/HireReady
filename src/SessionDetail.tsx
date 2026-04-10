@@ -243,7 +243,7 @@ export default function SessionDetail() {
     setFeedbackRating(rating);
     const feedbackData = { id: `fb_${id}`, user_id: user?.id || "anonymous", session_id: id, rating, comment: feedbackComment, session_score: session.score, session_type: session.type };
     try { localStorage.setItem(`hirestepx_feedback_${id}`, JSON.stringify(feedbackData)); } catch {}
-    if (user?.id) { try { await saveFeedback(feedbackData); } catch {} }
+    if (user?.id) { try { await saveFeedback(feedbackData); } catch (err) { console.error("[feedback] Save failed:", err); } }
     setFeedbackSaved(true);
     toast("Feedback saved — thank you!", "success");
   }, [id, session, user?.id, feedbackComment, toast]);
@@ -252,7 +252,7 @@ export default function SessionDetail() {
     if (!id || !session || !feedbackRating) return;
     const feedbackData = { id: `fb_${id}`, user_id: user?.id || "anonymous", session_id: id, rating: feedbackRating, comment: feedbackComment, session_score: session.score, session_type: session.type };
     try { localStorage.setItem(`hirestepx_feedback_${id}`, JSON.stringify(feedbackData)); } catch {}
-    if (user?.id) { try { await saveFeedback(feedbackData); } catch {} }
+    if (user?.id) { try { await saveFeedback(feedbackData); } catch (err) { console.error("[feedback] Save failed:", err); } }
     setShowFeedbackForm(false);
   }, [id, session, user?.id, feedbackRating, feedbackComment]);
 
