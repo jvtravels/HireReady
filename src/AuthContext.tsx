@@ -428,7 +428,7 @@ export function RequireAuth({ children }: { children: ReactNode }) {
         return;
       }
       navigate("/login", { replace: true, state: { from: location.pathname } });
-    } else if (user && !user.hasCompletedOnboarding && !["/onboarding", "/interview", "/onboarding/complete"].includes(location.pathname) && !location.pathname.startsWith("/session/") && location.pathname !== "/dashboard") {
+    } else if (user && !user.hasCompletedOnboarding && !["/onboarding", "/interview", "/onboarding/complete"].includes(location.pathname) && !location.pathname.startsWith("/session/")) {
       navigate("/onboarding", { replace: true });
     }
   }, [isLoggedIn, loading, user, navigate, location.pathname]);
@@ -443,7 +443,7 @@ export function RequireAuth({ children }: { children: ReactNode }) {
     </div>
   );
   if (!isLoggedIn) return null;
-  if (user && !user.hasCompletedOnboarding && !["/onboarding", "/interview", "/onboarding/complete"].includes(location.pathname) && !location.pathname.startsWith("/session/") && location.pathname !== "/dashboard") return null;
+  if (user && !user.hasCompletedOnboarding && !["/onboarding", "/interview", "/onboarding/complete"].includes(location.pathname) && !location.pathname.startsWith("/session/")) return null;
 
   return <>{children}</>;
 }
