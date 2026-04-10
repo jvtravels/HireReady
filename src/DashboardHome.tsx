@@ -69,22 +69,24 @@ function relativeTime(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
-/* ─── Animated counter for stats ─── */
+/* ─── Animated counter for stats (uses rAF instead of setInterval) ─── */
 function CountUp({ value, suffix = "" }: { value: string; suffix?: string }) {
   const num = parseInt(value, 10);
   const [display, setDisplay] = useState(0);
   const isNum = !isNaN(num) && num > 0;
   useEffect(() => {
     if (!isNum) return;
-    let start = 0;
     const duration = 600;
-    const step = Math.ceil(num / (duration / 16));
-    const id = setInterval(() => {
-      start = Math.min(start + step, num);
-      setDisplay(start);
-      if (start >= num) clearInterval(id);
-    }, 16);
-    return () => clearInterval(id);
+    const start = performance.now();
+    let raf: number;
+    const step = (now: number) => {
+      const progress = Math.min((now - start) / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setDisplay(Math.round(eased * num));
+      if (progress < 1) raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
   }, [num, isNum]);
   if (!isNum) return <>{value}</>;
   return <>{display}{suffix}</>;
@@ -218,9 +220,9 @@ export default function DashboardHome() {
     );
   }
 
-  const weakestSkill = skills.length > 0 ? [...skills].sort((a, b) => a.score - b.score)[0] : null;
-  const activeNotifs = notifications.filter(n => !persisted.dismissedNotifs.includes(n.id));
-  const latestBadge = badges.filter(b => b.earned).slice(-1)[0] || null;
+  const weakestSkill = useMemo(() => skills.length > 0 ? [...skills].sort((a, b) => a.score - b.score)[0] : null, [skills]);
+  const activeNotifs = useMemo(() => notifications.filter(n => !persisted.dismissedNotifs.includes(n.id)), [notifications, persisted.dismissedNotifs]);
+  const latestBadge = useMemo(() => badges.filter(b => b.earned).slice(-1)[0] || null, [badges]);
 
   const dismissDraft = () => { setHasDraft(null); try { localStorage.removeItem(draftKey); } catch {} };
 

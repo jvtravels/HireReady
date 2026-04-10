@@ -55,22 +55,24 @@ export function relativeTime(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
-/* ─── Animated counter for stats ─── */
+/* ─── Animated counter for stats (uses rAF instead of setInterval) ─── */
 export function CountUp({ value, suffix = "" }: { value: string; suffix?: string }) {
   const num = parseInt(value, 10);
   const [display, setDisplay] = useState(0);
   const isNum = !isNaN(num) && num > 0;
   useEffect(() => {
     if (!isNum) return;
-    let start = 0;
     const duration = 600;
-    const step = Math.ceil(num / (duration / 16));
-    const id = setInterval(() => {
-      start = Math.min(start + step, num);
-      setDisplay(start);
-      if (start >= num) clearInterval(id);
-    }, 16);
-    return () => clearInterval(id);
+    const start = performance.now();
+    let raf: number;
+    const step = (now: number) => {
+      const progress = Math.min((now - start) / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setDisplay(Math.round(eased * num));
+      if (progress < 1) raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
   }, [num, isNum]);
   if (!isNum) return <>{value}</>;
   return <>{display}{suffix}</>;

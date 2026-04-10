@@ -147,8 +147,7 @@ export default function DashboardLayout() {
       <aside role="complementary" aria-label="Navigation sidebar" style={{
         width: 260, borderRight: `1px solid ${c.border}`, padding: "28px 18px 0",
         display: "flex", flexDirection: "column", position: "fixed", top: 0, bottom: 0,
-        background: "linear-gradient(180deg, rgba(17,17,19,0.95) 0%, rgba(6,6,7,0.98) 100%)",
-        backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)",
+        background: "linear-gradient(180deg, #111113 0%, #060607 100%)",
         zIndex: 20, overflow: "hidden",
         transform: isMobile ? (sidebarOpen ? "translateX(0)" : "translateX(-100%)") : "translateX(0)",
         transition: "transform 0.35s cubic-bezier(0.16, 1, 0.3, 1)",
