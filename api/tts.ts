@@ -57,7 +57,7 @@ export default async function handler(req: Request): Promise<Response> {
     const res = await fetch("https://api.cartesia.ai/tts/bytes", {
       method: "POST",
       headers: {
-        "Cartesia-Version": "2026-03-01",
+        "Cartesia-Version": process.env.CARTESIA_VERSION || "2026-03-01",
         "X-API-Key": CARTESIA_API_KEY,
         "Content-Type": "application/json",
       },

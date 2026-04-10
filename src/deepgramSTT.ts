@@ -58,6 +58,11 @@ export async function createDeepgramSTT(
   // Determine sample rate from the mic track
   const trackSettings = stream.getAudioTracks()[0]?.getSettings();
   const sampleRate = trackSettings?.sampleRate || 48000;
+  if (!trackSettings?.sampleRate) {
+    console.warn("[Deepgram] Could not detect mic sample rate, defaulting to 48kHz");
+  } else if (sampleRate !== 16000 && sampleRate !== 48000) {
+    console.info("[Deepgram] Detected non-standard sample rate:", sampleRate);
+  }
 
   const dgLang = options?.language === "hi" || options?.language === "hinglish" ? "hi" : "en-US";
   const wsUrl =

@@ -17,7 +17,7 @@ import { createDeepgramSTT, type DeepgramSTTHandle } from "./deepgramSTT";
 
 /** UUID generator with fallback for older browsers / insecure contexts */
 function safeUUID(): string {
-  try { return safeUUID(); } catch { /* fallback */ }
+  try { return crypto.randomUUID(); } catch { /* fallback */ }
   const bytes = crypto.getRandomValues(new Uint8Array(16));
   bytes[6] = (bytes[6] & 0x0f) | 0x40; // version 4
   bytes[8] = (bytes[8] & 0x3f) | 0x80; // variant
@@ -162,7 +162,11 @@ export default function Interview() {
       weakSkills: adaptiveHints.weakSkills.length > 0 ? adaptiveHints.weakSkills : undefined,
       jobDescription: jobDescription || undefined,
     });
-    const timeoutPromise = new Promise<null>((_, reject) => setTimeout(() => reject(new Error("Question generation timed out")), 30_000));
+    const timeoutPromise = new Promise<null>((_, reject) => {
+      const tid = setTimeout(() => reject(new Error("Question generation timed out")), 30_000);
+      // Store for cleanup
+      (timeoutPromise as unknown as { _tid: ReturnType<typeof setTimeout> })._tid = tid;
+    });
     Promise.race([llmPromise, timeoutPromise]).then(questions => {
       if (cancelled) return;
       if (questions && questions.length > 0 && currentStepRef.current === 0) {
@@ -173,12 +177,11 @@ export default function Interview() {
       }
       setLlmLoading(false);
     }).catch(err => {
-      if (!cancelled) {
-        const msg = err.message || "Could not generate questions.";
-        setSaveWarning(`${msg} Using practice questions.`);
-        toast(`Using practice questions — ${msg.toLowerCase()}`, "info");
-        setLlmLoading(false);
-      }
+      if (cancelled) return;
+      const msg = err.message || "Could not generate questions.";
+      setSaveWarning(`${msg} Using practice questions.`);
+      toast(`Using practice questions — ${msg.toLowerCase()}`, "info");
+      setLlmLoading(false);
     });
     return () => { cancelled = true; };
   }, []);
@@ -190,7 +193,7 @@ export default function Interview() {
   const [phase, setPhase] = useState<"thinking" | "speaking" | "listening" | "done">("thinking");
   const [elapsed, setElapsed] = useState(draftRef.current?.elapsed || 0);
   const [isRecording, setIsRecording] = useState(false);
-  const [speechUnavailable, setSpeechUnavailable] = useState(false);
+  const [speechUnavailable, setSpeechUnavailable] = useState(searchParams.get("nomic") === "1");
 
   // Controls
   const [isMuted, setIsMuted] = useState(false);
@@ -659,8 +662,7 @@ export default function Interview() {
       if (safetyTimer) clearTimeout(safetyTimer);
       ttsCancelRef.current?.();
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentStep, aiVoiceEnabled]);
+  }, [currentStep, aiVoiceEnabled]); // interviewScript accessed via ref to avoid re-triggering
 
   // Handle user "finishing" their answer
   const advancingRef = useRef(false);

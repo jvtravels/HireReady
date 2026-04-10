@@ -51,7 +51,7 @@ export default async function handler(req: Request): Promise<Response> {
 
   // Fetch session stats (aggregated — no raw transcripts)
   const sessionsRes = await fetch(
-    `${SUPABASE_URL}/rest/v1/sessions?user_id=eq.${encodeURIComponent(userId)}&select=score,type,skill_scores,created_at&order=created_at.desc&limit=50`,
+    `${SUPABASE_URL}/rest/v1/sessions?user_id=eq.${encodeURIComponent(userId)}&select=score,type,skill_scores,created_at&order=created_at.desc&limit=20`,
     { headers: dbHeaders },
   );
   const sessions = await sessionsRes.json();

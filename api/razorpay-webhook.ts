@@ -24,6 +24,16 @@ function escapeHtml(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
+// In-memory event dedup — protects against rapid duplicate webhook deliveries within same instance
+const _processedEvents = new Set<string>();
+const DEDUP_MAX = 500;
+function markProcessed(eventId: string): boolean {
+  if (_processedEvents.has(eventId)) return false; // already processed
+  if (_processedEvents.size >= DEDUP_MAX) _processedEvents.clear();
+  _processedEvents.add(eventId);
+  return true; // first time
+}
+
 // Vercel config: disable body parsing so we can access raw body for signature verification
 export const config = { api: { bodyParser: false } };
 
@@ -99,6 +109,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(400).json({ error: "Invalid JSON" });
   }
   const eventType = event?.event;
+  const eventId = event?.entity?.id || event?.payload?.payment?.entity?.id || event?.payload?.subscription?.entity?.id || "";
+  const dedupKey = `${eventType}:${eventId}`;
+  if (dedupKey.length > 5 && !markProcessed(dedupKey)) {
+    clearGlobal();
+    return res.status(200).json({ received: true, skipped: "duplicate" });
+  }
 
   const HANDLED_EVENTS = [
     "payment.captured",

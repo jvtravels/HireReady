@@ -30,11 +30,29 @@ export default async function handler(req: Request): Promise<Response> {
     return rateLimitResponse(headers);
   }
 
-  // Return key with a short TTL hint — client should discard after expiry
-  const expiresAt = Date.now() + 5 * 60 * 1000; // 5 minutes
+  // Try Deepgram's scoped key API for a time-limited token; fall back to raw key
+  const expiresAt = Date.now() + 2 * 60 * 1000; // 2 minutes (shorter TTL)
+  let scopedKey = DEEPGRAM_API_KEY;
+  try {
+    const ac = new AbortController();
+    const timer = setTimeout(() => ac.abort(), 5000);
+    const keyRes = await fetch("https://api.deepgram.com/v1/keys/scoped", {
+      method: "POST",
+      headers: { Authorization: `Token ${DEEPGRAM_API_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ scopes: ["usage:write"], time_to_live_in_seconds: 120, comment: `hirestepx-${auth.userId?.slice(0, 8)}` }),
+      signal: ac.signal,
+    });
+    clearTimeout(timer);
+    if (keyRes.ok) {
+      const keyData = await keyRes.json();
+      if (keyData.key) scopedKey = keyData.key;
+    }
+  } catch {
+    // Fall back to raw key — scoped key creation is best-effort
+  }
 
   return new Response(JSON.stringify({
-    apiKey: DEEPGRAM_API_KEY,
+    apiKey: scopedKey,
     expiresAt,
   }), {
     status: 200,

@@ -233,15 +233,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   let userEmail = "";
   let userName = "";
   try {
+    const authAc = new AbortController();
+    const authTimer = setTimeout(() => authAc.abort(), 5000);
     const userRes = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
       headers: { Authorization: `Bearer ${token}`, apikey: SUPABASE_ANON_KEY },
+      signal: authAc.signal,
     });
+    clearTimeout(authTimer);
     if (!userRes.ok) return res.status(401).json({ error: "Invalid auth token" });
     const userData = await userRes.json();
     userId = userData.id;
     userEmail = userData.email || "";
     userName = userData.user_metadata?.name || userData.user_metadata?.full_name || "";
-  } catch {
+  } catch (authErr) {
+    if (authErr instanceof DOMException && authErr.name === "AbortError") {
+      return res.status(504).json({ error: "Auth verification timed out" });
+    }
     return res.status(401).json({ error: "Auth verification failed" });
   }
 

@@ -32,9 +32,11 @@ export default async function handler(req: Request): Promise<Response> {
     return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers });
   }
 
-  // Support ?language=en or ?language=en_IN
+  // Support ?language=en or ?language=en_IN — whitelist to prevent injection
   const url = new URL(req.url);
-  const language = url.searchParams.get("language") || "en";
+  const VALID_LANGUAGES = ["en", "en_IN", "hi", "hinglish", "en_US", "en_GB"];
+  const rawLang = url.searchParams.get("language") || "en";
+  const language = VALID_LANGUAGES.includes(rawLang) ? rawLang : "en";
   const cacheKey = `voices_${language}`;
 
   // Return cached if fresh
@@ -49,7 +51,7 @@ export default async function handler(req: Request): Promise<Response> {
     const apiUrl = `https://api.cartesia.ai/voices?language=${encodeURIComponent(language)}&limit=100`;
     const res = await fetch(apiUrl, {
       headers: {
-        "Cartesia-Version": "2026-03-01",
+        "Cartesia-Version": process.env.CARTESIA_VERSION || "2026-03-01",
         "X-API-Key": CARTESIA_API_KEY,
       },
     });

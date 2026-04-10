@@ -252,7 +252,17 @@ export function UpgradeModal({ onClose, sessionsUsed, user, currentTier, onPayme
         },
         modal: { ondismiss: function () { setLoading(null); } },
       });
-      rzp.on("payment.failed", function () { setError("Payment failed. Please try again."); setLoading(null); });
+      (rzp as unknown as { on(event: string, cb: (r: unknown) => void): void }).on("payment.failed", function (response: unknown) {
+        const errDetail = (response as { error?: { code?: string; description?: string; reason?: string } })?.error;
+        const reason = errDetail?.description || errDetail?.reason || "Unknown error";
+        const code = errDetail?.code || "";
+        const msg = code === "BAD_REQUEST_ERROR" ? `Payment failed: ${reason}. Please try again.`
+          : code === "GATEWAY_ERROR" ? "Payment gateway error — please try again or use a different payment method."
+          : code === "SERVER_ERROR" ? "Payment server error — your money was not charged. Please retry."
+          : `Payment failed: ${reason}. Please try again or contact support@hirestepx.com`;
+        setError(msg);
+        setLoading(null);
+      });
       rzp.open();
       // Safety timeout: if Razorpay doesn't open within 8s, reset state
       setTimeout(() => { setLoading(prev => prev === planId ? null : prev); }, 8000);

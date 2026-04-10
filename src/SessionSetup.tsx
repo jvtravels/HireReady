@@ -252,6 +252,7 @@ export default function SessionSetup() {
 
   const canProceedStep1 = !!targetRole.trim() && interviewFocus.length > 0;
 
+  const audioCtxRef = useRef<AudioContext | null>(null);
   const requestMic = useCallback(async () => {
     setMicStatus("requesting");
     try {
@@ -259,6 +260,7 @@ export default function SessionSetup() {
       streamRef.current = stream;
       setMicStatus("granted");
       const ctx = new AudioContext();
+      audioCtxRef.current = ctx;
       const analyser = ctx.createAnalyser();
       analyser.fftSize = 256;
       ctx.createMediaStreamSource(stream).connect(analyser);
@@ -277,6 +279,7 @@ export default function SessionSetup() {
     return () => {
       cancelAnimationFrame(animFrameRef.current);
       streamRef.current?.getTracks().forEach(t => t.stop());
+      audioCtxRef.current?.close().catch(() => {});
     };
   }, []);
 
@@ -295,7 +298,7 @@ export default function SessionSetup() {
     setTimeout(() => setCountdown(1), 2000);
     setTimeout(() => {
       setCountdown(0);
-      navigate(`/interview?type=${focusType}&focus=${focusType}&difficulty=standard${targetCompany ? `&company=${encodeURIComponent(targetCompany)}` : ""}&role=${encodeURIComponent(targetRole)}&length=${sessionLength}${useResume ? "" : "&useResume=false"}${interviewLanguage !== "en" ? `&language=${interviewLanguage}` : ""}${jobDescription.trim() ? `&jd=${encodeURIComponent(jobDescription.trim().slice(0, 2000))}` : ""}`);
+      navigate(`/interview?type=${focusType}&focus=${focusType}&difficulty=standard${targetCompany ? `&company=${encodeURIComponent(targetCompany)}` : ""}&role=${encodeURIComponent(targetRole)}&length=${sessionLength}${useResume ? "" : "&useResume=false"}${interviewLanguage !== "en" ? `&language=${interviewLanguage}` : ""}${jobDescription.trim() ? `&jd=${encodeURIComponent(jobDescription.trim().slice(0, 2000))}` : ""}${micStatus === "denied" ? "&nomic=1" : ""}`);
     }, 3000);
   };
 

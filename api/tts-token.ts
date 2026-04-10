@@ -45,6 +45,7 @@ export default async function handler(req: Request): Promise<Response> {
     apiKey: CARTESIA_API_KEY,
     token: `${payload}:${token}`,
     expiresAt: expiry,
+    ttl: 120,
   }), {
     status: 200,
     headers: { ...headers, "Cache-Control": "no-store, no-cache, max-age=0" },

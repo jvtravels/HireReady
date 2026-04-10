@@ -81,7 +81,7 @@ Return a JSON array where each element has:
 
 Return ONLY the JSON array, no other text.`;
 
-    const result = await callLLM({ prompt, temperature: 0.7, maxTokens: 600, jsonMode: true, fast: true });
+    const result = await callLLM({ prompt, temperature: 0.7, maxTokens: 600, jsonMode: true, fast: true }, 12000);
     const parsed = extractJSON(result.text);
 
     if (!Array.isArray(parsed)) {

@@ -99,8 +99,8 @@ export default async function handler(req: Request): Promise<Response> {
   const body = await req.json().catch(() => ({}));
   const referralCode = (body as { code?: string }).code?.trim().toUpperCase();
 
-  if (!referralCode) {
-    return new Response(JSON.stringify({ error: "Missing referral code" }), { status: 400, headers });
+  if (!referralCode || !/^HSX-[A-Z0-9]{4,8}$/.test(referralCode)) {
+    return new Response(JSON.stringify({ error: "Invalid referral code format" }), { status: 400, headers });
   }
 
   // Find the referrer

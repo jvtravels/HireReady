@@ -78,8 +78,8 @@ export default async function handler(req: Request): Promise<Response> {
 
   const finalAmount = Math.max(0, originalAmount - discountAmount);
 
-  // Atomic increment usage counter with conditional check to prevent TOCTOU race.
-  // Only increment if current_uses still matches what we read (optimistic lock).
+  // Atomic increment with optimistic lock + post-increment limit check.
+  // Only increment if current_uses still matches what we read.
   const incrRes = await fetch(
     `${SUPABASE_URL}/rest/v1/promo_codes?id=eq.${promo.id}&current_uses=eq.${promo.current_uses}`,
     {
@@ -90,8 +90,19 @@ export default async function handler(req: Request): Promise<Response> {
   );
   const incrRows = await incrRes.json();
   if (!Array.isArray(incrRows) || incrRows.length === 0) {
-    // Another request incremented concurrently — re-check limit
+    // Another request incremented concurrently — reject
     return new Response(JSON.stringify({ valid: false, error: "Promo code is busy, please try again" }), { status: 409, headers });
+  }
+
+  // Post-increment safety: verify we haven't exceeded max_uses
+  const updatedUses = incrRows[0]?.current_uses;
+  if (promo.max_uses > 0 && updatedUses > promo.max_uses) {
+    // Rollback the increment — we exceeded the limit
+    await fetch(
+      `${SUPABASE_URL}/rest/v1/promo_codes?id=eq.${promo.id}`,
+      { method: "PATCH", headers: dbHeaders, body: JSON.stringify({ current_uses: updatedUses - 1 }) },
+    ).catch(() => {});
+    return new Response(JSON.stringify({ valid: false, error: "Promo code usage limit reached" }), { status: 200, headers });
   }
 
   return new Response(JSON.stringify({
