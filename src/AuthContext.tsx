@@ -165,6 +165,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Start loading the Supabase SDK — defer on marketing domain to avoid blocking FCP
     const isMarketing = typeof window !== "undefined" &&
       !window.location.hostname.includes("app.") &&
+      !window.location.hostname.includes("staging.") &&
       !window.location.hostname.includes("localhost") &&
       !window.location.hostname.includes("127.0.0.1") &&
       !window.location.hostname.includes("vercel.app");

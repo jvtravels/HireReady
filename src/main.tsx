@@ -152,6 +152,7 @@ function DocumentTitle() {
 // Show Coming Soon on the marketing domain, full landing on app/localhost
 const isAppDomain = typeof window !== "undefined" && (
   window.location.hostname === "app.hirestepx.com" ||
+  window.location.hostname === "staging.hirestepx.com" ||
   window.location.hostname === "localhost" ||
   window.location.hostname === "127.0.0.1" ||
   window.location.hostname.includes("vercel.app")
