@@ -30,7 +30,9 @@ function extractScore(raw: unknown): number {
 
 /* ─── Constants ─── */
 export const FREE_SESSION_LIMIT = 3;
-export const STARTER_WEEKLY_LIMIT = 10;
+export const STARTER_WEEKLY_LIMIT = 7;
+export const PRO_MONTHLY_LIMIT = 30;
+export const SINGLE_SESSION_PRICE = 10; // ₹10 per session
 export const STORAGE_KEY = "hirestepx_dashboard";
 export const RESULTS_KEY = "hirestepx_sessions";
 

@@ -6,7 +6,8 @@ declare const process: { env: Record<string, string | undefined> };
 
 /* ─── Plan Limits (single source of truth for backend) ─── */
 const FREE_SESSION_LIMIT = 3;
-const STARTER_WEEKLY_LIMIT = 10;
+const STARTER_WEEKLY_LIMIT = 7;
+const PRO_MONTHLY_LIMIT = 30;
 
 /** Timeout for Supabase auth/profile verification requests (ms) */
 const SUPABASE_TIMEOUT_MS = 5000;
@@ -166,7 +167,26 @@ export async function checkSessionLimit(userId: string): Promise<{ allowed: bool
       tier = "free";
     }
 
-    if (tier === "pro" || tier === "team") { clearTimeout(timer); return { allowed: true }; }
+    if (tier === "team") { clearTimeout(timer); return { allowed: true }; }
+
+    if (tier === "pro") {
+      // Pro: 30 sessions per month
+      const now2 = new Date();
+      const monthStart = new Date(Date.UTC(now2.getUTCFullYear(), now2.getUTCMonth(), 1));
+      const monthISO = monthStart.toISOString();
+      const sessionsRes = await fetch(
+        `${SUPABASE_URL}/rest/v1/sessions?user_id=eq.${encodeURIComponent(userId)}&created_at=gte.${encodeURIComponent(monthISO)}&select=id`,
+        { headers: { apikey: SERVICE_ROLE_KEY, Authorization: `Bearer ${SERVICE_ROLE_KEY}`, Prefer: "count=exact" }, signal: ac.signal },
+      );
+      clearTimeout(timer);
+      if (!sessionsRes.ok) { console.error("Session limit check: sessions fetch failed", sessionsRes.status); return { allowed: false, reason: "Could not verify session limit. Please try again." }; }
+      const range = sessionsRes.headers.get("content-range");
+      const thisMonth = range ? parseInt(range.split("/")[1] || "0", 10) : ((await sessionsRes.json()) as unknown[]).length;
+      if (thisMonth >= PRO_MONTHLY_LIMIT) {
+        return { allowed: false, reason: `Pro plan limit reached (${PRO_MONTHLY_LIMIT}/month). Buy extra sessions or wait for next month.` };
+      }
+      return { allowed: true };
+    }
 
     if (tier === "free") {
       // Count total sessions at DB level
@@ -180,14 +200,25 @@ export async function checkSessionLimit(userId: string): Promise<{ allowed: bool
       const range = sessionsRes.headers.get("content-range");
       const totalCount = range ? parseInt(range.split("/")[1] || "0", 10) : ((await sessionsRes.json()) as unknown[]).length;
 
-      if (totalCount >= FREE_SESSION_LIMIT) {
-        return { allowed: false, reason: `Free plan limit reached (${FREE_SESSION_LIMIT} sessions). Upgrade to continue.` };
+      // Check if user has purchased session credits
+      const creditRes = await fetch(
+        `${SUPABASE_URL}/rest/v1/profiles?id=eq.${encodeURIComponent(userId)}&select=session_credits`,
+        { headers: { apikey: SERVICE_ROLE_KEY, Authorization: `Bearer ${SERVICE_ROLE_KEY}` }, signal: ac.signal },
+      );
+      const creditData = creditRes.ok ? await creditRes.json() : [];
+      const credits = Array.isArray(creditData) && creditData.length > 0 ? (creditData[0].session_credits || 0) : 0;
+
+      if (totalCount >= FREE_SESSION_LIMIT && credits <= 0) {
+        return { allowed: false, reason: `Free plan limit reached (${FREE_SESSION_LIMIT} sessions). Buy a session for ₹10 or upgrade.` };
       }
-      // Atomic in-flight check: prevent race condition with concurrent sessions
-      const inFlight = await incrementInFlightCounter(userId, "free", INFLIGHT_TTL_SEC);
-      if (inFlight !== null && totalCount + inFlight > FREE_SESSION_LIMIT) {
-        return { allowed: false, reason: `Free plan limit reached (${FREE_SESSION_LIMIT} sessions). Upgrade to continue.` };
+      if (totalCount < FREE_SESSION_LIMIT) {
+        // Atomic in-flight check: prevent race condition with concurrent sessions
+        const inFlight = await incrementInFlightCounter(userId, "free", INFLIGHT_TTL_SEC);
+        if (inFlight !== null && totalCount + inFlight > FREE_SESSION_LIMIT && credits <= 0) {
+          return { allowed: false, reason: `Free plan limit reached (${FREE_SESSION_LIMIT} sessions). Buy a session for ₹10 or upgrade.` };
+        }
       }
+      // If using credits, decrement after session completes (handled in session save)
     } else if (tier === "starter") {
       // Count sessions this week at DB level (UTC-based)
       const now2 = new Date();
@@ -203,7 +234,7 @@ export async function checkSessionLimit(userId: string): Promise<{ allowed: bool
       const range = sessionsRes.headers.get("content-range");
       const thisWeek = range ? parseInt(range.split("/")[1] || "0", 10) : ((await sessionsRes.json()) as unknown[]).length;
       if (thisWeek >= STARTER_WEEKLY_LIMIT) {
-        return { allowed: false, reason: `Starter plan limit reached (${STARTER_WEEKLY_LIMIT}/week). Upgrade to Pro for unlimited.` };
+        return { allowed: false, reason: `Starter plan limit reached (${STARTER_WEEKLY_LIMIT}/week). Upgrade to Pro for more sessions.` };
       }
     } else {
       clearTimeout(timer);

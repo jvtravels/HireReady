@@ -227,6 +227,31 @@ export function loadLocalSession(id: string): LocalSession | null {
   } catch { return null; }
 }
 
+export function loadSessionHistory(): { scores: { date: string; score: number }[]; totalCount: number; weekCount: number; streak: number } {
+  try {
+    const raw = localStorage.getItem(RESULTS_KEY);
+    if (!raw) return { scores: [], totalCount: 0, weekCount: 0, streak: 0 };
+    const sessions: LocalSession[] = JSON.parse(raw);
+    const sorted = [...sessions].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    const scores = sorted.map(s => ({ date: s.date, score: s.score }));
+
+    // Sessions this week
+    const now = new Date();
+    const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const weekCount = sorted.filter(s => new Date(s.date) >= weekAgo).length;
+
+    // Streak: consecutive days with at least one session (looking back from today)
+    let streak = 0;
+    const daySet = new Set(sorted.map(s => new Date(s.date).toDateString()));
+    const d = new Date(); d.setHours(0, 0, 0, 0);
+    // If no session today, start checking from yesterday
+    if (!daySet.has(d.toDateString())) d.setDate(d.getDate() - 1);
+    while (daySet.has(d.toDateString())) { streak++; d.setDate(d.getDate() - 1); }
+
+    return { scores, totalCount: sessions.length, weekCount, streak };
+  } catch { return { scores: [], totalCount: 0, weekCount: 0, streak: 0 }; }
+}
+
 export function loadPreviousSession(currentId: string): LocalSession | null {
   try {
     const raw = localStorage.getItem(RESULTS_KEY);

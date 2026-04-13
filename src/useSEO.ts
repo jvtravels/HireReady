@@ -37,7 +37,7 @@ export function useSEO({ title, description, canonical, ogImage, ogType, jsonLd 
     document.title = title;
 
     setMeta("description", description);
-    setMeta("og:title", description, "property");
+    setMeta("og:title", title, "property");
     setMeta("og:description", description, "property");
     setMeta("og:type", ogType || "website", "property");
     setMeta("twitter:title", title, "name");

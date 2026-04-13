@@ -299,9 +299,9 @@ export function useInterviewEngine() {
     };
   }, [aiVoiceEnabled]);
 
-  // Start/stop speech recognition based on phase
+  // Start/stop speech recognition based on phase (re-runs when speechUnavailable toggles for retry)
   useEffect(() => {
-    if (phase === "listening" && !isMuted) {
+    if (phase === "listening" && !isMuted && !speechUnavailable) {
       recognitionRestartCountRef.current = 0;
       let stopped = false;
 
@@ -447,7 +447,7 @@ export function useInterviewEngine() {
       recognitionRef.current = null;
       return;
     }
-  }, [phase, isMuted]);
+  }, [phase, isMuted, speechUnavailable]);
 
   // Capture mic stream for real waveform visualizer
   useEffect(() => {
@@ -856,6 +856,26 @@ export function useInterviewEngine() {
         const originalQuestions = interviewScript
           .filter(s => s.type === "question" || s.type === "follow-up")
           .map(s => s.aiText);
+
+        // Load previous session scores for delta-aware LLM feedback
+        let previousScores: { overall: number; skills: Record<string, number> } | null = null;
+        try {
+          const raw = localStorage.getItem("hirestepx_sessions");
+          if (raw) {
+            const sessions = JSON.parse(raw);
+            if (Array.isArray(sessions) && sessions.length > 0) {
+              const prev = sessions[0]; // most recent completed session
+              if (prev.score && prev.skill_scores) {
+                const skills: Record<string, number> = {};
+                for (const [k, v] of Object.entries(prev.skill_scores)) {
+                  skills[k] = typeof v === "number" ? v : typeof v === "object" && v !== null && "score" in (v as Record<string, unknown>) ? (v as { score: number }).score : 0;
+                }
+                previousScores = { overall: prev.score, skills };
+              }
+            }
+          }
+        } catch { /* expected: localStorage may be unavailable */ }
+
         const evaluation = await fetchLLMEvaluation({
           transcript,
           type: interviewType,
@@ -866,6 +886,7 @@ export function useInterviewEngine() {
           resumeText: shouldUseResume ? user?.resumeText : undefined,
           language: interviewLanguage !== "en" ? interviewLanguage : undefined,
           jobDescription: jobDescription || undefined,
+          previousScores,
         });
         if (evaluation) {
           score = Math.min(100, Math.max(0, evaluation.overallScore || fallbackScore));

@@ -770,7 +770,7 @@ export default function DashboardResume() {
               <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.stone, textTransform: "uppercase", letterSpacing: "0.05em" }}>Suggested Focus</span>
               <p style={{ fontFamily: font.ui, fontSize: 13, color: c.ivory, margin: "6px 0 10px" }}>{jdResult.suggestedFocus}</p>
               <button
-                onClick={() => { navigate("/session-setup"); }}
+                onClick={() => { navigate("/session/new"); }}
                 style={{
                   padding: "6px 14px", fontFamily: font.ui, fontSize: 12, fontWeight: 600,
                   background: c.sage, color: c.obsidian, border: "none", borderRadius: 6, cursor: "pointer",
@@ -785,7 +785,7 @@ export default function DashboardResume() {
           <button
             onClick={() => {
               try { sessionStorage.setItem("hirestepx_jd_text", jdText); } catch { /* quota */ }
-              navigate("/session-setup");
+              navigate("/session/new");
             }}
             style={{
               width: "100%", padding: "10px 16px", fontFamily: font.ui, fontSize: 13, fontWeight: 600,

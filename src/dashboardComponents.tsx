@@ -3,7 +3,7 @@ import { c, font } from "./tokens";
 import { scoreLabel, scoreLabelColor } from "./dashboardTypes";
 import type { DashboardSession } from "./dashboardTypes";
 // useAuth removed — was unused
-import { FREE_SESSION_LIMIT, STARTER_WEEKLY_LIMIT } from "./dashboardData";
+import { FREE_SESSION_LIMIT, STARTER_WEEKLY_LIMIT, PRO_MONTHLY_LIMIT } from "./dashboardData";
 
 declare global {
   interface Window {
@@ -99,14 +99,16 @@ export function DataLoadingSkeleton() {
 /* ─── Upgrade Modal ─── */
 const MONTHLY_PLANS = [
   { id: "free", tier: "free", name: "Free", price: "\u20B90", period: "", desc: `${FREE_SESSION_LIMIT} sessions total`, features: [`${FREE_SESSION_LIMIT} mock interviews`, "Behavioral questions", "Basic score & feedback"], featured: false },
+  { id: "single", tier: "free", name: "Single Session", price: "\u20B910", period: "/session", desc: "Pay per interview", features: ["1 AI mock interview", "All question types", "Full score & feedback", "Ideal answer key"], featured: false },
   { id: "weekly", tier: "starter", name: "Starter", price: "\u20B949", period: "/week", desc: `${STARTER_WEEKLY_LIMIT} sessions per week`, features: [`${STARTER_WEEKLY_LIMIT} sessions/week`, "All question types", "Detailed feedback & skill scores", "Resume analysis", "PDF export"], featured: false },
-  { id: "monthly", tier: "pro", name: "Pro", price: "\u20B9149", period: "/mo", desc: "Best value \u2014 unlimited prep", features: ["Unlimited sessions", "Full AI coaching feedback", "Performance analytics & trends", "Interview calendar", "Export PDF, CSV, JSON"], featured: true },
+  { id: "monthly", tier: "pro", name: "Pro", price: "\u20B9149", period: "/mo", desc: `Best value \u2014 ${PRO_MONTHLY_LIMIT} sessions/month`, features: [`${PRO_MONTHLY_LIMIT} sessions/month`, "Full AI coaching feedback", "Performance analytics & trends", "Interview calendar", "Export PDF, CSV, JSON"], featured: true },
 ];
 
 const ANNUAL_PLANS = [
   { id: "free", tier: "free", name: "Free", price: "\u20B90", period: "", desc: `${FREE_SESSION_LIMIT} sessions total`, features: [`${FREE_SESSION_LIMIT} mock interviews`, "Behavioral questions", "Basic score & feedback"], featured: false },
+  { id: "single", tier: "free", name: "Single Session", price: "\u20B910", period: "/session", desc: "Pay per interview", features: ["1 AI mock interview", "All question types", "Full score & feedback", "Ideal answer key"], featured: false },
   { id: "yearly-starter", tier: "starter", name: "Starter", price: "\u20B92,039", period: "/year", desc: `${STARTER_WEEKLY_LIMIT} sessions per week`, features: [`${STARTER_WEEKLY_LIMIT} sessions/week`, "All question types", "Detailed feedback & skill scores", "Resume analysis", "PDF export", "Save 20% vs weekly"], featured: false },
-  { id: "yearly-pro", tier: "pro", name: "Pro", price: "\u20B91,430", period: "/year", desc: "Best value \u2014 unlimited prep", features: ["Unlimited sessions", "Full AI coaching feedback", "Performance analytics & trends", "Interview calendar", "Export PDF, CSV, JSON", "Save 20% vs monthly"], featured: true },
+  { id: "yearly-pro", tier: "pro", name: "Pro", price: "\u20B91,430", period: "/year", desc: `Best value \u2014 ${PRO_MONTHLY_LIMIT} sessions/month`, features: [`${PRO_MONTHLY_LIMIT} sessions/month`, "Full AI coaching feedback", "Performance analytics & trends", "Interview calendar", "Export PDF, CSV, JSON", "Save 20% vs monthly"], featured: true },
 ];
 
 export function UpgradeModal({ onClose, sessionsUsed, user, currentTier, onPaymentSuccess }: { onClose: () => void; sessionsUsed: number; user?: { id?: string; email?: string; name?: string } | null; currentTier: string; onPaymentSuccess: (tier: string, start: string, end: string) => void }) {
@@ -312,7 +314,7 @@ export function UpgradeModal({ onClose, sessionsUsed, user, currentTier, onPayme
         <div style={{ textAlign: "center", marginBottom: 28 }}>
           <h2 style={{ fontFamily: font.display, fontSize: 24, fontWeight: 400, color: c.ivory, marginBottom: 6 }}>Choose Your Plan</h2>
           <p style={{ fontFamily: font.ui, fontSize: 13, color: c.stone, lineHeight: 1.5 }}>
-            {currentTier === "free" ? `You've used ${sessionsUsed} of ${FREE_SESSION_LIMIT} free sessions. Upgrade to keep going.` : "Manage your plan"}
+            {currentTier === "free" ? `You've used ${sessionsUsed} of ${FREE_SESSION_LIMIT} free sessions. Buy a session for ₹10 or upgrade.` : "Manage your plan"}
           </p>
         </div>
 
@@ -375,7 +377,7 @@ export function UpgradeModal({ onClose, sessionsUsed, user, currentTier, onPayme
 
         <div className="upgrade-plans-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
           {(billingCycle === "annual" ? ANNUAL_PLANS : MONTHLY_PLANS).map((plan) => {
-            const isCurrent = plan.tier === currentTier;
+            const isCurrent = plan.tier === currentTier && plan.id !== "single";
             return (
             <div key={plan.id} style={{
               padding: "24px 20px", borderRadius: 14, position: "relative",
@@ -415,7 +417,7 @@ export function UpgradeModal({ onClose, sessionsUsed, user, currentTier, onPayme
                   onMouseEnter={(e) => { if (!loading) { if (plan.featured) e.currentTarget.style.filter = "brightness(1.15)"; else { e.currentTarget.style.borderColor = c.chalk; e.currentTarget.style.background = "rgba(245,242,237,0.03)"; } } }}
                   onMouseLeave={(e) => { if (plan.featured) e.currentTarget.style.filter = "brightness(1)"; else { e.currentTarget.style.borderColor = c.borderHover; e.currentTarget.style.background = "transparent"; } }}
                 >
-                  {loading === "verifying" ? "Verifying..." : loading === plan.id ? "Opening Razorpay..." : plan.featured ? "Go Pro" : "Get Started"}
+                  {loading === "verifying" ? "Verifying..." : loading === plan.id ? "Opening Razorpay..." : plan.featured ? "Go Pro" : plan.id === "single" ? "Buy Session" : "Get Started"}
                 </button>
               )}
             </div>

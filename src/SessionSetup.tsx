@@ -902,7 +902,7 @@ export default function SessionSetup() {
                   <button onClick={() => {
                     const roleText = targetRole ? ` for ${targetRole}` : "";
                     const companyText = targetCompany ? ` at ${targetCompany}` : "";
-                    const msg = `Hey! I'm prepping${roleText}${companyText} on HireStepX. Want to practice together? Try it out — it's free!\n\nhttps://app.hirestepx.com/session-setup`;
+                    const msg = `Hey! I'm prepping${roleText}${companyText} on HireStepX. Want to practice together? Try it out — it's free!\n\nhttps://app.hirestepx.com/session/new`;
                     window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, "_blank", "noopener,noreferrer");
                   }} style={{
                     fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: "#25D366",

@@ -20,10 +20,10 @@ const RESEND_API_KEY = (process.env.RESEND_API_KEY || "").trim();
 const FROM_EMAIL = process.env.FROM_EMAIL || "HireStepX <onboarding@resend.dev>";
 const APP_URL = (process.env.APP_URL || "https://hirestepx.vercel.app").replace(/\/$/, "");
 
-const PLAN_DURATION: Record<string, number> = { weekly: 7, monthly: 0, "yearly-starter": 365, "yearly-pro": 365 }; // monthly uses setMonth() below
-const PLAN_TIER: Record<string, string> = { weekly: "starter", monthly: "pro", "yearly-starter": "starter", "yearly-pro": "pro" };
-const PLAN_AMOUNT: Record<string, number> = { weekly: 4900, monthly: 14900, "yearly-starter": 203900, "yearly-pro": 143000 };
-const PLAN_LABEL: Record<string, string> = { weekly: "Starter (₹49/week)", monthly: "Pro (₹149/month)", "yearly-starter": "Starter Annual (₹2,039/year)", "yearly-pro": "Pro Annual (₹1,430/year)" };
+const PLAN_DURATION: Record<string, number> = { single: 0, weekly: 7, monthly: 0, "yearly-starter": 365, "yearly-pro": 365 }; // monthly uses setMonth() below; single adds credits
+const PLAN_TIER: Record<string, string> = { single: "free", weekly: "starter", monthly: "pro", "yearly-starter": "starter", "yearly-pro": "pro" }; // single stays on free tier, just adds credits
+const PLAN_AMOUNT: Record<string, number> = { single: 1000, weekly: 4900, monthly: 14900, "yearly-starter": 203900, "yearly-pro": 143000 };
+const PLAN_LABEL: Record<string, string> = { single: "Single Session (₹10)", weekly: "Starter (₹49/week)", monthly: "Pro (₹149/month)", "yearly-starter": "Starter Annual (₹2,039/year)", "yearly-pro": "Pro Annual (₹1,430/year)" };
 
 async function sendPaymentEmail(
   email: string,
@@ -304,7 +304,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // 3b. Check profile for duplicate + subscription state
     const profileRes = await fetch(
-      `${SUPABASE_URL}/rest/v1/profiles?id=eq.${encodeURIComponent(userId)}&select=subscription_tier,subscription_end,razorpay_payment_id`,
+      `${SUPABASE_URL}/rest/v1/profiles?id=eq.${encodeURIComponent(userId)}&select=subscription_tier,subscription_end,razorpay_payment_id,session_credits`,
       { headers: { apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` } },
     );
     const profiles = await profileRes.json();
@@ -322,7 +322,36 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
-    // 4. Calculate subscription dates with mid-cycle upgrade proration
+    // 4a. Handle single session credit purchase (no tier change)
+    if (plan === "single") {
+      const now = new Date();
+      // Store payment record
+      const paymentRecordRes = await fetch(`${SUPABASE_URL}/rest/v1/payments`, {
+        method: "POST",
+        headers: { apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`, "Content-Type": "application/json", Prefer: "return=minimal" },
+        body: JSON.stringify({ id: crypto.randomUUID(), user_id: userId, razorpay_payment_id, razorpay_order_id, plan: "single", tier: "free", amount: 1000, currency: "INR", status: "completed", subscription_start: now.toISOString(), subscription_end: now.toISOString() }),
+      });
+      if (!paymentRecordRes.ok) {
+        console.error("Payment record save failed:", paymentRecordRes.status);
+        return res.status(500).json({ error: "Failed to save payment record" });
+      }
+      // Increment session_credits on profile via RPC or direct update
+      const currentCredits = current?.session_credits || 0;
+      const updateRes = await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${encodeURIComponent(userId)}`, {
+        method: "PATCH",
+        headers: { apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`, "Content-Type": "application/json", Prefer: "return=minimal" },
+        body: JSON.stringify({ session_credits: currentCredits + 1, razorpay_payment_id }),
+      });
+      if (!updateRes.ok) {
+        console.error("Credit update failed:", updateRes.status);
+        return res.status(500).json({ error: "Failed to add session credit" });
+      }
+      // Send confirmation email
+      try { await sendPaymentEmail(email || "", "single", now.toISOString(), now.toISOString(), PLAN_LABEL["single"]); } catch (e) { console.warn("Email send failed:", e); }
+      return res.status(200).json({ success: true, tier: current?.subscription_tier || "free", plan: "single", credits: currentCredits + 1, subscription_start: now.toISOString(), subscription_end: current?.subscription_end || now.toISOString() });
+    }
+
+    // 4b. Calculate subscription dates with mid-cycle upgrade proration
     const now = new Date();
     const currentEnd = current?.subscription_end ? new Date(current.subscription_end) : null;
     const tier = PLAN_TIER[plan];

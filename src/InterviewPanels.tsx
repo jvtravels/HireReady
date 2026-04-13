@@ -1,4 +1,4 @@
-import React, { memo } from "react";
+import React, { memo, useRef } from "react";
 import { c, font } from "./tokens";
 import {
   WaveformVisualizer, NetworkIndicator, DotGridVisualizer,
@@ -710,6 +710,9 @@ export const EvaluatingOverlay = memo(function EvaluatingOverlay({ usedFallbackS
   lastSessionId: string | null;
   navigate: (path: string) => void;
 }) {
+  const retryCountRef = useRef(0);
+  const maxRetries = 2;
+  const canRetry = retryCountRef.current < maxRetries;
   return (
     <div style={{
       position: "fixed", inset: 0, zIndex: 200,
@@ -737,11 +740,14 @@ export const EvaluatingOverlay = memo(function EvaluatingOverlay({ usedFallbackS
             {evalTimedOut ? "Evaluation timed out" : "AI evaluation unavailable"}
           </h3>
           <p style={{ fontFamily: font.ui, fontSize: 13, color: c.stone, marginBottom: 20, textAlign: "center", maxWidth: 360 }}>
-            Your session has been saved with an estimated score. You can retry the AI evaluation or continue to your results.
+            {canRetry
+              ? "Your session has been saved with an estimated score. You can retry the AI evaluation or continue to your results."
+              : "AI evaluation failed after multiple attempts. Your session is saved with an estimated score based on session metrics."}
           </p>
           <div style={{ display: "flex", gap: 12 }}>
+            {canRetry && (
             <button
-              onClick={() => { setEvalTimedOut(false); setUsedFallbackScore(false); setEvaluating(false); interviewEndedRef.current = false; handleEnd(); }}
+              onClick={() => { retryCountRef.current++; setEvalTimedOut(false); setUsedFallbackScore(false); setEvaluating(false); interviewEndedRef.current = false; handleEnd(); }}
               style={{
                 fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.ivory,
                 background: "rgba(212,179,127,0.1)", border: "1px solid rgba(212,179,127,0.2)",
@@ -750,8 +756,9 @@ export const EvaluatingOverlay = memo(function EvaluatingOverlay({ usedFallbackS
               onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(212,179,127,0.2)"; }}
               onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(212,179,127,0.1)"; }}
             >
-              Retry Evaluation
+              Retry Evaluation{retryCountRef.current > 0 ? ` (${maxRetries - retryCountRef.current} left)` : ""}
             </button>
+            )}
             <button
               onClick={() => { setEvaluating(false); if (lastSessionId) navigate(`/session/${lastSessionId}`); else navigate("/dashboard"); }}
               style={{

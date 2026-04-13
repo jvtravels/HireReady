@@ -204,6 +204,7 @@ export async function fetchLLMEvaluation(params: {
   questions?: string[];
   resumeText?: string; language?: string;
   jobDescription?: string;
+  previousScores?: { overall: number; skills: Record<string, number> } | null;
 }, timeoutMs = 35000): Promise<EvaluationResult | null> {
   // Client-side rate limit: max 5 evaluations per 60s
   if (!checkRateLimit("evaluate", 5, 60_000)) {

@@ -4,7 +4,7 @@ import { c, font, shadow, gradient } from "./tokens";
 import { useAuth } from "./AuthContext";
 import { getSessionById, saveFeedback, getSessionFeedback } from "./supabase";
 import { useToast } from "./Toast";
-import { extractScore, extractReason, scoreLabelColor, scoreLabel, scoreTip, normalizeType, ratingBadge, computeSpeechMetrics, computeHistoricalAverages, loadLocalSession, loadPreviousSession, type LocalSession } from "./sessionDetailHelpers";
+import { extractScore, extractReason, scoreLabelColor, scoreLabel, scoreTip, normalizeType, ratingBadge, computeSpeechMetrics, computeHistoricalAverages, loadLocalSession, loadPreviousSession, loadSessionHistory, type LocalSession } from "./sessionDetailHelpers";
 import { JDCoverageSection } from "./SessionDetailPanels";
 
 /* ─── Reusable Section Card ─── */
@@ -107,6 +107,7 @@ export default function SessionDetail() {
 
   const speechMetrics = useMemo(() => session ? computeSpeechMetrics(session.transcript, session.duration) : null, [session]);
   const historicalAvg = useMemo(() => computeHistoricalAverages(), [session]);
+  const sessionHistory = useMemo(() => loadSessionHistory(), [session]);
 
   const generateExportText = useCallback(() => {
     if (!session) return "";
@@ -619,6 +620,220 @@ export default function SessionDetail() {
             WhatsApp
           </button>
         </div>
+
+        {/* ═══ YOUR PROGRESS — Hero Card ═══ */}
+        {(() => {
+          const scoreDelta = prevSession ? session.score - prevSession.score : null;
+          const avgDelta = historicalAvg ? session.score - historicalAvg.avgScore : null;
+          const { scores: scoreHistory, totalCount, weekCount, streak } = sessionHistory;
+
+          // Find strongest and weakest skills
+          const sorted = [...skillEntries].sort((a, b) => a.score - b.score);
+          const weakest = sorted.length > 0 ? sorted[0] : null;
+          const strongest = sorted.length > 0 ? sorted[sorted.length - 1] : null;
+
+          // Skill improvement vs previous session
+          let improvedSkill: { name: string; delta: number } | null = null;
+          if (prevSession?.skill_scores && session.skill_scores) {
+            let bestDelta = 0;
+            for (const [name, raw] of Object.entries(session.skill_scores)) {
+              const curr = extractScore(raw);
+              const prev = prevSession.skill_scores[name] ? extractScore(prevSession.skill_scores[name]) : NaN;
+              if (!isNaN(prev) && curr - prev > bestDelta) {
+                bestDelta = curr - prev;
+                improvedSkill = { name, delta: bestDelta };
+              }
+            }
+          }
+
+          // Narrative text
+          const narrativeParts: string[] = [];
+          if (totalCount > 1) narrativeParts.push(`Session ${totalCount}.`);
+          if (scoreDelta !== null && scoreDelta > 0) narrativeParts.push(`You improved ${scoreDelta} points since your last session.`);
+          else if (scoreDelta !== null && scoreDelta === 0) narrativeParts.push("You matched your previous score.");
+          else if (scoreDelta !== null && scoreDelta < 0) narrativeParts.push(`Your score dipped ${Math.abs(scoreDelta)} points — review what changed below.`);
+          if (improvedSkill && improvedSkill.delta > 0) narrativeParts.push(`Biggest gain: ${improvedSkill.name} (+${improvedSkill.delta}).`);
+          if (avgDelta !== null && avgDelta > 5) narrativeParts.push(`You're ${avgDelta} points above your average — great trajectory.`);
+          if (streak >= 2) narrativeParts.push(`${streak}-day streak — keep the momentum.`);
+
+          const hasProgress = scoreDelta !== null || avgDelta !== null || totalCount > 1;
+
+          // Sparkline SVG data (last 10 sessions)
+          const sparkData = scoreHistory.slice(-10);
+          const sparkW = 120, sparkH = 32, sparkPad = 2;
+          let sparkPath = "";
+          if (sparkData.length >= 2) {
+            const minS = Math.min(...sparkData.map(d => d.score));
+            const maxS = Math.max(...sparkData.map(d => d.score));
+            const range = maxS - minS || 1;
+            sparkPath = sparkData.map((d, i) => {
+              const x = sparkPad + (i / (sparkData.length - 1)) * (sparkW - sparkPad * 2);
+              const y = sparkPad + (1 - (d.score - minS) / range) * (sparkH - sparkPad * 2);
+              return `${i === 0 ? "M" : "L"}${x.toFixed(1)},${y.toFixed(1)}`;
+            }).join(" ");
+          }
+
+          return hasProgress ? (
+            <div className="sd-anim" style={{
+              background: `linear-gradient(135deg, ${scoreDelta !== null && scoreDelta > 0 ? "rgba(122,158,126,0.06)" : scoreDelta !== null && scoreDelta < 0 ? "rgba(196,112,90,0.06)" : "rgba(212,179,127,0.05)"} 0%, ${c.graphite} 100%)`,
+              borderRadius: 16,
+              border: `1px solid ${scoreDelta !== null && scoreDelta > 0 ? "rgba(122,158,126,0.15)" : scoreDelta !== null && scoreDelta < 0 ? "rgba(196,112,90,0.12)" : "rgba(212,179,127,0.1)"}`,
+              padding: "24px 28px", marginBottom: 16, animationDelay: "0.06s",
+            }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={scoreDelta !== null && scoreDelta > 0 ? c.sage : scoreDelta !== null && scoreDelta < 0 ? c.ember : c.gilt} strokeWidth="2" strokeLinecap="round">
+                    <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/>
+                  </svg>
+                  <h3 style={{ fontSize: 16, fontWeight: 600, color: c.ivory, margin: 0 }}>Your Progress</h3>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  {weekCount > 0 && (
+                    <span style={{ fontSize: 11, color: c.stone }}>{weekCount} this week</span>
+                  )}
+                  {streak >= 2 && (
+                    <span style={{ fontSize: 11, fontWeight: 600, color: c.gilt, display: "flex", alignItems: "center", gap: 4 }}>
+                      <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill={c.gilt} stroke="none"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                      {streak}d streak
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {narrativeParts.length > 0 && (
+                <p style={{ fontSize: 14, color: c.chalk, lineHeight: 1.6, margin: "0 0 16px" }}>
+                  {narrativeParts.join(" ")}
+                </p>
+              )}
+
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 10 }}>
+                {scoreDelta !== null && (
+                  <div style={{ padding: "14px 16px", borderRadius: 12, background: c.obsidian, border: `1px solid ${c.border}`, textAlign: "center" }}>
+                    <span style={{ fontSize: 10, color: c.stone, display: "block", marginBottom: 4 }}>vs Last Session</span>
+                    <span style={{ fontFamily: font.mono, fontSize: 22, fontWeight: 600, color: scoreDelta > 0 ? c.sage : scoreDelta < 0 ? c.ember : c.stone }}>
+                      {scoreDelta > 0 ? `+${scoreDelta}` : scoreDelta === 0 ? "—" : `${scoreDelta}`}
+                    </span>
+                  </div>
+                )}
+                {avgDelta !== null && (
+                  <div style={{ padding: "14px 16px", borderRadius: 12, background: c.obsidian, border: `1px solid ${c.border}`, textAlign: "center" }}>
+                    <span style={{ fontSize: 10, color: c.stone, display: "block", marginBottom: 4 }}>vs Your Average</span>
+                    <span style={{ fontFamily: font.mono, fontSize: 22, fontWeight: 600, color: avgDelta > 0 ? c.sage : avgDelta < 0 ? c.ember : c.stone }}>
+                      {avgDelta > 0 ? `+${avgDelta}` : avgDelta === 0 ? "—" : `${avgDelta}`}
+                    </span>
+                  </div>
+                )}
+                {strongest && (
+                  <div style={{ padding: "14px 16px", borderRadius: 12, background: c.obsidian, border: `1px solid ${c.border}`, textAlign: "center" }}>
+                    <span style={{ fontSize: 10, color: c.stone, display: "block", marginBottom: 4 }}>Top Skill</span>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: c.sage, display: "block" }}>{strongest.name}</span>
+                    <span style={{ fontFamily: font.mono, fontSize: 11, color: c.stone }}>{strongest.score}/100</span>
+                  </div>
+                )}
+                {weakest && weakest.name !== strongest?.name && (
+                  <div style={{ padding: "14px 16px", borderRadius: 12, background: c.obsidian, border: `1px solid ${c.border}`, textAlign: "center" }}>
+                    <span style={{ fontSize: 10, color: c.stone, display: "block", marginBottom: 4 }}>Focus Area</span>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: c.ember, display: "block" }}>{weakest.name}</span>
+                    <span style={{ fontFamily: font.mono, fontSize: 11, color: c.stone }}>{weakest.score}/100</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Score sparkline */}
+              {sparkPath && (
+                <div style={{ marginTop: 14, padding: "12px 16px", borderRadius: 10, background: c.obsidian, border: `1px solid ${c.border}`, display: "flex", alignItems: "center", gap: 14 }}>
+                  <span style={{ fontSize: 10, color: c.stone, whiteSpace: "nowrap" }}>Score trend</span>
+                  <svg width={sparkW} height={sparkH} viewBox={`0 0 ${sparkW} ${sparkH}`} style={{ flexShrink: 0 }}>
+                    <path d={sparkPath} fill="none" stroke={c.gilt} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                    {/* Dot on last point */}
+                    {sparkData.length >= 2 && (() => {
+                      const minS = Math.min(...sparkData.map(d => d.score));
+                      const maxS = Math.max(...sparkData.map(d => d.score));
+                      const range = maxS - minS || 1;
+                      const lastX = sparkPad + ((sparkData.length - 1) / (sparkData.length - 1)) * (sparkW - sparkPad * 2);
+                      const lastY = sparkPad + (1 - (sparkData[sparkData.length - 1].score - minS) / range) * (sparkH - sparkPad * 2);
+                      return <circle cx={lastX} cy={lastY} r="3" fill={c.gilt} />;
+                    })()}
+                  </svg>
+                  <span style={{ fontFamily: font.mono, fontSize: 11, color: c.chalk }}>
+                    {sparkData[sparkData.length - 1]?.score ?? session.score}
+                  </span>
+                </div>
+              )}
+            </div>
+          ) : null;
+        })()}
+
+        {/* ═══ WHAT'S NEXT ═══ */}
+        {(() => {
+          const sorted = [...skillEntries].sort((a, b) => a.score - b.score);
+          const weakest = sorted.length > 0 ? sorted[0] : null;
+          const nextDifficulty = session.score >= 85 ? "intense" : session.score < 70 ? "warmup" : "standard";
+
+          // Smart type recommendation based on current type and score
+          const typeRotation = ["behavioral", "technical", "strategic", "panel", "salary-negotiation"];
+          const currentIdx = typeRotation.indexOf(session.type);
+          const nextType = typeRotation[(currentIdx + 1) % typeRotation.length] || "behavioral";
+
+          // Contextual narrative
+          let narrative = "";
+          if (session.score >= 85) {
+            narrative = weakest
+              ? `Strong performance. Push yourself with an intense session targeting ${weakest.name} to close your last gap.`
+              : "Excellent work. Try a different interview format to broaden your range.";
+          } else if (session.score >= 70) {
+            narrative = weakest
+              ? `Good foundation. Your ${weakest.name} (${weakest.score}) has the most room to grow — a focused session here will move your score fastest.`
+              : "Solid session. Keep practicing to build consistency.";
+          } else {
+            narrative = "Every session builds your skills. Focus on one area at a time — structured practice compounds quickly.";
+          }
+
+          return (
+            <div className="sd-anim" style={{
+              background: `linear-gradient(135deg, rgba(212,179,127,0.06) 0%, ${c.graphite} 100%)`,
+              borderRadius: 16, border: `1px solid rgba(212,179,127,0.12)`,
+              padding: "24px 28px", marginBottom: 16, animationDelay: "0.12s",
+            }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="2" strokeLinecap="round">
+                  <polygon points="5,3 19,12 5,21"/>
+                </svg>
+                <h3 style={{ fontSize: 16, fontWeight: 600, color: c.ivory, margin: 0 }}>What's Next</h3>
+              </div>
+
+              <p style={{ fontSize: 13, color: c.stone, lineHeight: 1.6, margin: "0 0 16px" }}>{narrative}</p>
+
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                {weakest && (
+                  <button onClick={() => navigate(`/interview?type=${session.type}&difficulty=${nextDifficulty}&focus=${weakest.name.toLowerCase().replace(/\s+/g, "-")}`)}
+                    style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, padding: "10px 22px", borderRadius: 8, border: "none", background: `linear-gradient(135deg, ${c.gilt}, ${c.giltDark})`, color: c.obsidian, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, boxShadow: shadow.sm }}>
+                    <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polygon points="5,3 19,12 5,21"/></svg>
+                    Practice {weakest.name}
+                  </button>
+                )}
+                <button onClick={() => navigate(`/interview?type=${nextType}&difficulty=${nextDifficulty}`)}
+                  style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, padding: "10px 22px", borderRadius: 8, border: `1px solid ${c.border}`, background: "transparent", color: c.chalk, cursor: "pointer" }}>
+                  Try {normalizeType(nextType)}
+                </button>
+                <button onClick={() => navigate("/dashboard")}
+                  style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, padding: "10px 22px", borderRadius: 8, border: `1px solid ${c.border}`, background: "transparent", color: c.stone, cursor: "pointer" }}>
+                  Dashboard
+                </button>
+              </div>
+
+              {user && (!user.subscriptionTier || user.subscriptionTier === "free") && (
+                <div style={{ marginTop: 14, padding: "12px 16px", borderRadius: 10, background: "rgba(212,179,127,0.04)", border: `1px solid rgba(212,179,127,0.1)`, display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
+                  <span style={{ fontSize: 12, color: c.stone }}>Unlock unlimited sessions & detailed analytics</span>
+                  <button onClick={() => { window.location.href = "/#pricing"; }}
+                    style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, padding: "6px 16px", borderRadius: 6, border: `1px solid rgba(212,179,127,0.2)`, background: "transparent", color: c.gilt, cursor: "pointer", whiteSpace: "nowrap" }}>
+                    Upgrade
+                  </button>
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
         {/* ═══ CORE OBJECTIVE METRICS ═══ */}
         {speechMetrics && (
@@ -1138,8 +1353,40 @@ export default function SessionDetail() {
                 return <p style={{ fontSize: 14, color: c.chalk, lineHeight: 1.7, margin: 0, whiteSpace: "pre-wrap" }}>{feedback}</p>;
               }
 
+              // Compute skill deltas vs previous session
+              const skillDeltas: { name: string; curr: number; prev: number; delta: number }[] = [];
+              if (prevSession?.skill_scores && session.skill_scores) {
+                for (const [name, raw] of Object.entries(session.skill_scores)) {
+                  const curr = extractScore(raw);
+                  const prev = prevSession.skill_scores[name] ? extractScore(prevSession.skill_scores[name]) : NaN;
+                  if (!isNaN(prev) && prev > 0) skillDeltas.push({ name, curr, prev, delta: curr - prev });
+                }
+                skillDeltas.sort((a, b) => b.delta - a.delta);
+              }
+
               return (
                 <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                  {/* Skill changes vs previous session */}
+                  {skillDeltas.length > 0 && (
+                    <div style={{ padding: "16px 18px", borderRadius: 12, background: "rgba(212,179,127,0.04)", border: `1px solid rgba(212,179,127,0.08)`, borderLeft: `3px solid ${c.gilt}` }}>
+                      <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: c.gilt, display: "block", marginBottom: 10 }}>Skill Changes vs Last Session</span>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                        {skillDeltas.map(({ name, curr, delta }) => (
+                          <span key={name} style={{
+                            fontSize: 11, fontWeight: 600, padding: "4px 10px", borderRadius: 6,
+                            background: delta > 0 ? "rgba(122,158,126,0.1)" : delta < 0 ? "rgba(196,112,90,0.1)" : "rgba(255,255,255,0.04)",
+                            color: delta > 0 ? c.sage : delta < 0 ? c.ember : c.stone,
+                            display: "flex", alignItems: "center", gap: 4,
+                          }}>
+                            {name} {curr}
+                            <span style={{ fontFamily: font.mono, fontSize: 10 }}>
+                              {delta > 0 ? `+${delta}` : delta < 0 ? `${delta}` : "—"}
+                            </span>
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   {strengths.length > 0 && (
                     <div style={{ padding: "16px 18px", borderRadius: 12, background: "rgba(122,158,126,0.04)", border: `1px solid rgba(122,158,126,0.1)`, borderLeft: `3px solid ${c.sage}` }}>
                       <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: c.sage, display: "block", marginBottom: 8 }}>Strengths</span>
@@ -1317,52 +1564,7 @@ export default function SessionDetail() {
           </Section>
         )}
 
-        {/* ═══ WHAT'S NEXT ═══ */}
-        {(() => {
-          const weakest = skillEntries.length > 0 ? [...skillEntries].sort((a, b) => a.score - b.score)[0] : null;
-          const typeRotation = ["behavioral", "case-study", "technical", "strategic", "campus-placement", "hr-round", "management", "government-psu", "teaching"];
-          const currentIdx = typeRotation.indexOf(session.type);
-          const nextType = typeRotation[(currentIdx + 1) % typeRotation.length] || "behavioral";
-          const nextDifficulty = session.score >= 85 ? "intense" : session.score < 70 ? "warmup" : "standard";
-          return (
-            <div className="sd-anim" style={{ background: `linear-gradient(135deg, rgba(212,179,127,0.05) 0%, ${c.graphite} 100%)`, borderRadius: 16, border: `1px solid rgba(212,179,127,0.1)`, padding: "28px 32px", marginBottom: 16, animationDelay: "0.5s" }}>
-              <h3 style={{ fontSize: 16, fontWeight: 600, color: c.ivory, marginBottom: 8 }}>What's Next?</h3>
-              {weakest && (
-                <p style={{ fontSize: 13, color: c.stone, lineHeight: 1.5, marginBottom: 16 }}>
-                  Your <strong style={{ color: c.chalk }}>{weakest.name}</strong> scored {weakest.score} — focus a session on this to improve fastest.
-                </p>
-              )}
-              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                {weakest && (
-                  <button onClick={() => navigate(`/session/new?type=${session.type}&focus=${weakest.name.toLowerCase().replace(/\s+/g, "-")}`)}
-                    style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, padding: "10px 22px", borderRadius: 8, border: "none", background: `linear-gradient(135deg, ${c.gilt}, ${c.giltDark})`, color: c.obsidian, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, boxShadow: shadow.sm }}>
-                    <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polygon points="5,3 19,12 5,21"/></svg>
-                    Practice {weakest.name}
-                  </button>
-                )}
-                <button onClick={() => navigate(`/session/new?type=${nextType}&difficulty=${nextDifficulty}`)}
-                  style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, padding: "10px 22px", borderRadius: 8, border: `1px solid ${c.border}`, background: "transparent", color: c.chalk, cursor: "pointer" }}>
-                  Try {normalizeType(nextType)}
-                </button>
-                <button onClick={() => navigate("/dashboard")}
-                  style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, padding: "10px 22px", borderRadius: 8, border: `1px solid ${c.border}`, background: "transparent", color: c.stone, cursor: "pointer" }}>
-                  Back to Dashboard
-                </button>
-              </div>
-
-              {/* Inline upgrade CTA for free users */}
-              {user && (!user.subscriptionTier || user.subscriptionTier === "free") && (
-                <div style={{ marginTop: 16, padding: "14px 18px", borderRadius: 10, background: "rgba(212,179,127,0.04)", border: `1px solid rgba(212,179,127,0.1)`, display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
-                  <span style={{ fontSize: 12, color: c.stone }}>Unlock unlimited sessions & detailed analytics</span>
-                  <button onClick={() => { window.location.href = "/#pricing"; }}
-                    style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, padding: "6px 16px", borderRadius: 6, border: `1px solid rgba(212,179,127,0.2)`, background: "transparent", color: c.gilt, cursor: "pointer", whiteSpace: "nowrap" }}>
-                    Upgrade
-                  </button>
-                </div>
-              )}
-            </div>
-          );
-        })()}
+        {/* What's Next is now shown at the top, after action bar */}
 
         {/* Animations & Mobile responsive styles */}
         <style>{`
