@@ -6,8 +6,16 @@ import { getSupabase, supabaseConfigured } from "./supabase";
 /* ─── Animated particle background (lightweight) ─── */
 function ParticleBg() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const [ready, setReady] = useState(false);
+
+  // Defer canvas setup until after first paint to avoid blocking FCP
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setReady(true));
+    return () => cancelAnimationFrame(id);
+  }, []);
 
   useEffect(() => {
+    if (!ready) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
@@ -62,7 +70,7 @@ function ParticleBg() {
     const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
     if (!mq.matches) draw();
     return () => { cancelAnimationFrame(animId); window.removeEventListener("resize", resize); };
-  }, []);
+  }, [ready]);
 
   return <canvas ref={canvasRef} style={{ position: "fixed", inset: 0, pointerEvents: "none", zIndex: 0 }} />;
 }
@@ -141,17 +149,25 @@ export default function ComingSoon() {
   })();
   const countdown = useCountdown(launchDate);
 
-  // Fetch waitlist count — defer to avoid blocking FCP
+  // Fetch waitlist count — defer until browser is idle to avoid blocking FCP/LCP
   useEffect(() => {
-    const id = setTimeout(async () => {
-      if (!supabaseConfigured) return;
+    if (!supabaseConfigured) return;
+    const load = async () => {
       try {
         const client = await getSupabase();
         const { count: c } = await client.from("waitlist").select("*", { count: "exact", head: true });
         if (c !== null) setCount(c);
       } catch { /* ignore */ }
-    }, status === "done" ? 0 : 2000);
-    return () => clearTimeout(id);
+    };
+    if (status === "done") {
+      load();
+    } else if (typeof requestIdleCallback !== "undefined") {
+      const id = requestIdleCallback(() => load());
+      return () => cancelIdleCallback(id);
+    } else {
+      const id = setTimeout(load, 4000);
+      return () => clearTimeout(id);
+    }
   }, [status]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -401,7 +417,7 @@ export default function ComingSoon() {
                 "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=80&h=80&fit=crop&crop=face",
                 "https://images.unsplash.com/photo-1633332755192-727a05c4013d?w=80&h=80&fit=crop&crop=face",
               ].map((src, i) => (
-                <img key={i} src={src} alt="" aria-hidden="true" width={32} height={32} style={{
+                <img key={i} src={src} alt="" aria-hidden="true" width={32} height={32} loading="lazy" decoding="async" style={{
                   width: 32, height: 32, borderRadius: "50%",
                   border: `2px solid ${c.obsidian}`,
                   marginLeft: i > 0 ? -10 : 0,

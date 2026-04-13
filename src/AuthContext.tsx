@@ -173,7 +173,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       !window.location.hostname.includes("127.0.0.1") &&
       !window.location.hostname.includes("vercel.app");
     if (isMarketing) {
-      setTimeout(preloadSupabase, 2000);
+      // On marketing domain, defer Supabase load until browser is idle — avoids blocking FCP/LCP
+      if (typeof requestIdleCallback !== "undefined") {
+        requestIdleCallback(() => preloadSupabase());
+      } else {
+        setTimeout(preloadSupabase, 4000);
+      }
     } else {
       preloadSupabase();
     }

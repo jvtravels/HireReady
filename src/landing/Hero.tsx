@@ -10,8 +10,16 @@ import { useReveal, useParallax, useMouse } from "../hooks";
    ═══════════════════════════════════════════════ */
 function ParticleCanvas() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const [ready, setReady] = useState(false);
+
+  // Defer canvas init until after first paint to avoid blocking FCP
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setReady(true));
+    return () => cancelAnimationFrame(id);
+  }, []);
 
   useEffect(() => {
+    if (!ready) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
@@ -82,7 +90,7 @@ function ParticleCanvas() {
     const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
     if (!mq.matches) draw(); else { draw(); cancelAnimationFrame(animId!); }
     return () => { cancelAnimationFrame(animId); window.removeEventListener("resize", resize); };
-  }, []);
+  }, [ready]);
 
   return <canvas ref={canvasRef} style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", pointerEvents: "none" }} />;
 }

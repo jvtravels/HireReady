@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, lazy, Suspense, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { c } from "./tokens";
@@ -8,9 +8,23 @@ import { LANDING_FAQS } from "./landingData";
 import {
   Nav, Hero, LogoMarquee, StatsSection, ProblemSection,
   HowItWorks, DemoVideoSection, FeaturesSection, ScorePreview,
-  TestimonialsSection, PricingSection, ForTeamsBanner, TrustBadges,
-  FAQSection, FinalCTA, EmailCapture, Footer,
 } from "./landing";
+
+// Lazy-load below-fold sections to reduce initial bundle and speed up FCP/LCP
+const LazyBottomSections = lazy(() => import("./landing/BottomSections").then(m => ({
+  default: () => (
+    <>
+      <m.ForTeamsBanner />
+      <m.TrustBadges />
+      <m.FAQSection />
+      <m.FinalCTA />
+      <m.EmailCapture />
+    </>
+  ),
+})));
+const LazyTestimonials = lazy(() => import("./landing/Sections").then(m => ({ default: m.TestimonialsSection })));
+const LazyPricing = lazy(() => import("./landing/PricingSection").then(m => ({ default: m.PricingSection })));
+const LazyFooter = lazy(() => import("./landing/BottomSections").then(m => ({ default: m.Footer })));
 
 export default function App() {
   const { isLoggedIn, user, loading } = useAuth();
@@ -43,6 +57,19 @@ export default function App() {
     return <div style={{ minHeight: "100vh", background: c.obsidian }} />;
   }
 
+  // Trigger lazy sections when user scrolls near them
+  const [showLazy, setShowLazy] = useState(false);
+  const triggerRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const el = triggerRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) { setShowLazy(true); observer.disconnect(); }
+    }, { rootMargin: "400px" });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
   return (
     <div style={{ minHeight: "100vh", background: c.obsidian, color: c.ivory, position: "relative", overflow: "hidden" }}>
       <Nav />
@@ -55,15 +82,16 @@ export default function App() {
         <DemoVideoSection />
         <FeaturesSection />
         <ScorePreview />
-        <TestimonialsSection />
-        <PricingSection />
-        <ForTeamsBanner />
-        <TrustBadges />
-        <FAQSection />
-        <FinalCTA />
-        <EmailCapture />
+        <div ref={triggerRef} />
+        {showLazy && (
+          <Suspense fallback={null}>
+            <LazyTestimonials />
+            <LazyPricing />
+            <LazyBottomSections />
+          </Suspense>
+        )}
       </main>
-      <Footer />
+      {showLazy ? <Suspense fallback={null}><LazyFooter /></Suspense> : null}
     </div>
   );
 }
