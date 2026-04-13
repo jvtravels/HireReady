@@ -3,60 +3,27 @@
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { createHmac, timingSafeEqual } from "crypto";
-
-/* ─── Inline rate limiting via Upstash Redis ─── */
-const UPSTASH_URL = (process.env.UPSTASH_REDIS_REST_URL || "").trim();
-const UPSTASH_TOKEN = (process.env.UPSTASH_REDIS_REST_TOKEN || "").trim();
-
-async function isRateLimited(ip: string, limit: number, windowMs: number): Promise<boolean> {
-  if (!UPSTASH_URL || !UPSTASH_TOKEN) {
-    console.warn("[verify-payment] Rate limiting disabled: UPSTASH_REDIS_REST_URL / UPSTASH_REDIS_REST_TOKEN not set");
-    return false;
-  }
-  try {
-    const key = `rl:verify-payment:${ip}`;
-    const windowSec = Math.ceil(windowMs / 1000);
-    const res = await fetch(`${UPSTASH_URL}/pipeline`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${UPSTASH_TOKEN}`, "Content-Type": "application/json" },
-      body: JSON.stringify([["INCR", key], ["EXPIRE", key, windowSec]]),
-    });
-    if (res.ok) {
-      const results = await res.json();
-      return (results[0]?.result ?? 1) > limit;
-    }
-    return false;
-  } catch (err) {
-    console.error("[verify-payment] Rate limit check failed:", err);
-    return false;
-  }
-}
+import {
+  applyCorsHeaders,
+  handlePreflightAndMethod,
+  isRateLimited,
+  getVercelClientIp,
+  escapeHtml,
+  supabaseUrl,
+  supabaseAnonKey,
+} from "./_shared";
 
 const RAZORPAY_KEY_ID = (process.env.RAZORPAY_KEY_ID || "").trim();
 const RAZORPAY_KEY_SECRET = (process.env.RAZORPAY_KEY_SECRET || "").trim();
-const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || "";
-const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || "";
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 const RESEND_API_KEY = (process.env.RESEND_API_KEY || "").trim();
 const FROM_EMAIL = process.env.FROM_EMAIL || "HireStepX <onboarding@resend.dev>";
 const APP_URL = (process.env.APP_URL || "https://hirestepx.vercel.app").replace(/\/$/, "");
 
-const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || "").split(",").map(s => s.trim()).filter(Boolean);
-
-function getAllowedOrigin(origin: string): string {
-  if (ALLOWED_ORIGINS.length > 0 && ALLOWED_ORIGINS.includes(origin)) return origin;
-  if (origin.startsWith("http://localhost:")) return origin;
-  return "";
-}
-
 const PLAN_DURATION: Record<string, number> = { weekly: 7, monthly: 0, "yearly-starter": 365, "yearly-pro": 365 }; // monthly uses setMonth() below
 const PLAN_TIER: Record<string, string> = { weekly: "starter", monthly: "pro", "yearly-starter": "starter", "yearly-pro": "pro" };
 const PLAN_AMOUNT: Record<string, number> = { weekly: 4900, monthly: 14900, "yearly-starter": 203900, "yearly-pro": 143000 };
 const PLAN_LABEL: Record<string, string> = { weekly: "Starter (₹49/week)", monthly: "Pro (₹149/month)", "yearly-starter": "Starter Annual (₹2,039/year)", "yearly-pro": "Pro Annual (₹1,430/year)" };
-
-function escapeHtml(s: string): string {
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-}
 
 async function sendPaymentEmail(
   email: string,
@@ -187,16 +154,8 @@ async function sendPaymentEmail(
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  const origin = getAllowedOrigin(req.headers.origin || "");
-  if (origin) {
-    res.setHeader("Access-Control-Allow-Origin", origin);
-    res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
-    res.setHeader("Vary", "Origin");
-  }
-
-  if (req.method === "OPTIONS") return res.status(204).end();
-  if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
+  const origin = applyCorsHeaders(req, res);
+  if (handlePreflightAndMethod(req, res)) return;
 
   // Body size check
   const bodyContentLength = parseInt((req.headers["content-length"] as string) || "0", 10);
@@ -209,15 +168,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(403).json({ error: "Forbidden" });
   }
 
+  const SUPABASE_URL = supabaseUrl();
   if (!RAZORPAY_KEY_SECRET || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
     return res.status(503).json({ error: "Payment verification not configured" });
   }
 
   // Rate limiting
-  const ip = (req.headers["x-real-ip"] as string)?.trim()
-    || (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim()
-    || "unknown";
-  if (await isRateLimited(ip, 10, 60_000)) {
+  const ip = getVercelClientIp(req);
+  if (await isRateLimited(ip, "verify-payment", 10, 60_000)) {
     res.setHeader("Retry-After", "60");
     return res.status(429).json({ error: "Too many requests. Please try again shortly.", retryAfter: 60 });
   }
@@ -228,6 +186,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(401).json({ error: "Unauthorized" });
   }
 
+  const SUPABASE_ANON_KEY = supabaseAnonKey();
   const token = authHeader.slice(7);
   let userId: string;
   let userEmail = "";

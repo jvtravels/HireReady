@@ -1,4 +1,6 @@
-/* Shared utilities for Vercel Edge Functions */
+/* Shared utilities for Vercel Edge Functions & Node.js API routes */
+
+import type { VercelRequest, VercelResponse } from "@vercel/node";
 
 declare const process: { env: Record<string, string | undefined> };
 
@@ -10,13 +12,16 @@ const STARTER_WEEKLY_LIMIT = 10;
 
 const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || "").split(",").map(s => s.trim()).filter(Boolean);
 
-export function getAllowedOrigin(req: Request): string {
-  const origin = req.headers.get("origin") || "";
-  // Explicit allowlist (production domains) — always checked first
+/** Check whether a given origin string is in the allowlist (or localhost in dev). */
+export function getAllowedOriginFromString(origin: string): string {
   if (ALLOWED_ORIGINS.length > 0 && ALLOWED_ORIGINS.includes(origin)) return origin;
-  // Allow localhost in development
   if (origin.startsWith("http://localhost:")) return origin;
   return "";
+}
+
+export function getAllowedOrigin(req: Request): string {
+  const origin = req.headers.get("origin") || "";
+  return getAllowedOriginFromString(origin);
 }
 
 export function corsHeaders(req: Request): Record<string, string> {
@@ -368,4 +373,69 @@ export async function checkLLMQuota(userId: string, endpoint: string): Promise<{
 
 export function withRequestId(headers: Record<string, string>): Record<string, string> {
   return { ...headers, "X-Request-ID": crypto.randomUUID() };
+}
+
+/* ─── VercelResponse CORS helpers (for Node.js API routes) ─── */
+
+export function applyCorsHeaders(req: VercelRequest, res: VercelResponse): string {
+  const origin = getAllowedOriginFromString(req.headers.origin as string || "");
+  if (origin) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+    res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+    res.setHeader("Vary", "Origin");
+  }
+  return origin;
+}
+
+export function handlePreflightAndMethod(req: VercelRequest, res: VercelResponse): boolean {
+  if (req.method === "OPTIONS") { res.status(204).end(); return true; }
+  if (req.method !== "POST") { res.status(405).json({ error: "Method not allowed" }); return true; }
+  return false;
+}
+
+/* ─── Supabase Header Builders ─── */
+
+export function supabaseServiceHeaders(): Record<string, string> {
+  return { apikey: SERVICE_ROLE_KEY, Authorization: `Bearer ${SERVICE_ROLE_KEY}`, "Content-Type": "application/json" };
+}
+
+export function supabaseAnonHeaders(token: string): Record<string, string> {
+  return { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
+}
+
+export function supabaseUrl(): string {
+  return SUPABASE_URL;
+}
+
+export function supabaseAnonKey(): string {
+  return SUPABASE_ANON_KEY;
+}
+
+/* ─── Shared HTML Utilities ─── */
+
+export function escapeHtml(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+/* ─── Standard Error Responses (Edge) ─── */
+
+export function errorResponse(status: number, message: string, headers: Record<string, string>): Response {
+  return new Response(JSON.stringify({ error: message }), { status, headers });
+}
+
+export function forbiddenResponse(headers: Record<string, string>): Response {
+  return errorResponse(403, "Forbidden", headers);
+}
+
+export function tooLargeResponse(headers: Record<string, string>): Response {
+  return errorResponse(413, "Request too large", headers);
+}
+
+/* ─── VercelRequest IP Helper ─── */
+
+export function getVercelClientIp(req: VercelRequest): string {
+  return (req.headers["x-real-ip"] as string)?.trim()
+    || (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim()
+    || "unknown";
 }

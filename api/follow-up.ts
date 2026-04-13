@@ -78,7 +78,7 @@ Respond JSON only:
 {"needsFollowUp":true/false,"followUpText":"The follow-up question (2-3 sentences, conversational, probe for specifics). Only include if needsFollowUp is true.","reason":"Brief reason"}`;
 
     const result = await callLLM({ prompt, temperature: 0.3, maxTokens: 500, jsonMode: true, fast: true }, 8000);
-    const parsed = extractJSON(result.text);
+    const parsed = extractJSON<{ needsFollowUp?: boolean; followUpText?: string }>(result.text);
     if (!parsed) {
       return new Response(JSON.stringify({ needsFollowUp: false }), { status: 200, headers });
     }

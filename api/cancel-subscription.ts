@@ -1,37 +1,26 @@
 /* Vercel Serverless Function — Cancel Subscription */
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
+import {
+  applyCorsHeaders,
+  handlePreflightAndMethod,
+  supabaseUrl,
+  supabaseAnonKey,
+  supabaseServiceHeaders,
+} from "./_shared";
 
-
-const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || "";
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
-const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || "";
 const RAZORPAY_KEY_ID = (process.env.RAZORPAY_KEY_ID || "").trim();
 const RAZORPAY_KEY_SECRET = (process.env.RAZORPAY_KEY_SECRET || "").trim();
 const RESEND_API_KEY = (process.env.RESEND_API_KEY || "").trim();
 const FROM_EMAIL = process.env.FROM_EMAIL || "HireStepX <onboarding@resend.dev>";
 const APP_URL = (process.env.APP_URL || "https://hirestepx.vercel.app").replace(/\/$/, "");
 
-const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || "").split(",").map(s => s.trim()).filter(Boolean);
-
-function getAllowedOrigin(origin: string): string {
-  if (ALLOWED_ORIGINS.length > 0 && ALLOWED_ORIGINS.includes(origin)) return origin;
-  if (origin.startsWith("http://localhost:")) return origin;
-  return "";
-}
-
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  const origin = getAllowedOrigin(req.headers.origin || "");
-  if (origin) {
-    res.setHeader("Access-Control-Allow-Origin", origin);
-    res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
-    res.setHeader("Vary", "Origin");
-  }
+  const origin = applyCorsHeaders(req, res);
   res.setHeader("X-Request-ID", crypto.randomUUID());
 
-  if (req.method === "OPTIONS") return res.status(204).end();
-  if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
+  if (handlePreflightAndMethod(req, res)) return;
 
   // Body size check
   const bodyContentLength = parseInt((req.headers["content-length"] as string) || "0", 10);
@@ -44,6 +33,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(403).json({ error: "Forbidden" });
   }
 
+  const SUPABASE_URL = supabaseUrl();
   if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
     return res.status(503).json({ error: "Not configured" });
   }
@@ -55,6 +45,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const token = authHeader.slice(7);
+  const SUPABASE_ANON_KEY = supabaseAnonKey();
   let userId: string;
   try {
     const userRes = await fetch(`${SUPABASE_URL}/auth/v1/user`, {

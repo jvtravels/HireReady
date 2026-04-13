@@ -82,7 +82,7 @@ Return a JSON array where each element has:
 Return ONLY the JSON array, no other text.`;
 
     const result = await callLLM({ prompt, temperature: 0.7, maxTokens: 600, jsonMode: true, fast: true }, 12000);
-    const parsed = extractJSON(result.text);
+    const parsed = extractJSON<{ type?: string; text?: string }[]>(result.text);
 
     if (!Array.isArray(parsed)) {
       console.error("[generate-insights] LLM returned non-array:", typeof parsed);
@@ -91,7 +91,7 @@ Return ONLY the JSON array, no other text.`;
 
     // Validate and sanitize
     const validTypes = new Set(["strength", "weakness", "tip", "pattern"]);
-    const insights = (parsed as { type?: string; text?: string }[])
+    const insights = parsed
       .filter(i => i && typeof i.text === "string" && validTypes.has(i.type ?? ""))
       .slice(0, 4)
       .map(i => ({ type: i.type, text: i.text!.slice(0, 200) }));

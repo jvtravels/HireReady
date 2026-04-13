@@ -2,6 +2,7 @@
 /* Runs daily at 9 AM UTC. Sends reminders to users whose subscription expires within 3 days. */
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
+import { escapeHtml } from "./_shared";
 
 const SUPABASE_URL = process.env.SUPABASE_URL || "";
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
@@ -9,10 +10,6 @@ const RESEND_API_KEY = (process.env.RESEND_API_KEY || "").trim();
 const FROM_EMAIL = process.env.FROM_EMAIL || "HireStepX <onboarding@resend.dev>";
 const CRON_SECRET = (process.env.CRON_SECRET || "").trim();
 const APP_URL = (process.env.APP_URL || "https://hirestepx.vercel.app").replace(/\/$/, "");
-
-function escapeHtml(s: string): string {
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-}
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Protect cron endpoint — fail closed: require CRON_SECRET to be set

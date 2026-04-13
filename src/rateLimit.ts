@@ -20,6 +20,7 @@ export function checkRateLimit(key: string, maxCalls: number, windowMs: number):
  * Wraps an async function with client-side rate limiting.
  * If the rate limit is exceeded, returns the fallback value.
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- generic function constraint requires any
 export function withRateLimit<T extends (...args: any[]) => Promise<any>>(
   fn: T,
   key: string,
@@ -27,7 +28,7 @@ export function withRateLimit<T extends (...args: any[]) => Promise<any>>(
   windowMs: number,
   onLimited?: () => void,
 ): T {
-  return ((...args: any[]) => {
+  return ((...args: Parameters<T>) => {
     if (!checkRateLimit(key, maxCalls, windowMs)) {
       onLimited?.();
       return Promise.reject(new Error(`Rate limited: ${key}. Please wait before trying again.`));
@@ -39,9 +40,10 @@ export function withRateLimit<T extends (...args: any[]) => Promise<any>>(
 /**
  * Debounce utility — returns the last call's result after a delay.
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- generic function constraint requires any
 export function debounce<T extends (...args: any[]) => any>(fn: T, delayMs: number): T & { cancel: () => void } {
   let timer: ReturnType<typeof setTimeout> | null = null;
-  const debounced = ((...args: any[]) => {
+  const debounced = ((...args: Parameters<T>) => {
     if (timer) clearTimeout(timer);
     return new Promise((resolve) => {
       timer = setTimeout(() => {

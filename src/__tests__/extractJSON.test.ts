@@ -6,7 +6,7 @@ import { describe, it, expect } from "vitest";
  * markdown fences, prose, or malformed output.
  */
 
-function extractJSON(text: string): any {
+function extractJSON<T = unknown>(text: string): T | null {
   // Try direct parse first
   try { return JSON.parse(text); } catch {}
   // Strip markdown code fences
