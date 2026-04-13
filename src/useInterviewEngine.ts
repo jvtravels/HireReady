@@ -508,6 +508,8 @@ export function useInterviewEngine() {
   const flowGenerationRef = useRef(0);
   const pendingFollowUpRef = useRef<Promise<{ needsFollowUp: boolean; followUpText: string; followUpType?: string } | null> | null>(null);
   const followUpDepthRef = useRef(0);
+  // Dynamic difficulty: track answer quality mid-interview for escalation/de-escalation
+  const answerQualityRef = useRef<number[]>([]);
 
   useEffect(() => {
     if (phase === "done") return;
@@ -642,22 +644,50 @@ export function useInterviewEngine() {
     const currentStepObj = interviewScript[currentStep];
     const isLastStep = currentStep >= interviewScript.length - 1;
 
-    // Generate micro-feedback
+    // Generate micro-feedback with dynamic difficulty awareness
     setMicroFeedback(null);
     if (answerText.length > 10 && !answerText.startsWith("[Answer recorded")) {
       const wordCount = answerText.trim().split(/\s+/).length;
       const hasMetrics = /\d+%|\$\d|[0-9]+x|[0-9]+ (users|customers|engineers|people)/i.test(answerText);
       const hasStructure = /first|second|then|finally|result|outcome|impact/i.test(answerText);
+      const hasFirstPerson = /\bI\b/i.test(answerText);
+      const hasCounterfactual = /without|otherwise|if.*not|had.*not|wouldn't/i.test(answerText);
+
+      // Score this answer (0-100) for dynamic difficulty tracking
+      let answerScore = 50;
+      if (wordCount >= 50) answerScore += 10;
+      if (wordCount >= 100) answerScore += 5;
+      if (hasMetrics) answerScore += 15;
+      if (hasStructure) answerScore += 10;
+      if (hasFirstPerson) answerScore += 5;
+      if (hasCounterfactual) answerScore += 5;
+      if (wordCount < 30) answerScore -= 15;
+      answerQualityRef.current.push(Math.min(100, Math.max(0, answerScore)));
+
+      // Compute running average for dynamic difficulty
+      const scores = answerQualityRef.current;
+      const runningAvg = scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 50;
+      const isExcelling = runningAvg >= 80 && scores.length >= 2;
+      const isStruggling = runningAvg < 50 && scores.length >= 2;
+
       if (wordCount < 30) {
-        setMicroFeedback("Try to elaborate more — aim for 60+ seconds per answer.");
+        setMicroFeedback(isStruggling
+          ? "Try to say more — even 2-3 sentences about the situation helps."
+          : "Try to elaborate more — aim for 60+ seconds per answer.");
       } else if (!hasMetrics && !hasStructure) {
-        setMicroFeedback("Good start! Try adding specific metrics and structuring with STAR.");
+        setMicroFeedback(isExcelling
+          ? "Good content — push further with specific metrics and counterfactual reasoning."
+          : "Good start! Try adding specific metrics and structuring with STAR.");
       } else if (!hasMetrics) {
-        setMicroFeedback("Nice structure! Strengthen with specific numbers or metrics.");
+        setMicroFeedback(isExcelling
+          ? "Nice structure! Add quantified impact — '$X revenue', '30% faster', etc."
+          : "Nice structure! Strengthen with specific numbers or metrics.");
       } else if (!hasStructure) {
         setMicroFeedback("Great data! Try structuring as Situation → Action → Result.");
+      } else if (isExcelling && !hasCounterfactual) {
+        setMicroFeedback("Strong answer! Next level: add counterfactual reasoning — 'Without this, X would have happened.'");
       } else {
-        setMicroFeedback("Strong answer — specific and well-structured.");
+        setMicroFeedback(isExcelling ? "Excellent — specific, structured, and impactful." : "Strong answer — specific and well-structured.");
       }
     }
 

@@ -62,9 +62,9 @@ interface CoreContextValue {
   displayName: string;
   isNewUser: boolean;
   daysLeft: number;
-  aiInsights: { type: string; text: string }[];
+  aiInsights: { type: string; text: string; action?: string }[];
   notifications: { id: number; type: string; text: string; dismissible: boolean; action?: string }[];
-  upcomingGoals: { label: string; progress: number; total: number }[];
+  upcomingGoals: { label: string; progress: number; total: number; action?: string }[];
   returnContext: string | null;
   smartSchedule: string | null;
   prepPlan: ImprovementPlan | null;
@@ -309,7 +309,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
   const currentStreak = useMemo(() => computeStreak(recentSessions), [recentSessions]);
 
   // Personalized AI insights
-  const fallbackInsights = useMemo(() => generateFallbackInsights(user, skills), [user, skills]);
+  const fallbackInsights = useMemo(() => generateFallbackInsights(user, skills, skillVelocity), [user, skills, skillVelocity]);
   const [llmInsights, setLlmInsights] = useState<{ type: string; text: string }[] | null>(null);
   const insightsFetchedRef = useRef<string>("");
 
@@ -364,7 +364,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
 
   const aiInsights = llmInsights || fallbackInsights;
   const notifications = useMemo(() => generateNotifications(user, currentStreak, weekActivity, recentSessions), [user, currentStreak, weekActivity, recentSessions]);
-  const upcomingGoals = useMemo(() => generateGoals(user, weekActivity, skills), [user, weekActivity, skills]);
+  const upcomingGoals = useMemo(() => generateGoals(user, weekActivity, skills, skillVelocity), [user, weekActivity, skills, skillVelocity]);
   const returnContext = useMemo(() => getReturnContext(recentSessions), [recentSessions]);
   const smartSchedule = useMemo(() => getSmartScheduleSuggestion(user), [user]);
   const prepPlan = useMemo(() => getImprovementPlan(user, recentSessions, skills, skillVelocity), [user, recentSessions, skills, skillVelocity]);

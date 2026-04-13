@@ -1090,11 +1090,18 @@ export default function DashboardHome() {
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                   {aiInsights.map((insight, i) => (
-                    <div key={i} style={{ padding: "14px 16px", borderRadius: radius.sm, background: c.obsidian, borderLeft: `3px solid ${insight.type === "strength" ? c.sage : insight.type === "weakness" ? c.ember : c.gilt}` }}>
-                      <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", color: insight.type === "strength" ? c.sage : insight.type === "weakness" ? c.ember : c.gilt, display: "block", marginBottom: 4 }}>
-                        {insight.type === "strength" ? "Strength" : insight.type === "weakness" ? "Improve" : "Tip"}
+                    <div key={i} style={{ padding: "14px 16px", borderRadius: radius.sm, background: c.obsidian, borderLeft: `3px solid ${insight.type === "strength" ? c.sage : insight.type === "weakness" || insight.type === "action" ? c.ember : c.gilt}` }}>
+                      <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", color: insight.type === "strength" ? c.sage : insight.type === "weakness" || insight.type === "action" ? c.ember : c.gilt, display: "block", marginBottom: 4 }}>
+                        {insight.type === "strength" ? "Strength" : insight.type === "weakness" ? "Improve" : insight.type === "action" ? "Next Step" : "Tip"}
                       </span>
-                      <p style={{ fontFamily: font.ui, fontSize: 13, color: c.chalk, lineHeight: 1.6 }}>{insight.text}</p>
+                      <p style={{ fontFamily: font.ui, fontSize: 13, color: c.chalk, lineHeight: 1.6, marginBottom: (insight as { action?: string }).action ? 8 : 0 }}>{insight.text}</p>
+                      {(insight as { action?: string }).action && (
+                        <button onClick={() => nav((insight as { action: string }).action)} style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.gilt, background: "rgba(212,179,127,0.08)", border: `1px solid rgba(212,179,127,0.15)`, borderRadius: 6, padding: "5px 12px", cursor: "pointer", transition: "background 0.15s" }}
+                          onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(212,179,127,0.15)"; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(212,179,127,0.08)"; }}>
+                          Practice Now →
+                        </button>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -1127,7 +1134,7 @@ export default function DashboardHome() {
                         <div style={{ height: "100%", width: `${(goal.progress / goal.total) * 100}%`, background: done ? c.sage : c.gilt, borderRadius: 2, transition: "width 0.4s cubic-bezier(0.16,1,0.3,1)" }} />
                       </div>
                       {!done && (
-                        <button onClick={handleStartSession}
+                        <button onClick={() => (goal as { action?: string }).action ? nav((goal as { action: string }).action) : handleStartSession()}
                           style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 500, color: c.gilt, background: "none", border: "none", cursor: "pointer", padding: 0, transition: "color 0.2s" }}
                           onMouseEnter={(e) => e.currentTarget.style.color = c.ivory}
                           onMouseLeave={(e) => e.currentTarget.style.color = c.gilt}>

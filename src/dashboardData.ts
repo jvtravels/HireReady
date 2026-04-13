@@ -209,15 +209,15 @@ export function getSessionData(targetRole: string, supabaseSessions: RealSession
 
 /* ─── Personalized AI Insights ─── */
 /** Fallback template insights (used when LLM is unavailable or user is on free tier) */
-export function generateFallbackInsights(user: UserContext, sk?: SkillData[]) {
-  const insights: { type: string; text: string }[] = [];
+export function generateFallbackInsights(user: UserContext, sk?: SkillData[], velocity?: SkillVelocity[]) {
+  const insights: { type: string; text: string; action?: string }[] = [];
   const role = user?.targetRole || "your target role";
   const company = user?.targetCompany;
   const industry = user?.industry;
   const theSkills = sk || [];
 
   if (theSkills.length === 0) {
-    insights.push({ type: "tip", text: `Complete your first practice session to get personalized insights about your ${role} interview readiness.` });
+    insights.push({ type: "tip", text: `Complete your first practice session to get personalized insights about your ${role} interview readiness.`, action: "/session/new?type=behavioral&difficulty=warmup" });
     insights.push({ type: "tip", text: "Each session evaluates you on communication, strategic thinking, leadership presence, and more." });
     if (company) {
       insights.push({ type: "tip", text: `We'll tailor questions to ${company}'s interview style and ${industry || "your"} industry.` });
@@ -226,15 +226,49 @@ export function generateFallbackInsights(user: UserContext, sk?: SkillData[]) {
   }
 
   const weakest = [...theSkills].sort((a, b) => a.score - b.score)[0];
+  const strongest = [...theSkills].sort((a, b) => b.score - a.score)[0];
   const mostImproved = [...theSkills].sort((a, b) => (b.score - b.prev) - (a.score - a.prev))[0];
+  const weakVelocity = velocity?.find(v => v.name === weakest.name);
+  const strongVelocity = velocity?.find(v => v.name === strongest.name);
 
-  insights.push({ type: "strength", text: `Your ${mostImproved.name.toLowerCase()} has improved ${mostImproved.score - mostImproved.prev} points — keep leading with this in your answers.` });
-  insights.push({ type: "weakness", text: `${weakest.name} is at ${weakest.score}/100. ${company ? `For ${company}, this` : "This"} skill is critical for ${role} — try a focused session.` });
+  // Actionable strength insight
+  if (mostImproved.score - mostImproved.prev > 0) {
+    insights.push({ type: "strength", text: `Your ${mostImproved.name.toLowerCase()} has improved ${mostImproved.score - mostImproved.prev} points — keep leading with this in your answers.` });
+  } else if (strongest) {
+    insights.push({ type: "strength", text: `${strongest.name} is your strongest skill at ${strongest.score}/100.${strongVelocity?.trend === "improving" ? ` Still improving at ${strongVelocity.velocity} pts/week.` : " Maintain it with periodic practice."}` });
+  }
+
+  // Actionable weakness insight with specific drill
+  const weakDrill = weakest.name === "communication" ? "Practice recording yourself answering 'Tell me about a time...' and replay it. Focus on clarity and pace."
+    : weakest.name === "structure" ? "Before answering, mentally outline: Situation (2 sentences) → Task → Action (3-4 steps) → Result (with metrics)."
+    : weakest.name === "technicalDepth" ? "Prepare 2-3 stories where you made a key technical decision. Include the trade-offs you considered."
+    : weakest.name === "leadership" ? "Prepare stories about influencing without authority, mentoring, and making hard calls. Use 'I decided' not 'we decided'."
+    : weakest.name === "problemSolving" ? "Practice the 'define → structure → solve → validate' framework. Always state your assumptions first."
+    : "Try a focused session targeting this area.";
+
+  insights.push({
+    type: "weakness",
+    text: `${weakest.name} is at ${weakest.score}/100${weakVelocity?.velocity ? ` (${weakVelocity.velocity > 0 ? "+" : ""}${weakVelocity.velocity}/wk)` : ""}. ${weakDrill}`,
+    action: `/session/new?type=behavioral&focus=${weakest.name}`,
+  });
+
+  // Specific recommendation based on pattern
   if (company && industry) {
     insights.push({ type: "tip", text: `${company} interviews in ${industry} often emphasize cross-functional leadership. Prepare 2-3 stories about driving alignment across engineering, product, and business.` });
   } else {
     insights.push({ type: "tip", text: `For ${role} interviews, prepare stories about scaling teams, managing up, and quantifying business impact with specific metrics.` });
   }
+
+  // Session recommendation based on data
+  const avgScore = Math.round(theSkills.reduce((s, sk2) => s + sk2.score, 0) / theSkills.length);
+  if (avgScore < 70) {
+    insights.push({ type: "action", text: "Do 2 warmup sessions this week focusing on STAR structure. Build confidence before increasing difficulty.", action: "/session/new?type=behavioral&difficulty=warmup" });
+  } else if (avgScore < 85) {
+    insights.push({ type: "action", text: `Do a focused session on ${weakest.name} at standard difficulty. Target score: ${weakest.score + 10}+.`, action: `/session/new?type=behavioral&difficulty=standard&focus=${weakest.name}` });
+  } else {
+    insights.push({ type: "action", text: "You're scoring well. Try an intense session to stress-test under pressure.", action: "/session/new?type=behavioral&difficulty=intense" });
+  }
+
   return insights;
 }
 
@@ -290,18 +324,31 @@ export function generateNotifications(user: UserContext, streak: number, weekAct
 }
 
 /* ─── Goals ─── */
-export function generateGoals(user: UserContext, weekActivity: boolean[], sk?: SkillData[]) {
+export function generateGoals(user: UserContext, weekActivity: boolean[], sk?: SkillData[], velocity?: SkillVelocity[]) {
   const weekSessions = weekActivity.filter(Boolean).length;
   const theSkills = sk || [];
-  const goals = [
-    { label: weekSessions === 0 ? "Complete your first session" : "Complete 3 sessions this week", progress: weekSessions, total: weekSessions === 0 ? 1 : 3 },
+  const goals: { label: string; progress: number; total: number; action?: string }[] = [
+    { label: weekSessions === 0 ? "Complete your first session" : "Complete 3 sessions this week", progress: weekSessions, total: weekSessions === 0 ? 1 : 3, action: "/session/new" },
   ];
   if (theSkills.length > 0) {
     const weakest = [...theSkills].sort((a, b) => a.score - b.score)[0];
-    goals.push({ label: `Score 85+ on ${weakest.name}`, progress: weakest.score >= 85 ? 1 : 0, total: 1 });
+    const weakVel = velocity?.find(v => v.name === weakest.name);
+    const target = weakest.score < 70 ? 70 : 85;
+    goals.push({
+      label: `${weakest.name} to ${target}+ (now ${weakest.score}${weakVel?.velocity ? `, ${weakVel.velocity > 0 ? "+" : ""}${weakVel.velocity}/wk` : ""})`,
+      progress: weakest.score >= target ? 1 : 0,
+      total: 1,
+      action: `/session/new?type=behavioral&focus=${weakest.name}`,
+    });
   }
   if (user?.targetCompany) {
-    goals.push({ label: `Practice ${user.targetCompany}-style questions`, progress: 0, total: 2 });
+    goals.push({ label: `Practice ${user.targetCompany}-style questions`, progress: Math.min(2, weekSessions), total: 2, action: "/session/new?type=behavioral" });
+  }
+  if (user?.interviewDate) {
+    const days = Math.ceil((new Date(user.interviewDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+    if (days > 0 && days <= 14) {
+      goals.push({ label: `${days} days left — try Intense difficulty`, progress: 0, total: 1, action: "/session/new?difficulty=intense" });
+    }
   }
   return goals;
 }
