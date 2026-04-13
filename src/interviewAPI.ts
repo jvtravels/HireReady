@@ -26,6 +26,15 @@ export interface SessionResult {
   improvements?: string[];
   nextSteps?: string[];
   resumeUsed?: boolean;
+  jobDescription?: string;
+  jdAnalysis?: {
+    matchScore: number;
+    matchLabel: string;
+    matchedSkills: string[];
+    missingSkills: string[];
+    interviewTips: string[];
+    suggestedFocus: string;
+  } | null;
 }
 
 export interface EvaluationResult {
@@ -67,6 +76,8 @@ export async function saveSessionResult(result: SessionResult, userId?: string):
         transcript: result.transcript || [],
         ai_feedback: result.ai_feedback || "",
         skill_scores: result.skill_scores || null,
+        job_description: result.jobDescription || null,
+        jd_analysis: result.jdAnalysis || null,
       });
       cloudOk = true;
     } catch (err) {
@@ -82,7 +93,7 @@ export async function saveSessionResult(result: SessionResult, userId?: string):
  * Analyze recent sessions to identify weak skills and past question topics.
  * Used for spaced repetition / adaptive question selection.
  */
-export function getAdaptiveHints(sessions: { skill_scores?: Record<string, unknown> | null; questions?: number; type?: string; date?: string }[]): {
+export function getAdaptiveHints(sessions: { skill_scores?: Record<string, unknown> | null; questions?: number; type?: string; date?: string }[], jdMissingSkills?: string[]): {
   weakSkills: string[];
   pastTopics: string[];
   suggestedFocus?: string;
@@ -118,10 +129,20 @@ export function getAdaptiveHints(sessions: { skill_scores?: Record<string, unkno
 
   weakSkills.sort((a, b) => b.priority - a.priority);
 
-  const suggestedFocus = weakSkills.length > 0 ? weakSkills[0].name : undefined;
+  // Merge JD missing skills into weak skills so adaptive questions target JD-specific gaps
+  const weakSkillNames = weakSkills.slice(0, 5).map(s => s.name);
+  if (jdMissingSkills && jdMissingSkills.length > 0) {
+    for (const skill of jdMissingSkills) {
+      if (!weakSkillNames.includes(skill)) {
+        weakSkillNames.push(skill);
+      }
+    }
+  }
+
+  const suggestedFocus = weakSkills.length > 0 ? weakSkills[0].name : (jdMissingSkills?.[0] ?? undefined);
 
   return {
-    weakSkills: weakSkills.slice(0, 5).map(s => s.name),
+    weakSkills: weakSkillNames,
     pastTopics: Array.from(topicSet).slice(0, 10),
     suggestedFocus,
   };
@@ -132,6 +153,7 @@ export async function fetchLLMQuestions(params: {
   type: string; focus?: string; difficulty: string; role: string;
   company?: string; industry?: string; resumeText?: string; language?: string;
   pastTopics?: string[]; weakSkills?: string[]; jobDescription?: string;
+  experienceLevel?: string;
 }): Promise<InterviewStep[] | null> {
   // Client-side rate limit: max 3 question generations per 60s
   if (!checkRateLimit("generate-questions", 3, 60_000)) {
@@ -218,7 +240,9 @@ export async function fetchLLMEvaluation(params: {
 export async function fetchFollowUp(params: {
   question: string; answer: string; type: string; role: string;
   jobDescription?: string; company?: string;
-}): Promise<{ needsFollowUp: boolean; followUpText: string } | null> {
+  followUpDepth?: number;
+  previousFollowUps?: string[];
+}): Promise<{ needsFollowUp: boolean; followUpText: string; followUpType?: string } | null> {
   // Client-side rate limit: max 10 follow-ups per 60s
   if (!checkRateLimit("follow-up", 10, 60_000)) return null;
   try {

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { c, font } from "./tokens";
 import { useAuth } from "./AuthContext";
 import { useDocTitle } from "./useDocTitle";
@@ -44,13 +45,47 @@ export default function DashboardResume() {
   const [analysisSource, setAnalysisSource] = useState<"ai" | "fallback" | null>(null);
   const [truncated, setTruncated] = useState(false);
   const [tooltipVisible, setTooltipVisible] = useState(false);
+  const [jdText, setJdText] = useState("");
+  const [jdComparing, setJdComparing] = useState(false);
+  const [jdResult, setJdResult] = useState<{
+    matchScore: number;
+    matchLabel: string;
+    matchedSkills: string[];
+    missingSkills: string[];
+    keyStrengths: string[];
+    gaps: string[];
+    interviewTips: string[];
+    suggestedFocus: string;
+  } | null>(null);
   const analyzingRef = useRef(false);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const navigate = useNavigate();
 
   // Cleanup abort controller on unmount
   useEffect(() => {
     return () => { abortControllerRef.current?.abort(); };
   }, []);
+
+  const handleJDCompare = async () => {
+    if (!jdText.trim() || !user?.resumeText) return;
+    setJdComparing(true);
+    try {
+      const { getSupabase } = await import("./supabase");
+      const sb = await getSupabase();
+      const token = (await sb.auth.getSession()).data.session?.access_token;
+      const res = await fetch("/api/analyze-jd-match", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ resumeText: user.resumeText, jobDescription: jdText.trim() }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setJdResult(data.analysis);
+        try { sessionStorage.setItem("hirestepx_jd_analysis", JSON.stringify(data.analysis)); } catch { /* quota */ }
+      }
+    } catch { /* non-critical */ }
+    setJdComparing(false);
+  };
 
   useEffect(() => {
     if (user?.resumeText) setResumeText(user.resumeText);
@@ -515,6 +550,159 @@ export default function DashboardResume() {
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* ─── JD Comparison ─── */}
+      <div style={{ background: c.graphite, borderRadius: 14, border: `1px solid ${c.border}`, padding: "20px 24px", marginBottom: 14 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
+          <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={c.ivory} strokeWidth="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+          <h3 style={{ fontFamily: font.ui, fontSize: 14, fontWeight: 600, color: c.ivory, margin: 0 }}>Job Description Match</h3>
+        </div>
+        <textarea
+          value={jdText}
+          onChange={e => setJdText(e.target.value)}
+          placeholder="Paste a job description to compare against your resume..."
+          style={{
+            width: "100%", minHeight: 100, padding: 12, fontFamily: font.ui, fontSize: 13,
+            background: c.obsidian, color: c.ivory, border: `1px solid ${c.border}`, borderRadius: 8,
+            resize: "vertical", outline: "none", boxSizing: "border-box", lineHeight: 1.5,
+          }}
+        />
+        {user?.resumeText && (
+          <button
+            onClick={handleJDCompare}
+            disabled={!jdText.trim() || jdComparing}
+            style={{
+              marginTop: 10, padding: "8px 20px", fontFamily: font.ui, fontSize: 13, fontWeight: 600,
+              background: !jdText.trim() || jdComparing ? c.stone : c.sage, color: c.obsidian,
+              border: "none", borderRadius: 8, cursor: !jdText.trim() || jdComparing ? "not-allowed" : "pointer",
+              opacity: !jdText.trim() || jdComparing ? 0.5 : 1, transition: "opacity 0.2s",
+            }}
+          >
+            {jdComparing ? "Comparing..." : "Compare"}
+          </button>
+        )}
+      </div>
+
+      {jdResult && (
+        <div style={{ background: c.graphite, borderRadius: 14, border: `1px solid ${c.border}`, padding: "20px 24px", marginBottom: 14 }}>
+          {/* Match Score */}
+          <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 18 }}>
+            <div style={{
+              width: 56, height: 56, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center",
+              border: `3px solid ${jdResult.matchScore >= 70 ? c.sage : jdResult.matchScore >= 40 ? c.gilt : c.ember}`,
+            }}>
+              <span style={{ fontFamily: font.mono, fontSize: 20, fontWeight: 700, color: jdResult.matchScore >= 70 ? c.sage : jdResult.matchScore >= 40 ? c.gilt : c.ember }}>
+                {jdResult.matchScore}
+              </span>
+            </div>
+            <div>
+              <div style={{ fontFamily: font.ui, fontSize: 15, fontWeight: 600, color: c.ivory }}>{jdResult.matchLabel}</div>
+              <div style={{ fontFamily: font.ui, fontSize: 12, color: c.stone }}>Match Score</div>
+            </div>
+          </div>
+
+          {/* Matched Skills */}
+          {jdResult.matchedSkills.length > 0 && (
+            <div style={{ marginBottom: 14 }}>
+              <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.stone, textTransform: "uppercase", letterSpacing: "0.05em" }}>Matched Skills</span>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 6 }}>
+                {jdResult.matchedSkills.map((s, i) => (
+                  <span key={i} style={{ fontFamily: font.ui, fontSize: 11, padding: "3px 10px", borderRadius: 20, background: `${c.sage}22`, color: c.sage, border: `1px solid ${c.sage}44` }}>{s}</span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Missing Skills */}
+          {jdResult.missingSkills.length > 0 && (
+            <div style={{ marginBottom: 14 }}>
+              <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.stone, textTransform: "uppercase", letterSpacing: "0.05em" }}>Missing Skills</span>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 6 }}>
+                {jdResult.missingSkills.map((s, i) => (
+                  <span key={i} style={{ fontFamily: font.ui, fontSize: 11, padding: "3px 10px", borderRadius: 20, background: `${c.ember}22`, color: c.ember, border: `1px solid ${c.ember}44` }}>{s}</span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Key Strengths */}
+          {jdResult.keyStrengths.length > 0 && (
+            <div style={{ marginBottom: 14 }}>
+              <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.stone, textTransform: "uppercase", letterSpacing: "0.05em" }}>Key Strengths</span>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 6 }}>
+                {jdResult.keyStrengths.map((s, i) => (
+                  <div key={i} style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+                    <span style={{ width: 5, height: 5, borderRadius: "50%", background: c.sage, flexShrink: 0, marginTop: 6 }} />
+                    <span style={{ fontFamily: font.ui, fontSize: 12.5, color: c.chalk, lineHeight: 1.5 }}>{s}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Gaps */}
+          {jdResult.gaps.length > 0 && (
+            <div style={{ marginBottom: 14 }}>
+              <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.stone, textTransform: "uppercase", letterSpacing: "0.05em" }}>Gaps</span>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 6 }}>
+                {jdResult.gaps.map((g, i) => (
+                  <div key={i} style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+                    <span style={{ width: 5, height: 5, borderRadius: "50%", background: c.gilt, flexShrink: 0, marginTop: 6 }} />
+                    <span style={{ fontFamily: font.ui, fontSize: 12.5, color: c.chalk, lineHeight: 1.5 }}>{g}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Interview Tips */}
+          {jdResult.interviewTips.length > 0 && (
+            <div style={{ marginBottom: 14 }}>
+              <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.stone, textTransform: "uppercase", letterSpacing: "0.05em" }}>Interview Tips</span>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 6 }}>
+                {jdResult.interviewTips.map((t, i) => (
+                  <div key={i} style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+                    <span style={{ width: 5, height: 5, borderRadius: "50%", background: c.ivory, flexShrink: 0, marginTop: 6 }} />
+                    <span style={{ fontFamily: font.ui, fontSize: 12.5, color: c.chalk, lineHeight: 1.5 }}>{t}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Suggested Focus */}
+          {jdResult.suggestedFocus && (
+            <div style={{ marginBottom: 14, padding: 12, background: c.obsidian, borderRadius: 8 }}>
+              <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.stone, textTransform: "uppercase", letterSpacing: "0.05em" }}>Suggested Focus</span>
+              <p style={{ fontFamily: font.ui, fontSize: 13, color: c.ivory, margin: "6px 0 10px" }}>{jdResult.suggestedFocus}</p>
+              <button
+                onClick={() => { navigate("/session-setup"); }}
+                style={{
+                  padding: "6px 14px", fontFamily: font.ui, fontSize: 12, fontWeight: 600,
+                  background: c.sage, color: c.obsidian, border: "none", borderRadius: 6, cursor: "pointer",
+                }}
+              >
+                Practice this
+              </button>
+            </div>
+          )}
+
+          {/* Use JD in next interview */}
+          <button
+            onClick={() => {
+              try { sessionStorage.setItem("hirestepx_jd_text", jdText); } catch { /* quota */ }
+              navigate("/session-setup");
+            }}
+            style={{
+              width: "100%", padding: "10px 16px", fontFamily: font.ui, fontSize: 13, fontWeight: 600,
+              background: "transparent", color: c.sage, border: `1px solid ${c.sage}`, borderRadius: 8,
+              cursor: "pointer", transition: "background 0.2s",
+            }}
+          >
+            Use this JD in your next interview
+          </button>
         </div>
       )}
 

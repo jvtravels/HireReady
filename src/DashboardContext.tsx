@@ -6,12 +6,12 @@ import { scheduleEventNotifications } from "./interviewNotifications";
 import { type InterviewEvent, loadEvents } from "./dashboardHelpers";
 import {
   type PersistedState, type DashboardSession, type SkillData, type TrendPoint,
-  type RealSession,
+  type RealSession, type SkillVelocity, type CompanyReadiness, type ImprovementPlan,
   FREE_SESSION_LIMIT, STARTER_WEEKLY_LIMIT,
   loadState, saveState, getSessionData,
   generateFallbackInsights, generateNotifications, generateGoals,
-  getReturnContext, getSmartScheduleSuggestion, getPrepPlan,
-  computeWeekActivity, computeStreak, computeReadiness, daysUntil,
+  getReturnContext, getSmartScheduleSuggestion, getImprovementPlan,
+  computeWeekActivity, computeStreak, computeReadiness, computeCompanyReadiness, daysUntil,
   generateReport,
   computeBadges, getDailyChallenge, getPracticeReminder,
 } from "./dashboardData";
@@ -22,6 +22,7 @@ interface SessionsContextValue {
   recentSessions: DashboardSession[];
   scoreTrend: TrendPoint[];
   skills: SkillData[];
+  skillVelocity: SkillVelocity[];
   overallStats: { sessionsCompleted: number; avgScore: number; improvement: number; hoursLogged: number };
   hasData: boolean;
   weekActivity: boolean[];
@@ -66,7 +67,8 @@ interface CoreContextValue {
   upcomingGoals: { label: string; progress: number; total: number }[];
   returnContext: string | null;
   smartSchedule: string | null;
-  prepPlan: { label: string; done: boolean }[] | null;
+  prepPlan: ImprovementPlan | null;
+  companyReadiness: CompanyReadiness | null;
   badges: { id: string; label: string; description: string; icon: string; earned: boolean; progress: number }[];
   dailyChallenge: { id: string; label: string; description: string; type: string; focus?: string; difficulty: string; completed: boolean };
   practiceReminder: string | null;
@@ -298,7 +300,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
   }, [user?.id, refreshSessions]);
 
   // Session data
-  const { recentSessions, scoreTrend, skills, overallStats, hasData } = useMemo(
+  const { recentSessions, scoreTrend, skills, overallStats, hasData, skillVelocity } = useMemo(
     () => getSessionData(user?.targetRole || persisted.targetRole, supabaseSessions),
     [user?.targetRole, persisted.targetRole, supabaseSessions],
   );
@@ -365,7 +367,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
   const upcomingGoals = useMemo(() => generateGoals(user, weekActivity, skills), [user, weekActivity, skills]);
   const returnContext = useMemo(() => getReturnContext(recentSessions), [recentSessions]);
   const smartSchedule = useMemo(() => getSmartScheduleSuggestion(user), [user]);
-  const prepPlan = useMemo(() => getPrepPlan(user, recentSessions, skills), [user, recentSessions, skills]);
+  const prepPlan = useMemo(() => getImprovementPlan(user, recentSessions, skills, skillVelocity), [user, recentSessions, skills, skillVelocity]);
   const badges = useMemo(() => computeBadges(recentSessions, skills, currentStreak), [recentSessions, skills, currentStreak]);
   const dailyChallenge = useMemo(() => getDailyChallenge(recentSessions, skills), [recentSessions, skills]);
   const practiceReminder = useMemo(() => getPracticeReminder(recentSessions, currentStreak), [recentSessions, currentStreak]);
@@ -430,6 +432,10 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
 
   const daysLeft = persisted.interviewDate ? daysUntil(persisted.interviewDate) : 0;
   const readinessScore = scoreTrend.length > 0 && skills.length > 0 ? computeReadiness(scoreTrend, skills) : 0;
+  const companyReadiness = useMemo(() => {
+    if (!user?.targetCompany || skills.length === 0) return null;
+    return computeCompanyReadiness(user.targetCompany, skills, skillVelocity, daysLeft);
+  }, [user?.targetCompany, skills, skillVelocity, daysLeft]);
 
   const handleStartSession = useCallback(() => {
     if (atSessionLimit) { setShowUpgradeModal(true); return; }
@@ -500,10 +506,10 @@ ${skills.length > 0 ? `<h2>Skills</h2><table><tr><th>Skill</th><th>Score</th><th
   /* ─── Memoized sub-context values ─── */
 
   const sessionsValue: SessionsContextValue = useMemo(() => ({
-    recentSessions, scoreTrend, skills, overallStats, hasData,
+    recentSessions, scoreTrend, skills, skillVelocity, overallStats, hasData,
     weekActivity, currentStreak, readinessScore,
     calendarEvents, refreshSessions,
-  }), [recentSessions, scoreTrend, skills, overallStats, hasData, weekActivity, currentStreak, readinessScore, calendarEvents, refreshSessions]);
+  }), [recentSessions, scoreTrend, skills, skillVelocity, overallStats, hasData, weekActivity, currentStreak, readinessScore, calendarEvents, refreshSessions]);
 
   const subscriptionValue: SubscriptionContextValue = useMemo(() => ({
     isFree, isStarter, isPro, atSessionLimit,
@@ -522,7 +528,7 @@ ${skills.length > 0 ? `<h2>Skills</h2><table><tr><th>Skill</th><th>Score</th><th
     persisted, updatePersisted,
     displayName, isNewUser, daysLeft,
     aiInsights, notifications, upcomingGoals,
-    returnContext, smartSchedule, prepPlan,
+    returnContext, smartSchedule, prepPlan, companyReadiness,
     badges, dailyChallenge, practiceReminder,
     googleSyncStatus, googleSyncError, hasGoogleToken, syncGoogleCalendar,
     handleStartSession, handleExport, handleDownload, handleExportCSV, handleExportPDF,
@@ -530,7 +536,7 @@ ${skills.length > 0 ? `<h2>Skills</h2><table><tr><th>Skill</th><th>Score</th><th
     persisted, updatePersisted,
     displayName, isNewUser, daysLeft,
     aiInsights, notifications, upcomingGoals,
-    returnContext, smartSchedule, prepPlan,
+    returnContext, smartSchedule, prepPlan, companyReadiness,
     badges, dailyChallenge, practiceReminder,
     googleSyncStatus, googleSyncError, hasGoogleToken, syncGoogleCalendar,
     handleStartSession, handleExport, handleDownload, handleExportCSV, handleExportPDF,

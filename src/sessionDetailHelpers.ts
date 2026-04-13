@@ -178,6 +178,15 @@ export interface LocalSession {
   strengths?: string[];
   improvements?: string[];
   nextSteps?: string[];
+  jobDescription?: string;
+  jdAnalysis?: {
+    matchScore: number;
+    matchLabel: string;
+    matchedSkills: string[];
+    missingSkills: string[];
+    interviewTips: string[];
+    suggestedFocus: string;
+  } | null;
 }
 
 /* ─── Compute historical averages from localStorage for benchmarking ─── */

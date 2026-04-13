@@ -118,7 +118,29 @@ export default async function handler(req: Request): Promise<Response> {
     };
     const skillWeighting = skillWeightingMap[interviewType] || "Weight all skills equally for this case study interview.";
 
-    const prompt = `You are an expert interview coach evaluating a mock ${interviewType} interview for a ${interviewRole} candidate.${company ? ` Company: ${sanitizeForLLM(company, 100)}.` : ""} Difficulty: ${sanitizeForLLM(difficulty, 20) || "standard"}.${languageNote}
+    const diffLevel = sanitizeForLLM(difficulty, 20) || "standard";
+
+    const scoringRubric = diffLevel === "warmup"
+      ? `Scoring rubric (WARMUP — be encouraging, score generously for effort and structure):
+- 90-100: Clear structure with some specifics. Doesn't need perfect metrics — effort and clarity count.
+- 75-89: Reasonable attempt with basic structure. Missing detail is OK if direction is right.
+- 60-74: Minimal structure but shows understanding. Give credit for trying.
+- Below 60: Only if completely off-topic or no substantive content at all.
+NOTE: This is a warmup session. Be supportive and highlight what went WELL before suggesting improvements.`
+      : diffLevel === "intense"
+      ? `Scoring rubric (INTENSE — be rigorous, demand excellence):
+- 90-100: Perfect STAR structure, specific quantified metrics (%, $, x improvement), clear personal attribution with "I", business impact connected to revenue/growth/efficiency, counterfactual reasoning ("without this, X would have happened").
+- 75-89: Good structure with metrics but missing counterfactual reasoning OR incomplete business impact chain.
+- 60-74: Has structure but relies on "we" language, vague metrics ("improved significantly"), or missing clear personal contribution.
+- Below 60: Vague, generic, no metrics, no structure, or uses unsubstantiated claims.
+NOTE: This is an intense session. Hold the candidate to the highest standard. Deduct for missing metrics, vague claims, lack of counterfactual reasoning, and "we" without clarifying individual role.`
+      : `Scoring rubric:
+- 90-100: Uses STAR structure, includes specific metrics/numbers, clearly states personal role, connects to business impact
+- 75-89: Good structure but missing quantified impact OR specific metrics
+- 60-74: Vague, generic, uses "we" without clarifying individual role, no metrics
+- Below 60: Off-topic, extremely brief, or no substantive content`;
+
+    const prompt = `You are an expert interview coach evaluating a mock ${interviewType} interview for a ${interviewRole} candidate.${company ? ` Company: ${sanitizeForLLM(company, 100)}.` : ""} Difficulty: ${diffLevel}.${languageNote}
 ${questionsContext}${resumeContext}${jdContext}
 Transcript:
 ${formattedTranscript}
@@ -127,11 +149,7 @@ ${skillWeighting}
 
 Evaluate the candidate's performance. For each skill score, you MUST cite a specific quote or paraphrase from the candidate's answer that justifies the score.
 
-Scoring rubric:
-- 90-100: Uses STAR structure, includes specific metrics/numbers, clearly states personal role, connects to business impact
-- 75-89: Good structure but missing quantified impact OR specific metrics
-- 60-74: Vague, generic, uses "we" without clarifying individual role, no metrics
-- Below 60: Off-topic, extremely brief, or no substantive content
+${scoringRubric}
 If a job description is provided, evaluate how well the candidate's answers demonstrate the specific skills and requirements mentioned in the JD.
 
 STAR Method Analysis: For each answer, evaluate the presence and quality of each STAR component:

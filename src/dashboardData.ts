@@ -202,7 +202,9 @@ export function getSessionData(targetRole: string, supabaseSessions: RealSession
     hoursLogged: Math.round((recentSessions.reduce((sum, s) => sum + parseInt(s.duration), 0) / 60) * 10) / 10,
   };
 
-  return { recentSessions, scoreTrend, skills, overallStats, hasData: real.length > 0 };
+  const skillVelocity = computeSkillVelocity(real);
+
+  return { recentSessions, scoreTrend, skills, overallStats, hasData: real.length > 0, skillVelocity };
 }
 
 /* ─── Personalized AI Insights ─── */
@@ -473,6 +475,195 @@ export function computeReadiness(trend: { score: number; date: string }[], sk: S
   );
   const consistencyBonus = (recentDays.size / 7) * 10;
   return Math.min(100, Math.round(latestScore * 0.4 + avgSkill * 0.4 + consistencyBonus * 2));
+}
+
+/* ─── Skill Velocity Tracking ─── */
+export interface SkillVelocity {
+  name: string;
+  currentScore: number;
+  firstScore: number;
+  velocity: number; // points per week (positive = improving)
+  trend: "improving" | "stable" | "declining";
+  dataPoints: number;
+}
+
+export function computeSkillVelocity(sessions: RealSession[]): SkillVelocity[] {
+  if (sessions.length < 2) return [];
+  const sorted = [...sessions].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  const skillHistory: Record<string, { score: number; date: number }[]> = {};
+  for (const session of sorted) {
+    if (!session.skill_scores) continue;
+    const ts = new Date(session.date).getTime();
+    for (const [name, raw] of Object.entries(session.skill_scores)) {
+      const score = extractScore(raw);
+      if (!skillHistory[name]) skillHistory[name] = [];
+      skillHistory[name].push({ score, date: ts });
+    }
+  }
+  const velocities: SkillVelocity[] = [];
+  const weekMs = 7 * 24 * 60 * 60 * 1000;
+  for (const [name, points] of Object.entries(skillHistory)) {
+    if (points.length < 2) continue;
+    const first = points[0];
+    const last = points[points.length - 1];
+    const weeksElapsed = Math.max((last.date - first.date) / weekMs, 0.14);
+    const scoreDiff = last.score - first.score;
+    const velocity = Math.round((scoreDiff / weeksElapsed) * 10) / 10;
+    velocities.push({
+      name,
+      currentScore: last.score,
+      firstScore: first.score,
+      velocity,
+      trend: velocity > 1 ? "improving" : velocity < -1 ? "declining" : "stable",
+      dataPoints: points.length,
+    });
+  }
+  return velocities.sort((a, b) => a.velocity - b.velocity);
+}
+
+/* ─── Company Readiness Prediction ─── */
+const COMPANY_SKILL_WEIGHTS: Record<string, Record<string, number>> = {
+  google: { communication: 0.15, structure: 0.15, technicalDepth: 0.25, leadership: 0.2, problemSolving: 0.25 },
+  amazon: { communication: 0.15, structure: 0.1, technicalDepth: 0.15, leadership: 0.35, problemSolving: 0.25 },
+  meta: { communication: 0.2, structure: 0.15, technicalDepth: 0.25, leadership: 0.15, problemSolving: 0.25 },
+  microsoft: { communication: 0.2, structure: 0.2, technicalDepth: 0.2, leadership: 0.2, problemSolving: 0.2 },
+  tcs: { communication: 0.25, structure: 0.2, technicalDepth: 0.25, leadership: 0.1, problemSolving: 0.2 },
+  infosys: { communication: 0.25, structure: 0.2, technicalDepth: 0.25, leadership: 0.1, problemSolving: 0.2 },
+  flipkart: { communication: 0.15, structure: 0.15, technicalDepth: 0.25, leadership: 0.2, problemSolving: 0.25 },
+};
+const DEFAULT_SKILL_WEIGHTS: Record<string, number> = {
+  communication: 0.2, structure: 0.2, technicalDepth: 0.2, leadership: 0.2, problemSolving: 0.2,
+};
+
+export interface CompanyReadiness {
+  readinessPercent: number;
+  readySkills: { name: string; score: number; weight: number }[];
+  atRiskSkills: { name: string; score: number; weight: number; gap: number }[];
+  projectedDaysToReady: number | null;
+  companyName: string;
+  targetScore: number;
+}
+
+export function computeCompanyReadiness(
+  company: string,
+  skills: SkillData[],
+  skillVelocity: SkillVelocity[],
+  _daysUntilInterview: number,
+): CompanyReadiness | null {
+  if (skills.length === 0) return null;
+  const companyKey = company?.toLowerCase().replace(/\s+/g, "").replace(/[^a-z]/g, "") || "";
+  let weights = DEFAULT_SKILL_WEIGHTS;
+  for (const [k, w] of Object.entries(COMPANY_SKILL_WEIGHTS)) {
+    if (companyKey.includes(k) || k.includes(companyKey)) { weights = w; break; }
+  }
+  const targetScore = 80;
+  let weightedScore = 0;
+  let totalWeight = 0;
+  const readySkills: CompanyReadiness["readySkills"] = [];
+  const atRiskSkills: CompanyReadiness["atRiskSkills"] = [];
+  for (const skill of skills) {
+    const weight = weights[skill.name] || 0.2;
+    weightedScore += skill.score * weight;
+    totalWeight += weight;
+    if (skill.score >= targetScore) {
+      readySkills.push({ name: skill.name, score: skill.score, weight });
+    } else {
+      atRiskSkills.push({ name: skill.name, score: skill.score, weight, gap: targetScore - skill.score });
+    }
+  }
+  const readinessPercent = totalWeight > 0 ? Math.min(100, Math.round((weightedScore / totalWeight / targetScore) * 100)) : 0;
+  let projectedDaysToReady: number | null = null;
+  if (atRiskSkills.length > 0 && skillVelocity.length > 0) {
+    let maxDays = 0;
+    for (const risk of atRiskSkills) {
+      const vel = skillVelocity.find(v => v.name === risk.name);
+      if (vel && vel.velocity > 0) {
+        maxDays = Math.max(maxDays, Math.ceil((risk.gap / vel.velocity) * 7));
+      } else { maxDays = -1; break; }
+    }
+    projectedDaysToReady = maxDays >= 0 ? maxDays : null;
+  }
+  readySkills.sort((a, b) => b.weight - a.weight);
+  atRiskSkills.sort((a, b) => b.weight - a.weight);
+  return { readinessPercent, readySkills, atRiskSkills, projectedDaysToReady, companyName: company || "your target company", targetScore };
+}
+
+/* ─── Structured Improvement Plan ─── */
+export interface ImprovementTask {
+  label: string;
+  done: boolean;
+  type?: string;
+  focus?: string;
+  difficulty?: string;
+  reason?: string;
+}
+
+export interface ImprovementPlan {
+  tasks: ImprovementTask[];
+  weekLabel: string;
+  totalWeeks: number;
+  currentWeek: number;
+  focusSkill: string | null;
+  summary: string;
+}
+
+export function getImprovementPlan(
+  user: UserContext,
+  sessions: DashboardSession[],
+  sk?: SkillData[],
+  velocity?: SkillVelocity[],
+): ImprovementPlan | null {
+  if (!user?.interviewDate && sessions.length === 0) return null;
+  const theSkills = sk || [];
+  const days = user?.interviewDate
+    ? Math.ceil((new Date(user.interviewDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+    : null;
+  const totalWeeks = days != null && days > 0 ? Math.min(Math.ceil(days / 7), 8) : 4;
+  const sessionsCount = sessions.length;
+  const currentWeek = Math.min(Math.ceil(sessionsCount / 3) + 1, totalWeeks);
+  const weakest = theSkills.length > 0 ? [...theSkills].sort((a, b) => a.score - b.score)[0] : null;
+  const secondWeakest = theSkills.length > 1 ? [...theSkills].sort((a, b) => a.score - b.score)[1] : null;
+  const strongest = theSkills.length > 0 ? [...theSkills].sort((a, b) => b.score - a.score)[0] : null;
+  const types = new Set(sessions.map(s => s.type));
+  const hasIntense = sessions.some(s => s.difficulty === "intense" || s.difficulty === "hard");
+  const avgScore = sessions.length > 0 ? Math.round(sessions.reduce((s, sess) => s + sess.score, 0) / sessions.length) : 0;
+  const weakVelocity = velocity?.find(v => v.name === weakest?.name);
+  const tasks: ImprovementTask[] = [];
+
+  if (currentWeek <= 2) {
+    // Phase 1: Foundation
+    tasks.push({ label: sessionsCount === 0 ? "Complete your first practice session" : "Complete a behavioral interview session", done: sessionsCount >= 1, type: "behavioral", difficulty: "warmup", reason: "Build confidence with a warmup session" });
+    tasks.push({ label: "Try a technical interview session", done: types.has("technical"), type: "technical", difficulty: "warmup", reason: "Get familiar with technical question format" });
+    tasks.push({ label: "Try a strategic interview session", done: types.has("strategic"), type: "strategic", difficulty: "standard", reason: "Test leadership and strategic thinking" });
+    if (weakest) tasks.push({ label: `Focused session on ${weakest.name} (currently ${weakest.score}/100)`, done: weakest.score >= 70, type: "behavioral", focus: weakest.name, difficulty: "standard", reason: "Your weakest skill — targeted practice has highest impact" });
+  } else if (currentWeek <= 4) {
+    // Phase 2: Skill building
+    if (weakest) tasks.push({ label: `Improve ${weakest.name} to 75+ (currently ${weakest.score})`, done: weakest.score >= 75, focus: weakest.name, type: "behavioral", difficulty: "standard", reason: weakVelocity?.velocity && weakVelocity.velocity > 0 ? `Improving at ${weakVelocity.velocity} pts/week — keep it up` : "Focus on specific examples with metrics" });
+    if (secondWeakest) tasks.push({ label: `Practice ${secondWeakest.name} (currently ${secondWeakest.score})`, done: secondWeakest.score >= 75, focus: secondWeakest.name, type: "behavioral", difficulty: "standard", reason: "Your second-weakest area — balanced improvement matters" });
+    tasks.push({ label: "Score 75+ at Standard difficulty", done: sessions.some(s => (s.difficulty === "standard" || !s.difficulty) && s.score >= 75), difficulty: "standard", reason: "Validate your progress under normal conditions" });
+    if (user?.targetCompany) tasks.push({ label: `Practice ${user.targetCompany}-style questions`, done: sessions.length >= 3, type: "behavioral", difficulty: "standard", reason: `Calibrate to ${user.targetCompany}'s interview style` });
+  } else if (currentWeek <= 6) {
+    // Phase 3: Intensity
+    tasks.push({ label: "Complete a session at Intense difficulty", done: hasIntense, difficulty: "intense", reason: "Test yourself under pressure — real interviews are intense" });
+    if (weakest) tasks.push({ label: `Push ${weakest.name} to 80+ (currently ${weakest.score})`, done: weakest.score >= 80, focus: weakest.name, difficulty: "intense", reason: "Close your biggest gap before interview day" });
+    tasks.push({ label: "Score 85+ on two consecutive sessions", done: (() => { let streak = 0; for (const s of sessions) { if (s.score >= 85) { streak++; if (streak >= 2) return true; } else streak = 0; } return false; })(), difficulty: "standard", reason: "Consistency matters — prove you can perform reliably" });
+    tasks.push({ label: `Average score above 80 (currently ${avgScore})`, done: avgScore >= 80, reason: "Holistic readiness indicator" });
+  } else {
+    // Phase 4: Polish
+    tasks.push({ label: "Score 85+ at Intense difficulty", done: sessions.some(s => (s.difficulty === "intense" || s.difficulty === "hard") && s.score >= 85), difficulty: "intense", reason: "Peak performance under maximum pressure" });
+    if (strongest) tasks.push({ label: `Maintain ${strongest.name} at 85+ (currently ${strongest.score})`, done: strongest.score >= 85, focus: strongest.name, reason: "Don't let your strengths slip during final prep" });
+    tasks.push({ label: "Full mock interview (all question types)", done: types.size >= 3 && hasIntense, difficulty: "intense", reason: "Simulate the real experience end-to-end" });
+    if (days != null && days <= 3) tasks.push({ label: "Final warmup session for confidence", done: false, type: "behavioral", difficulty: "warmup", reason: "Light warmup before the real thing — confidence is key" });
+  }
+
+  const focusSkill = weakest?.name || null;
+  const weekLabel = days != null && days > 0
+    ? `Week ${currentWeek} of ${totalWeeks} · ${days} days until interview`
+    : `Week ${currentWeek} · Keep building momentum`;
+  const summary = weakest && weakVelocity?.velocity && weakVelocity.velocity > 0
+    ? `Focus on ${weakest.name} (improving ${weakVelocity.velocity} pts/week). ${days != null && days > 0 ? `${days} days to go.` : ""}`
+    : weakest ? `Priority: improve ${weakest.name} (${weakest.score}/100)` : "Complete more sessions to unlock personalized recommendations";
+  return { tasks, weekLabel, totalWeeks, currentWeek, focusSkill, summary };
 }
 
 export function computeWeekActivity(sessions: DashboardSession[]): boolean[] {

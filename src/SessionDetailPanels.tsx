@@ -666,3 +666,87 @@ export const WhatsNext = memo(function WhatsNext({ session, skillEntries, isFree
     </div>
   );
 });
+
+/* ─── JD Coverage Section ─── */
+
+export const JDCoverageSection = memo(function JDCoverageSection({
+  jdAnalysis,
+  jobDescription: _jobDescription,
+  skillScores: _skillScores,
+}: {
+  jdAnalysis: { matchScore: number; matchLabel: string; matchedSkills: string[]; missingSkills: string[]; interviewTips: string[]; suggestedFocus: string } | null;
+  jobDescription?: string;
+  skillScores?: Record<string, number | { score: number; reason?: string }> | null;
+}) {
+  if (!jdAnalysis) return null;
+
+  return (
+    <Section animIndex={7}>
+      <SectionTitle icon={<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5" strokeLinecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>}>
+        Job Description Match
+      </SectionTitle>
+
+      {/* Match Score */}
+      <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 20 }}>
+        <div style={{
+          width: 56, height: 56, borderRadius: "50%",
+          background: `conic-gradient(${jdAnalysis.matchScore >= 70 ? c.sage : jdAnalysis.matchScore >= 50 ? c.gilt : c.ember} ${jdAnalysis.matchScore * 3.6}deg, ${c.border} 0deg)`,
+          display: "flex", alignItems: "center", justifyContent: "center",
+        }}>
+          <div style={{ width: 44, height: 44, borderRadius: "50%", background: c.graphite, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <span style={{ fontFamily: font.ui, fontSize: 16, fontWeight: 700, color: c.ivory }}>{jdAnalysis.matchScore}</span>
+          </div>
+        </div>
+        <div>
+          <div style={{ fontFamily: font.ui, fontSize: 15, fontWeight: 600, color: c.ivory }}>{jdAnalysis.matchLabel}</div>
+          <div style={{ fontFamily: font.ui, fontSize: 12, color: c.stone }}>Resume vs Job Description alignment</div>
+        </div>
+      </div>
+
+      {/* Matched Skills */}
+      {jdAnalysis.matchedSkills.length > 0 && (
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: c.sage, marginBottom: 8 }}>Skills You Demonstrated</div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            {jdAnalysis.matchedSkills.map((skill, i) => (
+              <span key={i} style={{ fontFamily: font.ui, fontSize: 11, padding: "4px 10px", borderRadius: 6, background: "rgba(122,158,126,0.1)", color: c.sage, border: "1px solid rgba(122,158,126,0.2)" }}>{skill}</span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Missing Skills */}
+      {jdAnalysis.missingSkills.length > 0 && (
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: c.ember, marginBottom: 8 }}>Skills to Strengthen</div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            {jdAnalysis.missingSkills.map((skill, i) => (
+              <span key={i} style={{ fontFamily: font.ui, fontSize: 11, padding: "4px 10px", borderRadius: 6, background: "rgba(196,112,90,0.1)", color: c.ember, border: "1px solid rgba(196,112,90,0.2)" }}>{skill}</span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Interview Tips */}
+      {jdAnalysis.interviewTips.length > 0 && (
+        <div style={{ marginBottom: 12 }}>
+          <div style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: c.gilt, marginBottom: 8 }}>Preparation Tips for This Role</div>
+          {jdAnalysis.interviewTips.map((tip, i) => (
+            <div key={i} style={{ fontFamily: font.ui, fontSize: 12, color: c.chalk, lineHeight: 1.6, marginBottom: 4, paddingLeft: 12, position: "relative" as const }}>
+              <span style={{ position: "absolute" as const, left: 0, color: c.gilt }}>&#x2022;</span>
+              {tip}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Suggested Focus */}
+      {jdAnalysis.suggestedFocus && (
+        <div style={{ padding: "10px 14px", borderRadius: 8, background: "rgba(212,179,127,0.08)", border: "1px solid rgba(212,179,127,0.15)", marginTop: 8 }}>
+          <span style={{ fontFamily: font.ui, fontSize: 12, color: c.stone }}>Recommended next session: </span>
+          <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: c.gilt }}>{jdAnalysis.suggestedFocus}</span>
+        </div>
+      )}
+    </Section>
+  );
+});

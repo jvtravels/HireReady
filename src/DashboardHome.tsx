@@ -114,6 +114,7 @@ export default function DashboardHome() {
     weekActivity, currentStreak, readinessScore, daysLeft, calendarEvents,
     isFree: _isFree, atSessionLimit, sessionsRemaining: _sessionsRemaining,
     notifications, aiInsights, upcomingGoals, returnContext, smartSchedule, prepPlan,
+    companyReadiness, skillVelocity,
     badges, dailyChallenge, practiceReminder,
     handleStartSession, handleExport, handleDownload, handleExportPDF,
     setShowUpgradeModal: _setShowUpgradeModal,
@@ -127,7 +128,7 @@ export default function DashboardHome() {
   const [sortBy, setSortBy] = useState<"date" | "score">("date");
   const [searchQuery, setSearchQuery] = useState("");
   const [dateRange, setDateRange] = useState<"all" | "week" | "month">("all");
-  const [prepPlanOpen, setPrepPlanOpen] = useState(() => prepPlan ? prepPlan.some(s => !s.done) : true);
+  const [prepPlanOpen, setPrepPlanOpen] = useState(() => prepPlan ? prepPlan.tasks.some(s => !s.done) : true);
   const [rightTab, setRightTab] = useState<"insights" | "goals">("insights");
   const [shareTooltip, setShareTooltip] = useState(false);
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -149,6 +150,12 @@ export default function DashboardHome() {
     return null;
   });
   const [, setDraftTick] = useState(0);
+  const [jdReadiness] = useState<{ matchScore: number; matchLabel: string; matchedSkills: string[]; missingSkills: string[]; suggestedFocus: string; interviewTips: string[] } | null>(() => {
+    try {
+      const raw = sessionStorage.getItem("hirestepx_jd_analysis");
+      return raw ? JSON.parse(raw) : null;
+    } catch { return null; }
+  });
 
   const handleSearch = (val: string) => {
     setSearchQuery(val);
@@ -418,29 +425,52 @@ export default function DashboardHome() {
         </div>
       )}
 
-      {/* ─── Prep Plan Timeline ─── */}
+      {/* ─── Improvement Plan ─── */}
       {prepPlan && (
         <div style={{ ...card, padding: "24px 28px", marginBottom: sp["2xl"] }} className="gradient-border-card">
-          <button className="dash-focus" onClick={() => setPrepPlanOpen(!prepPlanOpen)} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", background: "none", border: "none", cursor: "pointer", padding: 0 }} aria-expanded={prepPlanOpen} aria-label="Toggle Interview Prep Plan">
-            {sectionTitle("Interview Prep Plan", 17)}
+          <button className="dash-focus" onClick={() => setPrepPlanOpen(!prepPlanOpen)} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", background: "none", border: "none", cursor: "pointer", padding: 0 }} aria-expanded={prepPlanOpen} aria-label="Toggle Improvement Plan">
+            <div>
+              {sectionTitle("Improvement Plan", 17)}
+              <p style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, marginTop: 4, textAlign: "left" as const }}>{prepPlan.weekLabel}</p>
+            </div>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <span style={{ fontFamily: font.mono, fontSize: 12, color: c.gilt }}>{prepPlan.filter(s => s.done).length}/{prepPlan.length} complete</span>
+              <span style={{ fontFamily: font.mono, fontSize: 12, color: c.gilt }}>{prepPlan.tasks.filter(s => s.done).length}/{prepPlan.tasks.length}</span>
               <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.stone} strokeWidth="2" strokeLinecap="round" style={{ transition: "transform 0.2s ease", transform: prepPlanOpen ? "rotate(180deg)" : "rotate(0deg)" }}><polyline points="6 9 12 15 18 9"/></svg>
             </div>
           </button>
+          {prepPlan.summary && (
+            <p style={{ fontFamily: font.ui, fontSize: 13, color: c.chalk, margin: "10px 0 0", lineHeight: 1.5 }}>{prepPlan.summary}</p>
+          )}
           {prepPlanOpen && (
             <div style={{ display: "flex", flexDirection: "column", gap: 0, marginTop: 16 }}>
-              {prepPlan.map((step, i) => (
-                <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 12, position: "relative" }}>
-                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0 }}>
-                    <div style={{ width: 20, height: 20, borderRadius: "50%", background: step.done ? c.sage : c.obsidian, border: `2px solid ${step.done ? c.sage : "rgba(245,242,237,0.1)"}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                      {step.done && <svg aria-hidden="true" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={c.obsidian} strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>}
+              {prepPlan.tasks.map((step, i) => {
+                const canNav = !step.done && (step.type || step.focus);
+                const navUrl = `/session/new?type=${step.type || "behavioral"}${step.focus ? `&focus=${step.focus}` : ""}${step.difficulty ? `&difficulty=${step.difficulty}` : ""}`;
+                return (
+                  <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 12, position: "relative" }}>
+                    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0 }}>
+                      <div style={{ width: 20, height: 20, borderRadius: "50%", background: step.done ? c.sage : c.obsidian, border: `2px solid ${step.done ? c.sage : "rgba(245,242,237,0.1)"}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        {step.done && <svg aria-hidden="true" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={c.obsidian} strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>}
+                      </div>
+                      {i < prepPlan.tasks.length - 1 && <div style={{ width: 2, height: 24, background: step.done ? c.sage : "rgba(245,242,237,0.06)", opacity: 0.4 }} />}
                     </div>
-                    {i < prepPlan.length - 1 && <div style={{ width: 2, height: 24, background: step.done ? c.sage : "rgba(245,242,237,0.06)", opacity: 0.4 }} />}
+                    <div style={{ flex: 1, paddingTop: 1, paddingBottom: 4 }}>
+                      {canNav ? (
+                        <button onClick={() => nav(navUrl)} style={{ fontFamily: font.ui, fontSize: 13, color: c.chalk, background: "none", border: "none", padding: 0, cursor: "pointer", textAlign: "left" as const, textDecoration: "none" }}
+                          onMouseEnter={(e) => { e.currentTarget.style.color = c.gilt; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.color = c.chalk; }}>
+                          {step.label} →
+                        </button>
+                      ) : (
+                        <span style={{ fontFamily: font.ui, fontSize: 13, color: step.done ? c.stone : c.chalk, textDecoration: step.done ? "line-through" : "none", opacity: step.done ? 0.6 : 1 }}>{step.label}</span>
+                      )}
+                      {step.reason && !step.done && (
+                        <p style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, margin: "2px 0 0", lineHeight: 1.4 }}>{step.reason}</p>
+                      )}
+                    </div>
                   </div>
-                  <span style={{ fontFamily: font.ui, fontSize: 13, color: step.done ? c.stone : c.chalk, paddingTop: 2, textDecoration: step.done ? "line-through" : "none", opacity: step.done ? 0.6 : 1 }}>{step.label}</span>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
@@ -535,6 +565,104 @@ export default function DashboardHome() {
           </div>
         ))}
       </div>
+
+      {/* ─── Company Readiness ─── */}
+      {companyReadiness && (
+        <div style={{ ...card, padding: "24px 28px", marginBottom: sp["2xl"] }} className="gradient-border-card">
+          <div style={{ display: "flex", alignItems: isMobile ? "flex-start" : "center", gap: 20, flexDirection: isMobile ? "column" : "row" }}>
+            {/* Readiness gauge */}
+            <div style={{ position: "relative", width: 72, height: 72, flexShrink: 0 }}>
+              <svg width="72" height="72" viewBox="0 0 72 72">
+                <circle cx="36" cy="36" r="30" fill="none" stroke="rgba(245,242,237,0.06)" strokeWidth="4" />
+                <circle cx="36" cy="36" r="30" fill="none"
+                  stroke={companyReadiness.readinessPercent >= 80 ? c.sage : companyReadiness.readinessPercent >= 60 ? c.gilt : c.ember}
+                  strokeWidth="4" strokeLinecap="round"
+                  strokeDasharray={2 * Math.PI * 30}
+                  strokeDashoffset={2 * Math.PI * 30 * (1 - companyReadiness.readinessPercent / 100)}
+                  transform="rotate(-90 36 36)"
+                  style={{ transition: "stroke-dashoffset 0.6s ease" }} />
+              </svg>
+              <span style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: font.mono, fontSize: 20, fontWeight: 700, color: companyReadiness.readinessPercent >= 80 ? c.sage : companyReadiness.readinessPercent >= 60 ? c.gilt : c.ember }}>{companyReadiness.readinessPercent}%</span>
+            </div>
+
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6, flexWrap: "wrap" }}>
+                {sectionTitle(`${companyReadiness.companyName} Readiness`, 16)}
+                {companyReadiness.projectedDaysToReady != null && daysLeft > 0 && (
+                  <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, padding: "2px 10px", borderRadius: radius.pill,
+                    color: companyReadiness.projectedDaysToReady <= daysLeft ? c.sage : c.ember,
+                    background: companyReadiness.projectedDaysToReady <= daysLeft ? "rgba(122,158,126,0.1)" : "rgba(196,112,90,0.1)",
+                    border: `1px solid ${companyReadiness.projectedDaysToReady <= daysLeft ? "rgba(122,158,126,0.2)" : "rgba(196,112,90,0.2)"}`,
+                  }}>
+                    {companyReadiness.projectedDaysToReady <= daysLeft ? "On track" : "Behind schedule"}
+                  </span>
+                )}
+              </div>
+
+              {/* Ready skills */}
+              {companyReadiness.readySkills.length > 0 && (
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 6 }}>
+                  {companyReadiness.readySkills.map(s => (
+                    <span key={s.name} style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 500, color: c.sage, padding: "2px 10px", borderRadius: radius.pill, background: "rgba(122,158,126,0.08)", border: "1px solid rgba(122,158,126,0.15)" }}>
+                      {s.name} {s.score}
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              {/* At-risk skills */}
+              {companyReadiness.atRiskSkills.length > 0 && (
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 6 }}>
+                  {companyReadiness.atRiskSkills.map(s => (
+                    <span key={s.name} style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 500, color: c.ember, padding: "2px 10px", borderRadius: radius.pill, background: "rgba(196,112,90,0.08)", border: "1px solid rgba(196,112,90,0.15)" }}>
+                      {s.name} {s.score} (−{s.gap})
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              {/* Projection */}
+              <p style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, margin: 0 }}>
+                {companyReadiness.projectedDaysToReady != null
+                  ? `At current pace, ready in ~${companyReadiness.projectedDaysToReady} days`
+                  : companyReadiness.atRiskSkills.length > 0
+                  ? "Practice more to unlock readiness projection"
+                  : "You're interview-ready!"}
+              </p>
+            </div>
+
+            {/* Practice weakest button */}
+            {companyReadiness.atRiskSkills.length > 0 && (
+              <button onClick={() => nav(`/session/new?focus=${companyReadiness.atRiskSkills[0].name}`)}
+                style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: c.obsidian, background: `linear-gradient(135deg, ${c.gilt}, rgba(212,179,127,0.8))`, border: "none", borderRadius: 10, padding: "10px 18px", cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0, transition: "filter 0.15s" }}
+                onMouseEnter={(e) => { e.currentTarget.style.filter = "brightness(1.1)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.filter = "brightness(1)"; }}>
+                Practice {companyReadiness.atRiskSkills[0].name}
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ─── Skill Velocity ─── */}
+      {skillVelocity.length > 0 && (
+        <div style={{ display: "flex", gap: sp.lg, flexWrap: "wrap", marginBottom: sp["2xl"] }}>
+          {skillVelocity.slice(0, 5).map(sv => (
+            <div key={sv.name} style={{ ...card, padding: "16px 20px", flex: "1 1 140px", minWidth: 140 }} className="gradient-border-card">
+              <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 500, color: c.stone, textTransform: "uppercase" as const, letterSpacing: "0.04em" }}>{sv.name}</span>
+              <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginTop: 6 }}>
+                <span style={{ fontFamily: font.mono, fontSize: 22, fontWeight: 600, color: c.ivory }}>{sv.currentScore}</span>
+                <span style={{ fontFamily: font.mono, fontSize: 12, fontWeight: 600, color: sv.trend === "improving" ? c.sage : sv.trend === "declining" ? c.ember : c.stone }}>
+                  {sv.velocity > 0 ? "+" : ""}{sv.velocity}/wk
+                </span>
+              </div>
+              <div style={{ marginTop: 6, height: 3, background: "rgba(245,242,237,0.06)", borderRadius: 2, overflow: "hidden" }}>
+                <div style={{ height: "100%", width: `${Math.min(100, sv.currentScore)}%`, borderRadius: 2, background: sv.trend === "improving" ? c.sage : sv.trend === "declining" ? c.ember : c.gilt, transition: "width 0.4s ease" }} />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* ─── Upcoming Interviews ─── */}
       {(() => {
@@ -641,6 +769,58 @@ export default function DashboardHome() {
             <button onClick={() => nav("/resume")} style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.gilt, background: "none", border: "none", cursor: "pointer", textDecoration: "underline", textUnderlineOffset: 2, flexShrink: 0, whiteSpace: "nowrap" }}>
               View full profile
             </button>
+          </div>
+        );
+      })()}
+
+      {/* ─── JD Readiness ─── */}
+      {jdReadiness && (() => {
+        const { matchScore, matchLabel, matchedSkills, missingSkills } = jdReadiness;
+        const arcR = 36, arcStroke = 6;
+        const arcCirc = Math.PI * arcR;
+        const arcOffset = arcCirc - (arcCirc * Math.min(matchScore, 100)) / 100;
+        const arcColor = matchScore >= 80 ? c.sage : matchScore >= 50 ? c.gilt : c.ember;
+        return (
+          <div style={{ ...card, padding: isMobile ? "20px 16px" : "24px 28px", marginBottom: sp["2xl"] }} className="gradient-border-card">
+            {sectionTitle("JD Readiness")}
+            <div style={{ display: "flex", gap: 24, alignItems: isMobile ? "flex-start" : "center", flexDirection: isMobile ? "column" : "row", marginTop: 16 }}>
+              {/* Arc */}
+              <div style={{ flexShrink: 0, position: "relative", width: 80, height: 48 }}>
+                <svg width={80} height={48} viewBox="0 0 80 48">
+                  <path d={`M ${4} ${44} A ${arcR} ${arcR} 0 0 1 ${76} ${44}`} fill="none" stroke={c.border} strokeWidth={arcStroke} strokeLinecap="round" />
+                  <path d={`M ${4} ${44} A ${arcR} ${arcR} 0 0 1 ${76} ${44}`} fill="none" stroke={arcColor} strokeWidth={arcStroke} strokeLinecap="round" strokeDasharray={arcCirc} strokeDashoffset={arcOffset} style={{ transition: "stroke-dashoffset 0.6s ease" }} />
+                </svg>
+                <span style={{ position: "absolute", bottom: 0, left: "50%", transform: "translateX(-50%)", fontFamily: font.mono, fontSize: 18, fontWeight: 700, color: arcColor }}>{matchScore}%</span>
+              </div>
+              {/* Details */}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{ fontFamily: font.ui, fontSize: 14, fontWeight: 600, color: c.ivory, margin: 0 }}>{matchLabel}</p>
+                <p style={{ fontFamily: font.ui, fontSize: 12, color: c.chalk, margin: "4px 0 10px" }}>{matchedSkills.length} matched &middot; {missingSkills.length} missing</p>
+                {/* Missing skills */}
+                {missingSkills.length > 0 && (
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>
+                    {missingSkills.slice(0, 4).map(s => (
+                      <span key={s} style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 500, color: c.ember, background: "rgba(239,68,68,0.10)", padding: "3px 10px", borderRadius: radius.pill, whiteSpace: "nowrap" }}>{s}</span>
+                    ))}
+                    {missingSkills.length > 4 && <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>+{missingSkills.length - 4}</span>}
+                  </div>
+                )}
+                {/* Matched skills */}
+                {matchedSkills.length > 0 && (
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                    {matchedSkills.slice(0, 3).map(s => (
+                      <span key={s} style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 500, color: c.sage, background: "rgba(52,211,153,0.10)", padding: "3px 10px", borderRadius: radius.pill, whiteSpace: "nowrap" }}>{s}</span>
+                    ))}
+                    {matchedSkills.length > 3 && <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>+{matchedSkills.length - 3}</span>}
+                  </div>
+                )}
+              </div>
+              {/* Actions */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 8, flexShrink: 0, alignItems: isMobile ? "flex-start" : "flex-end" }}>
+                <button onClick={() => nav("/session-setup")} style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: "#111", background: c.gilt, border: "none", borderRadius: 8, padding: "8px 18px", cursor: "pointer", whiteSpace: "nowrap" }}>Practice gaps</button>
+                <button onClick={() => nav("/session-setup")} style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: c.gilt, background: "none", border: "none", cursor: "pointer", textDecoration: "underline", textUnderlineOffset: 2, padding: 0 }}>Re-analyze</button>
+              </div>
+            </div>
           </div>
         );
       })()}

@@ -100,6 +100,8 @@ export interface SessionRecord {
   transcript: { speaker: string; text: string; time: string }[];
   ai_feedback: string;
   skill_scores: Record<string, number> | null;
+  job_description?: string | null;
+  jd_analysis?: Record<string, unknown> | null;
   created_at: string;
 }
 

@@ -327,6 +327,9 @@ export default function SessionSetup() {
     setCountdown(3);
     setTimeout(() => setCountdown(2), 1000);
     setTimeout(() => setCountdown(1), 2000);
+    if (jdAnalysis) {
+      try { sessionStorage.setItem("hirestepx_jd_analysis", JSON.stringify(jdAnalysis)); } catch { /* quota */ }
+    }
     setTimeout(() => {
       setCountdown(0);
       navigate(`/interview?type=${focusType}&focus=${focusType}&difficulty=standard${targetCompany ? `&company=${encodeURIComponent(targetCompany)}` : ""}&role=${encodeURIComponent(targetRole)}&length=${sessionLength}${useResume ? "" : "&useResume=false"}${interviewLanguage !== "en" ? `&language=${interviewLanguage}` : ""}${jobDescription.trim() ? `&jd=${encodeURIComponent(jobDescription.trim().slice(0, 2000))}` : ""}${micStatus === "denied" ? "&nomic=1" : ""}`);

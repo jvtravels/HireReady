@@ -23,6 +23,27 @@ const COMPANY_GUIDANCE: Record<string, string> = {
   meta: "Meta interviews focus on impact, move fast, and be bold. Ask about scaling systems, building for billions of users, and cross-functional collaboration. Behavioral questions should explore how candidates handle disagreement, prioritize ruthlessly, and measure success.",
 };
 
+const ROLE_COMPETENCIES: Record<string, string> = {
+  "product-manager": "Test: user empathy, prioritization frameworks (RICE/ICE), metrics-driven decisions, roadmap defense, stakeholder management, go-to-market thinking",
+  "software-engineer": "Test: system design trade-offs, code quality vs speed, debugging methodology, technical communication, architecture decisions",
+  "engineering-manager": "Test: team scaling, 1:1 coaching, delivery velocity, cross-functional alignment, hiring/firing decisions, technical strategy",
+  "data-scientist": "Test: statistical rigor, experiment design (A/B testing), business impact translation, model selection rationale, data storytelling",
+  "data-analyst": "Test: SQL proficiency, dashboard design, stakeholder communication, metric definition, root cause analysis",
+  "designer": "Test: design process, user research methodology, design system thinking, stakeholder presentation, accessibility awareness",
+  "marketing": "Test: campaign strategy, channel optimization, ROI measurement, brand positioning, content strategy",
+  "sales": "Test: pipeline management, objection handling, relationship building, quota attainment strategy, competitive positioning",
+  "consultant": "Test: problem structuring, hypothesis-driven analysis, client management, presentation skills, implementation planning",
+};
+
+function getRoleCompetencies(role: string): string {
+  if (!role) return "";
+  const lower = role.toLowerCase();
+  for (const [key, value] of Object.entries(ROLE_COMPETENCIES)) {
+    if (lower.includes(key) || key.split("-").some(part => lower.includes(part))) return value;
+  }
+  return "";
+}
+
 function getCompanyGuidance(company: string): string {
   if (!company) return "";
   const key = company.toLowerCase().replace(/\s+/g, "").replace(/[^a-z]/g, "");
@@ -79,7 +100,7 @@ export default async function handler(req: Request): Promise<Response> {
   }
 
   try {
-    const { type, focus, difficulty, role, company, industry, resumeText, pastTopics, weakSkills, language, jobDescription } = await req.json();
+    const { type, focus, difficulty, role, company, industry, resumeText, pastTopics, weakSkills, language, jobDescription, experienceLevel } = await req.json();
 
     const interviewType = sanitizeForLLM(type, 50) || "behavioral";
     const interviewFocus = sanitizeForLLM(focus, 50) || "general";
@@ -108,10 +129,23 @@ export default async function handler(req: Request): Promise<Response> {
       ? "Rigorous and probing. Ask multi-part questions that demand specific metrics, trade-offs, and quantified business impact. Push for depth — expect the candidate to cite numbers, timelines, and outcomes."
       : "Professional and balanced. Expect specific examples but don't demand exhaustive detail.";
 
+    const expLevel = sanitizeForLLM(experienceLevel, 30);
+    const experienceCalibration = expLevel === "entry" || expLevel === "fresher"
+      ? "EXPERIENCE CALIBRATION: This candidate is entry-level/fresher (0-2 years). Ask about academic projects, internships, learning experiences, and foundational knowledge. Do NOT expect org-wide impact, P&L ownership, or executive stakeholder management. Focus on potential, learning agility, and basic problem-solving."
+      : expLevel === "mid"
+      ? "EXPERIENCE CALIBRATION: This candidate is mid-level (3-7 years). Ask about team ownership, cross-team collaboration, technical depth, and measurable project impact. Expect concrete examples with metrics but not necessarily org-wide strategy."
+      : expLevel === "senior" || expLevel === "lead"
+      ? "EXPERIENCE CALIBRATION: This candidate is senior/lead level (8+ years). Ask about org-wide strategy, executive stakeholder management, team building/mentoring, architectural decisions with business impact, and P&L ownership. Expect deep expertise and leadership evidence."
+      : expLevel === "executive"
+      ? "EXPERIENCE CALIBRATION: This candidate is executive level (VP/C-suite). Ask about company-wide vision, board-level decisions, organizational transformation, market strategy, and culture building. Expect enterprise-scale impact."
+      : "";
+
+    const roleCompContext = getRoleCompetencies(targetRole);
+
     const prompt = `You are an expert interviewer conducting a ${interviewType} mock interview for a ${targetRole} candidate. ${tone}
-${languageContext ? `\nLANGUAGE INSTRUCTION: ${languageContext}\n` : ""}
+${languageContext ? `\nLANGUAGE INSTRUCTION: ${languageContext}\n` : ""}${experienceCalibration ? `\n${experienceCalibration}\n` : ""}
 Context:
-${companyContext ? `- ${companyContext}\n` : ""}${industryContext ? `- ${industryContext}\n` : ""}${focusContext ? `- ${focusContext}\n` : ""}${resumeContext ? `- ${resumeContext}\n` : ""}${jdContext ? `- ${jdContext}\n` : ""}${avoidTopics ? `- ${avoidTopics}\n` : ""}${weakSkillsContext ? `- ${weakSkillsContext}\n` : ""}
+${companyContext ? `- ${companyContext}\n` : ""}${industryContext ? `- ${industryContext}\n` : ""}${focusContext ? `- ${focusContext}\n` : ""}${roleCompContext ? `- Role competencies to test: ${roleCompContext}\n` : ""}${resumeContext ? `- ${resumeContext}\n` : ""}${jdContext ? `- ${jdContext}\n` : ""}${avoidTopics ? `- ${avoidTopics}\n` : ""}${weakSkillsContext ? `- ${weakSkillsContext}\n` : ""}
 Generate exactly 5 interview steps as a JSON array. Sequence: intro, question, question, question, closing. Do NOT include follow-up steps — those are generated dynamically based on the candidate's answers.
 
 Each step: {"type":"intro|question|closing","aiText":"2-3 sentences spoken naturally by the interviewer","scoreNote":"specific evaluation criteria for this question"}

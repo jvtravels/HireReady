@@ -5,6 +5,7 @@ import { useAuth } from "./AuthContext";
 import { getSessionById, saveFeedback, getSessionFeedback } from "./supabase";
 import { useToast } from "./Toast";
 import { extractScore, extractReason, scoreLabelColor, scoreLabel, scoreTip, normalizeType, ratingBadge, computeSpeechMetrics, computeHistoricalAverages, loadLocalSession, loadPreviousSession, type LocalSession } from "./sessionDetailHelpers";
+import { JDCoverageSection } from "./SessionDetailPanels";
 
 /* ─── Reusable Section Card ─── */
 function Section({ children, className, animIndex = 0 }: { children: React.ReactNode; className?: string; animIndex?: number }) {
@@ -1178,6 +1179,15 @@ export default function SessionDetail() {
               );
             })()}
           </Section>
+        )}
+
+        {/* ═══ JD COVERAGE ═══ */}
+        {session.jdAnalysis && (
+          <JDCoverageSection
+            jdAnalysis={session.jdAnalysis}
+            jobDescription={session.jobDescription}
+            skillScores={session.skill_scores}
+          />
         )}
 
         {/* ═══ TRANSCRIPT (collapsible) ═══ */}

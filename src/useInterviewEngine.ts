@@ -49,6 +49,14 @@ export function useInterviewEngine() {
   const interviewLanguage = searchParams.get("language") || "en";
   const jobDescription = searchParams.get("jd") || "";
 
+  const [jdAnalysisData] = useState(() => {
+    try {
+      const raw = sessionStorage.getItem("hirestepx_jd_analysis");
+      if (raw) { sessionStorage.removeItem("hirestepx_jd_analysis"); return JSON.parse(raw); }
+    } catch { /* ignore */ }
+    return null;
+  });
+
   // Restore draft if resuming
   const draftKey = `hirestepx_interview_draft_${user?.id || "anon"}`;
   const isResuming = searchParams.get("resume") === "true";
@@ -118,7 +126,7 @@ export function useInterviewEngine() {
       const cached = localStorage.getItem(`hirestepx_cache_sessions_${user?.id}`);
       if (cached) {
         const pastSessions = JSON.parse(cached);
-        adaptiveHints = getAdaptiveHints(pastSessions);
+        adaptiveHints = getAdaptiveHints(pastSessions, jdAnalysisData?.missingSkills);
       }
     } catch { /* silent */ }
 
@@ -134,6 +142,7 @@ export function useInterviewEngine() {
       pastTopics: adaptiveHints.pastTopics.length > 0 ? adaptiveHints.pastTopics : undefined,
       weakSkills: adaptiveHints.weakSkills.length > 0 ? adaptiveHints.weakSkills : undefined,
       jobDescription: jobDescription || undefined,
+      experienceLevel: user?.experienceLevel || undefined,
     });
     const timeoutPromise = new Promise<null>((_, reject) => {
       const tid = setTimeout(() => reject(new Error("Question generation timed out")), 30_000);
@@ -497,7 +506,8 @@ export function useInterviewEngine() {
 
   // Interview flow: thinking -> speaking (with TTS) -> listening
   const flowGenerationRef = useRef(0);
-  const pendingFollowUpRef = useRef<Promise<{ needsFollowUp: boolean; followUpText: string } | null> | null>(null);
+  const pendingFollowUpRef = useRef<Promise<{ needsFollowUp: boolean; followUpText: string; followUpType?: string } | null> | null>(null);
+  const followUpDepthRef = useRef(0);
 
   useEffect(() => {
     if (phase === "done") return;
@@ -652,20 +662,47 @@ export function useInterviewEngine() {
     }
 
     // Fire follow-up check in background
-    if (currentStepObj?.type === "question" && !isLastStep && answerText.length > 10 && !answerText.startsWith("[Answer recorded")) {
-      pendingFollowUpRef.current = fetchFollowUp({
-        question: currentStepObj.aiText,
-        answer: answerText,
-        type: interviewType,
-        role: user?.targetRole || "senior role",
-        jobDescription: jobDescription || undefined,
-        company: user?.targetCompany,
-      });
+    const canFollowUp = (currentStepObj?.type === "question" || currentStepObj?.type === "follow-up")
+      && !isLastStep && answerText.length > 10 && !answerText.startsWith("[Answer recorded");
+
+    if (canFollowUp) {
+      // Collect recent follow-up Q&A pairs for context
+      const recentFollowUps: string[] = [];
+      for (let i = Math.max(0, currentStep - 4); i <= currentStep; i++) {
+        const s = interviewScript[i];
+        if (s?.type === "follow-up") {
+          recentFollowUps.push(`Q: ${s.aiText}`);
+        }
+      }
+      if (answerText) recentFollowUps.push(`A: ${answerText}`);
+
+      const depth = currentStepObj?.type === "follow-up" ? followUpDepthRef.current + 1 : 0;
+
+      if (depth <= 2) {
+        followUpDepthRef.current = depth;
+        pendingFollowUpRef.current = fetchFollowUp({
+          question: currentStepObj!.aiText,
+          answer: answerText,
+          type: interviewType,
+          role: user?.targetRole || "senior role",
+          jobDescription: jobDescription || undefined,
+          company: user?.targetCompany,
+          followUpDepth: depth,
+          previousFollowUps: recentFollowUps.length > 0 ? recentFollowUps : undefined,
+        });
+      } else {
+        pendingFollowUpRef.current = null;
+      }
     } else {
       pendingFollowUpRef.current = null;
     }
 
     if (!isLastStep) {
+      // Reset follow-up depth when advancing to a new original question
+      const nextStep = interviewScript[currentStep + 1];
+      if (nextStep?.type === "question" || nextStep?.type === "intro" || nextStep?.type === "closing") {
+        followUpDepthRef.current = 0;
+      }
       setCurrentStep(currentStep + 1);
     } else {
       setPhase("done");
@@ -862,6 +899,8 @@ export function useInterviewEngine() {
         improvements,
         nextSteps,
         resumeUsed: !!user?.resumeText,
+        jobDescription: jobDescription || undefined,
+        jdAnalysis: jdAnalysisData || null,
       }, user?.id);
       localOk = saveResult.localOk;
       cloudOk = saveResult.cloudOk;
