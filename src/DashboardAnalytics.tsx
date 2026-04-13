@@ -30,7 +30,7 @@ function ReadinessGauge({ score }: { score: number }) {
       </svg>
       <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
         <span style={{ fontFamily: font.mono, fontSize: 28, fontWeight: 700, color, lineHeight: 1 }}>{score}</span>
-        <span style={{ fontFamily: font.ui, fontSize: 9, color: c.stone, marginTop: 2 }}>readiness</span>
+        <span style={{ fontFamily: font.ui, fontSize: 10, color: c.stone, marginTop: 2 }}>readiness</span>
       </div>
     </div>
   );
@@ -241,7 +241,7 @@ export default function AnalyticsPage() {
               { label: "Consistency", value: `${recentDays}/7d`, weight: "20%" },
             ].map(r => (
               <div key={r.label} style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <span style={{ fontFamily: font.ui, fontSize: 9, color: c.stone }}>{r.label}</span>
+                <span style={{ fontFamily: font.ui, fontSize: 10, color: c.stone }}>{r.label}</span>
                 <span style={{ fontFamily: font.mono, fontSize: 10, color: c.chalk, fontWeight: 600 }}>{r.value}</span>
               </div>
             ))}
@@ -277,7 +277,7 @@ export default function AnalyticsPage() {
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
             <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5" strokeLinecap="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
             <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: c.ivory }}>Today's Challenge</span>
-            <span style={{ fontFamily: font.ui, fontSize: 9, fontWeight: 500, color: c.obsidian, background: dailyChallenge.completed ? c.sage : c.gilt, borderRadius: 4, padding: "2px 6px", marginLeft: "auto" }}>
+            <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 500, color: c.obsidian, background: dailyChallenge.completed ? c.sage : c.gilt, borderRadius: 4, padding: "2px 6px", marginLeft: "auto" }}>
               {dailyChallenge.completed ? "Done" : dailyChallenge.difficulty}
             </span>
           </div>
@@ -536,7 +536,7 @@ export default function AnalyticsPage() {
         <div style={{ display: "flex", gap: 6, alignItems: "flex-end", height: 100 }}>
           {weeklyData.map((w, i) => (
             <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
-              <span style={{ fontFamily: font.mono, fontSize: 9, color: w.sessions > 0 ? c.ivory : "transparent" }}>{w.sessions}</span>
+              <span style={{ fontFamily: font.mono, fontSize: 10, color: w.sessions > 0 ? c.ivory : "transparent" }}>{w.sessions}</span>
               <div style={{
                 width: "100%", borderRadius: 4,
                 height: Math.max(4, (w.sessions / maxWeeklySessions) * 72),

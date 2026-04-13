@@ -566,7 +566,7 @@ export default function SessionDetail() {
               boxShadow: `0 0 24px ${scoreLabelColor(session.score)}20`,
             }}>
               <span aria-hidden="true" style={{ fontFamily: font.mono, fontSize: 24, fontWeight: 700, color: c.ivory, lineHeight: 1 }}>{session.score}</span>
-              <span aria-hidden="true" style={{ fontSize: 9, color: scoreLabelColor(session.score), fontWeight: 600 }}>/100</span>
+              <span aria-hidden="true" style={{ fontSize: 10, color: scoreLabelColor(session.score), fontWeight: 600 }}>/100</span>
             </div>
             <span title={scoreTip(session.score)} style={{ fontSize: 11, fontWeight: 600, color: scoreLabelColor(session.score), marginTop: 6, display: "block", cursor: "help" }}>
               {scoreLabel(session.score)}
@@ -898,8 +898,8 @@ export default function SessionDetail() {
                 </div>
                 {/* Lowest / Highest range */}
                 <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-                  <div><span style={{ fontSize: 9, color: c.stone, display: "block" }}>Lowest</span><span style={{ fontFamily: font.mono, fontSize: 11, color: c.chalk }}>{Math.max(0, speechMetrics.silenceRatio - 12)}</span></div>
-                  <div style={{ textAlign: "right" }}><span style={{ fontSize: 9, color: c.stone, display: "block" }}>Highest</span><span style={{ fontFamily: font.mono, fontSize: 11, color: c.chalk }}>{Math.min(100, speechMetrics.silenceRatio + 18)}</span></div>
+                  <div><span style={{ fontSize: 10, color: c.stone, display: "block" }}>Lowest</span><span style={{ fontFamily: font.mono, fontSize: 11, color: c.chalk }}>{Math.max(0, speechMetrics.silenceRatio - 12)}</span></div>
+                  <div style={{ textAlign: "right" }}><span style={{ fontSize: 10, color: c.stone, display: "block" }}>Highest</span><span style={{ fontFamily: font.mono, fontSize: 11, color: c.chalk }}>{Math.min(100, speechMetrics.silenceRatio + 18)}</span></div>
                 </div>
                 <div style={{ fontSize: 10, color: c.stone }}>Target: 0–20%</div>
               </div>
@@ -917,8 +917,8 @@ export default function SessionDetail() {
                 </div>
                 {/* Lowest / Highest range */}
                 <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-                  <div><span style={{ fontSize: 9, color: c.stone, display: "block" }}>Lowest</span><span style={{ fontFamily: font.mono, fontSize: 11, color: c.chalk }}>{Math.max(0, speechMetrics.energy - 20)}</span></div>
-                  <div style={{ textAlign: "right" }}><span style={{ fontSize: 9, color: c.stone, display: "block" }}>Highest</span><span style={{ fontFamily: font.mono, fontSize: 11, color: c.chalk }}>{Math.min(100, speechMetrics.energy + 10)}</span></div>
+                  <div><span style={{ fontSize: 10, color: c.stone, display: "block" }}>Lowest</span><span style={{ fontFamily: font.mono, fontSize: 11, color: c.chalk }}>{Math.max(0, speechMetrics.energy - 20)}</span></div>
+                  <div style={{ textAlign: "right" }}><span style={{ fontSize: 10, color: c.stone, display: "block" }}>Highest</span><span style={{ fontFamily: font.mono, fontSize: 11, color: c.chalk }}>{Math.min(100, speechMetrics.energy + 10)}</span></div>
                 </div>
                 <div style={{ fontSize: 10, color: c.stone }}>Target: 60–100</div>
               </div>
@@ -955,11 +955,11 @@ export default function SessionDetail() {
                 </div>
                 <div style={{ display: "flex", gap: 8, marginBottom: 6 }}>
                   <div style={{ flex: 1, padding: "4px 8px", borderRadius: 6, background: "rgba(122,158,126,0.08)", border: "1px solid rgba(122,158,126,0.15)", textAlign: "center" }}>
-                    <span style={{ fontSize: 9, color: c.stone, display: "block" }}>Power Words</span>
+                    <span style={{ fontSize: 10, color: c.stone, display: "block" }}>Power Words</span>
                     <span style={{ fontFamily: font.mono, fontSize: 13, fontWeight: 600, color: c.sage }}>{speechMetrics.powerWordCount}</span>
                   </div>
                   <div style={{ flex: 1, padding: "4px 8px", borderRadius: 6, background: "rgba(196,112,90,0.08)", border: "1px solid rgba(196,112,90,0.15)", textAlign: "center" }}>
-                    <span style={{ fontSize: 9, color: c.stone, display: "block" }}>Hedging</span>
+                    <span style={{ fontSize: 10, color: c.stone, display: "block" }}>Hedging</span>
                     <span style={{ fontFamily: font.mono, fontSize: 13, fontWeight: 600, color: speechMetrics.hedgingCount > 3 ? c.ember : c.chalk }}>{speechMetrics.hedgingCount}</span>
                   </div>
                 </div>
@@ -1005,11 +1005,11 @@ export default function SessionDetail() {
                 </div>
                 <div style={{ display: "flex", gap: 8, marginBottom: 6 }}>
                   <div style={{ flex: 1, padding: "4px 8px", borderRadius: 6, background: "rgba(255,255,255,0.02)", border: `1px solid ${c.border}`, textAlign: "center" }}>
-                    <span style={{ fontSize: 9, color: c.stone, display: "block" }}>Consistency</span>
+                    <span style={{ fontSize: 10, color: c.stone, display: "block" }}>Consistency</span>
                     <span style={{ fontFamily: font.mono, fontSize: 13, fontWeight: 600, color: speechMetrics.answerConsistency >= 70 ? c.sage : c.gilt }}>{speechMetrics.answerConsistency}%</span>
                   </div>
                   <div style={{ flex: 1, padding: "4px 8px", borderRadius: 6, background: "rgba(255,255,255,0.02)", border: `1px solid ${c.border}`, textAlign: "center" }}>
-                    <span style={{ fontSize: 9, color: c.stone, display: "block" }}>Total Words</span>
+                    <span style={{ fontSize: 10, color: c.stone, display: "block" }}>Total Words</span>
                     <span style={{ fontFamily: font.mono, fontSize: 13, fontWeight: 600, color: c.chalk }}>{speechMetrics.wordCount}</span>
                   </div>
                 </div>
@@ -1038,7 +1038,7 @@ export default function SessionDetail() {
                       </div>
                     </div>
                     <span style={{ fontSize: 12, fontWeight: 600, color: c.ivory, display: "block" }}>{label}</span>
-                    <span style={{ fontSize: 9, color: c.stone }}>
+                    <span style={{ fontSize: 10, color: c.stone }}>
                       {component === "situation" ? "Context Setting" : component === "task" ? "Your Role" : component === "action" ? "Steps Taken" : "Impact & Metrics"}
                     </span>
                   </div>
@@ -1070,7 +1070,7 @@ export default function SessionDetail() {
               <div style={{ padding: "20px", borderRadius: 14, background: c.obsidian, border: `1px solid ${c.border}` }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
                   <span style={{ fontSize: 13, fontWeight: 600, color: c.ivory }}>Performance Positioning</span>
-                  <span style={{ fontSize: 9, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", color: c.gilt, background: "rgba(212,179,127,0.1)", padding: "3px 8px", borderRadius: 4 }}>Quadrant View</span>
+                  <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", color: c.gilt, background: "rgba(212,179,127,0.1)", padding: "3px 8px", borderRadius: 4 }}>Quadrant View</span>
                 </div>
 
                 {/* Quadrant chart */}
@@ -1105,19 +1105,19 @@ export default function SessionDetail() {
                           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gridTemplateRows: "1fr 1fr", width: "100%", height: "100%", position: "absolute", inset: 0 }}>
                             <div style={{ background: "rgba(212,179,127,0.06)", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", padding: 8, borderRight: `1px solid ${c.border}`, borderBottom: `1px solid ${c.border}` }}>
                               <span style={{ fontSize: 10, fontWeight: 600, color: c.chalk }}>Great Answers</span>
-                              <span style={{ fontSize: 9, color: c.stone }}>Work on Delivery</span>
+                              <span style={{ fontSize: 10, color: c.stone }}>Work on Delivery</span>
                             </div>
                             <div style={{ background: "rgba(122,158,126,0.08)", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", padding: 8, borderBottom: `1px solid ${c.border}` }}>
                               <span style={{ fontSize: 10, fontWeight: 600, color: c.sage }}>Interview Ready</span>
-                              <span style={{ fontSize: 9, color: c.stone }}>Strong All Around</span>
+                              <span style={{ fontSize: 10, color: c.stone }}>Strong All Around</span>
                             </div>
                             <div style={{ background: "rgba(196,112,90,0.04)", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", padding: 8, borderRight: `1px solid ${c.border}` }}>
                               <span style={{ fontSize: 10, fontWeight: 600, color: c.stone }}>Keep Practicing</span>
-                              <span style={{ fontSize: 9, color: c.stone }}>Room to Grow</span>
+                              <span style={{ fontSize: 10, color: c.stone }}>Room to Grow</span>
                             </div>
                             <div style={{ background: "rgba(212,179,127,0.03)", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", padding: 8 }}>
                               <span style={{ fontSize: 10, fontWeight: 600, color: c.chalk }}>Strong Delivery</span>
-                              <span style={{ fontSize: 9, color: c.stone }}>Improve Content</span>
+                              <span style={{ fontSize: 10, color: c.stone }}>Improve Content</span>
                             </div>
                           </div>
                           {/* Your score dot */}
@@ -1161,7 +1161,7 @@ export default function SessionDetail() {
               <div style={{ padding: "20px", borderRadius: 14, background: c.obsidian, border: `1px solid ${c.border}` }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
                   <span style={{ fontSize: 13, fontWeight: 600, color: c.ivory }}>Score Breakdown</span>
-                  {historicalAvg && <span style={{ fontSize: 9, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", color: c.sage, background: "rgba(122,158,126,0.1)", padding: "3px 8px", borderRadius: 4 }}>Benchmarked</span>}
+                  {historicalAvg && <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", color: c.sage, background: "rgba(122,158,126,0.1)", padding: "3px 8px", borderRadius: 4 }}>Benchmarked</span>}
                 </div>
 
                 <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
@@ -1256,7 +1256,7 @@ export default function SessionDetail() {
                         <span style={{ fontSize: 11, fontWeight: 700, color: c.gilt }}>Q{i + 1}</span>
                       </div>
                       <div style={{ flex: 1 }}>
-                        <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: c.gilt, display: "block", marginBottom: 4 }}>Interview Question</span>
+                        <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: c.gilt, display: "block", marginBottom: 4 }}>Interview Question</span>
                         <p style={{ fontSize: 14, fontWeight: 500, color: c.ivory, lineHeight: 1.5, margin: 0 }}>{item.question}</p>
                       </div>
                     </div>
@@ -1295,7 +1295,7 @@ export default function SessionDetail() {
                               const colors = { present: { bg: "rgba(122,158,126,0.12)", text: c.sage, icon: "\u2713" }, partial: { bg: "rgba(212,179,127,0.12)", text: c.gilt, icon: "\u25CB" }, missing: { bg: "rgba(196,112,90,0.12)", text: c.ember, icon: "\u2717" } };
                               const style = colors[status as keyof typeof colors] || colors.missing;
                               return (
-                                <span key={comp} style={{ fontSize: 9, fontWeight: 600, padding: "2px 8px", borderRadius: 4, background: style.bg, color: style.text }}>
+                                <span key={comp} style={{ fontSize: 10, fontWeight: 600, padding: "2px 8px", borderRadius: 4, background: style.bg, color: style.text }}>
                                   {style.icon} {comp.charAt(0).toUpperCase() + comp.slice(1)}
                                 </span>
                               );

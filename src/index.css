@@ -783,8 +783,16 @@ input[type="range"]::-moz-range-thumb {
   transform: translateY(0) scale(0.995);
 }
 
-/* ─── Responsive: Tablet (≤ 900px) ─── */
-@media (max-width: 900px) {
+/* ─── Touch device: minimum tap targets ─── */
+@media (pointer: coarse) {
+  button, a, [role="button"], input[type="range"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+/* ─── Responsive: Tablet (≤ 768px) ─── */
+@media (max-width: 768px) {
   .settings-form-grid { grid-template-columns: 1fr !important; }
   .settings-chip-grid { grid-template-columns: repeat(2, 1fr) !important; }
   .stat-grid { grid-template-columns: repeat(2, 1fr) !important; }

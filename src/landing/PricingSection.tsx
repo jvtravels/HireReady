@@ -192,7 +192,7 @@ function PricingCard({ plan, delay }: { plan: (typeof plans)[0]; delay: number }
       borderColor: plan.featured ? `rgba(212,179,127,0.2)` : undefined,
     }}>
       {plan.featured && <div style={{ position: "absolute", top: -1, left: 0, right: 0, height: 2, background: `linear-gradient(90deg, transparent, ${c.gilt}, transparent)` }} />}
-      {plan.featured && <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: c.gilt, display: "block", marginBottom: 16 }}>Most Popular</span>}
+      {plan.featured && <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: c.gilt, display: "block", marginBottom: 16 }}>Most Popular</span>}
 
       <h3 style={{ fontFamily: font.ui, fontSize: 18, fontWeight: 600, color: c.ivory, marginBottom: 8, position: "relative" }}>{isSingle ? "Sessions" : plan.name}</h3>
       <div style={{ marginBottom: 16, position: "relative" }}>
@@ -204,18 +204,18 @@ function PricingCard({ plan, delay }: { plan: (typeof plans)[0]; delay: number }
         <div style={{ marginBottom: 20, position: "relative" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10 }}>
             <button onClick={() => setQuantity(q => Math.max(1, q - 1))} disabled={quantity <= 1} aria-label="Decrease session count"
-              style={{ width: 32, height: 32, borderRadius: 8, border: `1px solid ${c.borderHover}`, background: "rgba(255,255,255,0.03)", color: quantity <= 1 ? c.border : c.ivory, fontSize: 18, fontWeight: 600, cursor: quantity <= 1 ? "default" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.15s", fontFamily: font.mono }}>−</button>
+              style={{ width: 44, height: 44, borderRadius: 10, border: `1px solid ${c.borderHover}`, background: "rgba(255,255,255,0.03)", color: quantity <= 1 ? c.border : c.ivory, fontSize: 18, fontWeight: 600, cursor: quantity <= 1 ? "default" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.15s", fontFamily: font.mono }}>−</button>
             <div style={{ flex: 1, position: "relative" }}>
               <input type="range" min={1} max={10} value={quantity} onChange={e => setQuantity(Number(e.target.value))}
                 aria-label="Number of sessions"
                 style={{ width: "100%", height: 6, appearance: "none", WebkitAppearance: "none", background: `linear-gradient(to right, ${c.gilt} 0%, ${c.gilt} ${(quantity - 1) / 9 * 100}%, rgba(255,255,255,0.08) ${(quantity - 1) / 9 * 100}%, rgba(255,255,255,0.08) 100%)`, borderRadius: 3, outline: "none", cursor: "pointer" }} />
               <div style={{ display: "flex", justifyContent: "space-between", marginTop: 4 }}>
-                <span style={{ fontFamily: font.mono, fontSize: 9, color: c.stone }}>1</span>
-                <span style={{ fontFamily: font.mono, fontSize: 9, color: c.stone }}>10</span>
+                <span style={{ fontFamily: font.mono, fontSize: 11, color: c.stone }}>1</span>
+                <span style={{ fontFamily: font.mono, fontSize: 11, color: c.stone }}>10</span>
               </div>
             </div>
             <button onClick={() => setQuantity(q => Math.min(10, q + 1))} disabled={quantity >= 10} aria-label="Increase session count"
-              style={{ width: 32, height: 32, borderRadius: 8, border: `1px solid ${c.borderHover}`, background: "rgba(255,255,255,0.03)", color: quantity >= 10 ? c.border : c.ivory, fontSize: 18, fontWeight: 600, cursor: quantity >= 10 ? "default" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.15s", fontFamily: font.mono }}>+</button>
+              style={{ width: 44, height: 44, borderRadius: 10, border: `1px solid ${c.borderHover}`, background: "rgba(255,255,255,0.03)", color: quantity >= 10 ? c.border : c.ivory, fontSize: 18, fontWeight: 600, cursor: quantity >= 10 ? "default" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.15s", fontFamily: font.mono }}>+</button>
           </div>
           <p style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, textAlign: "center" }}>₹10 per session · No expiry</p>
         </div>
@@ -249,7 +249,7 @@ function PricingCard({ plan, delay }: { plan: (typeof plans)[0]; delay: number }
       {error && (
         <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginTop: 8 }}>
           <p style={{ fontFamily: font.ui, fontSize: 11, color: c.ember, margin: 0 }}>{error}</p>
-          <button onClick={() => setError("")} style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, color: c.gilt, background: "none", border: `1px solid rgba(212,179,127,0.3)`, borderRadius: 4, padding: "2px 8px", cursor: "pointer" }}>Dismiss</button>
+          <button onClick={() => setError("")} style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.gilt, background: "none", border: `1px solid rgba(212,179,127,0.3)`, borderRadius: 6, padding: "6px 12px", cursor: "pointer", minHeight: 32 }}>Dismiss</button>
         </div>
       )}
     </div>

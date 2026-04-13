@@ -108,7 +108,7 @@ export default function Interview() {
               background: "rgba(0,0,0,0.6)",
             }}>
               <div style={{ width: 6, height: 6, borderRadius: "50%", background: c.ember, animation: "recordPulse 1.5s ease-in-out infinite" }} />
-              <span style={{ fontFamily: font.ui, fontSize: 9, color: c.ivory }}>REC</span>
+              <span style={{ fontFamily: font.ui, fontSize: 10, color: c.ivory }}>REC</span>
             </div>
           </div>
         )}

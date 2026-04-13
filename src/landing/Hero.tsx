@@ -178,7 +178,7 @@ function HeroMockup() {
             { label: "Depth", value: 91, color: c.ember },
           ].map((m) => (
             <div key={m.label} style={{ flex: 1, padding: "10px 12px", background: c.obsidian, borderRadius: 8, border: `1px solid ${c.border}` }}>
-              <span style={{ fontFamily: font.ui, fontSize: 9, color: c.stone, letterSpacing: "0.06em", textTransform: "uppercase", display: "block", marginBottom: 4 }}>{m.label}</span>
+              <span style={{ fontFamily: font.ui, fontSize: 10, color: c.stone, letterSpacing: "0.06em", textTransform: "uppercase", display: "block", marginBottom: 4 }}>{m.label}</span>
               <span style={{ fontFamily: font.mono, fontSize: 18, fontWeight: 600, color: m.color }}>{m.value}</span>
             </div>
           ))}

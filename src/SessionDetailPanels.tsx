@@ -180,7 +180,7 @@ export const SessionHeader = memo(function SessionHeader({ type, dateLabel, scor
           boxShadow: `0 0 24px ${scoreLabelColor(score)}20`,
         }}>
           <span aria-hidden="true" style={{ fontFamily: font.mono, fontSize: 24, fontWeight: 700, color: c.ivory, lineHeight: 1 }}>{score}</span>
-          <span aria-hidden="true" style={{ fontSize: 9, color: scoreLabelColor(score), fontWeight: 600 }}>/100</span>
+          <span aria-hidden="true" style={{ fontSize: 10, color: scoreLabelColor(score), fontWeight: 600 }}>/100</span>
         </div>
         <span title={scoreTip(score)} style={{ fontSize: 11, fontWeight: 600, color: scoreLabelColor(score), marginTop: 6, display: "block", cursor: "help" }}>
           {scoreLabel(score)}
@@ -302,8 +302,8 @@ export const SpeechMetricsSection = memo(function SpeechMetricsSection({ metrics
             </span>
           </div>
           <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-            <div><span style={{ fontSize: 9, color: c.stone, display: "block" }}>Lowest</span><span style={{ fontFamily: font.mono, fontSize: 11, color: c.chalk }}>{Math.max(0, metrics.silenceRatio - 12)}</span></div>
-            <div style={{ textAlign: "right" }}><span style={{ fontSize: 9, color: c.stone, display: "block" }}>Highest</span><span style={{ fontFamily: font.mono, fontSize: 11, color: c.chalk }}>{Math.min(100, metrics.silenceRatio + 18)}</span></div>
+            <div><span style={{ fontSize: 10, color: c.stone, display: "block" }}>Lowest</span><span style={{ fontFamily: font.mono, fontSize: 11, color: c.chalk }}>{Math.max(0, metrics.silenceRatio - 12)}</span></div>
+            <div style={{ textAlign: "right" }}><span style={{ fontSize: 10, color: c.stone, display: "block" }}>Highest</span><span style={{ fontFamily: font.mono, fontSize: 11, color: c.chalk }}>{Math.min(100, metrics.silenceRatio + 18)}</span></div>
           </div>
           <div style={{ fontSize: 10, color: c.stone }}>Target: 0-20%</div>
         </div>
@@ -320,8 +320,8 @@ export const SpeechMetricsSection = memo(function SpeechMetricsSection({ metrics
             </span>
           </div>
           <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-            <div><span style={{ fontSize: 9, color: c.stone, display: "block" }}>Lowest</span><span style={{ fontFamily: font.mono, fontSize: 11, color: c.chalk }}>{Math.max(0, metrics.energy - 20)}</span></div>
-            <div style={{ textAlign: "right" }}><span style={{ fontSize: 9, color: c.stone, display: "block" }}>Highest</span><span style={{ fontFamily: font.mono, fontSize: 11, color: c.chalk }}>{Math.min(100, metrics.energy + 10)}</span></div>
+            <div><span style={{ fontSize: 10, color: c.stone, display: "block" }}>Lowest</span><span style={{ fontFamily: font.mono, fontSize: 11, color: c.chalk }}>{Math.max(0, metrics.energy - 20)}</span></div>
+            <div style={{ textAlign: "right" }}><span style={{ fontSize: 10, color: c.stone, display: "block" }}>Highest</span><span style={{ fontFamily: font.mono, fontSize: 11, color: c.chalk }}>{Math.min(100, metrics.energy + 10)}</span></div>
           </div>
           <div style={{ fontSize: 10, color: c.stone }}>Target: 60-100</div>
         </div>
@@ -376,7 +376,7 @@ export const ResponseAnalysis = memo(function ResponseAnalysis({ items }: { item
                   <span style={{ fontSize: 11, fontWeight: 700, color: c.gilt }}>Q{i + 1}</span>
                 </div>
                 <div style={{ flex: 1 }}>
-                  <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: c.gilt, display: "block", marginBottom: 4 }}>Interview Question</span>
+                  <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: c.gilt, display: "block", marginBottom: 4 }}>Interview Question</span>
                   <p style={{ fontSize: 14, fontWeight: 500, color: c.ivory, lineHeight: 1.5, margin: 0 }}>{item.question}</p>
                 </div>
               </div>

@@ -609,7 +609,7 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
             </span>
           </div>
           <div style={{ background: "rgba(212,179,127,0.06)", border: "1px solid rgba(212,179,127,0.12)", borderRadius: 8, padding: "10px 12px", marginBottom: 10 }}>
-            <p style={{ fontFamily: font.ui, fontSize: 9, fontWeight: 600, color: c.gilt, marginBottom: 3, letterSpacing: "0.06em", textTransform: "uppercase" }}>Interviewer</p>
+            <p style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, color: c.gilt, marginBottom: 3, letterSpacing: "0.06em", textTransform: "uppercase" }}>Interviewer</p>
             <p style={{ fontFamily: font.ui, fontSize: 11, lineHeight: 1.5, color: c.ivory }}>Walk me through how you scaled the engineering org...</p>
           </div>
           <div style={{ display: "flex", gap: 2, height: 16 }}>

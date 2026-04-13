@@ -313,19 +313,19 @@ export const UserAnswerArea = memo(function UserAnswerArea({ currentTranscript, 
             <span style={{ fontFamily: font.mono, fontSize: 11, fontWeight: 600, color: liveMetrics.wpm > 180 ? c.ember : liveMetrics.wpm < 100 ? c.gilt : c.sage }}>
               {liveMetrics.wpm}
             </span>
-            <span style={{ fontFamily: font.ui, fontSize: 9, color: c.stone }}>WPM</span>
+            <span style={{ fontFamily: font.ui, fontSize: 10, color: c.stone }}>WPM</span>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
             <span style={{ fontFamily: font.mono, fontSize: 11, fontWeight: 600, color: liveMetrics.fillerCount > 5 ? c.ember : liveMetrics.fillerCount > 2 ? c.gilt : c.sage }}>
               {liveMetrics.fillerCount}
             </span>
-            <span style={{ fontFamily: font.ui, fontSize: 9, color: c.stone }}>fillers</span>
+            <span style={{ fontFamily: font.ui, fontSize: 10, color: c.stone }}>fillers</span>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
             <span style={{ fontFamily: font.mono, fontSize: 11, fontWeight: 600, color: c.ivory }}>
               {liveMetrics.wordCount}
             </span>
-            <span style={{ fontFamily: font.ui, fontSize: 9, color: c.stone }}>words</span>
+            <span style={{ fontFamily: font.ui, fontSize: 10, color: c.stone }}>words</span>
           </div>
           {liveMetrics.lengthGuidance && (
             <>
@@ -602,7 +602,7 @@ export const TranscriptPanel = memo(function TranscriptPanel({ transcript, inter
                   <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, color: msg.speaker === "ai" ? c.gilt : c.sage }}>
                     {msg.speaker === "ai" ? interviewerName : "You"}
                   </span>
-                  <span style={{ fontFamily: font.mono, fontSize: 9, color: c.stone }}>{msg.time}</span>
+                  <span style={{ fontFamily: font.mono, fontSize: 10, color: c.stone }}>{msg.time}</span>
                 </div>
                 <p style={{ fontFamily: font.ui, fontSize: 12, color: c.chalk, lineHeight: 1.55, margin: 0, wordBreak: "break-word", overflowWrap: "break-word" }}>{msg.text}</p>
               </div>
