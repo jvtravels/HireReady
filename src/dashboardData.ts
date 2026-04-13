@@ -811,12 +811,13 @@ export interface ResumeProfile {
   improvements?: string[];
 }
 
-export async function analyzeResumeWithAI(resumeText: string, targetRole?: string): Promise<{ profile: ResumeProfile; truncated?: boolean } | null> {
+export async function analyzeResumeWithAI(resumeText: string, targetRole?: string, signal?: AbortSignal): Promise<{ profile: ResumeProfile; truncated?: boolean } | null> {
   return withRetry(async () => {
     const headers = await authHeaders();
     const res = await fetch("/api/analyze-resume", {
       method: "POST",
       headers,
+      signal,
       body: JSON.stringify({ resumeText, targetRole }),
     });
     if (res.status === 429) {

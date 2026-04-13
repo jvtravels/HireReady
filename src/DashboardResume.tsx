@@ -199,7 +199,7 @@ export default function DashboardResume() {
         abortControllerRef.current = new AbortController();
         setProfile(stored); // show fallback while analyzing
         setPhase("analyzing");
-        analyzeResumeWithAI(user.resumeText, user?.targetRole)
+        analyzeResumeWithAI(user.resumeText, user?.targetRole, abortControllerRef.current.signal)
           .then(result => {
             if (result?.profile) {
               setProfile(result.profile);
@@ -232,7 +232,7 @@ export default function DashboardResume() {
       abortControllerRef.current?.abort();
       abortControllerRef.current = new AbortController();
       setPhase("analyzing");
-      analyzeResumeWithAI(user.resumeText, user?.targetRole)
+      analyzeResumeWithAI(user.resumeText, user?.targetRole, abortControllerRef.current.signal)
         .then(result => {
           if (result?.profile) {
             setProfile(result.profile);

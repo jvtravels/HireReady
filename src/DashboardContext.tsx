@@ -165,7 +165,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
   const [hasGoogleToken, setHasGoogleToken] = useState(() => !!getGoogleProviderToken());
 
   const syncGoogleCalendar = useCallback(async () => {
-    if (!user?.id) return;
+    if (!user?.id || googleSyncStatus === "syncing") return;
     setGoogleSyncStatus("syncing");
     setGoogleSyncError(null);
     try {
@@ -196,7 +196,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
       setHasGoogleToken(!!getGoogleProviderToken());
       showToast("Google Calendar sync failed");
     }
-  }, [user?.id, showToast]);
+  }, [user?.id, showToast, googleSyncStatus]);
 
   // Sync persisted state when user profile loads/changes
   useEffect(() => {
@@ -312,6 +312,17 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
   const fallbackInsights = useMemo(() => generateFallbackInsights(user, skills, skillVelocity), [user, skills, skillVelocity]);
   const [llmInsights, setLlmInsights] = useState<{ type: string; text: string }[] | null>(null);
   const insightsFetchedRef = useRef<string>("");
+  const insightsUserRef = useRef<string>("");
+
+  // Reset insights cache when user changes (logout/login)
+  useEffect(() => {
+    const uid = user?.id || "";
+    if (insightsUserRef.current && insightsUserRef.current !== uid) {
+      insightsFetchedRef.current = "";
+      setLlmInsights(null);
+    }
+    insightsUserRef.current = uid;
+  }, [user?.id]);
 
   useEffect(() => {
     if (!user?.id || skills.length === 0 || recentSessions.length === 0) return;
@@ -330,6 +341,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
       }
     } catch { /* expected: cache read may fail */ }
 
+    const ac = new AbortController();
     (async () => {
       try {
         const { authHeaders } = await import("./supabase");
@@ -337,6 +349,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
         const res = await fetch("/api/generate-insights", {
           method: "POST",
           headers: hdrs,
+          signal: ac.signal,
           body: JSON.stringify({
             role: user.targetRole,
             company: user.targetCompany,
@@ -357,9 +370,10 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
           }
         }
       } catch {
-        // Silently fall back to template insights
+        // Silently fall back to template insights (also handles AbortError)
       }
     })();
+    return () => ac.abort();
   }, [user, skills, recentSessions]);
 
   const aiInsights = llmInsights || fallbackInsights;

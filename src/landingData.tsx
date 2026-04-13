@@ -97,9 +97,9 @@ export const features = [
 ];
 
 export const testimonials = [
-  { quote: "I was mass-applying and getting nowhere. After a week of practice on HireStepX, I started getting callbacks — and landed an offer at my top choice.", name: "Marcus T.", role: "Software Engineer", image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=500&fit=crop&crop=face", result: "Landed dream job at Google" },
-  { quote: "Switching careers from teaching to product management felt impossible. The AI caught gaps I didn't know I had. Three weeks later, I had two offers.", name: "Dana R.", role: "Career Changer → PM", image: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&h=500&fit=crop&crop=face", result: "Career switch success" },
-  { quote: "The feedback was brutally specific — told me I was using filler words 15 times per answer. Fixed that, and my next interview felt completely different.", name: "Priya K.", role: "Data Analyst, Recent Grad", image: "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=400&h=500&fit=crop&crop=face", result: "First job out of college" },
+  { quote: "I was mass-applying and getting nowhere. After a week of practice on HireStepX, I started getting callbacks — and landed an offer at my top choice.", name: "Marcus T.", role: "Software Engineer", image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=500&fit=crop&crop=face&q=75", result: "Landed dream job at Google" },
+  { quote: "Switching careers from teaching to product management felt impossible. The AI caught gaps I didn't know I had. Three weeks later, I had two offers.", name: "Dana R.", role: "Career Changer → PM", image: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&h=500&fit=crop&crop=face&q=75", result: "Career switch success" },
+  { quote: "The feedback was brutally specific — told me I was using filler words 15 times per answer. Fixed that, and my next interview felt completely different.", name: "Priya K.", role: "Data Analyst, Recent Grad", image: "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=400&h=500&fit=crop&crop=face&q=75", result: "First job out of college" },
 ];
 
 export const plans = [

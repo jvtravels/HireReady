@@ -155,9 +155,9 @@ export function FinalCTA() {
       }}>
         {/* Background image — professional in confident pose */}
         <img
-          src="https://images.unsplash.com/photo-1521737711867-e3b97375f902?w=1400&h=600&fit=crop&crop=center"
+          src="https://images.unsplash.com/photo-1521737711867-e3b97375f902?w=1400&h=600&fit=crop&crop=center&q=75"
           alt=""
-          loading="lazy"
+          loading="lazy" width={1400} height={600}
           onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
           style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", filter: "brightness(0.3)" }}
         />
@@ -184,7 +184,7 @@ export function FinalCTA() {
                   "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=48&h=48&fit=crop&crop=face",
                   "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=48&h=48&fit=crop&crop=face",
                 ].map((src, i) => (
-                  <img key={i} src={src} alt="" loading="lazy" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} style={{
+                  <img key={i} src={`${src}&q=75`} alt="" loading="lazy" width={28} height={28} onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} style={{
                     width: 28, height: 28, borderRadius: "50%", objectFit: "cover",
                     border: `2px solid ${c.obsidian}`, marginLeft: i > 0 ? -8 : 0,
                   }} />
