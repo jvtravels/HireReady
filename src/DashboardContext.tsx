@@ -12,7 +12,7 @@ import {
   generateFallbackInsights, generateNotifications, generateGoals,
   getReturnContext, getSmartScheduleSuggestion, getPrepPlan,
   computeWeekActivity, computeStreak, computeReadiness, daysUntil,
-  generateReport, scoreLabel,
+  generateReport,
   computeBadges, getDailyChallenge, getPracticeReminder,
 } from "./dashboardData";
 
@@ -127,7 +127,7 @@ export function useDashboard() {
 
 export function DashboardProvider({ children }: { children: ReactNode }) {
   const nav = useNavigate();
-  const { user, updateUser: authUpdateUser } = useAuth();
+  const { user, updateUser: _authUpdateUser } = useAuth();
   const [persisted, setPersisted] = useState<PersistedState>(() => {
     const local = loadState();
     if (user) {

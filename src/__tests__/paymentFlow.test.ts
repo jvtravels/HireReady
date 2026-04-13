@@ -1,5 +1,5 @@
 /// <reference types="node" />
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect } from "vitest";
 import { createHmac } from "crypto";
 
 /**

@@ -40,7 +40,7 @@ function levenshtein(a: string, b: string): number {
 }
 
 // Map raw Supabase errors to user-friendly messages with suggestions
-function friendlyError(raw: string, isLogin: boolean): { message: string; suggestion?: string } {
+function friendlyError(raw: string, _isLogin: boolean): { message: string; suggestion?: string } {
   const lower = raw.toLowerCase();
   if (lower.includes("invalid login credentials"))
     return { message: "Incorrect email or password.", suggestion: "Double-check your credentials or reset your password below." };

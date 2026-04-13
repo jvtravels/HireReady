@@ -3,7 +3,7 @@
  * Tests all major user flows end-to-end using component rendering.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, fireEvent, act, waitFor, cleanup } from "@testing-library/react";
+import { render, screen, fireEvent, act, cleanup } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 
 /* ─── Shared Mocks ─── */
@@ -266,7 +266,7 @@ describe("Flow 4: Interview Lifecycle", () => {
 
   it("ending interview stops all media and enters evaluation", async () => {
     const Interview = (await import("../Interview")).default;
-    const { speak } = await import("../tts");
+    const { speak: _speak } = await import("../tts");
 
     await act(async () => {
       render(

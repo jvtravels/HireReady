@@ -387,12 +387,6 @@ export default function Onboarding() {
     } catch { setMicStatus("denied"); }
   }, []);
 
-  // Browser-specific mic permission guidance
-  const isChrome = typeof navigator !== "undefined" && navigator.userAgent.includes("Chrome");
-  const micPermissionHint = isChrome
-    ? "Click the lock icon in the address bar \u2192 Site settings \u2192 Microphone \u2192 Allow"
-    : "Check your browser settings to allow microphone access";
-
   // Cleanup streams on unmount
   useEffect(() => {
     return () => {

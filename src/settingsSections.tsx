@@ -1,4 +1,5 @@
 import type React from "react";
+import { memo } from "react";
 import { c, font, shadow, gradient } from "./tokens";
 import type { PersistedState } from "./dashboardTypes";
 import type { InterviewEvent } from "./dashboardHelpers";
@@ -165,7 +166,7 @@ export interface AccountSectionProps {
   focusOut: (e: React.FocusEvent<HTMLInputElement>) => void;
 }
 
-export function AccountSection(props: AccountSectionProps) {
+export const AccountSection = memo(function AccountSection(props: AccountSectionProps) {
   const {
     editName, setEditName, editCompany, setEditCompany, editIndustry, setEditIndustry,
     userName, email, tierLabel, subscriptionTier, isDirty,
@@ -281,7 +282,7 @@ export function AccountSection(props: AccountSectionProps) {
       </div>
     </div>
   );
-}
+});
 
 /* ═══════════════════════════════════════════════════════════════
    INTERVIEW PREFERENCES SECTION
@@ -304,7 +305,7 @@ export interface InterviewSectionProps {
   showToast: (msg: string) => void;
 }
 
-export function InterviewSection(props: InterviewSectionProps) {
+export const InterviewSection = memo(function InterviewSection(props: InterviewSectionProps) {
   const {
     editRole, setEditRole, isDirty, saving, handleSave, focusOut,
     difficultyVal, learningVal, experienceVal,
@@ -401,7 +402,7 @@ export function InterviewSection(props: InterviewSectionProps) {
       </div>
     </div>
   );
-}
+});
 
 /* ═══════════════════════════════════════════════════════════════
    NOTIFICATIONS SECTION
@@ -414,7 +415,7 @@ export interface NotificationsSectionProps {
   calendarEvents: InterviewEvent[];
 }
 
-export function NotificationsSection(props: NotificationsSectionProps) {
+export const NotificationsSection = memo(function NotificationsSection(props: NotificationsSectionProps) {
   const { persisted, autoSave, showToast, calendarEvents } = props;
 
   return (
@@ -489,7 +490,7 @@ export function NotificationsSection(props: NotificationsSectionProps) {
       ))}
     </div>
   );
-}
+});
 
 /* ═══════════════════════════════════════════════════════════════
    PLAN & BILLING SECTION
@@ -538,7 +539,7 @@ export interface PlanSectionProps {
   authHeaders: () => Promise<Record<string, string>>;
 }
 
-export function PlanSection(props: PlanSectionProps) {
+export const PlanSection = memo(function PlanSection(props: PlanSectionProps) {
   const {
     authUser, tierLabel,
     confirmCancel, setConfirmCancel, cancelLoading, setCancelLoading, cancelMsg, setCancelMsg,
@@ -908,4 +909,4 @@ export function PlanSection(props: PlanSectionProps) {
       {deleteMsg && <p style={{ fontFamily: font.ui, fontSize: 12, color: c.ember, marginTop: 12 }}>{deleteMsg}</p>}
     </div>
   );
-}
+});

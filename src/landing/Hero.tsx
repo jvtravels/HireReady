@@ -1,9 +1,9 @@
-import React, { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { track } from "@vercel/analytics";
 import { c, font } from "../tokens";
 import { useAuth } from "../AuthContext";
-import { useReveal, useParallax, useMouse } from "../hooks";
+import { useParallax, useMouse } from "../hooks";
 
 /* ═══════════════════════════════════════════════
    PARTICLE CANVAS

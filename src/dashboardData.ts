@@ -1,5 +1,5 @@
 import { c } from "./tokens";
-import { type InterviewEvent, loadEvents, daysUntilEvent, formatEventTime } from "./dashboardHelpers";
+import { loadEvents, daysUntilEvent, formatEventTime } from "./dashboardHelpers";
 import { authHeaders, supabaseConfigured } from "./supabase";
 import type { UserContext, DashboardSession, SkillData, TrendPoint, PersistedState } from "./dashboardTypes";
 import { scoreLabel } from "./dashboardTypes";

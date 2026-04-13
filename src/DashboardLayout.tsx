@@ -99,6 +99,7 @@ export default function DashboardLayout() {
       const t = setTimeout(() => setPaymentBanner(null), 8000);
       return () => clearTimeout(t);
     }
+    return;
   }, [paymentBanner, setPaymentBanner]);
 
   // Auto-dismiss sync error after 8s
@@ -107,6 +108,7 @@ export default function DashboardLayout() {
       const t = setTimeout(() => setSyncError(""), 8000);
       return () => clearTimeout(t);
     }
+    return;
   }, [syncError, setSyncError]);
 
   // Prevent body scroll when mobile sidebar is open
@@ -115,6 +117,7 @@ export default function DashboardLayout() {
       document.body.style.overflow = "hidden";
       return () => { document.body.style.overflow = ""; };
     }
+    return;
   }, [isMobile, sidebarOpen]);
 
   // Determine active nav from current route

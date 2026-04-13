@@ -1,13 +1,7 @@
 /* ─── Text-to-Speech Service ─── */
 /* Uses server-side Cartesia TTS proxy (ultra-low latency) with Web Speech API fallback */
 
-function safeUUID(): string {
-  try { return crypto.randomUUID(); } catch { /* fallback */ }
-  const bytes = crypto.getRandomValues(new Uint8Array(16));
-  bytes[6] = (bytes[6] & 0x0f) | 0x40; bytes[8] = (bytes[8] & 0x3f) | 0x80;
-  const hex = Array.from(bytes, b => b.toString(16).padStart(2, "0")).join("");
-  return `${hex.slice(0,8)}-${hex.slice(8,12)}-${hex.slice(12,16)}-${hex.slice(16,20)}-${hex.slice(20)}`;
-}
+import { safeUUID } from "./utils";
 
 /* Unlock audio playback — call this on a user gesture (button click)
    before navigating to pages that auto-play audio. This creates a
@@ -187,7 +181,6 @@ const WS_IDLE_TIMEOUT = 30_000; // close idle connection after 30s
 
 // Persistent WebSocket pool — reuse across questions
 let _persistentWs: WebSocket | null = null;
-let _persistentWsReady = false;
 let _persistentWsApiKey: string | null = null;
 let _wsIdleTimer: ReturnType<typeof setTimeout> | null = null;
 let _wsMessageHandler: ((event: MessageEvent) => void) | null = null;
@@ -199,7 +192,6 @@ function resetWsIdleTimer() {
       _persistentWs.close();
     }
     _persistentWs = null;
-    _persistentWsReady = false;
   }, WS_IDLE_TIMEOUT);
 }
 
@@ -213,7 +205,6 @@ async function getOrCreateWs(apiKey: string): Promise<WebSocket | null> {
   if (_persistentWs) {
     try { _persistentWs.close(); } catch {}
     _persistentWs = null;
-    _persistentWsReady = false;
   }
 
   return new Promise((resolve) => {
@@ -229,7 +220,6 @@ async function getOrCreateWs(apiKey: string): Promise<WebSocket | null> {
     ws.onopen = () => {
       clearTimeout(timeout);
       _persistentWs = ws;
-      _persistentWsReady = true;
       _persistentWsApiKey = apiKey;
       resetWsIdleTimer();
       resolve(ws);
@@ -241,8 +231,7 @@ async function getOrCreateWs(apiKey: string): Promise<WebSocket | null> {
     ws.onclose = () => {
       if (_persistentWs === ws) {
         _persistentWs = null;
-        _persistentWsReady = false;
-      }
+          }
     };
   });
 }
@@ -636,7 +625,6 @@ export function cleanupTTS() {
     }
     try { _persistentWs.close(); } catch {}
     _persistentWs = null;
-    _persistentWsReady = false;
   }
   if (_wsIdleTimer) { clearTimeout(_wsIdleTimer); _wsIdleTimer = null; }
 }

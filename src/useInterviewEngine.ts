@@ -13,18 +13,9 @@ import { createDeepgramSTT, type DeepgramSTTHandle } from "./deepgramSTT";
 import { getInterviewerName, formatTime } from "./InterviewComponents";
 import { createSpeechRecognition } from "./speechRecognition";
 import type { SpeechRecognitionInstance, SpeechRecognitionEvent } from "./speechRecognition";
+import { safeUUID } from "./utils";
 
 /* ─── Helpers ─── */
-
-/** UUID generator with fallback for older browsers / insecure contexts */
-function safeUUID(): string {
-  try { return crypto.randomUUID(); } catch { /* fallback */ }
-  const bytes = crypto.getRandomValues(new Uint8Array(16));
-  bytes[6] = (bytes[6] & 0x0f) | 0x40; // version 4
-  bytes[8] = (bytes[8] & 0x3f) | 0x80; // variant
-  const hex = Array.from(bytes, b => b.toString(16).padStart(2, "0")).join("");
-  return `${hex.slice(0,8)}-${hex.slice(8,12)}-${hex.slice(12,16)}-${hex.slice(16,20)}-${hex.slice(20)}`;
-}
 
 function extractScore(raw: unknown): number {
   if (typeof raw === "number") return raw;
@@ -445,6 +436,7 @@ export function useInterviewEngine() {
       deepgramRef.current = null;
       recognitionRef.current?.stop();
       recognitionRef.current = null;
+      return;
     }
   }, [phase, isMuted]);
 
@@ -781,7 +773,6 @@ export function useInterviewEngine() {
     const questionBonus = Math.min(5, Math.floor(transcript.filter(t => t.speaker === "user").length * 1.5));
     const fallbackScore = Math.min(98, Math.max(60, baseScore + difficultyBonus + timeBonus + questionBonus));
 
-    const hasRealAnswers = transcript.some(t => t.speaker === "user" && !t.text.startsWith("["));
     const hasAnyAnswers = transcript.some(t => t.speaker === "user");
     score = fallbackScore;
     let idealAnswers: { question: string; ideal: string; candidateSummary: string; rating?: string; starBreakdown?: Record<string, string>; workedWell?: string; toImprove?: string }[] = [];

@@ -161,6 +161,7 @@ export default function ComingSoon() {
     };
     if (status === "done") {
       load();
+      return;
     } else if (typeof requestIdleCallback !== "undefined") {
       const id = requestIdleCallback(() => load());
       return () => cancelIdleCallback(id);

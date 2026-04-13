@@ -7,6 +7,10 @@
     "jsx": "react-jsx",
     "noEmit": true,
     "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
     "skipLibCheck": true,
     "types": ["vite/client"]
   },

@@ -1,5 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
-import { createPortal } from "react-dom";
+import React from "react";
 import { c, font } from "./tokens";
 import type { ResumeProfile } from "./dashboardData";
 import type { ParsedResume } from "./resumeParser";
@@ -251,7 +250,7 @@ export interface ProfileReadyStateProps {
   onReplaceFile: () => void;
 }
 
-export function ProfileReadyState({ aiProfile, resumeParsed, userName, fileName, resumeText, targetRole, fileInputRef, onUserNameChange, onReanalyze, onRemove, onReplaceFile }: ProfileReadyStateProps) {
+export function ProfileReadyState({ aiProfile, resumeParsed, userName, fileName, resumeText: _resumeText, targetRole: _targetRole, fileInputRef: _fileInputRef, onUserNameChange, onReanalyze, onRemove, onReplaceFile }: ProfileReadyStateProps) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       {/* Step heading */}
@@ -745,7 +744,7 @@ export interface NavigationFooterProps {
   onStart: () => void;
 }
 
-export function NavigationFooter({ step, totalSteps, isContinueDisabled, starting, micStatus, saveStatus, interviewFocus, onBack, onNext, onStart }: NavigationFooterProps) {
+export function NavigationFooter({ step, totalSteps, isContinueDisabled, starting, micStatus, saveStatus, interviewFocus: _interviewFocus, onBack, onNext, onStart }: NavigationFooterProps) {
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12, marginTop: 40 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>

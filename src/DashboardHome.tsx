@@ -112,11 +112,11 @@ export default function DashboardHome() {
     persisted, updatePersisted,
     recentSessions, scoreTrend, skills, overallStats, hasData,
     weekActivity, currentStreak, readinessScore, daysLeft, calendarEvents,
-    isFree, atSessionLimit, sessionsRemaining,
+    isFree: _isFree, atSessionLimit, sessionsRemaining: _sessionsRemaining,
     notifications, aiInsights, upcomingGoals, returnContext, smartSchedule, prepPlan,
     badges, dailyChallenge, practiceReminder,
     handleStartSession, handleExport, handleDownload, handleExportPDF,
-    setShowUpgradeModal,
+    setShowUpgradeModal: _setShowUpgradeModal,
   } = useDashboard();
 
   useDocTitle("Dashboard");

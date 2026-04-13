@@ -1,5 +1,3 @@
-import React from "react";
-
 import { c, font } from "./tokens";
 import {
   StatusToasts, InterviewHeader, AvatarStage, QuestionCard,

@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { c, font } from "./tokens";
 import { scoreLabel, scoreLabelColor } from "./dashboardTypes";
 import type { DashboardSession } from "./dashboardTypes";
-import { useAuth } from "./AuthContext";
+// useAuth removed — was unused
 import { FREE_SESSION_LIMIT, STARTER_WEEKLY_LIMIT } from "./dashboardData";
 
 declare global {

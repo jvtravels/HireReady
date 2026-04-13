@@ -1,4 +1,4 @@
-import { c, font } from "./tokens";
+// tokens import removed — was unused
 
 /* ─── Interview Events (Calendar Integration) ─── */
 export interface InterviewEvent {

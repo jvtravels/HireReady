@@ -13,8 +13,8 @@ import { DataLoadingSkeleton, ProGate } from "./dashboardComponents";
 
 export default function CalendarPage() {
   useDocTitle("Calendar");
-  const { handleStartSession: onStartSession, dataLoading, isFree, isStarter, setShowUpgradeModal, showToast, syncGoogleCalendar, googleSyncStatus, hasGoogleToken } = useDashboard();
-  const { user, loginWithGoogle } = useAuth();
+  const { handleStartSession: onStartSession, dataLoading, isFree, isStarter, setShowUpgradeModal, showToast, syncGoogleCalendar: _syncGoogleCalendar, googleSyncStatus: _googleSyncStatus, hasGoogleToken: _hasGoogleToken } = useDashboard();
+  const { user, loginWithGoogle: _loginWithGoogle } = useAuth();
   const [events, setEvents] = useState<InterviewEvent[]>(loadEvents);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);

@@ -24,7 +24,7 @@ export default function OnboardingComplete() {
   const aiFeedback: string = state.aiFeedback || "";
   const skillScores: Record<string, number> | null = state.skillScores || null;
 
-  const [redirecting, setRedirecting] = useState(false);
+  const [redirecting, _setRedirecting] = useState(false);
 
   // Guard: if accessed directly without coming from onboarding, redirect immediately
   useEffect(() => {

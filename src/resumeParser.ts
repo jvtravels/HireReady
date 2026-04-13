@@ -35,10 +35,6 @@ async function readDocx(file: File): Promise<string> {
 
   // Re-extract with paragraph awareness
   const lines: string[] = [];
-  let currentLine = "";
-  const tagRegex = /<\/?[^>]+>|([^<]+)/g;
-  let inText = false;
-
   // Simpler approach: split by paragraph, extract text from each
   const paragraphs = xmlText.split(/<\/w:p>/);
   for (const para of paragraphs) {
@@ -68,7 +64,7 @@ async function unzip(data: Uint8Array): Promise<{ entries: { filename: string; d
 
     const compressionMethod = view.getUint16(offset + 8, true);
     const compressedSize = view.getUint32(offset + 18, true);
-    const uncompressedSize = view.getUint32(offset + 22, true);
+    // uncompressedSize at offset+22 skipped (unused in extraction)
     const fileNameLen = view.getUint16(offset + 26, true);
     const extraLen = view.getUint16(offset + 28, true);
     const filename = new TextDecoder().decode(data.subarray(offset + 30, offset + 30 + fileNameLen));

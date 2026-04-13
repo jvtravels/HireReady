@@ -1,4 +1,4 @@
-import React from "react";
+import React, { memo } from "react";
 import { c, font } from "./tokens";
 import {
   WaveformVisualizer, NetworkIndicator, DotGridVisualizer,
@@ -11,7 +11,7 @@ import {
 
 /* ─── Status Toasts (tab conflict, offline, mic error) ─── */
 
-export function StatusToasts({ tabConflict, isOffline, micError }: {
+export const StatusToasts = memo(function StatusToasts({ tabConflict, isOffline, micError }: {
   tabConflict: boolean; isOffline: boolean; micError: string;
 }) {
   if (!tabConflict && !isOffline && !micError) return null;
@@ -37,11 +37,11 @@ export function StatusToasts({ tabConflict, isOffline, micError }: {
       )}
     </div>
   );
-}
+});
 
 /* ─── Interview Header (top info bar) ─── */
 
-export function InterviewHeader({ displayCompany, displayRole, displayFocus, llmLoading, currentStep, phase, elapsed, currentQuestionNum, totalQuestions }: {
+export const InterviewHeader = memo(function InterviewHeader({ displayCompany, displayRole, displayFocus, llmLoading, currentStep, phase, elapsed, currentQuestionNum, totalQuestions }: {
   displayCompany: string; displayRole: string; displayFocus: string;
   llmLoading: boolean; currentStep: number;
   phase: string; elapsed: number;
@@ -107,11 +107,11 @@ export function InterviewHeader({ displayCompany, displayRole, displayFocus, llm
       )}
     </header>
   );
-}
+});
 
 /* ─── AI Avatar + Question Card ─── */
 
-export function AvatarStage({ phase, interviewerName, isMuted, speechUnavailable, skipSpeaking }: {
+export const AvatarStage = memo(function AvatarStage({ phase, interviewerName, isMuted, speechUnavailable, skipSpeaking }: {
   phase: string; interviewerName: string; isMuted: boolean; speechUnavailable: boolean;
   skipSpeaking: () => void;
 }) {
@@ -162,11 +162,11 @@ export function AvatarStage({ phase, interviewerName, isMuted, speechUnavailable
       )}
     </div>
   );
-}
+});
 
 /* ─── Question Card with timer ─── */
 
-export function QuestionCard({ step, phase, showCaptions, timeRemaining, timePercent }: {
+export const QuestionCard = memo(function QuestionCard({ step, phase, showCaptions, timeRemaining, timePercent }: {
   step: { aiText: string; scoreNote?: string; speakingDuration: number } | undefined;
   phase: string; showCaptions: boolean;
   timeRemaining: number; timePercent: number;
@@ -214,11 +214,11 @@ export function QuestionCard({ step, phase, showCaptions, timeRemaining, timePer
       )}
     </div>
   );
-}
+});
 
 /* ─── User Answer Area (speech or text input) ─── */
 
-export function UserAnswerArea({ currentTranscript, setCurrentTranscript, speechUnavailable, setSpeechUnavailable, isMuted, micStreamRef, noSpeechCountRef, setMicError, handleNextQuestion, textareaRef, nextBtnRef, currentStep, interviewScriptLength }: {
+export const UserAnswerArea = memo(function UserAnswerArea({ currentTranscript, setCurrentTranscript, speechUnavailable, setSpeechUnavailable, isMuted, micStreamRef, noSpeechCountRef, setMicError, handleNextQuestion, textareaRef, nextBtnRef, currentStep, interviewScriptLength }: {
   currentTranscript: string; setCurrentTranscript: (v: string) => void;
   speechUnavailable: boolean; setSpeechUnavailable: (v: boolean) => void;
   isMuted: boolean; micStreamRef: React.MutableRefObject<MediaStream | null>;
@@ -321,11 +321,11 @@ export function UserAnswerArea({ currentTranscript, setCurrentTranscript, speech
       </button>
     </div>
   );
-}
+});
 
 /* ─── Completion Card (done state) ─── */
 
-export function CompletionCard({ currentQuestionNum, elapsed, usedFallbackScore, evalTimedOut, evaluating, handleEnd }: {
+export const CompletionCard = memo(function CompletionCard({ currentQuestionNum, elapsed, usedFallbackScore, evalTimedOut, evaluating, handleEnd }: {
   currentQuestionNum: number; elapsed: number;
   usedFallbackScore: boolean; evalTimedOut: boolean;
   evaluating: boolean; handleEnd: () => void;
@@ -366,11 +366,11 @@ export function CompletionCard({ currentQuestionNum, elapsed, usedFallbackScore,
       </button>
     </div>
   );
-}
+});
 
 /* ─── Micro-feedback on last answer ─── */
 
-export function MicroFeedbackPanel({ transcript, microFeedback }: {
+export const MicroFeedbackPanel = memo(function MicroFeedbackPanel({ transcript, microFeedback }: {
   transcript: { speaker: string; text: string }[];
   microFeedback: string | null;
 }) {
@@ -399,11 +399,11 @@ export function MicroFeedbackPanel({ transcript, microFeedback }: {
       )}
     </div>
   );
-}
+});
 
 /* ─── Bottom Controls Bar ─── */
 
-export function ControlsBar({ isMuted, setIsMuted, aiVoiceEnabled, setAiVoiceEnabled, showTranscript, setShowTranscript, phase, ttsCancelRef, setShowEndModal, endModalTriggerRef }: {
+export const ControlsBar = memo(function ControlsBar({ isMuted, setIsMuted, aiVoiceEnabled, setAiVoiceEnabled, showTranscript, setShowTranscript, phase, ttsCancelRef, setShowEndModal, endModalTriggerRef }: {
   isMuted: boolean; setIsMuted: (fn: (m: boolean) => boolean) => void;
   aiVoiceEnabled: boolean; setAiVoiceEnabled: (fn: (v: boolean) => boolean) => void;
   showTranscript: boolean; setShowTranscript: (fn: (t: boolean) => boolean) => void;
@@ -472,11 +472,11 @@ export function ControlsBar({ isMuted, setIsMuted, aiVoiceEnabled, setAiVoiceEna
       )}
     </footer>
   );
-}
+});
 
 /* ─── Transcript Slide-Over Panel ─── */
 
-export function TranscriptPanel({ transcript, interviewerName, setShowTranscript, transcriptRef }: {
+export const TranscriptPanel = memo(function TranscriptPanel({ transcript, interviewerName, setShowTranscript, transcriptRef }: {
   transcript: { speaker: "ai" | "user"; text: string; time: string }[];
   interviewerName: string;
   setShowTranscript: (v: boolean) => void;
@@ -542,11 +542,11 @@ export function TranscriptPanel({ transcript, interviewerName, setShowTranscript
       </div>
     </>
   );
-}
+});
 
 /* ─── End Interview Modal ─── */
 
-export function EndModal({ currentQuestionNum, totalQuestions, isOffline, handleEnd, setShowEndModal, endModalTriggerRef }: {
+export const EndModal = memo(function EndModal({ currentQuestionNum, totalQuestions, isOffline, handleEnd, setShowEndModal, endModalTriggerRef }: {
   currentQuestionNum: number; totalQuestions: number; isOffline: boolean;
   handleEnd: () => void; setShowEndModal: (v: boolean) => void;
   endModalTriggerRef: React.RefObject<HTMLSpanElement | null>;
@@ -626,11 +626,11 @@ export function EndModal({ currentQuestionNum, totalQuestions, isOffline, handle
       </div>
     </div>
   );
-}
+});
 
 /* ─── Evaluating Overlay ─── */
 
-export function EvaluatingOverlay({ usedFallbackScore, evalTimedOut, evalElapsed, saveWarning, setEvalTimedOut, setUsedFallbackScore, setEvaluating, interviewEndedRef, handleEnd, lastSessionId, navigate }: {
+export const EvaluatingOverlay = memo(function EvaluatingOverlay({ usedFallbackScore, evalTimedOut, evalElapsed, saveWarning, setEvalTimedOut, setUsedFallbackScore, setEvaluating, interviewEndedRef, handleEnd, lastSessionId, navigate }: {
   usedFallbackScore: boolean; evalTimedOut: boolean; evalElapsed: number; saveWarning: string;
   setEvalTimedOut: (v: boolean) => void; setUsedFallbackScore: (v: boolean) => void;
   setEvaluating: (v: boolean) => void;
@@ -704,4 +704,4 @@ export function EvaluatingOverlay({ usedFallbackScore, evalTimedOut, evalElapsed
       )}
     </div>
   );
-}
+});

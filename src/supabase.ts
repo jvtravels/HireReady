@@ -1,12 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-
-function safeUUID(): string {
-  try { return crypto.randomUUID(); } catch { /* fallback */ }
-  const bytes = crypto.getRandomValues(new Uint8Array(16));
-  bytes[6] = (bytes[6] & 0x0f) | 0x40; bytes[8] = (bytes[8] & 0x3f) | 0x80;
-  const hex = Array.from(bytes, b => b.toString(16).padStart(2, "0")).join("");
-  return `${hex.slice(0,8)}-${hex.slice(8,12)}-${hex.slice(12,16)}-${hex.slice(16,20)}-${hex.slice(20)}`;
-}
+import { safeUUID } from "./utils";
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "";
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || "";
@@ -151,7 +144,6 @@ export async function upsertProfile(profile: Partial<Profile> & { id: string }) 
     if (missingCol && missingCol in updates) {
       console.warn(`[supabase] column '${missingCol}' missing, retrying without it`);
       const { [missingCol]: _removed, ...safeUpdates } = updates as Record<string, unknown>;
-      const { [missingCol]: _removed2, ...safeProfile } = profile as Record<string, unknown>;
       if (Object.keys(safeUpdates).length > 0) {
         const retryResult = await client.from("profiles").update(safeUpdates).eq("id", id);
         if (retryResult.error) {

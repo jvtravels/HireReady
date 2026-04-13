@@ -8,9 +8,7 @@ import { useDashboard } from "./DashboardContext";
 import { DataLoadingSkeleton } from "./dashboardComponents";
 import {
   icons,
-  cardStyle, sectionHeader as sectionHeaderStyle, sectionTitle as sectionTitleStyle,
-  inputStyle, focusIn, focusOutBase,
-  Divider, Toggle,
+  focusOutBase,
   AccountSection,
   InterviewSection,
   NotificationsSection,

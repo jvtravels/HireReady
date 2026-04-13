@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { c, font } from "./tokens";
-import { scoreLabel, scoreLabelColor } from "./dashboardTypes";
+import { scoreLabelColor } from "./dashboardTypes";
 import type { DashboardSession } from "./dashboardTypes";
 
 interface Command {

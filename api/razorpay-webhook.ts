@@ -304,7 +304,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         });
 
         if (!cancelRes.ok) {
-          console.error("[webhook] ${eventType} profile update failed:", cancelRes.status);
+          console.error(`[webhook] ${eventType} profile update failed:`, cancelRes.status);
           return res.status(500).json({ error: "Profile update failed" });
         }
 
@@ -321,7 +321,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         });
 
         if (!pauseRes.ok) {
-          console.error("[webhook] ${eventType} profile update failed:", pauseRes.status);
+          console.error(`[webhook] ${eventType} profile update failed:`, pauseRes.status);
           return res.status(500).json({ error: "Profile update failed" });
         }
 

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { memo } from "react";
 import { c, font, shadow, gradient } from "./tokens";
 
 /* ═══════════════════════════════════════════════
@@ -49,7 +49,7 @@ function ratingBadge(rating: string | undefined): { label: string; color: string
 
 /* ─── Reusable Section Card ─── */
 
-export function Section({ children, className, animIndex = 0 }: { children: React.ReactNode; className?: string; animIndex?: number }) {
+export const Section = memo(function Section({ children, className, animIndex = 0 }: { children: React.ReactNode; className?: string; animIndex?: number }) {
   return (
     <div className={`sd-anim ${className || ""}`} style={{
       background: c.graphite,
@@ -62,9 +62,9 @@ export function Section({ children, className, animIndex = 0 }: { children: Reac
       {children}
     </div>
   );
-}
+});
 
-export function SectionTitle({ children, icon, action }: { children: React.ReactNode; icon?: React.ReactNode; action?: React.ReactNode }) {
+export const SectionTitle = memo(function SectionTitle({ children, icon, action }: { children: React.ReactNode; icon?: React.ReactNode; action?: React.ReactNode }) {
   return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
       <h3 style={{ fontSize: 16, fontWeight: 600, color: c.ivory, margin: 0, display: "flex", alignItems: "center", gap: 10 }}>
@@ -74,7 +74,7 @@ export function SectionTitle({ children, icon, action }: { children: React.React
       {action}
     </div>
   );
-}
+});
 
 /* ─── Loading Skeleton ─── */
 
@@ -126,7 +126,7 @@ export function LoadingSkeleton() {
 
 /* ─── Not Found State ─── */
 
-export function SessionNotFound({ onNavigate }: { onNavigate: () => void }) {
+export const SessionNotFound = memo(function SessionNotFound({ onNavigate }: { onNavigate: () => void }) {
   return (
     <div style={{ minHeight: "100vh", background: c.obsidian, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", fontFamily: font.ui }}>
       <p style={{ fontSize: 18, color: c.ivory, marginBottom: 8 }}>Session not found</p>
@@ -136,7 +136,7 @@ export function SessionNotFound({ onNavigate }: { onNavigate: () => void }) {
       </button>
     </div>
   );
-}
+});
 
 /* ─── Header ─── */
 
@@ -149,7 +149,7 @@ export interface SessionHeaderProps {
   onBack: () => void;
 }
 
-export function SessionHeader({ type, dateLabel, score, userName, targetCompany, onBack }: SessionHeaderProps) {
+export const SessionHeader = memo(function SessionHeader({ type, dateLabel, score, userName, targetCompany, onBack }: SessionHeaderProps) {
   return (
     <div className="sd-anim" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 32, animationDelay: "0s" }}>
       <div>
@@ -188,7 +188,7 @@ export function SessionHeader({ type, dateLabel, score, userName, targetCompany,
       </div>
     </div>
   );
-}
+});
 
 /* ─── Action Bar (copy/download) ─── */
 
@@ -198,7 +198,7 @@ export interface ActionBarProps {
   onDownload: () => void;
 }
 
-export function ActionBar({ copied, onCopy, onDownload }: ActionBarProps) {
+export const ActionBar = memo(function ActionBar({ copied, onCopy, onDownload }: ActionBarProps) {
   return (
     <div className="sd-anim" style={{ display: "flex", gap: 8, marginBottom: 24, animationDelay: "0.05s" }}>
       <button onClick={onCopy} aria-label="Copy report" style={{
@@ -221,7 +221,7 @@ export function ActionBar({ copied, onCopy, onDownload }: ActionBarProps) {
       </button>
     </div>
   );
-}
+});
 
 /* ─── Speech Metrics Section ─── */
 
@@ -241,7 +241,7 @@ export interface SpeechMetricsSectionProps {
   onToggleFillerBreakdown: () => void;
 }
 
-export function SpeechMetricsSection({ metrics, showFillerBreakdown, onToggleFillerBreakdown }: SpeechMetricsSectionProps) {
+export const SpeechMetricsSection = memo(function SpeechMetricsSection({ metrics, showFillerBreakdown, onToggleFillerBreakdown }: SpeechMetricsSectionProps) {
   return (
     <Section animIndex={0}>
       <SectionTitle icon={
@@ -347,7 +347,7 @@ export function SpeechMetricsSection({ metrics, showFillerBreakdown, onToggleFil
       </div>
     </Section>
   );
-}
+});
 
 /* ─── Response Analysis (per-question) ─── */
 
@@ -360,7 +360,7 @@ export interface IdealAnswer {
   toImprove?: string;
 }
 
-export function ResponseAnalysis({ items }: { items: IdealAnswer[] }) {
+export const ResponseAnalysis = memo(function ResponseAnalysis({ items }: { items: IdealAnswer[] }) {
   return (
     <Section animIndex={2}>
       <SectionTitle icon={
@@ -412,7 +412,7 @@ export function ResponseAnalysis({ items }: { items: IdealAnswer[] }) {
       </div>
     </Section>
   );
-}
+});
 
 /* ─── AI Coach Summary ─── */
 
@@ -423,7 +423,7 @@ export interface AICoachSummaryProps {
   nextSteps?: string[];
 }
 
-export function AICoachSummary({ feedback, strengths: propStrengths, improvements: propImprovements, nextSteps }: AICoachSummaryProps) {
+export const AICoachSummary = memo(function AICoachSummary({ feedback, strengths: propStrengths, improvements: propImprovements, nextSteps }: AICoachSummaryProps) {
   const strengths: string[] = propStrengths ? [...propStrengths] : [];
   const improvements: string[] = propImprovements ? [...propImprovements] : [];
   const tips: string[] = [];
@@ -494,7 +494,7 @@ export function AICoachSummary({ feedback, strengths: propStrengths, improvement
       )}
     </Section>
   );
-}
+});
 
 /* ─── Transcript Section ─── */
 
@@ -504,7 +504,7 @@ export interface TranscriptSectionProps {
   onToggle: () => void;
 }
 
-export function TranscriptSection({ transcript, showTranscript, onToggle }: TranscriptSectionProps) {
+export const TranscriptSection = memo(function TranscriptSection({ transcript, showTranscript, onToggle }: TranscriptSectionProps) {
   return (
     <Section animIndex={4}>
       <div
@@ -554,7 +554,7 @@ export function TranscriptSection({ transcript, showTranscript, onToggle }: Tran
       )}
     </Section>
   );
-}
+});
 
 /* ─── Feedback on AI Evaluation ─── */
 
@@ -568,7 +568,7 @@ export interface FeedbackSectionProps {
   onSubmitComment: () => void;
 }
 
-export function FeedbackSection({ feedbackRating, feedbackComment, feedbackSaved, showFeedbackForm, onSubmitFeedback, onCommentChange, onSubmitComment }: FeedbackSectionProps) {
+export const FeedbackSection = memo(function FeedbackSection({ feedbackRating, feedbackComment, feedbackSaved, showFeedbackForm, onSubmitFeedback, onCommentChange, onSubmitComment }: FeedbackSectionProps) {
   return (
     <div className="sd-anim" style={{ background: c.graphite, borderRadius: 16, border: `1px solid ${c.border}`, padding: "18px 28px", marginBottom: 16, animationDelay: "0.4s" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
@@ -611,7 +611,7 @@ export function FeedbackSection({ feedbackRating, feedbackComment, feedbackSaved
       )}
     </div>
   );
-}
+});
 
 /* ─── What's Next Section ─── */
 
@@ -622,7 +622,7 @@ export interface WhatsNextProps {
   onNavigate: (path: string) => void;
 }
 
-export function WhatsNext({ session, skillEntries, isFreeUser, onNavigate }: WhatsNextProps) {
+export const WhatsNext = memo(function WhatsNext({ session, skillEntries, isFreeUser, onNavigate }: WhatsNextProps) {
   const weakest = skillEntries.length > 0 ? [...skillEntries].sort((a, b) => a.score - b.score)[0] : null;
   const typeRotation = ["behavioral", "case-study", "technical", "strategic", "campus-placement", "hr-round", "management", "government-psu", "teaching"];
   const currentIdx = typeRotation.indexOf(session.type);
@@ -665,4 +665,4 @@ export function WhatsNext({ session, skillEntries, isFreeUser, onNavigate }: Wha
       )}
     </div>
   );
-}
+});

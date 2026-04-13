@@ -81,6 +81,7 @@ async function callGemini(opts: LLMOptions, signal?: AbortSignal): Promise<LLMRe
   return { text: data.candidates?.[0]?.content?.parts?.[0]?.text || "", model: "gemini-2.0-flash", fallback: true, tokensUsed, latencyMs };
 }
 
+/** Call the LLM with automatic Groq -> Gemini fallback. Respects timeout and aborts on expiry. */
 export async function callLLM(opts: LLMOptions, timeoutMs = 15000): Promise<LLMResult> {
   const ac = new AbortController();
   const timer = setTimeout(() => ac.abort(), timeoutMs);
@@ -133,6 +134,7 @@ export async function callLLM(opts: LLMOptions, timeoutMs = 15000): Promise<LLMR
   }
 }
 
+/** Extract JSON from LLM response text. Handles markdown fences, prose wrapping, and malformed output. */
 export function extractJSON<T = unknown>(text: string): T | null {
   // Try direct parse first
   try { return JSON.parse(text); } catch {}

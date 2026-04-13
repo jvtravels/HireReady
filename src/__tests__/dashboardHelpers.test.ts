@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect } from "vitest";
 import {
   daysUntilEvent,
   formatEventDate,
@@ -6,9 +6,6 @@ import {
   generateEventId,
   generateICS,
   generateGoogleCalendarURL,
-  loadEvents,
-  saveEvents,
-  EVENTS_KEY,
   type InterviewEvent,
 } from "../dashboardHelpers";
 

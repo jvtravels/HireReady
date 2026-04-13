@@ -8,22 +8,29 @@ declare const process: { env: Record<string, string | undefined> };
 const FREE_SESSION_LIMIT = 3;
 const STARTER_WEEKLY_LIMIT = 10;
 
+/** Timeout for Supabase auth/profile verification requests (ms) */
+const SUPABASE_TIMEOUT_MS = 5000;
+/** TTL for atomic in-flight session counter (seconds) */
+const INFLIGHT_TTL_SEC = 300;
+
 /* ─── CORS ─── */
 
 const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || "").split(",").map(s => s.trim()).filter(Boolean);
 
-/** Check whether a given origin string is in the allowlist (or localhost in dev). */
+/** Resolve allowed CORS origin from a raw origin string. Returns empty string if not allowed. */
 export function getAllowedOriginFromString(origin: string): string {
   if (ALLOWED_ORIGINS.length > 0 && ALLOWED_ORIGINS.includes(origin)) return origin;
   if (origin.startsWith("http://localhost:")) return origin;
   return "";
 }
 
+/** Resolve allowed CORS origin from a Request's Origin header. */
 export function getAllowedOrigin(req: Request): string {
   const origin = req.headers.get("origin") || "";
   return getAllowedOriginFromString(origin);
 }
 
+/** Build CORS response headers for an Edge Function request. */
 export function corsHeaders(req: Request): Record<string, string> {
   const origin = getAllowedOrigin(req);
   if (!origin) return { "Content-Type": "application/json" };
@@ -36,6 +43,7 @@ export function corsHeaders(req: Request): Record<string, string> {
   };
 }
 
+/** Handle OPTIONS preflight and reject non-POST methods. Returns Response if handled, null if should continue. */
 export function handleCorsPreflightOrMethod(req: Request): Response | null {
   if (req.method === "OPTIONS") {
     const origin = getAllowedOrigin(req);
@@ -65,6 +73,7 @@ export function handleCorsPreflightOrMethod(req: Request): Response | null {
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || "";
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || "";
 
+/** Verify the user's JWT token against Supabase Auth. Returns userId if valid. */
 export async function verifyAuth(req: Request): Promise<{ authenticated: boolean; userId?: string }> {
   // Fail closed in production — only skip auth in local dev
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
@@ -81,7 +90,7 @@ export async function verifyAuth(req: Request): Promise<{ authenticated: boolean
   const token = authHeader.slice(7);
   try {
     const ac = new AbortController();
-    const timer = setTimeout(() => ac.abort(), 5000);
+    const timer = setTimeout(() => ac.abort(), SUPABASE_TIMEOUT_MS);
     const res = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
       headers: {
         Authorization: `Bearer ${token}`,
@@ -99,6 +108,7 @@ export async function verifyAuth(req: Request): Promise<{ authenticated: boolean
   }
 }
 
+/** Return a 401 Unauthorized JSON response. */
 export function unauthorizedResponse(headers: Record<string, string>): Response {
   return new Response(JSON.stringify({ error: "Unauthorized. Please log in." }), {
     status: 401,
@@ -132,12 +142,13 @@ async function incrementInFlightCounter(userId: string, tier: string, ttlSec: nu
 
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 
+/** Check if a user has exceeded their plan's session limit. Uses atomic in-flight counter to prevent race conditions. */
 export async function checkSessionLimit(userId: string): Promise<{ allowed: boolean; reason?: string }> {
   if (!SUPABASE_URL || !SERVICE_ROLE_KEY) return { allowed: true }; // skip in dev
 
   try {
     const ac = new AbortController();
-    const timer = setTimeout(() => ac.abort(), 5000);
+    const timer = setTimeout(() => ac.abort(), SUPABASE_TIMEOUT_MS);
     // Get user's subscription tier and expiry
     const profileRes = await fetch(
       `${SUPABASE_URL}/rest/v1/profiles?id=eq.${encodeURIComponent(userId)}&select=subscription_tier,subscription_end`,
@@ -173,7 +184,7 @@ export async function checkSessionLimit(userId: string): Promise<{ allowed: bool
         return { allowed: false, reason: `Free plan limit reached (${FREE_SESSION_LIMIT} sessions). Upgrade to continue.` };
       }
       // Atomic in-flight check: prevent race condition with concurrent sessions
-      const inFlight = await incrementInFlightCounter(userId, "free", 300);
+      const inFlight = await incrementInFlightCounter(userId, "free", INFLIGHT_TTL_SEC);
       if (inFlight !== null && totalCount + inFlight > FREE_SESSION_LIMIT) {
         return { allowed: false, reason: `Free plan limit reached (${FREE_SESSION_LIMIT} sessions). Upgrade to continue.` };
       }
@@ -207,13 +218,17 @@ export async function checkSessionLimit(userId: string): Promise<{ allowed: bool
 
 /* ─── Subscription Tier Check ─── */
 
+/** Get the user's current subscription tier, accounting for expiry. Returns "pro" in dev mode. */
 export async function getSubscriptionTier(userId: string): Promise<"free" | "starter" | "pro" | "team"> {
   if (!SUPABASE_URL || !SERVICE_ROLE_KEY) return "pro"; // dev mode — unrestricted
   try {
+    const ac = new AbortController();
+    const timer = setTimeout(() => ac.abort(), SUPABASE_TIMEOUT_MS);
     const res = await fetch(
       `${SUPABASE_URL}/rest/v1/profiles?id=eq.${encodeURIComponent(userId)}&select=subscription_tier,subscription_end`,
-      { headers: { apikey: SERVICE_ROLE_KEY, Authorization: `Bearer ${SERVICE_ROLE_KEY}` } },
+      { headers: { apikey: SERVICE_ROLE_KEY, Authorization: `Bearer ${SERVICE_ROLE_KEY}` }, signal: ac.signal },
     );
+    clearTimeout(timer);
     if (!res.ok) return "free";
     const profiles = await res.json();
     if (!Array.isArray(profiles) || profiles.length === 0) return "free";
@@ -228,6 +243,7 @@ export async function getSubscriptionTier(userId: string): Promise<"free" | "sta
 
 /* ─── CSRF Origin Validation ─── */
 
+/** Validate that the request origin is in the allowlist. Returns false for missing origins. */
 export function validateOrigin(req: Request): boolean {
   const origin = req.headers.get("origin") || "";
   if (!origin) return false; // POST requests must have an Origin header
@@ -279,6 +295,7 @@ async function redisRateLimit(ip: string, bucket: string, limit: number, windowS
   }
 }
 
+/** Check if an IP has exceeded its rate limit for a given bucket. Uses Redis with in-memory fallback. */
 export async function isRateLimited(
   ip: string,
   bucket: string,
@@ -289,6 +306,7 @@ export async function isRateLimited(
   return inMemoryRateLimit(ip, bucket, limit, windowMs);
 }
 
+/** Extract client IP from request headers. Prefers x-real-ip (Vercel edge, not spoofable). */
 export function getClientIp(req: Request): string {
   // Prefer x-real-ip (set by Vercel's edge, not spoofable) over x-forwarded-for
   return req.headers.get("x-real-ip")?.trim()
@@ -296,6 +314,7 @@ export function getClientIp(req: Request): string {
     || "unknown";
 }
 
+/** Return a 429 Too Many Requests response with Retry-After header. */
 export function rateLimitResponse(headers: Record<string, string>, retryAfterSec = 60): Response {
   return new Response(JSON.stringify({ error: "Too many requests. Please try again shortly.", retryAfter: retryAfterSec }), {
     status: 429,
@@ -305,6 +324,7 @@ export function rateLimitResponse(headers: Record<string, string>, retryAfterSec
 
 /* ─── Request Body Size Check ─── */
 
+/** Check if the request body exceeds the maximum allowed size. */
 export function checkBodySize(req: Request, maxBytes = 1048576): boolean {
   const contentLength = parseInt(req.headers.get("content-length") || "0", 10);
   return contentLength > maxBytes;
@@ -341,6 +361,7 @@ export function sanitizeForLLM(s: unknown, maxLen = 200): string {
 
 const DAILY_LLM_LIMITS: Record<string, number> = { free: 10, starter: 30, pro: 100, team: 200 };
 
+/** Check if a user has exceeded their daily LLM API call quota for a specific endpoint. */
 export async function checkLLMQuota(userId: string, endpoint: string): Promise<{ allowed: boolean; reason?: string }> {
   // Get user tier
   const tier = await getSubscriptionTier(userId);
@@ -371,12 +392,14 @@ export async function checkLLMQuota(userId: string, endpoint: string): Promise<{
 
 /* ─── Request ID Helper ─── */
 
+/** Attach a unique X-Request-ID header to the response headers. */
 export function withRequestId(headers: Record<string, string>): Record<string, string> {
   return { ...headers, "X-Request-ID": crypto.randomUUID() };
 }
 
 /* ─── VercelResponse CORS helpers (for Node.js API routes) ─── */
 
+/** Apply CORS headers to a VercelResponse based on the request origin. Returns the matched origin. */
 export function applyCorsHeaders(req: VercelRequest, res: VercelResponse): string {
   const origin = getAllowedOriginFromString(req.headers.origin as string || "");
   if (origin) {
@@ -388,6 +411,7 @@ export function applyCorsHeaders(req: VercelRequest, res: VercelResponse): strin
   return origin;
 }
 
+/** Handle OPTIONS preflight and reject non-POST methods for VercelRequest. Returns true if handled. */
 export function handlePreflightAndMethod(req: VercelRequest, res: VercelResponse): boolean {
   if (req.method === "OPTIONS") { res.status(204).end(); return true; }
   if (req.method !== "POST") { res.status(405).json({ error: "Method not allowed" }); return true; }
@@ -396,44 +420,53 @@ export function handlePreflightAndMethod(req: VercelRequest, res: VercelResponse
 
 /* ─── Supabase Header Builders ─── */
 
+/** Build Supabase headers using the service role key (for server-side operations). */
 export function supabaseServiceHeaders(): Record<string, string> {
   return { apikey: SERVICE_ROLE_KEY, Authorization: `Bearer ${SERVICE_ROLE_KEY}`, "Content-Type": "application/json" };
 }
 
+/** Build Supabase headers using the anon key and a user's JWT token. */
 export function supabaseAnonHeaders(token: string): Record<string, string> {
   return { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
 }
 
+/** Return the configured Supabase URL. */
 export function supabaseUrl(): string {
   return SUPABASE_URL;
 }
 
+/** Return the configured Supabase anon key. */
 export function supabaseAnonKey(): string {
   return SUPABASE_ANON_KEY;
 }
 
 /* ─── Shared HTML Utilities ─── */
 
+/** Escape HTML special characters to prevent XSS in rendered output. */
 export function escapeHtml(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
 /* ─── Standard Error Responses (Edge) ─── */
 
+/** Return a JSON error response with the given status code and message. */
 export function errorResponse(status: number, message: string, headers: Record<string, string>): Response {
   return new Response(JSON.stringify({ error: message }), { status, headers });
 }
 
+/** Return a 403 Forbidden JSON response. */
 export function forbiddenResponse(headers: Record<string, string>): Response {
   return errorResponse(403, "Forbidden", headers);
 }
 
+/** Return a 413 Request Too Large JSON response. */
 export function tooLargeResponse(headers: Record<string, string>): Response {
   return errorResponse(413, "Request too large", headers);
 }
 
 /* ─── VercelRequest IP Helper ─── */
 
+/** Extract client IP from VercelRequest headers. Prefers x-real-ip (Vercel edge, not spoofable). */
 export function getVercelClientIp(req: VercelRequest): string {
   return (req.headers["x-real-ip"] as string)?.trim()
     || (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim()

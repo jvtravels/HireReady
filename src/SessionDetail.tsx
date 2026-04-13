@@ -4,7 +4,7 @@ import { c, font, shadow, gradient } from "./tokens";
 import { useAuth } from "./AuthContext";
 import { getSessionById, saveFeedback, getSessionFeedback } from "./supabase";
 import { useToast } from "./Toast";
-import { RESULTS_KEY, extractScore, extractReason, scoreLabelColor, scoreLabel, scoreTip, normalizeType, ratingBadge, computeSpeechMetrics, computeHistoricalAverages, loadLocalSession, loadPreviousSession, type LocalSession, type IdealAnswer, type SkillScoreValue } from "./sessionDetailHelpers";
+import { extractScore, extractReason, scoreLabelColor, scoreLabel, scoreTip, normalizeType, ratingBadge, computeSpeechMetrics, computeHistoricalAverages, loadLocalSession, loadPreviousSession, type LocalSession } from "./sessionDetailHelpers";
 
 /* ─── Reusable Section Card ─── */
 function Section({ children, className, animIndex = 0 }: { children: React.ReactNode; className?: string; animIndex?: number }) {
@@ -521,9 +521,6 @@ export default function SessionDetail() {
       }).filter(e => !isNaN(e.score))
     : [];
 
-  const prevSkillMap = prevSession?.skill_scores
-    ? Object.fromEntries(Object.entries(prevSession.skill_scores).map(([k, v]) => [k, extractScore(v)]))
-    : {};
 
   return (
     <div className="session-detail-outer" style={{ minHeight: "100vh", background: c.obsidian, fontFamily: font.ui }}>

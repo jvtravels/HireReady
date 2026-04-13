@@ -1,6 +1,5 @@
 import { describe, it, expect } from "vitest";
 import { scriptsByType, defaultScript, getMiniScript, getScript } from "../interviewScripts";
-import type { InterviewStep } from "../interviewScripts";
 
 describe("interviewScripts", () => {
   describe("scriptsByType", () => {

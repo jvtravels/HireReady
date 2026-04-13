@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import { c, font, sp, radius } from "./tokens";
-import { scoreLabel, scoreLabelColor } from "./dashboardTypes";
 import { daysUntilEvent, formatEventDate, formatEventTime } from "./dashboardHelpers";
 import { SectionErrorBoundary } from "./ErrorBoundary";
 import { ScoreTrendChart, SkillRadar } from "./DashboardCharts";

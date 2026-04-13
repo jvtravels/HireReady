@@ -4,7 +4,6 @@ import { c, font } from "./tokens";
 import { useDocTitle } from "./useDocTitle";
 import { useAuth } from "./AuthContext";
 import { sessionTypes, scoreLabel, scoreLabelColor } from "./dashboardTypes";
-import type { DashboardSession, SkillData, TrendPoint } from "./dashboardTypes";
 import { ScoreTrendChart, SkillRadar } from "./DashboardCharts";
 import { useDashboard } from "./DashboardContext";
 import { DataLoadingSkeleton, ProGate } from "./dashboardComponents";
@@ -129,7 +128,6 @@ export default function AnalyticsPage() {
     const weekMs = 7 * 86400000;
     return new Set(trend.filter(t => now - new Date(t.date).getTime() < weekMs).map(t => new Date(t.date).toDateString())).size;
   }, [trend]);
-  const consistencyPct = Math.round((recentDays / 7) * 100);
 
   // Targeted session start
   const startTargeted = (type?: string) => {
