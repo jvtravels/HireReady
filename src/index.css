@@ -525,6 +525,12 @@ input[type="range"]::-moz-range-thumb {
   z-index: 9998;
 }
 
+/* ─── Tablet pricing grid ─── */
+@media (max-width: 1024px) and (min-width: 769px) {
+  .pricing-grid { grid-template-columns: repeat(2, 1fr) !important; }
+  .upgrade-plans-grid { grid-template-columns: repeat(2, 1fr) !important; }
+}
+
 /* ─── Mobile Nav ─── */
 @media (max-width: 768px) {
   .desktop-nav { display: none !important; }

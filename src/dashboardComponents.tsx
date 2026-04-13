@@ -97,22 +97,14 @@ export function DataLoadingSkeleton() {
 }
 
 /* ─── Upgrade Modal ─── */
-const MONTHLY_PLANS = [
+const PLANS = [
   { id: "free", tier: "free", name: "Free", price: "\u20B90", period: "", desc: `${FREE_SESSION_LIMIT} sessions total`, features: [`${FREE_SESSION_LIMIT} mock interviews`, "Behavioral questions", "Basic score & feedback"], featured: false },
-  { id: "single", tier: "free", name: "Single Session", price: "\u20B910", period: "/session", desc: "Pay per interview", features: ["1 AI mock interview", "All question types", "Full score & feedback", "Ideal answer key"], featured: false },
-  { id: "weekly", tier: "starter", name: "Starter", price: "\u20B949", period: "/week", desc: `${STARTER_WEEKLY_LIMIT} sessions per week`, features: [`${STARTER_WEEKLY_LIMIT} sessions/week`, "All question types", "Detailed feedback & skill scores", "Resume analysis", "PDF export"], featured: false },
-  { id: "monthly", tier: "pro", name: "Pro", price: "\u20B9149", period: "/mo", desc: `Best value \u2014 ${PRO_MONTHLY_LIMIT} sessions/month`, features: [`${PRO_MONTHLY_LIMIT} sessions/month`, "Full AI coaching feedback", "Performance analytics & trends", "Interview calendar", "Export PDF, CSV, JSON"], featured: true },
-];
-
-const ANNUAL_PLANS = [
-  { id: "free", tier: "free", name: "Free", price: "\u20B90", period: "", desc: `${FREE_SESSION_LIMIT} sessions total`, features: [`${FREE_SESSION_LIMIT} mock interviews`, "Behavioral questions", "Basic score & feedback"], featured: false },
-  { id: "single", tier: "free", name: "Single Session", price: "\u20B910", period: "/session", desc: "Pay per interview", features: ["1 AI mock interview", "All question types", "Full score & feedback", "Ideal answer key"], featured: false },
-  { id: "yearly-starter", tier: "starter", name: "Starter", price: "\u20B92,039", period: "/year", desc: `${STARTER_WEEKLY_LIMIT} sessions per week`, features: [`${STARTER_WEEKLY_LIMIT} sessions/week`, "All question types", "Detailed feedback & skill scores", "Resume analysis", "PDF export", "Save 20% vs weekly"], featured: false },
-  { id: "yearly-pro", tier: "pro", name: "Pro", price: "\u20B91,430", period: "/year", desc: `Best value \u2014 ${PRO_MONTHLY_LIMIT} sessions/month`, features: [`${PRO_MONTHLY_LIMIT} sessions/month`, "Full AI coaching feedback", "Performance analytics & trends", "Interview calendar", "Export PDF, CSV, JSON", "Save 20% vs monthly"], featured: true },
+  { id: "single", tier: "free", name: "Sessions", price: "\u20B910", period: "/session", desc: "Pay per interview", features: ["All question types", "Detailed score & tips", "Ideal answer key", "Company-specific Qs"], featured: false },
+  { id: "weekly", tier: "starter", name: "Starter", price: "\u20B949", period: "/week", desc: `${STARTER_WEEKLY_LIMIT} sessions per week`, features: [`${STARTER_WEEKLY_LIMIT} sessions/week`, "All types + role-specific", "Skill-level breakdown", "Resume-tailored Qs", "PDF reports"], featured: false },
+  { id: "monthly", tier: "pro", name: "Pro", price: "\u20B9149", period: "/mo", desc: `Best value \u2014 ${PRO_MONTHLY_LIMIT} sessions/month`, features: [`${PRO_MONTHLY_LIMIT} sessions/month`, "Everything in Starter", "AI coaching & improvement plan", "Analytics & trends", "Interview calendar", "Export PDF, CSV, JSON"], featured: true },
 ];
 
 export function UpgradeModal({ onClose, sessionsUsed, user, currentTier, onPaymentSuccess }: { onClose: () => void; sessionsUsed: number; user?: { id?: string; email?: string; name?: string } | null; currentTier: string; onPaymentSuccess: (tier: string, start: string, end: string) => void }) {
-  const [billingCycle, setBillingCycle] = useState<"monthly" | "annual">("monthly");
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [sessionQty, setSessionQty] = useState(1);
@@ -307,7 +299,7 @@ export function UpgradeModal({ onClose, sessionsUsed, user, currentTier, onPayme
     // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions -- dialog backdrop dismissal
     <div style={{ position: "fixed", inset: 0, zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(5,5,6,0.88)", backdropFilter: "blur(8px)" }} onClick={onClose} role="dialog" aria-modal="true" aria-label="Choose your plan">
       {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- stops click propagation to backdrop */}
-      <div ref={modalRef} onClick={(e) => e.stopPropagation()} className="upgrade-modal-inner" style={{ background: "linear-gradient(180deg, rgba(30,30,32,0.85) 0%, rgba(17,17,19,0.9) 100%)", backdropFilter: "blur(32px)", WebkitBackdropFilter: "blur(32px)", border: `1px solid rgba(255,255,255,0.08)`, borderRadius: 20, padding: "36px 32px 32px", maxWidth: 680, width: "94%", position: "relative", boxShadow: "0 20px 60px rgba(0,0,0,0.5)" }}>
+      <div ref={modalRef} onClick={(e) => e.stopPropagation()} className="upgrade-modal-inner" style={{ background: "linear-gradient(180deg, rgba(30,30,32,0.85) 0%, rgba(17,17,19,0.9) 100%)", backdropFilter: "blur(32px)", WebkitBackdropFilter: "blur(32px)", border: `1px solid rgba(255,255,255,0.08)`, borderRadius: 20, padding: "36px 32px 32px", maxWidth: 820, width: "94%", position: "relative", boxShadow: "0 20px 60px rgba(0,0,0,0.5)" }}>
         <button onClick={onClose} aria-label="Close dialog" style={{ position: "absolute", top: 14, right: 14, background: "none", border: "none", color: c.stone, cursor: "pointer", padding: 4 }}>
           <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </button>
@@ -341,7 +333,7 @@ export function UpgradeModal({ onClose, sessionsUsed, user, currentTier, onPayme
             setPromoLoading(true); setPromoError("");
             try {
               const hdrs = await import("./supabase").then(m => m.authHeaders());
-              const res = await fetch("/api/validate-promo", { method: "POST", headers: hdrs, body: JSON.stringify({ code: promoCode.trim(), plan: billingCycle === "annual" ? "yearly-pro" : "monthly" }) });
+              const res = await fetch("/api/validate-promo", { method: "POST", headers: hdrs, body: JSON.stringify({ code: promoCode.trim(), plan: "monthly" }) });
               const data = await res.json();
               if (data.valid) { setPromoResult(data); } else { setPromoError(data.error || "Invalid code"); setPromoResult(null); }
             } catch { setPromoError("Could not validate code"); }
@@ -363,21 +355,8 @@ export function UpgradeModal({ onClose, sessionsUsed, user, currentTier, onPayme
           </div>
         )}
 
-        {/* Billing toggle */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, marginBottom: 18 }}>
-          <span role="button" tabIndex={0} style={{ fontFamily: font.ui, fontSize: 12, fontWeight: billingCycle === "monthly" ? 600 : 400, color: billingCycle === "monthly" ? c.ivory : c.stone, cursor: "pointer" }} onClick={() => setBillingCycle("monthly")} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setBillingCycle("monthly"); } }}>Monthly</span>
-          <button onClick={() => setBillingCycle(prev => prev === "monthly" ? "annual" : "monthly")} aria-label="Toggle billing cycle"
-            style={{ width: 44, height: 24, borderRadius: 12, border: `1px solid ${c.borderHover}`, background: billingCycle === "annual" ? "rgba(122,158,126,0.2)" : c.obsidian, position: "relative", cursor: "pointer", transition: "background 0.2s", padding: 0 }}>
-            <div style={{ width: 18, height: 18, borderRadius: "50%", background: billingCycle === "annual" ? c.sage : c.stone, position: "absolute", top: 2, left: billingCycle === "annual" ? 23 : 2, transition: "left 0.2s, background 0.2s" }} />
-          </button>
-          <span role="button" tabIndex={0} style={{ fontFamily: font.ui, fontSize: 12, fontWeight: billingCycle === "annual" ? 600 : 400, color: billingCycle === "annual" ? c.ivory : c.stone, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }} onClick={() => setBillingCycle("annual")} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setBillingCycle("annual"); } }}>
-            Annual
-            <span style={{ fontFamily: font.mono, fontSize: 9, fontWeight: 700, color: c.sage, background: "rgba(122,158,126,0.1)", border: `1px solid rgba(122,158,126,0.2)`, borderRadius: 4, padding: "2px 6px", letterSpacing: "0.04em" }}>SAVE 20%</span>
-          </span>
-        </div>
-
-        <div className="upgrade-plans-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
-          {(billingCycle === "annual" ? ANNUAL_PLANS : MONTHLY_PLANS).map((plan) => {
+        <div className="upgrade-plans-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
+          {PLANS.map((plan) => {
             const isCurrent = plan.tier === currentTier && plan.id !== "single";
             return (
             <div key={plan.id} style={{
@@ -418,7 +397,7 @@ export function UpgradeModal({ onClose, sessionsUsed, user, currentTier, onPayme
               <ul style={{ listStyle: "none", padding: 0, margin: "0 0 18px", flex: 1 }}>
                 {plan.features.map((f) => (
                   <li key={f} style={{ fontFamily: font.ui, fontSize: 11, color: c.chalk, lineHeight: 1.4, padding: "3px 0", display: "flex", alignItems: "flex-start", gap: 7 }}>
-                    <span style={{ color: isCurrent ? c.sage : plan.featured ? c.gilt : c.sage, flexShrink: 0, fontSize: 12, marginTop: 1 }}>&#10003;</span>{plan.id === "single" && f === "1 AI mock interview" ? `${sessionQty} AI mock interview${sessionQty > 1 ? "s" : ""}` : f}
+                    <span style={{ color: isCurrent ? c.sage : plan.featured ? c.gilt : c.sage, flexShrink: 0, fontSize: 12, marginTop: 1 }}>&#10003;</span>{f}
                   </li>
                 ))}
               </ul>

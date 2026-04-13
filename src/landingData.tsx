@@ -103,10 +103,10 @@ export const testimonials = [
 ];
 
 export const plans = [
-  { name: "Free", price: "Free", period: "", planId: "", description: "Try it out — no credit card required.", features: ["3 AI mock interviews", "Behavioral questions only", "Basic score & feedback", "Resume-tailored questions"], cta: "Start Free", featured: false },
-  { name: "Single Session", price: "₹10", period: "/ session", planId: "single", description: "Pay per interview. No commitment.", features: ["1 AI mock interview", "All question types", "Full score & feedback", "Ideal answer key"], cta: "Buy Session", featured: false },
-  { name: "Starter", price: "₹49", period: "/ week", planId: "weekly", description: "7 sessions per week. Cancel anytime.", features: ["7 sessions per week", "All question types & roles", "Detailed feedback & skill scores", "Resume analysis", "PDF export"], cta: "Get Started", featured: false },
-  { name: "Pro", price: "₹149", period: "/ month", planId: "monthly", description: "30 sessions/month. Best value for serious candidates.", features: ["30 sessions per month", "Full AI coaching feedback", "Performance analytics & trends", "Interview calendar & reminders", "Full resume analysis", "Export PDF, CSV, JSON"], cta: "Go Pro", featured: true },
+  { name: "Free", price: "Free", period: "", planId: "", description: "Try it out — no credit card required.", features: ["3 AI mock interviews", "Behavioral questions only", "Basic score & feedback"], cta: "Start Free", featured: false },
+  { name: "Single Session", price: "₹10", period: "/ session", planId: "single", description: "Pay per interview. No commitment.", features: ["All question types", "Detailed score & tips", "Ideal answer key", "Company-specific questions"], cta: "Buy Session", featured: false },
+  { name: "Starter", price: "₹49", period: "/ week", planId: "weekly", description: "7 sessions per week. Cancel anytime.", features: ["7 sessions per week", "All types + role-specific", "Skill-level breakdown", "Resume-tailored questions", "PDF reports"], cta: "Get Started", featured: false },
+  { name: "Pro", price: "₹149", period: "/ month", planId: "monthly", description: "Best value for serious prep. Cancel anytime.", features: ["30 sessions per month", "Everything in Starter", "AI coaching & improvement plan", "Performance analytics & trends", "Interview calendar", "Export PDF, CSV, JSON"], cta: "Go Pro", featured: true },
 ];
 
 export const LANDING_FAQS = [
