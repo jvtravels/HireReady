@@ -5,6 +5,7 @@ import { track } from "@vercel/analytics";
 
 import { c, font } from "./tokens";
 import { useAuth } from "./AuthContext";
+import { getSupabase } from "./supabase";
 import { unlockAudio, prefetchTTS } from "./tts";
 import { UpgradeModal } from "./dashboardComponents";
 
@@ -249,8 +250,38 @@ export default function SessionSetup() {
   const [saveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [useResume, setUseResume] = useState(true);
   const [jobDescription, setJobDescription] = useState("");
+  const [jdAnalysis, setJdAnalysis] = useState<{
+    matchScore: number;
+    matchLabel: string;
+    matchedSkills: string[];
+    missingSkills: string[];
+    keyStrengths: string[];
+    gaps: string[];
+    interviewTips: string[];
+    suggestedFocus: string;
+  } | null>(null);
+  const [jdAnalyzing, setJdAnalyzing] = useState(false);
 
   const canProceedStep1 = !!targetRole.trim() && interviewFocus.length > 0;
+
+  const analyzeJDMatch = useCallback(async () => {
+    if (!jobDescription.trim() || !user?.resumeText) return;
+    setJdAnalyzing(true);
+    try {
+      const sb = await getSupabase();
+      const token = (await sb.auth.getSession()).data.session?.access_token;
+      const res = await fetch("/api/analyze-jd-match", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ resumeText: user.resumeText, jobDescription: jobDescription.trim() }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setJdAnalysis(data.analysis);
+      }
+    } catch { /* non-critical */ }
+    setJdAnalyzing(false);
+  }, [jobDescription, user?.resumeText]);
 
   const audioCtxRef = useRef<AudioContext | null>(null);
   const requestMic = useCallback(async () => {
@@ -697,7 +728,7 @@ export default function SessionSetup() {
                     {jobDescription !== "" && (
                       <textarea
                         value={jobDescription}
-                        onChange={(e) => setJobDescription(e.target.value)}
+                        onChange={(e) => { setJobDescription(e.target.value); setJdAnalysis(null); }}
                         placeholder="Paste the job posting here — questions will be tailored to this specific role..."
                         rows={4}
                         maxLength={2000}
@@ -708,10 +739,95 @@ export default function SessionSetup() {
                           lineHeight: 1.6, boxSizing: "border-box",
                         }}
                         onFocus={(e) => { e.currentTarget.style.borderColor = c.gilt; }}
-                        onBlur={(e) => { e.currentTarget.style.borderColor = c.border; if (!e.currentTarget.value.trim()) setJobDescription(""); }}
+                        onBlur={(e) => { e.currentTarget.style.borderColor = c.border; if (!e.currentTarget.value.trim()) { setJobDescription(""); setJdAnalysis(null); } }}
                         // eslint-disable-next-line jsx-a11y/no-autofocus -- user-initiated action: textarea opened by clicking "paste JD"
                         autoFocus
                       />
+                    )}
+
+                    {/* Analyze button - show when JD has content and user has resume */}
+                    {jobDescription.trim().length > 30 && user?.resumeText && !jdAnalysis && (
+                      <button
+                        onClick={analyzeJDMatch}
+                        disabled={jdAnalyzing}
+                        style={{
+                          marginTop: 8, fontFamily: font.ui, fontSize: 12, fontWeight: 500,
+                          padding: "8px 16px", borderRadius: 8, border: `1px solid ${c.gilt}`,
+                          background: "transparent", color: c.gilt, cursor: jdAnalyzing ? "default" : "pointer",
+                          opacity: jdAnalyzing ? 0.6 : 1, transition: "all 0.2s",
+                        }}
+                      >
+                        {jdAnalyzing ? "Analyzing match..." : "Compare with my resume"}
+                      </button>
+                    )}
+
+                    {/* JD Match Results */}
+                    {jdAnalysis && (
+                      <div style={{
+                        marginTop: 12, padding: 16, borderRadius: 12,
+                        background: "rgba(6,6,7,0.6)", border: `1px solid ${c.border}`,
+                      }}>
+                        {/* Match Score Header */}
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                            <div style={{
+                              width: 40, height: 40, borderRadius: "50%",
+                              background: `conic-gradient(${jdAnalysis.matchScore >= 70 ? c.sage : jdAnalysis.matchScore >= 50 ? c.gilt : c.ember} ${jdAnalysis.matchScore * 3.6}deg, ${c.border} 0deg)`,
+                              display: "flex", alignItems: "center", justifyContent: "center",
+                            }}>
+                              <div style={{ width: 30, height: 30, borderRadius: "50%", background: c.graphite, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.ivory }}>{jdAnalysis.matchScore}</span>
+                              </div>
+                            </div>
+                            <div>
+                              <div style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: c.ivory }}>{jdAnalysis.matchLabel}</div>
+                              <div style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>Resume vs Job Description</div>
+                            </div>
+                          </div>
+                          <button onClick={() => setJdAnalysis(null)} style={{ background: "none", border: "none", color: c.stone, cursor: "pointer", fontSize: 16 }} aria-label="Close analysis">&times;</button>
+                        </div>
+
+                        {/* Matched Skills */}
+                        {jdAnalysis.matchedSkills.length > 0 && (
+                          <div style={{ marginBottom: 10 }}>
+                            <div style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.sage, marginBottom: 4 }}>&#10003; Skills You Have</div>
+                            <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+                              {jdAnalysis.matchedSkills.map((s, i) => (
+                                <span key={i} style={{ fontFamily: font.ui, fontSize: 10, padding: "3px 8px", borderRadius: 6, background: "rgba(122,158,126,0.1)", color: c.sage, border: "1px solid rgba(122,158,126,0.2)" }}>{s}</span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Missing Skills */}
+                        {jdAnalysis.missingSkills.length > 0 && (
+                          <div style={{ marginBottom: 10 }}>
+                            <div style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.ember, marginBottom: 4 }}>&#10007; Skills to Highlight</div>
+                            <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+                              {jdAnalysis.missingSkills.map((s, i) => (
+                                <span key={i} style={{ fontFamily: font.ui, fontSize: 10, padding: "3px 8px", borderRadius: 6, background: "rgba(196,112,90,0.1)", color: c.ember, border: "1px solid rgba(196,112,90,0.2)" }}>{s}</span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Interview Tips */}
+                        {jdAnalysis.interviewTips.length > 0 && (
+                          <div style={{ marginBottom: 8 }}>
+                            <div style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.gilt, marginBottom: 4 }}>Interview Tips for This Role</div>
+                            {jdAnalysis.interviewTips.map((tip, i) => (
+                              <div key={i} style={{ fontFamily: font.ui, fontSize: 11, color: c.chalk, lineHeight: 1.5, marginBottom: 2 }}>&#8226; {tip}</div>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Suggested Focus */}
+                        {jdAnalysis.suggestedFocus && (
+                          <div style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, marginTop: 8, padding: "6px 10px", borderRadius: 6, background: "rgba(212,179,127,0.08)", border: "1px solid rgba(212,179,127,0.15)" }}>
+                            Recommended focus: <strong style={{ color: c.gilt }}>{jdAnalysis.suggestedFocus}</strong>
+                          </div>
+                        )}
+                      </div>
                     )}
                   </div>
                 </div>

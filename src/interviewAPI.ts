@@ -181,6 +181,7 @@ export async function fetchLLMEvaluation(params: {
   type: string; difficulty: string; role: string; company?: string;
   questions?: string[];
   resumeText?: string; language?: string;
+  jobDescription?: string;
 }, timeoutMs = 35000): Promise<EvaluationResult | null> {
   // Client-side rate limit: max 5 evaluations per 60s
   if (!checkRateLimit("evaluate", 5, 60_000)) {
@@ -216,6 +217,7 @@ export async function fetchLLMEvaluation(params: {
 /** Fetch a dynamic follow-up question based on the candidate's answer */
 export async function fetchFollowUp(params: {
   question: string; answer: string; type: string; role: string;
+  jobDescription?: string; company?: string;
 }): Promise<{ needsFollowUp: boolean; followUpText: string } | null> {
   // Client-side rate limit: max 10 follow-ups per 60s
   if (!checkRateLimit("follow-up", 10, 60_000)) return null;

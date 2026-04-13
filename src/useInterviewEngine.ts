@@ -658,6 +658,8 @@ export function useInterviewEngine() {
         answer: answerText,
         type: interviewType,
         role: user?.targetRole || "senior role",
+        jobDescription: jobDescription || undefined,
+        company: user?.targetCompany,
       });
     } else {
       pendingFollowUpRef.current = null;
@@ -795,6 +797,7 @@ export function useInterviewEngine() {
           questions: originalQuestions,
           resumeText: shouldUseResume ? user?.resumeText : undefined,
           language: interviewLanguage !== "en" ? interviewLanguage : undefined,
+          jobDescription: jobDescription || undefined,
         });
         if (evaluation) {
           score = Math.min(100, Math.max(0, evaluation.overallScore || fallbackScore));

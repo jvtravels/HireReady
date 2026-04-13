@@ -36,6 +36,7 @@
     { "source": "/api/evaluate", "destination": "/api/evaluate" },
     { "source": "/api/follow-up", "destination": "/api/follow-up" },
     { "source": "/api/analyze-resume", "destination": "/api/analyze-resume" },
+    { "source": "/api/analyze-jd-match", "destination": "/api/analyze-jd-match" },
     { "source": "/api/create-order", "destination": "/api/create-order" },
     { "source": "/api/verify-payment", "destination": "/api/verify-payment" },
     { "source": "/api/cancel-subscription", "destination": "/api/cancel-subscription" },

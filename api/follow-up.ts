@@ -37,7 +37,7 @@ export default async function handler(req: Request): Promise<Response> {
   }
 
   try {
-    const { question, answer, type, role } = await req.json();
+    const { question, answer, type, role, jobDescription, company } = await req.json();
 
     if (!question || typeof question !== "string" || !answer || typeof answer !== "string") {
       return new Response(JSON.stringify({ error: "Missing question or answer" }), { status: 400, headers });
@@ -50,10 +50,12 @@ export default async function handler(req: Request): Promise<Response> {
     const lacksFirstPerson = !(/ I /i.test(answer) || /^I /i.test(answer));
     const isShort = wordCount < 40;
 
+    const jdContext = jobDescription ? `The candidate is targeting this role: ${sanitizeForLLM(jobDescription, 500)}. If relevant, probe for skills mentioned in the JD.` : "";
+
     const prompt = `You are an expert interviewer. Given a candidate's answer to an interview question, decide if a follow-up question is needed.
 
 Interview type: ${sanitizeForLLM(type, 50) || "behavioral"}
-Role: ${sanitizeForLLM(role, 100) || "senior role"}
+Role: ${sanitizeForLLM(role, 100) || "senior role"}${company ? `\nCompany: ${sanitizeForLLM(company, 100)}` : ""}${jdContext ? `\n${jdContext}` : ""}
 
 Question asked: "${sanitizeForLLM(question, 500)}"
 Candidate's answer: "${sanitizeForLLM(answer, 1000)}"

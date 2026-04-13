@@ -54,7 +54,7 @@ export default async function handler(req: Request): Promise<Response> {
   }
 
   try {
-    const { transcript, type, difficulty, role, company, questions, resumeText, language } = await req.json();
+    const { transcript, type, difficulty, role, company, questions, resumeText, language, jobDescription } = await req.json();
 
     if (!transcript || !Array.isArray(transcript) || transcript.length === 0 ||
         !transcript.every((t: unknown) => typeof t === "object" && t !== null && typeof (t as { speaker?: unknown; text?: unknown }).speaker === "string" && typeof (t as { speaker?: unknown; text?: unknown }).text === "string")) {
@@ -94,6 +94,10 @@ export default async function handler(req: Request): Promise<Response> {
       ? `\nCandidate's resume summary (use to personalize feedback — reference their stated experience when relevant):\n${sanitizeForLLM(resumeText, 1500)}\n`
       : "";
 
+    const jdContext = typeof jobDescription === "string" && jobDescription.length > 0
+      ? `\nJob Description the candidate is targeting (use to evaluate relevance of answers):\n${sanitizeForLLM(jobDescription, 2000)}\n`
+      : "";
+
     const sanitizedLang = sanitizeForLLM(language, 20);
     const languageNote = sanitizedLang === "hi"
       ? "\nIMPORTANT: The interview was conducted in Hindi. Evaluate the candidate's Hindi communication quality. Provide feedback in English but cite Hindi quotes from their answers."
@@ -115,7 +119,7 @@ export default async function handler(req: Request): Promise<Response> {
     const skillWeighting = skillWeightingMap[interviewType] || "Weight all skills equally for this case study interview.";
 
     const prompt = `You are an expert interview coach evaluating a mock ${interviewType} interview for a ${interviewRole} candidate.${company ? ` Company: ${sanitizeForLLM(company, 100)}.` : ""} Difficulty: ${sanitizeForLLM(difficulty, 20) || "standard"}.${languageNote}
-${questionsContext}${resumeContext}
+${questionsContext}${resumeContext}${jdContext}
 Transcript:
 ${formattedTranscript}
 
@@ -128,6 +132,7 @@ Scoring rubric:
 - 75-89: Good structure but missing quantified impact OR specific metrics
 - 60-74: Vague, generic, uses "we" without clarifying individual role, no metrics
 - Below 60: Off-topic, extremely brief, or no substantive content
+If a job description is provided, evaluate how well the candidate's answers demonstrate the specific skills and requirements mentioned in the JD.
 
 STAR Method Analysis: For each answer, evaluate the presence and quality of each STAR component:
 - Situation: Did they set the context? (who, what, when, where)
