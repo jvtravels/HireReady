@@ -51,7 +51,10 @@ function buildReport(message: string, stack?: string): ErrorReport {
   };
 }
 
+let _initialized = false;
 export function initErrorReporter() {
+  if (_initialized) return;
+  _initialized = true;
   // Unhandled errors
   window.addEventListener("error", (event) => {
     sendError(buildReport(

@@ -5,11 +5,10 @@
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { createHmac, timingSafeEqual } from "crypto";
+import { escapeHtml } from "./_shared";
 
 
 const RAZORPAY_WEBHOOK_SECRET = (process.env.RAZORPAY_WEBHOOK_SECRET || "").trim();
-const RAZORPAY_KEY_ID = (process.env.RAZORPAY_KEY_ID || "").trim();
-const RAZORPAY_KEY_SECRET = (process.env.RAZORPAY_KEY_SECRET || "").trim();
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || "";
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 const RESEND_API_KEY = (process.env.RESEND_API_KEY || "").trim();
@@ -19,10 +18,6 @@ const APP_URL = (process.env.APP_URL || "https://hirestepx.vercel.app").replace(
 const PLAN_DURATION: Record<string, number> = { weekly: 7, monthly: 30, "yearly-starter": 365, "yearly-pro": 365 };
 const PLAN_TIER: Record<string, string> = { weekly: "starter", monthly: "pro", "yearly-starter": "starter", "yearly-pro": "pro" };
 const PLAN_AMOUNT: Record<string, number> = { weekly: 4900, monthly: 14900, "yearly-starter": 203900, "yearly-pro": 143000 };
-
-function escapeHtml(s: string): string {
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-}
 
 // In-memory event dedup — protects against rapid duplicate webhook deliveries within same instance
 const _processedEvents = new Set<string>();

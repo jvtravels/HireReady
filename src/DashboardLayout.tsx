@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { Link, Outlet, useNavigate, useLocation } from "react-router-dom";
 import { c, font } from "./tokens";
 import { useAuth } from "./AuthContext";
@@ -56,6 +56,7 @@ export default function DashboardLayout() {
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const shortcutsDialogRef = useRef<HTMLDivElement>(null);
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
 
   useEffect(() => {
@@ -65,6 +66,24 @@ export default function DashboardLayout() {
     window.addEventListener("online", goOnline);
     return () => { window.removeEventListener("offline", goOffline); window.removeEventListener("online", goOnline); };
   }, []);
+
+  // Focus trap for keyboard shortcuts dialog
+  useEffect(() => {
+    const el = shortcutsDialogRef.current;
+    if (!el || !showShortcuts) return;
+    const closeBtn = el.querySelector<HTMLButtonElement>("button");
+    closeBtn?.focus();
+    const trap = (e: KeyboardEvent) => {
+      if (e.key !== "Tab") return;
+      const focusable = el.querySelectorAll<HTMLElement>("button, [tabindex]");
+      if (focusable.length === 0) return;
+      const first = focusable[0], last = focusable[focusable.length - 1];
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    };
+    el.addEventListener("keydown", trap);
+    return () => el.removeEventListener("keydown", trap);
+  }, [showShortcuts]);
 
   // Keyboard shortcuts
   const handleKeydown = useCallback((e: KeyboardEvent) => {
@@ -337,21 +356,7 @@ export default function DashboardLayout() {
           {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- modal backdrop dismissal */}
           <div onClick={() => setShowShortcuts(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 90 }} />
           <div role="dialog" aria-modal="true" aria-label="Keyboard shortcuts"
-            ref={(el) => {
-              if (!el) return;
-              const closeBtn = el.querySelector<HTMLButtonElement>("button");
-              closeBtn?.focus();
-              const trap = (e: KeyboardEvent) => {
-                if (e.key !== "Tab") return;
-                const focusable = el.querySelectorAll<HTMLElement>("button, [tabindex]");
-                if (focusable.length === 0) return;
-                const first = focusable[0], last = focusable[focusable.length - 1];
-                if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
-                else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
-              };
-              el.addEventListener("keydown", trap);
-              (el as HTMLElement & { _cleanupTrap?: () => void })._cleanupTrap = () => el.removeEventListener("keydown", trap);
-            }}
+            ref={shortcutsDialogRef}
             style={{
             position: "fixed", top: "50%", left: "50%", transform: "translate(-50%, -50%)",
             background: c.graphite, border: `1px solid ${c.border}`, borderRadius: 14,
