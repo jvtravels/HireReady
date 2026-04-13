@@ -72,8 +72,8 @@ function computeATSScore(resumeText: string, _targetRole?: string, jdText?: stri
       if (!commonWords.has(w) && w.length > 3) freq[w] = (freq[w] || 0) + 1;
     }
     jdKeywords = Object.entries(freq).filter(([, c]) => c >= 2).map(([w]) => w).slice(0, 20);
-    foundJdKeywords = jdKeywords.filter(k => text.includes(k));
-    missingJdKeywords = jdKeywords.filter(k => !text.includes(k));
+    foundJdKeywords = jdKeywords.filter(k => new RegExp(`\\b${k}\\b`, "i").test(text));
+    missingJdKeywords = jdKeywords.filter(k => !new RegExp(`\\b${k}\\b`, "i").test(text));
   }
 
   // Score

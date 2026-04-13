@@ -92,7 +92,7 @@ function ParticleCanvas() {
     return () => { cancelAnimationFrame(animId); window.removeEventListener("resize", resize); };
   }, [ready]);
 
-  return <canvas ref={canvasRef} style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", pointerEvents: "none" }} />;
+  return <canvas ref={canvasRef} aria-hidden="true" style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", pointerEvents: "none" }} />;
 }
 
 /* ─── Auth-aware CTA ─── */

@@ -294,8 +294,11 @@ export function TestimonialsSection() {
       </div>
 
       <div
+        aria-live="polite" aria-label="Testimonials carousel"
         onMouseEnter={() => setIsPaused(true)}
         onMouseLeave={() => setIsPaused(false)}
+        onFocus={() => setIsPaused(true)}
+        onBlur={() => setIsPaused(false)}
       >
         {/* Split layout: photo left, quote right */}
         <div className="gradient-border-card" style={{
@@ -363,6 +366,8 @@ export function TestimonialsSection() {
             <button
               key={i}
               onClick={() => setActive(i)}
+              aria-label={`Testimonial from ${t.name}, ${t.role}`}
+              aria-current={active === i ? "true" : undefined}
               style={{
                 width: active === i ? 56 : 44, height: active === i ? 56 : 44,
                 borderRadius: "50%", overflow: "hidden", cursor: "pointer",

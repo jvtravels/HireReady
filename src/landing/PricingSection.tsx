@@ -203,7 +203,7 @@ function PricingCard({ plan, delay }: { plan: (typeof plans)[0]; delay: number }
       {isSingle ? (
         <div style={{ marginBottom: 20, position: "relative" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10 }}>
-            <button onClick={() => setQuantity(q => Math.max(1, q - 1))} disabled={quantity <= 1}
+            <button onClick={() => setQuantity(q => Math.max(1, q - 1))} disabled={quantity <= 1} aria-label="Decrease session count"
               style={{ width: 32, height: 32, borderRadius: 8, border: `1px solid ${c.borderHover}`, background: "rgba(255,255,255,0.03)", color: quantity <= 1 ? c.border : c.ivory, fontSize: 18, fontWeight: 600, cursor: quantity <= 1 ? "default" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.15s", fontFamily: font.mono }}>−</button>
             <div style={{ flex: 1, position: "relative" }}>
               <input type="range" min={1} max={10} value={quantity} onChange={e => setQuantity(Number(e.target.value))}
@@ -214,7 +214,7 @@ function PricingCard({ plan, delay }: { plan: (typeof plans)[0]; delay: number }
                 <span style={{ fontFamily: font.mono, fontSize: 9, color: c.stone }}>10</span>
               </div>
             </div>
-            <button onClick={() => setQuantity(q => Math.min(10, q + 1))} disabled={quantity >= 10}
+            <button onClick={() => setQuantity(q => Math.min(10, q + 1))} disabled={quantity >= 10} aria-label="Increase session count"
               style={{ width: 32, height: 32, borderRadius: 8, border: `1px solid ${c.borderHover}`, background: "rgba(255,255,255,0.03)", color: quantity >= 10 ? c.border : c.ivory, fontSize: 18, fontWeight: 600, cursor: quantity >= 10 ? "default" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.15s", fontFamily: font.mono }}>+</button>
           </div>
           <p style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, textAlign: "center" }}>₹10 per session · No expiry</p>

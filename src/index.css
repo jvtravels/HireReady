@@ -5,6 +5,20 @@
   padding: 0;
 }
 
+/* ─── Global focus-visible styles (WCAG 2.1 AA) ─── */
+:focus-visible {
+  outline: 2px solid #D4B37F;
+  outline-offset: 2px;
+}
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+  outline: 2px solid #D4B37F;
+  outline-offset: 2px;
+}
+input[type="range"]:focus-visible {
+  outline: 2px solid #D4B37F;
+  outline-offset: 4px;
+}
+
 @media (prefers-reduced-motion: no-preference) {
   html { scroll-behavior: smooth; }
 }
@@ -507,6 +521,8 @@ input[type="range"]::-moz-range-thumb {
 .glass-input:focus {
   border-color: rgba(212, 179, 127, 0.3);
   box-shadow: 0 0 0 3px rgba(212, 179, 127, 0.08);
+}
+.glass-input:focus:not(:focus-visible) {
   outline: none;
 }
 .glass-input::placeholder {

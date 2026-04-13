@@ -381,12 +381,12 @@ export function UpgradeModal({ onClose, sessionsUsed, user, currentTier, onPayme
               {plan.id === "single" ? (
                 <div style={{ marginBottom: 12 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                    <button onClick={(e) => { e.stopPropagation(); setSessionQty(q => Math.max(1, q - 1)); }} disabled={sessionQty <= 1}
+                    <button onClick={(e) => { e.stopPropagation(); setSessionQty(q => Math.max(1, q - 1)); }} disabled={sessionQty <= 1} aria-label="Decrease session count"
                       style={{ width: 26, height: 26, borderRadius: 6, border: `1px solid ${c.borderHover}`, background: "rgba(255,255,255,0.03)", color: sessionQty <= 1 ? c.border : c.ivory, fontSize: 15, fontWeight: 600, cursor: sessionQty <= 1 ? "default" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: font.mono, padding: 0 }}>−</button>
                     <input type="range" min={1} max={10} value={sessionQty} onChange={e => setSessionQty(Number(e.target.value))}
                       aria-label="Number of sessions"
                       style={{ flex: 1, height: 4, appearance: "none", WebkitAppearance: "none", background: `linear-gradient(to right, ${c.gilt} 0%, ${c.gilt} ${(sessionQty - 1) / 9 * 100}%, rgba(255,255,255,0.08) ${(sessionQty - 1) / 9 * 100}%, rgba(255,255,255,0.08) 100%)`, borderRadius: 2, outline: "none", cursor: "pointer" }} />
-                    <button onClick={(e) => { e.stopPropagation(); setSessionQty(q => Math.min(10, q + 1)); }} disabled={sessionQty >= 10}
+                    <button onClick={(e) => { e.stopPropagation(); setSessionQty(q => Math.min(10, q + 1)); }} disabled={sessionQty >= 10} aria-label="Increase session count"
                       style={{ width: 26, height: 26, borderRadius: 6, border: `1px solid ${c.borderHover}`, background: "rgba(255,255,255,0.03)", color: sessionQty >= 10 ? c.border : c.ivory, fontSize: 15, fontWeight: 600, cursor: sessionQty >= 10 ? "default" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: font.mono, padding: 0 }}>+</button>
                   </div>
                   <p style={{ fontFamily: font.ui, fontSize: 10, color: c.stone, textAlign: "center" }}>₹10/session · No expiry</p>
