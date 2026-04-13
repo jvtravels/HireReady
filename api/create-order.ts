@@ -71,12 +71,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const { plan, userId, email } = req.body;
+    const { plan, userId, email, quantity: rawQty } = req.body;
     if (typeof plan !== "string" || !PRICE_MAP[plan]) {
       return res.status(400).json({ error: "Invalid plan" });
     }
     const price = PRICE_MAP[plan];
     if (!price) return res.status(400).json({ error: "Invalid plan" });
+
+    // Quantity support for single session purchases (1-10)
+    const quantity = plan === "single" && typeof rawQty === "number" && rawQty >= 1 && rawQty <= 10 ? Math.floor(rawQty) : 1;
+    const finalAmount = plan === "single" ? price.amount * quantity : price.amount;
+    const finalDescription = plan === "single" && quantity > 1 ? `${quantity} Sessions — ₹${quantity * 10} · ${quantity} AI mock interviews` : price.description;
 
     // Idempotency: prevent duplicate orders for same user+plan within 30s
     const resolvedUserId = authenticatedUserId || (typeof userId === "string" ? userId : "");
@@ -111,6 +116,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const receipt = `${plan}_${Date.now()}`.slice(0, 40);
 
     const notes: Record<string, string> = { plan };
+    if (plan === "single" && quantity > 1) notes.quantity = String(quantity);
     if (resolvedUserId.length > 0 && resolvedUserId.length <= 200) notes.userId = resolvedUserId;
     if (typeof email === "string" && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) notes.email = email;
 
@@ -123,7 +129,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         "Content-Type": "application/json",
       },
       signal: ac.signal,
-      body: JSON.stringify({ amount: price.amount, currency: "INR", receipt, notes }),
+      body: JSON.stringify({ amount: finalAmount, currency: "INR", receipt, notes }),
     });
     clearTimeout(acTimer);
 
@@ -151,7 +157,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       currency: order.currency,
       keyId: RAZORPAY_KEY_ID,
       name: price.name,
-      description: price.description,
+      description: finalDescription,
+      ...(plan === "single" && quantity > 1 ? { quantity } : {}),
     });
   } catch (err) {
     console.error("Order creation error:", err);

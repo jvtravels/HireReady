@@ -258,6 +258,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const rzpAuth = Buffer.from(`${RAZORPAY_KEY_ID}:${RAZORPAY_KEY_SECRET}`).toString("base64");
     const rzpAc = new AbortController();
     const rzpTimer = setTimeout(() => rzpAc.abort(), 8000);
+    let sessionQuantity = 1; // For single session multi-buy
     try {
     if (razorpay_order_id) {
       const orderRes = await fetch(`https://api.razorpay.com/v1/orders/${razorpay_order_id}`, {
@@ -267,7 +268,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(400).json({ error: "Could not verify order details", code: "ORDER_FETCH_FAILED" });
       }
       const orderData = await orderRes.json();
-      if (orderData.amount !== PLAN_AMOUNT[plan]) {
+      // For single session purchases, quantity may multiply the base amount
+      if (plan === "single" && orderData.notes?.quantity) {
+        sessionQuantity = Math.min(Math.max(parseInt(orderData.notes.quantity, 10) || 1, 1), 10);
+      }
+      const expectedAmount = plan === "single" ? PLAN_AMOUNT[plan] * sessionQuantity : PLAN_AMOUNT[plan];
+      if (orderData.amount !== expectedAmount) {
         console.error("Plan/amount mismatch for order", razorpay_order_id.slice(0, 8) + "...");
         return res.status(400).json({ error: "Plan does not match payment amount", code: "AMOUNT_MISMATCH" });
       }
@@ -325,30 +331,33 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // 4a. Handle single session credit purchase (no tier change)
     if (plan === "single") {
       const now = new Date();
+      const purchaseAmount = 1000 * sessionQuantity;
+      const label = sessionQuantity > 1 ? `${sessionQuantity} Sessions (₹${sessionQuantity * 10})` : PLAN_LABEL["single"];
       // Store payment record
       const paymentRecordRes = await fetch(`${SUPABASE_URL}/rest/v1/payments`, {
         method: "POST",
         headers: { apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`, "Content-Type": "application/json", Prefer: "return=minimal" },
-        body: JSON.stringify({ id: crypto.randomUUID(), user_id: userId, razorpay_payment_id, razorpay_order_id, plan: "single", tier: "free", amount: 1000, currency: "INR", status: "completed", subscription_start: now.toISOString(), subscription_end: now.toISOString() }),
+        body: JSON.stringify({ id: crypto.randomUUID(), user_id: userId, razorpay_payment_id, razorpay_order_id, plan: "single", tier: "free", amount: purchaseAmount, currency: "INR", status: "completed", subscription_start: now.toISOString(), subscription_end: now.toISOString() }),
       });
       if (!paymentRecordRes.ok) {
         console.error("Payment record save failed:", paymentRecordRes.status);
         return res.status(500).json({ error: "Failed to save payment record" });
       }
-      // Increment session_credits on profile via RPC or direct update
+      // Increment session_credits on profile
       const currentCredits = current?.session_credits || 0;
+      const newCredits = currentCredits + sessionQuantity;
       const updateRes = await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${encodeURIComponent(userId)}`, {
         method: "PATCH",
         headers: { apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`, "Content-Type": "application/json", Prefer: "return=minimal" },
-        body: JSON.stringify({ session_credits: currentCredits + 1, razorpay_payment_id }),
+        body: JSON.stringify({ session_credits: newCredits, razorpay_payment_id }),
       });
       if (!updateRes.ok) {
         console.error("Credit update failed:", updateRes.status);
         return res.status(500).json({ error: "Failed to add session credit" });
       }
       // Send confirmation email
-      try { await sendPaymentEmail(email || "", "single", now.toISOString(), now.toISOString(), PLAN_LABEL["single"]); } catch (e) { console.warn("Email send failed:", e); }
-      return res.status(200).json({ success: true, tier: current?.subscription_tier || "free", plan: "single", credits: currentCredits + 1, subscription_start: now.toISOString(), subscription_end: current?.subscription_end || now.toISOString() });
+      try { await sendPaymentEmail(email || "", "single", now.toISOString(), now.toISOString(), label); } catch (e) { console.warn("Email send failed:", e); }
+      return res.status(200).json({ success: true, tier: current?.subscription_tier || "free", plan: "single", credits: newCredits, quantity: sessionQuantity, subscription_start: now.toISOString(), subscription_end: current?.subscription_end || now.toISOString() });
     }
 
     // 4b. Calculate subscription dates with mid-cycle upgrade proration

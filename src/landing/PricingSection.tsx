@@ -34,6 +34,8 @@ function PricingCard({ plan, delay }: { plan: (typeof plans)[0]; delay: number }
   const { user, isLoggedIn, updateUser } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [quantity, setQuantity] = useState(1);
+  const isSingle = plan.planId === "single";
 
   const handleClick = async () => {
     track("cta_click", { cta: `pricing_${plan.name.toLowerCase()}`, plan: plan.name });
@@ -55,7 +57,7 @@ function PricingCard({ plan, delay }: { plan: (typeof plans)[0]; delay: number }
         const subRes = await fetch("/api/create-subscription", {
           method: "POST",
           headers: authHdrs,
-          body: JSON.stringify({ plan: plan.planId, userId: user?.id, email: user?.email }),
+          body: JSON.stringify({ plan: plan.planId, userId: user?.id, email: user?.email, ...(isSingle && quantity > 1 ? { quantity } : {}) }),
         });
         const subData = await subRes.json();
         if (subData.subscriptionId) {
@@ -74,7 +76,7 @@ function PricingCard({ plan, delay }: { plan: (typeof plans)[0]; delay: number }
         const orderRes = await fetch("/api/create-order", {
           method: "POST",
           headers: authHdrs,
-          body: JSON.stringify({ plan: plan.planId, userId: user?.id, email: user?.email }),
+          body: JSON.stringify({ plan: plan.planId, userId: user?.id, email: user?.email, ...(isSingle && quantity > 1 ? { quantity } : {}) }),
         });
         const orderData = await orderRes.json() as { orderId?: string; subscriptionId?: string; keyId?: string; amount?: number; currency?: string; description?: string; error?: string };
         data = orderData;
@@ -192,12 +194,34 @@ function PricingCard({ plan, delay }: { plan: (typeof plans)[0]; delay: number }
       {plan.featured && <div style={{ position: "absolute", top: -1, left: 0, right: 0, height: 2, background: `linear-gradient(90deg, transparent, ${c.gilt}, transparent)` }} />}
       {plan.featured && <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: c.gilt, display: "block", marginBottom: 16 }}>Most Popular</span>}
 
-      <h3 style={{ fontFamily: font.ui, fontSize: 18, fontWeight: 600, color: c.ivory, marginBottom: 8, position: "relative" }}>{plan.name}</h3>
+      <h3 style={{ fontFamily: font.ui, fontSize: 18, fontWeight: 600, color: c.ivory, marginBottom: 8, position: "relative" }}>{isSingle ? "Sessions" : plan.name}</h3>
       <div style={{ marginBottom: 16, position: "relative" }}>
-        <span style={{ fontFamily: font.mono, fontSize: 36, fontWeight: 600, color: c.ivory, letterSpacing: "-0.02em" }}>{plan.price}</span>
-        {plan.period && <span style={{ fontFamily: font.ui, fontSize: 14, color: c.stone, marginLeft: 4 }}>{plan.period}</span>}
+        <span style={{ fontFamily: font.mono, fontSize: 36, fontWeight: 600, color: c.ivory, letterSpacing: "-0.02em" }}>{isSingle ? `₹${quantity * 10}` : plan.price}</span>
+        {isSingle ? <span style={{ fontFamily: font.ui, fontSize: 14, color: c.stone, marginLeft: 4 }}>/ {quantity} session{quantity > 1 ? "s" : ""}</span>
+         : plan.period ? <span style={{ fontFamily: font.ui, fontSize: 14, color: c.stone, marginLeft: 4 }}>{plan.period}</span> : null}
       </div>
-      <p style={{ fontFamily: font.ui, fontSize: 13, color: c.stone, lineHeight: 1.5, marginBottom: 24, position: "relative" }}>{plan.description}</p>
+      {isSingle ? (
+        <div style={{ marginBottom: 20, position: "relative" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10 }}>
+            <button onClick={() => setQuantity(q => Math.max(1, q - 1))} disabled={quantity <= 1}
+              style={{ width: 32, height: 32, borderRadius: 8, border: `1px solid ${c.borderHover}`, background: "rgba(255,255,255,0.03)", color: quantity <= 1 ? c.border : c.ivory, fontSize: 18, fontWeight: 600, cursor: quantity <= 1 ? "default" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.15s", fontFamily: font.mono }}>−</button>
+            <div style={{ flex: 1, position: "relative" }}>
+              <input type="range" min={1} max={10} value={quantity} onChange={e => setQuantity(Number(e.target.value))}
+                aria-label="Number of sessions"
+                style={{ width: "100%", height: 6, appearance: "none", WebkitAppearance: "none", background: `linear-gradient(to right, ${c.gilt} 0%, ${c.gilt} ${(quantity - 1) / 9 * 100}%, rgba(255,255,255,0.08) ${(quantity - 1) / 9 * 100}%, rgba(255,255,255,0.08) 100%)`, borderRadius: 3, outline: "none", cursor: "pointer" }} />
+              <div style={{ display: "flex", justifyContent: "space-between", marginTop: 4 }}>
+                <span style={{ fontFamily: font.mono, fontSize: 9, color: c.stone }}>1</span>
+                <span style={{ fontFamily: font.mono, fontSize: 9, color: c.stone }}>10</span>
+              </div>
+            </div>
+            <button onClick={() => setQuantity(q => Math.min(10, q + 1))} disabled={quantity >= 10}
+              style={{ width: 32, height: 32, borderRadius: 8, border: `1px solid ${c.borderHover}`, background: "rgba(255,255,255,0.03)", color: quantity >= 10 ? c.border : c.ivory, fontSize: 18, fontWeight: 600, cursor: quantity >= 10 ? "default" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.15s", fontFamily: font.mono }}>+</button>
+          </div>
+          <p style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, textAlign: "center" }}>₹10 per session · No expiry</p>
+        </div>
+      ) : (
+        <p style={{ fontFamily: font.ui, fontSize: 13, color: c.stone, lineHeight: 1.5, marginBottom: 24, position: "relative" }}>{plan.description}</p>
+      )}
       <ul style={{ listStyle: "none", padding: 0, marginBottom: 28, position: "relative" }}>
         {plan.features.map((f) => (
           <li key={f} style={{ fontFamily: font.ui, fontSize: 13, color: c.chalk, lineHeight: 1.5, padding: "6px 0", display: "flex", alignItems: "flex-start", gap: 10 }}>
@@ -220,7 +244,7 @@ function PricingCard({ plan, delay }: { plan: (typeof plans)[0]; delay: number }
           if (plan.featured) { e.currentTarget.style.filter = "brightness(1)"; }
           else { e.currentTarget.style.borderColor = c.borderHover; e.currentTarget.style.color = c.chalk; e.currentTarget.style.background = "transparent"; }
         }}>
-        {loading ? "Redirecting to checkout..." : plan.cta}
+        {loading ? "Redirecting to checkout..." : isSingle ? `Buy ${quantity} Session${quantity > 1 ? "s" : ""} — ₹${quantity * 10}` : plan.cta}
       </button>
       {error && (
         <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginTop: 8 }}>

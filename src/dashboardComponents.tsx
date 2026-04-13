@@ -115,6 +115,7 @@ export function UpgradeModal({ onClose, sessionsUsed, user, currentTier, onPayme
   const [billingCycle, setBillingCycle] = useState<"monthly" | "annual">("monthly");
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState("");
+  const [sessionQty, setSessionQty] = useState(1);
   const [promoCode, setPromoCode] = useState("");
   const [promoResult, setPromoResult] = useState<{ valid: boolean; discount_percent?: number; discount_amount?: number; final_amount?: number; code?: string } | null>(null);
   const [promoLoading, setPromoLoading] = useState(false);
@@ -188,7 +189,7 @@ export function UpgradeModal({ onClose, sessionsUsed, user, currentTier, onPayme
       const res = await fetch("/api/create-order", {
         method: "POST",
         headers: hdrs,
-        body: JSON.stringify({ plan: planId, userId: user?.id, email: user?.email }),
+        body: JSON.stringify({ plan: planId, userId: user?.id, email: user?.email, ...(planId === "single" && sessionQty > 1 ? { quantity: sessionQty } : {}) }),
       });
       if (!res.ok) {
         let errMsg = "Could not start checkout. Please try again.";
@@ -392,16 +393,32 @@ export function UpgradeModal({ onClose, sessionsUsed, user, currentTier, onPayme
                 Current Plan
               </span>}
               {!isCurrent && plan.featured && <span style={{ fontFamily: font.ui, fontSize: 9, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: c.gilt, marginBottom: 10 }}>Most Popular</span>}
-              <h3 style={{ fontFamily: font.ui, fontSize: 15, fontWeight: 600, color: c.ivory, marginBottom: 4 }}>{plan.name}</h3>
+              <h3 style={{ fontFamily: font.ui, fontSize: 15, fontWeight: 600, color: c.ivory, marginBottom: 4 }}>{plan.id === "single" ? "Sessions" : plan.name}</h3>
               <div style={{ marginBottom: 4 }}>
-                <span style={{ fontFamily: font.mono, fontSize: 28, fontWeight: 700, color: c.ivory }}>{plan.price}</span>
-                {plan.period && <span style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, marginLeft: 3 }}>{plan.period}</span>}
+                <span style={{ fontFamily: font.mono, fontSize: 28, fontWeight: 700, color: c.ivory }}>{plan.id === "single" ? `₹${sessionQty * 10}` : plan.price}</span>
+                {plan.id === "single" ? <span style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, marginLeft: 3 }}>/ {sessionQty} session{sessionQty > 1 ? "s" : ""}</span>
+                 : plan.period ? <span style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, marginLeft: 3 }}>{plan.period}</span> : null}
               </div>
-              <p style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, marginBottom: 14 }}>{plan.desc}</p>
+              {plan.id === "single" ? (
+                <div style={{ marginBottom: 12 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                    <button onClick={(e) => { e.stopPropagation(); setSessionQty(q => Math.max(1, q - 1)); }} disabled={sessionQty <= 1}
+                      style={{ width: 26, height: 26, borderRadius: 6, border: `1px solid ${c.borderHover}`, background: "rgba(255,255,255,0.03)", color: sessionQty <= 1 ? c.border : c.ivory, fontSize: 15, fontWeight: 600, cursor: sessionQty <= 1 ? "default" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: font.mono, padding: 0 }}>−</button>
+                    <input type="range" min={1} max={10} value={sessionQty} onChange={e => setSessionQty(Number(e.target.value))}
+                      aria-label="Number of sessions"
+                      style={{ flex: 1, height: 4, appearance: "none", WebkitAppearance: "none", background: `linear-gradient(to right, ${c.gilt} 0%, ${c.gilt} ${(sessionQty - 1) / 9 * 100}%, rgba(255,255,255,0.08) ${(sessionQty - 1) / 9 * 100}%, rgba(255,255,255,0.08) 100%)`, borderRadius: 2, outline: "none", cursor: "pointer" }} />
+                    <button onClick={(e) => { e.stopPropagation(); setSessionQty(q => Math.min(10, q + 1)); }} disabled={sessionQty >= 10}
+                      style={{ width: 26, height: 26, borderRadius: 6, border: `1px solid ${c.borderHover}`, background: "rgba(255,255,255,0.03)", color: sessionQty >= 10 ? c.border : c.ivory, fontSize: 15, fontWeight: 600, cursor: sessionQty >= 10 ? "default" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: font.mono, padding: 0 }}>+</button>
+                  </div>
+                  <p style={{ fontFamily: font.ui, fontSize: 10, color: c.stone, textAlign: "center" }}>₹10/session · No expiry</p>
+                </div>
+              ) : (
+                <p style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, marginBottom: 14 }}>{plan.desc}</p>
+              )}
               <ul style={{ listStyle: "none", padding: 0, margin: "0 0 18px", flex: 1 }}>
                 {plan.features.map((f) => (
                   <li key={f} style={{ fontFamily: font.ui, fontSize: 11, color: c.chalk, lineHeight: 1.4, padding: "3px 0", display: "flex", alignItems: "flex-start", gap: 7 }}>
-                    <span style={{ color: isCurrent ? c.sage : plan.featured ? c.gilt : c.sage, flexShrink: 0, fontSize: 12, marginTop: 1 }}>&#10003;</span>{f}
+                    <span style={{ color: isCurrent ? c.sage : plan.featured ? c.gilt : c.sage, flexShrink: 0, fontSize: 12, marginTop: 1 }}>&#10003;</span>{plan.id === "single" && f === "1 AI mock interview" ? `${sessionQty} AI mock interview${sessionQty > 1 ? "s" : ""}` : f}
                   </li>
                 ))}
               </ul>
@@ -417,7 +434,7 @@ export function UpgradeModal({ onClose, sessionsUsed, user, currentTier, onPayme
                   onMouseEnter={(e) => { if (!loading) { if (plan.featured) e.currentTarget.style.filter = "brightness(1.15)"; else { e.currentTarget.style.borderColor = c.chalk; e.currentTarget.style.background = "rgba(245,242,237,0.03)"; } } }}
                   onMouseLeave={(e) => { if (plan.featured) e.currentTarget.style.filter = "brightness(1)"; else { e.currentTarget.style.borderColor = c.borderHover; e.currentTarget.style.background = "transparent"; } }}
                 >
-                  {loading === "verifying" ? "Verifying..." : loading === plan.id ? "Opening Razorpay..." : plan.featured ? "Go Pro" : plan.id === "single" ? "Buy Session" : "Get Started"}
+                  {loading === "verifying" ? "Verifying..." : loading === plan.id ? "Opening Razorpay..." : plan.featured ? "Go Pro" : plan.id === "single" ? `Buy ${sessionQty} Session${sessionQty > 1 ? "s" : ""} — ₹${sessionQty * 10}` : "Get Started"}
                 </button>
               )}
             </div>

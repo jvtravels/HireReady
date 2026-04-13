@@ -434,6 +434,32 @@ body {
     0 0 80px rgba(212, 179, 127, 0.08);
 }
 
+/* Session quantity slider thumb */
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #D4B37F;
+  border: 2px solid #111113;
+  cursor: pointer;
+  box-shadow: 0 0 8px rgba(212, 179, 127, 0.35);
+  transition: box-shadow 0.15s;
+}
+input[type="range"]::-webkit-slider-thumb:hover {
+  box-shadow: 0 0 14px rgba(212, 179, 127, 0.5);
+}
+input[type="range"]::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #D4B37F;
+  border: 2px solid #111113;
+  cursor: pointer;
+  box-shadow: 0 0 8px rgba(212, 179, 127, 0.35);
+}
+
 /* ─── Score bar animation ─── */
 
 .score-bar {
