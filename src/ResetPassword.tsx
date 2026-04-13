@@ -121,10 +121,11 @@ export default function ResetPassword() {
             )}
 
             <div style={{ marginBottom: 16 }}>
-              <label style={{ fontSize: 12, fontWeight: 500, color: c.chalk, display: "block", marginBottom: 6 }}>
+              <label htmlFor="reset-pw" style={{ fontSize: 12, fontWeight: 500, color: c.chalk, display: "block", marginBottom: 6 }}>
                 New Password
               </label>
               <input
+                id="reset-pw"
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -153,10 +154,11 @@ export default function ResetPassword() {
             </div>
 
             <div style={{ marginBottom: 24 }}>
-              <label style={{ fontSize: 12, fontWeight: 500, color: c.chalk, display: "block", marginBottom: 6 }}>
+              <label htmlFor="reset-pw-confirm" style={{ fontSize: 12, fontWeight: 500, color: c.chalk, display: "block", marginBottom: 6 }}>
                 Confirm Password
               </label>
               <input
+                id="reset-pw-confirm"
                 type="password"
                 value={confirm}
                 onChange={(e) => setConfirm(e.target.value)}

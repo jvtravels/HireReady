@@ -125,11 +125,11 @@ function AutocompleteInput({
 
 const OB_STEP_KEY = "hirestepx_ob_step";
 const OB_FORM_KEY = "hirestepx_ob_form";
-function saveObStep(step: number) { try { localStorage.setItem(OB_STEP_KEY, String(step)); } catch {} }
-function loadObStep(): number { try { const v = localStorage.getItem(OB_STEP_KEY); return v ? Math.min(Math.max(parseInt(v), 1), TOTAL_STEPS) : 1; } catch { return 1; } }
-function clearObStep() { try { localStorage.removeItem(OB_STEP_KEY); localStorage.removeItem(OB_FORM_KEY); } catch {} }
+function saveObStep(step: number) { try { localStorage.setItem(OB_STEP_KEY, String(step)); } catch { /* expected: localStorage may be unavailable */ } }
+function loadObStep(): number { try { const v = localStorage.getItem(OB_STEP_KEY); return v ? Math.min(Math.max(parseInt(v), 1), TOTAL_STEPS) : 1; } catch { /* expected: localStorage may be unavailable */ return 1; } }
+function clearObStep() { try { localStorage.removeItem(OB_STEP_KEY); localStorage.removeItem(OB_FORM_KEY); } catch { /* expected: localStorage may be unavailable */ } }
 function saveObForm(data: { targetRole: string; targetCompany: string; interviewFocus: string[]; sessionLength: string }) {
-  try { localStorage.setItem(OB_FORM_KEY, JSON.stringify(data)); } catch {}
+  try { localStorage.setItem(OB_FORM_KEY, JSON.stringify(data)); } catch { /* expected: localStorage may be unavailable */ }
 }
 function loadObForm(): { targetRole: string; targetCompany: string; interviewFocus: string[]; sessionLength: string } | null {
   try { const raw = localStorage.getItem(OB_FORM_KEY); return raw ? JSON.parse(raw) : null; } catch { return null; }

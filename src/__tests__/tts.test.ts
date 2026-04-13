@@ -39,7 +39,7 @@ function loadTTSSettingsFromRaw(raw: string | null): TTSSettings {
       }
       return { ...DEFAULT_SETTINGS, ...parsed };
     }
-  } catch {}
+  } catch { /* expected: localStorage/JSON.parse may fail */ }
   return DEFAULT_SETTINGS;
 }
 

@@ -145,7 +145,7 @@ export default function DashboardHome() {
       if (!raw) return null;
       const d = JSON.parse(raw);
       if (d && d.savedAt && Date.now() - d.savedAt < 86400000) return { type: d.interviewType || "behavioral", savedAt: d.savedAt };
-    } catch {}
+    } catch { /* expected: localStorage/JSON.parse may fail in private browsing */ }
     return null;
   });
   const [, setDraftTick] = useState(0);
@@ -187,7 +187,11 @@ export default function DashboardHome() {
     return () => clearInterval(timer);
   }, [!!hasDraft]);
 
-  // useMemo must be called before any early returns to satisfy Rules of Hooks
+  // All useMemo calls must be before any early returns (Rules of Hooks)
+  const weakestSkill = useMemo(() => skills.length > 0 ? [...skills].sort((a, b) => a.score - b.score)[0] : null, [skills]);
+  const activeNotifs = useMemo(() => notifications.filter(n => !persisted.dismissedNotifs.includes(n.id)), [notifications, persisted.dismissedNotifs]);
+  const latestBadge = useMemo(() => badges.filter(b => b.earned).slice(-1)[0] || null, [badges]);
+
   const filteredSessions = useMemo(() => recentSessions
     .filter(s => filterType === "All" || s.type === filterType)
     .filter(s => {
@@ -220,11 +224,7 @@ export default function DashboardHome() {
     );
   }
 
-  const weakestSkill = useMemo(() => skills.length > 0 ? [...skills].sort((a, b) => a.score - b.score)[0] : null, [skills]);
-  const activeNotifs = useMemo(() => notifications.filter(n => !persisted.dismissedNotifs.includes(n.id)), [notifications, persisted.dismissedNotifs]);
-  const latestBadge = useMemo(() => badges.filter(b => b.earned).slice(-1)[0] || null, [badges]);
-
-  const dismissDraft = () => { setHasDraft(null); try { localStorage.removeItem(draftKey); } catch {} };
+  const dismissDraft = () => { setHasDraft(null); try { localStorage.removeItem(draftKey); } catch { /* expected: localStorage may be unavailable */ } };
 
   return (
     <div style={{ margin: "0 auto", lineHeight: 1.5 }} className="dash-card">
@@ -300,7 +300,7 @@ export default function DashboardHome() {
               <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg>
             </button>
             {headerMenuOpen && (
-              <div role="menu" aria-label="Dashboard actions" onKeyDown={(e) => {
+              <div role="menu" tabIndex={-1} aria-label="Dashboard actions" onKeyDown={(e) => {
                 if (e.key === "Escape") { setHeaderMenuOpen(false); return; }
                 if (e.key === "ArrowDown" || e.key === "ArrowUp") {
                   e.preventDefault();

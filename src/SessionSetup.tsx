@@ -363,7 +363,7 @@ export default function SessionSetup() {
       {/* ─── Top Bar (matches Onboarding) ─── */}
       <div style={{ padding: "18px 40px", display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", borderBottom: `1px solid rgba(245,242,237,0.04)`, background: "rgba(6,6,7,0.6)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)", zIndex: 10 }}>
         {/* Logo */}
-        <div onClick={() => navigate("/dashboard")} style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }} title="Back to dashboard">
+        <div role="button" tabIndex={0} onClick={() => navigate("/dashboard")} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); navigate("/dashboard"); } }} style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }} title="Back to dashboard">
           <div style={{ width: 6, height: 6, borderRadius: 2, background: `linear-gradient(135deg, ${c.gilt}, ${c.giltDark})`, boxShadow: "0 0 8px rgba(212,179,127,0.3)" }} />
           <span style={{ fontFamily: font.display, fontSize: 17, fontWeight: 400, color: c.ivory, letterSpacing: "0.02em" }}>HireStepX</span>
         </div>
@@ -377,7 +377,10 @@ export default function SessionSetup() {
             return (
               <div key={i} style={{ display: "flex", alignItems: "center", gap: 6 }}>
                 <div
+                  role={canClick ? "button" : undefined}
+                  tabIndex={canClick ? 0 : undefined}
                   onClick={canClick ? () => setStep(stepNum) : undefined}
+                  onKeyDown={canClick ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setStep(stepNum); } } : undefined}
                   style={{
                     width: 26, height: 26, borderRadius: "50%",
                     background: isCompleted ? `linear-gradient(135deg, ${c.gilt}, ${c.giltDark})` : isCurrent ? "rgba(212,179,127,0.1)" : "transparent",
@@ -394,7 +397,10 @@ export default function SessionSetup() {
                   )}
                 </div>
                 <span
+                  role={canClick ? "button" : undefined}
+                  tabIndex={canClick ? 0 : undefined}
                   onClick={canClick ? () => setStep(stepNum) : undefined}
+                  onKeyDown={canClick ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setStep(stepNum); } } : undefined}
                   style={{ fontFamily: font.ui, fontSize: 11, color: isCurrent ? c.ivory : c.stone, fontWeight: isCurrent ? 500 : 400, cursor: canClick ? "pointer" : "default" }}>{label}</span>
                 {i < 1 && <div style={{ width: 24, height: 1, background: isCompleted ? `linear-gradient(90deg, ${c.gilt}, rgba(212,179,127,0.2))` : "rgba(245,242,237,0.06)", transition: "background 0.4s", borderRadius: 1 }} />}
               </div>
@@ -665,7 +671,7 @@ export default function SessionSetup() {
                         <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={c.stone} strokeWidth="1.5" strokeLinecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
                         <span style={{ fontFamily: font.ui, fontSize: 12, color: c.chalk }}>Use resume for personalized questions</span>
                       </div>
-                      <div onClick={() => setUseResume(!useResume)} style={{
+                      <div role="switch" aria-checked={useResume} tabIndex={0} onClick={() => setUseResume(!useResume)} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setUseResume(!useResume); } }} style={{
                         width: 36, height: 20, borderRadius: 10, padding: 2,
                         background: useResume ? c.sage : c.border,
                         transition: "background 0.2s", cursor: "pointer",
@@ -677,7 +683,7 @@ export default function SessionSetup() {
 
                   {/* Job Description Paste */}
                   <div style={{ marginTop: 16 }}>
-                    <div onClick={() => setJobDescription(prev => prev || " ")} style={{
+                    <div role="button" tabIndex={0} onClick={() => setJobDescription(prev => prev || " ")} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setJobDescription(prev => prev || " "); } }} style={{
                       display: "flex", alignItems: "center", gap: 8, cursor: "pointer", padding: "10px 0",
                     }}>
                       <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={c.stone} strokeWidth="1.5" strokeLinecap="round">
@@ -703,6 +709,7 @@ export default function SessionSetup() {
                         }}
                         onFocus={(e) => { e.currentTarget.style.borderColor = c.gilt; }}
                         onBlur={(e) => { e.currentTarget.style.borderColor = c.border; if (!e.currentTarget.value.trim()) setJobDescription(""); }}
+                        // eslint-disable-next-line jsx-a11y/no-autofocus -- user-initiated action: textarea opened by clicking "paste JD"
                         autoFocus
                       />
                     )}

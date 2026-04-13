@@ -32,7 +32,7 @@ export function TopBar({ step, emailUnverified, onNavigateHome, onStepClick }: T
   return (
     <div style={{ padding: "18px 40px", display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", borderBottom: `1px solid rgba(245,242,237,0.04)`, background: "rgba(6,6,7,0.6)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)", zIndex: 10, marginTop: emailUnverified ? 44 : 0 }}>
       {/* Logo */}
-      <div onClick={onNavigateHome} style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }} title="Back to home">
+      <div role="button" tabIndex={0} onClick={onNavigateHome} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onNavigateHome(); } }} style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }} title="Back to home">
         <div style={{ width: 6, height: 6, borderRadius: 2, background: `linear-gradient(135deg, ${c.gilt}, ${c.giltDark})`, boxShadow: "0 0 8px rgba(212,179,127,0.3)" }} />
         <span style={{ fontFamily: font.display, fontSize: 17, fontWeight: 400, color: c.ivory, letterSpacing: "0.02em" }}>HireStepX</span>
       </div>
@@ -46,7 +46,10 @@ export function TopBar({ step, emailUnverified, onNavigateHome, onStepClick }: T
           return (
             <div key={i} style={{ display: "flex", alignItems: "center", gap: 6 }}>
               <div
+                role={canClick ? "button" : undefined}
+                tabIndex={canClick ? 0 : undefined}
                 onClick={canClick ? () => onStepClick(stepNum) : undefined}
+                onKeyDown={canClick ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onStepClick(stepNum); } } : undefined}
                 style={{
                   width: 26, height: 26, borderRadius: "50%",
                   background: isCompleted ? `linear-gradient(135deg, ${c.gilt}, ${c.giltDark})` : isCurrent ? "rgba(212,179,127,0.1)" : "transparent",
@@ -63,7 +66,10 @@ export function TopBar({ step, emailUnverified, onNavigateHome, onStepClick }: T
                 )}
               </div>
               <span
+                role={canClick ? "button" : undefined}
+                tabIndex={canClick ? 0 : undefined}
                 onClick={canClick ? () => onStepClick(stepNum) : undefined}
+                onKeyDown={canClick ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onStepClick(stepNum); } } : undefined}
                 style={{ fontFamily: font.ui, fontSize: 11, color: isCurrent ? c.ivory : c.stone, fontWeight: isCurrent ? 500 : 400, cursor: canClick ? "pointer" : "default" }}>{label}</span>
               {i < 2 && <div style={{ width: 24, height: 1, background: isCompleted ? `linear-gradient(90deg, ${c.gilt}, rgba(212,179,127,0.2))` : "rgba(245,242,237,0.06)", transition: "background 0.4s", borderRadius: 1 }} />}
             </div>
@@ -103,10 +109,13 @@ export function ResumeEmptyState({ isDragging, dragFileName, resumeError, showUn
 
       {/* Drop zone */}
       <div
+        role="button"
+        tabIndex={0}
         onDragOver={onDragOver}
         onDragLeave={onDragLeave}
         onDrop={onDrop}
         onClick={() => fileInputRef.current?.click()}
+        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fileInputRef.current?.click(); } }}
         className={!resumeError && !isDragging ? "ob-drop" : undefined}
         style={{
           border: `1.5px dashed ${isDragging ? c.gilt : resumeError ? c.ember : "rgba(212,179,127,0.18)"}`,
@@ -484,6 +493,7 @@ export interface SessionSetupStepProps {
   onFocusChange: (v: string[]) => void;
   onSessionLengthChange: (v: string) => void;
   onShowUpgrade: () => void;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- third-party autocomplete component with dynamic props
   AutocompleteInput: React.ComponentType<any>;
   ROLE_SUGGESTIONS: string[];
   COMPANY_SUGGESTIONS: string[];

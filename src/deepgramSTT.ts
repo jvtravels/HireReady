@@ -110,7 +110,7 @@ export async function createDeepgramSTT(
       if (ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify({ type: "CloseStream" }));
       }
-    } catch {}
+    } catch { /* expected: WebSocket send may fail if connection is closing */ }
     cleanup();
     // Allow Deepgram to send final results before closing
     setTimeout(() => {
@@ -123,7 +123,7 @@ export async function createDeepgramSTT(
   function abortNow() {
     if (aborted) return;
     cleanup();
-    try { ws.close(); } catch {}
+    try { ws.close(); } catch { /* expected: WebSocket may already be closed */ }
   }
 
   ws.onopen = () => {

@@ -205,29 +205,29 @@ export default function CalendarPage() {
 
           <div className="cal-form-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
             <div>
-              <label style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 500, color: c.stone, display: "block", marginBottom: 6 }}>Interview Title *</label>
-              <input value={formTitle} onChange={(e) => setFormTitle(e.target.value)} placeholder="e.g. Final Round Interview" style={inputStyle}
+              <label htmlFor="cal-title" style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 500, color: c.stone, display: "block", marginBottom: 6 }}>Interview Title *</label>
+              <input id="cal-title" value={formTitle} onChange={(e) => setFormTitle(e.target.value)} placeholder="e.g. Final Round Interview" style={inputStyle}
                 onFocus={(e) => e.currentTarget.style.borderColor = c.gilt} onBlur={(e) => e.currentTarget.style.borderColor = c.border} />
             </div>
             <div>
-              <label style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 500, color: c.stone, display: "block", marginBottom: 6 }}>Company *</label>
-              <input value={formCompany} onChange={(e) => setFormCompany(e.target.value)} placeholder="e.g. Google" style={inputStyle}
+              <label htmlFor="cal-company" style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 500, color: c.stone, display: "block", marginBottom: 6 }}>Company *</label>
+              <input id="cal-company" value={formCompany} onChange={(e) => setFormCompany(e.target.value)} placeholder="e.g. Google" style={inputStyle}
                 onFocus={(e) => e.currentTarget.style.borderColor = c.gilt} onBlur={(e) => e.currentTarget.style.borderColor = c.border} />
             </div>
           </div>
 
           <div className="cal-form-grid-3" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16, marginBottom: 16 }}>
             <div>
-              <label style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 500, color: c.stone, display: "block", marginBottom: 6 }}>Date *</label>
-              <input type="date" value={formDate} onChange={(e) => setFormDate(e.target.value)} style={{ ...inputStyle, colorScheme: "dark" }} />
+              <label htmlFor="cal-date" style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 500, color: c.stone, display: "block", marginBottom: 6 }}>Date *</label>
+              <input id="cal-date" type="date" value={formDate} onChange={(e) => setFormDate(e.target.value)} style={{ ...inputStyle, colorScheme: "dark" }} />
             </div>
             <div>
-              <label style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 500, color: c.stone, display: "block", marginBottom: 6 }}>Time *</label>
-              <input type="time" value={formTime} onChange={(e) => setFormTime(e.target.value)} style={{ ...inputStyle, colorScheme: "dark" }} />
+              <label htmlFor="cal-time" style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 500, color: c.stone, display: "block", marginBottom: 6 }}>Time *</label>
+              <input id="cal-time" type="time" value={formTime} onChange={(e) => setFormTime(e.target.value)} style={{ ...inputStyle, colorScheme: "dark" }} />
             </div>
             <div>
-              <label style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 500, color: c.stone, display: "block", marginBottom: 6 }}>Duration</label>
-              <select value={formDuration} onChange={(e) => setFormDuration(Number(e.target.value))} style={{ ...inputStyle, colorScheme: "dark" }}>
+              <label htmlFor="cal-duration" style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 500, color: c.stone, display: "block", marginBottom: 6 }}>Duration</label>
+              <select id="cal-duration" value={formDuration} onChange={(e) => setFormDuration(Number(e.target.value))} style={{ ...inputStyle, colorScheme: "dark" }}>
                 <option value={30}>30 min</option>
                 <option value={45}>45 min</option>
                 <option value={60}>1 hour</option>
@@ -239,8 +239,8 @@ export default function CalendarPage() {
 
           <div className="cal-form-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
             <div>
-              <label style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 500, color: c.stone, display: "block", marginBottom: 6 }}>Interview Type</label>
-              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              <label htmlFor="cal-type" style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 500, color: c.stone, display: "block", marginBottom: 6 }}>Interview Type</label>
+              <div id="cal-type" role="group" aria-label="Interview Type" style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                 {interviewTypeOptions.map(t => (
                   <button key={t} onClick={() => setFormType(t)} style={{
                     fontFamily: font.ui, fontSize: 11, fontWeight: 500, padding: "5px 12px",
@@ -254,22 +254,22 @@ export default function CalendarPage() {
               </div>
             </div>
             <div>
-              <label style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 500, color: c.stone, display: "block", marginBottom: 6 }}>Location / Link</label>
-              <input value={formLocation} onChange={(e) => setFormLocation(e.target.value)} placeholder="Zoom link, Google Meet, or address" style={inputStyle}
+              <label htmlFor="cal-location" style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 500, color: c.stone, display: "block", marginBottom: 6 }}>Location / Link</label>
+              <input id="cal-location" value={formLocation} onChange={(e) => setFormLocation(e.target.value)} placeholder="Zoom link, Google Meet, or address" style={inputStyle}
                 onFocus={(e) => e.currentTarget.style.borderColor = c.gilt} onBlur={(e) => e.currentTarget.style.borderColor = c.border} />
             </div>
           </div>
 
           <div style={{ marginBottom: 16 }}>
-            <label style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 500, color: c.stone, display: "block", marginBottom: 6 }}>Notes</label>
-            <textarea value={formNotes} onChange={(e) => setFormNotes(e.target.value)} placeholder="Interviewer name, prep topics, things to remember..." rows={3}
+            <label htmlFor="cal-notes" style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 500, color: c.stone, display: "block", marginBottom: 6 }}>Notes</label>
+            <textarea id="cal-notes" value={formNotes} onChange={(e) => setFormNotes(e.target.value)} placeholder="Interviewer name, prep topics, things to remember..." rows={3}
               style={{ ...inputStyle, resize: "vertical" }}
               onFocus={(e) => e.currentTarget.style.borderColor = c.gilt} onBlur={(e) => e.currentTarget.style.borderColor = c.border} />
           </div>
 
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
-              <div onClick={() => setFormReminders(!formReminders)} style={{
+            <span style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+              <div role="switch" aria-checked={formReminders} tabIndex={0} onClick={() => setFormReminders(!formReminders)} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setFormReminders(!formReminders); } }} style={{
                 width: 36, height: 20, borderRadius: 10, padding: 2,
                 background: formReminders ? c.sage : c.border,
                 transition: "background 0.2s", cursor: "pointer",
@@ -277,7 +277,7 @@ export default function CalendarPage() {
                 <div style={{ width: 16, height: 16, borderRadius: "50%", background: c.ivory, transform: formReminders ? "translateX(16px)" : "translateX(0)", transition: "transform 0.2s" }} />
               </div>
               <span style={{ fontFamily: font.ui, fontSize: 12, color: c.chalk }}>Enable reminders (30 min & 1 day before)</span>
-            </label>
+            </span>
 
             <div style={{ display: "flex", gap: 8 }}>
               <button onClick={() => { setShowForm(false); resetForm(); }} style={{

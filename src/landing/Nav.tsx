@@ -110,6 +110,7 @@ export function Nav() {
 
       {/* Mobile overlay nav */}
       {mobileOpen && (
+        // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- dialog needs keyboard trap for accessibility
         <div
           ref={mobileMenuRef}
           role="dialog"

@@ -10,8 +10,9 @@ function sanitizeForLLM(s: unknown, maxLen = 200): string {
   if (typeof s !== "string") return "";
   return s
     .normalize("NFC")
+    // eslint-disable-next-line no-control-regex -- intentional: strips control characters for LLM prompt safety
     .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F]/g, "")
-    .replace(/(?:^|\n)\s*(?:system|assistant|user|human|instruction)\s*[:\-]/gim, "")
+    .replace(/(?:^|\n)\s*(?:system|assistant|user|human|instruction)\s*[:-]/gim, "")
     .replace(/<\|[^|]*\|>/g, "")
     .replace(/```[\s\S]*?```/g, "")
     .replace(/\{\s*"role"\s*:/gi, "{")

@@ -276,12 +276,12 @@ export async function retryQueuedEvals(): Promise<void> {
                   : result.skillScores;
                 localStorage.setItem(RESULTS_KEY, JSON.stringify(sessions));
               }
-            } catch {}
+            } catch { /* expected: localStorage update may fail */ }
             await deleteFromIDB(key);
           }
-        } catch {}
+        } catch { /* expected: IDB cursor iteration may fail */ }
       }
     };
     req.onerror = () => db.close();
-  } catch {}
+  } catch { /* expected: IndexedDB may be unavailable */ }
 }

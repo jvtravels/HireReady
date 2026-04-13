@@ -301,7 +301,9 @@ export function UpgradeModal({ onClose, sessionsUsed, user, currentTier, onPayme
   }, [onClose]);
 
   return (
+    // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions -- dialog backdrop dismissal
     <div style={{ position: "fixed", inset: 0, zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(5,5,6,0.88)", backdropFilter: "blur(8px)" }} onClick={onClose} role="dialog" aria-modal="true" aria-label="Choose your plan">
+      {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- stops click propagation to backdrop */}
       <div ref={modalRef} onClick={(e) => e.stopPropagation()} className="upgrade-modal-inner" style={{ background: "linear-gradient(180deg, rgba(30,30,32,0.85) 0%, rgba(17,17,19,0.9) 100%)", backdropFilter: "blur(32px)", WebkitBackdropFilter: "blur(32px)", border: `1px solid rgba(255,255,255,0.08)`, borderRadius: 20, padding: "36px 32px 32px", maxWidth: 680, width: "94%", position: "relative", boxShadow: "0 20px 60px rgba(0,0,0,0.5)" }}>
         <button onClick={onClose} aria-label="Close dialog" style={{ position: "absolute", top: 14, right: 14, background: "none", border: "none", color: c.stone, cursor: "pointer", padding: 4 }}>
           <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
@@ -360,12 +362,12 @@ export function UpgradeModal({ onClose, sessionsUsed, user, currentTier, onPayme
 
         {/* Billing toggle */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, marginBottom: 18 }}>
-          <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: billingCycle === "monthly" ? 600 : 400, color: billingCycle === "monthly" ? c.ivory : c.stone, cursor: "pointer" }} onClick={() => setBillingCycle("monthly")}>Monthly</span>
+          <span role="button" tabIndex={0} style={{ fontFamily: font.ui, fontSize: 12, fontWeight: billingCycle === "monthly" ? 600 : 400, color: billingCycle === "monthly" ? c.ivory : c.stone, cursor: "pointer" }} onClick={() => setBillingCycle("monthly")} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setBillingCycle("monthly"); } }}>Monthly</span>
           <button onClick={() => setBillingCycle(prev => prev === "monthly" ? "annual" : "monthly")} aria-label="Toggle billing cycle"
             style={{ width: 44, height: 24, borderRadius: 12, border: `1px solid ${c.borderHover}`, background: billingCycle === "annual" ? "rgba(122,158,126,0.2)" : c.obsidian, position: "relative", cursor: "pointer", transition: "background 0.2s", padding: 0 }}>
             <div style={{ width: 18, height: 18, borderRadius: "50%", background: billingCycle === "annual" ? c.sage : c.stone, position: "absolute", top: 2, left: billingCycle === "annual" ? 23 : 2, transition: "left 0.2s, background 0.2s" }} />
           </button>
-          <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: billingCycle === "annual" ? 600 : 400, color: billingCycle === "annual" ? c.ivory : c.stone, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }} onClick={() => setBillingCycle("annual")}>
+          <span role="button" tabIndex={0} style={{ fontFamily: font.ui, fontSize: 12, fontWeight: billingCycle === "annual" ? 600 : 400, color: billingCycle === "annual" ? c.ivory : c.stone, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }} onClick={() => setBillingCycle("annual")} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setBillingCycle("annual"); } }}>
             Annual
             <span style={{ fontFamily: font.mono, fontSize: 9, fontWeight: 700, color: c.sage, background: "rgba(122,158,126,0.1)", border: `1px solid rgba(122,158,126,0.2)`, borderRadius: 4, padding: "2px 6px", letterSpacing: "0.04em" }}>SAVE 20%</span>
           </span>

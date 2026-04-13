@@ -63,6 +63,7 @@ describe("AuthContext", () => {
   });
 
   it("login with localStorage fallback creates user", async () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test: capturing hook function dynamically
     let loginFn: any;
     function LoginConsumer() {
       const auth = useAuth();
@@ -85,6 +86,7 @@ describe("AuthContext", () => {
   });
 
   it("signup with localStorage fallback creates user with name", async () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test: capturing hook function dynamically
     let signupFn: any;
     function SignupConsumer() {
       const auth = useAuth();
@@ -106,6 +108,7 @@ describe("AuthContext", () => {
   });
 
   it("logout clears user state", async () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test: capturing hook functions dynamically
     let loginFn: any, logoutFn: any;
     function Consumer() {
       const auth = useAuth();
@@ -128,6 +131,7 @@ describe("AuthContext", () => {
   });
 
   it("updateUser merges updates correctly", async () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test: capturing hook functions dynamically
     let loginFn: any, updateFn: any;
     function Consumer() {
       const auth = useAuth();

@@ -254,6 +254,7 @@ export const UserAnswerArea = memo(function UserAnswerArea({ currentTranscript, 
               onChange={(e) => setCurrentTranscript(e.target.value)}
               placeholder="Type your answer here..."
               maxLength={3000}
+              // eslint-disable-next-line jsx-a11y/no-autofocus -- user-initiated: text input mode activated by user
               autoFocus
               style={{
                 width: "100%", minHeight: 70, fontFamily: font.ui, fontSize: 13, color: c.ivory,
@@ -484,6 +485,7 @@ export const TranscriptPanel = memo(function TranscriptPanel({ transcript, inter
 }) {
   return (
     <>
+      {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- modal backdrop dismissal */}
       <div
         onClick={() => setShowTranscript(false)}
         style={{
@@ -553,6 +555,7 @@ export const EndModal = memo(function EndModal({ currentQuestionNum, totalQuesti
 }) {
   const closeFocus = () => { setShowEndModal(false); endModalTriggerRef.current?.querySelector("button")?.focus(); };
   return (
+    // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- dialog needs click/keyboard handlers for dismissal and focus trap
     <div
       role="dialog" aria-modal="true" aria-labelledby="end-modal-title" tabIndex={-1}
       onClick={(e) => { if (e.target === e.currentTarget) { e.stopPropagation(); closeFocus(); } }}

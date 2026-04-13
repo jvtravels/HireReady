@@ -17,7 +17,7 @@ function saveResumeVersion(fileName: string, resumeScore?: number) {
     history.unshift({ fileName, date: new Date().toISOString(), resumeScore });
     // Keep last 10 versions
     localStorage.setItem(RESUME_HISTORY_KEY, JSON.stringify(history.slice(0, 10)));
-  } catch {}
+  } catch { /* expected: localStorage may be unavailable */ }
 }
 function getResumeHistory(): ResumeVersion[] {
   try {
@@ -268,9 +268,10 @@ export default function DashboardResume() {
         <p style={{ fontFamily: font.ui, fontSize: 14, color: c.stone, marginBottom: 28, lineHeight: 1.6 }}>
           Upload your resume and our AI will build a candidate profile — identifying your strengths, key achievements, and areas to prepare for interviews.
         </p>
-        <div onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }} onDragLeave={() => setIsDragging(false)}
+        <div role="button" tabIndex={0} onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }} onDragLeave={() => setIsDragging(false)}
           onDrop={(e) => { e.preventDefault(); setIsDragging(false); handleFile(e.dataTransfer.files[0]); }}
           onClick={triggerUpload}
+          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); triggerUpload(); } }}
           style={{ border: `2px dashed ${isDragging ? c.gilt : "rgba(212,179,127,0.2)"}`, borderRadius: 16, padding: "64px 32px", textAlign: "center", background: isDragging ? "rgba(212,179,127,0.04)" : "transparent", transition: "all 0.2s ease", cursor: "pointer" }}>
           <div style={{ width: 64, height: 64, borderRadius: 16, margin: "0 auto 20px", background: "rgba(212,179,127,0.06)", border: "1px solid rgba(212,179,127,0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}>
             <svg aria-hidden="true" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
@@ -344,8 +345,10 @@ export default function DashboardResume() {
               }
             </button>
             {confirmDelete ? (
+              // eslint-disable-next-line jsx-a11y/no-static-element-interactions -- container for confirmation buttons needs Escape key handling
               <div style={{ display: "flex", gap: 4, alignItems: "center" }} onKeyDown={(e) => { if (e.key === "Escape") setConfirmDelete(false); }}>
                 <span style={{ fontFamily: font.ui, fontSize: 11, color: c.ember }}>Delete?</span>
+                {/* eslint-disable-next-line jsx-a11y/no-autofocus -- focus management: auto-focus confirm button for destructive action */}
                 <button autoFocus onClick={() => { handleRemove(); setConfirmDelete(false); }} aria-label="Confirm delete resume" style={{ padding: "4px 10px", borderRadius: 10, border: "none", background: c.ember, color: "#fff", fontFamily: font.ui, fontSize: 11, fontWeight: 600, cursor: "pointer" }}>Yes</button>
                 <button onClick={() => setConfirmDelete(false)} aria-label="Cancel delete" style={{ padding: "4px 10px", borderRadius: 10, border: `1px solid ${c.border}`, background: "transparent", color: c.stone, fontFamily: font.ui, fontSize: 11, cursor: "pointer" }}>No</button>
               </div>

@@ -86,7 +86,7 @@ export default function DashboardLayout() {
     const handler = (e: TouchEvent) => {
       const el = e.target as HTMLElement;
       if (el.closest("button, a, [role='button'], [role='menuitem']")) {
-        try { navigator.vibrate?.(8); } catch {}
+        try { navigator.vibrate?.(8); } catch { /* expected: vibrate API may not be available */ }
       }
     };
     document.addEventListener("touchstart", handler, { passive: true });
@@ -144,10 +144,11 @@ export default function DashboardLayout() {
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
       `}</style>
 
+      {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- sidebar backdrop dismissal */}
       {isMobile && sidebarOpen && <div onClick={() => setSidebarOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 19 }} />}
 
       {/* Sidebar */}
-      <aside role="complementary" aria-label="Navigation sidebar" style={{
+      <aside aria-label="Navigation sidebar" style={{
         width: 260, borderRight: `1px solid ${c.border}`, padding: "28px 18px 0",
         display: "flex", flexDirection: "column", position: "fixed", top: 0, bottom: 0,
         background: "linear-gradient(180deg, #111113 0%, #060607 100%)",
@@ -333,6 +334,7 @@ export default function DashboardLayout() {
       {/* Keyboard shortcuts help */}
       {showShortcuts && (
         <>
+          {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- modal backdrop dismissal */}
           <div onClick={() => setShowShortcuts(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 90 }} />
           <div role="dialog" aria-modal="true" aria-label="Keyboard shortcuts"
             ref={(el) => {

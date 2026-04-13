@@ -59,7 +59,7 @@ if (typeof requestIdleCallback !== "undefined") {
           break;
         }
       }
-    } catch {}
+    } catch { /* expected: prefetch failure is non-critical */ }
   });
 }
 const DashboardSessions = lazy(() => import("./DashboardSessions"));

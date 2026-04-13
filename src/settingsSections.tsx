@@ -330,8 +330,8 @@ export const InterviewSection = memo(function InterviewSection(props: InterviewS
             style={inputStyle} onFocus={focusIn} onBlur={focusOut} />
         </div>
         <div>
-          <label style={labelStyle}>Feedback Style</label>
-          <div style={{ display: "flex", gap: 10 }}>
+          <span style={labelStyle}>Feedback Style</span>
+          <div role="group" aria-label="Feedback Style" style={{ display: "flex", gap: 10 }}>
             {([
               { id: "direct" as const, label: "Direct" },
               { id: "encouraging" as const, label: "Encouraging" },
@@ -365,7 +365,7 @@ export const InterviewSection = memo(function InterviewSection(props: InterviewS
       {/* Difficulty + Experience */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }} className="settings-form-grid">
         <div>
-          <label style={labelStyle}>Difficulty</label>
+          <span style={labelStyle}>Difficulty</span>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {[
               { id: "warmup", label: "Warm-up", desc: "Confidence-building" },
@@ -382,7 +382,7 @@ export const InterviewSection = memo(function InterviewSection(props: InterviewS
           </div>
         </div>
         <div>
-          <label style={labelStyle}>Experience Level</label>
+          <span style={labelStyle}>Experience Level</span>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {[
               { id: "entry", label: "Entry", desc: "0-2 years" },
@@ -727,7 +727,7 @@ export const PlanSection = memo(function PlanSection(props: PlanSectionProps) {
       {cancelMsg && <p style={{ fontFamily: font.ui, fontSize: 12, color: cancelMsg.includes("ancelled") ? c.sage : c.ember, marginTop: -24, marginBottom: 24 }}>{cancelMsg}</p>}
 
       {/* Billing History */}
-      <label style={{ ...labelStyle, marginBottom: 14 }}>Billing History</label>
+      <span style={{ ...labelStyle, marginBottom: 14 }}>Billing History</span>
       <div style={{ borderRadius: 14, background: "rgba(6,6,7,0.5)", border: `1px solid ${c.border}`, overflow: "hidden", marginBottom: 32 }}>
         {paymentsLoading ? (
           <div style={{ padding: "32px 24px", textAlign: "center" }}>
@@ -775,7 +775,7 @@ export const PlanSection = memo(function PlanSection(props: PlanSectionProps) {
       </div>
 
       {/* Data & Privacy */}
-      <label style={{ ...labelStyle, marginBottom: 14 }}>Data & Privacy</label>
+      <span style={{ ...labelStyle, marginBottom: 14 }}>Data & Privacy</span>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 32 }} className="settings-form-grid">
         <div style={{
           display: "flex", alignItems: "center", justifyContent: "space-between",

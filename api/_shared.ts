@@ -339,10 +339,10 @@ export function sanitizeForLLM(s: unknown, maxLen = 200): string {
   return s
     // Normalize unicode to NFC to prevent homoglyph attacks
     .normalize("NFC")
-    // Strip control characters (keep tab, newline, carriage return)
+    // eslint-disable-next-line no-control-regex -- intentional: strips control characters for LLM prompt safety
     .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F]/g, "")
     // Strip known LLM role markers (case-insensitive, with optional whitespace/punctuation)
-    .replace(/(?:^|\n)\s*(?:system|assistant|user|human|instruction)\s*[:\-]/gim, "")
+    .replace(/(?:^|\n)\s*(?:system|assistant|user|human|instruction)\s*[:-]/gim, "")
     // Strip ChatML/special tokens
     .replace(/<\|[^|]*\|>/g, "")
     // Strip markdown code blocks (potential hidden instructions)

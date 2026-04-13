@@ -53,7 +53,7 @@ export const safeStorage = {
     try { localStorage.setItem(key, value); return true; } catch { return false; }
   },
   remove(key: string): void {
-    try { localStorage.removeItem(key); } catch {}
+    try { localStorage.removeItem(key); } catch { /* expected: localStorage may be unavailable */ }
   },
   /** Set with TTL — stores a wrapper with expiry timestamp */
   setWithTTL(key: string, value: unknown, ttlMs: number): boolean {
@@ -87,7 +87,9 @@ const IS_DEV = typeof window !== "undefined" && (
 );
 
 export const logger = {
+  // eslint-disable-next-line no-console -- logger utility wraps console for environment-aware logging
   debug: IS_DEV ? console.debug.bind(console) : () => {},
+  // eslint-disable-next-line no-console -- logger utility wraps console for environment-aware logging
   info: IS_DEV ? console.info.bind(console) : () => {},
   warn: console.warn.bind(console),
   error: console.error.bind(console),

@@ -15,17 +15,17 @@ export function hasStoredSession(): boolean {
         return !!val && val !== "null";
       }
     }
-  } catch {}
+  } catch { /* expected: localStorage may be unavailable in private browsing */ }
   return false;
 }
 
 /** Local fallback for hasCompletedOnboarding (survives refresh even if Supabase column missing) */
 const ONBOARDING_DONE_KEY = "hirestepx_onboarding_done";
 function getLocalOnboardingDone(userId: string): boolean {
-  try { return localStorage.getItem(`${ONBOARDING_DONE_KEY}_${userId}`) === "1"; } catch { return false; }
+  try { return localStorage.getItem(`${ONBOARDING_DONE_KEY}_${userId}`) === "1"; } catch { /* expected: localStorage may be unavailable */ return false; }
 }
 function setLocalOnboardingDone(userId: string) {
-  try { localStorage.setItem(`${ONBOARDING_DONE_KEY}_${userId}`, "1"); } catch {}
+  try { localStorage.setItem(`${ONBOARDING_DONE_KEY}_${userId}`, "1"); } catch { /* expected: localStorage may be unavailable */ }
 }
 
 /** Save/restore the last authenticated route so users return where they left off */
@@ -36,13 +36,13 @@ export function saveLastRoute(path: string) {
     if (path.startsWith("/dashboard") || path.startsWith("/onboarding") || path.startsWith("/session") || ["/sessions", "/calendar", "/analytics", "/resume", "/settings"].includes(path)) {
       localStorage.setItem(LAST_ROUTE_KEY, path);
     }
-  } catch {}
+  } catch { /* expected: localStorage may be unavailable */ }
 }
 export function getLastRoute(): string | null {
-  try { return localStorage.getItem(LAST_ROUTE_KEY); } catch { return null; }
+  try { return localStorage.getItem(LAST_ROUTE_KEY); } catch { /* expected: localStorage may be unavailable */ return null; }
 }
 export function clearLastRoute() {
-  try { localStorage.removeItem(LAST_ROUTE_KEY); } catch {}
+  try { localStorage.removeItem(LAST_ROUTE_KEY); } catch { /* expected: localStorage may be unavailable */ }
 }
 
 export interface User {
@@ -137,7 +137,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Clean up legacy localStorage cache from previous versions
   useEffect(() => {
-    try { localStorage.removeItem("hirestepx_auth"); } catch {}
+    try { localStorage.removeItem("hirestepx_auth"); } catch { /* expected: localStorage may be unavailable */ }
   }, []);
 
   // "Remember me" — clear session on tab/browser close if ephemeral
@@ -155,7 +155,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             }
           }
         }
-      } catch {}
+      } catch { /* expected: localStorage cleanup errors are non-critical */ }
     };
     window.addEventListener("beforeunload", handleUnload);
     return () => window.removeEventListener("beforeunload", handleUnload);
@@ -230,7 +230,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (session) {
           // Capture Google provider token if present (after OAuth redirect)
           if (session.provider_token) {
-            try { sessionStorage.setItem("hirestepx_google_token", session.provider_token); } catch {}
+            try { sessionStorage.setItem("hirestepx_google_token", session.provider_token); } catch { /* expected: sessionStorage may be unavailable */ }
           }
           try {
             const profile = await getProfile(session.user.id);
@@ -272,7 +272,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if ((event === "SIGNED_IN" || event === "TOKEN_REFRESHED") && session) {
           // Persist Google provider token for Calendar API access
           if (session.provider_token) {
-            try { sessionStorage.setItem("hirestepx_google_token", session.provider_token); } catch {}
+            try { sessionStorage.setItem("hirestepx_google_token", session.provider_token); } catch { /* expected: sessionStorage may be unavailable */ }
           }
           try {
             const profile = await getProfile(session.user.id);

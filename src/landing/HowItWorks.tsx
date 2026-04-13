@@ -39,7 +39,7 @@ function MockupUpload() {
         <p style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>PDF, DOCX, or plain text</p>
       </div>
       <div>
-        <label style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 500, color: c.stone, letterSpacing: "0.04em", textTransform: "uppercase", display: "block", marginBottom: 6 }}>Target Role</label>
+        <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 500, color: c.stone, letterSpacing: "0.04em", textTransform: "uppercase", display: "block", marginBottom: 6 }}>Target Role</span>
         <div style={{ background: c.obsidian, border: `1px solid ${c.border}`, borderRadius: 10, padding: "10px 14px", fontFamily: font.ui, fontSize: 13, color: c.chalk }}>Software Engineer, Google</div>
       </div>
       <div style={{ background: c.gilt, borderRadius: 8, padding: "10px 0", textAlign: "center", fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.obsidian }}>Generate Interview</div>

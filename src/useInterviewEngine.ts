@@ -266,7 +266,7 @@ export function useInterviewEngine() {
         script: interviewScript,
         savedAt: Date.now(),
       };
-      try { localStorage.setItem(draftKey, JSON.stringify(draftData)); } catch {}
+      try { localStorage.setItem(draftKey, JSON.stringify(draftData)); } catch { /* expected: localStorage may be unavailable */ }
       saveToIDB(draftKey, draftData);
     };
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
@@ -889,8 +889,8 @@ export function useInterviewEngine() {
 
     track("session_complete", { type: interviewType, score, difficulty: interviewDifficulty });
 
-    try { localStorage.removeItem(draftKey); } catch {}
-    try { await deleteFromIDB(draftKey); } catch {}
+    try { localStorage.removeItem(draftKey); } catch { /* expected: localStorage cleanup is non-critical */ }
+    try { await deleteFromIDB(draftKey); } catch { /* expected: IDB cleanup is non-critical */ }
     try {
       const timestamps = user?.practiceTimestamps || [];
       const updates: Partial<Parameters<typeof updateUser>[0]> = {
@@ -917,7 +917,7 @@ export function useInterviewEngine() {
     } catch (fatalErr) {
       console.error("[interview] handleEnd fatal error:", fatalErr);
       toast("Something went wrong saving your session. Please check your dashboard.", "error");
-      try { navigate("/dashboard"); } catch {}
+      try { navigate("/dashboard"); } catch { /* expected: navigation may fail if component unmounted */ }
     } finally {
       clearTimeout(safetyTimer);
       setEvaluating(false);

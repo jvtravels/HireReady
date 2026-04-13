@@ -65,7 +65,7 @@ export default function SessionDetail() {
     try {
       const localFb = localStorage.getItem(`hirestepx_feedback_${id}`);
       if (localFb) { const parsed = JSON.parse(localFb); setFeedbackRating(parsed.rating); setFeedbackComment(parsed.comment || ""); setFeedbackSaved(true); }
-    } catch {}
+    } catch { /* expected: localStorage/JSON.parse may fail */ }
     return () => { cancelled = true; };
   }, [id, user?.id]);
 
@@ -73,7 +73,7 @@ export default function SessionDetail() {
     if (!id || !session) return;
     setFeedbackRating(rating);
     const feedbackData = { id: `fb_${id}`, user_id: user?.id || "anonymous", session_id: id, rating, comment: feedbackComment, session_score: session.score, session_type: session.type };
-    try { localStorage.setItem(`hirestepx_feedback_${id}`, JSON.stringify(feedbackData)); } catch {}
+    try { localStorage.setItem(`hirestepx_feedback_${id}`, JSON.stringify(feedbackData)); } catch { /* expected: localStorage may be unavailable */ }
     if (user?.id) { try { await saveFeedback(feedbackData); } catch (err) { console.error("[feedback] Save failed:", err); } }
     setFeedbackSaved(true);
     toast("Feedback saved — thank you!", "success");
@@ -82,7 +82,7 @@ export default function SessionDetail() {
   const submitComment = useCallback(async () => {
     if (!id || !session || !feedbackRating) return;
     const feedbackData = { id: `fb_${id}`, user_id: user?.id || "anonymous", session_id: id, rating: feedbackRating, comment: feedbackComment, session_score: session.score, session_type: session.type };
-    try { localStorage.setItem(`hirestepx_feedback_${id}`, JSON.stringify(feedbackData)); } catch {}
+    try { localStorage.setItem(`hirestepx_feedback_${id}`, JSON.stringify(feedbackData)); } catch { /* expected: localStorage may be unavailable */ }
     if (user?.id) { try { await saveFeedback(feedbackData); } catch (err) { console.error("[feedback] Save failed:", err); } }
     setShowFeedbackForm(false);
   }, [id, session, user?.id, feedbackRating, feedbackComment]);
@@ -1369,7 +1369,7 @@ export default function SessionDetail() {
               padding-left: 16px !important;
               padding-right: 16px !important;
             }
-            .session-detail-outer [style*="padding: \"28px 32px\""],
+            .session-detail-outer [style*="padding: '28px 32px'"],
             .session-detail-card {
               padding: 18px 16px !important;
             }

@@ -5,6 +5,7 @@
   "scripts": {
     "build": "vite build && node -e \"const f=require('fs');const s=f.readFileSync('dist/sw.js','utf8');f.writeFileSync('dist/sw.js',s.replace('__BUILD_TS__',Date.now()))\"",
     "build:prerender": "vite build && node scripts/prerender.mjs",
+    "check": "tsc --noEmit && eslint .",
     "dev": "vite",
     "format": "prettier --write \"src/**/*.{ts,tsx,css}\"",
     "lint": "eslint .",
@@ -15,8 +16,7 @@
     "test:e2e:headed": "playwright test --headed",
     "test:e2e:ui": "playwright test --ui",
     "test:watch": "vitest",
-    "typecheck": "tsc --noEmit",
-    "check": "tsc --noEmit && eslint ."
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.101.1",

@@ -22,12 +22,12 @@ export function loadEvents(): InterviewEvent[] {
   try {
     const raw = localStorage.getItem(EVENTS_KEY);
     if (raw) return JSON.parse(raw);
-  } catch {}
+  } catch { /* expected: localStorage/JSON.parse may fail */ }
   return [];
 }
 
 export function saveEvents(events: InterviewEvent[]) {
-  try { localStorage.setItem(EVENTS_KEY, JSON.stringify(events)); } catch {}
+  try { localStorage.setItem(EVENTS_KEY, JSON.stringify(events)); } catch { /* expected: localStorage may be unavailable */ }
 }
 
 export function generateEventId(): string {

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any -- test file: extensive use of partial mocks requiring any casts */
 /**
  * E2E Integration Tests — HireStepX
  * Tests all major user flows end-to-end using component rendering.

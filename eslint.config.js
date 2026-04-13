@@ -6,7 +6,7 @@ import jsxA11y from "eslint-plugin-jsx-a11y";
 import eslintConfigPrettier from "eslint-config-prettier";
 
 export default tseslint.config(
-  { ignores: ["dist/", "node_modules/", ".tempo/"] },
+  { ignores: ["dist/", "node_modules/", ".tempo/", "tempo/**", ".vercel/**", "public/**", "scripts/**"] },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   jsxA11y.flatConfigs.recommended,

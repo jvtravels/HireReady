@@ -53,7 +53,7 @@ export function loadState(): PersistedState {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) return JSON.parse(raw);
-  } catch {}
+  } catch { /* expected: localStorage/JSON.parse may fail */ }
   try {
     const authRaw = localStorage.getItem("hirestepx_auth");
     if (authRaw) {
@@ -67,7 +67,7 @@ export function loadState(): PersistedState {
         interviewDate: authUser.interviewDate || "",
       };
     }
-  } catch {}
+  } catch { /* expected: localStorage/JSON.parse may fail */ }
   return {
     hasCompletedFirstSession: false,
     dismissedNotifs: [],
@@ -81,14 +81,14 @@ export function loadState(): PersistedState {
 export function saveState(state: PersistedState) {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  } catch {}
+  } catch { /* expected: localStorage may be unavailable */ }
 }
 
 export function loadRealSessionsLocal(): RealSession[] {
   try {
     const raw = localStorage.getItem(RESULTS_KEY);
     if (raw) return JSON.parse(raw);
-  } catch {}
+  } catch { /* expected: localStorage/JSON.parse may fail */ }
   return [];
 }
 
@@ -502,7 +502,7 @@ export function computeWeekActivity(sessions: DashboardSession[]): boolean[] {
 export function computeStreak(sessions: DashboardSession[]): number {
   const sorted = [...sessions].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   let streak = 0;
-  let checkDate = new Date();
+  const checkDate = new Date();
   checkDate.setHours(0, 0, 0, 0);
 
   for (let i = 0; i < 30; i++) {

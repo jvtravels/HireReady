@@ -21,7 +21,7 @@ export function unlockAudio() {
     audio.volume = 0;
     audio.play().catch(() => {});
     _audioUnlocked = true;
-  } catch {}
+  } catch { /* expected: audio unlock may fail before user gesture */ }
 }
 
 const TTS_SETTINGS_KEY = "hirestepx_tts";
@@ -90,14 +90,14 @@ export function loadTTSSettings(): TTSSettings {
       }
       return { ...DEFAULT_SETTINGS, ...parsed };
     }
-  } catch {}
+  } catch { /* expected: localStorage/JSON.parse may fail */ }
   return DEFAULT_SETTINGS;
 }
 
 export function saveTTSSettings(settings: TTSSettings) {
   try {
     localStorage.setItem(TTS_SETTINGS_KEY, JSON.stringify(settings));
-  } catch {}
+  } catch { /* expected: localStorage may be unavailable */ }
 }
 
 /** Set TTS language for the current session (e.g., "en", "hi") */
@@ -203,7 +203,7 @@ async function getOrCreateWs(apiKey: string): Promise<WebSocket | null> {
   }
   // Close stale connection
   if (_persistentWs) {
-    try { _persistentWs.close(); } catch {}
+    try { _persistentWs.close(); } catch { /* expected: WebSocket may already be closed */ }
     _persistentWs = null;
   }
 
@@ -246,7 +246,7 @@ async function speakWithWebSocket(
   const settle = (cb: () => void) => { if (!settled) { settled = true; cb(); } };
   let audioCtx: AudioContext | null = null;
   let cancelled = false;
-  const closeCtx = () => { try { audioCtx?.close(); } catch {} audioCtx = null; };
+  const closeCtx = () => { try { audioCtx?.close(); } catch { /* expected: AudioContext cleanup errors are non-critical */ } audioCtx = null; };
 
   let nextStartTime = 0;
   let chunksReceived = 0;
@@ -324,6 +324,7 @@ async function speakWithWebSocket(
           };
 
           if (chunksReceived === 1) {
+            /* first chunk received — playback starts automatically */
           }
         } else if (msg.type === "done" || msg.done) {
           allChunksReceived = true;
@@ -385,7 +386,7 @@ async function speakWithWebSocket(
       cancelled = true;
       settled = true;
       // Don't close the WS — just stop the audio
-      try { capturedCtx?.close(); } catch {}
+      try { capturedCtx?.close(); } catch { /* expected: AudioContext cleanup errors are non-critical */ }
       resetWsIdleTimer();
     },
   };
@@ -623,7 +624,7 @@ export function cleanupTTS() {
       _persistentWs.removeEventListener("message", _wsMessageHandler);
       _wsMessageHandler = null;
     }
-    try { _persistentWs.close(); } catch {}
+    try { _persistentWs.close(); } catch { /* expected: WebSocket may already be closed */ }
     _persistentWs = null;
   }
   if (_wsIdleTimer) { clearTimeout(_wsIdleTimer); _wsIdleTimer = null; }

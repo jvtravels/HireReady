@@ -231,7 +231,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
           ai_feedback: s.ai_feedback, skill_scores: s.skill_scores,
         }));
         setSupabaseSessions(mapped);
-        try { localStorage.setItem(sessionsCacheKey, JSON.stringify(mapped)); } catch {}
+        try { localStorage.setItem(sessionsCacheKey, JSON.stringify(mapped)); } catch { /* expected: localStorage may be unavailable */ }
       }).catch(() => {
         if (cancelled) return;
         try {
@@ -253,7 +253,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
         }));
         setCalendarEvents(mapped);
         scheduleEventNotifications(mapped);
-        try { localStorage.setItem(eventsCacheKey, JSON.stringify(mapped)); } catch {}
+        try { localStorage.setItem(eventsCacheKey, JSON.stringify(mapped)); } catch { /* expected: localStorage may be unavailable */ }
       }).catch(() => {
         if (cancelled) return;
         try {
@@ -262,7 +262,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
             setCalendarEvents(JSON.parse(cached));
             if (!syncError) setSyncError("Offline — showing cached data.");
           }
-        } catch {}
+        } catch { /* expected: cache read may fail */ }
       }),
     ]).then(() => {
       if (!cancelled) setDataLoading(false);
@@ -282,7 +282,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
         ai_feedback: s.ai_feedback, skill_scores: s.skill_scores,
       }));
       setSupabaseSessions(mapped);
-      try { localStorage.setItem(`hirestepx_cache_sessions_${user.id}`, JSON.stringify(mapped)); } catch {}
+      try { localStorage.setItem(`hirestepx_cache_sessions_${user.id}`, JSON.stringify(mapped)); } catch { /* expected: localStorage may be unavailable */ }
     }).catch(() => {});
   }, [user?.id]);
 
@@ -326,7 +326,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
         const { insights, ts } = JSON.parse(cached);
         if (Date.now() - ts < 86400000) { setLlmInsights(insights); return; }
       }
-    } catch {}
+    } catch { /* expected: cache read may fail */ }
 
     (async () => {
       try {
@@ -351,7 +351,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
           const data = await res.json();
           if (data.insights && data.insights.length > 0) {
             setLlmInsights(data.insights);
-            try { localStorage.setItem(cacheKey, JSON.stringify({ insights: data.insights, ts: Date.now() })); } catch {}
+            try { localStorage.setItem(cacheKey, JSON.stringify({ insights: data.insights, ts: Date.now() })); } catch { /* expected: localStorage may be unavailable */ }
           }
         }
       } catch {

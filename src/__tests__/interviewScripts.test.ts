@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any -- test file: partial mock objects require any casts */
 import { describe, it, expect } from "vitest";
 import { scriptsByType, defaultScript, getMiniScript, getScript } from "../interviewScripts";
 

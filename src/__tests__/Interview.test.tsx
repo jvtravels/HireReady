@@ -45,6 +45,7 @@ Object.defineProperty(navigator, "mediaDevices", {
 describe("Interview", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test: partial mock of Response
     mockFetch.mockResolvedValue({ ok: false, json: () => Promise.resolve({}) } as any);
   });
 

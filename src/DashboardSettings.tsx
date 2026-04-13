@@ -317,7 +317,7 @@ function ReferralSection({ showToast }: { showToast: (msg: string) => void }) {
       </div>
 
       {/* Referral Code Display */}
-      <label style={localLabelStyle}>Your Referral Code</label>
+      <span style={localLabelStyle}>Your Referral Code</span>
       <div style={{
         display: "flex", alignItems: "center", gap: 12, marginBottom: 24,
         padding: "16px 20px", borderRadius: 12,
@@ -337,7 +337,7 @@ function ReferralSection({ showToast }: { showToast: (msg: string) => void }) {
       </div>
 
       {/* Share Buttons */}
-      <label style={localLabelStyle}>Share via</label>
+      <span style={localLabelStyle}>Share via</span>
       <div style={{ display: "flex", gap: 12, marginBottom: 28 }}>
         <button onClick={handleShareWhatsApp} style={{
           fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: "#25D366",
@@ -364,7 +364,7 @@ function ReferralSection({ showToast }: { showToast: (msg: string) => void }) {
       </div>
 
       {/* Stats */}
-      <label style={localLabelStyle}>Referral Stats</label>
+      <span style={localLabelStyle}>Referral Stats</span>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
         {[
           { label: "Invited", value: stats.total, color: c.chalk },

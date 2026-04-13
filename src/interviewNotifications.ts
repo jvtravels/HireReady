@@ -47,7 +47,7 @@ export function getNotifPreference(): boolean {
 export function setNotifPreference(enabled: boolean): void {
   try {
     localStorage.setItem(STORAGE_KEY, String(enabled));
-  } catch {}
+  } catch { /* expected: localStorage may be unavailable */ }
   if (!enabled) {
     clearScheduledNotifs();
   }
@@ -71,13 +71,13 @@ function markScheduled(id: string): void {
     const ids = getScheduledIds();
     ids.add(id);
     sessionStorage.setItem(SCHEDULED_KEY, JSON.stringify([...ids]));
-  } catch {}
+  } catch { /* expected: sessionStorage may be unavailable */ }
 }
 
 function clearScheduledNotifs(): void {
   activeTimers.forEach((timer) => clearTimeout(timer));
   activeTimers.clear();
-  try { sessionStorage.removeItem(SCHEDULED_KEY); } catch {}
+  try { sessionStorage.removeItem(SCHEDULED_KEY); } catch { /* expected: sessionStorage may be unavailable */ }
 }
 
 /** Show a browser notification */

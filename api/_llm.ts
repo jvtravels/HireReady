@@ -137,14 +137,14 @@ export async function callLLM(opts: LLMOptions, timeoutMs = 15000): Promise<LLMR
 /** Extract JSON from LLM response text. Handles markdown fences, prose wrapping, and malformed output. */
 export function extractJSON<T = unknown>(text: string): T | null {
   // Try direct parse first
-  try { return JSON.parse(text); } catch {}
+  try { return JSON.parse(text); } catch { /* fallback: try cleaned formats below */ }
   // Strip markdown code fences
   const cleaned = text.replace(/^```(?:json)?\s*\n?/i, "").replace(/\n?```\s*$/i, "").trim();
-  try { return JSON.parse(cleaned); } catch {}
+  try { return JSON.parse(cleaned); } catch { /* fallback: try regex extraction below */ }
   // Try extracting JSON array first (less ambiguous than objects)
   const arrMatch = cleaned.match(/\[[\s\S]*\]/);
   if (arrMatch) {
-    try { return JSON.parse(arrMatch[0]); } catch {}
+    try { return JSON.parse(arrMatch[0]); } catch { /* fallback: try object extraction below */ }
   }
   // Extract JSON object — find matching braces instead of greedy regex
   const objStart = cleaned.indexOf("{");
@@ -162,7 +162,7 @@ export function extractJSON<T = unknown>(text: string): T | null {
       if (ch === "}") {
         depth--;
         if (depth === 0) {
-          try { return JSON.parse(cleaned.slice(objStart, i + 1)); } catch {}
+          try { return JSON.parse(cleaned.slice(objStart, i + 1)); } catch { /* malformed JSON object, return null */ }
           break;
         }
       }

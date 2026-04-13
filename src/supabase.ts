@@ -330,7 +330,7 @@ export function getGoogleProviderToken(): string | null {
 }
 
 export function clearGoogleProviderToken() {
-  try { localStorage.removeItem("hirestepx_google_token"); } catch {}
+  try { localStorage.removeItem("hirestepx_google_token"); } catch { /* expected: localStorage may be unavailable */ }
 }
 
 function extractCompany(summary: string): string {

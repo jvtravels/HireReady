@@ -68,6 +68,24 @@ export default function AnalyticsPage() {
     return allSessions.filter(s => new Date(s.date) >= cutoff);
   }, [allSessions, range.days]);
 
+  // Period comparison for KPIs — compare current range to previous range
+  // Hooks must be called before any early returns (Rules of Hooks)
+  const prevSessions = useMemo(() => {
+    if (range.days === 0 || allSessions.length === 0) return [];
+    const cutoffCurrent = new Date();
+    cutoffCurrent.setDate(cutoffCurrent.getDate() - range.days);
+    const cutoffPrev = new Date();
+    cutoffPrev.setDate(cutoffPrev.getDate() - range.days * 2);
+    return allSessions.filter(s => { const d = new Date(s.date); return d >= cutoffPrev && d < cutoffCurrent; });
+  }, [allSessions, range.days]);
+
+  // Readiness breakdown — recent practice days
+  const recentDays = useMemo(() => {
+    const now = Date.now();
+    const weekMs = 7 * 86400000;
+    return new Set(trend.filter(t => now - new Date(t.date).getTime() < weekMs).map(t => new Date(t.date).toDateString())).size;
+  }, [trend]);
+
   if (dataLoading) return <DataLoadingSkeleton />;
   if (isFree) return <ProGate feature="Performance Analytics" onUpgrade={() => setShowUpgradeModal(true)} />;
 
@@ -105,15 +123,6 @@ export default function AnalyticsPage() {
     return { type, count: typeSessions.length, avgScore: typeSessions.length ? Math.round(typeSessions.reduce((s, sess) => s + sess.score, 0) / typeSessions.length) : 0 };
   }).filter(t => t.count > 0);
 
-  // Period comparison for KPIs — compare current range to previous range
-  const prevSessions = useMemo(() => {
-    if (range.days === 0 || allSessions.length === 0) return [];
-    const cutoffCurrent = new Date();
-    cutoffCurrent.setDate(cutoffCurrent.getDate() - range.days);
-    const cutoffPrev = new Date();
-    cutoffPrev.setDate(cutoffPrev.getDate() - range.days * 2);
-    return allSessions.filter(s => { const d = new Date(s.date); return d >= cutoffPrev && d < cutoffCurrent; });
-  }, [allSessions, range.days]);
   const prevAvgScore = prevSessions.length > 0 ? Math.round(prevSessions.reduce((s, sess) => s + sess.score, 0) / prevSessions.length) : null;
 
   // Weakest interview type for recommendation
@@ -123,11 +132,6 @@ export default function AnalyticsPage() {
   // Readiness breakdown
   const latestScore = trend.length > 0 ? trend[trend.length - 1].score : 0;
   const avgSkill = sk.length > 0 ? Math.round(sk.reduce((sum, s) => sum + s.score, 0) / sk.length) : 0;
-  const recentDays = useMemo(() => {
-    const now = Date.now();
-    const weekMs = 7 * 86400000;
-    return new Set(trend.filter(t => now - new Date(t.date).getTime() < weekMs).map(t => new Date(t.date).toDateString())).size;
-  }, [trend]);
 
   // Targeted session start
   const startTargeted = (type?: string) => {

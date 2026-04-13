@@ -51,13 +51,8 @@ export default function App() {
     jsonLd: { "@context": "https://schema.org", "@graph": [webAppJsonLd(), faqJsonLd(LANDING_FAQS)] },
   });
 
-  // While auth restores for returning users, show a blank screen matching the
-  // app background instead of flashing the landing page.
-  if (loading && hadStoredSession) {
-    return <div style={{ minHeight: "100vh", background: c.obsidian }} />;
-  }
-
   // Trigger lazy sections when user scrolls near them
+  // Hooks must be called before any early returns (Rules of Hooks)
   const [showLazy, setShowLazy] = useState(false);
   const triggerRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
@@ -69,6 +64,12 @@ export default function App() {
     observer.observe(el);
     return () => observer.disconnect();
   }, []);
+
+  // While auth restores for returning users, show a blank screen matching the
+  // app background instead of flashing the landing page.
+  if (loading && hadStoredSession) {
+    return <div style={{ minHeight: "100vh", background: c.obsidian }} />;
+  }
 
   return (
     <div style={{ minHeight: "100vh", background: c.obsidian, color: c.ivory, position: "relative", overflow: "hidden" }}>

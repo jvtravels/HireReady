@@ -9,7 +9,7 @@ import { getSupabase, supabaseConfigured } from "./supabase";
 // Remember me preference
 const REMEMBER_ME_KEY = "hirestepx_remember_me";
 function saveRememberMe(val: boolean) {
-  try { localStorage.setItem(REMEMBER_ME_KEY, val ? "1" : "0"); } catch {}
+  try { localStorage.setItem(REMEMBER_ME_KEY, val ? "1" : "0"); } catch { /* expected: localStorage may be unavailable */ }
 }
 function getRememberMe(): boolean {
   try { return localStorage.getItem(REMEMBER_ME_KEY) !== "0"; } catch { return true; }
@@ -18,7 +18,7 @@ function getRememberMe(): boolean {
 // Track last login method for returning users
 const LOGIN_METHOD_KEY = "hirestepx_login_method";
 function saveLoginMethod(method: "email" | "google") {
-  try { localStorage.setItem(LOGIN_METHOD_KEY, method); } catch {}
+  try { localStorage.setItem(LOGIN_METHOD_KEY, method); } catch { /* expected: localStorage may be unavailable */ }
 }
 function getLastLoginMethod(): "email" | "google" | null {
   try { return localStorage.getItem(LOGIN_METHOD_KEY) as "email" | "google" | null; } catch { return null; }
@@ -135,7 +135,7 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
         saveRememberMe(rememberMe);
         if (!rememberMe) {
           // Mark session as ephemeral — will be cleared on tab close
-          try { sessionStorage.setItem("hirestepx_ephemeral", "1"); } catch {}
+          try { sessionStorage.setItem("hirestepx_ephemeral", "1"); } catch { /* expected: sessionStorage may be unavailable */ }
         }
         // Navigation handled by useEffect when isLoggedIn changes
         // This avoids double-redirect since useEffect checks onboarding status
