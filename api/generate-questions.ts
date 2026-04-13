@@ -142,13 +142,17 @@ export default async function handler(req: Request): Promise<Response> {
 
     const roleCompContext = getRoleCompetencies(targetRole);
 
+    const panelNote = interviewType === "panel"
+      ? `\nThis is a PANEL interview. Assign each question to one of three panelists: "Hiring Manager", "Technical Lead", or "HR Partner". Each question should reflect that panelist's perspective. Include a "persona" field in each question object.`
+      : "";
+
     const prompt = `You are an expert interviewer conducting a ${interviewType} mock interview for a ${targetRole} candidate. ${tone}
 ${languageContext ? `\nLANGUAGE INSTRUCTION: ${languageContext}\n` : ""}${experienceCalibration ? `\n${experienceCalibration}\n` : ""}
 Context:
 ${companyContext ? `- ${companyContext}\n` : ""}${industryContext ? `- ${industryContext}\n` : ""}${focusContext ? `- ${focusContext}\n` : ""}${roleCompContext ? `- Role competencies to test: ${roleCompContext}\n` : ""}${resumeContext ? `- ${resumeContext}\n` : ""}${jdContext ? `- ${jdContext}\n` : ""}${avoidTopics ? `- ${avoidTopics}\n` : ""}${weakSkillsContext ? `- ${weakSkillsContext}\n` : ""}
 Generate exactly 5 interview steps as a JSON array. Sequence: intro, question, question, question, closing. Do NOT include follow-up steps — those are generated dynamically based on the candidate's answers.
 
-Each step: {"type":"intro|question|closing","aiText":"2-3 sentences spoken naturally by the interviewer","scoreNote":"specific evaluation criteria for this question"}
+Each step: {"type":"intro|question|closing","aiText":"2-3 sentences spoken naturally by the interviewer","scoreNote":"specific evaluation criteria for this question"}${panelNote}
 
 IMPORTANT closing rules:
 - The closing step MUST be a wrap-up summary, NOT an open-ended question

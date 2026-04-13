@@ -468,6 +468,7 @@ export function useInterviewEngine() {
   const [answerTimer, setAnswerTimer] = useState(0);
 
   const step = interviewScript[currentStep] ?? interviewScript[interviewScript.length - 1];
+  const activeInterviewerName = step?.persona || interviewerName;
   const totalQuestions = interviewScript.filter(s => s.type === "question" || s.type === "follow-up").length;
   const currentQuestionNum = interviewScript.slice(0, currentStep + 1).filter(s => s.type === "question" || s.type === "follow-up").length;
 
@@ -535,7 +536,7 @@ export function useInterviewEngine() {
 
       setTranscript(prev => [...prev, {
         speaker: "ai",
-        text: step.aiText,
+        text: step.persona ? `[${step.persona}] ${step.aiText}` : step.aiText,
         time: formatTime(elapsed),
       }]);
 
@@ -996,6 +997,39 @@ export function useInterviewEngine() {
     }
   }, [navigate, elapsed, interviewType, interviewDifficulty, interviewFocus, totalQuestions, user, updateUser, currentStep, interviewScript.length, transcript]);
 
+  // Live speech metrics (computed from current transcript)
+  const liveMetrics = useMemo(() => {
+    if (!currentTranscript || currentTranscript.length < 10) return null;
+    const words = currentTranscript.trim().split(/\s+/).filter(Boolean);
+    const wordCount = words.length;
+    const minutes = Math.max(0.1, answerTimer / 60);
+    const wpm = Math.round(wordCount / minutes);
+
+    // Count filler words
+    let fillerCount = 0;
+    const text = currentTranscript.toLowerCase();
+    const fillerWords = ["um", "uh", "like", "you know", "basically", "actually", "literally", "i mean", "kind of", "sort of"];
+    for (const filler of fillerWords) {
+      const regex = new RegExp(`\\b${filler}\\b`, 'gi');
+      const matches = text.match(regex);
+      if (matches) fillerCount += matches.length;
+    }
+
+    // Answer length guidance based on timer
+    let lengthGuidance: string | null = null;
+    if (answerTimer < 30 && wordCount < 20) {
+      lengthGuidance = "Keep going — aim for 60-90 seconds";
+    } else if (answerTimer >= 30 && answerTimer < 60 && wordCount < 40) {
+      lengthGuidance = "Good start — add more detail";
+    } else if (answerTimer >= 60 && answerTimer <= 90) {
+      lengthGuidance = "Great length — wrap up with your result";
+    } else if (answerTimer > 100) {
+      lengthGuidance = "Consider wrapping up";
+    }
+
+    return { wordCount, wpm, fillerCount, lengthGuidance };
+  }, [currentTranscript, answerTimer]);
+
   const QUESTION_TIME_LIMIT = 120;
   const timeRemaining = QUESTION_TIME_LIMIT - answerTimer;
   const timePercent = (answerTimer / QUESTION_TIME_LIMIT) * 100;
@@ -1037,7 +1071,8 @@ export function useInterviewEngine() {
     displayRole,
     displayCompany,
     displayFocus,
-    interviewerName,
+    interviewerName: activeInterviewerName,
+    liveMetrics,
 
     // Setters the UI needs
     setCurrentTranscript,

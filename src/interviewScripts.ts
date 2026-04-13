@@ -9,6 +9,7 @@ export interface InterviewStep {
   speakingDuration: number;
   waitForUser: boolean;
   scoreNote?: string;
+  persona?: string; // For panel interviews: which interviewer is speaking
 }
 
 export const scriptsByType: Record<string, InterviewStep[]> = {
@@ -79,6 +80,22 @@ export const scriptsByType: Record<string, InterviewStep[]> = {
     { type: "question", aiText: "How do you integrate technology and modern teaching methods into your lessons? Can you give a specific example of an innovative approach you've used or would use?", thinkingDuration: 700, speakingDuration: 5000, waitForUser: true, scoreNote: "Focus on: tech integration, innovation, pedagogical reasoning" },
     { type: "question", aiText: "A parent complains that their child is not performing well and blames your teaching methods. How do you handle this conversation?", thinkingDuration: 700, speakingDuration: 4500, waitForUser: true, scoreNote: "Focus on: communication, professionalism, collaborative problem-solving" },
     { type: "closing", aiText: "Well done! You showed a genuine passion for teaching. Remember, interviewers for teaching positions look for patience, adaptability, and a commitment to student growth. Back your answers with specific classroom examples whenever possible. Great session! Any questions?", thinkingDuration: 800, speakingDuration: 7000, waitForUser: true },
+  ],
+  "panel": [
+    { type: "intro", aiText: "Welcome to your panel interview. I'm the hiring manager, and I'll be joined by our technical lead and HR partner. We'll each ask you questions from our perspective. Let's begin — tell us briefly about yourself.", thinkingDuration: 500, speakingDuration: 6000, waitForUser: true, persona: "Hiring Manager" },
+    { type: "question", aiText: "From a technical standpoint, tell me about the most complex system you've designed or contributed to. What were the key architectural trade-offs?", thinkingDuration: 800, speakingDuration: 5000, waitForUser: true, scoreNote: "Technical Lead evaluating: architecture depth, trade-off analysis", persona: "Technical Lead" },
+    { type: "question", aiText: "I'd like to understand your leadership style. Can you describe a time you had to rally a team through a difficult period? What was your approach?", thinkingDuration: 700, speakingDuration: 5000, waitForUser: true, scoreNote: "Hiring Manager evaluating: leadership, team management", persona: "Hiring Manager" },
+    { type: "question", aiText: "Let's talk about culture and collaboration. How do you handle disagreements with peers, especially when you strongly believe your approach is right?", thinkingDuration: 700, speakingDuration: 4500, waitForUser: true, scoreNote: "HR Partner evaluating: emotional intelligence, conflict resolution, cultural fit", persona: "HR Partner" },
+    { type: "question", aiText: "Back to the technical side — if I gave you a system currently handling 1000 requests per second and told you it needs to handle 100x that in 6 months, how would you approach it?", thinkingDuration: 800, speakingDuration: 5500, waitForUser: true, scoreNote: "Technical Lead evaluating: scalability thinking, planning", persona: "Technical Lead" },
+    { type: "closing", aiText: "Thank you for speaking with all of us today. We've covered technical depth, leadership, and cultural fit. You showed strong communication across all three dimensions. For panel interviews, remember to address each panelist's perspective directly. Great practice — any questions for us?", thinkingDuration: 800, speakingDuration: 7000, waitForUser: true, persona: "Hiring Manager" },
+  ],
+  "salary-negotiation": [
+    { type: "intro", aiText: "Welcome to your salary negotiation practice session. I'll play the role of a hiring manager extending you an offer. We'll practice negotiating compensation, benefits, and terms. This is a safe space to build your confidence. Ready to negotiate?", thinkingDuration: 500, speakingDuration: 5500, waitForUser: true },
+    { type: "question", aiText: "We'd like to offer you the position. The base salary is $95,000 with standard benefits. How does that sound to you?", thinkingDuration: 600, speakingDuration: 3500, waitForUser: true, scoreNote: "Focus on: not accepting immediately, asking for time, showing enthusiasm without committing" },
+    { type: "question", aiText: "I understand you'd like to discuss the compensation. What salary range were you thinking of, and what's your reasoning?", thinkingDuration: 700, speakingDuration: 4000, waitForUser: true, scoreNote: "Focus on: anchoring high, citing market data, framing value not needs" },
+    { type: "question", aiText: "That's above our initial budget. We could potentially go to $105,000 but that's really stretching it. Would you accept at that number?", thinkingDuration: 700, speakingDuration: 4500, waitForUser: true, scoreNote: "Focus on: negotiating beyond salary (equity, bonus, PTO, flexibility), not accepting first counter" },
+    { type: "question", aiText: "Let's talk about the full package then. What other elements of compensation are important to you, and what would make this a clear yes?", thinkingDuration: 700, speakingDuration: 4500, waitForUser: true, scoreNote: "Focus on: total comp thinking, prioritization, professional framing" },
+    { type: "closing", aiText: "Great negotiation practice! Key takeaways: always express enthusiasm first, anchor with data not demands, negotiate the full package not just base salary, and never accept the first offer on the spot. You showed good instincts. Any final questions about negotiation strategy?", thinkingDuration: 800, speakingDuration: 7000, waitForUser: true },
   ],
 };
 

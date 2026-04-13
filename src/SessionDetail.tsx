@@ -256,12 +256,13 @@ export default function SessionDetail() {
     ctx.fillText("/100", W / 2, 400);
 
     // Skill scores row
-    const skills = session.skill_scores ? Object.entries(session.skill_scores).slice(0, 5) : [];
+    const skills = session.skill_scores ? Object.entries(session.skill_scores).slice(0, 10) : [];
     if (skills.length > 0) {
-      const startX = W / 2 - (skills.length * 120) / 2;
+      const colWidth = Math.min(120, (W - 40) / skills.length);
+      const startX = W / 2 - (skills.length * colWidth) / 2;
       skills.forEach(([name, raw], i) => {
         const score = extractScore(raw);
-        const x = startX + i * 120 + 60;
+        const x = startX + i * colWidth + colWidth / 2;
         ctx.fillStyle = "#8E8983";
         ctx.font = "500 10px 'Inter', sans-serif";
         ctx.fillText(name.replace(/([A-Z])/g, " $1").trim(), x, 465);
@@ -310,7 +311,8 @@ export default function SessionDetail() {
   /* ─── Score Card Image Generator (for sharing) ─── */
   const generateScoreCard = useCallback(async (): Promise<Blob | null> => {
     if (!session) return null;
-    const W = 600, H = 400;
+    const skillCount = session.skill_scores ? Object.keys(session.skill_scores).length : 0;
+    const W = 600, H = Math.max(400, 240 + Math.min(skillCount, 10) * 30 + 50);
     const canvas = document.createElement("canvas");
     canvas.width = W; canvas.height = H;
     const ctx = canvas.getContext("2d");
@@ -387,16 +389,17 @@ export default function SessionDetail() {
     ctx.fillText(`${dateStr}  ·  ${Math.round(session.duration / 60)} min`, 32, 150);
 
     // Skill bars
-    const skills = session.skill_scores ? Object.entries(session.skill_scores).slice(0, 4) : [];
+    const skills = session.skill_scores ? Object.entries(session.skill_scores).slice(0, 10) : [];
     if (skills.length > 0) {
       ctx.fillStyle = "#8E8983";
       ctx.font = "600 9px 'Inter', sans-serif";
       ctx.letterSpacing = "1px";
       ctx.fillText("SKILLS", 32, 195);
 
+      const barSpacing = skills.length > 5 ? 28 : 36;
       skills.forEach(([name, raw], i) => {
         const score = extractScore(raw);
-        const y = 215 + i * 36;
+        const y = 215 + i * barSpacing;
         const barColor = score >= 85 ? "#7A9E7E" : score >= 75 ? "#D4B37F" : "#C4705A";
 
         ctx.fillStyle = "#CCC7C0";
@@ -857,15 +860,16 @@ export default function SessionDetail() {
 
                 {/* Quadrant chart */}
                 {(() => {
-                  // Use communication+structure as "Delivery Confidence" (Y-axis)
-                  // Use technicalDepth+problemSolving as "Technical Credibility" (X-axis)
-                  const deliverySkills = skillEntries.filter(s => ["communication", "structure", "leadership"].includes(s.name.toLowerCase()));
-                  const technicalSkills = skillEntries.filter(s => ["technicaldepth", "problemsolving", "problemSolving"].includes(s.name.toLowerCase()) || s.name.toLowerCase().includes("technical") || s.name.toLowerCase().includes("problem"));
+                  // Use communication+structure+confidence+adaptability as "Delivery Confidence" (Y-axis)
+                  // Use technicalDepth+problemSolving+specificity+businessImpact as "Technical Credibility" (X-axis)
+                  const deliverySkills = skillEntries.filter(s => ["communication", "structure", "leadership", "confidence", "adaptability", "answercompleteness"].includes(s.name.toLowerCase()));
+                  const technicalSkills = skillEntries.filter(s => ["technicaldepth", "problemsolving", "problemSolving", "specificity", "businessimpact"].includes(s.name.toLowerCase()) || s.name.toLowerCase().includes("technical") || s.name.toLowerCase().includes("problem"));
                   const deliveryScore = deliverySkills.length > 0 ? Math.round(deliverySkills.reduce((s, e) => s + e.score, 0) / deliverySkills.length) : session.score;
                   const technicalScore = technicalSkills.length > 0 ? Math.round(technicalSkills.reduce((s, e) => s + e.score, 0) / technicalSkills.length) : session.score;
                   // Cohort average
-                  const cohortDelivery = historicalAvg ? Math.round(Object.entries(historicalAvg.avgSkills).filter(([k]) => ["communication", "structure", "leadership"].includes(k.toLowerCase())).reduce((s, [, v]) => s + v, 0) / Math.max(1, Object.entries(historicalAvg.avgSkills).filter(([k]) => ["communication", "structure", "leadership"].includes(k.toLowerCase())).length)) || 50 : 50;
-                  const cohortTechnical = historicalAvg ? Math.round(Object.entries(historicalAvg.avgSkills).filter(([k]) => k.toLowerCase().includes("technical") || k.toLowerCase().includes("problem")).reduce((s, [, v]) => s + v, 0) / Math.max(1, Object.entries(historicalAvg.avgSkills).filter(([k]) => k.toLowerCase().includes("technical") || k.toLowerCase().includes("problem")).length)) || 50 : 50;
+                  const deliveryNames = ["communication", "structure", "leadership", "confidence", "adaptability", "answercompleteness"];
+                  const cohortDelivery = historicalAvg ? Math.round(Object.entries(historicalAvg.avgSkills).filter(([k]) => deliveryNames.includes(k.toLowerCase())).reduce((s, [, v]) => s + v, 0) / Math.max(1, Object.entries(historicalAvg.avgSkills).filter(([k]) => deliveryNames.includes(k.toLowerCase())).length)) || 50 : 50;
+                  const cohortTechnical = historicalAvg ? Math.round(Object.entries(historicalAvg.avgSkills).filter(([k]) => k.toLowerCase().includes("technical") || k.toLowerCase().includes("problem") || k.toLowerCase().includes("specificity") || k.toLowerCase().includes("businessimpact")).reduce((s, [, v]) => s + v, 0) / Math.max(1, Object.entries(historicalAvg.avgSkills).filter(([k]) => k.toLowerCase().includes("technical") || k.toLowerCase().includes("problem") || k.toLowerCase().includes("specificity") || k.toLowerCase().includes("businessimpact")).length)) || 50 : 50;
 
                   const dotX = technicalScore; // 0-100 maps to left-right
                   const dotY = 100 - deliveryScore; // 0-100 maps to top-bottom (inverted)

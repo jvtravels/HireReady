@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { c, font } from "./tokens";
 import {
   StatusToasts, InterviewHeader, AvatarStage, QuestionCard,
@@ -5,12 +6,14 @@ import {
   ControlsBar, TranscriptPanel, EndModal, EvaluatingOverlay,
 } from "./InterviewPanels";
 import { useInterviewEngine } from "./useInterviewEngine";
+import { useVideoRecorder } from "./useVideoRecorder";
 
 /* ═══════════════════════════════════════════════
    INTERVIEW SCREEN
    ═══════════════════════════════════════════════ */
 export default function Interview() {
   const engine = useInterviewEngine();
+  const video = useVideoRecorder();
 
   const {
     phase, step, currentStep, llmLoading, elapsed,
@@ -22,7 +25,7 @@ export default function Interview() {
     totalQuestions, currentQuestionNum,
     timeRemaining, timePercent,
     displayRole, displayCompany, displayFocus, interviewerName,
-    interviewScript, saveWarning,
+    interviewScript, saveWarning, liveMetrics,
 
     setCurrentTranscript, setSpeechUnavailable, setIsMuted,
     setShowTranscript, setShowEndModal, setAiVoiceEnabled,
@@ -33,6 +36,13 @@ export default function Interview() {
     transcriptRef, endModalTriggerRef, textareaRef, nextBtnRef,
     micStreamRef, noSpeechCountRef, ttsCancelRef, interviewEndedRef,
   } = engine;
+
+  // Stop video recording when interview ends
+  useEffect(() => {
+    if (engine.phase === "done" && video.isRecording) {
+      video.stopRecording();
+    }
+  }, [engine.phase, video.isRecording, video.stopRecording]);
 
   return (
     <div style={{
@@ -76,6 +86,33 @@ export default function Interview() {
         overflow: "auto", padding: "24px 24px 0",
         position: "relative",
       }}>
+        {/* Video preview - small self-view */}
+        {video.videoEnabled && (
+          <div style={{
+            position: "fixed", top: 80, right: 16, zIndex: 20,
+            width: 160, height: 120, borderRadius: 12,
+            overflow: "hidden", border: "2px solid rgba(245,242,237,0.1)",
+            background: c.obsidian, boxShadow: "0 4px 20px rgba(0,0,0,0.4)",
+          }}>
+            <video
+              ref={video.videoPreviewRef}
+              autoPlay
+              muted
+              playsInline
+              style={{ width: "100%", height: "100%", objectFit: "cover", transform: "scaleX(-1)" }}
+            />
+            <div style={{
+              position: "absolute", bottom: 4, left: 4,
+              display: "flex", alignItems: "center", gap: 4,
+              padding: "2px 6px", borderRadius: 4,
+              background: "rgba(0,0,0,0.6)",
+            }}>
+              <div style={{ width: 6, height: 6, borderRadius: "50%", background: c.ember, animation: "recordPulse 1.5s ease-in-out infinite" }} />
+              <span style={{ fontFamily: font.ui, fontSize: 9, color: c.ivory }}>REC</span>
+            </div>
+          </div>
+        )}
+
         <div style={{ width: "100%", maxWidth: 560, display: "flex", flexDirection: "column", alignItems: "center", gap: 20 }}>
 
           <AvatarStage phase={phase} interviewerName={interviewerName} isMuted={isMuted} speechUnavailable={speechUnavailable} skipSpeaking={skipSpeaking} />
@@ -90,6 +127,7 @@ export default function Interview() {
               setMicError={setMicError} handleNextQuestion={handleNextQuestion}
               textareaRef={textareaRef} nextBtnRef={nextBtnRef}
               currentStep={currentStep} interviewScriptLength={interviewScript.length}
+              liveMetrics={liveMetrics}
             />
           )}
 
@@ -98,6 +136,7 @@ export default function Interview() {
               currentQuestionNum={currentQuestionNum} elapsed={elapsed}
               usedFallbackScore={usedFallbackScore} evalTimedOut={evalTimedOut}
               evaluating={evaluating} handleEnd={handleEnd}
+              videoURL={video.videoURL}
             />
           )}
 
@@ -114,6 +153,7 @@ export default function Interview() {
         showTranscript={showTranscript} setShowTranscript={setShowTranscript}
         phase={phase} ttsCancelRef={ttsCancelRef}
         setShowEndModal={setShowEndModal} endModalTriggerRef={endModalTriggerRef}
+        videoEnabled={video.videoEnabled} onToggleVideo={video.toggleVideo}
       />
 
       {showTranscript && (

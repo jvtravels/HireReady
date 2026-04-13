@@ -218,7 +218,7 @@ export const QuestionCard = memo(function QuestionCard({ step, phase, showCaptio
 
 /* ─── User Answer Area (speech or text input) ─── */
 
-export const UserAnswerArea = memo(function UserAnswerArea({ currentTranscript, setCurrentTranscript, speechUnavailable, setSpeechUnavailable, isMuted, micStreamRef, noSpeechCountRef, setMicError, handleNextQuestion, textareaRef, nextBtnRef, currentStep, interviewScriptLength }: {
+export const UserAnswerArea = memo(function UserAnswerArea({ currentTranscript, setCurrentTranscript, speechUnavailable, setSpeechUnavailable, isMuted, micStreamRef, noSpeechCountRef, setMicError, handleNextQuestion, textareaRef, nextBtnRef, currentStep, interviewScriptLength, liveMetrics }: {
   currentTranscript: string; setCurrentTranscript: (v: string) => void;
   speechUnavailable: boolean; setSpeechUnavailable: (v: boolean) => void;
   isMuted: boolean; micStreamRef: React.MutableRefObject<MediaStream | null>;
@@ -228,6 +228,7 @@ export const UserAnswerArea = memo(function UserAnswerArea({ currentTranscript, 
   textareaRef: React.RefObject<HTMLTextAreaElement | null>;
   nextBtnRef: React.RefObject<HTMLButtonElement | null>;
   currentStep: number; interviewScriptLength: number;
+  liveMetrics: { wordCount: number; wpm: number; fillerCount: number; lengthGuidance: string | null } | null;
 }) {
   return (
     <div style={{
@@ -302,6 +303,40 @@ export const UserAnswerArea = memo(function UserAnswerArea({ currentTranscript, 
           </>
         )}
       </div>
+      {liveMetrics && (
+        <div style={{
+          display: "flex", alignItems: "center", gap: 16, padding: "8px 12px",
+          borderRadius: 8, background: "rgba(245,242,237,0.03)",
+          border: "1px solid rgba(245,242,237,0.06)", marginTop: 8,
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+            <span style={{ fontFamily: font.mono, fontSize: 11, fontWeight: 600, color: liveMetrics.wpm > 180 ? c.ember : liveMetrics.wpm < 100 ? c.gilt : c.sage }}>
+              {liveMetrics.wpm}
+            </span>
+            <span style={{ fontFamily: font.ui, fontSize: 9, color: c.stone }}>WPM</span>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+            <span style={{ fontFamily: font.mono, fontSize: 11, fontWeight: 600, color: liveMetrics.fillerCount > 5 ? c.ember : liveMetrics.fillerCount > 2 ? c.gilt : c.sage }}>
+              {liveMetrics.fillerCount}
+            </span>
+            <span style={{ fontFamily: font.ui, fontSize: 9, color: c.stone }}>fillers</span>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+            <span style={{ fontFamily: font.mono, fontSize: 11, fontWeight: 600, color: c.ivory }}>
+              {liveMetrics.wordCount}
+            </span>
+            <span style={{ fontFamily: font.ui, fontSize: 9, color: c.stone }}>words</span>
+          </div>
+          {liveMetrics.lengthGuidance && (
+            <>
+              <div style={{ width: 1, height: 12, background: "rgba(245,242,237,0.08)" }} />
+              <span style={{ fontFamily: font.ui, fontSize: 10, color: c.gilt, fontStyle: "italic" }}>
+                {liveMetrics.lengthGuidance}
+              </span>
+            </>
+          )}
+        </div>
+      )}
       <button
         ref={nextBtnRef}
         onClick={handleNextQuestion}
@@ -326,10 +361,11 @@ export const UserAnswerArea = memo(function UserAnswerArea({ currentTranscript, 
 
 /* ─── Completion Card (done state) ─── */
 
-export const CompletionCard = memo(function CompletionCard({ currentQuestionNum, elapsed, usedFallbackScore, evalTimedOut, evaluating, handleEnd }: {
+export const CompletionCard = memo(function CompletionCard({ currentQuestionNum, elapsed, usedFallbackScore, evalTimedOut, evaluating, handleEnd, videoURL }: {
   currentQuestionNum: number; elapsed: number;
   usedFallbackScore: boolean; evalTimedOut: boolean;
   evaluating: boolean; handleEnd: () => void;
+  videoURL?: string | null;
 }) {
   return (
     <div style={{
@@ -349,6 +385,17 @@ export const CompletionCard = memo(function CompletionCard({ currentQuestionNum,
         <p style={{ fontFamily: font.ui, fontSize: 11, color: c.gilt, margin: 0, padding: "6px 12px", borderRadius: 10, background: "rgba(212,179,127,0.06)", border: "1px solid rgba(212,179,127,0.1)" }}>
           {evalTimedOut ? "AI evaluation timed out" : "AI evaluation unavailable"} — score is estimated from session metrics
         </p>
+      )}
+      {videoURL && (
+        <div style={{ width: "100%", marginTop: 12 }}>
+          <p style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, marginBottom: 6 }}>Your recording:</p>
+          <video
+            src={videoURL}
+            controls
+            playsInline
+            style={{ width: "100%", borderRadius: 10, border: `1px solid ${c.border}` }}
+          />
+        </div>
       )}
       <button
         onClick={handleEnd}
@@ -404,7 +451,7 @@ export const MicroFeedbackPanel = memo(function MicroFeedbackPanel({ transcript,
 
 /* ─── Bottom Controls Bar ─── */
 
-export const ControlsBar = memo(function ControlsBar({ isMuted, setIsMuted, aiVoiceEnabled, setAiVoiceEnabled, showTranscript, setShowTranscript, phase, ttsCancelRef, setShowEndModal, endModalTriggerRef }: {
+export const ControlsBar = memo(function ControlsBar({ isMuted, setIsMuted, aiVoiceEnabled, setAiVoiceEnabled, showTranscript, setShowTranscript, phase, ttsCancelRef, setShowEndModal, endModalTriggerRef, videoEnabled, onToggleVideo }: {
   isMuted: boolean; setIsMuted: (fn: (m: boolean) => boolean) => void;
   aiVoiceEnabled: boolean; setAiVoiceEnabled: (fn: (v: boolean) => boolean) => void;
   showTranscript: boolean; setShowTranscript: (fn: (t: boolean) => boolean) => void;
@@ -412,6 +459,7 @@ export const ControlsBar = memo(function ControlsBar({ isMuted, setIsMuted, aiVo
   ttsCancelRef: React.MutableRefObject<(() => void) | null>;
   setShowEndModal: (v: boolean) => void;
   endModalTriggerRef: React.RefObject<HTMLSpanElement | null>;
+  videoEnabled: boolean; onToggleVideo: () => void;
 }) {
   return (
     <footer className="iv-controls" style={{
@@ -457,6 +505,26 @@ export const ControlsBar = memo(function ControlsBar({ isMuted, setIsMuted, aiVo
         label={showTranscript ? "Hide transcript (Alt+T)" : "Show transcript (Alt+T)"}
         active={showTranscript}
         onClick={() => setShowTranscript(t => !t)}
+      />
+      <ControlButton
+        icon={
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            {videoEnabled ? (
+              <>
+                <polygon points="23 7 16 12 23 17 23 7"/>
+                <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+              </>
+            ) : (
+              <>
+                <path d="M16 16v1a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h2m5.66 0H14a2 2 0 0 1 2 2v3.34l1 1L23 7v10"/>
+                <line x1="1" y1="1" x2="23" y2="23"/>
+              </>
+            )}
+          </svg>
+        }
+        label={videoEnabled ? "Stop camera" : "Start camera"}
+        active={videoEnabled}
+        onClick={onToggleVideo}
       />
       {phase !== "done" && (
         <>

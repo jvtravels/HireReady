@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { c, font } from "./tokens";
 import { useAuth } from "./AuthContext";
@@ -25,6 +25,91 @@ function getResumeHistory(): ResumeVersion[] {
     const raw = localStorage.getItem(RESUME_HISTORY_KEY);
     return raw ? JSON.parse(raw) : [];
   } catch { return []; }
+}
+
+/* ─── ATS Compliance Check (client-side keyword matching) ─── */
+interface ATSResult {
+  score: number;
+  label: string;
+  found: string[];
+  missing: string[];
+  suggestions: string[];
+}
+
+function computeATSScore(resumeText: string, _targetRole?: string, jdText?: string): ATSResult {
+  const text = resumeText.toLowerCase();
+
+  // Common ATS-required sections
+  const requiredSections = [
+    { name: "Contact Info", keywords: ["email", "@", "phone", "linkedin"] },
+    { name: "Work Experience", keywords: ["experience", "worked", "role", "position", "company"] },
+    { name: "Education", keywords: ["education", "university", "degree", "bachelor", "master", "b.tech", "b.e", "mba"] },
+    { name: "Skills", keywords: ["skills", "technologies", "tools", "proficient"] },
+  ];
+
+  // Common action verbs ATS systems look for
+  const actionVerbs = ["achieved", "led", "managed", "developed", "implemented", "designed", "built", "increased", "reduced", "improved", "launched", "delivered", "created", "optimized", "coordinated", "analyzed"];
+
+  // Metrics/quantification patterns
+  const hasMetrics = /\d+%|\$\d|[0-9]+\+?\s*(users|customers|team|members|engineers|projects|clients|revenue)/i.test(resumeText);
+
+  // Check sections
+  const foundSections = requiredSections.filter(s => s.keywords.some(k => text.includes(k)));
+  const missingSections = requiredSections.filter(s => !s.keywords.some(k => text.includes(k)));
+
+  // Check action verbs
+  const foundVerbs = actionVerbs.filter(v => new RegExp(`\\b${v}\\w*\\b`, "i").test(text));
+
+  // JD keyword matching if JD provided
+  let jdKeywords: string[] = [];
+  let foundJdKeywords: string[] = [];
+  let missingJdKeywords: string[] = [];
+  if (jdText) {
+    const jdWords = jdText.toLowerCase().match(/\b[a-z]{3,}\b/g) || [];
+    const commonWords = new Set(["the", "and", "for", "are", "but", "not", "you", "all", "can", "her", "was", "one", "our", "out", "with", "they", "been", "have", "from", "this", "that", "will", "would", "there", "their", "what", "about", "which", "when", "make", "like", "time", "just", "know", "take", "come", "could", "than", "look", "only", "into", "year", "your", "some", "them", "also", "should", "able", "work", "experience", "must", "strong"]);
+    const freq: Record<string, number> = {};
+    for (const w of jdWords) {
+      if (!commonWords.has(w) && w.length > 3) freq[w] = (freq[w] || 0) + 1;
+    }
+    jdKeywords = Object.entries(freq).filter(([, c]) => c >= 2).map(([w]) => w).slice(0, 20);
+    foundJdKeywords = jdKeywords.filter(k => text.includes(k));
+    missingJdKeywords = jdKeywords.filter(k => !text.includes(k));
+  }
+
+  // Score
+  let score = 0;
+  score += foundSections.length * 15; // up to 60
+  score += Math.min(20, foundVerbs.length * 3); // up to 20
+  score += hasMetrics ? 10 : 0;
+  score += jdKeywords.length > 0 ? Math.round((foundJdKeywords.length / jdKeywords.length) * 10) : 10;
+  score = Math.min(100, Math.max(0, score));
+
+  const label = score >= 85 ? "Excellent" : score >= 70 ? "Good" : score >= 50 ? "Needs Work" : "Poor";
+
+  const found = [
+    ...foundSections.map(s => s.name),
+    foundVerbs.length > 0 ? `${foundVerbs.length} action verbs` : null,
+    hasMetrics ? "Quantified achievements" : null,
+    ...foundJdKeywords.map(k => `JD keyword: ${k}`),
+  ].filter(Boolean) as string[];
+
+  const missing = [
+    ...missingSections.map(s => `Missing: ${s.name} section`),
+    foundVerbs.length < 5 ? "Add more action verbs (achieved, led, built...)" : null,
+    !hasMetrics ? "Add quantified metrics (%, $, numbers)" : null,
+    ...missingJdKeywords.slice(0, 5).map(k => `Missing JD keyword: ${k}`),
+  ].filter(Boolean) as string[];
+
+  const suggestions = [
+    missingSections.length > 0 ? `Add clear section headers: ${missingSections.map(s => s.name).join(", ")}` : null,
+    !hasMetrics ? "Quantify your achievements with specific numbers, percentages, or dollar amounts" : null,
+    foundVerbs.length < 5 ? "Start bullet points with strong action verbs: achieved, led, implemented, designed" : null,
+    missingJdKeywords.length > 3 ? "Mirror key terms from the job description in your resume" : null,
+    "Use standard section headings (Experience, Education, Skills) for better ATS parsing",
+    "Avoid tables, graphics, and complex formatting that ATS cannot read",
+  ].filter(Boolean) as string[];
+
+  return { score, label, found, missing, suggestions: suggestions.slice(0, 5) };
 }
 
 export default function DashboardResume() {
@@ -60,6 +145,13 @@ export default function DashboardResume() {
   const analyzingRef = useRef(false);
   const abortControllerRef = useRef<AbortController | null>(null);
   const navigate = useNavigate();
+
+  // ATS compliance check — auto-computes when resume/JD changes
+  const atsResult = useMemo<ATSResult | null>(() => {
+    const rText = user?.resumeText || resumeText;
+    if (!rText) return null;
+    return computeATSScore(rText, user?.targetRole, jdText || undefined);
+  }, [user?.resumeText, resumeText, user?.targetRole, jdText]);
 
   // Cleanup abort controller on unmount
   useEffect(() => {
@@ -703,6 +795,71 @@ export default function DashboardResume() {
           >
             Use this JD in your next interview
           </button>
+        </div>
+      )}
+
+      {/* ─── ATS Compliance Check ─── */}
+      {atsResult && (
+        <div style={{ background: c.graphite, borderRadius: 14, border: `1px solid ${c.border}`, padding: "20px 24px", marginBottom: 14 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 18 }}>
+            <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 12l2 2 4-4"/></svg>
+            <h3 style={{ fontFamily: font.ui, fontSize: 14, fontWeight: 600, color: c.ivory, margin: 0 }}>ATS Compliance Check</h3>
+          </div>
+
+          {/* Score circle + label */}
+          <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 18 }}>
+            <div style={{
+              width: 56, height: 56, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center",
+              border: `3px solid ${atsResult.score >= 85 ? c.sage : atsResult.score >= 70 ? c.sage : atsResult.score >= 50 ? c.gilt : c.ember}`,
+            }}>
+              <span style={{ fontFamily: font.mono, fontSize: 20, fontWeight: 700, color: atsResult.score >= 70 ? c.sage : atsResult.score >= 50 ? c.gilt : c.ember }}>
+                {atsResult.score}
+              </span>
+            </div>
+            <div>
+              <div style={{ fontFamily: font.ui, fontSize: 15, fontWeight: 600, color: c.ivory }}>{atsResult.label}</div>
+              <div style={{ fontFamily: font.ui, fontSize: 12, color: c.stone }}>ATS Compatibility Score</div>
+            </div>
+          </div>
+
+          {/* Found items */}
+          {atsResult.found.length > 0 && (
+            <div style={{ marginBottom: 14 }}>
+              <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.stone, textTransform: "uppercase", letterSpacing: "0.05em" }}>Found</span>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 6 }}>
+                {atsResult.found.map((item, i) => (
+                  <span key={i} style={{ fontFamily: font.ui, fontSize: 11, padding: "3px 10px", borderRadius: 20, background: `${c.sage}22`, color: c.sage, border: `1px solid ${c.sage}44` }}>{item}</span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Missing items */}
+          {atsResult.missing.length > 0 && (
+            <div style={{ marginBottom: 14 }}>
+              <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.stone, textTransform: "uppercase", letterSpacing: "0.05em" }}>Missing</span>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 6 }}>
+                {atsResult.missing.map((item, i) => (
+                  <span key={i} style={{ fontFamily: font.ui, fontSize: 11, padding: "3px 10px", borderRadius: 20, background: `${c.ember}22`, color: c.ember, border: `1px solid ${c.ember}44` }}>{item}</span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Suggestions */}
+          {atsResult.suggestions.length > 0 && (
+            <div>
+              <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.stone, textTransform: "uppercase", letterSpacing: "0.05em" }}>Suggestions</span>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8 }}>
+                {atsResult.suggestions.map((tip, i) => (
+                  <div key={i} style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "10px 14px", borderRadius: 8, background: c.obsidian, border: `1px solid ${c.border}` }}>
+                    <span style={{ fontFamily: font.mono, fontSize: 10, fontWeight: 700, color: c.gilt, background: "rgba(212,179,127,0.08)", borderRadius: 4, padding: "2px 6px", flexShrink: 0, marginTop: 1 }}>{i + 1}</span>
+                    <span style={{ fontFamily: font.ui, fontSize: 12.5, color: c.chalk, lineHeight: 1.5 }}>{tip}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
