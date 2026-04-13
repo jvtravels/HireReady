@@ -10,6 +10,7 @@ import { daysUntilEvent, formatEventDate, formatEventTime } from "./dashboardHel
 import { getPersonalizedGreeting } from "./dashboardData";
 import { ScoreTrendChart, SkillRadar } from "./DashboardCharts";
 import { useDocTitle } from "./useDocTitle";
+import { buildInterviewUrl, type CurriculumState } from "./curriculum";
 
 /* ─── Shared premium card style ─── */
 const card = {
@@ -104,6 +105,192 @@ const dashboardStyles = `
   @keyframes slideDown { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
 `;
 
+/* ─── Curriculum View — guided 3-session onboarding ─── */
+function CurriculumView({ state, displayName, isMobile, onSkip }: { state: CurriculumState; displayName: string; isMobile: boolean; onSkip: () => void }) {
+  const nav = useNavigate();
+  const sessionLabels = ["Warmup", "Focus", "Challenge"];
+  const sessionDescs = [
+    "A quick, friendly warmup to set your baseline",
+    "Targeted practice on your biggest growth area",
+    "A full interview simulation for your target role",
+  ];
+
+  return (
+    <div style={{ maxWidth: 640, margin: "0 auto", padding: isMobile ? "24px 16px" : "48px 24px" }}>
+      <style>{dashboardStyles}</style>
+
+      {/* Header */}
+      <h1 style={{ fontFamily: font.display, fontSize: isMobile ? 24 : 30, fontWeight: 400, color: c.ivory, marginBottom: 4, letterSpacing: "-0.01em" }}>
+        {state.currentSession <= 3 ? `Welcome, ${displayName.split(" ")[0]}` : `Great work, ${displayName.split(" ")[0]}!`}
+      </h1>
+      <p style={{ fontFamily: font.ui, fontSize: 14, color: c.stone, marginBottom: 32, lineHeight: 1.6 }}>
+        {state.narrative}
+      </p>
+
+      {/* Progress Steps */}
+      <div style={{ display: "flex", alignItems: "center", gap: 0, marginBottom: 36 }}>
+        {[1, 2, 3].map((n, i) => {
+          const done = n < state.currentSession;
+          const active = n === state.currentSession && !state.completed;
+          const dotColor = done ? c.sage : active ? c.gilt : c.border;
+          return (
+            <div key={n} style={{ display: "flex", alignItems: "center", flex: i < 2 ? 1 : "none" }}>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
+                <div style={{
+                  width: 36, height: 36, borderRadius: "50%",
+                  background: done ? "rgba(122,158,126,0.12)" : active ? "rgba(212,179,127,0.10)" : "rgba(255,255,255,0.03)",
+                  border: `2px solid ${dotColor}`,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  transition: "all 0.3s ease",
+                }}>
+                  {done ? (
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                  ) : (
+                    <span style={{ fontFamily: font.mono, fontSize: 13, fontWeight: 600, color: active ? c.gilt : c.stone }}>{n}</span>
+                  )}
+                </div>
+                <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 500, color: done ? c.sage : active ? c.gilt : c.stone, whiteSpace: "nowrap" }}>
+                  {sessionLabels[i]}
+                </span>
+              </div>
+              {i < 2 && (
+                <div style={{
+                  flex: 1, height: 2, margin: "0 8px", marginBottom: 20,
+                  background: done ? c.sage : c.border,
+                  borderRadius: 1,
+                  transition: "background 0.3s ease",
+                }} />
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Completed sessions */}
+      {state.sessionHistory.length > 0 && (
+        <div style={{ marginBottom: 28 }}>
+          <h3 style={{ fontFamily: font.display, fontSize: 16, fontWeight: 400, color: c.ivory, marginBottom: 12 }}>Completed</h3>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {state.sessionHistory.map(s => (
+              <div key={s.sessionNumber} style={{
+                ...card, padding: "16px 20px",
+                display: "flex", justifyContent: "space-between", alignItems: "center",
+              }}>
+                <div>
+                  <span style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: c.ivory }}>
+                    Session {s.sessionNumber}: {sessionLabels[s.sessionNumber - 1]}
+                  </span>
+                  <div style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, marginTop: 4 }}>
+                    Strength: <span style={{ color: c.sage }}>{s.topStrength}</span>
+                    {s.topWeakness !== "—" && <> &middot; Gap: <span style={{ color: c.ember }}>{s.topWeakness}</span></>}
+                  </div>
+                </div>
+                <div style={{
+                  fontFamily: font.mono, fontSize: 20, fontWeight: 600,
+                  color: s.score >= 80 ? c.sage : s.score >= 60 ? c.gilt : c.ember,
+                }}>
+                  {s.score}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Next session card OR completion */}
+      {state.nextSessionConfig ? (
+        <div style={{
+          ...card, padding: "28px 24px",
+          border: "1px solid rgba(212,179,127,0.15)",
+          background: "linear-gradient(180deg, rgba(212,179,127,0.04) 0%, rgba(17,17,19,0.5) 100%)",
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+            <div style={{
+              width: 28, height: 28, borderRadius: 7,
+              background: "rgba(212,179,127,0.08)", border: "1px solid rgba(212,179,127,0.15)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+            }}>
+              <span style={{ fontFamily: font.mono, fontSize: 12, fontWeight: 700, color: c.gilt }}>{state.nextSessionConfig.sessionNumber}</span>
+            </div>
+            <span style={{ fontFamily: font.ui, fontSize: 15, fontWeight: 600, color: c.ivory }}>
+              Session {state.nextSessionConfig.sessionNumber}: {sessionLabels[state.nextSessionConfig.sessionNumber - 1]}
+            </span>
+          </div>
+          <p style={{ fontFamily: font.ui, fontSize: 13, color: c.stone, marginBottom: 20, lineHeight: 1.5 }}>
+            {sessionDescs[state.nextSessionConfig.sessionNumber - 1]}
+            {state.nextSessionConfig.focus && <><br /><span style={{ color: c.gilt }}>Focus: {state.nextSessionConfig.focus}</span></>}
+            {state.nextSessionConfig.company && <><br /><span style={{ color: c.gilt }}>Company: {state.nextSessionConfig.company}</span></>}
+          </p>
+          <button
+            onClick={() => nav(buildInterviewUrl(state.nextSessionConfig!))}
+            style={{
+              width: "100%", padding: "14px 0", borderRadius: 10, cursor: "pointer",
+              fontFamily: font.ui, fontSize: 15, fontWeight: 600,
+              color: "#111113", background: `linear-gradient(135deg, ${c.gilt}, #c9a85c)`,
+              border: "none", letterSpacing: "0.02em",
+              boxShadow: "0 2px 12px rgba(212,179,127,0.2)",
+              transition: "all 0.2s ease",
+            }}
+            onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 4px 20px rgba(212,179,127,0.3)"; }}
+            onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 2px 12px rgba(212,179,127,0.2)"; }}
+          >
+            Start Session {state.nextSessionConfig.sessionNumber}
+          </button>
+        </div>
+      ) : (
+        <div style={{
+          ...card, padding: "32px 24px", textAlign: "center",
+          border: "1px solid rgba(122,158,126,0.2)",
+          background: "linear-gradient(180deg, rgba(122,158,126,0.04) 0%, rgba(17,17,19,0.5) 100%)",
+        }}>
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: 12 }}>
+            <circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/>
+          </svg>
+          <h3 style={{ fontFamily: font.display, fontSize: 20, fontWeight: 400, color: c.ivory, marginBottom: 6 }}>Curriculum Complete!</h3>
+          {state.baselineScore !== null && state.latestScore !== null && (
+            <p style={{ fontFamily: font.mono, fontSize: 14, color: c.sage, marginBottom: 4 }}>
+              {state.baselineScore} &rarr; {state.latestScore} ({state.latestScore - state.baselineScore > 0 ? "+" : ""}{state.latestScore - state.baselineScore} points)
+            </p>
+          )}
+          <p style={{ fontFamily: font.ui, fontSize: 13, color: c.stone, marginBottom: 20 }}>
+            You've built a strong foundation. Explore the full dashboard to keep improving.
+          </p>
+          <button
+            onClick={onSkip}
+            style={{
+              padding: "12px 32px", borderRadius: 10, cursor: "pointer",
+              fontFamily: font.ui, fontSize: 14, fontWeight: 600,
+              color: "#111113", background: `linear-gradient(135deg, ${c.sage}, #6a9e6e)`,
+              border: "none", boxShadow: "0 2px 12px rgba(122,158,126,0.2)",
+            }}
+          >
+            Open Full Dashboard
+          </button>
+        </div>
+      )}
+
+      {/* Skip link */}
+      {!state.completed && (
+        <div style={{ textAlign: "center", marginTop: 20 }}>
+          <button
+            onClick={onSkip}
+            style={{
+              fontFamily: font.ui, fontSize: 12, color: c.stone, background: "transparent",
+              border: "none", cursor: "pointer", padding: "8px 16px",
+              textDecoration: "underline", textUnderlineOffset: 3, opacity: 0.7,
+              transition: "opacity 0.2s",
+            }}
+            onMouseEnter={e => { e.currentTarget.style.opacity = "1"; }}
+            onMouseLeave={e => { e.currentTarget.style.opacity = "0.7"; }}
+          >
+            Skip to full dashboard
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function DashboardHome() {
   const nav = useNavigate();
   const { user } = useAuth();
@@ -114,7 +301,7 @@ export default function DashboardHome() {
     weekActivity, currentStreak, readinessScore, daysLeft, calendarEvents,
     isFree: _isFree, atSessionLimit, sessionsRemaining: _sessionsRemaining,
     notifications, aiInsights, upcomingGoals, returnContext, smartSchedule, prepPlan,
-    companyReadiness, skillVelocity,
+    companyReadiness, curriculumState, skillVelocity,
     badges, dailyChallenge, practiceReminder,
     handleStartSession, handleExport, handleDownload, handleExportPDF,
     setShowUpgradeModal: _setShowUpgradeModal,
@@ -128,6 +315,14 @@ export default function DashboardHome() {
   const [sortBy, setSortBy] = useState<"date" | "score">("date");
   const [searchQuery, setSearchQuery] = useState("");
   const [dateRange, setDateRange] = useState<"all" | "week" | "month">("all");
+  const curriculumSkipKey = `hirestepx_curriculum_skipped_${user?.id || "anon"}`;
+  const [curriculumSkipped, setCurriculumSkipped] = useState(() => {
+    try { return localStorage.getItem(curriculumSkipKey) === "true"; } catch { return false; }
+  });
+  const handleSkipCurriculum = () => {
+    setCurriculumSkipped(true);
+    try { localStorage.setItem(curriculumSkipKey, "true"); } catch { /* expected */ }
+  };
   const [prepPlanOpen, setPrepPlanOpen] = useState(() => prepPlan ? prepPlan.tasks.some(s => !s.done) : true);
   const [rightTab, setRightTab] = useState<"insights" | "goals">("insights");
   const [shareTooltip, setShareTooltip] = useState(false);
@@ -229,6 +424,11 @@ export default function DashboardHome() {
         isMobile={isMobile}
       />
     );
+  }
+
+  /* ─── Guided Curriculum: show for users with < 3 sessions who haven't skipped ─── */
+  if (curriculumState && !curriculumState.completed && !curriculumSkipped) {
+    return <CurriculumView state={curriculumState} displayName={displayName} isMobile={isMobile} onSkip={handleSkipCurriculum} />;
   }
 
   const dismissDraft = () => { setHasDraft(null); try { localStorage.removeItem(draftKey); } catch { /* expected: localStorage may be unavailable */ } };

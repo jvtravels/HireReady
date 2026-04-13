@@ -15,6 +15,7 @@ import {
   generateReport,
   computeBadges, getDailyChallenge, getPracticeReminder,
 } from "./dashboardData";
+import { getCurriculumState, type CurriculumState } from "./curriculum";
 
 /* ─── Sub-context types ─── */
 
@@ -69,6 +70,7 @@ interface CoreContextValue {
   smartSchedule: string | null;
   prepPlan: ImprovementPlan | null;
   companyReadiness: CompanyReadiness | null;
+  curriculumState: CurriculumState | null;
   badges: { id: string; label: string; description: string; icon: string; earned: boolean; progress: number }[];
   dailyChallenge: { id: string; label: string; description: string; type: string; focus?: string; difficulty: string; completed: boolean };
   practiceReminder: string | null;
@@ -382,6 +384,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
   const returnContext = useMemo(() => getReturnContext(recentSessions), [recentSessions]);
   const smartSchedule = useMemo(() => getSmartScheduleSuggestion(user), [user]);
   const prepPlan = useMemo(() => getImprovementPlan(user, recentSessions, skills, skillVelocity), [user, recentSessions, skills, skillVelocity]);
+  const curriculumState = useMemo(() => getCurriculumState(recentSessions, user ? { targetRole: user.targetRole, targetCompany: user.targetCompany } : null), [recentSessions, user?.targetRole, user?.targetCompany]);
   const badges = useMemo(() => computeBadges(recentSessions, skills, currentStreak), [recentSessions, skills, currentStreak]);
   const dailyChallenge = useMemo(() => getDailyChallenge(recentSessions, skills), [recentSessions, skills]);
   const practiceReminder = useMemo(() => getPracticeReminder(recentSessions, currentStreak), [recentSessions, currentStreak]);
@@ -542,7 +545,7 @@ ${skills.length > 0 ? `<h2>Skills</h2><table><tr><th>Skill</th><th>Score</th><th
     persisted, updatePersisted,
     displayName, isNewUser, daysLeft,
     aiInsights, notifications, upcomingGoals,
-    returnContext, smartSchedule, prepPlan, companyReadiness,
+    returnContext, smartSchedule, prepPlan, companyReadiness, curriculumState,
     badges, dailyChallenge, practiceReminder,
     googleSyncStatus, googleSyncError, hasGoogleToken, syncGoogleCalendar,
     handleStartSession, handleExport, handleDownload, handleExportCSV, handleExportPDF,
@@ -550,7 +553,7 @@ ${skills.length > 0 ? `<h2>Skills</h2><table><tr><th>Skill</th><th>Score</th><th
     persisted, updatePersisted,
     displayName, isNewUser, daysLeft,
     aiInsights, notifications, upcomingGoals,
-    returnContext, smartSchedule, prepPlan, companyReadiness,
+    returnContext, smartSchedule, prepPlan, companyReadiness, curriculumState,
     badges, dailyChallenge, practiceReminder,
     googleSyncStatus, googleSyncError, hasGoogleToken, syncGoogleCalendar,
     handleStartSession, handleExport, handleDownload, handleExportCSV, handleExportPDF,
