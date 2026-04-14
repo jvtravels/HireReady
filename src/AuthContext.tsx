@@ -322,15 +322,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { success: false, error: "User already registered" };
     }
 
-    // Send verification email via Resend API (fire-and-forget, don't block signup)
+    // Send verification email via Resend API (don't block signup on failure)
     const userId = data?.user?.id;
     try {
-      fetch("/api/send-welcome", {
+      await fetch("/api/send-welcome", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, name, userId }),
-      }).catch(() => { /* verification email is best-effort */ });
+      });
     } catch { /* verification email is best-effort */ }
+
+    // Sign out so user must verify email before using the app
+    await client.auth.signOut();
+    setUser(null);
 
     return { success: true };
   }, []);

@@ -15,6 +15,8 @@ import {
 const RESEND_API_KEY = (process.env.RESEND_API_KEY || "").trim();
 const FROM_EMAIL = process.env.FROM_EMAIL || "HireStepX <onboarding@resend.dev>";
 const APP_URL = (process.env.APP_URL || "https://hirestepx.vercel.app").replace(/\/$/, "");
+const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || "";
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 const EMAIL_SECRET = process.env.EMAIL_VERIFICATION_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY || "fallback-secret";
 
 /** Generate HMAC verification token from email */
@@ -43,6 +45,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!RESEND_API_KEY) {
     console.error("RESEND_API_KEY not configured, skipping verification email");
     return res.status(200).json({ ok: true, skipped: true });
+  }
+
+  // Clear email_confirmed_at so user must verify (Supabase auto-sets it when Confirm email is OFF)
+  if (userId && SUPABASE_SERVICE_ROLE_KEY && SUPABASE_URL) {
+    try {
+      const clearRes = await fetch(`${SUPABASE_URL}/auth/v1/admin/users/${userId}`, {
+        method: "PUT",
+        headers: {
+          apikey: SUPABASE_SERVICE_ROLE_KEY,
+          Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email_confirm: false }),
+      });
+      if (!clearRes.ok) {
+        console.error("Failed to clear email_confirmed_at:", clearRes.status, await clearRes.text());
+      }
+    } catch (err) {
+      console.error("Failed to clear email_confirmed_at:", err);
+    }
   }
 
   // Generate verification link

@@ -4,7 +4,7 @@ import { track } from "@vercel/analytics";
 
 import { c, font } from "./tokens";
 import { useAuth } from "./AuthContext";
-import { getSupabase, supabaseConfigured } from "./supabase";
+import { supabaseConfigured } from "./supabase";
 
 // Remember me preference
 const REMEMBER_ME_KEY = "hirestepx_remember_me";
@@ -78,7 +78,6 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(() => getRememberMe());
   const [emailSuggestion, setEmailSuggestion] = useState("");
-  const referralParam = new URLSearchParams(location.search).get("ref");
   const verifiedParam = new URLSearchParams(location.search).get("verified");
   const firstInputRef = useRef<HTMLInputElement>(null);
   const verifiedBanner = verifiedParam === "true";
@@ -147,28 +146,12 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
           setError(result.error || "Signup failed");
           return;
         }
-        // Small delay to let auth state propagate
-        await new Promise(r => setTimeout(r, 600));
         if (!supabaseConfigured) {
           // localStorage fallback — user is already logged in, useEffect handles redirect
           return;
         }
-        // Check if session was created (happens when email confirmation is disabled)
-        const client = await getSupabase();
-        const { data: { session } } = await client.auth.getSession();
-        if (session) {
-          // Apply referral code if present
-          if (referralParam) {
-            try {
-              const { authHeaders } = await import("./supabase");
-              const hdrs = await authHeaders();
-              await fetch("/api/referral", { method: "POST", headers: hdrs, body: JSON.stringify({ code: referralParam }) });
-            } catch { /* best-effort */ }
-          }
-          // Auto-logged in — useEffect redirect will handle navigation
-          return;
-        }
-        // Email verification required — show check-email message
+        // Signup signs the user out after sending verification email.
+        // Show the check-email screen.
         setSignupSent(true);
       }
     } finally {
