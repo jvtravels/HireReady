@@ -178,6 +178,14 @@ export default function CalendarPage() {
       setFormError(!formTitle ? "Event title is required." : !formDate ? "Date is required." : "Time is required.");
       return;
     }
+    // Prevent creating events in the past (allow editing past events for record-keeping)
+    if (!editingId) {
+      const eventDateTime = new Date(`${formDate}T${formTime}`);
+      if (eventDateTime < new Date()) {
+        setFormError("Interview date and time cannot be in the past.");
+        return;
+      }
+    }
     setFormError("");
     const ev: InterviewEvent = {
       id: editingId || generateEventId(),

@@ -353,7 +353,7 @@ export function ChartsRow({ scoreTrend, skills, isMobile, onStartSession, onNavi
                 <polygon points="0,120 0,100 60,85 120,90 180,70 240,55 300,40 360,35 400,20 400,120" fill="url(#sampleGrad)" opacity="0.3"/>
                 <defs><linearGradient id="sampleGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={c.gilt}/><stop offset="100%" stopColor="transparent"/></linearGradient></defs>
               </svg>
-              <div style={{ position: "absolute", inset: 0, background: "rgba(17,17,19,0.75)", backdropFilter: "blur(4px)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", borderRadius: radius.md }}>
+              <div style={{ position: "absolute", inset: 0, background: "rgba(17,17,19,0.75)", backdropFilter: "blur(4px)", WebkitBackdropFilter: "blur(4px)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", borderRadius: radius.md }}>
                 <p style={{ fontFamily: font.ui, fontSize: 14, color: c.chalk, marginBottom: 12 }}>Complete your first session to see your trend</p>
                 <button onClick={onStartSession} style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: c.obsidian, background: `linear-gradient(135deg, ${c.gilt}, ${c.giltDark})`, border: "none", borderRadius: radius.sm, padding: "8px 20px", cursor: "pointer", transition: "all 0.2s ease" }}>Start a Session</button>
               </div>
@@ -400,7 +400,7 @@ export function ChartsRow({ scoreTrend, skills, isMobile, onStartSession, onNavi
                   </div>
                 ))}
               </div>
-              <div style={{ position: "absolute", inset: 0, background: "rgba(17,17,19,0.75)", backdropFilter: "blur(4px)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", borderRadius: radius.md }}>
+              <div style={{ position: "absolute", inset: 0, background: "rgba(17,17,19,0.75)", backdropFilter: "blur(4px)", WebkitBackdropFilter: "blur(4px)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", borderRadius: radius.md }}>
                 <p style={{ fontFamily: font.ui, fontSize: 13, color: c.chalk, lineHeight: 1.5, textAlign: "center", maxWidth: 220, marginBottom: 10 }}>Complete a session to unlock your skill breakdown</p>
                 <button onClick={onStartSession} style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: c.obsidian, background: `linear-gradient(135deg, ${c.gilt}, ${c.giltDark})`, border: "none", borderRadius: radius.sm, padding: "7px 16px", cursor: "pointer" }}>Get Started</button>
               </div>

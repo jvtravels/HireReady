@@ -612,8 +612,8 @@ function BlogPostPage({ post }: { post: BlogPost }) {
         <div style={{ position: "absolute", inset: 0, background: `linear-gradient(to top, ${c.obsidian} 0%, ${c.obsidian}80 40%, transparent 100%)` }} />
         <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, maxWidth: 720, margin: "0 auto", padding: "0 40px 40px" }}>
           <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
-            <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.gilt, letterSpacing: "0.04em", padding: "4px 12px", background: "rgba(212,179,127,0.12)", borderRadius: 100, backdropFilter: "blur(8px)" }}>{post.company}</span>
-            <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 500, color: c.chalk, padding: "4px 12px", background: "rgba(245,242,237,0.08)", borderRadius: 100, backdropFilter: "blur(8px)" }}>{post.category}</span>
+            <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.gilt, letterSpacing: "0.04em", padding: "4px 12px", background: "rgba(212,179,127,0.12)", borderRadius: 100, backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)" }}>{post.company}</span>
+            <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 500, color: c.chalk, padding: "4px 12px", background: "rgba(245,242,237,0.08)", borderRadius: 100, backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)" }}>{post.category}</span>
           </div>
           <h1 style={{ fontFamily: font.display, fontSize: "clamp(28px, 4vw, 42px)", fontWeight: 400, color: c.ivory, letterSpacing: "-0.02em", lineHeight: 1.2 }}>
             {post.title}

@@ -100,7 +100,9 @@ export default function Interview() {
               muted
               playsInline
               style={{ width: "100%", height: "100%", objectFit: "cover", transform: "scaleX(-1)" }}
-            />
+            >
+              <track kind="captions" />
+            </video>
             <div style={{
               position: "absolute", bottom: 4, left: 4,
               display: "flex", alignItems: "center", gap: 4,

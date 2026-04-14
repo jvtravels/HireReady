@@ -78,10 +78,11 @@ export default async function handler(req: Request): Promise<Response> {
 
   const finalAmount = Math.max(0, originalAmount - discountAmount);
 
-  // Atomic increment with optimistic lock + post-increment limit check.
-  // Only increment if current_uses still matches what we read.
+  // Atomic increment with optimistic lock — only increment if current_uses
+  // still matches what we read AND is below max_uses (prevents race condition).
+  const maxFilter = promo.max_uses > 0 ? `&current_uses=lt.${promo.max_uses}` : "";
   const incrRes = await fetch(
-    `${SUPABASE_URL}/rest/v1/promo_codes?id=eq.${promo.id}&current_uses=eq.${promo.current_uses}`,
+    `${SUPABASE_URL}/rest/v1/promo_codes?id=eq.${promo.id}&current_uses=eq.${promo.current_uses}${maxFilter}`,
     {
       method: "PATCH",
       headers: { ...dbHeaders, Prefer: "return=representation" },
@@ -90,19 +91,8 @@ export default async function handler(req: Request): Promise<Response> {
   );
   const incrRows = await incrRes.json();
   if (!Array.isArray(incrRows) || incrRows.length === 0) {
-    // Another request incremented concurrently — reject
-    return new Response(JSON.stringify({ valid: false, error: "Promo code is busy, please try again" }), { status: 409, headers });
-  }
-
-  // Post-increment safety: verify we haven't exceeded max_uses
-  const updatedUses = incrRows[0]?.current_uses;
-  if (promo.max_uses > 0 && updatedUses > promo.max_uses) {
-    // Rollback the increment — we exceeded the limit
-    await fetch(
-      `${SUPABASE_URL}/rest/v1/promo_codes?id=eq.${promo.id}`,
-      { method: "PATCH", headers: dbHeaders, body: JSON.stringify({ current_uses: updatedUses - 1 }) },
-    ).catch(() => {});
-    return new Response(JSON.stringify({ valid: false, error: "Promo code usage limit reached" }), { status: 200, headers });
+    // Either another request incremented concurrently, or max_uses was reached
+    return new Response(JSON.stringify({ valid: false, error: "Promo code is no longer available — please try again" }), { status: 409, headers });
   }
 
   return new Response(JSON.stringify({

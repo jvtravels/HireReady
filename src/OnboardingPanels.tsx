@@ -11,7 +11,7 @@ import type { ParsedResume } from "./resumeParser";
 
 export function EmailVerificationBanner() {
   return (
-    <div style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 50, padding: "12px 24px", background: "rgba(212,179,127,0.1)", borderBottom: "1px solid rgba(212,179,127,0.2)", textAlign: "center", backdropFilter: "blur(8px)" }}>
+    <div style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 50, padding: "12px 24px", background: "rgba(212,179,127,0.1)", borderBottom: "1px solid rgba(212,179,127,0.2)", textAlign: "center", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)" }}>
       <span style={{ fontFamily: font.ui, fontSize: 13, color: c.chalk }}>
         Check your inbox for a verification link — your progress is saved automatically.
       </span>

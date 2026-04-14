@@ -109,7 +109,7 @@ export default function CommandPalette({ onStartSession, onExport, sessions = []
   return (
     <>
       {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- modal backdrop dismissal */}
-      <div onClick={() => setOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 200, backdropFilter: "blur(2px)" }} />
+      <div onClick={() => setOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 200, backdropFilter: "blur(2px)", WebkitBackdropFilter: "blur(2px)" }} />
       {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- dialog needs keyboard trap for accessibility */}
       <div role="dialog" aria-modal="true" aria-label="Command palette"
         onKeyDown={(e) => {

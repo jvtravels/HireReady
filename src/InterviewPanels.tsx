@@ -18,19 +18,19 @@ export const StatusToasts = memo(function StatusToasts({ tabConflict, isOffline,
   return (
     <div style={{ position: "fixed", top: "max(12px, env(safe-area-inset-top, 0px))", left: "50%", transform: "translateX(-50%)", zIndex: 100, display: "flex", flexDirection: "column", gap: 8, maxWidth: 500, width: "min(90%, calc(100vw - 32px))" }}>
       {tabConflict && (
-        <div role="alert" style={{ padding: "8px 16px", borderRadius: 10, background: "rgba(212,179,127,0.12)", border: "1px solid rgba(212,179,127,0.25)", display: "flex", alignItems: "center", gap: 8, backdropFilter: "blur(8px)" }}>
+        <div role="alert" style={{ padding: "8px 16px", borderRadius: 10, background: "rgba(212,179,127,0.12)", border: "1px solid rgba(212,179,127,0.25)", display: "flex", alignItems: "center", gap: 8, backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)" }}>
           <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="2" strokeLinecap="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
           <span style={{ fontFamily: font.ui, fontSize: 12, color: c.gilt }}>Interview is open in another tab</span>
         </div>
       )}
       {isOffline && (
-        <div role="alert" style={{ padding: "8px 16px", borderRadius: 10, background: "rgba(196,112,90,0.15)", border: "1px solid rgba(196,112,90,0.3)", display: "flex", alignItems: "center", gap: 8, backdropFilter: "blur(8px)" }}>
+        <div role="alert" style={{ padding: "8px 16px", borderRadius: 10, background: "rgba(196,112,90,0.15)", border: "1px solid rgba(196,112,90,0.3)", display: "flex", alignItems: "center", gap: 8, backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)" }}>
           <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.ember} strokeWidth="2"><line x1="1" y1="1" x2="23" y2="23"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>
           <span style={{ fontFamily: font.ui, fontSize: 12, color: c.ember }}>Offline — session saved locally</span>
         </div>
       )}
       {micError && (
-        <div role="alert" style={{ padding: "8px 16px", borderRadius: 10, background: "rgba(196,112,90,0.1)", border: "1px solid rgba(196,112,90,0.2)", display: "flex", alignItems: "center", gap: 8, backdropFilter: "blur(8px)" }}>
+        <div role="alert" style={{ padding: "8px 16px", borderRadius: 10, background: "rgba(196,112,90,0.1)", border: "1px solid rgba(196,112,90,0.2)", display: "flex", alignItems: "center", gap: 8, backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)" }}>
           <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.ember} strokeWidth="2" strokeLinecap="round"><line x1="1" y1="1" x2="23" y2="23"/><path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"/></svg>
           <span style={{ fontFamily: font.ui, fontSize: 12, color: c.ember }}>{micError}</span>
         </div>
@@ -51,7 +51,7 @@ export const InterviewHeader = memo(function InterviewHeader({ displayCompany, d
     <header className="iv-info-bar" style={{
       display: "flex", flexDirection: "column",
       borderBottom: "1px solid rgba(245,242,237,0.04)",
-      background: "rgba(6,6,7,0.6)", backdropFilter: "blur(12px)",
+      background: "rgba(6,6,7,0.6)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
       zIndex: 10, flexShrink: 0,
     }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 24px" }}>
@@ -394,7 +394,9 @@ export const CompletionCard = memo(function CompletionCard({ currentQuestionNum,
             controls
             playsInline
             style={{ width: "100%", borderRadius: 10, border: `1px solid ${c.border}` }}
-          />
+          >
+            <track kind="captions" />
+          </video>
         </div>
       )}
       <button
@@ -466,7 +468,7 @@ export const ControlsBar = memo(function ControlsBar({ isMuted, setIsMuted, aiVo
       display: "flex", alignItems: "center", justifyContent: "center",
       padding: "10px 24px", gap: 12,
       borderTop: "1px solid rgba(245,242,237,0.04)",
-      background: "rgba(6,6,7,0.6)", backdropFilter: "blur(12px)",
+      background: "rgba(6,6,7,0.6)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
       flexShrink: 0, zIndex: 10,
     }}>
       <ControlButton
@@ -558,7 +560,7 @@ export const TranscriptPanel = memo(function TranscriptPanel({ transcript, inter
         onClick={() => setShowTranscript(false)}
         style={{
           position: "fixed", inset: 0, zIndex: 49,
-          background: "rgba(0,0,0,0.5)", backdropFilter: "blur(2px)",
+          background: "rgba(0,0,0,0.5)", backdropFilter: "blur(2px)", WebkitBackdropFilter: "blur(2px)",
           animation: "fadeUp 0.15s ease",
         }}
       />
@@ -643,7 +645,7 @@ export const EndModal = memo(function EndModal({ currentQuestionNum, totalQuesti
       style={{
         position: "fixed", inset: 0, zIndex: 100,
         display: "flex", alignItems: "center", justifyContent: "center",
-        background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)",
+        background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)", WebkitBackdropFilter: "blur(4px)",
         animation: "fadeUp 0.15s ease",
       }}>
       <div data-modal-content style={{
@@ -717,7 +719,7 @@ export const EvaluatingOverlay = memo(function EvaluatingOverlay({ usedFallbackS
     <div style={{
       position: "fixed", inset: 0, zIndex: 200,
       display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-      background: "rgba(0,0,0,0.85)", backdropFilter: "blur(8px)",
+      background: "rgba(0,0,0,0.85)", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)",
     }}>
       {!(usedFallbackScore || evalTimedOut) ? (
         <>

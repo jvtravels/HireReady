@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="192" height="192" viewBox="0 0 192 192">
+    <rect width="192" height="192" rx="32" fill="#060607"/>
+    <rect x="8" y="8" width="176" height="176" rx="28" fill="#060607" stroke="#D4B37F" stroke-width="2" stroke-opacity="0.3"/>
+    <text x="96" y="118" text-anchor="middle" font-family="Georgia, serif" font-size="96" font-weight="400" fill="#D4B37F">H</text>
+    <text x="96" y="148" text-anchor="middle" font-family="system-ui, sans-serif" font-size="16" font-weight="600" letter-spacing="0.15em" fill="#8E8983">STEPX</text>
+  </svg>

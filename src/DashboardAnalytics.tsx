@@ -230,7 +230,7 @@ export default function AnalyticsPage() {
       {/* ─── Hero: Readiness + Streak + Best + Daily Challenge ─── */}
       <div className="analytics-hero-grid" style={{ display: "grid", gridTemplateColumns: "auto 1fr 1fr", gap: 16, marginBottom: 24 }}>
         {/* Readiness gauge + breakdown */}
-        <div style={{ background: "linear-gradient(180deg, rgba(30,30,32,0.5) 0%, rgba(17,17,19,0.5) 100%)", backdropFilter: "blur(16px)", borderRadius: 14, border: `1px solid ${c.border}`, padding: "24px 28px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minWidth: 200 }}>
+        <div style={{ background: "linear-gradient(180deg, rgba(30,30,32,0.5) 0%, rgba(17,17,19,0.5) 100%)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", borderRadius: 14, border: `1px solid ${c.border}`, padding: "24px 28px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minWidth: 200 }}>
           <ReadinessGauge score={readinessScore} />
           <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: c.ivory, marginTop: 12, marginBottom: 12 }}>Interview Readiness</span>
           {/* Readiness breakdown */}
@@ -251,7 +251,7 @@ export default function AnalyticsPage() {
         {/* Quick stats column */}
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           {/* Streak */}
-          <div style={{ background: "linear-gradient(180deg, rgba(30,30,32,0.5) 0%, rgba(17,17,19,0.5) 100%)", backdropFilter: "blur(16px)", borderRadius: 14, border: `1px solid ${c.border}`, padding: "18px 20px", flex: 1, display: "flex", alignItems: "center", gap: 16 }}>
+          <div style={{ background: "linear-gradient(180deg, rgba(30,30,32,0.5) 0%, rgba(17,17,19,0.5) 100%)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", borderRadius: 14, border: `1px solid ${c.border}`, padding: "18px 20px", flex: 1, display: "flex", alignItems: "center", gap: 16 }}>
             <div style={{ width: 44, height: 44, borderRadius: 10, background: "rgba(212,179,127,0.08)", border: `1px solid rgba(212,179,127,0.15)`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
               <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5" strokeLinecap="round"><path d="M12 2c1 6-4 6-4 12a6 6 0 0012 0c0-6-5-6-4-12"/><path d="M12 22a3 3 0 01-3-3c0-3 3-3 3-6"/></svg>
             </div>
@@ -261,7 +261,7 @@ export default function AnalyticsPage() {
             </div>
           </div>
           {/* Best score */}
-          <div style={{ background: "linear-gradient(180deg, rgba(30,30,32,0.5) 0%, rgba(17,17,19,0.5) 100%)", backdropFilter: "blur(16px)", borderRadius: 14, border: `1px solid ${c.border}`, padding: "18px 20px", flex: 1, display: "flex", alignItems: "center", gap: 16 }}>
+          <div style={{ background: "linear-gradient(180deg, rgba(30,30,32,0.5) 0%, rgba(17,17,19,0.5) 100%)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", borderRadius: 14, border: `1px solid ${c.border}`, padding: "18px 20px", flex: 1, display: "flex", alignItems: "center", gap: 16 }}>
             <div style={{ width: 44, height: 44, borderRadius: 10, background: "rgba(122,158,126,0.08)", border: `1px solid rgba(122,158,126,0.15)`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
               <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="1.5" strokeLinecap="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
             </div>
@@ -273,7 +273,7 @@ export default function AnalyticsPage() {
         </div>
 
         {/* Daily Challenge — targeted */}
-        <div style={{ background: "linear-gradient(180deg, rgba(30,30,32,0.5) 0%, rgba(17,17,19,0.5) 100%)", backdropFilter: "blur(16px)", borderRadius: 14, border: `1px solid ${c.border}`, padding: "22px 24px", display: "flex", flexDirection: "column" }}>
+        <div style={{ background: "linear-gradient(180deg, rgba(30,30,32,0.5) 0%, rgba(17,17,19,0.5) 100%)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", borderRadius: 14, border: `1px solid ${c.border}`, padding: "22px 24px", display: "flex", flexDirection: "column" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
             <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5" strokeLinecap="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
             <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: c.ivory }}>Today's Challenge</span>
@@ -297,7 +297,7 @@ export default function AnalyticsPage() {
 
       {/* ─── AI Insights ─── */}
       {aiInsights.length > 0 && (
-        <div style={{ background: "linear-gradient(180deg, rgba(30,30,32,0.5) 0%, rgba(17,17,19,0.5) 100%)", backdropFilter: "blur(16px)", borderRadius: 14, border: `1px solid ${c.border}`, padding: "20px 24px", marginBottom: 24 }}>
+        <div style={{ background: "linear-gradient(180deg, rgba(30,30,32,0.5) 0%, rgba(17,17,19,0.5) 100%)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", borderRadius: 14, border: `1px solid ${c.border}`, padding: "20px 24px", marginBottom: 24 }}>
           <h3 style={{ fontFamily: font.ui, fontSize: 14, fontWeight: 600, color: c.ivory, marginBottom: 14 }}>AI Insights</h3>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 10 }}>
             {aiInsights.map((insight, i) => (
@@ -323,7 +323,7 @@ export default function AnalyticsPage() {
               { label: "Skill Growth", value: `${avgImprovement >= 0 ? "+" : ""}${avgImprovement}`, color: avgImprovement >= 0 ? c.sage : c.ember, sub: "avg pts per skill", delta: null },
               { label: "Hours Logged", value: overallStats.hoursLogged.toFixed(1), color: c.slate, sub: "practice time", delta: null },
             ].map((card, i) => (
-              <div key={i} style={{ background: "linear-gradient(180deg, rgba(30,30,32,0.5) 0%, rgba(17,17,19,0.5) 100%)", backdropFilter: "blur(16px)", borderRadius: 14, border: `1px solid ${c.border}`, padding: 18 }}>
+              <div key={i} style={{ background: "linear-gradient(180deg, rgba(30,30,32,0.5) 0%, rgba(17,17,19,0.5) 100%)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", borderRadius: 14, border: `1px solid ${c.border}`, padding: 18 }}>
                 <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, display: "block", marginBottom: 8 }}>{card.label}</span>
                 <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
                   <span style={{ fontFamily: font.mono, fontSize: 26, fontWeight: 600, color: card.color, letterSpacing: "-0.02em" }}>{card.value}</span>
@@ -342,7 +342,7 @@ export default function AnalyticsPage() {
 
       {/* ─── Charts: Score Trend + Skill Radar ─── */}
       <div className="analytics-charts-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginBottom: 24 }}>
-        <div style={{ background: "linear-gradient(180deg, rgba(30,30,32,0.5) 0%, rgba(17,17,19,0.5) 100%)", backdropFilter: "blur(16px)", borderRadius: 14, border: `1px solid ${c.border}`, padding: "24px 28px" }}>
+        <div style={{ background: "linear-gradient(180deg, rgba(30,30,32,0.5) 0%, rgba(17,17,19,0.5) 100%)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", borderRadius: 14, border: `1px solid ${c.border}`, padding: "24px 28px" }}>
           <h3 style={{ fontFamily: font.ui, fontSize: 14, fontWeight: 600, color: c.ivory, marginBottom: 4 }}>Score Progression</h3>
           <p style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, marginBottom: 16 }}>{trend.length >= 2 ? `Your trajectory over ${trend.length} sessions` : "Complete sessions to see progress"}</p>
           {trend.length >= 2 ? (
@@ -382,7 +382,7 @@ export default function AnalyticsPage() {
           )}
         </div>
 
-        <div style={{ background: "linear-gradient(180deg, rgba(30,30,32,0.5) 0%, rgba(17,17,19,0.5) 100%)", backdropFilter: "blur(16px)", borderRadius: 14, border: `1px solid ${c.border}`, padding: "24px 28px" }}>
+        <div style={{ background: "linear-gradient(180deg, rgba(30,30,32,0.5) 0%, rgba(17,17,19,0.5) 100%)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", borderRadius: 14, border: `1px solid ${c.border}`, padding: "24px 28px" }}>
           <h3 style={{ fontFamily: font.ui, fontSize: 14, fontWeight: 600, color: c.ivory, marginBottom: 4 }}>Skill Radar</h3>
           <p style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, marginBottom: 12 }}>{sk.length > 0 ? "Current vs first session — dashed line shows where you started" : "Complete sessions to see your skill radar"}</p>
           {sk.length > 0 ? (
@@ -424,7 +424,7 @@ export default function AnalyticsPage() {
 
       {/* ─── Resume Skills Bridge ─── */}
       {resumeProfile?.topSkills && resumeProfile.topSkills.length > 0 && (
-        <div style={{ background: "linear-gradient(180deg, rgba(30,30,32,0.5) 0%, rgba(17,17,19,0.5) 100%)", backdropFilter: "blur(16px)", borderRadius: 14, border: `1px solid ${c.border}`, padding: "20px 24px", marginBottom: 24 }}>
+        <div style={{ background: "linear-gradient(180deg, rgba(30,30,32,0.5) 0%, rgba(17,17,19,0.5) 100%)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", borderRadius: 14, border: `1px solid ${c.border}`, padding: "20px 24px", marginBottom: 24 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
@@ -462,7 +462,7 @@ export default function AnalyticsPage() {
       {/* ─── Goals + Badges row ─── */}
       <div className="analytics-two-col" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginBottom: 24 }}>
         {/* Goals */}
-        <div style={{ background: "linear-gradient(180deg, rgba(30,30,32,0.5) 0%, rgba(17,17,19,0.5) 100%)", backdropFilter: "blur(16px)", borderRadius: 14, border: `1px solid ${c.border}`, padding: "24px 28px" }}>
+        <div style={{ background: "linear-gradient(180deg, rgba(30,30,32,0.5) 0%, rgba(17,17,19,0.5) 100%)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", borderRadius: 14, border: `1px solid ${c.border}`, padding: "24px 28px" }}>
           <h3 style={{ fontFamily: font.ui, fontSize: 14, fontWeight: 600, color: c.ivory, marginBottom: 16 }}>Goals</h3>
           {upcomingGoals.length > 0 ? (
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
@@ -484,7 +484,7 @@ export default function AnalyticsPage() {
         </div>
 
         {/* Badges */}
-        <div style={{ background: "linear-gradient(180deg, rgba(30,30,32,0.5) 0%, rgba(17,17,19,0.5) 100%)", backdropFilter: "blur(16px)", borderRadius: 14, border: `1px solid ${c.border}`, padding: "24px 28px" }}>
+        <div style={{ background: "linear-gradient(180deg, rgba(30,30,32,0.5) 0%, rgba(17,17,19,0.5) 100%)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", borderRadius: 14, border: `1px solid ${c.border}`, padding: "24px 28px" }}>
           <h3 style={{ fontFamily: font.ui, fontSize: 14, fontWeight: 600, color: c.ivory, marginBottom: 16 }}>Badges</h3>
           {earnedBadges.length > 0 ? (
             <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginBottom: nextBadge ? 16 : 0 }}>
@@ -513,7 +513,7 @@ export default function AnalyticsPage() {
       </div>
 
       {/* ─── Performance by Type ─── */}
-      <div style={{ background: "linear-gradient(180deg, rgba(30,30,32,0.5) 0%, rgba(17,17,19,0.5) 100%)", backdropFilter: "blur(16px)", borderRadius: 14, border: `1px solid ${c.border}`, padding: "24px 28px", marginBottom: 24 }}>
+      <div style={{ background: "linear-gradient(180deg, rgba(30,30,32,0.5) 0%, rgba(17,17,19,0.5) 100%)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", borderRadius: 14, border: `1px solid ${c.border}`, padding: "24px 28px", marginBottom: 24 }}>
         <h3 style={{ fontFamily: font.ui, fontSize: 14, fontWeight: 600, color: c.ivory, marginBottom: 16 }}>Performance by Interview Type</h3>
         <div className="analytics-type-grid" style={{ display: "grid", gridTemplateColumns: `repeat(${Math.min(typeBreakdown.length, 4)}, 1fr)`, gap: 12 }}>
           {typeBreakdown.map(tb => (
@@ -530,7 +530,7 @@ export default function AnalyticsPage() {
       </div>
 
       {/* ─── Practice Consistency ─── */}
-      <div style={{ background: "linear-gradient(180deg, rgba(30,30,32,0.5) 0%, rgba(17,17,19,0.5) 100%)", backdropFilter: "blur(16px)", borderRadius: 14, border: `1px solid ${c.border}`, padding: "24px 28px", marginBottom: 24 }}>
+      <div style={{ background: "linear-gradient(180deg, rgba(30,30,32,0.5) 0%, rgba(17,17,19,0.5) 100%)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", borderRadius: 14, border: `1px solid ${c.border}`, padding: "24px 28px", marginBottom: 24 }}>
         <h3 style={{ fontFamily: font.ui, fontSize: 14, fontWeight: 600, color: c.ivory, marginBottom: 4 }}>Practice Consistency</h3>
         <p style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, marginBottom: 16 }}>Sessions per week — {range.days === 0 ? "all time" : `last ${range.label}`}</p>
         <div style={{ display: "flex", gap: 6, alignItems: "flex-end", height: 100 }}>
@@ -575,7 +575,7 @@ export default function AnalyticsPage() {
           const topWeaknesses = Object.entries(weaknessCounts).sort((a, b) => b[1] - a[1]).slice(0, 5);
           return (
             <>
-              <div style={{ background: "linear-gradient(180deg, rgba(30,30,32,0.5) 0%, rgba(17,17,19,0.5) 100%)", backdropFilter: "blur(16px)", borderRadius: 14, border: `1px solid ${c.border}`, padding: "24px 28px" }}>
+              <div style={{ background: "linear-gradient(180deg, rgba(30,30,32,0.5) 0%, rgba(17,17,19,0.5) 100%)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", borderRadius: 14, border: `1px solid ${c.border}`, padding: "24px 28px" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
                   <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/></svg>
                   <h3 style={{ fontFamily: font.ui, fontSize: 14, fontWeight: 600, color: c.ivory }}>Top Strengths</h3>
@@ -590,7 +590,7 @@ export default function AnalyticsPage() {
                   <p style={{ fontFamily: font.ui, fontSize: 12, color: c.stone }}>Complete sessions to see strengths</p>
                 )}
               </div>
-              <div style={{ background: "linear-gradient(180deg, rgba(30,30,32,0.5) 0%, rgba(17,17,19,0.5) 100%)", backdropFilter: "blur(16px)", borderRadius: 14, border: `1px solid ${c.border}`, padding: "24px 28px" }}>
+              <div style={{ background: "linear-gradient(180deg, rgba(30,30,32,0.5) 0%, rgba(17,17,19,0.5) 100%)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", borderRadius: 14, border: `1px solid ${c.border}`, padding: "24px 28px" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
                   <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={c.ember} strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
                   <h3 style={{ fontFamily: font.ui, fontSize: 14, fontWeight: 600, color: c.ivory }}>Areas to Improve</h3>
