@@ -48,6 +48,14 @@
     { "source": "/api/health", "destination": "/api/health" },
     { "source": "/api/log-error", "destination": "/api/log-error" },
     { "source": "/api/uptime-check", "destination": "/api/uptime-check" },
+    { "source": "/api/send-welcome", "destination": "/api/send-welcome" },
+    { "source": "/api/verify-email", "destination": "/api/verify-email" },
+    { "source": "/api/validate-promo", "destination": "/api/validate-promo" },
+    { "source": "/api/referral", "destination": "/api/referral" },
+    { "source": "/api/pause-subscription", "destination": "/api/pause-subscription" },
+    { "source": "/api/public-profile", "destination": "/api/public-profile" },
+    { "source": "/api/create-subscription", "destination": "/api/create-subscription" },
+    { "source": "/api/generate-insights", "destination": "/api/generate-insights" },
     { "source": "/(.*)", "destination": "/index.html" }
   ],
   "crons": [

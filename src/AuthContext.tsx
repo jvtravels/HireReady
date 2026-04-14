@@ -316,6 +316,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
     if (error) return { success: false, error: error.message };
 
+    // Supabase returns fake success for existing emails (email enumeration protection).
+    // Detect this: if user.identities is empty, the email already exists.
+    if (data?.user && (!data.user.identities || data.user.identities.length === 0)) {
+      return { success: false, error: "User already registered" };
+    }
+
     // Send verification email via Resend API (fire-and-forget, don't block signup)
     const userId = data?.user?.id;
     try {
