@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { c, font } from "./tokens";
 import { useAuth } from "./AuthContext";
 import { useDocTitle } from "./useDocTitle";
@@ -10,6 +10,84 @@ import {
 } from "./dashboardHelpers";
 import { useDashboard } from "./DashboardContext";
 import { DataLoadingSkeleton, ProGate } from "./dashboardComponents";
+
+/* ─── Mini Month Grid ─── */
+function MonthGrid({ events, onDateClick }: { events: InterviewEvent[]; onDateClick: (date: string) => void }) {
+  const [viewDate, setViewDate] = useState(() => new Date());
+  const year = viewDate.getFullYear();
+  const month = viewDate.getMonth();
+
+  const eventsByDate = useMemo(() => {
+    const map = new Map<string, InterviewEvent[]>();
+    events.forEach(ev => {
+      const existing = map.get(ev.date) || [];
+      existing.push(ev);
+      map.set(ev.date, existing);
+    });
+    return map;
+  }, [events]);
+
+  const firstDay = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const today = new Date();
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+
+  const cells: (number | null)[] = [];
+  for (let i = 0; i < firstDay; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+
+  const prevMonth = () => setViewDate(new Date(year, month - 1, 1));
+  const nextMonth = () => setViewDate(new Date(year, month + 1, 1));
+  const monthLabel = viewDate.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+
+  return (
+    <div style={{ background: "linear-gradient(180deg, rgba(30,30,32,0.5) 0%, rgba(17,17,19,0.5) 100%)", borderRadius: 14, border: `1px solid ${c.border}`, padding: "20px 24px", marginBottom: 24 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+        <button onClick={prevMonth} aria-label="Previous month" style={{ background: "none", border: `1px solid ${c.border}`, borderRadius: 6, padding: "4px 10px", cursor: "pointer", color: c.stone, fontSize: 14 }}>
+          <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
+        <span style={{ fontFamily: font.ui, fontSize: 15, fontWeight: 600, color: c.ivory }}>{monthLabel}</span>
+        <button onClick={nextMonth} aria-label="Next month" style={{ background: "none", border: `1px solid ${c.border}`, borderRadius: 6, padding: "4px 10px", cursor: "pointer", color: c.stone, fontSize: 14 }}>
+          <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 2, textAlign: "center" }}>
+        {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map(d => (
+          <div key={d} style={{ fontFamily: font.mono, fontSize: 10, fontWeight: 600, color: c.stone, padding: "4px 0", opacity: 0.6 }}>{d}</div>
+        ))}
+        {cells.map((day, i) => {
+          if (day === null) return <div key={`empty-${i}`} />;
+          const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+          const dayEvents = eventsByDate.get(dateStr) || [];
+          const hasEvent = dayEvents.length > 0;
+          const isToday = dateStr === todayStr;
+          const isPast = new Date(dateStr) < new Date(todayStr);
+          return (
+            <button key={dateStr} onClick={() => hasEvent && onDateClick(dateStr)} title={hasEvent ? `${dayEvents.length} interview${dayEvents.length > 1 ? "s" : ""}: ${dayEvents.map(e => e.title).join(", ")}` : undefined}
+              style={{
+                fontFamily: font.mono, fontSize: 12, fontWeight: isToday ? 700 : 400,
+                color: isToday ? c.obsidian : hasEvent ? c.gilt : isPast ? c.stone : c.chalk,
+                background: isToday ? c.gilt : hasEvent ? "rgba(212,179,127,0.08)" : "transparent",
+                border: hasEvent && !isToday ? `1px solid rgba(212,179,127,0.2)` : "1px solid transparent",
+                borderRadius: 8, padding: "6px 0", cursor: hasEvent ? "pointer" : "default",
+                position: "relative", opacity: isPast && !hasEvent ? 0.4 : 1,
+                transition: "all 0.15s ease",
+              }}>
+              {day}
+              {hasEvent && !isToday && (
+                <span style={{ position: "absolute", bottom: 2, left: "50%", transform: "translateX(-50%)", display: "flex", gap: 2 }}>
+                  {dayEvents.slice(0, 3).map((_, idx) => (
+                    <span key={idx} style={{ width: 4, height: 4, borderRadius: "50%", background: c.gilt }} />
+                  ))}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
 export default function CalendarPage() {
   useDocTitle("Calendar");
@@ -297,6 +375,12 @@ export default function CalendarPage() {
         </div>
       )}
 
+      {/* Month Grid */}
+      <MonthGrid events={events} onDateClick={(date) => {
+        const el = document.getElementById(`cal-event-${date}`);
+        if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+      }} />
+
       {/* Upcoming Interviews */}
       <div style={{ marginBottom: 24 }}>
         <h3 style={{ fontFamily: font.ui, fontSize: 15, fontWeight: 600, color: c.ivory, marginBottom: 16, display: "flex", alignItems: "center", gap: 8 }}>
@@ -324,7 +408,7 @@ export default function CalendarPage() {
               const urgent = days <= 3;
               const isToday = days === 0;
               return (
-                <div key={ev.id} style={{
+                <div key={ev.id} id={`cal-event-${ev.date}`} style={{
                   background: "linear-gradient(180deg, rgba(30,30,32,0.5) 0%, rgba(17,17,19,0.5) 100%)", backdropFilter: "blur(16px)", borderRadius: 14,
                   border: `1px solid ${urgent ? "rgba(196,112,90,0.2)" : c.border}`,
                   borderLeft: `4px solid ${isToday ? c.ember : urgent ? c.gilt : c.sage}`,

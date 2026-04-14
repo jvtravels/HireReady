@@ -430,22 +430,59 @@ export function UpgradeModal({ onClose, sessionsUsed, user, currentTier, onPayme
 }
 
 /* ─── Pro Feature Gate ─── */
+const featureHighlights: Record<string, { icon: string; items: string[] }> = {
+  "Performance Analytics": { icon: "chart", items: ["Readiness score tracking", "Skill radar & velocity charts", "Score trends over time", "AI-generated insights", "Date range comparisons"] },
+  "Interview Calendar": { icon: "calendar", items: ["Month grid view", "Interview countdown timers", "Google Calendar sync", ".ics file export", "Prep reminders before interviews"] },
+};
+
 export function ProGate({ feature, onUpgrade }: { feature: string; onUpgrade: () => void }) {
+  const highlights = featureHighlights[feature];
   return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: 400, textAlign: "center", padding: 40 }}>
-      <div style={{ width: 64, height: 64, borderRadius: "50%", background: "rgba(212,179,127,0.06)", border: `1.5px solid rgba(212,179,127,0.15)`, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 20 }}>
-        <svg aria-hidden="true" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+    <div style={{ position: "relative", minHeight: 400, overflow: "hidden" }}>
+      {/* Blurred preview background */}
+      <div aria-hidden="true" style={{ position: "absolute", inset: 0, opacity: 0.15, filter: "blur(6px)", pointerEvents: "none", padding: 40 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 20 }}>
+          {[1, 2, 3].map(i => (
+            <div key={i} style={{ height: 80, borderRadius: 12, background: "linear-gradient(180deg, rgba(30,30,32,0.8) 0%, rgba(17,17,19,0.8) 100%)", border: `1px solid ${c.border}` }} />
+          ))}
+        </div>
+        <div style={{ height: 200, borderRadius: 14, background: "linear-gradient(180deg, rgba(30,30,32,0.6) 0%, rgba(17,17,19,0.6) 100%)", border: `1px solid ${c.border}`, marginBottom: 16 }} />
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          {[1, 2].map(i => (
+            <div key={i} style={{ height: 120, borderRadius: 12, background: "linear-gradient(180deg, rgba(30,30,32,0.6) 0%, rgba(17,17,19,0.6) 100%)", border: `1px solid ${c.border}` }} />
+          ))}
+        </div>
       </div>
-      <h3 style={{ fontFamily: font.display, fontSize: 22, fontWeight: 400, color: c.ivory, marginBottom: 8 }}>{feature}</h3>
-      <p style={{ fontFamily: font.ui, fontSize: 14, color: c.stone, lineHeight: 1.6, maxWidth: 360, marginBottom: 24 }}>
-        Upgrade to access {feature.toLowerCase()}. Unlock full analytics, calendar tools, and unlimited sessions with the Pro plan.
-      </p>
-      <button onClick={onUpgrade} style={{ padding: "12px 28px", borderRadius: 10, border: "none", cursor: "pointer", background: `linear-gradient(135deg, ${c.gilt}, ${c.giltDark})`, color: c.obsidian, fontFamily: font.ui, fontSize: 14, fontWeight: 600, transition: "opacity 0.2s" }}
-        onMouseEnter={(e) => e.currentTarget.style.opacity = "0.9"}
-        onMouseLeave={(e) => e.currentTarget.style.opacity = "1"}
-      >
-        Upgrade to Pro
-      </button>
+
+      {/* Lock overlay */}
+      <div style={{ position: "relative", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: 400, textAlign: "center", padding: 40, zIndex: 1 }}>
+        <div style={{ width: 64, height: 64, borderRadius: "50%", background: "rgba(212,179,127,0.06)", border: `1.5px solid rgba(212,179,127,0.15)`, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 20 }}>
+          <svg aria-hidden="true" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        </div>
+        <h3 style={{ fontFamily: font.display, fontSize: 22, fontWeight: 400, color: c.ivory, marginBottom: 8 }}>{feature}</h3>
+        <p style={{ fontFamily: font.ui, fontSize: 14, color: c.stone, lineHeight: 1.6, maxWidth: 360, marginBottom: highlights ? 16 : 24 }}>
+          Upgrade to access {feature.toLowerCase()}. Unlock full analytics, calendar tools, and unlimited sessions with the Pro plan.
+        </p>
+
+        {highlights && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 24, maxWidth: 280 }}>
+            {highlights.items.map(item => (
+              <div key={item} style={{ display: "flex", alignItems: "center", gap: 8, textAlign: "left" }}>
+                <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="2" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+                <span style={{ fontFamily: font.ui, fontSize: 13, color: c.chalk }}>{item}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <button onClick={onUpgrade} style={{ padding: "12px 28px", borderRadius: 10, border: "none", cursor: "pointer", background: `linear-gradient(135deg, ${c.gilt}, ${c.giltDark})`, color: c.obsidian, fontFamily: font.ui, fontSize: 14, fontWeight: 600, transition: "opacity 0.2s" }}
+          onMouseEnter={(e) => e.currentTarget.style.opacity = "0.9"}
+          onMouseLeave={(e) => e.currentTarget.style.opacity = "1"}
+        >
+          Upgrade to Pro
+        </button>
+        <span style={{ fontFamily: font.mono, fontSize: 11, color: c.stone, marginTop: 10 }}>Starting at just ₹149/month</span>
+      </div>
     </div>
   );
 }
