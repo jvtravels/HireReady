@@ -134,6 +134,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   // Always show loading when Supabase is configured — server validates session
   const [loading, setLoading] = useState(supabaseConfigured);
+  // Suppress auth state listener during signup flow to prevent premature redirect
+  const signingUpRef = useRef(false);
 
   // Clean up legacy localStorage cache from previous versions
   useEffect(() => {
@@ -269,6 +271,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Listen for auth state changes
       const { data: { subscription } } = client.auth.onAuthStateChange(async (event, session) => {
         if (event === "INITIAL_SESSION") return;
+        // During signup, suppress SIGNED_IN to prevent premature redirect
+        if (signingUpRef.current && event === "SIGNED_IN") return;
         if ((event === "SIGNED_IN" || event === "TOKEN_REFRESHED") && session) {
           // Persist Google provider token for Calendar API access
           if (session.provider_token) {
@@ -309,16 +313,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     const client = await getSupabase();
     const metadata: Record<string, string> = { name };
+
+    // Suppress auth listener during signup to prevent premature redirect
+    signingUpRef.current = true;
+
     const { data, error } = await client.auth.signUp({
       email,
       password,
       options: { data: metadata, emailRedirectTo: `${window.location.origin}/dashboard` },
     });
-    if (error) return { success: false, error: error.message };
+
+    if (error) {
+      signingUpRef.current = false;
+      return { success: false, error: error.message };
+    }
 
     // Supabase returns fake success for existing emails (email enumeration protection).
     // Detect this: if user.identities is empty, the email already exists.
     if (data?.user && (!data.user.identities || data.user.identities.length === 0)) {
+      signingUpRef.current = false;
       return { success: false, error: "User already registered" };
     }
 
@@ -335,6 +348,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Sign out so user must verify email before using the app
     await client.auth.signOut();
     setUser(null);
+    signingUpRef.current = false;
 
     return { success: true };
   }, []);
