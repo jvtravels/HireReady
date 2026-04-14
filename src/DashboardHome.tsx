@@ -305,6 +305,7 @@ export default function DashboardHome() {
     badges, dailyChallenge, practiceReminder,
     handleStartSession, handleExport, handleDownload, handleExportPDF,
     setShowUpgradeModal: _setShowUpgradeModal,
+    showToast,
   } = useDashboard();
 
   useDocTitle("Dashboard");
@@ -334,6 +335,39 @@ export default function DashboardHome() {
   const headerMenuRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // New badge detection — show toast when a badge is earned for the first time
+  const prevBadgesRef = useRef<string[]>([]);
+  const [newBadgeIds, setNewBadgeIds] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    if (!badges || badges.length === 0) return;
+    const earnedIds = badges.filter(b => b.earned).map(b => b.id);
+    const seenKey = `hirestepx_seen_badges_${user?.id || "anon"}`;
+    let seenBadges: string[] = [];
+    try { seenBadges = JSON.parse(localStorage.getItem(seenKey) || "[]"); } catch { /* expected */ }
+
+    // On first load, if we have no seen badges saved, save current earned as "seen"
+    if (seenBadges.length === 0 && earnedIds.length > 0 && prevBadgesRef.current.length === 0) {
+      prevBadgesRef.current = earnedIds;
+      try { localStorage.setItem(seenKey, JSON.stringify(earnedIds)); } catch { /* expected */ }
+      return;
+    }
+
+    const newlyEarned = earnedIds.filter(id => !seenBadges.includes(id) && !prevBadgesRef.current.includes(id));
+    if (newlyEarned.length > 0) {
+      setNewBadgeIds(new Set(newlyEarned));
+      const badgeName = badges.find(b => b.id === newlyEarned[0])?.label || "Badge";
+      showToast(`Achievement unlocked: ${badgeName}!`);
+      setAchievementsOpen(true);
+      // Save as seen after a delay so the "NEW" indicator shows briefly
+      setTimeout(() => {
+        const allSeen = [...seenBadges, ...newlyEarned];
+        try { localStorage.setItem(seenKey, JSON.stringify(allSeen)); } catch { /* expected */ }
+        setNewBadgeIds(new Set());
+      }, 10000);
+    }
+    prevBadgesRef.current = earnedIds;
+  }, [badges, user?.id]);
 
   // Draft detection — must be before any early returns (Rules of Hooks)
   const draftKey = `hirestepx_interview_draft_${user?.id || "anon"}`;
@@ -1353,11 +1387,17 @@ export default function DashboardHome() {
           </button>
           {achievementsOpen && (
             <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : `repeat(${Math.min(badges.length, 4)}, 1fr)`, gap: 12, marginTop: 16 }}>
-              {badges.map((badge) => (
-                <div key={badge.id} className={badge.earned ? "badge-earned" : ""} style={{ padding: "16px", borderRadius: radius.md, background: badge.earned ? "rgba(212,179,127,0.03)" : c.obsidian, textAlign: "center", opacity: badge.earned ? 1 : 0.45, transition: "all 0.3s ease", position: "relative", overflow: "hidden" }}
+              {badges.map((badge) => {
+                const isNew = newBadgeIds.has(badge.id);
+                return (
+                <div key={badge.id} className={`${badge.earned ? "badge-earned" : ""}${isNew ? " badge-new" : ""}`} style={{ padding: "16px", borderRadius: radius.md, background: badge.earned ? "rgba(212,179,127,0.03)" : c.obsidian, textAlign: "center", opacity: badge.earned ? 1 : 0.45, transition: "all 0.3s ease", position: "relative", overflow: "hidden" }}
                   onMouseEnter={(e) => { if (!badge.earned) e.currentTarget.style.opacity = "0.7"; if (badge.earned) e.currentTarget.style.boxShadow = "0 0 20px rgba(212,179,127,0.12)"; }}
                   onMouseLeave={(e) => { if (!badge.earned) e.currentTarget.style.opacity = "0.45"; e.currentTarget.style.boxShadow = "none"; }}>
                   {badge.earned && <div style={{ position: "absolute", inset: 0, background: "radial-gradient(circle at 50% 30%, rgba(212,179,127,0.08) 0%, transparent 60%)", pointerEvents: "none" }} />}
+                  {isNew && <>
+                    <span className="badge-sparkle" /><span className="badge-sparkle" /><span className="badge-sparkle" /><span className="badge-sparkle" /><span className="badge-sparkle" />
+                    <span style={{ position: "absolute", top: 6, right: 6, fontFamily: font.mono, fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: c.obsidian, background: c.gilt, padding: "2px 6px", borderRadius: 4, zIndex: 1 }}>NEW</span>
+                  </>}
                   <div style={{ marginBottom: 8, display: "flex", justifyContent: "center", position: "relative" }}>{(badgeIcons[badge.icon] || badgeIcons.star)(badge.earned ? c.gilt : c.stone)}</div>
                   <p style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: badge.earned ? c.ivory : c.stone, marginBottom: 2 }}>{badge.label}</p>
                   <p style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, lineHeight: 1.4, marginBottom: badge.earned ? 0 : 8 }}>{badge.description}</p>
@@ -1366,8 +1406,12 @@ export default function DashboardHome() {
                       <div style={{ height: "100%", width: `${Math.min(100, badge.progress)}%`, background: c.gilt, borderRadius: 2, transition: "width 0.4s cubic-bezier(0.16,1,0.3,1)" }} />
                     </div>
                   )}
+                  {badge.earned && !isNew && badge.progress === 100 && (
+                    <p style={{ fontFamily: font.mono, fontSize: 10, color: c.sage, marginTop: 6, marginBottom: 0 }}>Earned</p>
+                  )}
                 </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

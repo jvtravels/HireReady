@@ -695,12 +695,44 @@ input[type="range"]::-moz-range-thumb {
   0%, 100% { box-shadow: 0 0 0 rgba(212,179,127,0); }
   50% { box-shadow: 0 0 20px rgba(212,179,127,0.15); }
 }
+@keyframes badgePop {
+  0% { transform: scale(0.6); opacity: 0; }
+  50% { transform: scale(1.15); }
+  70% { transform: scale(0.95); }
+  100% { transform: scale(1); opacity: 1; }
+}
+@keyframes badgeSparkle {
+  0% { opacity: 0; transform: scale(0) rotate(0deg); }
+  50% { opacity: 1; transform: scale(1) rotate(180deg); }
+  100% { opacity: 0; transform: scale(0) rotate(360deg); }
+}
+@keyframes newBadgePulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(212,179,127,0.3); }
+  50% { box-shadow: 0 0 0 8px rgba(212,179,127,0); }
+}
 .badge-earned {
   animation: badgeGlow 2s ease-in-out 0.5s 1;
+}
+.badge-earned.badge-new {
+  animation: badgePop 0.6s cubic-bezier(0.16,1,0.3,1) forwards, newBadgePulse 2s ease-in-out 0.8s 3;
 }
 .badge-earned:hover .badge-icon-glow {
   filter: drop-shadow(0 0 10px rgba(212,179,127,0.4));
 }
+.badge-sparkle {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(212,179,127,0.8);
+  pointer-events: none;
+  animation: badgeSparkle 1s ease-out forwards;
+}
+.badge-sparkle:nth-child(1) { top: 10%; left: 20%; animation-delay: 0.1s; }
+.badge-sparkle:nth-child(2) { top: 15%; right: 20%; animation-delay: 0.3s; }
+.badge-sparkle:nth-child(3) { bottom: 25%; left: 15%; animation-delay: 0.5s; }
+.badge-sparkle:nth-child(4) { bottom: 20%; right: 15%; animation-delay: 0.2s; }
+.badge-sparkle:nth-child(5) { top: 5%; left: 50%; animation-delay: 0.4s; }
 
 /* ─── Score Ring Animation ─── */
 .score-ring {
