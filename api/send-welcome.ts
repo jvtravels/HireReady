@@ -1,6 +1,9 @@
-/* Vercel Serverless Function — Send Welcome Email via Resend API */
+/* Vercel Serverless Function — Send Verification + Welcome Email via Resend API */
+/* Bypasses Supabase's built-in SMTP (which doesn't work with Resend) */
+/* Uses HMAC token for email verification link */
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
+import { createHmac } from "crypto";
 import {
   applyCorsHeaders,
   handlePreflightAndMethod,
@@ -12,18 +15,24 @@ import {
 const RESEND_API_KEY = (process.env.RESEND_API_KEY || "").trim();
 const FROM_EMAIL = process.env.FROM_EMAIL || "HireStepX <onboarding@resend.dev>";
 const APP_URL = (process.env.APP_URL || "https://hirestepx.vercel.app").replace(/\/$/, "");
+const EMAIL_SECRET = process.env.EMAIL_VERIFICATION_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY || "fallback-secret";
+
+/** Generate HMAC verification token from email */
+export function generateVerifyToken(email: string): string {
+  return createHmac("sha256", EMAIL_SECRET).update(email.toLowerCase().trim()).digest("hex");
+}
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   applyCorsHeaders(req, res);
   if (handlePreflightAndMethod(req, res)) return;
 
-  // Rate limit: 5 welcome emails per IP per minute
+  // Rate limit: 5 emails per IP per minute
   const ip = getVercelClientIp(req);
   if (isRateLimited(ip, 5, 60_000)) {
     return res.status(429).json({ error: "Too many requests" });
   }
 
-  const { email, name } = req.body || {};
+  const { email, name, userId } = req.body || {};
   if (!email || typeof email !== "string") {
     return res.status(400).json({ error: "Email is required" });
   }
@@ -32,12 +41,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   if (!RESEND_API_KEY) {
-    console.error("RESEND_API_KEY not configured, skipping welcome email");
+    console.error("RESEND_API_KEY not configured, skipping verification email");
     return res.status(200).json({ ok: true, skipped: true });
   }
 
+  // Generate verification link
+  const token = generateVerifyToken(email);
+  const verifyUrl = `${APP_URL}/api/verify-email?email=${encodeURIComponent(email)}&token=${token}`;
   const safeName = escapeHtml(name || "there");
 
+  // Step 3: Send verification email via Resend
   try {
     const ac = new AbortController();
     const timer = setTimeout(() => ac.abort(), 10_000);
@@ -51,7 +64,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       body: JSON.stringify({
         from: FROM_EMAIL,
         to: [email],
-        subject: "Welcome to HireStepX — let's nail your next interview",
+        subject: "Verify your email — HireStepX",
         html: `
 <!DOCTYPE html>
 <html>
@@ -70,13 +83,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         <tr><td style="padding:32px 40px;">
           <h1 style="margin:0 0 8px;font-size:22px;font-weight:600;color:#F0EDE8;">Welcome, ${safeName}!</h1>
           <p style="margin:0 0 24px;font-size:14px;color:#9A9590;line-height:1.6;">
-            Your account is ready. You have <strong style="color:#C9A96E;">3 free mock interviews</strong> waiting for you.
+            Click the button below to verify your email and activate your account. You have <strong style="color:#C9A96E;">3 free mock interviews</strong> waiting.
           </p>
+
+          <!-- Verify Button -->
+          <table width="100%" cellpadding="0" cellspacing="0">
+            <tr><td align="center" style="padding:8px 0 24px;">
+              <a href="${verifyUrl}" style="display:inline-block;padding:14px 32px;background:#C9A96E;color:#0A0A0B;font-size:14px;font-weight:600;text-decoration:none;border-radius:8px;">
+                Verify Email Address
+              </a>
+            </td></tr>
+          </table>
 
           <!-- What's next -->
           <table width="100%" cellpadding="0" cellspacing="0" style="background:#1A1A1C;border-radius:12px;border:1px solid #2A2A2C;margin-bottom:24px;">
             <tr><td style="padding:20px 24px;">
-              <p style="margin:0 0 12px;font-size:13px;font-weight:600;color:#C9A96E;">Here's how to get started:</p>
+              <p style="margin:0 0 12px;font-size:13px;font-weight:600;color:#C9A96E;">After verifying, here's how to get started:</p>
               <table width="100%" cellpadding="0" cellspacing="0">
                 <tr>
                   <td style="padding:6px 0;font-size:13px;color:#9A9590;">1.</td>
@@ -94,17 +116,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             </td></tr>
           </table>
 
-          <!-- CTA -->
-          <table width="100%" cellpadding="0" cellspacing="0">
-            <tr><td align="center" style="padding:8px 0 16px;">
-              <a href="${APP_URL}/dashboard" style="display:inline-block;padding:14px 32px;background:#C9A96E;color:#0A0A0B;font-size:14px;font-weight:600;text-decoration:none;border-radius:8px;">
-                Start Practicing
-              </a>
-            </td></tr>
-          </table>
-
-          <p style="margin:16px 0 0;font-size:12px;color:#6A6560;line-height:1.5;text-align:center;">
-            Interview prep that's specific to you — your resume, your target company, your improvement areas.
+          <p style="margin:0;font-size:12px;color:#6A6560;line-height:1.5;text-align:center;">
+            If you didn't create this account, you can safely ignore this email.
+          </p>
+          <p style="margin:8px 0 0;font-size:11px;color:#4A4540;line-height:1.5;text-align:center;">
+            If the button doesn't work, copy this link:<br>
+            <a href="${verifyUrl}" style="color:#C9A96E;word-break:break-all;font-size:10px;">${verifyUrl}</a>
           </p>
         </td></tr>
 
@@ -132,8 +149,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     return res.status(200).json({ ok: true, emailSent: true });
   } catch (err) {
-    console.error("Welcome email error:", err);
-    // Don't fail signup if email fails
+    console.error("Verification email error:", err);
     return res.status(200).json({ ok: true, emailSent: false, reason: "Email send failed" });
   }
 }

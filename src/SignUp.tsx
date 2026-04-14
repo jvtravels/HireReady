@@ -45,7 +45,7 @@ function friendlyError(raw: string, _isLogin: boolean): { message: string; sugge
   if (lower.includes("invalid login credentials"))
     return { message: "Incorrect email or password.", suggestion: "Double-check your credentials or reset your password below." };
   if (lower.includes("email not confirmed"))
-    return { message: "Your email hasn't been verified yet.", suggestion: "Check your inbox for the confirmation link we sent when you signed up." };
+    return { message: "Your email hasn't been verified yet.", suggestion: "Check your inbox for the verification link we sent when you signed up. Check spam too." };
   if (lower.includes("user already registered") || lower.includes("already been registered"))
     return { message: "An account with this email already exists.", suggestion: "Try logging in instead, or reset your password if you forgot it." };
   if (lower.includes("signup is not allowed") || lower.includes("signups not allowed"))
@@ -79,7 +79,9 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
   const [rememberMe, setRememberMe] = useState(() => getRememberMe());
   const [emailSuggestion, setEmailSuggestion] = useState("");
   const referralParam = new URLSearchParams(location.search).get("ref");
+  const verifiedParam = new URLSearchParams(location.search).get("verified");
   const firstInputRef = useRef<HTMLInputElement>(null);
+  const verifiedBanner = verifiedParam === "true";
 
   // Common email domain typo detection
   const COMMON_DOMAINS = ["gmail.com", "yahoo.com", "outlook.com", "hotmail.com", "icloud.com", "protonmail.com", "mail.com", "aol.com", "zoho.com", "yandex.com"];
@@ -147,13 +149,11 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
         }
         // Small delay to let auth state propagate
         await new Promise(r => setTimeout(r, 600));
-        // If user is already logged in (no email confirmation / localStorage fallback),
-        // the useEffect redirect will handle navigation. Only show check-email if not logged in.
         if (!supabaseConfigured) {
           // localStorage fallback — user is already logged in, useEffect handles redirect
           return;
         }
-        // Check if session was created (no email confirmation required)
+        // Check if session was created (happens when email confirmation is disabled)
         const client = await getSupabase();
         const { data: { session } } = await client.auth.getSession();
         if (session) {
@@ -168,7 +168,7 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
           // Auto-logged in — useEffect redirect will handle navigation
           return;
         }
-        // Email confirmation required — show check-email message
+        // Email verification required — show check-email message
         setSignupSent(true);
       }
     } finally {
@@ -249,6 +249,16 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
           }
         </p>
 
+        {/* Email verified success banner */}
+        {verifiedBanner && (
+          <div style={{ padding: "16px 20px", borderRadius: 12, background: "rgba(122,158,126,0.08)", border: "1px solid rgba(122,158,126,0.2)", marginBottom: 24 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="2" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+              <span style={{ fontFamily: font.ui, fontSize: 14, fontWeight: 600, color: c.sage }}>Email verified! You can now log in.</span>
+            </div>
+          </div>
+        )}
+
         {/* Signup confirmation */}
         {signupSent ? (
           <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
@@ -258,7 +268,7 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
                 <span style={{ fontFamily: font.ui, fontSize: 15, fontWeight: 600, color: c.sage }}>Account created!</span>
               </div>
               <p style={{ fontFamily: font.ui, fontSize: 13, color: c.ivory, lineHeight: 1.6, margin: 0 }}>
-                We've sent a confirmation link to <strong>{email}</strong>. Click the link in your email to activate your account. Check your spam folder if you don't see it within a few minutes.
+                We've sent a verification link to <strong>{email}</strong>. Click the link in your email to activate your account. Check your spam folder if you don't see it within a few minutes.
               </p>
             </div>
             <button onClick={() => { setSignupSent(false); navigate("/login"); }}
@@ -269,14 +279,18 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
               {supabaseConfigured && (
                 <button onClick={async () => {
                   try {
-                    const c = await getSupabase(); await c.auth.resend({ type: "signup", email });
+                    await fetch("/api/send-welcome", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ email, name }),
+                    });
                     setError("");
-                    setResendMsg("Confirmation email resent!");
+                    setResendMsg("Verification email resent!");
                     setTimeout(() => setResendMsg(""), 3000);
                   } catch { setError("Could not resend email. Try again later."); }
                 }}
                   style={{ background: "none", border: "none", fontFamily: font.ui, fontSize: 13, color: c.stone, cursor: "pointer", textDecoration: "underline" }}>
-                  Didn't receive it? Resend confirmation email
+                  Didn't receive it? Resend verification email
                 </button>
               )}
               {resendMsg && <span style={{ fontFamily: font.ui, fontSize: 12, color: c.sage }}>{resendMsg}</span>}

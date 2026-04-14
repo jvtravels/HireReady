@@ -309,21 +309,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     const client = await getSupabase();
     const metadata: Record<string, string> = { name };
-    const { error } = await client.auth.signUp({
+    const { data, error } = await client.auth.signUp({
       email,
       password,
       options: { data: metadata, emailRedirectTo: `${window.location.origin}/dashboard` },
     });
     if (error) return { success: false, error: error.message };
 
-    // Send welcome email via Resend API (fire-and-forget, don't block signup)
+    // Send verification email via Resend API (fire-and-forget, don't block signup)
+    const userId = data?.user?.id;
     try {
       fetch("/api/send-welcome", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, name }),
-      }).catch(() => { /* welcome email is best-effort */ });
-    } catch { /* welcome email is best-effort */ }
+        body: JSON.stringify({ email, name, userId }),
+      }).catch(() => { /* verification email is best-effort */ });
+    } catch { /* verification email is best-effort */ }
 
     return { success: true };
   }, []);
