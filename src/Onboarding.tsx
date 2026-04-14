@@ -139,7 +139,7 @@ const SESSION_LENGTH_MAP: Record<string, 10 | 15 | 25> = { "10m": 10, "15m": 15,
 
 export default function Onboarding() {
   const navigate = useNavigate();
-  const { user, updateUser } = useAuth();
+  const { user, updateUser, logout } = useAuth();
 
   // Redirect returning users who already completed onboarding (but not during active start)
   const startingRef = useRef(false);
@@ -539,7 +539,7 @@ export default function Onboarding() {
         }
       `}</style>
 
-      <TopBar step={step} emailUnverified={!!(user && !user.emailVerified)} onNavigateHome={() => navigate("/")} onStepClick={(s) => { setSlideDir("back"); setStep(s); saveObStep(s); }} />
+      <TopBar step={step} emailUnverified={!!(user && !user.emailVerified)} onNavigateHome={() => navigate("/")} onStepClick={(s) => { setSlideDir("back"); setStep(s); saveObStep(s); }} onLogout={async () => { await logout(); navigate("/"); }} />
 
       {/* ─── Content ─── */}
       <div className="ob-content-area" style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "40px 32px", overflow: "auto" }}>

@@ -26,9 +26,10 @@ export interface TopBarProps {
   emailUnverified: boolean;
   onNavigateHome: () => void;
   onStepClick: (stepNum: number) => void;
+  onLogout?: () => void;
 }
 
-export function TopBar({ step, emailUnverified, onNavigateHome, onStepClick }: TopBarProps) {
+export function TopBar({ step, emailUnverified, onNavigateHome, onStepClick, onLogout }: TopBarProps) {
   return (
     <div style={{ padding: "18px 40px", display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", borderBottom: `1px solid rgba(245,242,237,0.04)`, background: "rgba(6,6,7,0.6)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)", zIndex: 10, marginTop: emailUnverified ? 44 : 0 }}>
       {/* Logo */}
@@ -76,7 +77,23 @@ export function TopBar({ step, emailUnverified, onNavigateHome, onStepClick }: T
           );
         })}
       </div>
-      <div />
+      {/* Logout */}
+      <div style={{ display: "flex", justifyContent: "flex-end" }}>
+        {onLogout && (
+          <button onClick={onLogout} style={{
+            display: "flex", alignItems: "center", gap: 6, padding: "6px 14px",
+            fontFamily: font.ui, fontSize: 12, color: c.stone, background: "rgba(245,242,237,0.04)",
+            border: `1px solid rgba(245,242,237,0.08)`, borderRadius: 6, cursor: "pointer",
+            transition: "all 0.2s ease",
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.color = c.ivory; e.currentTarget.style.borderColor = "rgba(245,242,237,0.15)"; }}
+          onMouseLeave={(e) => { e.currentTarget.style.color = c.stone; e.currentTarget.style.borderColor = "rgba(245,242,237,0.08)"; }}
+          >
+            <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+            Log out
+          </button>
+        )}
+      </div>
     </div>
   );
 }
