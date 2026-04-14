@@ -315,6 +315,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       options: { data: metadata, emailRedirectTo: `${window.location.origin}/dashboard` },
     });
     if (error) return { success: false, error: error.message };
+
+    // Send welcome email via Resend API (fire-and-forget, don't block signup)
+    try {
+      fetch("/api/send-welcome", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, name }),
+      }).catch(() => { /* welcome email is best-effort */ });
+    } catch { /* welcome email is best-effort */ }
+
     return { success: true };
   }, []);
 
