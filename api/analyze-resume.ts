@@ -2,7 +2,7 @@
 
 export const config = { runtime: "edge" };
 
-import { handleCorsPreflightOrMethod, corsHeaders, isRateLimited, getClientIp, rateLimitResponse, verifyAuth, unauthorizedResponse, validateOrigin, checkSessionLimit, sanitizeForLLM, withRequestId } from "./_shared";
+import { handleCorsPreflightOrMethod, corsHeaders, isRateLimited, getClientIp, rateLimitResponse, verifyAuth, unauthorizedResponse, validateOrigin, sanitizeForLLM, withRequestId } from "./_shared";
 import { callLLM, extractJSON } from "./_llm";
 
 declare const process: { env: Record<string, string | undefined> };
@@ -33,12 +33,7 @@ export default async function handler(req: Request): Promise<Response> {
   const auth = await verifyAuth(req);
   if (!auth.authenticated) return unauthorizedResponse(headers);
 
-  if (auth.userId) {
-    const limit = await checkSessionLimit(auth.userId);
-    if (!limit.allowed) {
-      return new Response(JSON.stringify({ error: limit.reason }), { status: 403, headers });
-    }
-  }
+  // Note: no checkSessionLimit here — resume analysis is not an interview session
 
   const ip = getClientIp(req);
   if (await isRateLimited(ip, "analyze-resume", 5, 60_000)) {

@@ -214,7 +214,7 @@ function extractContact(text: string): Pick<ParsedResume, "name" | "email" | "ph
   const sectionHeaderPattern = /^(contact|details|personal\s*info|personal\s*details|resume|curriculum\s*vitae|cv|bio|biodata|info|about|address|references|summary|profile|objective|about\s*me|professional\s*summary|career\s*summary|executive\s*summary|experience|work\s*history|employment|professional\s*experience|work\s*experience|career\s*history|education|academic|qualifications|degrees?|skills|technical\s*skills|core\s*competencies|competencies|technologies|tools|proficiencies|expertise|certifications?|licenses?|credentials|accreditations?|professional\s*development|projects?|achievements?|awards?|publications?|interests?|hobbies?|languages?|declaration)$/i;
   let name = "";
   for (const line of lines.slice(0, 8)) {
-    if (line.match(/[@()\d]{4,}/) || line.match(/linkedin|http|www\./i)) continue;
+    if (line.match(/@/) || line.match(/\d{5,}/) || line.match(/linkedin|http|www\./i) || line.match(/\(\d{3}\)/)) continue;
     if (line.match(SECTION_PATTERNS.summary) || line.match(SECTION_PATTERNS.experience)) continue;
     let cleaned = line.replace(/[-—:=|_*#.]+/g, "").trim();
     // Collapse any remaining spaced-out letters (e.g. "C O N T A C T" → "CONTACT")
