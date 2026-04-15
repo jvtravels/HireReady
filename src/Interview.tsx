@@ -32,7 +32,7 @@ export default function Interview() {
     setShowTranscript, setShowEndModal, setAiVoiceEnabled,
     setMicError, setEvalTimedOut, setUsedFallbackScore, setEvaluating,
 
-    handleNextQuestion, skipSpeaking, handleEnd, navigate,
+    handleNextQuestion, skipSpeaking, handleEnd, navigate, retryQuestions,
 
     transcriptRef, endModalTriggerRef, textareaRef, nextBtnRef,
     micStreamRef, noSpeechCountRef, ttsCancelRef, interviewEndedRef,
@@ -78,6 +78,7 @@ export default function Interview() {
         displayCompany={displayCompany} displayRole={displayRole} displayFocus={displayFocus}
         llmLoading={llmLoading} currentStep={currentStep} phase={phase} elapsed={elapsed}
         currentQuestionNum={currentQuestionNum} totalQuestions={totalQuestions}
+        saveWarning={saveWarning} onRetry={retryQuestions}
       />
 
       {/* ─── Center Stage ─── */}

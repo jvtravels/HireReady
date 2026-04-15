@@ -42,11 +42,12 @@ export const StatusToasts = memo(function StatusToasts({ tabConflict, isOffline,
 
 /* ─── Interview Header (top info bar) ─── */
 
-export const InterviewHeader = memo(function InterviewHeader({ displayCompany, displayRole, displayFocus, llmLoading, currentStep, phase, elapsed, currentQuestionNum, totalQuestions }: {
+export const InterviewHeader = memo(function InterviewHeader({ displayCompany, displayRole, displayFocus, llmLoading, currentStep, phase, elapsed, currentQuestionNum, totalQuestions, saveWarning, onRetry }: {
   displayCompany: string; displayRole: string; displayFocus: string;
   llmLoading: boolean; currentStep: number;
   phase: string; elapsed: number;
   currentQuestionNum: number; totalQuestions: number;
+  saveWarning?: string; onRetry?: () => void;
 }) {
   return (
     <header className="iv-info-bar" style={{
@@ -76,8 +77,24 @@ export const InterviewHeader = memo(function InterviewHeader({ displayCompany, d
           {llmLoading && currentStep <= 1 && (
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
               <div style={{ width: 10, height: 10, border: "1.5px solid rgba(212,179,127,0.3)", borderTopColor: c.gilt, borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
-              <span style={{ fontFamily: font.ui, fontSize: 10, color: c.stone }}>Generating...</span>
+              <span style={{ fontFamily: font.ui, fontSize: 10, color: c.stone }}>Personalizing questions...</span>
             </div>
+          )}
+          {!llmLoading && saveWarning && saveWarning.includes("retry") && currentStep <= 1 && onRetry && (
+            <button
+              onClick={onRetry}
+              style={{
+                fontFamily: font.ui, fontSize: 10, fontWeight: 600,
+                color: c.gilt, background: "rgba(212,179,127,0.1)",
+                border: "1px solid rgba(212,179,127,0.25)", borderRadius: 6,
+                padding: "4px 10px", cursor: "pointer",
+                transition: "background 0.2s",
+              }}
+              onMouseEnter={e => (e.currentTarget.style.background = "rgba(212,179,127,0.2)")}
+              onMouseLeave={e => (e.currentTarget.style.background = "rgba(212,179,127,0.1)")}
+            >
+              Retry personalized
+            </button>
           )}
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <div style={{ width: 6, height: 6, borderRadius: "50%", background: phase === "done" ? c.stone : c.sage, animation: phase !== "done" ? "recordPulse 1.5s ease-in-out infinite" : "none" }} />

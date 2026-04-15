@@ -163,19 +163,22 @@ export function useInterviewEngine() {
     return () => { cancelled = true; };
   }, []);
 
-  // Fetch LLM-generated questions on mount
-  useEffect(() => {
+  // LLM question generation — extracted so it can be retried
+  const llmFetchCancelRef = useRef(false);
+  const fetchPersonalizedQuestions = useCallback(() => {
     if (!navigator.onLine) {
       toast("Offline — using practice questions.", "info");
       setLlmLoading(false);
       return;
     }
-    let cancelled = false;
+    llmFetchCancelRef.current = false;
+    setLlmLoading(true);
+    setSaveWarning("");
 
     let adaptiveHints: { weakSkills: string[]; pastTopics: string[] } = { weakSkills: [], pastTopics: [] };
     try {
       const cached = localStorage.getItem(`hirestepx_cache_sessions_${user?.id}`);
-      if (cached && cached.length < 500_000) { // Skip parsing if > 500KB
+      if (cached && cached.length < 500_000) {
         const pastSessions = JSON.parse(cached);
         adaptiveHints = getAdaptiveHints(pastSessions, jdAnalysisData?.missingSkills);
       }
@@ -195,34 +198,49 @@ export function useInterviewEngine() {
       experienceLevel: user?.experienceLevel || undefined,
       mini: isMiniMode || undefined,
     });
-    // Shorter timeout for mini mode (onboarding) to keep first experience snappy
     const timeoutMs = isMiniMode ? 12_000 : 30_000;
     const timeoutPromise = new Promise<null>((_, reject) => {
-      const tid = setTimeout(() => reject(new Error("Question generation timed out")), timeoutMs);
-      (timeoutPromise as unknown as { _tid: ReturnType<typeof setTimeout> })._tid = tid;
+      setTimeout(() => reject(new Error("Question generation timed out")), timeoutMs);
     });
     Promise.race([llmPromise, timeoutPromise]).then(questions => {
-      if (cancelled) return;
+      if (llmFetchCancelRef.current) return;
       if (questions && questions.length > 0 && currentStepRef.current === 0) {
         console.info(`[interview] LLM generated ${questions.length} custom questions`);
         setInterviewScript(questions);
+        setSaveWarning("");
       } else if (!questions) {
         console.warn("[interview] LLM returned null — using fallback questions");
-        setSaveWarning(`Custom ${interviewType} questions unavailable. Using practice questions instead.`);
-        if (!isMiniMode) toast(`Using practice questions — custom ${interviewType} generation unavailable.`, "info");
+        setSaveWarning("Using practice questions. Tap retry for personalized ones.");
+        if (!isMiniMode) toast("Using practice questions — tap retry for personalized ones.", "info");
       } else if (currentStepRef.current !== 0) {
         console.warn("[interview] LLM questions arrived too late — user already started (step", currentStepRef.current, ")");
       }
       setLlmLoading(false);
     }).catch(err => {
-      if (cancelled) return;
+      if (llmFetchCancelRef.current) return;
       const msg = err.message || "Could not generate questions.";
       console.warn("[interview] LLM question generation error:", msg);
-      setSaveWarning(`${msg} Using practice questions.`);
+      setSaveWarning(`${msg} Tap retry for personalized questions.`);
       if (!isMiniMode) toast(`Using practice questions — ${msg.toLowerCase()}`, "info");
       setLlmLoading(false);
     });
-    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [interviewType, interviewFocus, interviewDifficulty, isMiniMode]);
+
+  // Retry LLM question generation (exposed to UI)
+  const retryQuestions = useCallback(() => {
+    if (currentStepRef.current > 0) {
+      toast("Can't change questions after you've started answering.", "info");
+      return;
+    }
+    fetchPersonalizedQuestions();
+  }, [fetchPersonalizedQuestions]);
+
+  // Fetch on mount
+  useEffect(() => {
+    fetchPersonalizedQuestions();
+    return () => { llmFetchCancelRef.current = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Speech recognition
@@ -1414,6 +1432,7 @@ export function useInterviewEngine() {
     skipSpeaking,
     handleEnd,
     navigate,
+    retryQuestions,
 
     // Refs the UI needs
     transcriptRef,
