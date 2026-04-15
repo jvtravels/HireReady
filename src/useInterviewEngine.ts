@@ -86,7 +86,9 @@ export function useInterviewEngine() {
     }
   }
 
-  const fallbackScript = isMiniMode ? getMiniScript(user, targetCompany, interviewType) : getScript(interviewType, interviewDifficulty, user);
+  // Override user's profile role/company with URL params (SessionSetup passes these)
+  const effectiveUser = (targetRole || targetCompany) ? { ...user, ...(targetRole ? { targetRole } : {}), ...(targetCompany ? { targetCompany } : {}) } as typeof user : user;
+  const fallbackScript = isMiniMode ? getMiniScript(effectiveUser, targetCompany, interviewType) : getScript(interviewType, interviewDifficulty, effectiveUser);
   const [interviewScript, setInterviewScript] = useState<InterviewStep[]>(
     draftRef.current?.script && draftRef.current.script.length > 0 ? draftRef.current.script : fallbackScript
   );
@@ -1238,7 +1240,7 @@ export function useInterviewEngine() {
   const QUESTION_TIME_LIMIT = 120;
   const timeRemaining = QUESTION_TIME_LIMIT - answerTimer;
   const timePercent = (answerTimer / QUESTION_TIME_LIMIT) * 100;
-  const displayRole = user?.targetRole || interviewType.split("-").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+  const displayRole = targetRole || user?.targetRole || interviewType.split("-").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
   const displayCompany = targetCompany || user?.targetCompany || "";
   const displayFocus = interviewFocus !== "general" ? interviewFocus.split("-").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ") : interviewType.split("-").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
 
