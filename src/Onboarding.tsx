@@ -475,7 +475,7 @@ export default function Onboarding() {
     // Show launch animation before navigating
     setLaunching(true);
     await new Promise(r => setTimeout(r, 1400));
-    navigate(`/interview?type=${encodeURIComponent(focusType)}&focus=${encodeURIComponent(focusType)}&difficulty=standard&mini=true`);
+    navigate(`/interview?type=${encodeURIComponent(focusType)}&difficulty=standard&mini=true`);
   };
 
   const isStep1Busy = step === 1 && (resumeParsing || aiPhase === "analyzing");
