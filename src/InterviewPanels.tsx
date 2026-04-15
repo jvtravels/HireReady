@@ -752,8 +752,8 @@ export const TranscriptPanel = memo(function TranscriptPanel({ transcript, inter
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 2 }}>
-                  <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, color: msg.speaker === "ai" ? ((() => { if (panelMembers) { const match = msg.text.match(/^\[(.+?)\]/); if (match) { const member = panelMembers.find(m => m.title === match[1]); if (member) return member.color; } } return c.gilt; })()) : c.sage }}>
-                    {msg.speaker === "ai" ? ((() => { if (panelMembers) { const match = msg.text.match(/^\[(.+?)\]/); if (match) { const member = panelMembers.find(m => m.title === match[1]); if (member) return member.name; } } return interviewerName; })()) : "You"}
+                  <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, color: msg.speaker === "ai" ? ((() => { if (panelMembers) { const match = msg.text.match(/^\[(.+?)\]/); if (match) { const member = panelMembers.find(m => m.title.toLowerCase() === match[1].toLowerCase()); if (member) return member.color; } } return c.gilt; })()) : c.sage }}>
+                    {msg.speaker === "ai" ? ((() => { if (panelMembers) { const match = msg.text.match(/^\[(.+?)\]/); if (match) { const member = panelMembers.find(m => m.title.toLowerCase() === match[1].toLowerCase()); if (member) return member.name; } } return interviewerName; })()) : "You"}
                   </span>
                   <span style={{ fontFamily: font.mono, fontSize: 10, color: c.stone }}>{msg.time}</span>
                 </div>

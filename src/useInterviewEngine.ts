@@ -17,6 +17,12 @@ import { safeUUID } from "./utils";
 
 /* ─── Helpers ─── */
 
+/* ─── Persona normalization (shared across panel interview logic) ─── */
+const PERSONA_NORM: Record<string, string> = { "hiring manager": "Hiring Manager", "technical lead": "Technical Lead", "hr partner": "HR Partner" };
+function normalizePersona(persona: string): string {
+  return PERSONA_NORM[persona.toLowerCase()] || persona;
+}
+
 function extractScore(raw: unknown): number {
   if (typeof raw === "number") return raw;
   if (typeof raw === "object" && raw !== null && "score" in raw) return (raw as { score: number }).score;
@@ -250,10 +256,12 @@ export function useInterviewEngine() {
 
   // Resolve Cartesia voices for panel members (male/female)
   const panelVoicesRef = useRef<Record<string, string>>({});
+  const panelVoicesReadyRef = useRef<Promise<void> | null>(null);
   useEffect(() => {
     if (!isPanelInterview || !panelMembers) return;
     let cancelled = false;
-    fetchCartesiaVoices("en_IN").then(voices => {
+    panelVoicesRef.current = {};
+    const voicePromise = fetchCartesiaVoices("en_IN").then(voices => {
       if (cancelled) return;
       const maleVoices = voices.filter(v => v.gender === "male");
       const femaleVoices = voices.filter(v => v.gender === "female");
@@ -265,7 +273,6 @@ export function useInterviewEngine() {
       let maleIdx = 0, femaleIdx = 0;
       for (const member of panelMembers) {
         const pool = member.gender === "male" ? maleVoices : femaleVoices;
-        // If gender-specific pool is empty, fall back to any available voice
         const fallbackPool = pool.length > 0 ? pool : (maleVoices.length > 0 ? maleVoices : femaleVoices);
         const idxRef = member.gender === "male" ? maleIdx : femaleIdx;
         if (fallbackPool.length > 0) {
@@ -277,7 +284,8 @@ export function useInterviewEngine() {
     }).catch(() => {
       if (!cancelled) toast("Using default voice for all panelists.", "info");
     });
-    return () => { cancelled = true; };
+    panelVoicesReadyRef.current = voicePromise;
+    return () => { cancelled = true; panelVoicesRef.current = {}; };
   }, [isPanelInterview, panelMembers]);
 
   const [microFeedback, setMicroFeedback] = useState<string | null>(null);
@@ -532,9 +540,7 @@ export function useInterviewEngine() {
 
   const step = interviewScript[currentStep] ?? interviewScript[interviewScript.length - 1];
   const rawPersona = step?.persona || (panelMembers ? panelMembers[0].title : "");
-  // Normalize persona for consistent matching
-  const PERSONA_MAP: Record<string, string> = { "hiring manager": "Hiring Manager", "technical lead": "Technical Lead", "hr partner": "HR Partner" };
-  const activePersona = PERSONA_MAP[rawPersona.toLowerCase()] || rawPersona;
+  const activePersona = normalizePersona(rawPersona);
   const activeInterviewerName = isPanelInterview && panelMembers
     ? (panelMembers.find(m => m.title === activePersona)?.name || interviewerName)
     : (step?.persona || interviewerName);
@@ -647,14 +653,18 @@ export function useInterviewEngine() {
 
       if (aiVoiceEnabled) {
         const instanceId = ++ttsInstanceIdRef.current;
-        // For panel interviews, use the panelist-specific voice
-        // Normalize persona for case-insensitive voice lookup
-        const normalizedPersona = step.persona ? ({"hiring manager": "Hiring Manager", "technical lead": "Technical Lead", "hr partner": "HR Partner"} as Record<string, string>)[step.persona.toLowerCase()] || step.persona : null;
-        const panelVoiceId = isPanelInterview && normalizedPersona ? panelVoicesRef.current[normalizedPersona] : null;
-        const ttsPromise = panelVoiceId
-          ? speakAs(step.aiText, panelVoiceId, onSpeechEnd, onSpeechEnd)
-          : speak(step.aiText, onSpeechEnd, onSpeechEnd);
-        ttsPromise.then(handle => {
+        // For panel interviews, wait for voices to load before speaking (prevents race condition)
+        const speakPanel = async () => {
+          if (isPanelInterview && panelVoicesReadyRef.current) {
+            await panelVoicesReadyRef.current.catch(() => {});
+          }
+          const normalizedPersona = step.persona ? normalizePersona(step.persona) : null;
+          const panelVoiceId = isPanelInterview && normalizedPersona ? panelVoicesRef.current[normalizedPersona] : null;
+          return panelVoiceId
+            ? speakAs(step.aiText, panelVoiceId, onSpeechEnd, onSpeechEnd)
+            : speak(step.aiText, onSpeechEnd, onSpeechEnd);
+        };
+        speakPanel().then(handle => {
           if (ttsInstanceIdRef.current === instanceId) {
             ttsCancelRef.current = handle.cancel;
           } else {
