@@ -660,8 +660,11 @@ export function useInterviewEngine() {
           }
           const normalizedPersona = step.persona ? normalizePersona(step.persona) : null;
           const panelVoiceId = isPanelInterview && normalizedPersona ? panelVoicesRef.current[normalizedPersona] : null;
+          const panelGender = isPanelInterview && normalizedPersona && panelMembers
+            ? panelMembers.find(m => m.title === normalizedPersona)?.gender
+            : undefined;
           return panelVoiceId
-            ? speakAs(step.aiText, panelVoiceId, onSpeechEnd, onSpeechEnd)
+            ? speakAs(step.aiText, panelVoiceId, onSpeechEnd, onSpeechEnd, panelGender)
             : speak(step.aiText, onSpeechEnd, onSpeechEnd);
         };
         speakPanel().then(handle => {

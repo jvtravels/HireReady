@@ -482,6 +482,7 @@ async function speakWithProxy(
   voiceId: string,
   onEnd: () => void,
   onError: () => void,
+  gender?: "male" | "female",
 ): Promise<{ cancel: () => void }> {
   const controller = new AbortController();
   let audio: HTMLAudioElement | null = null;
@@ -504,7 +505,7 @@ async function speakWithProxy(
       const res = await fetch("/api/tts", {
         method: "POST",
         headers,
-        body: JSON.stringify({ text, voiceId, language: loadTTSSettings().language }),
+        body: JSON.stringify({ text, voiceId, language: loadTTSSettings().language, ...(gender ? { gender } : {}) }),
         signal: controller.signal,
       });
 
@@ -722,6 +723,7 @@ export async function speakAs(
   voiceId: string,
   onEnd: () => void,
   onError: () => void,
+  gender?: "male" | "female",
 ): Promise<{ cancel: () => void }> {
   const settings = loadTTSSettings();
   if (settings.provider !== "cartesia") {
@@ -748,14 +750,14 @@ export async function speakAs(
     handle = await speakWithProxy(text, voiceId, onEnd, async () => {
       console.warn("Cartesia REST failed (speakAs), trying Deepgram");
       await deepgramFallback();
-    });
+    }, gender);
   } else {
     handle = await speakWithWebSocket(text, voiceId, onEnd, async () => {
       console.warn("Cartesia WebSocket failed (speakAs), falling back to REST");
       handle = await speakWithProxy(text, voiceId, onEnd, async () => {
         console.warn("Cartesia REST also failed (speakAs), trying Deepgram");
         await deepgramFallback();
-      });
+      }, gender);
       _activeCancel = handle.cancel;
     });
   }

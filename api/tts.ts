@@ -38,7 +38,9 @@ export default async function handler(req: Request): Promise<Response> {
   }
 
   try {
-    const { text, voiceId, language } = await req.json();
+    const { text, voiceId, language, gender } = await req.json() as {
+      text: string; voiceId?: string; language?: string; gender?: "male" | "female";
+    };
 
     if (!text || typeof text !== "string") {
       return new Response(JSON.stringify({ error: "Missing text" }), { status: 400, headers });
@@ -84,10 +86,17 @@ export default async function handler(req: Request): Promise<Response> {
       // Fallback to Deepgram TTS server-side (avoids client CORS issues)
       if (DEEPGRAM_API_KEY) {
         console.warn("Cartesia failed, trying Deepgram TTS server-side fallback");
+        // Gender-matched Deepgram voices for natural panel interviews
+        const dgMaleVoices = ["aura-2-orion-en", "aura-2-apollo-en", "aura-2-atlas-en"];
+        const dgFemaleVoices = ["aura-2-asteria-en", "aura-2-luna-en", "aura-2-athena-en"];
+        // Pick voice based on gender + voiceId hash for variety across panelists
+        const voicePool = gender === "male" ? dgMaleVoices : dgFemaleVoices;
+        const voiceHash = (voiceId || "").split("").reduce((h, c) => ((h << 5) - h + c.charCodeAt(0)) | 0, 0);
+        const dgVoice = voicePool[Math.abs(voiceHash) % voicePool.length];
         try {
           const dgController = new AbortController();
           const dgTimeout = setTimeout(() => dgController.abort(), 12_000);
-          const dgRes = await fetch("https://api.deepgram.com/v1/speak?model=aura-asteria-en&encoding=mp3", {
+          const dgRes = await fetch(`https://api.deepgram.com/v1/speak?model=${dgVoice}&encoding=mp3`, {
             method: "POST",
             headers: {
               "Authorization": `Token ${DEEPGRAM_API_KEY}`,
