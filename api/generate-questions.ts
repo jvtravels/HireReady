@@ -147,7 +147,9 @@ export default async function handler(req: Request): Promise<Response> {
 - The intro should set up the scenario: "We'd like to extend you an offer..."
 - Questions must simulate actual negotiation scenarios: presenting an initial offer, asking for salary expectations, presenting counteroffers, discussing equity vs base, handling competing offers, discussing benefits/perks
 - Do NOT ask behavioral STAR-format questions. Do NOT ask about past projects or technical skills.
-- Example good question: "We can offer $X base with standard benefits. How does that sound to you?"
+- IMPORTANT: Use Indian Rupees (₹) and Indian salary conventions (LPA = Lakhs Per Annum). Example ranges: ₹6-10 LPA for freshers, ₹12-25 LPA for mid-level, ₹30-60 LPA for senior, ₹80 LPA+ for top-tier companies like Google/Amazon.
+- Example good question: "We'd like to offer you ₹18 LPA with standard benefits. How does that sound to you?"
+- Example bad question: "We can offer $120,000." (wrong currency — use ₹ and LPA)
 - Example bad question: "Tell me about a time you led a project." (this is behavioral, NOT negotiation)
 - The closing should summarize negotiation performance and tips`,
       "campus-placement": `This is a CAMPUS PLACEMENT interview for freshers/recent graduates.
@@ -226,6 +228,7 @@ Example good question: "Walk me through a system you designed that had to handle
 Example bad question: "Tell me about your experience." (too vague, not role-specific)
 
 Requirements:
+- MARKET: This product serves the Indian job market. Use Indian Rupees (₹) and LPA (Lakhs Per Annum) for any salary/compensation references. Use Indian company examples and cultural context where relevant.
 - Questions must be specific to the role, company, and industry
 - Reference the candidate's resume details if provided
 - Each question should test a different competency
