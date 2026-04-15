@@ -223,6 +223,18 @@ export const PanelAvatarStage = memo(function PanelAvatarStage({ phase, panelMem
                     {member.name.split(" ").map(n => n[0]).join("")}
                   </span>
                 )}
+                {/* "Speaking" badge on active avatar */}
+                {isActiveSpeaking && (
+                  <div style={{
+                    position: "absolute", bottom: -2, left: "50%", transform: "translateX(-50%)",
+                    padding: "1px 8px", borderRadius: 10,
+                    background: member.color, fontSize: 8, fontFamily: font.ui,
+                    fontWeight: 700, color: c.obsidian, letterSpacing: "0.04em",
+                    textTransform: "uppercase", whiteSpace: "nowrap",
+                  }}>
+                    Speaking
+                  </div>
+                )}
               </div>
               <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
                 <span style={{
@@ -291,17 +303,30 @@ export const PanelAvatarStage = memo(function PanelAvatarStage({ phase, panelMem
 
 /* ─── Question Card with timer ─── */
 
-export const QuestionCard = memo(function QuestionCard({ step, phase, showCaptions, timeRemaining, timePercent }: {
+export const QuestionCard = memo(function QuestionCard({ step, phase, showCaptions, timeRemaining, timePercent, panelPersona }: {
   step: { aiText: string; scoreNote?: string; speakingDuration: number } | undefined;
   phase: string; showCaptions: boolean;
   timeRemaining: number; timePercent: number;
+  panelPersona?: { name: string; title: string; color: string } | null;
 }) {
   return (
     <div aria-live="polite" aria-atomic="true" style={{
       width: "100%", background: c.graphite, borderRadius: 16,
-      border: `1px solid ${phase === "speaking" ? "rgba(212,179,127,0.15)" : c.border}`,
+      border: `1px solid ${phase === "speaking" && panelPersona ? `${panelPersona.color}25` : phase === "speaking" ? "rgba(212,179,127,0.15)" : c.border}`,
       padding: "20px 24px", transition: "all 0.4s ease",
     }}>
+      {panelPersona && (phase === "speaking" || phase === "listening") && (
+        <div style={{
+          display: "inline-flex", alignItems: "center", gap: 6,
+          padding: "3px 10px", borderRadius: 100, marginBottom: 10,
+          background: `${panelPersona.color}10`, border: `1px solid ${panelPersona.color}20`,
+        }}>
+          <div style={{ width: 5, height: 5, borderRadius: "50%", background: panelPersona.color }} />
+          <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, color: panelPersona.color }}>
+            {panelPersona.name} · {panelPersona.title}
+          </span>
+        </div>
+      )}
       {step?.scoreNote && phase !== "done" && (
         <p style={{
           fontFamily: font.ui, fontSize: 11, color: "rgba(212,179,127,0.5)",
@@ -670,6 +695,28 @@ export const ControlsBar = memo(function ControlsBar({ isMuted, setIsMuted, aiVo
   );
 });
 
+/* ─── Transcript Filter Buttons (panel mode) ─── */
+const TranscriptFilters = memo(function TranscriptFilters({ panelMembers, activeFilter, setActiveFilter }: {
+  panelMembers: PanelMember[]; activeFilter: string; setActiveFilter: (v: string) => void;
+}) {
+  const filters = [{ label: "All", value: "all", color: c.ivory }, ...panelMembers.map(m => ({ label: m.name.split(" ")[0], value: m.title, color: m.color }))];
+  return (
+    <div style={{ display: "flex", gap: 4, padding: "8px 20px", borderBottom: `1px solid ${c.border}`, overflow: "auto" }}>
+      {filters.map(f => (
+        <button key={f.value} onClick={() => setActiveFilter(f.value)} style={{
+          fontFamily: font.ui, fontSize: 10, fontWeight: 600, padding: "3px 10px",
+          borderRadius: 100, border: `1px solid ${activeFilter === f.value ? `${f.color}40` : "transparent"}`,
+          background: activeFilter === f.value ? `${f.color}12` : "transparent",
+          color: activeFilter === f.value ? f.color : c.stone,
+          cursor: "pointer", whiteSpace: "nowrap", transition: "all 0.2s",
+        }}>
+          {f.label}
+        </button>
+      ))}
+    </div>
+  );
+});
+
 /* ─── Transcript Slide-Over Panel ─── */
 
 export const TranscriptPanel = memo(function TranscriptPanel({ transcript, interviewerName, setShowTranscript, transcriptRef, panelMembers }: {
@@ -686,6 +733,14 @@ export const TranscriptPanel = memo(function TranscriptPanel({ transcript, inter
     mql.addEventListener("change", handler);
     return () => mql.removeEventListener("change", handler);
   }, []);
+
+  // Panel transcript filter
+  const [transcriptFilter, setTranscriptFilter] = useState("all");
+  const filteredTranscript = transcriptFilter === "all" ? transcript : transcript.filter(msg => {
+    if (msg.speaker === "user") return true; // always show user answers
+    const match = msg.text.match(/^\[(.+?)\]/);
+    return match ? match[1].toLowerCase() === transcriptFilter.toLowerCase() : true;
+  });
 
   return (
     <>
@@ -733,11 +788,15 @@ export const TranscriptPanel = memo(function TranscriptPanel({ transcript, inter
             <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>
         </div>
+        {/* Panel filter buttons */}
+        {panelMembers && panelMembers.length > 0 && (
+          <TranscriptFilters panelMembers={panelMembers} activeFilter={transcriptFilter} setActiveFilter={setTranscriptFilter} />
+        )}
         <div ref={transcriptRef} aria-live="polite" aria-label="Interview transcript" style={{ flex: 1, overflow: "auto", padding: "14px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
           {transcript.length === 0 && (
             <p style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, textAlign: "center", padding: "40px 0" }}>Transcript will appear here...</p>
           )}
-          {transcript.map((msg, i) => (
+          {filteredTranscript.map((msg, i) => (
             <div key={`${msg.speaker}-${msg.time}-${i}`} style={{ display: "flex", gap: 10 }}>
               <div style={{
                 width: 20, height: 20, borderRadius: "50%", flexShrink: 0, marginTop: 2,

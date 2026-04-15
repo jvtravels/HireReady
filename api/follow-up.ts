@@ -133,7 +133,7 @@ Respond JSON only:
       needsFollowUp,
       followUpText: parsed.followUpText || "",
       followUpType: followUpTypeLabel,
-      persona: persona || undefined,
+      persona: persona ? ({"hiring manager": "Hiring Manager", "technical lead": "Technical Lead", "hr partner": "HR Partner"} as Record<string, string>)[persona.toLowerCase()] || persona : undefined,
     }), { status: 200, headers });
   } catch (err) {
     console.error("Follow-up generation error:", err);

@@ -124,7 +124,9 @@ export default function Interview() {
             <AvatarStage phase={phase} interviewerName={interviewerName} isMuted={isMuted} speechUnavailable={speechUnavailable} skipSpeaking={skipSpeaking} />
           )}
 
-          <QuestionCard step={step} phase={phase} showCaptions={showCaptions} timeRemaining={timeRemaining} timePercent={timePercent} />
+          <QuestionCard step={step} phase={phase} showCaptions={showCaptions} timeRemaining={timeRemaining} timePercent={timePercent}
+            panelPersona={isPanelInterview && panelMembers ? panelMembers.find(m => m.title === activePersona) || null : null}
+          />
 
           {phase === "listening" && (
             <UserAnswerArea
