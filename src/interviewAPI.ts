@@ -1,7 +1,7 @@
 /* ─── Interview API Client: LLM calls, session persistence, offline retry ─── */
 
 import type { InterviewStep } from "./interviewScripts";
-import { saveSession, decrementSessionCredit, authHeaders } from "./supabase";
+import { saveSession, decrementSessionCredit } from "./supabase";
 import { openIDB, loadFromIDB, deleteFromIDB } from "./interviewIDB";
 import { checkRateLimit } from "./rateLimit";
 
@@ -171,7 +171,8 @@ export async function fetchLLMQuestions(params: {
     throw new Error("Too many requests. Please wait a moment and try again.");
   }
   const attempt = async (): Promise<InterviewStep[] | null> => {
-    const headers = await authHeaders();
+    const { authHeaders: getAuthHeaders } = await import("./supabase");
+    const headers = await getAuthHeaders();
     const res = await fetch("/api/generate-questions", {
       method: "POST",
       headers,
@@ -235,7 +236,8 @@ export async function fetchLLMEvaluation(params: {
     throw new Error("Too many requests. Please wait a moment and try again.");
   }
   try {
-    const headers = await authHeaders();
+    const { authHeaders: getAuthHeaders } = await import("./supabase");
+    const headers = await getAuthHeaders();
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
     const res = await fetch("/api/evaluate", {
@@ -272,7 +274,8 @@ export async function fetchFollowUp(params: {
   // Client-side rate limit: max 10 follow-ups per 60s
   if (!checkRateLimit("follow-up", 10, 60_000)) return null;
   try {
-    const headers = await authHeaders();
+    const { authHeaders: getAuthHeaders } = await import("./supabase");
+    const headers = await getAuthHeaders();
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 4000);
     const res = await fetch("/api/follow-up", {
