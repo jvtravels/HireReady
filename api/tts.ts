@@ -7,6 +7,7 @@ import { handleCorsPreflightOrMethod, corsHeaders, isRateLimited, getClientIp, r
 
 declare const process: { env: Record<string, string | undefined> };
 const CARTESIA_API_KEY = process.env.CARTESIA_API_KEY || "";
+const DEEPGRAM_API_KEY = process.env.DEEPGRAM_API_KEY || "";
 
 export default async function handler(req: Request): Promise<Response> {
   const earlyResponse = handleCorsPreflightOrMethod(req);
@@ -20,7 +21,7 @@ export default async function handler(req: Request): Promise<Response> {
     return new Response(JSON.stringify({ error: "Request too large" }), { status: 413, headers });
   }
 
-  if (!CARTESIA_API_KEY) {
+  if (!CARTESIA_API_KEY && !DEEPGRAM_API_KEY) {
     return new Response(JSON.stringify({ error: "TTS not configured" }), { status: 503, headers });
   }
 
@@ -78,8 +79,47 @@ export default async function handler(req: Request): Promise<Response> {
 
     if (!res.ok) {
       const errText = await res.text().catch(() => "");
-      console.error("Cartesia TTS error:", res.status, errText);
-      return new Response(JSON.stringify({ error: "TTS generation failed" }), { status: 502, headers });
+      console.warn("Cartesia TTS error:", res.status, errText);
+
+      // Fallback to Deepgram TTS server-side (avoids client CORS issues)
+      if (DEEPGRAM_API_KEY) {
+        console.warn("Cartesia failed, trying Deepgram TTS server-side fallback");
+        try {
+          const dgController = new AbortController();
+          const dgTimeout = setTimeout(() => dgController.abort(), 12_000);
+          const dgRes = await fetch("https://api.deepgram.com/v1/speak?model=aura-asteria-en&encoding=mp3", {
+            method: "POST",
+            headers: {
+              "Authorization": `Token ${DEEPGRAM_API_KEY}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ text: trimmedText }),
+            signal: dgController.signal,
+          });
+          clearTimeout(dgTimeout);
+
+          if (dgRes.ok) {
+            const dgAudio = await dgRes.arrayBuffer();
+            if (dgAudio.byteLength > 100) {
+              const audioHeaders: Record<string, string> = {
+                "Content-Type": "audio/mpeg",
+                "Content-Length": String(dgAudio.byteLength),
+                "Cache-Control": "no-store",
+                "X-Content-Type-Options": "nosniff",
+                "X-TTS-Provider": "deepgram",
+              };
+              const origin = headers["Access-Control-Allow-Origin"];
+              if (origin) { audioHeaders["Access-Control-Allow-Origin"] = origin; audioHeaders["Vary"] = "Origin"; }
+              return new Response(dgAudio, { status: 200, headers: audioHeaders });
+            }
+          }
+          console.warn("Deepgram TTS also failed:", dgRes.status);
+        } catch (dgErr) {
+          console.warn("Deepgram TTS error:", dgErr);
+        }
+      }
+
+      return new Response(JSON.stringify({ error: "TTS generation failed", cartesiaStatus: res.status, detail: errText.slice(0, 200) }), { status: 502, headers });
     }
 
     const audioBytes = await res.arrayBuffer();
