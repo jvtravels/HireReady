@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useCallback, useEffect, useRef, type ReactNode } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { track } from "@vercel/analytics";
 import { getSupabase, preloadSupabase, supabaseConfigured, getProfile, upsertProfile, type Profile } from "./supabase";
 
 import type { Session } from "@supabase/supabase-js";
@@ -118,13 +119,19 @@ function profileToUser(profile: Profile, session: Session): User {
       const tier = (profile.subscription_tier as "free" | "starter" | "pro" | "team") || "free";
       // Auto-downgrade expired subscriptions
       if (tier !== "free" && profile.subscription_end) {
-        if (new Date(profile.subscription_end) < new Date()) return "free";
+        if (new Date(profile.subscription_end) < new Date()) {
+          console.warn(`[auth] Subscription "${tier}" expired (${profile.subscription_end}), downgrading to free`);
+          // Flag for UI notification — consumed by components that check tier
+          try { sessionStorage.setItem("hirestepx_sub_expired", tier); } catch { /* noop */ }
+          return "free";
+        }
       }
       return tier;
     })(),
     subscriptionStart: profile.subscription_start || undefined,
     subscriptionEnd: profile.subscription_end || undefined,
     cancelAtPeriodEnd: profile.cancel_at_period_end || false,
+    subscriptionPaused: !!profile.subscription_paused,
     referralCode: profile.referral_code || undefined,
     emailVerified: !!session.user.email_confirmed_at,
   };
@@ -317,40 +324,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Suppress auth listener during signup to prevent premature redirect
     signingUpRef.current = true;
 
-    const { data, error } = await client.auth.signUp({
-      email,
-      password,
-      options: { data: metadata, emailRedirectTo: `${window.location.origin}/dashboard` },
-    });
-
-    if (error) {
-      signingUpRef.current = false;
-      return { success: false, error: error.message };
-    }
-
-    // Supabase returns fake success for existing emails (email enumeration protection).
-    // Detect this: if user.identities is empty, the email already exists.
-    if (data?.user && (!data.user.identities || data.user.identities.length === 0)) {
-      signingUpRef.current = false;
-      return { success: false, error: "User already registered" };
-    }
-
-    // Send verification email via Resend API (don't block signup on failure)
-    const userId = data?.user?.id;
     try {
-      await fetch("/api/send-welcome", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, name, userId }),
+      const { data, error } = await client.auth.signUp({
+        email,
+        password,
+        options: { data: metadata, emailRedirectTo: `${window.location.origin}/dashboard` },
       });
-    } catch { /* verification email is best-effort */ }
 
-    // Sign out so user must verify email before using the app
-    await client.auth.signOut();
-    setUser(null);
-    signingUpRef.current = false;
+      if (error) {
+        return { success: false, error: error.message };
+      }
 
-    return { success: true };
+      // Supabase returns fake success for existing emails (email enumeration protection).
+      // Detect this: if user.identities is empty, the email already exists.
+      if (data?.user && (!data.user.identities || data.user.identities.length === 0)) {
+        return { success: false, error: "User already registered" };
+      }
+
+      // Send verification email via Resend API (don't block signup on failure)
+      const userId = data?.user?.id;
+      try {
+        await fetch("/api/send-welcome", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, name, userId }),
+        });
+      } catch { /* verification email is best-effort */ }
+
+      // Sign out so user must verify email before using the app
+      await client.auth.signOut();
+      setUser(null);
+
+      return { success: true };
+    } finally {
+      signingUpRef.current = false;
+    }
   }, []);
 
   const login = useCallback(async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
@@ -361,7 +369,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     const client = await getSupabase();
     const { error } = await client.auth.signInWithPassword({ email, password });
-    if (error) return { success: false, error: error.message };
+    if (error) {
+      track("login_error", { reason: error.message });
+      // If credentials failed, check if user might have signed up with Google
+      if (error.message === "Invalid login credentials") {
+        const lastMethod = (() => { try { return localStorage.getItem("hirestepx_login_method"); } catch { return null; } })();
+        if (lastMethod === "google") {
+          return { success: false, error: "It looks like you signed up with Google. Please use \"Sign in with Google\" instead." };
+        }
+        return { success: false, error: "Invalid email or password. If you signed up with Google, use \"Sign in with Google\" below." };
+      }
+      return { success: false, error: error.message };
+    }
+    track("login_success");
     return { success: true };
   }, []);
 
@@ -381,6 +401,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(async () => {
     if (supabaseConfigured) { const client = await getSupabase(); await client.auth.signOut(); }
+    track("logout");
     setUser(null);
     clearLastRoute();
   }, []);
@@ -471,6 +492,9 @@ export function RequireAuth({ children }: { children: ReactNode }) {
         return;
       }
       navigate("/login", { replace: true, state: { from: location.pathname } });
+    } else if (user && !user.emailVerified && !["/onboarding", "/settings"].includes(location.pathname)) {
+      // Allow unverified users to access onboarding (where they'll see the verify prompt) and settings
+      navigate("/onboarding", { replace: true });
     } else if (user && !user.hasCompletedOnboarding && !["/onboarding", "/interview", "/onboarding/complete"].includes(location.pathname) && !location.pathname.startsWith("/session/")) {
       navigate("/onboarding", { replace: true });
     }

@@ -1,7 +1,7 @@
 /* ─── Interview API Client: LLM calls, session persistence, offline retry ─── */
 
 import type { InterviewStep } from "./interviewScripts";
-import { saveSession } from "./supabase";
+import { saveSession, decrementSessionCredit } from "./supabase";
 import { openIDB, loadFromIDB, deleteFromIDB } from "./interviewIDB";
 import { checkRateLimit } from "./rateLimit";
 
@@ -56,7 +56,16 @@ export async function saveSessionResult(result: SessionResult, userId?: string):
     const raw = localStorage.getItem(RESULTS_KEY);
     const sessions: SessionResult[] = raw ? JSON.parse(raw) : [];
     sessions.unshift(result);
-    localStorage.setItem(RESULTS_KEY, JSON.stringify(sessions));
+    // Prune to most recent 50 sessions to prevent localStorage overflow
+    if (sessions.length > 50) sessions.length = 50;
+    try {
+      localStorage.setItem(RESULTS_KEY, JSON.stringify(sessions));
+    } catch (quotaErr) {
+      // Quota exceeded — aggressively prune to 20 and retry
+      console.warn("[save] localStorage quota hit, pruning to 20 sessions");
+      sessions.length = Math.min(sessions.length, 20);
+      localStorage.setItem(RESULTS_KEY, JSON.stringify(sessions));
+    }
     localOk = true;
   } catch (e) {
     console.error("[save] localStorage save failed:", e);
@@ -80,6 +89,8 @@ export async function saveSessionResult(result: SessionResult, userId?: string):
         jd_analysis: result.jdAnalysis || null,
       });
       cloudOk = true;
+      // Decrement session credit for free-tier users who purchased credits
+      try { await decrementSessionCredit(userId); } catch { /* best-effort */ }
     } catch (err) {
       console.warn("Failed to save session to Supabase:", err);
     }

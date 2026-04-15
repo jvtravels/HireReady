@@ -88,11 +88,70 @@ function ParticleCanvas() {
     };
 
     const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
-    if (!mq.matches) draw(); else { draw(); cancelAnimationFrame(animId!); }
+    if (!mq.matches) {
+      draw();
+    } else {
+      // Draw a single static frame without starting the animation loop
+      ctx.clearRect(0, 0, w(), h());
+      for (const p of ps) {
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        ctx.fillStyle = `${p.c}${p.o})`; ctx.fill();
+      }
+    }
     return () => { cancelAnimationFrame(animId); window.removeEventListener("resize", resize); };
   }, [ready]);
 
   return <canvas ref={canvasRef} aria-hidden="true" style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", pointerEvents: "none" }} />;
+}
+
+/* ═══════════════════════════════════════════════
+   STICKY CTA BAR
+   ═══════════════════════════════════════════════ */
+export function StickyCTA() {
+  const { isLoggedIn } = useAuth();
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    const onScroll = () => setVisible(window.scrollY > window.innerHeight * 0.85);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  if (isLoggedIn) return null;
+
+  return (
+    <div className="sticky-cta-bar" style={{
+      position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 90,
+      transform: visible ? "translateY(0)" : "translateY(100%)",
+      opacity: visible ? 1 : 0,
+      transition: "all 0.4s cubic-bezier(0.16, 1, 0.3, 1)",
+      pointerEvents: visible ? "auto" : "none",
+    }}>
+      <div style={{
+        maxWidth: 800, margin: "0 auto", padding: "12px 24px",
+        background: "rgba(6,6,7,0.85)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
+        borderTop: `1px solid ${c.border}`, borderRadius: "16px 16px 0 0",
+        display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16,
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <span style={{ fontFamily: font.ui, fontSize: 14, fontWeight: 500, color: c.ivory }}>
+            3 free AI mock interviews
+          </span>
+          <span style={{ fontFamily: font.ui, fontSize: 12, color: c.stone }}>
+            No credit card required
+          </span>
+        </div>
+        <Link to="/signup" className="shimmer-btn premium-btn" style={{
+          fontFamily: font.ui, fontSize: 13, fontWeight: 600, padding: "10px 24px",
+          borderRadius: 8, cursor: "pointer", letterSpacing: "0.02em", textDecoration: "none",
+          flexShrink: 0,
+        }}
+          onClick={() => { track("cta_click", { cta: "sticky_bar_signup" }); }}>
+          Start Free
+        </Link>
+      </div>
+    </div>
+  );
 }
 
 /* ─── Auth-aware CTA ─── */
@@ -226,7 +285,7 @@ export function Hero() {
       <div className="landing-hero" style={{ display: "flex", alignItems: "center", maxWidth: 1200, width: "100%", padding: "140px 48px 100px", position: "relative" }}>
 
       {/* Mesh gradient */}
-      <div style={{
+      <div className="hero-mesh-gradient" style={{
         position: "absolute", top: "40%", left: "50%",
         transform: `translate(calc(-50% + ${mx}px), calc(-50% + ${my}px))`,
         width: 900, height: 900, borderRadius: "50%",
@@ -255,7 +314,7 @@ export function Hero() {
         }}>
           <span style={{ width: 6, height: 6, borderRadius: "50%", background: c.sage, display: "inline-block", animation: "giltPulse 2s ease-in-out infinite" }} />
           <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: c.chalk, letterSpacing: "0.02em" }}>
-            Now live — start practicing for free
+            Launching May 2 — 3 free sessions, no credit card
           </span>
         </div>
 
@@ -283,18 +342,19 @@ export function Hero() {
           lineHeight: 1.7, color: c.chalk, maxWidth: 460,
           animation: "fadeInUp 0.8s ease 1.8s both",
         }}>
-          AI-powered mock interviews tailored to your resume, your target company, and the role
-          you're going for. Practice, get scored, and walk in ready.
+          Upload your resume. Pick your target company — Google, TCS, Flipkart, or 50+ others.
+          Get a voice-based mock interview with AI that scores your answers and tells you exactly
+          what to fix. Starting at ₹0.
         </p>
 
         <HeroCTA />
 
         {/* Social proof micro-stat */}
-        <div style={{ display: "flex", gap: 32, animation: "fadeIn 0.8s ease 2.6s both" }}>
+        <div className="hero-stats" style={{ display: "flex", gap: 32, animation: "fadeIn 0.8s ease 2.6s both" }}>
           {[
-            { value: "3", label: "Free sessions" },
-            { value: "6", label: "Interview types" },
+            { value: "10", label: "Interview types" },
             { value: "50+", label: "Target companies" },
+            { value: "₹10", label: "Per session" },
           ].map((stat) => (
             <div key={stat.label}>
               <span style={{ fontFamily: font.mono, fontSize: 20, fontWeight: 600, color: c.gilt, display: "block" }}>{stat.value}</span>

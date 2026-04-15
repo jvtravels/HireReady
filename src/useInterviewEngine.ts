@@ -66,7 +66,12 @@ export function useInterviewEngine() {
       const raw = localStorage.getItem(draftKey);
       if (raw) {
         const parsed = JSON.parse(raw);
-        if (parsed && Array.isArray(parsed.transcript) && typeof parsed.currentStep === "number") {
+        const DRAFT_TTL = 24 * 60 * 60 * 1000; // 24 hours
+        const isExpired = parsed?.savedAt && Date.now() - parsed.savedAt > DRAFT_TTL;
+        if (isExpired) {
+          localStorage.removeItem(draftKey);
+          deleteFromIDB(draftKey);
+        } else if (parsed && Array.isArray(parsed.transcript) && typeof parsed.currentStep === "number") {
           draftRef.current = parsed;
         }
       }
@@ -91,9 +96,16 @@ export function useInterviewEngine() {
   // Async IndexedDB fallback
   useEffect(() => {
     if (!isResuming || draftRef.current) return;
+    let cancelled = false;
     loadFromIDB(draftKey).then(data => {
+      if (cancelled) return; // Interview already started, skip stale IDB data
       if (data && typeof data === "object" && "transcript" in data) {
-        const d = data as InterviewDraft;
+        const d = data as InterviewDraft & { savedAt?: number };
+        const DRAFT_TTL = 24 * 60 * 60 * 1000;
+        if (d.savedAt && Date.now() - d.savedAt > DRAFT_TTL) {
+          deleteFromIDB(draftKey);
+          return;
+        }
         draftRef.current = d;
         setCurrentStep(d.currentStep || 0);
         setTranscript(d.transcript || []);
@@ -103,6 +115,7 @@ export function useInterviewEngine() {
         }
       }
     });
+    return () => { cancelled = true; };
   }, []);
 
   // Set TTS language for non-English interviews
@@ -124,7 +137,7 @@ export function useInterviewEngine() {
     let adaptiveHints: { weakSkills: string[]; pastTopics: string[] } = { weakSkills: [], pastTopics: [] };
     try {
       const cached = localStorage.getItem(`hirestepx_cache_sessions_${user?.id}`);
-      if (cached) {
+      if (cached && cached.length < 500_000) { // Skip parsing if > 500KB
         const pastSessions = JSON.parse(cached);
         adaptiveHints = getAdaptiveHints(pastSessions, jdAnalysisData?.missingSkills);
       }
@@ -223,6 +236,7 @@ export function useInterviewEngine() {
   const [lastSessionId, setLastSessionId] = useState<string | null>(null);
   const noSpeechCountRef = useRef(0);
   const recognitionRestartCountRef = useRef(0);
+  const deepgramRetryRef = useRef(0);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const nextBtnRef = useRef<HTMLButtonElement>(null);
   const [evaluating, setEvaluating] = useState(false);
@@ -303,6 +317,7 @@ export function useInterviewEngine() {
   useEffect(() => {
     if (phase === "listening" && !isMuted && !speechUnavailable) {
       recognitionRestartCountRef.current = 0;
+      deepgramRetryRef.current = 0;
       let stopped = false;
 
       let deepgramCleanup: (() => void) | null = null;
@@ -321,15 +336,26 @@ export function useInterviewEngine() {
               setTimeout(() => textareaRef.current?.focus(), 100);
             } else {
               console.warn("[Deepgram] error, falling back to Web Speech API:", error);
+              toast("Speech recognition switched to browser fallback.", "info");
               deepgramRef.current = null;
               startWebSpeechAPI();
             }
           },
           onEnd: () => {
             if (stopped || interviewEndedRef.current) return;
-            console.warn("[Deepgram] connection ended, falling back to Web Speech API");
             deepgramRef.current = null;
-            startWebSpeechAPI();
+            // Retry Deepgram once before falling back to Web Speech API
+            if (navigator.onLine && deepgramRetryRef.current < 2) {
+              deepgramRetryRef.current++;
+              const backoffMs = 1000 * Math.pow(2, deepgramRetryRef.current - 1); // 1s, 2s
+              console.warn(`[Deepgram] connection ended, retrying in ${backoffMs}ms (attempt ${deepgramRetryRef.current}/2)`);
+              toast("Reconnecting speech recognition...", "info");
+              setTimeout(() => { if (!stopped) tryDeepgram(); }, backoffMs);
+            } else {
+              console.warn("[Deepgram] connection ended, falling back to Web Speech API");
+              toast("Speech recognition switched to browser fallback.", "info");
+              startWebSpeechAPI();
+            }
           },
         }, { language: interviewLanguage });
         if (stopped) { handle?.abort(); return; }
@@ -469,13 +495,16 @@ export function useInterviewEngine() {
 
   const step = interviewScript[currentStep] ?? interviewScript[interviewScript.length - 1];
   const activeInterviewerName = step?.persona || interviewerName;
-  const totalQuestions = interviewScript.filter(s => s.type === "question" || s.type === "follow-up").length;
-  const currentQuestionNum = interviewScript.slice(0, currentStep + 1).filter(s => s.type === "question" || s.type === "follow-up").length;
+  const totalQuestions = useMemo(() => interviewScript.filter(s => s.type === "question" || s.type === "follow-up").length, [interviewScript]);
+  const currentQuestionNum = useMemo(() => interviewScript.slice(0, currentStep + 1).filter(s => s.type === "question" || s.type === "follow-up").length, [interviewScript, currentStep]);
 
-  // Timer
+  // Timer — pauses when tab is hidden (laptop sleep / tab switch)
   useEffect(() => {
     if (phase === "done") return;
-    const timer = setInterval(() => setElapsed(e => e + 1), 1000);
+    const timer = setInterval(() => {
+      if (!tabVisibleRef.current) return;
+      setElapsed(e => e + 1);
+    }, 1000);
     return () => clearInterval(timer);
   }, [phase]);
 
@@ -495,6 +524,9 @@ export function useInterviewEngine() {
     const timer = setInterval(() => setAnswerTimer(t => {
       if (!tabVisibleRef.current) return t;
       const next = t + 1;
+      if (next === 100 && phase === "listening") {
+        toast("20 seconds remaining for this answer.", "info");
+      }
       if (next >= 120 && phase === "listening") {
         toast("Time's up — moving to the next question.", "info");
         handleNextRef.current();
@@ -635,6 +667,14 @@ export function useInterviewEngine() {
     recognitionRef.current?.stop();
 
     const answerText = currentTranscript.trim() || `[Answer recorded — ${answerTimer}s]`;
+
+    // Validate text input — require at least 10 chars for a real answer
+    if (!answerText.startsWith("[Answer recorded") && answerText.length < 10) {
+      toast("Please provide a longer answer (at least a few words).", "info");
+      advancingRef.current = false;
+      return;
+    }
+
     setTranscript(prev => [...prev, {
       speaker: "user",
       text: answerText,
@@ -708,6 +748,10 @@ export function useInterviewEngine() {
       if (answerText) recentFollowUps.push(`A: ${answerText}`);
 
       const depth = currentStepObj?.type === "follow-up" ? followUpDepthRef.current + 1 : 0;
+      // Guard: if pending follow-up fetch is still in flight, skip to avoid desync
+      if (pendingFollowUpRef.current) {
+        pendingFollowUpRef.current = null;
+      }
 
       if (depth <= 2) {
         followUpDepthRef.current = depth;
@@ -826,10 +870,24 @@ export function useInterviewEngine() {
     let score = 0;
     let aiFeedback = "";
     let skillScores: Record<string, number> | null = null;
-    const safetyTimer = setTimeout(() => {
+    const safetyTimer = setTimeout(async () => {
       console.warn("[interview] handleEnd safety timeout — forcing navigation");
       setEvaluating(false);
-      toast("Evaluation took too long. Session saved with estimated score.", "info");
+      toast("Evaluation took too long. Session saved with estimated score. AI feedback will update when ready.", "info");
+      // Queue for background retry so LLM feedback can be added later
+      try {
+        const retryKey = `hirestepx_eval_retry_${sessionId}`;
+        await saveToIDB(retryKey, {
+          transcript,
+          type: interviewType,
+          difficulty: interviewDifficulty,
+          role: user?.targetRole || "the role",
+          company: user?.targetCompany,
+          questions: interviewScript.filter(s => s.type === "question" || s.type === "follow-up").map(s => s.aiText),
+          sessionId,
+          queuedAt: Date.now(),
+        });
+      } catch { /* IDB save is best-effort */ }
       try {
         navigate(`/session/${sessionId}`);
       } catch { /* already navigating or unmounted */ }
@@ -843,8 +901,27 @@ export function useInterviewEngine() {
     const questionBonus = Math.min(5, Math.floor(transcript.filter(t => t.speaker === "user").length * 1.5));
     const fallbackScore = Math.min(98, Math.max(60, baseScore + difficultyBonus + timeBonus + questionBonus));
 
-    const hasAnyAnswers = transcript.some(t => t.speaker === "user");
-    score = fallbackScore;
+    const hasAnyAnswers = transcript.some(t => t.speaker === "user" && t.text.length > 10 && !/^\[.*\]$/.test(t.text.trim()));
+    score = hasAnyAnswers ? fallbackScore : Math.min(30, fallbackScore);
+
+    // Build heuristic skill scores for fallback (used when LLM eval fails/times out)
+    const userAnswers = transcript.filter(t => t.speaker === "user");
+    const avgAnswerLen = userAnswers.length > 0 ? userAnswers.reduce((s, t) => s + t.text.length, 0) / userAnswers.length : 0;
+    const hasMetrics = userAnswers.some(t => /\d+%|\d+x|\$[\d,]+|\d+ (users|customers|months|days|hours|team|people)/.test(t.text));
+    const usesI = userAnswers.some(t => /\bI\b/.test(t.text));
+    const fillerCount = userAnswers.reduce((s, t) => s + (t.text.match(/\b(um|uh|like|basically|actually|you know)\b/gi) || []).length, 0);
+    const structureScore = Math.min(100, fallbackScore + (avgAnswerLen > 200 ? 5 : -5) + (hasMetrics ? 8 : -3));
+    const commScore = Math.min(100, fallbackScore + (fillerCount < 3 ? 5 : -5) + (avgAnswerLen > 100 ? 3 : -5));
+    const fallbackSkillScores: Record<string, number> = {
+      communication: Math.max(40, Math.min(95, commScore)),
+      structure: Math.max(40, Math.min(95, structureScore)),
+      technicalDepth: Math.max(40, Math.min(95, fallbackScore + (avgAnswerLen > 300 ? 5 : -5))),
+      leadership: Math.max(40, Math.min(95, fallbackScore + (usesI ? 3 : -5))),
+      problemSolving: Math.max(40, Math.min(95, fallbackScore)),
+      confidence: Math.max(40, Math.min(95, fallbackScore + (fillerCount < 2 ? 5 : -8))),
+      specificity: Math.max(40, Math.min(95, fallbackScore + (hasMetrics ? 10 : -10))),
+    };
+
     let idealAnswers: { question: string; ideal: string; candidateSummary: string; rating?: string; starBreakdown?: Record<string, string>; workedWell?: string; toImprove?: string }[] = [];
     let starAnalysis: { overall: number; breakdown: Record<string, number>; tip: string } | undefined;
     let strengths: string[] | undefined;
@@ -901,6 +978,8 @@ export function useInterviewEngine() {
           if (Array.isArray(evaluation.nextSteps)) nextSteps = evaluation.nextSteps;
         } else {
           setUsedFallbackScore(true);
+          skillScores = fallbackSkillScores;
+          aiFeedback = "AI evaluation was unavailable. Scores are estimated based on answer length, structure, and specificity. Practice again for a full AI evaluation.";
         }
       } catch (err) {
         const errMsg = err instanceof Error ? err.message : "Could not get AI feedback. Using estimated score.";
@@ -908,6 +987,11 @@ export function useInterviewEngine() {
           setEvalTimedOut(true);
         } else {
           setUsedFallbackScore(true);
+        }
+        // Always provide skill scores even on error
+        if (!skillScores) {
+          skillScores = fallbackSkillScores;
+          if (!aiFeedback) aiFeedback = "AI feedback unavailable — scores estimated from your answers. Try again for full AI analysis.";
         }
         setSaveWarning(errMsg);
         if (!navigator.onLine || errMsg.toLowerCase().includes("network") || errMsg.toLowerCase().includes("fetch")) {
@@ -926,6 +1010,12 @@ export function useInterviewEngine() {
       }
     } else {
       setUsedFallbackScore(true);
+      skillScores = fallbackSkillScores;
+      if (!hasAnyAnswers) {
+        aiFeedback = "No answers were recorded in this session. Try speaking clearly into your microphone, or use the text input option.";
+      } else {
+        aiFeedback = "AI evaluation was unavailable. Scores are estimated based on answer length, structure, and specificity.";
+      }
     }
 
     sessionId = safeUUID();
@@ -981,7 +1071,16 @@ export function useInterviewEngine() {
       toast("Session saved successfully!", "success");
     }
 
-    track("session_complete", { type: interviewType, score, difficulty: interviewDifficulty });
+    track("session_complete", {
+      type: interviewType,
+      score,
+      difficulty: interviewDifficulty,
+      duration: elapsed,
+      questions: totalQuestions,
+      usedFallback: !!(usedFallbackScore || evalTimedOut),
+      hasSkillScores: !!skillScores,
+      hasFeedback: !!aiFeedback,
+    });
 
     try { localStorage.removeItem(draftKey); } catch { /* expected: localStorage cleanup is non-critical */ }
     try { await deleteFromIDB(draftKey); } catch { /* expected: IDB cleanup is non-critical */ }

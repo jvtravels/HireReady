@@ -12,7 +12,7 @@ export function LogoMarquee() {
   return (
     <section ref={ref} className="reveal landing-section" style={{ padding: "60px 40px", borderTop: `1px solid ${c.border}`, borderBottom: `1px solid ${c.border}` }}>
       <p style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 500, letterSpacing: "0.1em", textTransform: "uppercase", color: c.stone, textAlign: "center", marginBottom: 36 }}>
-        Our users have landed roles at
+        Practice for interviews at 50+ companies including
       </p>
       <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 44, flexWrap: "wrap", maxWidth: 1000, margin: "0 auto" }}>
         {companyLogos.map((logo) => (
@@ -44,10 +44,10 @@ export function LogoMarquee() {
    ═══════════════════════════════════════════════ */
 export function StatsSection() {
   const sectionRef = useReveal<HTMLElement>();
-  const stat1 = useCountUp(6, 1200);
+  const stat1 = useCountUp(10, 1200);
   const stat2 = useCountUp(50, 1500);
   const stat3 = useCountUp(3, 800);
-  const stat4 = useCountUp(0, 1200);
+  const stat4 = useCountUp(10, 1200);
 
   const stats = [
     { ref: stat1.ref, value: `${stat1.value}`, label: "Interview Types", icon: (
@@ -56,10 +56,10 @@ export function StatsSection() {
     { ref: stat2.ref, value: `${stat2.value}+`, label: "Target Companies", icon: (
       <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
     )},
-    { ref: stat3.ref, value: `${stat3.value}`, label: "Free Sessions to Start", icon: (
+    { ref: stat3.ref, value: `${stat3.value}`, label: "Free Sessions", icon: (
       <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
     )},
-    { ref: stat4.ref, value: `₹${stat4.value}`, label: "To Get Started", icon: (
+    { ref: stat4.ref, value: `₹${stat4.value}`, label: "Per Session", icon: (
       <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
     )},
   ];
@@ -102,7 +102,8 @@ export function ProblemSection() {
             aspectRatio: "4 / 5",
           }}>
             <img
-              src="https://images.unsplash.com/photo-1551836022-d5d88e9218df?w=600&h=750&fit=crop&crop=face&q=75"
+              src="https://images.unsplash.com/photo-1551836022-d5d88e9218df?w=400&h=500&fit=crop&crop=face&q=60"
+              srcSet="https://images.unsplash.com/photo-1551836022-d5d88e9218df?w=800&h=1000&fit=crop&crop=face&q=60 2x"
               alt="Professional preparing for interview"
               loading="lazy" width={600} height={750}
               style={{ width: "100%", height: "100%", objectFit: "cover", filter: "brightness(0.85)" }}
@@ -142,10 +143,13 @@ export function ProblemSection() {
             You know your stuff. But interviews are{" "}
             <span style={{ color: c.gilt }}>a different skill.</span>
           </p>
-          <p style={{ fontFamily: font.ui, fontSize: 17, fontWeight: 400, lineHeight: 1.7, color: c.stone, marginBottom: 32 }}>
-            Reading interview tips online doesn't prepare you for the real thing.
-            Generic question banks don't match your experience. And practicing alone
-            means you never know what you're getting wrong — until it's too late.
+          <p style={{ fontFamily: font.ui, fontSize: 17, fontWeight: 400, lineHeight: 1.7, color: c.stone, marginBottom: 20 }}>
+            Reading interview tips online is like learning to swim by watching YouTube.
+            Generic question banks don't match your experience. And practicing with friends?
+            They won't tell you that you said "basically" 15 times.
+          </p>
+          <p style={{ fontFamily: font.ui, fontSize: 15, fontWeight: 400, lineHeight: 1.7, color: c.chalk, marginBottom: 32 }}>
+            One bad interview costs you a ₹20 LPA offer. A coaching session costs ₹5,000+. HireStepX costs ₹10.
           </p>
           <div style={{ width: 80, height: 1, background: `linear-gradient(90deg, transparent, ${c.gilt}, transparent)`, opacity: 0.5 }} />
         </div>
@@ -239,9 +243,9 @@ export function ScorePreview() {
     <section ref={setRefs} className="reveal landing-section" style={{ padding: "140px 40px", maxWidth: 900, margin: "0 auto" }}>
       <div style={{ textAlign: "center", marginBottom: 64 }}>
         <p style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: c.gilt, marginBottom: 16 }}>Precision Feedback</p>
-        <h2 className="text-glow" style={{ fontFamily: font.display, fontSize: "clamp(32px, 4vw, 48px)", fontWeight: 400, letterSpacing: "-0.02em", color: c.ivory, lineHeight: 1.15, marginBottom: 16 }}>Scores that mean something</h2>
+        <h2 className="text-glow" style={{ fontFamily: font.display, fontSize: "clamp(32px, 4vw, 48px)", fontWeight: 400, letterSpacing: "-0.02em", color: c.ivory, lineHeight: 1.15, marginBottom: 16 }}>Know exactly where you stand</h2>
         <p style={{ fontFamily: font.ui, fontSize: 15, color: c.stone, lineHeight: 1.6, maxWidth: 500, margin: "0 auto" }}>
-          Every session produces specific, actionable feedback across the dimensions that matter for your target role.
+          Every answer scored on communication, structure, and technical depth. Track improvement across sessions. See yourself getting better.
         </p>
       </div>
 
@@ -271,6 +275,56 @@ export function ScorePreview() {
 }
 
 /* ═══════════════════════════════════════════════
+   COMPARISON TABLE
+   ═══════════════════════════════════════════════ */
+export function ComparisonSection() {
+  const ref = useReveal<HTMLElement>();
+  const rows = [
+    { alt: "YouTube / Blogs", problem: "No practice, just theory", us: "Actual AI mock interviews with scoring" },
+    { alt: "Practicing alone", problem: "No feedback until rejection", us: "Instant scored feedback after every answer" },
+    { alt: "Friends / peers", problem: "Inconsistent, biased, awkward", us: "Objective scoring, available 24/7" },
+    { alt: "Career coaches", problem: "₹3,000-10,000 per session", us: "₹10/session or ₹149/month unlimited" },
+    { alt: "Generic AI tools", problem: "Text-only, no voice, no scoring", us: "Voice-based + real-time follow-ups + analytics" },
+  ];
+
+  return (
+    <section ref={ref} className="reveal landing-section" style={{ padding: "140px 40px", maxWidth: 900, margin: "0 auto" }}>
+      <div style={{ textAlign: "center", marginBottom: 64 }}>
+        <p style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: c.gilt, marginBottom: 16 }}>Why Switch</p>
+        <h2 className="text-glow" style={{ fontFamily: font.display, fontSize: "clamp(32px, 4vw, 48px)", fontWeight: 400, letterSpacing: "-0.02em", color: c.ivory, lineHeight: 1.15 }}>
+          What you're doing now vs. HireStepX
+        </h2>
+      </div>
+      <div className="gradient-border-card comparison-table" style={{ overflow: "hidden", zIndex: 0 }}>
+        {/* Header */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1.2fr 1.5fr", borderBottom: `1px solid ${c.border}` }}>
+          <div style={{ padding: "16px 20px", fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.stone, letterSpacing: "0.06em", textTransform: "uppercase" }}>Alternative</div>
+          <div style={{ padding: "16px 20px", fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.ember, letterSpacing: "0.06em", textTransform: "uppercase" }}>The Problem</div>
+          <div style={{ padding: "16px 20px", fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.sage, letterSpacing: "0.06em", textTransform: "uppercase" }}>HireStepX</div>
+        </div>
+        {rows.map((row, i) => (
+          <div key={i} style={{
+            display: "grid", gridTemplateColumns: "1fr 1.2fr 1.5fr",
+            borderBottom: i < rows.length - 1 ? `1px solid ${c.border}` : "none",
+            transition: "background 0.2s ease",
+          }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(212,179,127,0.03)"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+          >
+            <div style={{ padding: "16px 20px", fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.ivory }}>{row.alt}</div>
+            <div style={{ padding: "16px 20px", fontFamily: font.ui, fontSize: 13, color: c.stone, lineHeight: 1.5 }}>{row.problem}</div>
+            <div style={{ padding: "16px 20px", fontFamily: font.ui, fontSize: 13, color: c.chalk, lineHeight: 1.5, display: "flex", alignItems: "flex-start", gap: 8 }}>
+              <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="2" strokeLinecap="round" style={{ flexShrink: 0, marginTop: 2 }}><polyline points="20 6 9 17 4 12"/></svg>
+              {row.us}
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+/* ═══════════════════════════════════════════════
    TESTIMONIALS
    ═══════════════════════════════════════════════ */
 export function TestimonialsSection() {
@@ -290,7 +344,7 @@ export function TestimonialsSection() {
     <section ref={ref} className="reveal landing-section" style={{ padding: "140px 40px", maxWidth: 1100, margin: "0 auto" }}>
       <div style={{ textAlign: "center", marginBottom: 64 }}>
         <p style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: c.gilt, marginBottom: 16 }}>Real Results</p>
-        <h2 className="text-glow" style={{ fontFamily: font.display, fontSize: "clamp(32px, 4vw, 48px)", fontWeight: 400, letterSpacing: "-0.02em", color: c.ivory, lineHeight: 1.15 }}>People who practiced here got hired</h2>
+        <h2 className="text-glow" style={{ fontFamily: font.display, fontSize: "clamp(32px, 4vw, 48px)", fontWeight: 400, letterSpacing: "-0.02em", color: c.ivory, lineHeight: 1.15 }}>They practiced here. Then got the offer.</h2>
       </div>
 
       <div

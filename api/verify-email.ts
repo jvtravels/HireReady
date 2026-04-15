@@ -9,8 +9,31 @@ const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 const APP_URL = (process.env.APP_URL || "https://hirestepx.vercel.app").replace(/\/$/, "");
 const EMAIL_SECRET = process.env.EMAIL_VERIFICATION_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY || "fallback-secret";
 
-function generateVerifyToken(email: string): string {
-  return createHmac("sha256", EMAIL_SECRET).update(email.toLowerCase().trim()).digest("hex");
+/** Generate a time-limited verification token (must match send-welcome.ts) */
+function generateVerifyToken(email: string, expiresAt?: number): string {
+  const expiry = expiresAt ?? Math.floor(Date.now() / (24 * 60 * 60 * 1000));
+  return createHmac("sha256", EMAIL_SECRET).update(`${email.toLowerCase().trim()}:${expiry}`).digest("hex") + "." + expiry;
+}
+
+function validateToken(email: string, token: string): boolean {
+  // Token format: "<hmac>.<expiryWindow>"
+  const dotIdx = token.lastIndexOf(".");
+  if (dotIdx === -1) {
+    // Legacy token without expiry — accept if HMAC matches (backwards compat)
+    const legacyExpected = createHmac("sha256", EMAIL_SECRET).update(email.toLowerCase().trim()).digest("hex");
+    return token === legacyExpected;
+  }
+  const expiryStr = token.slice(dotIdx + 1);
+  const expiry = parseInt(expiryStr, 10);
+  if (isNaN(expiry)) return false;
+
+  // Token is valid for the window it was created in + 1 window (≈24-48 hours)
+  const currentWindow = Math.floor(Date.now() / (24 * 60 * 60 * 1000));
+  if (currentWindow - expiry > 1) return false; // Expired (more than ~48 hours old)
+
+  // Regenerate and compare
+  const expected = generateVerifyToken(email, expiry);
+  return token === expected;
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -26,9 +49,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.redirect(302, `${APP_URL}/login?error=invalid-link`);
   }
 
-  // Validate HMAC token
-  const expectedToken = generateVerifyToken(email);
-  if (token !== expectedToken) {
+  // Validate HMAC token with expiry check
+  if (!validateToken(email, token)) {
     return res.redirect(302, `${APP_URL}/login?error=invalid-token`);
   }
 
@@ -39,23 +61,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     // Find user by email using Supabase Admin API
-    const listRes = await fetch(
-      `${SUPABASE_URL}/auth/v1/admin/users?page=1&per_page=1`,
-      {
-        method: "GET",
-        headers: {
-          apikey: SUPABASE_SERVICE_ROLE_KEY,
-          Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-        },
-      }
-    );
-
-    if (!listRes.ok) {
-      console.error("Failed to list users:", listRes.status);
-      return res.redirect(302, `${APP_URL}/login?error=verification-failed`);
-    }
-
-    // Search for user by email using the filter endpoint
     const searchRes = await fetch(
       `${SUPABASE_URL}/auth/v1/admin/users?filter=${encodeURIComponent(email)}`,
       {
@@ -105,7 +110,48 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.redirect(302, `${APP_URL}/login?error=verification-failed`);
     }
 
-    // Success — redirect to login with success message
+    // Generate a magic link so the user is auto-logged-in after verification.
+    // Supabase admin generate_link returns an action_link that goes through the
+    // Supabase auth server → sets session cookies → redirects to our app.
+    try {
+      const magicRes = await fetch(
+        `${SUPABASE_URL}/auth/v1/admin/generate_link`,
+        {
+          method: "POST",
+          headers: {
+            apikey: SUPABASE_SERVICE_ROLE_KEY,
+            Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            type: "magiclink",
+            email: email.toLowerCase().trim(),
+            options: { redirectTo: `${APP_URL}/onboarding` },
+          }),
+        }
+      );
+      if (magicRes.ok) {
+        const magicData = await magicRes.json();
+        // Supabase returns action_link — a URL through the Supabase auth server
+        const actionLink = magicData.action_link
+          || magicData.properties?.action_link;
+        if (actionLink && typeof actionLink === "string" && actionLink.startsWith("http")) {
+          // Rewrite the redirect_to in the action link to point to our app
+          // (in case Supabase used its own default redirect)
+          const linkUrl = new URL(actionLink);
+          linkUrl.searchParams.set("redirect_to", `${APP_URL}/onboarding`);
+          return res.redirect(302, linkUrl.toString());
+        }
+        console.warn("generate_link returned no action_link:", JSON.stringify(magicData).slice(0, 200));
+      } else {
+        const errText = await magicRes.text().catch(() => "");
+        console.warn("generate_link failed:", magicRes.status, errText.slice(0, 200));
+      }
+    } catch (magicErr) {
+      console.error("Magic link generation failed, falling back to manual login:", magicErr);
+    }
+
+    // Fallback — redirect to login with success banner
     return res.redirect(302, `${APP_URL}/login?verified=true`);
   } catch (err) {
     console.error("Email verification error:", err);

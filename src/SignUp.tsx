@@ -123,11 +123,33 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+
+    // Client-side validation
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+      setError("Please enter a valid email address.");
+      return;
+    }
+    if (!password || password.length < 8) {
+      setError(isLogin ? "Password is required." : "Password must be at least 8 characters.");
+      return;
+    }
+    if (!isLogin && !name.trim()) {
+      setError("Please enter your name.");
+      return;
+    }
+    // Warn on likely email typo before submitting
+    if (emailSuggestion) {
+      setError(`Did you mean ${emailSuggestion}? Click the suggestion or submit again to continue.`);
+      setEmailSuggestion("");
+      return;
+    }
+
     setLoading(true);
     track(isLogin ? "login_submit" : "signup_submit");
     try {
       if (isLogin) {
-        const result = await login(email, password);
+        const result = await login(trimmedEmail, password);
         if (!result.success) {
           setError(result.error || "Login failed");
           return;
@@ -141,7 +163,7 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
         // Navigation handled by useEffect when isLoggedIn changes
         // This avoids double-redirect since useEffect checks onboarding status
       } else {
-        const result = await signup(email, name, password);
+        const result = await signup(trimmedEmail, name.trim(), password);
         if (!result.success) {
           setError(result.error || "Signup failed");
           return;

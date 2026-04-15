@@ -416,7 +416,7 @@ export interface NotificationsSectionProps {
 }
 
 export const NotificationsSection = memo(function NotificationsSection(props: NotificationsSectionProps) {
-  const { persisted, autoSave, showToast, calendarEvents } = props;
+  const { persisted: _persisted, autoSave: _autoSave, showToast, calendarEvents } = props;
 
   return (
     <div style={cardStyle}>
@@ -472,20 +472,20 @@ export const NotificationsSection = memo(function NotificationsSection(props: No
       })()}
 
       {[
-        { label: "Email notifications", desc: "Session reminders and progress updates", key: "emailNotifs" as const, on: persisted.emailNotifs !== false },
-        { label: "Streak reminders", desc: "Get nudged before you lose your streak", key: "streakReminder" as const, on: persisted.streakReminder !== false },
-        { label: "Weekly digest", desc: "Summary of your weekly progress every Monday", key: "weeklyDigest" as const, on: persisted.weeklyDigest || false },
+        { label: "Email notifications", desc: "Session reminders and progress updates" },
+        { label: "Streak reminders", desc: "Get nudged before you lose your streak" },
+        { label: "Weekly digest", desc: "Summary of your weekly progress every Monday" },
       ].map((item, i, arr) => (
         <div key={i} style={{
           display: "flex", alignItems: "center", justifyContent: "space-between",
-          padding: "18px 0",
+          padding: "18px 0", opacity: 0.45, cursor: "not-allowed",
           borderBottom: i < arr.length - 1 ? `1px solid ${c.border}` : "none",
         }}>
           <div>
-            <span style={{ fontFamily: font.ui, fontSize: 14, fontWeight: 500, color: c.ivory, display: "block", marginBottom: 3 }}>{item.label}</span>
+            <span style={{ fontFamily: font.ui, fontSize: 14, fontWeight: 500, color: c.ivory, display: "block", marginBottom: 3 }}>{item.label} <span style={{ fontSize: 11, color: c.gilt, fontWeight: 400 }}>(coming soon)</span></span>
             <span style={{ fontFamily: font.ui, fontSize: 12, color: c.stone }}>{item.desc}</span>
           </div>
-          <Toggle on={item.on} onToggle={() => { autoSave({ [item.key]: !item.on }); showToast(`${item.label} ${item.on ? "off" : "on"}`); }} />
+          <Toggle on={false} onToggle={() => { showToast("Email notifications coming soon!"); }} />
         </div>
       ))}
     </div>

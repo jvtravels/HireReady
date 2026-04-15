@@ -79,6 +79,7 @@ export interface Profile {
   subscription_start: string | null;
   subscription_end: string | null;
   cancel_at_period_end: boolean;
+  subscription_paused: boolean;
   has_completed_onboarding: boolean;
   razorpay_payment_id: string | null;
   razorpay_subscription_id: string | null;
@@ -176,6 +177,24 @@ export async function saveSession(session: Omit<SessionRecord, "created_at">) {
   const result = await client.from("sessions").insert(session);
   if (result.error) throw new Error(result.error.message);
   return result;
+}
+
+/** Decrement session_credits by 1 if user has credits > 0 and is on free tier past the free limit */
+export async function decrementSessionCredit(userId: string): Promise<boolean> {
+  const client = await getSupabase();
+  // Fetch current profile
+  const { data: profile } = await client.from("profiles").select("session_credits, subscription_tier, subscription_end").eq("id", userId).maybeSingle();
+  if (!profile) return false;
+  // Only decrement for free-tier users with credits
+  let tier = profile.subscription_tier || "free";
+  if (tier !== "free" && profile.subscription_end && new Date(profile.subscription_end) < new Date()) tier = "free";
+  if (tier !== "free") return false; // paid users don't use credits
+  const credits = profile.session_credits || 0;
+  if (credits <= 0) return false;
+  // Decrement by 1
+  const { error } = await client.from("profiles").update({ session_credits: credits - 1 }).eq("id", userId);
+  if (error) { console.warn("[supabase] credit decrement failed:", error.message); return false; }
+  return true;
 }
 
 export async function getUserSessions(userId: string): Promise<SessionRecord[]> {

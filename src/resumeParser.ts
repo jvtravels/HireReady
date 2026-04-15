@@ -155,7 +155,12 @@ async function readPdf(file: File): Promise<string> {
     textParts.push(lines.join("\n"));
   }
 
-  return textParts.join("\n\n").trim();
+  // Collapse spaced-out letters (common in decorative PDF headers)
+  // e.g. "C O N T A C T" → "CONTACT", "E D U C A T I O N" → "EDUCATION"
+  const raw = textParts.join("\n\n").trim();
+  return raw.replace(/\b([A-Z]) (?:[A-Z] ){2,}[A-Z]\b/g, (match) =>
+    match.replace(/ /g, "")
+  );
 }
 
 /* ─── Structured Resume Data ─── */
@@ -211,10 +216,13 @@ function extractContact(text: string): Pick<ParsedResume, "name" | "email" | "ph
   for (const line of lines.slice(0, 8)) {
     if (line.match(/[@()\d]{4,}/) || line.match(/linkedin|http|www\./i)) continue;
     if (line.match(SECTION_PATTERNS.summary) || line.match(SECTION_PATTERNS.experience)) continue;
-    const cleaned = line.replace(/[-—:=|_*#.]+/g, "").trim();
+    let cleaned = line.replace(/[-—:=|_*#.]+/g, "").trim();
+    // Collapse any remaining spaced-out letters (e.g. "C O N T A C T" → "CONTACT")
+    cleaned = cleaned.replace(/\b([A-Z]) (?:[A-Z] ){1,}[A-Z]\b/g, m => m.replace(/ /g, ""));
     if (sectionHeaderPattern.test(cleaned)) continue;
-    // Skip all-caps single/two words under 20 chars (likely section headers like "CONTACT", "SKILLS")
-    if (/^[A-Z\s]{2,}$/.test(cleaned) && cleaned.split(/\s+/).length <= 2 && cleaned.length < 20) continue;
+    // Skip single all-caps words (section headers like "CONTACT", "SKILLS")
+    // But allow 2-3 word all-caps (could be a name like "JAY VYAS")
+    if (/^[A-Z]{2,}$/.test(cleaned)) continue;
     if (cleaned.length > 2 && cleaned.length < 60) { name = cleaned; break; }
   }
 
@@ -393,6 +401,14 @@ export async function extractResumeText(file: File): Promise<string> {
     }
   } else if (name.endsWith(".pdf")) {
     text = await readPdf(file);
+    // Detect scanned/image-based PDFs that yield no extractable text
+    if (text.trim().length < 30) {
+      throw new Error(
+        text.trim().length === 0
+          ? "This PDF appears to be a scanned image with no extractable text. Please upload a text-based PDF, or copy your resume into a DOCX/TXT file."
+          : "Very little text was extracted from this PDF — it may be a scanned document. For best results, upload a text-based PDF or DOCX file."
+      );
+    }
   } else {
     throw new Error("Unsupported file type. Please upload a PDF, DOCX, or TXT file.");
   }

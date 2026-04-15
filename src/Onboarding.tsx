@@ -167,6 +167,7 @@ export default function Onboarding() {
   const undoRef = useRef<{ fileName: string; resumeText: string; resumeParsed: ParsedResume | null; aiProfile: ResumeProfile | null; aiPhase: "idle" | "analyzing" | "done"; targetRole: string; targetCompany: string; userName: string } | null>(null);
   const analysisAbortRef = useRef<AbortController | null>(null);
   const [showUndo, setShowUndo] = useState(false);
+  const [resumeSkipped, setResumeSkipped] = useState(false);
   const undoTimerRef = useRef<number>(0);
 
   // ─── Restore resume from user profile on mount/refresh ───
@@ -275,14 +276,17 @@ export default function Onboarding() {
     setFileName(file.name);
     setResumeError("");
     setResumeParsing(true);
+    setResumeSkipped(false);
     try {
       const text = await extractResumeText(file);
       if (!text || text.trim().length < 30) {
-        const ext = file.name.split(".").pop()?.toLowerCase();
-        if (ext && ["jpg", "jpeg", "png", "gif", "webp", "bmp"].includes(ext)) {
+        const fileExt = file.name.split(".").pop()?.toLowerCase();
+        if (fileExt && ["jpg", "jpeg", "png", "gif", "webp", "bmp"].includes(fileExt)) {
           throw new Error("Image files aren't supported. Please upload a PDF, DOCX, or TXT resume.");
         }
-        throw new Error("We couldn't extract text from this file. Try a different format.");
+        // For PDFs, extractResumeText now throws with a specific scanned-PDF message.
+        // This catch handles DOCX/TXT files that yield very little text.
+        throw new Error("Very little text was extracted from this file. Please check that it contains your resume content, or try a different format (PDF or DOCX).");
       }
       const data = parseResumeData(text);
       setResumeText(text);
@@ -403,7 +407,7 @@ export default function Onboarding() {
       if (e.key === "Enter") {
         e.preventDefault();
         if (step < TOTAL_STEPS) {
-          if (step === 1 && (!resumeParsed || aiPhase !== "done" || !userName.trim())) return;
+          if (step === 1 && !resumeSkipped && (!resumeParsed || aiPhase !== "done" || !userName.trim())) return;
           if (step === 2 && (!targetRole.trim() || interviewFocus.length === 0)) return;
           goNext();
         } else {
@@ -467,8 +471,8 @@ export default function Onboarding() {
   };
 
   const isStep1Busy = step === 1 && (resumeParsing || aiPhase === "analyzing");
-  const isStep1NoResume = step === 1 && !resumeParsed && !resumeParsing && aiPhase !== "analyzing";
-  const isStep1NameEmpty = step === 1 && aiPhase === "done" && !userName.trim();
+  const isStep1NoResume = step === 1 && !resumeParsed && !resumeParsing && aiPhase !== "analyzing" && !resumeSkipped;
+  const isStep1NameEmpty = step === 1 && aiPhase === "done" && !userName.trim() && !resumeSkipped;
   const isStep2Disabled = step === 2 && (!targetRole.trim() || interviewFocus.length === 0);
   const isContinueDisabled = isStep1Busy || isStep1NoResume || isStep1NameEmpty || isStep2Disabled;
 
@@ -555,6 +559,7 @@ export default function Onboarding() {
                   onDragLeave={() => { setIsDragging(false); setDragFileName(""); }}
                   onDrop={(e) => { e.preventDefault(); setIsDragging(false); setDragFileName(""); handleFileChange(e.dataTransfer.files[0]); }}
                   onFileChange={handleFileChange} onUndo={handleUndo}
+                  onSkip={() => { setResumeSkipped(true); goNext(); }}
                 />
               )}
               {(resumeParsing || aiPhase === "analyzing") && aiPhase !== "done" && (
@@ -576,7 +581,7 @@ export default function Onboarding() {
             <SessionSetupStep
               targetRole={targetRole} targetCompany={targetCompany} interviewFocus={interviewFocus}
               sessionLength={sessionLength} roleAutoFilled={roleAutoFilled} roleTouched={roleTouched}
-              isFreeUser={isFreeUser}
+              isFreeUser={isFreeUser} resumeSkipped={resumeSkipped} userName={userName} onUserNameChange={setUserName}
               onRoleChange={(v) => { setTargetRole(v); setRoleAutoFilled(false); setRoleTouched(true); }}
               onCompanyChange={setTargetCompany} onFocusChange={setInterviewFocus}
               onSessionLengthChange={setSessionLength} onShowUpgrade={() => setShowUpgradeModal(true)}

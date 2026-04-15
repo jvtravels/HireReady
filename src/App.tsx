@@ -6,8 +6,8 @@ import { useAuth, hasStoredSession, getLastRoute } from "./AuthContext";
 import { useSEO, webAppJsonLd, faqJsonLd } from "./useSEO";
 import { LANDING_FAQS } from "./landingData";
 import {
-  Nav, Hero, LogoMarquee, StatsSection, ProblemSection,
-  HowItWorks, DemoVideoSection, FeaturesSection, ScorePreview,
+  Nav, Hero, StickyCTA, LogoMarquee, StatsSection, ProblemSection,
+  HowItWorks, FeaturesSection, ScorePreview, ComparisonSection,
 } from "./landing";
 
 // Lazy-load below-fold sections to reduce initial bundle and speed up FCP/LCP
@@ -80,9 +80,9 @@ export default function App() {
         <StatsSection />
         <ProblemSection />
         <HowItWorks />
-        <DemoVideoSection />
         <FeaturesSection />
         <ScorePreview />
+        <ComparisonSection />
         <div ref={triggerRef} />
         {showLazy && (
           <Suspense fallback={null}>
@@ -93,6 +93,7 @@ export default function App() {
         )}
       </main>
       {showLazy ? <Suspense fallback={null}><LazyFooter /></Suspense> : null}
+      <StickyCTA />
     </div>
   );
 }

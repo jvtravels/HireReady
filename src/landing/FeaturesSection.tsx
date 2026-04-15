@@ -9,7 +9,7 @@ export function FeaturesSection() {
       <div style={{ textAlign: "center", marginBottom: 80 }}>
         <p style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: c.gilt, marginBottom: 16 }}>Why HireStepX</p>
         <h2 className="text-glow" style={{ fontFamily: font.display, fontSize: "clamp(32px, 4vw, 48px)", fontWeight: 400, letterSpacing: "-0.02em", color: c.ivory, lineHeight: 1.15 }}>
-          Everything you need to ace the interview
+          Not generic tips. Specific, scored practice.
         </h2>
       </div>
       {features.map((f, i) => <FeatureRow key={f.label} feature={f} index={i} />)}

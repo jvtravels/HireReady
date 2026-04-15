@@ -34,6 +34,31 @@ export function scoreTip(score: number) {
   return "Needs work: Key areas need practice before interviews";
 }
 
+/** What each skill score measures — shown as tooltips in score breakdown */
+export const skillDescriptions: Record<string, string> = {
+  communication: "How clearly and concisely you express ideas. Covers vocabulary, sentence structure, and avoiding filler words.",
+  Communication: "How clearly and concisely you express ideas. Covers vocabulary, sentence structure, and avoiding filler words.",
+  structure: "How well-organized your answers are. Do you follow a logical flow (e.g. STAR method) or jump between points?",
+  Structure: "How well-organized your answers are. Do you follow a logical flow (e.g. STAR method) or jump between points?",
+  technicalDepth: "Depth of domain knowledge demonstrated. Includes accuracy of technical details, tools, and frameworks mentioned.",
+  "Technical Depth": "Depth of domain knowledge demonstrated. Includes accuracy of technical details, tools, and frameworks mentioned.",
+  leadership: "Evidence of ownership, initiative, and influence. Did you drive outcomes or just participate?",
+  Leadership: "Evidence of ownership, initiative, and influence. Did you drive outcomes or just participate?",
+  problemSolving: "How you approach problems: identifying root causes, evaluating options, and arriving at solutions.",
+  "Problem-Solving": "How you approach problems: identifying root causes, evaluating options, and arriving at solutions.",
+  "Problem Solving": "How you approach problems: identifying root causes, evaluating options, and arriving at solutions.",
+  confidence: "Assertiveness and conviction in your answers. Includes pace, tone, and decisiveness vs. hedging.",
+  Confidence: "Assertiveness and conviction in your answers. Includes pace, tone, and decisiveness vs. hedging.",
+  specificity: "Use of concrete numbers, metrics, and examples rather than vague or generic statements.",
+  Specificity: "Use of concrete numbers, metrics, and examples rather than vague or generic statements.",
+  adaptability: "Ability to pivot when asked follow-ups or unexpected questions. Flexibility in framing answers.",
+  Adaptability: "Ability to pivot when asked follow-ups or unexpected questions. Flexibility in framing answers.",
+  "Business Impact": "How well you connect your work to business outcomes — revenue, efficiency, user growth, cost savings.",
+  businessImpact: "How well you connect your work to business outcomes — revenue, efficiency, user growth, cost savings.",
+  "Answer Completeness": "Whether your answers fully address all parts of the question without leaving gaps.",
+  answerCompleteness: "Whether your answers fully address all parts of the question without leaving gaps.",
+};
+
 export function normalizeType(type: string): string {
   const map: Record<string, string> = {
     behavioral: "Behavioral", strategic: "Strategic",

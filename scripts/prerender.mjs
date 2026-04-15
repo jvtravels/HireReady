@@ -33,6 +33,13 @@ const ROUTES = [
   "/blog/amazon-leadership-principles-interview",
   "/blog/system-design-interview-preparation",
   "/blog/salary-negotiation-tips-india",
+  "/blog/campus-placement-interview-tips",
+  "/blog/mock-interview-practice-guide",
+  "/blog/star-method-interview-answers",
+  "/page/about",
+  "/page/contact",
+  "/page/careers",
+  "/page/help",
 ];
 
 // Simple static file server for the dist directory

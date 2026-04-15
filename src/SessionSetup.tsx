@@ -5,6 +5,7 @@ import { track } from "@vercel/analytics";
 
 import { c, font } from "./tokens";
 import { useAuth } from "./AuthContext";
+import { useToast } from "./Toast";
 import { getSupabase } from "./supabase";
 import { unlockAudio, prefetchTTS } from "./tts";
 import { UpgradeModal } from "./dashboardComponents";
@@ -197,6 +198,10 @@ const introByType: Record<string, string> = {
   "case-study": "Welcome to your case study interview. I'll present you with business scenarios that test your analytical thinking and problem-solving frameworks. Let's start.",
   "salary-negotiation": "Welcome to your salary negotiation practice session. I'll play the role of a hiring manager extending you an offer. We'll practice negotiating compensation, benefits, and terms. This is a safe space to build your confidence. Ready to negotiate?",
   "panel": "Welcome to your panel interview. I'm the hiring manager, and I'll be joined by our technical lead and HR partner. We'll each ask you questions from our perspective. Let's begin — tell us briefly about yourself.",
+  "campus-placement": "Welcome to your campus placement interview practice. We'll cover the typical questions asked during on-campus recruitment — aptitude, HR, and role-specific questions. Let's get you placement-ready!",
+  "hr-round": "Welcome to your HR round practice. We'll focus on culture fit, motivation, salary expectations, and behavioral questions that HR teams typically ask. Ready?",
+  "management": "Welcome to your management interview. We'll explore your people leadership, project management, and stakeholder communication skills. Let's begin.",
+  "government-psu": "Welcome to your government and public sector interview practice. These interviews test your awareness of public administration, ethics, current affairs, and your motivation for public service. Let's begin — are you ready?",
 };
 
 /* Focus type → interview type mapping */
@@ -207,6 +212,10 @@ const focusToType: Record<string, string> = {
   "Case Study": "case-study",
   "Salary Negotiation": "salary-negotiation",
   "Panel Interview": "panel",
+  "Campus Placement": "campus-placement",
+  "HR Round": "hr-round",
+  "Management": "management",
+  "Government / PSU": "government-psu",
 };
 
 /* ═══════════════════════════════════════════════
@@ -240,6 +249,18 @@ export default function SessionSetup() {
   const [interviewLanguage, _setInterviewLanguage] = useState("en");
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const isFreeUser = !user?.subscriptionTier || user.subscriptionTier === "free";
+  const { toast } = useToast();
+
+  // Notify user if their subscription just expired and auto-downgraded
+  useEffect(() => {
+    try {
+      const expired = sessionStorage.getItem("hirestepx_sub_expired");
+      if (expired) {
+        sessionStorage.removeItem("hirestepx_sub_expired");
+        toast(`Your ${expired} plan has expired. You're now on the free tier.`, "info");
+      }
+    } catch { /* noop */ }
+  }, [toast]);
 
   // Mic check
   const [micStatus, setMicStatus] = useState<"idle" | "requesting" | "granted" | "denied">("idle");
@@ -288,6 +309,8 @@ export default function SessionSetup() {
   }, [jobDescription, user?.resumeText]);
 
   const audioCtxRef = useRef<AudioContext | null>(null);
+  const [micTestState, setMicTestState] = useState<"idle" | "testing" | "pass" | "fail">("idle");
+  const micTestTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const requestMic = useCallback(async () => {
     setMicStatus("requesting");
     try {
@@ -300,13 +323,24 @@ export default function SessionSetup() {
       analyser.fftSize = 256;
       ctx.createMediaStreamSource(stream).connect(analyser);
       const buf = new Uint8Array(analyser.frequencyBinCount);
+
+      // Start mic pre-test: listen for 3s, check if any voice detected
+      setMicTestState("testing");
+      let peakLevel = 0;
       const poll = () => {
         analyser.getByteFrequencyData(buf);
         const avg = buf.reduce((a, b) => a + b, 0) / buf.length;
-        setMicLevel(Math.min(100, Math.round((avg / 128) * 100)));
+        const level = Math.min(100, Math.round((avg / 128) * 100));
+        if (level > peakLevel) peakLevel = level;
+        setMicLevel(level);
         animFrameRef.current = requestAnimationFrame(poll);
       };
       poll();
+
+      // After 3 seconds, evaluate whether voice was detected
+      micTestTimerRef.current = setTimeout(() => {
+        setMicTestState(peakLevel > 3 ? "pass" : "fail");
+      }, 3000);
     } catch { setMicStatus("denied"); }
   }, []);
 
@@ -315,6 +349,7 @@ export default function SessionSetup() {
       cancelAnimationFrame(animFrameRef.current);
       streamRef.current?.getTracks().forEach(t => t.stop());
       audioCtxRef.current?.close().catch(() => {});
+      if (micTestTimerRef.current) clearTimeout(micTestTimerRef.current);
     };
   }, []);
 
@@ -500,8 +535,12 @@ export default function SessionSetup() {
                       { value: "Strategic", icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>, desc: "Vision, roadmap, business alignment" },
                       { value: "Technical Leadership", icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>, desc: "Architecture, system design, tech strategy" },
                       { value: "Case Study", icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>, desc: "Problem-solving, analytical frameworks" },
-                      { value: "Salary Negotiation", icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>, desc: "Compensation, benefits, negotiation strategy" },
+                      { value: "Campus Placement", icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 1.66 2.69 3 6 3s6-1.34 6-3v-5"/></svg>, desc: "On-campus recruitment, fresher interviews" },
+                      { value: "HR Round", icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>, desc: "Culture fit, motivation, salary expectations" },
+                      { value: "Management", icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>, desc: "People leadership, project management" },
                       { value: "Panel Interview", icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>, desc: "Multiple interviewers, cross-functional evaluation" },
+                      { value: "Salary Negotiation", icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>, desc: "Compensation, benefits, negotiation strategy" },
+                      { value: "Government / PSU", icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 21h18M3 10h18M5 6l7-3 7 3M4 10v11M20 10v11M8 14v3M12 14v3M16 14v3"/></svg>, desc: "Public administration, ethics, current affairs" },
                     ].map(opt => {
                       const sel = interviewFocus[0] === opt.value;
                       return (
@@ -539,9 +578,9 @@ export default function SessionSetup() {
                   </div>
                   <div className="ob-s2-session-grid">
                     {[
-                      { value: "10m", label: "10 min", desc: "Quick practice", sub: "2–3 questions", paidOnly: false },
-                      { value: "15m", label: "15 min", desc: "Standard session", sub: "4–5 questions", recommended: true, paidOnly: true },
-                      { value: "25m", label: "25 min", desc: "Deep dive", sub: "6–8 questions", paidOnly: true },
+                      { value: "10m", label: "10 min", desc: "Quick warmup", sub: "2–3 questions", detail: "Good for a confidence check or a single topic", paidOnly: false },
+                      { value: "15m", label: "15 min", desc: "Standard interview", sub: "4–5 questions with follow-ups", detail: "Closest to a real interview round", recommended: true, paidOnly: true },
+                      { value: "25m", label: "25 min", desc: "Full simulation", sub: "6–8 questions, deep follow-ups", detail: "End-to-end mock with detailed scoring", paidOnly: true },
                     ].map(opt => {
                       const locked = opt.paidOnly && isFreeUser;
                       const sel = sessionLength === opt.value;
@@ -565,7 +604,8 @@ export default function SessionSetup() {
                           )}
                           <span style={{ fontFamily: font.ui, fontSize: 20, fontWeight: 600, color: sel ? c.gilt : c.ivory, display: "block", marginBottom: 2 }}>{opt.label}</span>
                           <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: sel ? c.ivory : c.chalk, display: "block", marginBottom: 2 }}>{opt.desc}</span>
-                          <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>{opt.sub}</span>
+                          <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, display: "block", marginBottom: 2 }}>{opt.sub}</span>
+                          {"detail" in opt && <span style={{ fontFamily: font.ui, fontSize: 10, color: c.stone, opacity: 0.7, display: "block", lineHeight: 1.3 }}>{opt.detail}</span>}
                         </button>
                       );
                     })}
@@ -608,16 +648,38 @@ export default function SessionSetup() {
                       {micStatus === "granted" ? "Microphone connected" : micStatus === "denied" ? "Mic denied — you can type instead" : "Microphone"}
                     </span>
                     {micStatus === "granted" && (
-                      <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4 }}>
-                        <div style={{ width: 60, height: 3, borderRadius: 2, background: "rgba(245,242,237,0.06)", overflow: "hidden" }}>
-                          <div style={{ height: "100%", borderRadius: 2, background: c.sage, width: `${Math.max(5, micLevel)}%`, transition: "width 0.1s" }} />
+                      <div style={{ display: "flex", flexDirection: "column", gap: 4, marginTop: 4 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                          <div style={{ width: 60, height: 3, borderRadius: 2, background: "rgba(245,242,237,0.06)", overflow: "hidden" }}>
+                            <div style={{ height: "100%", borderRadius: 2, background: micTestState === "fail" ? c.ember : c.sage, width: `${Math.max(5, micLevel)}%`, transition: "width 0.1s" }} />
+                          </div>
+                          <span style={{ fontFamily: font.ui, fontSize: 10, color: micTestState === "fail" ? c.ember : c.sage }}>
+                            {micTestState === "testing" ? "Say something..." : micTestState === "pass" ? "Mic working" : micTestState === "fail" ? "No audio detected" : "Live"}
+                          </span>
                         </div>
-                        <span style={{ fontFamily: font.ui, fontSize: 10, color: c.sage }}>Live</span>
+                        {micTestState === "fail" && (
+                          <span style={{ fontFamily: font.ui, fontSize: 11, color: c.ember, lineHeight: 1.4 }}>
+                            We didn't pick up any audio. Check that the correct mic is selected in your browser and try again.
+                          </span>
+                        )}
                       </div>
                     )}
                   </div>
-                  {micStatus !== "granted" && (
-                    <button onClick={requestMic}
+                  {(micStatus !== "granted" || micTestState === "fail") && (
+                    <button onClick={() => {
+                      if (micTestState === "fail") {
+                        // Re-test: stop existing stream and re-request
+                        cancelAnimationFrame(animFrameRef.current);
+                        streamRef.current?.getTracks().forEach(t => t.stop());
+                        audioCtxRef.current?.close().catch(() => {});
+                        setMicStatus("idle");
+                        setMicTestState("idle");
+                        setMicLevel(0);
+                        setTimeout(() => requestMic(), 100);
+                      } else {
+                        requestMic();
+                      }
+                    }}
                       style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: c.gilt, background: "rgba(212,179,127,0.08)", border: `1px solid rgba(212,179,127,0.2)`, borderRadius: 8, padding: "7px 16px", cursor: "pointer", transition: "all 0.2s", flexShrink: 0 }}
                       onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(212,179,127,0.15)"; }}
                       onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(212,179,127,0.08)"; }}>
@@ -626,7 +688,7 @@ export default function SessionSetup() {
                           <div style={{ width: 12, height: 12, border: "2px solid rgba(212,179,127,0.3)", borderTopColor: c.gilt, borderRadius: "50%", animation: "spin 1s linear infinite" }} />
                           Requesting...
                         </span>
-                      ) : micStatus === "denied" ? "Retry" : "Allow"}
+                      ) : micTestState === "fail" ? "Re-test Mic" : micStatus === "denied" ? "Retry" : "Allow"}
                     </button>
                   )}
                 </div>

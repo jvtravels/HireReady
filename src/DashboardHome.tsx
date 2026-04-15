@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo } from "react";
+import { useState, useRef, useEffect, useMemo, memo } from "react";
 import { useNavigate } from "react-router-dom";
 import { c, font, sp, radius } from "./tokens";
 import { useAuth } from "./AuthContext";
@@ -71,7 +71,7 @@ function relativeTime(dateStr: string): string {
 }
 
 /* ─── Animated counter for stats (uses rAF instead of setInterval) ─── */
-function CountUp({ value, suffix = "" }: { value: string; suffix?: string }) {
+const CountUp = memo(function CountUp({ value, suffix = "" }: { value: string; suffix?: string }) {
   const num = parseInt(value, 10);
   const [display, setDisplay] = useState(0);
   const isNum = !isNaN(num) && num > 0;
@@ -91,7 +91,7 @@ function CountUp({ value, suffix = "" }: { value: string; suffix?: string }) {
   }, [num, isNum]);
   if (!isNum) return <>{value}</>;
   return <>{display}{suffix}</>;
-}
+});
 
 /* ─── Focus-visible + reduced-motion styles ─── */
 const dashboardStyles = `

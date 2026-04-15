@@ -542,9 +542,13 @@ input[type="range"]::-moz-range-thumb {
 }
 
 /* ─── Tablet pricing grid ─── */
+@media (max-width: 1280px) and (min-width: 1025px) {
+  .pricing-grid { grid-template-columns: repeat(3, 1fr) !important; }
+}
 @media (max-width: 1024px) and (min-width: 769px) {
   .pricing-grid { grid-template-columns: repeat(2, 1fr) !important; }
   .upgrade-plans-grid { grid-template-columns: repeat(2, 1fr) !important; }
+  .blog-grid { grid-template-columns: repeat(2, 1fr) !important; }
 }
 
 /* ─── Mobile Nav ─── */
@@ -609,6 +613,39 @@ input[type="range"]::-moz-range-thumb {
 
   .hero-cta { flex-direction: column !important; align-items: stretch !important; }
   .hero-cta a, .hero-cta button { text-align: center; justify-content: center; }
+  .hero-stats { gap: 20px !important; }
+
+  /* Mesh gradient: reduce size for mobile performance */
+  .hero-mesh-gradient { width: 400px !important; height: 400px !important; filter: blur(60px) !important; }
+
+  /* Blog index responsive */
+  .blog-container { padding: 32px 20px 60px !important; }
+  .blog-featured { grid-template-columns: 1fr !important; }
+  .blog-featured > div:first-child { min-height: 200px !important; }
+  .blog-grid { grid-template-columns: 1fr !important; }
+
+  /* Blog post responsive */
+  .blog-article { padding: 0 20px 60px !important; }
+  .blog-related-grid { grid-template-columns: 1fr !important; }
+
+  /* Trust badges */
+  .trust-badges-grid { grid-template-columns: repeat(2, 1fr) !important; }
+
+  /* Comparison table */
+  .comparison-table > div { grid-template-columns: 0.8fr 1fr 1.2fr !important; }
+  .comparison-table { font-size: 12px !important; }
+
+  /* Final CTA */
+  .final-cta-card { min-height: 320px !important; }
+
+  /* Email capture */
+  .email-capture-form { flex-direction: column !important; }
+
+  /* Feature row gap */
+  .feature-row-grid { gap: 24px !important; margin-bottom: 48px !important; }
+
+  /* For teams input */
+  .for-teams-banner input { width: 100% !important; }
 
   .upgrade-modal-inner { padding: 24px 16px 20px !important; max-width: 100% !important; margin: 0 8px !important; }
 
@@ -628,7 +665,15 @@ input[type="range"]::-moz-range-thumb {
   .setup-check-grid { grid-template-columns: 1fr !important; }
 
   .landing-section { padding-left: 20px !important; padding-right: 20px !important; }
-  .landing-hero { padding-left: 20px !important; padding-right: 20px !important; }
+  .landing-hero { padding-left: 20px !important; padding-right: 20px !important; flex-direction: column !important; }
+  .hero-mockup { display: none !important; }
+
+  .for-teams-banner { flex-direction: column !important; padding: 32px 24px !important; }
+  .comparison-table { font-size: 11px !important; }
+  .comparison-table > div > div { padding: 12px 10px !important; }
+
+  /* Testimonials: stack photo above quote */
+  .gradient-border-card[style*="gridTemplateColumns: 280px"] { grid-template-columns: 1fr !important; }
 
   .session-detail-outer { padding: 20px 16px !important; }
 }
@@ -766,6 +811,7 @@ input[type="range"]::-moz-range-thumb {
   .gradient-border-card:hover { transform: none; }
   .mockup-window:hover { transform: none; }
   .shimmer-btn:hover { transform: none; }
+  .hero-mesh-gradient { animation: none !important; }
 }
 
 /* ─── Settings ─── */
@@ -843,6 +889,64 @@ input[type="range"]::-moz-range-thumb {
   .landing-hero { padding-left: 16px !important; padding-right: 16px !important; padding-top: 80px !important; }
   .session-detail-outer { padding: 16px 10px !important; }
   .session-detail-card { padding: 20px 16px !important; }
+  .sticky-cta-bar { display: none !important; }
+  .footer-grid { grid-template-columns: 1fr !important; gap: 24px !important; }
+
+  /* Hero stats */
+  .hero-stats { flex-direction: column !important; gap: 16px !important; }
+  .hero-stats > div { display: flex !important; align-items: baseline !important; gap: 8px !important; }
+
+  /* Trust badges */
+  .trust-badges-grid { grid-template-columns: 1fr !important; }
+
+  /* Comparison table — stack cards */
+  .comparison-table > div { grid-template-columns: 1fr !important; }
+  .comparison-table > div > div { padding: 8px 16px !important; }
+  .comparison-table > div > div:first-child { padding-top: 14px !important; font-weight: 600 !important; }
+  .comparison-table > div > div:last-child { padding-bottom: 14px !important; }
+
+  /* Nav padding */
+  nav[aria-label="Main navigation"] { padding-left: 20px !important; padding-right: 20px !important; }
+
+  /* Final CTA */
+  .final-cta-card { min-height: auto !important; }
+  .final-cta-card > div:last-child { padding: 32px 24px !important; }
+
+  /* For teams */
+  .for-teams-banner { padding: 24px 20px !important; }
+  .for-teams-banner input { width: 100% !important; flex: 1 !important; }
+
+  /* Blog post page */
+  .blog-nav { padding: 16px 16px !important; }
+  .blog-hero { height: 240px !important; }
+  .blog-container { padding: 24px 16px 48px !important; }
+  .blog-featured > div:last-child { padding: 24px 20px !important; }
+}
+
+/* ─── Landing Page Responsive Grids ─── */
+
+@media (max-width: 1024px) {
+  .pricing-grid { grid-template-columns: repeat(3, 1fr) !important; }
+}
+
+@media (max-width: 768px) {
+  .pricing-grid { grid-template-columns: repeat(2, 1fr) !important; }
+  .landing-stats-grid { grid-template-columns: repeat(2, 1fr) !important; }
+  .landing-problem-grid { grid-template-columns: 1fr !important; gap: 32px !important; }
+  .landing-steps-grid { grid-template-columns: 1fr !important; }
+  .trust-badges-grid { grid-template-columns: repeat(2, 1fr) !important; }
+  .feature-row-grid { grid-template-columns: 1fr !important; gap: 32px !important; }
+  .footer-grid { grid-template-columns: 1fr 1fr !important; gap: 32px !important; }
+  .comparison-table > div { grid-template-columns: 1fr !important; }
+  .comparison-table > div > div { padding: 10px 16px !important; }
+  .comparison-table > div > div:first-child { font-weight: 600; padding-top: 14px !important; }
+}
+
+@media (max-width: 480px) {
+  .pricing-grid { grid-template-columns: 1fr !important; }
+  .landing-stats-grid { grid-template-columns: 1fr !important; }
+  .trust-badges-grid { grid-template-columns: 1fr !important; }
+  .footer-grid { grid-template-columns: 1fr !important; }
 }
 
 @media print {

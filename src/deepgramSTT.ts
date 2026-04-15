@@ -64,7 +64,8 @@ export async function createDeepgramSTT(
     console.info("[Deepgram] Detected non-standard sample rate:", sampleRate);
   }
 
-  const dgLang = options?.language === "hi" || options?.language === "hinglish" ? "hi" : "en-US";
+  const langMap: Record<string, string> = { hi: "hi", hinglish: "hi", ta: "ta", te: "te", bn: "bn", mr: "mr", gu: "gu", kn: "kn", ml: "ml" };
+  const dgLang = (options?.language && langMap[options.language]) || "en-US";
   const wsUrl =
     `wss://api.deepgram.com/v1/listen` +
     `?model=nova-2` +

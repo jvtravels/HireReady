@@ -11,24 +11,66 @@ import { BottomCTA } from "./Hero";
    ═══════════════════════════════════════════════ */
 export function ForTeamsBanner() {
   const ref = useReveal<HTMLElement>();
+  const [teamEmail, setTeamEmail] = useState("");
+  const [teamStatus, setTeamStatus] = useState<"idle" | "sending" | "done">("idle");
+
+  const handleTeamSignup = async () => {
+    if (!teamEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(teamEmail)) return;
+    setTeamStatus("sending");
+    try {
+      if (supabaseConfigured) {
+        const client = await getSupabase();
+        await client.from("waitlist").upsert({ email: teamEmail, source: "teams", created_at: new Date().toISOString() }, { onConflict: "email" });
+      }
+      track("teams_interest", { email: teamEmail });
+      setTeamStatus("done");
+    } catch {
+      track("teams_interest", { email: teamEmail });
+      setTeamStatus("done");
+    }
+  };
+
   return (
     <section ref={ref} className="reveal landing-section" style={{ padding: "0 40px 140px", maxWidth: 1100, margin: "0 auto" }}>
-      <div className="gradient-border-card" style={{ padding: "52px 56px", display: "flex", alignItems: "center", justifyContent: "space-between", position: "relative", overflow: "hidden", zIndex: 0 }}>
+      <div className="gradient-border-card for-teams-banner" style={{ padding: "52px 56px", display: "flex", alignItems: "center", justifyContent: "space-between", position: "relative", overflow: "hidden", zIndex: 0, gap: 32 }}>
         <div style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: "40%", background: "url(https://images.unsplash.com/photo-1497366216548-37526070297c?w=600&q=80) center/cover no-repeat", maskImage: "linear-gradient(to right, transparent, black 40%)", WebkitMaskImage: "linear-gradient(to right, transparent, black 40%)", opacity: 0.12 }} />
-        <div style={{ position: "relative", zIndex: 1 }}>
+        <div style={{ position: "relative", zIndex: 1, flex: 1 }}>
           <p style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: c.gilt, marginBottom: 12 }}>Coming Soon</p>
           <h3 style={{ fontFamily: font.display, fontSize: 28, fontWeight: 400, color: c.ivory, letterSpacing: "-0.01em", lineHeight: 1.25, marginBottom: 8 }}>HireStepX for Teams</h3>
-          <p style={{ fontFamily: font.ui, fontSize: 14, color: c.stone, lineHeight: 1.6, maxWidth: 440 }}>Career coaches, bootcamps, and universities — we're building team plans with client management and analytics. Interested? Let us know.</p>
+          <p style={{ fontFamily: font.ui, fontSize: 14, color: c.stone, lineHeight: 1.6, maxWidth: 440 }}>Career coaches, bootcamps, and universities — we're building team plans with client management and analytics.</p>
         </div>
-        <button className="shimmer-btn" style={{
-          fontFamily: font.ui, fontSize: 14, fontWeight: 500, padding: "14px 32px",
-          borderRadius: 8, border: `1px solid ${c.borderHover}`, background: "transparent",
-          color: c.ivory, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0, position: "relative", zIndex: 1,
-        }}
-          onMouseEnter={(e) => { e.currentTarget.style.background = c.ivory; e.currentTarget.style.color = c.obsidian; e.currentTarget.style.borderColor = c.ivory; }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = c.ivory; e.currentTarget.style.borderColor = c.borderHover; }}>
-          Get Early Access
-        </button>
+        <div style={{ position: "relative", zIndex: 1, flexShrink: 0 }}>
+          {teamStatus === "done" ? (
+            <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "12px 20px" }}>
+              <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="2" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+              <span style={{ fontFamily: font.ui, fontSize: 13, color: c.sage }}>We'll be in touch!</span>
+            </div>
+          ) : (
+            <div style={{ display: "flex", gap: 8 }}>
+              <input
+                type="email" value={teamEmail} onChange={e => setTeamEmail(e.target.value)}
+                placeholder="work@company.com" aria-label="Email for teams interest"
+                onKeyDown={e => { if (e.key === "Enter") handleTeamSignup(); }}
+                style={{
+                  fontFamily: font.ui, fontSize: 13, padding: "12px 16px", width: 200,
+                  borderRadius: 8, border: `1px solid ${c.border}`, background: c.obsidian,
+                  color: c.ivory, outline: "none",
+                }}
+                onFocus={e => { e.currentTarget.style.borderColor = c.gilt; }}
+                onBlur={e => { e.currentTarget.style.borderColor = c.border; }}
+              />
+              <button onClick={handleTeamSignup} disabled={teamStatus === "sending"} className="shimmer-btn" style={{
+                fontFamily: font.ui, fontSize: 13, fontWeight: 600, padding: "12px 20px",
+                borderRadius: 8, border: `1px solid ${c.borderHover}`, background: "transparent",
+                color: c.ivory, cursor: "pointer", whiteSpace: "nowrap",
+              }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = c.ivory; e.currentTarget.style.color = c.obsidian; e.currentTarget.style.borderColor = c.ivory; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = c.ivory; e.currentTarget.style.borderColor = c.borderHover; }}>
+                {teamStatus === "sending" ? "..." : "Notify Me"}
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </section>
   );
@@ -70,7 +112,7 @@ export function TrustBadges() {
           Your data is in safe hands
         </h2>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 20 }}>
+      <div className="trust-badges-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 20 }}>
         {badges.map((b, i) => (
           <div key={i} className="gradient-border-card" style={{
             padding: "28px 24px", textAlign: "center", cursor: "default", zIndex: 0,
@@ -149,14 +191,14 @@ export function FinalCTA() {
 
   return (
     <section ref={ref} className="reveal landing-section" style={{ padding: "80px 40px 140px", maxWidth: 1100, margin: "0 auto" }}>
-      <div style={{
+      <div className="final-cta-card" style={{
         position: "relative", borderRadius: 20, overflow: "hidden",
         minHeight: 400, display: "flex", alignItems: "center",
       }}>
         {/* Background image — professional in confident pose */}
         <img
           src="https://images.unsplash.com/photo-1521737711867-e3b97375f902?w=1400&h=600&fit=crop&crop=center&q=75"
-          alt=""
+          alt="Professional team collaborating, representing interview preparation"
           loading="lazy" width={1400} height={600}
           onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
           style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", filter: "brightness(0.3)" }}
@@ -168,11 +210,12 @@ export function FinalCTA() {
 
         <div style={{ position: "relative", zIndex: 1, padding: "64px 60px", maxWidth: 560 }}>
           <p className="text-glow" style={{ fontFamily: font.display, fontSize: "clamp(32px, 4vw, 52px)", fontWeight: 400, lineHeight: 1.15, letterSpacing: "-0.03em", color: c.ivory, marginBottom: 20 }}>
-            Your next interview deserves{" "}
-            <span style={{ color: c.gilt, fontStyle: "italic" }}>better</span> practice.
+            Stop guessing. Start{" "}
+            <span style={{ color: c.gilt, fontStyle: "italic" }}>practicing.</span>
           </p>
           <p style={{ fontFamily: font.ui, fontSize: 15, color: c.chalk, lineHeight: 1.6, marginBottom: 32 }}>
-            One free session. No credit card. See the difference that precision makes.
+            3 free AI mock interviews. Scored feedback. Company-specific questions.
+            No credit card. See your score in 10 minutes.
           </p>
           <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
             <BottomCTA />
@@ -184,7 +227,7 @@ export function FinalCTA() {
                   "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=48&h=48&fit=crop&crop=face",
                   "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=48&h=48&fit=crop&crop=face",
                 ].map((src, i) => (
-                  <img key={i} src={`${src}&q=75`} alt="" loading="lazy" width={28} height={28} onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} style={{
+                  <img key={i} src={`${src}&q=75`} alt={["User testimonial photo 1", "User testimonial photo 2", "User testimonial photo 3"][i]} loading="lazy" width={28} height={28} onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} style={{
                     width: 28, height: 28, borderRadius: "50%", objectFit: "cover",
                     border: `2px solid ${c.obsidian}`, marginLeft: i > 0 ? -8 : 0,
                   }} />
@@ -237,12 +280,12 @@ export function EmailCapture() {
       }}>
         <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: 400, height: 400, borderRadius: "50%", background: "radial-gradient(ellipse, rgba(212,179,127,0.06), transparent 70%)", pointerEvents: "none" }} />
         <div style={{ position: "relative", zIndex: 1 }}>
-          <p style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: c.gilt, marginBottom: 12 }}>Stay Updated</p>
+          <p style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: c.gilt, marginBottom: 12 }}>Free Weekly Tips</p>
           <h3 style={{ fontFamily: font.display, fontSize: "clamp(24px, 3vw, 32px)", fontWeight: 400, color: c.ivory, letterSpacing: "-0.02em", lineHeight: 1.2, marginBottom: 8 }}>
-            Get interview tips & product updates
+            Get the top 5 interview mistakes to avoid
           </h3>
           <p style={{ fontFamily: font.ui, fontSize: 14, color: c.stone, lineHeight: 1.6, marginBottom: 28 }}>
-            Weekly tips on acing interviews at top Indian companies. Plus new feature announcements.
+            Plus weekly tips on cracking interviews at Google, TCS, Flipkart, and more. Join 500+ job seekers.
           </p>
           {status === "done" ? (
             <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, padding: 16 }}>
@@ -250,7 +293,7 @@ export function EmailCapture() {
               <span style={{ fontFamily: font.ui, fontSize: 15, fontWeight: 500, color: c.sage }}>You're on the list! We'll be in touch.</span>
             </div>
           ) : (
-            <form onSubmit={handleSubmit} style={{ display: "flex", gap: 10, maxWidth: 420, margin: "0 auto" }}>
+            <form onSubmit={handleSubmit} className="email-capture-form" style={{ display: "flex", gap: 10, maxWidth: 420, margin: "0 auto" }}>
               <input
                 type="email"
                 value={email}
@@ -291,24 +334,20 @@ export function Footer() {
     "Interview Practice": "/#features",
     "AI Feedback": "/#how-it-works",
     "Score Analytics": "/#features",
-    "For Teams": "/#pricing",
+    "Pricing": "/#pricing",
     "About": "/page/about",
     "Blog": "/blog",
     "Careers": "/page/careers",
     "Contact": "/page/contact",
     "Help Center": "/page/help",
-    "API Docs": "/page/help",
     "Interview Tips": "/blog",
-    "Success Stories": "/blog",
     "Privacy Policy": "/privacy",
     "Terms of Service": "/terms",
-    "Cookie Policy": "/privacy",
-    "GDPR": "/privacy",
   };
   const columns = [
-    { title: "Product", links: ["Interview Practice", "AI Feedback", "Score Analytics", "For Teams"] },
+    { title: "Product", links: ["Interview Practice", "AI Feedback", "Score Analytics", "Pricing"] },
     { title: "Company", links: ["About", "Blog", "Careers", "Contact"] },
-    { title: "Resources", links: ["Help Center", "API Docs", "Interview Tips", "Success Stories"] },
+    { title: "Resources", links: ["Help Center", "Interview Tips"] },
     { title: "Legal", links: ["Privacy Policy", "Terms of Service"] },
   ];
 
@@ -324,14 +363,17 @@ export function Footer() {
           {/* Social icons */}
           <div style={{ display: "flex", gap: 12 }}>
             {[
-              { icon: <svg key="x" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>, label: "Follow on X", title: "Coming soon" },
-              { icon: <svg key="li" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>, label: "Follow on LinkedIn", title: "Coming soon" },
+              { icon: <svg key="x" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>, label: "Follow on X", href: "https://x.com/hirestepx" },
+              { icon: <svg key="li" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>, label: "Follow on LinkedIn", href: "https://www.linkedin.com/company/hirestepx" },
             ].map((s, i) => (
-              <span key={i} aria-label={s.label} title={s.title} role="img" aria-hidden="true" style={{
+              <a key={i} href={s.href} target="_blank" rel="noopener noreferrer" aria-label={s.label} title={s.label} style={{
                 width: 32, height: 32, borderRadius: "50%", border: `1px solid ${c.border}`,
                 display: "flex", alignItems: "center", justifyContent: "center",
-                color: c.stone, opacity: 0.5, cursor: "default",
-              }}>{s.icon}</span>
+                color: c.stone, opacity: 0.7, cursor: "pointer", transition: "opacity 0.2s ease, color 0.2s ease",
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.opacity = "1"; e.currentTarget.style.color = c.gilt; }}
+              onMouseLeave={(e) => { e.currentTarget.style.opacity = "0.7"; e.currentTarget.style.color = c.stone; }}
+              >{s.icon}</a>
             ))}
           </div>
         </div>

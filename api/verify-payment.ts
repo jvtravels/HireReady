@@ -13,6 +13,14 @@ import {
   supabaseAnonKey,
 } from "./_shared";
 
+/** Fetch with AbortController timeout (default 8s) */
+function fetchWithTimeout(url: string, opts: RequestInit & { timeout?: number } = {}): Promise<Response> {
+  const { timeout = 8000, ...fetchOpts } = opts;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeout);
+  return fetch(url, { ...fetchOpts, signal: controller.signal }).finally(() => clearTimeout(timer));
+}
+
 const RAZORPAY_KEY_ID = (process.env.RAZORPAY_KEY_ID || "").trim();
 const RAZORPAY_KEY_SECRET = (process.env.RAZORPAY_KEY_SECRET || "").trim();
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
@@ -24,6 +32,7 @@ const PLAN_DURATION: Record<string, number> = { single: 0, weekly: 7, monthly: 0
 const PLAN_TIER: Record<string, string> = { single: "free", weekly: "starter", monthly: "pro", "yearly-starter": "starter", "yearly-pro": "pro" }; // single stays on free tier, just adds credits
 const PLAN_AMOUNT: Record<string, number> = { single: 1000, weekly: 4900, monthly: 14900, "yearly-starter": 203900, "yearly-pro": 143000 };
 const PLAN_LABEL: Record<string, string> = { single: "Single Session (₹10)", weekly: "Starter (₹49/week)", monthly: "Pro (₹149/month)", "yearly-starter": "Starter Annual (₹2,039/year)", "yearly-pro": "Pro Annual (₹1,430/year)" };
+const TIER_RANK: Record<string, number> = { free: 0, starter: 1, pro: 2 };
 
 async function sendPaymentEmail(
   email: string,
@@ -299,7 +308,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // 3. Duplicate check FIRST — before any state mutations
     // Check payments table for any user with this payment ID (cross-user replay)
-    const dupCheck = await fetch(
+    const dupCheck = await fetchWithTimeout(
       `${SUPABASE_URL}/rest/v1/payments?razorpay_payment_id=eq.${encodeURIComponent(razorpay_payment_id)}&select=id`,
       { headers: { apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` } },
     );
@@ -309,7 +318,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // 3b. Check profile for duplicate + subscription state
-    const profileRes = await fetch(
+    const profileRes = await fetchWithTimeout(
       `${SUPABASE_URL}/rest/v1/profiles?id=eq.${encodeURIComponent(userId)}&select=subscription_tier,subscription_end,razorpay_payment_id,session_credits`,
       { headers: { apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` } },
     );
@@ -321,9 +330,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
       const currentEnd = current.subscription_end ? new Date(current.subscription_end) : null;
       const isActive = currentEnd && currentEnd > new Date();
-      const tierRank: Record<string, number> = { free: 0, starter: 1, pro: 2 };
       const newTier = PLAN_TIER[plan];
-      if (isActive && (tierRank[current.subscription_tier] || 0) > (tierRank[newTier] || 0)) {
+      if (isActive && (TIER_RANK[current.subscription_tier] || 0) > (TIER_RANK[newTier] || 0)) {
         return res.status(400).json({ error: `You already have an active ${current.subscription_tier} plan. Downgrading is not supported — wait for it to expire or contact support.` });
       }
     }
@@ -334,7 +342,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const purchaseAmount = 1000 * sessionQuantity;
       const label = sessionQuantity > 1 ? `${sessionQuantity} Sessions (₹${sessionQuantity * 10})` : PLAN_LABEL["single"];
       // Store payment record
-      const paymentRecordRes = await fetch(`${SUPABASE_URL}/rest/v1/payments`, {
+      const paymentRecordRes = await fetchWithTimeout(`${SUPABASE_URL}/rest/v1/payments`, {
         method: "POST",
         headers: { apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`, "Content-Type": "application/json", Prefer: "return=minimal" },
         body: JSON.stringify({ id: crypto.randomUUID(), user_id: userId, razorpay_payment_id, razorpay_order_id, plan: "single", tier: "free", amount: purchaseAmount, currency: "INR", status: "completed", subscription_start: now.toISOString(), subscription_end: now.toISOString() }),
@@ -346,7 +354,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       // Increment session_credits on profile
       const currentCredits = current?.session_credits || 0;
       const newCredits = currentCredits + sessionQuantity;
-      const updateRes = await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${encodeURIComponent(userId)}`, {
+      const updateRes = await fetchWithTimeout(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${encodeURIComponent(userId)}`, {
         method: "PATCH",
         headers: { apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`, "Content-Type": "application/json", Prefer: "return=minimal" },
         body: JSON.stringify({ session_credits: newCredits, razorpay_payment_id }),
@@ -355,8 +363,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         console.error("Credit update failed:", updateRes.status);
         return res.status(500).json({ error: "Failed to add session credit" });
       }
-      // Send confirmation email
-      try { await sendPaymentEmail(email || "", "single", now.toISOString(), now.toISOString(), label); } catch (e) { console.warn("Email send failed:", e); }
+      // Send confirmation email (7 args: email, name, plan, tier, paymentId, startDate, endDate)
+      try { await sendPaymentEmail(userEmail || email || "", userName || "Customer", "single", "free", razorpay_payment_id, now.toISOString(), now.toISOString()); } catch (e) { console.warn("Email send failed:", e); }
       return res.status(200).json({ success: true, tier: current?.subscription_tier || "free", plan: "single", credits: newCredits, quantity: sessionQuantity, subscription_start: now.toISOString(), subscription_end: current?.subscription_end || now.toISOString() });
     }
 
@@ -364,9 +372,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const now = new Date();
     const currentEnd = current?.subscription_end ? new Date(current.subscription_end) : null;
     const tier = PLAN_TIER[plan];
-    const tierRankForProration: Record<string, number> = { free: 0, starter: 1, pro: 2 };
     const isUpgrade = current && currentEnd && currentEnd > now
-      && (tierRankForProration[current.subscription_tier] || 0) < (tierRankForProration[tier] || 0);
+      && (TIER_RANK[current.subscription_tier] || 0) < (TIER_RANK[tier] || 0);
 
     let end: Date;
     let proratedDays = 0;
@@ -404,7 +411,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // 5. Store payment record FIRST (critical — must succeed before activating subscription)
-    const paymentRecordRes = await fetch(`${SUPABASE_URL}/rest/v1/payments`, {
+    const paymentRecordRes = await fetchWithTimeout(`${SUPABASE_URL}/rest/v1/payments`, {
       method: "POST",
       headers: {
         apikey: SUPABASE_SERVICE_ROLE_KEY,
@@ -434,7 +441,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // 6. Update profile (service role key bypasses RLS)
-    const updateRes = await fetch(
+    const updateRes = await fetchWithTimeout(
       `${SUPABASE_URL}/rest/v1/profiles?id=eq.${encodeURIComponent(userId)}`,
       {
         method: "PATCH",
@@ -499,6 +506,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
       }
     } catch (receiptErr) { console.warn("[verify-payment] Receipt fetch failed:", receiptErr); }
+
+    // Persist receipt URL to payment record (best-effort)
+    if (receiptUrl) {
+      try {
+        await fetchWithTimeout(
+          `${SUPABASE_URL}/rest/v1/payments?razorpay_payment_id=eq.${encodeURIComponent(razorpay_payment_id)}`,
+          {
+            method: "PATCH",
+            headers: { apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`, "Content-Type": "application/json", Prefer: "return=minimal" },
+            body: JSON.stringify({ receipt_url: receiptUrl }),
+          },
+        );
+      } catch (e) { console.warn("[verify-payment] Receipt URL persist failed:", e); }
+    }
 
     return res.status(200).json({
       success: true,

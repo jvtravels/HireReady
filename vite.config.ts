@@ -25,6 +25,7 @@ export default defineConfig(async () => {
             "vendor-react": ["react", "react-dom", "react-router-dom"],
             "vendor-supabase": ["@supabase/supabase-js"],
             "pdf": ["pdfjs-dist"],
+            "vendor-analytics": ["@vercel/analytics"],
           },
         },
       },

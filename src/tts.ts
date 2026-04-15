@@ -114,7 +114,8 @@ const API_KEY_TTL = 5 * 60 * 1000; // 5 min
 
 async function getCartesiaApiKey(): Promise<string | null> {
   // Refresh at 80% TTL to avoid mid-session expiry
-  if (_cachedApiKey && Date.now() < _apiKeyExpiry - API_KEY_TTL * 0.2) return _cachedApiKey;
+  const refreshAt = _apiKeyExpiry - API_KEY_TTL * 0.2;
+  if (_cachedApiKey && refreshAt > 0 && Date.now() < refreshAt) return _cachedApiKey;
   try {
     const { authHeaders } = await import("./supabase");
     const headers = await authHeaders();
@@ -129,17 +130,23 @@ async function getCartesiaApiKey(): Promise<string | null> {
   }
 }
 
-/* ─── TTS Audio Pre-fetch Cache (LRU, max 10) ─── */
+/* ─── TTS Audio Pre-fetch Cache (LRU, max 10, 5-min TTL) ─── */
 const PREFETCH_MAX = 10;
-const _prefetchCache = new Map<string, Promise<Blob | null>>();
+const PREFETCH_TTL = 5 * 60 * 1000; // 5 minutes
+const _prefetchCache = new Map<string, { promise: Promise<Blob | null>; createdAt: number }>();
 
 /* Pre-fetch TTS audio for a text so it's ready when needed */
 export async function prefetchTTS(text: string): Promise<void> {
-  if (!text || _prefetchCache.has(text)) return;
+  if (!text) return;
+  const existing = _prefetchCache.get(text);
+  if (existing && Date.now() - existing.createdAt < PREFETCH_TTL) return;
   const settings = loadTTSSettings();
   if (settings.provider !== "cartesia") return;
 
-  // Evict oldest entries if cache is full
+  // Evict expired + oldest entries if cache is full
+  for (const [key, entry] of _prefetchCache) {
+    if (Date.now() - entry.createdAt >= PREFETCH_TTL) _prefetchCache.delete(key);
+  }
   while (_prefetchCache.size >= PREFETCH_MAX) {
     const oldest = _prefetchCache.keys().next().value;
     if (oldest !== undefined) _prefetchCache.delete(oldest);
@@ -165,13 +172,15 @@ export async function prefetchTTS(text: string): Promise<void> {
     }
   })();
 
-  _prefetchCache.set(text, promise);
+  _prefetchCache.set(text, { promise, createdAt: Date.now() });
 }
 
 function consumePrefetch(text: string): Promise<Blob | null> | undefined {
-  const cached = _prefetchCache.get(text);
-  if (cached) _prefetchCache.delete(text);
-  return cached;
+  const entry = _prefetchCache.get(text);
+  if (!entry) return undefined;
+  _prefetchCache.delete(text);
+  if (Date.now() - entry.createdAt >= PREFETCH_TTL) return undefined; // expired
+  return entry.promise;
 }
 
 /* ─── WebSocket Streaming TTS (persistent connection) ─── */
@@ -348,13 +357,23 @@ async function speakWithWebSocket(
     ws.addEventListener("message", handler);
     _wsMessageHandler = handler;
 
-    // Handle connection loss mid-utterance
+    // Handle connection loss mid-utterance (including partial playback)
     const closeHandler = () => {
       clearTimeout(wsTimeout);
-      if (!allChunksReceived && chunksReceived === 0 && !cancelled) {
-        console.warn("[TTS-WS] closed mid-utterance, falling back to REST");
-        closeCtx();
-        speakWithProxy(text, voiceId, onEnd, onError);
+      if (cancelled) return;
+      if (!allChunksReceived) {
+        if (chunksReceived === 0) {
+          // No chunks at all — fall back to REST TTS
+          console.warn("[TTS-WS] closed before any chunks, falling back to REST");
+          closeCtx();
+          speakWithProxy(text, voiceId, onEnd, onError);
+        } else {
+          // Partial playback — some chunks received but connection dropped.
+          // Mark as done so remaining queued chunks play out, then onEnd fires.
+          console.warn(`[TTS-WS] closed after ${chunksReceived} chunks (partial), completing playback`);
+          allChunksReceived = true;
+          checkPlaybackComplete();
+        }
       }
     };
     ws.addEventListener("close", closeHandler, { once: true });
@@ -385,6 +404,11 @@ async function speakWithWebSocket(
     cancel: () => {
       cancelled = true;
       settled = true;
+      // Detach message handler to prevent stale callbacks
+      if (_wsMessageHandler && _persistentWs) {
+        _persistentWs.removeEventListener("message", _wsMessageHandler);
+        _wsMessageHandler = null;
+      }
       // Don't close the WS — just stop the audio
       try { capturedCtx?.close(); } catch { /* expected: AudioContext cleanup errors are non-critical */ }
       resetWsIdleTimer();
@@ -477,7 +501,8 @@ let _cachedDeepgramKey: string | null = null;
 let _deepgramKeyExpiry = 0;
 
 async function getDeepgramApiKey(): Promise<string | null> {
-  if (_cachedDeepgramKey && Date.now() < _deepgramKeyExpiry - API_KEY_TTL * 0.2) return _cachedDeepgramKey;
+  const dgRefreshAt = _deepgramKeyExpiry - API_KEY_TTL * 0.2;
+  if (_cachedDeepgramKey && dgRefreshAt > 0 && Date.now() < dgRefreshAt) return _cachedDeepgramKey;
   try {
     const { authHeaders } = await import("./supabase");
     const headers = await authHeaders();
@@ -650,7 +675,8 @@ export async function speak(
     };
 
   if (settings.provider === "cartesia") {
-    const hasPrefetch = _prefetchCache.has(text);
+    const prefetchEntry = _prefetchCache.get(text);
+    const hasPrefetch = !!prefetchEntry && Date.now() - prefetchEntry.createdAt < PREFETCH_TTL;
     if (hasPrefetch) {
       handle = await speakWithProxy(text, settings.voiceId, onEnd, async () => {
         console.warn("Cartesia REST failed, trying Deepgram");

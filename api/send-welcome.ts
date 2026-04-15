@@ -15,8 +15,11 @@ function escapeHtml(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
-export function generateVerifyToken(email: string): string {
-  return createHmac("sha256", EMAIL_SECRET).update(email.toLowerCase().trim()).digest("hex");
+/** Generate a time-limited verification token. Tokens expire after 24 hours. */
+export function generateVerifyToken(email: string, expiresAt?: number): string {
+  // Round to 24-hour windows so the same email gets the same token within a window
+  const expiry = expiresAt ?? Math.floor(Date.now() / (24 * 60 * 60 * 1000));
+  return createHmac("sha256", EMAIL_SECRET).update(`${email.toLowerCase().trim()}:${expiry}`).digest("hex") + "." + expiry;
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {

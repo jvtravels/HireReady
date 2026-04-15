@@ -12,10 +12,17 @@
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true,
     "skipLibCheck": true,
-    "types": ["vite/client"]
+    "types": ["vite/client"],
+    "paths": {
+      "@tempo/types": ["./.tempo/types"],
+      "@/*": ["./src/*"]
+    }
   },
   "include": [
     "src/**/*.ts",
-    "src/**/*.tsx"
+    "src/**/*.tsx",
+    "designs/**/*.ts",
+    "designs/**/*.tsx",
+    ".tempo/**/*.ts"
   ]
 }

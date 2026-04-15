@@ -4,7 +4,7 @@ import { c, font, shadow, gradient } from "./tokens";
 import { useAuth } from "./AuthContext";
 import { getSessionById, saveFeedback, getSessionFeedback } from "./supabase";
 import { useToast } from "./Toast";
-import { extractScore, extractReason, scoreLabelColor, scoreLabel, scoreTip, normalizeType, ratingBadge, computeSpeechMetrics, computeHistoricalAverages, loadLocalSession, loadPreviousSession, loadSessionHistory, type LocalSession } from "./sessionDetailHelpers";
+import { extractScore, extractReason, scoreLabelColor, scoreLabel, scoreTip, normalizeType, ratingBadge, computeSpeechMetrics, computeHistoricalAverages, loadLocalSession, loadPreviousSession, loadSessionHistory, skillDescriptions, type LocalSession } from "./sessionDetailHelpers";
 import { JDCoverageSection } from "./SessionDetailPanels";
 
 /* ─── Reusable Section Card ─── */
@@ -54,6 +54,7 @@ export default function SessionDetail() {
   const [showFeedbackForm, setShowFeedbackForm] = useState(false);
   const [showTranscript, setShowTranscript] = useState(false);
   const [showFillerBreakdown, setShowFillerBreakdown] = useState(false);
+  const [expandedSkill, setExpandedSkill] = useState<string | null>(null);
 
   // Load existing feedback
   useEffect(() => {
@@ -1167,14 +1168,28 @@ export default function SessionDetail() {
                 <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
                   {skillEntries.map(({ name, score, reason }) => {
                     const avgScore = historicalAvg?.avgSkills[name];
+                    const skillTip = skillDescriptions[name] || "";
+                    const isExpanded = expandedSkill === name;
                     return (
                       <div key={name}>
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8 }}>
-                          <span style={{ fontSize: 13, fontWeight: 600, color: c.ivory }}>{name}</span>
+                          <span
+                            role={skillTip ? "button" : undefined}
+                            tabIndex={skillTip ? 0 : undefined}
+                            onClick={skillTip ? () => setExpandedSkill(isExpanded ? null : name) : undefined}
+                            onKeyDown={skillTip ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setExpandedSkill(isExpanded ? null : name); } } : undefined}
+                            style={{ fontSize: 13, fontWeight: 600, color: c.ivory, cursor: skillTip ? "pointer" : undefined, borderBottom: skillTip ? "1px dotted rgba(245,242,237,0.2)" : undefined, display: "inline-flex", alignItems: "center", gap: 4 }}
+                            title={skillTip}>
+                            {name}
+                            {skillTip && <svg aria-hidden="true" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={c.stone} strokeWidth="2" strokeLinecap="round" style={{ transform: isExpanded ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.2s ease", opacity: 0.5 }}><polyline points="6 9 12 15 18 9"/></svg>}
+                          </span>
                           <span style={{ fontFamily: font.mono, fontSize: 22, fontWeight: 700, color: c.ivory }}>
                             {score}<span style={{ fontSize: 12, color: c.stone }}>/100</span>
                           </span>
                         </div>
+                        {isExpanded && skillTip && (
+                          <p style={{ fontSize: 11, color: c.stone, lineHeight: 1.5, margin: "0 0 8px 0", padding: "8px 12px", background: "rgba(245,242,237,0.02)", borderRadius: 8, border: `1px solid ${c.border}` }}>{skillTip}</p>
+                        )}
                         {/* Your Score bar */}
                         <div style={{ marginBottom: 4 }}>
                           <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 2 }}>

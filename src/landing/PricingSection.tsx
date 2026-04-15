@@ -18,11 +18,24 @@ export function PricingSection() {
     <section id="pricing" ref={ref} className="reveal dot-grid-bg landing-section" style={{ padding: "140px 40px", maxWidth: 1200, margin: "0 auto" }}>
       <div style={{ textAlign: "center", marginBottom: 80 }}>
         <p style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: c.gilt, marginBottom: 16 }}>Pricing</p>
-        <h2 className="text-glow" style={{ fontFamily: font.display, fontSize: "clamp(32px, 4vw, 48px)", fontWeight: 400, letterSpacing: "-0.02em", color: c.ivory, lineHeight: 1.15, marginBottom: 16 }}>Transparent. No surprises.</h2>
-        <p style={{ fontFamily: font.ui, fontSize: 15, color: c.stone, lineHeight: 1.6, maxWidth: 460, margin: "0 auto" }}>Start free. Upgrade when you're ready. Cancel anytime.</p>
+        <h2 className="text-glow" style={{ fontFamily: font.display, fontSize: "clamp(32px, 4vw, 48px)", fontWeight: 400, letterSpacing: "-0.02em", color: c.ivory, lineHeight: 1.15, marginBottom: 16 }}>Less than a cup of chai per session.</h2>
+        <p style={{ fontFamily: font.ui, fontSize: 15, color: c.stone, lineHeight: 1.6, maxWidth: 460, margin: "0 auto" }}>Start with 3 free sessions. Upgrade when you're ready. Cancel anytime — no lock-in.</p>
       </div>
-      <div className="pricing-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, alignItems: "start" }}>
+      <div className="pricing-grid" style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 14, alignItems: "start" }}>
         {plans.map((p, i) => <PricingCard key={p.name} plan={p} delay={i} />)}
+      </div>
+      {/* Risk reversal */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 24, marginTop: 40, flexWrap: "wrap" }}>
+        {[
+          { icon: <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>, text: "Cancel anytime, no questions" },
+          { icon: <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>, text: "Delete your data anytime" },
+          { icon: <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>, text: "Secure payments via Razorpay" },
+        ].map((item, i) => (
+          <div key={i} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            {item.icon}
+            <span style={{ fontFamily: font.ui, fontSize: 12, color: c.stone }}>{item.text}</span>
+          </div>
+        ))}
       </div>
     </section>
   );
@@ -133,13 +146,16 @@ function PricingCard({ plan, delay }: { plan: (typeof plans)[0]; delay: number }
               });
               const verifyData = await verifyRes.json();
               if (verifyData.success) {
+                track("payment_success", { plan: plan.planId, method: "subscription" });
                 updateUser({ subscriptionTier: verifyData.subscriptionTier, subscriptionStart: verifyData.subscriptionStart, subscriptionEnd: verifyData.subscriptionEnd });
                 navigate("/dashboard?payment=success");
               } else {
+                track("payment_verify_failed", { plan: plan.planId, error: verifyData.error });
                 setError(verifyData.error || "Payment verification failed.");
                 setLoading(false);
               }
             } catch {
+              track("payment_verify_error", { plan: plan.planId });
               setError("Payment verification failed. Contact support.");
               setLoading(false);
             }
@@ -163,13 +179,16 @@ function PricingCard({ plan, delay }: { plan: (typeof plans)[0]; delay: number }
               });
               const verifyData = await verifyRes.json();
               if (verifyData.success) {
+                track("payment_success", { plan: plan.planId, method: "order" });
                 updateUser({ subscriptionTier: verifyData.subscriptionTier, subscriptionStart: verifyData.subscriptionStart, subscriptionEnd: verifyData.subscriptionEnd });
                 navigate("/dashboard?payment=success");
               } else {
+                track("payment_verify_failed", { plan: plan.planId, error: verifyData.error });
                 setError(verifyData.error || "Payment verification failed.");
                 setLoading(false);
               }
             } catch {
+              track("payment_verify_error", { plan: plan.planId });
               setError("Payment verification failed. Contact support.");
               setLoading(false);
             }
@@ -177,7 +196,7 @@ function PricingCard({ plan, delay }: { plan: (typeof plans)[0]; delay: number }
         }
 
         const rzp = new RazorpayClass(options);
-        rzp.on("payment.failed", () => { setError("Payment failed. Please try again."); setLoading(false); });
+        rzp.on("payment.failed", () => { track("payment_failed", { plan: plan.planId }); setError("Payment failed. Please try again."); setLoading(false); });
         rzp.open();
       }
     } catch {

@@ -206,20 +206,27 @@ export function UpgradeModal({ onClose, sessionsUsed, user, currentTier, onPayme
         return;
       }
       if (!window.Razorpay) {
-        // Dynamically load Razorpay checkout script with timeout
+        // Dynamically load Razorpay checkout script with retry
+        const loadRzpScript = () => new Promise<void>((resolve, reject) => {
+          const s = document.createElement("script");
+          s.src = "https://checkout.razorpay.com/v1/checkout.js";
+          const timer = setTimeout(() => { s.remove(); reject(new Error("timeout")); }, 10_000);
+          s.onload = () => { clearTimeout(timer); resolve(); };
+          s.onerror = () => { clearTimeout(timer); s.remove(); reject(); };
+          document.head.appendChild(s);
+        });
         try {
-          await new Promise<void>((resolve, reject) => {
-            const s = document.createElement("script");
-            s.src = "https://checkout.razorpay.com/v1/checkout.js";
-            const timer = setTimeout(() => { reject(new Error("timeout")); }, 10_000);
-            s.onload = () => { clearTimeout(timer); resolve(); };
-            s.onerror = () => { clearTimeout(timer); reject(); };
-            document.head.appendChild(s);
-          });
+          await loadRzpScript();
         } catch {
-          setError("Payment system failed to load. Check your connection and try again, or contact support@hirestepx.com");
-          setLoading(null);
-          return;
+          // Retry once after 1s
+          try {
+            await new Promise(r => setTimeout(r, 1000));
+            await loadRzpScript();
+          } catch {
+            setError("Payment system failed to load. Check your connection and try again, or contact support@hirestepx.com");
+            setLoading(null);
+            return;
+          }
         }
       }
 

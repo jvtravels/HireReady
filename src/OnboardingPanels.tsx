@@ -111,17 +111,19 @@ export interface ResumeEmptyStateProps {
   onDrop: (e: React.DragEvent) => void;
   onFileChange: (file: File | undefined) => void;
   onUndo: () => void;
+  onSkip?: () => void;
 }
 
-export function ResumeEmptyState({ isDragging, dragFileName, resumeError, showUndo, fileInputRef, onDragOver, onDragLeave, onDrop, onFileChange, onUndo }: ResumeEmptyStateProps) {
+export function ResumeEmptyState({ isDragging, dragFileName, resumeError, showUndo, fileInputRef, onDragOver, onDragLeave, onDrop, onFileChange, onUndo, onSkip }: ResumeEmptyStateProps) {
   return (
     <>
       <p style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 700, color: c.gilt, textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 12 }}>Step 1 — Your Experience</p>
       <h2 style={{ fontFamily: font.display, fontSize: 32, fontWeight: 400, color: c.ivory, letterSpacing: "-0.025em", lineHeight: 1.2, marginBottom: 10 }}>
-        Upload your resume <span style={{ color: c.ember }}>*</span>
+        Upload your resume
       </h2>
       <p style={{ fontFamily: font.ui, fontSize: 15, color: c.stone, lineHeight: 1.7, marginBottom: 28 }}>
-        Upload your resume to get personalized interview questions tailored to your experience.
+        Upload your resume to get personalized interview questions tailored to your experience.{" "}
+        {onSkip && <button onClick={onSkip} style={{ fontFamily: font.ui, fontSize: 15, color: c.gilt, background: "none", border: "none", cursor: "pointer", padding: 0, textDecoration: "underline", textUnderlineOffset: 3 }}>Skip for now</button>}
       </p>
 
       {/* Drop zone */}
@@ -505,6 +507,9 @@ export interface SessionSetupStepProps {
   roleAutoFilled: boolean;
   roleTouched: boolean;
   isFreeUser: boolean;
+  resumeSkipped?: boolean;
+  userName?: string;
+  onUserNameChange?: (v: string) => void;
   onRoleChange: (v: string) => void;
   onCompanyChange: (v: string) => void;
   onFocusChange: (v: string[]) => void;
@@ -516,7 +521,7 @@ export interface SessionSetupStepProps {
   COMPANY_SUGGESTIONS: string[];
 }
 
-export function SessionSetupStep({ targetRole, targetCompany, interviewFocus, sessionLength, roleAutoFilled, roleTouched, isFreeUser, onRoleChange, onCompanyChange, onFocusChange, onSessionLengthChange, onShowUpgrade, AutocompleteInput, ROLE_SUGGESTIONS, COMPANY_SUGGESTIONS }: SessionSetupStepProps) {
+export function SessionSetupStep({ targetRole, targetCompany, interviewFocus, sessionLength, roleAutoFilled, roleTouched, isFreeUser, resumeSkipped, userName, onUserNameChange, onRoleChange, onCompanyChange, onFocusChange, onSessionLengthChange, onShowUpgrade, AutocompleteInput, ROLE_SUGGESTIONS, COMPANY_SUGGESTIONS }: SessionSetupStepProps) {
   return (
     <div>
       <div style={{ marginBottom: 32 }} className="fade-up-1">
@@ -525,13 +530,35 @@ export function SessionSetupStep({ targetRole, targetCompany, interviewFocus, se
           Set up your practice session
         </h2>
         <p style={{ fontFamily: font.ui, fontSize: 15, color: c.stone, lineHeight: 1.7 }}>
-          We've pre-filled your target role from your resume. Adjust if needed, then choose your interview focus.
+          {resumeSkipped ? "Tell us a bit about yourself so we can personalize your interview." : "We've pre-filled your target role from your resume. Adjust if needed, then choose your interview focus."}
         </p>
       </div>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+        {/* Name field — shown when resume was skipped */}
+        {resumeSkipped && onUserNameChange && (
+          <div className="ob-card fade-up-1" style={{ borderRadius: 16, padding: "24px 28px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
+              <div style={{ width: 28, height: 28, borderRadius: 7, background: "rgba(212,179,127,0.06)", border: "1px solid rgba(212,179,127,0.12)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5" strokeLinecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              </div>
+              <span style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: c.ivory }}>Your Name</span>
+            </div>
+            <input
+              type="text" value={userName || ""} onChange={(e) => onUserNameChange(e.target.value)}
+              placeholder="Enter your name"
+              style={{
+                width: "100%", fontFamily: font.ui, fontSize: 14, color: c.ivory, padding: "10px 14px", borderRadius: 10,
+                background: c.graphite, border: `1.5px solid ${c.border}`, outline: "none", boxSizing: "border-box",
+              }}
+              onFocus={(e) => { e.currentTarget.style.borderColor = c.gilt; }}
+              onBlur={(e) => { e.currentTarget.style.borderColor = c.border; }}
+            />
+          </div>
+        )}
+
         {/* Role & Company */}
-        <div className="ob-card fade-up-1" style={{ borderRadius: 16, padding: "24px 28px" }}>
+        <div className={`ob-card ${resumeSkipped ? "fade-up-2" : "fade-up-1"}`} style={{ borderRadius: 16, padding: "24px 28px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 20 }}>
             <div style={{ width: 28, height: 28, borderRadius: 7, background: "rgba(212,179,127,0.06)", border: "1px solid rgba(212,179,127,0.12)", display: "flex", alignItems: "center", justifyContent: "center" }}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
@@ -570,6 +597,12 @@ export function SessionSetupStep({ targetRole, targetCompany, interviewFocus, se
               { value: "Strategic", icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>, desc: "Vision, roadmap, business alignment" },
               { value: "Technical Leadership", icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>, desc: "Architecture, system design, tech strategy" },
               { value: "Case Study", icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>, desc: "Problem-solving, analytical frameworks" },
+              { value: "Campus Placement", icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 1.66 2.69 3 6 3s6-1.34 6-3v-5"/></svg>, desc: "On-campus recruitment, fresher interviews" },
+              { value: "HR Round", icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>, desc: "Culture fit, motivation, salary expectations" },
+              { value: "Management", icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>, desc: "People leadership, project management" },
+              { value: "Panel Interview", icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>, desc: "Multi-interviewer format, varied perspectives" },
+              { value: "Salary Negotiation", icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>, desc: "Compensation negotiation, offer discussions" },
+              { value: "Government / PSU", icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 21h18M3 10h18M5 6l7-3 7 3M4 10v11M20 10v11M8 14v3M12 14v3M16 14v3"/></svg>, desc: "Public administration, ethics, current affairs" },
             ].map(opt => {
               const sel = interviewFocus[0] === opt.value;
               return (

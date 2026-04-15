@@ -393,6 +393,85 @@ const posts: BlogPost[] = [
     relatedSlugs: ["hr-interview-questions-answers-india", "tell-me-about-yourself-best-answer", "ace-case-study-interviews"],
     cta: "Practice salary negotiation conversations with HireStepX's AI — simulate the back-and-forth and build your confidence before the real thing.",
   },
+  {
+    slug: "campus-placement-interview-tips",
+    title: "Campus Placement Interview Tips — Complete Guide for 2025 Freshers",
+    metaDescription: "Complete campus placement interview preparation guide for Indian engineering students. Covers aptitude, technical, HR rounds, and insider tips to crack on-campus interviews.",
+    company: "General",
+    category: "Campus",
+    readTime: "9 min",
+    heroImage: "https://images.unsplash.com/photo-1523050854058-8df90110c476?w=1200&h=500&fit=crop",
+    heroAlt: "College campus representing campus placement interviews",
+    datePublished: "2025-04-08",
+    intro: "Campus placement season is the most stressful time of engineering college. Companies visit for 1-2 days, shortlist in hours, and your career trajectory gets decided in a few rounds. Here's everything you need to know to make the most of it.",
+    sections: [
+      { heading: "Typical Placement Process", content: "Most companies follow this structure:\n\n1. Pre-Placement Talk (PPT) — Company presentation. Attend every one, even for companies you're unsure about.\n2. Aptitude Test — Quantitative, verbal, logical reasoning (45-90 minutes)\n3. Technical Round — DSA problems, CS fundamentals, project discussion\n4. HR Round — Behavioral questions, salary expectations, joining date\n\nService companies (TCS, Infosys, Wipro): Heavy on aptitude + HR\nProduct companies (Google, Microsoft, Flipkart): Heavy on DSA + system design" },
+      { heading: "Aptitude Round Preparation", content: "This round eliminates 60-80% of candidates. Focus areas:\n\n• Quantitative — Percentages, profit/loss, time & work, permutations. Practice from IndiaBIX or PrepInsta.\n• Logical Reasoning — Puzzles, seating arrangements, blood relations. Speed matters more than difficulty.\n• Verbal — Reading comprehension, sentence correction, para jumbles.\n\nTime management tip: Skip questions you can't solve in 90 seconds. Come back to them if time permits." },
+      { heading: "Technical Round — What to Expect", content: "For service companies:\n• Basic OOP concepts (inheritance, polymorphism, encapsulation)\n• SQL queries (joins, group by, subqueries)\n• One coding problem (easy-medium)\n• Project discussion from your resume\n\nFor product companies:\n• 2-3 DSA problems (medium-hard)\n• System design basics for senior roles\n• Deep dive into 1-2 resume projects\n• CS fundamentals (OS, DBMS, networking)\n\nMost-asked topics: Arrays, strings, linked lists, trees, dynamic programming." },
+      { heading: "HR Round — 10 Most-Asked Questions", content: "1. Tell me about yourself (use the Present-Past-Future formula)\n2. Why do you want to join [company]?\n3. What are your strengths and weaknesses?\n4. Where do you see yourself in 5 years?\n5. Why should we hire you?\n6. Tell me about a team project.\n7. How do you handle pressure?\n8. Are you willing to relocate?\n9. Do you have any questions for us?\n10. What is your expected salary?\n\nTip: For 'expected salary,' say 'I'm open to the standard package offered for this role at [company]. I'm more focused on learning and growth.'" },
+      { heading: "Day-Before Checklist", content: "The night before your placement:\n\n• Print 5 copies of your resume on good paper\n• Prepare a 60-second 'Tell me about yourself' answer\n• Review your top 2 resume projects — be ready for deep questions\n• Iron your formal clothes. First impressions matter.\n• Sleep by 10 PM. Seriously.\n• Charge your laptop (some coding rounds are on personal devices)\n• Save your question for 'Do you have any questions?' — ask something specific about the team or growth path." },
+    ],
+    faqs: [
+      { question: "How to prepare for campus placements in 1 month?", answer: "Week 1-2: Focus on aptitude (practice 50 questions daily). Week 3: Review DSA fundamentals and practice 2-3 problems daily. Week 4: Mock interviews for behavioral and technical rounds. Use HireStepX for realistic practice." },
+      { question: "What GPA do companies look for in placements?", answer: "Most service companies require 60-65% (6.0-6.5 CGPA). Product companies usually require 70%+ (7.0 CGPA). Some companies like Google don't have a strict GPA cutoff." },
+      { question: "How to answer 'Tell me about yourself' in campus placements?", answer: "Use Present-Past-Future: Start with your current status (final year, branch), mention 1-2 relevant projects or internships, then state your career interest. Keep it under 90 seconds." },
+    ],
+    relatedSlugs: ["tcs-interview-questions-freshers-2025", "behavioral-interview-questions-freshers", "how-to-introduce-yourself-in-interview"],
+    cta: "Practice campus placement interview questions with HireStepX — get AI-scored feedback and walk into your placement round prepared.",
+  },
+  {
+    slug: "mock-interview-practice-guide",
+    title: "How to Practice Mock Interviews Effectively — The Complete Guide",
+    metaDescription: "Learn how to practice mock interviews for maximum improvement. Covers self-practice, peer practice, AI mock interviews, and the science behind interview skill building.",
+    company: "General",
+    category: "Career",
+    readTime: "7 min",
+    heroImage: "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=1200&h=500&fit=crop",
+    heroAlt: "Person practicing interview preparation with laptop",
+    datePublished: "2025-04-10",
+    intro: "Reading interview tips is not interview practice. It's like reading about swimming — useful, but you won't learn to swim until you get in the water. Here's how to practice mock interviews in a way that actually builds the muscle memory you need for the real thing.",
+    sections: [
+      { heading: "Why Most Interview Practice Doesn't Work", content: "The 3 most common mistakes:\n\n1. Reading answers instead of speaking them — Your brain processes written and spoken answers differently. You need to practice saying words out loud, under time pressure.\n2. Practicing the same questions over and over — Real interviews have follow-up questions you can't predict. Practice should simulate unpredictability.\n3. No feedback loop — Without objective feedback, you can't identify what you're doing wrong. You'll just repeat the same mistakes with more confidence.\n\nEffective practice requires: speaking out loud + unpredictable questions + specific feedback." },
+      { heading: "The 3-Session Framework", content: "Research shows skill improvement follows a pattern:\n\nSession 1: Baseline — Do a full mock interview without preparation. Record yourself. This establishes where you actually are (not where you think you are). Most people are shocked by their filler word count.\n\nSession 2: Targeted Practice — Focus on the 2-3 weaknesses identified in Session 1. If your answers lack structure, practice STAR method. If you use too many filler words, practice pausing instead.\n\nSession 3: Full Simulation — Simulate the real interview as closely as possible. Different question types, time pressure, follow-ups. This builds confidence through realistic exposure." },
+      { heading: "Self-Practice vs. Peer Practice vs. AI Practice", content: "Self-practice (mirror/recording):\n+ Free, no scheduling\n- No follow-up questions, hard to be objective about yourself\n- Best for: Rehearsing specific answers you've already crafted\n\nPeer practice (friends/study groups):\n+ Real human interaction\n- Friends won't give harsh feedback, inconsistent quality, scheduling is hard\n- Best for: Getting comfortable with the social aspect of interviews\n\nAI mock interviews (HireStepX):\n+ Available 24/7, objective scoring, tracks improvement, company-specific\n- Not a human connection\n- Best for: Systematic improvement with data-driven feedback" },
+      { heading: "How Often Should You Practice?", content: "Research on skill acquisition suggests:\n\n• 1 week before interview: 1 session per day (intense prep)\n• 2-4 weeks before: 3-4 sessions per week (building habits)\n• General readiness: 1-2 sessions per week (maintenance)\n\nDiminishing returns kick in after 45 minutes per session. Better to do 3 short sessions than 1 marathon session.\n\nThe magic number: Most users see significant improvement after 5-7 sessions. By session 10, their scores plateau at a much higher level than where they started." },
+      { heading: "What to Do After Each Practice Session", content: "The 5-minute post-session review:\n\n1. Write down the 1 thing you did best (anchor your confidence)\n2. Write down the 1 thing to improve next time (not 5 things — just 1)\n3. Re-record your answer to the worst question (immediate correction)\n4. Schedule your next session (don't break the chain)\n\nThis simple habit turns random practice into deliberate practice — the kind that actually builds expertise." },
+    ],
+    faqs: [
+      { question: "How many mock interviews should I do before a real interview?", answer: "Minimum 3 sessions to see meaningful improvement. Ideally 5-7 sessions over 1-2 weeks. After 10 sessions, most people have built strong interview muscle memory." },
+      { question: "Should I practice mock interviews alone or with someone?", answer: "Both serve different purposes. Practice alone to rehearse specific answers. Practice with others (or AI) to build adaptability to unexpected questions and follow-ups. AI mock interviews combine the best of both — available anytime with objective, consistent feedback." },
+      { question: "Is it possible to over-practice for interviews?", answer: "Yes — if your answers start sounding rehearsed and robotic. The goal is to be naturally structured, not scripted. If you're memorizing answers word-for-word, switch to practicing with random follow-up questions to stay adaptable." },
+    ],
+    relatedSlugs: ["behavioral-interview-questions-freshers", "campus-placement-interview-tips", "how-to-introduce-yourself-in-interview"],
+    cta: "Start your mock interview practice right now — 3 free AI sessions with scored feedback. See your baseline score in 10 minutes.",
+  },
+  {
+    slug: "star-method-interview-answers",
+    title: "STAR Method for Interview Answers — With 10 Examples for Indian Job Seekers",
+    metaDescription: "Master the STAR method for behavioral interviews. Includes 10 real examples tailored for Indian job seekers at TCS, Infosys, Google, and other companies.",
+    company: "General",
+    category: "Behavioral",
+    readTime: "8 min",
+    heroImage: "https://images.unsplash.com/photo-1552664730-d307ca884978?w=1200&h=500&fit=crop",
+    heroAlt: "Professional giving a structured interview answer",
+    datePublished: "2025-04-12",
+    intro: "The STAR method is the single most effective framework for answering behavioral interview questions. It stands for Situation, Task, Action, Result. Here's how to use it — with 10 examples tailored for Indian companies and roles.",
+    sections: [
+      { heading: "What Is the STAR Method?", content: "STAR is a framework for structuring your interview answers:\n\n• Situation — Set the context (When? Where? What project?)\n• Task — What was your specific responsibility?\n• Action — What did YOU do? (Not your team — you specifically)\n• Result — What was the measurable outcome?\n\nWhy it works: Interviewers are trained to evaluate structured answers. STAR gives them exactly what they're looking for — specific evidence of your capabilities, not vague claims.\n\nThe most common mistake: 80% of candidates describe the situation well but rush through the action and skip the result entirely. The result is the most important part." },
+      { heading: "The 30-60-10 Rule", content: "Allocate your answer time like this:\n\n• 30% — Situation + Task (set context quickly, don't over-explain)\n• 60% — Action (this is where you show your value — be specific)\n• 10% — Result (one clear metric or outcome)\n\nTotal answer length: 90 seconds to 2 minutes. Practice timing yourself. If you go over 3 minutes, you're losing the interviewer." },
+      { heading: "Example 1: Leadership at TCS", content: "Question: 'Tell me about a time you led a team.'\n\nSituation: 'During my first year at TCS, our team of 8 was assigned a banking client's portal migration with a 6-week deadline.'\n\nTask: 'As the module lead, I was responsible for the payments integration — the most complex part of the migration.'\n\nAction: 'I broke the work into 2-week sprints, set up daily 15-minute standups to catch blockers early, and created a shared testing checklist. When we hit an API compatibility issue in week 3, I worked with the client's team directly to document the legacy endpoints and built an adapter layer.'\n\nResult: 'We delivered 3 days early with zero critical bugs in UAT. The client extended the contract for 2 more modules, adding ₹1.2 crore to the account.'" },
+      { heading: "Example 2: Problem-Solving at a Startup", content: "Question: 'Describe a difficult problem you solved.'\n\nSituation: 'At my fintech startup, our payment processing was failing for 12% of UPI transactions during peak hours.'\n\nTask: 'I was asked to investigate and fix the issue within a week — it was costing us ₹15 lakh in failed transactions daily.'\n\nAction: 'I analyzed 3 days of logs and found the bottleneck was in our database connection pool — we were running out of connections during peak load. I implemented connection pooling with PgBouncer, added retry logic with exponential backoff, and set up monitoring alerts for connection saturation.'\n\nResult: 'Transaction failure rate dropped from 12% to 0.3% within 48 hours. The monthly GMV increased by ₹4.5 crore as previously failing transactions went through.'" },
+      { heading: "5 More Quick STAR Examples", content: "3. Teamwork (Infosys): Led cross-functional team to reduce deployment time by 40% using CI/CD pipeline.\n\n4. Adaptability (Google): Learned React Native in 2 weeks to ship a mobile prototype that won internal hackathon.\n\n5. Conflict Resolution (Flipkart): Mediated disagreement between frontend and backend teams on API design — proposed compromise that both teams adopted.\n\n6. Customer Focus (Razorpay): Identified UX friction in merchant onboarding, proposed 3-step simplification that increased completion rate from 60% to 85%.\n\n7. Initiative (Amazon): Built internal dashboard that automated weekly reporting — saved team 10 hours/week.\n\nNotice the pattern: Every example has a specific metric in the result. Numbers make your answer memorable and credible." },
+      { heading: "Common STAR Mistakes", content: "1. Using 'we' instead of 'I' — Interviewers want YOUR contribution, not the team's.\n2. No metrics in the result — '...and it worked well' is not a result. '...reduced load time by 40%' is.\n3. Choosing trivial examples — Pick situations with real stakes and meaningful outcomes.\n4. Not having enough stories — Prepare 8-10 STAR stories that cover: leadership, conflict, failure, initiative, teamwork, problem-solving. You can remix these for different questions.\n5. Over-explaining the situation — Get to the action quickly. The interviewer cares about what you did, not the background." },
+    ],
+    faqs: [
+      { question: "How many STAR stories should I prepare?", answer: "Prepare 8-10 stories that cover different competencies (leadership, conflict, failure, initiative, teamwork, technical problem-solving). You can adapt the same story for different questions by emphasizing different aspects." },
+      { question: "What if I don't have work experience for STAR answers?", answer: "Use college projects, internships, hackathons, volunteer work, or academic team projects. The framework works the same — just be honest about the context. Freshers are expected to draw from academic and extracurricular experiences." },
+      { question: "How long should a STAR answer be?", answer: "90 seconds to 2 minutes. Under 60 seconds feels too brief (missing details). Over 3 minutes loses the interviewer's attention. Practice timing yourself." },
+    ],
+    relatedSlugs: ["behavioral-interview-questions-freshers", "tell-me-about-yourself-best-answer", "hr-interview-questions-answers-india"],
+    cta: "Practice your STAR answers with HireStepX's AI — it scores your Situation, Task, Action, and Result individually and tells you exactly where to improve.",
+  },
 ];
 
 /* ─── Helpers ─── */
@@ -411,6 +490,23 @@ function BlogIndex({ navigate }: { navigate: (path: string) => void }) {
     title: "Interview Prep Blog — HireStepX",
     description: "Company-specific interview preparation guides, question banks, and career strategies for Indian job seekers. Google, Amazon, TCS, Infosys, Flipkart, and more.",
     ogType: "website",
+    jsonLd: {
+      "@context": "https://schema.org",
+      "@type": "CollectionPage",
+      name: "Interview Prep Blog",
+      description: "Company-specific interview preparation guides for Indian job seekers.",
+      url: "https://hirestepx.com/blog",
+      publisher: { "@type": "Organization", name: "HireStepX", url: "https://hirestepx.com" },
+      mainEntity: {
+        "@type": "ItemList",
+        itemListElement: posts.map((p, i) => ({
+          "@type": "ListItem",
+          position: i + 1,
+          url: `https://hirestepx.com/blog/${p.slug}`,
+          name: p.title,
+        })),
+      },
+    },
   });
 
   const filtered = activeCategory === "All" ? posts : posts.filter(p => p.category === activeCategory);
@@ -420,7 +516,7 @@ function BlogIndex({ navigate }: { navigate: (path: string) => void }) {
   return (
     <div style={{ minHeight: "100vh", background: c.obsidian }}>
       {/* Nav */}
-      <nav style={{ padding: "20px 40px", borderBottom: `1px solid ${c.border}`, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+      <nav className="blog-nav" style={{ padding: "20px 40px", borderBottom: `1px solid ${c.border}`, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <Link to="/" style={{ textDecoration: "none" }}>
           <span style={{ fontFamily: font.display, fontSize: 22, fontWeight: 400, color: c.ivory, letterSpacing: "0.02em" }}>HireStepX</span>
         </Link>
@@ -430,7 +526,7 @@ function BlogIndex({ navigate }: { navigate: (path: string) => void }) {
         }}>Start Free Practice</Link>
       </nav>
 
-      <div style={{ maxWidth: 1100, margin: "0 auto", padding: "48px 40px 80px" }}>
+      <div className="blog-container" style={{ maxWidth: 1100, margin: "0 auto", padding: "48px 40px 80px" }}>
         {/* Header */}
         <div style={{ marginBottom: 40 }}>
           <p style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: c.gilt, marginBottom: 12 }}>Blog</p>
@@ -464,6 +560,7 @@ function BlogIndex({ navigate }: { navigate: (path: string) => void }) {
         {featured && (
           // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions -- article acts as navigable card
           <article
+            className="blog-featured"
             onClick={() => navigate(`/blog/${featured.slug}`)}
             style={{
               display: "grid", gridTemplateColumns: "1fr 1fr", gap: 0,
@@ -501,7 +598,7 @@ function BlogIndex({ navigate }: { navigate: (path: string) => void }) {
         )}
 
         {/* Post grid */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20 }}>
+        <div className="blog-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20 }}>
           {rest.map(post => (
             // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions -- article acts as navigable card
             <article
@@ -571,10 +668,19 @@ function BlogPostPage({ post }: { post: BlogPost }) {
   const related = getRelatedPosts(post.relatedSlugs);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
-  // Combine article + FAQ JSON-LD
+  // Combine article + FAQ + breadcrumb JSON-LD via @graph
   const articleLd = articleJsonLd({ title: post.title, description: post.metaDescription, url, image: post.heroImage, datePublished: post.datePublished });
+  const breadcrumbLd = {
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Home", item: "https://hirestepx.com" },
+      { "@type": "ListItem", position: 2, name: "Blog", item: "https://hirestepx.com/blog" },
+      { "@type": "ListItem", position: 3, name: post.title, item: url },
+    ],
+  };
   const faqLd = post.faqs.length > 0 ? faqJsonLd(post.faqs) : null;
-  const combinedLd = faqLd ? { ...articleLd, "@graph": [articleLd, faqLd] } : articleLd;
+  const graphItems = [articleLd, breadcrumbLd, ...(faqLd ? [faqLd] : [])];
+  const combinedLd = { "@context": "https://schema.org", "@graph": graphItems };
 
   useSEO({
     title: `${post.title} — HireStepX`,
@@ -586,9 +692,9 @@ function BlogPostPage({ post }: { post: BlogPost }) {
   });
 
   return (
-    <div style={{ minHeight: "100vh", background: c.obsidian }}>
+    <div className="blog-post-page" style={{ minHeight: "100vh", background: c.obsidian }}>
       {/* Nav */}
-      <nav style={{ padding: "20px 40px", borderBottom: `1px solid ${c.border}`, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+      <nav className="blog-nav" style={{ padding: "20px 40px", borderBottom: `1px solid ${c.border}`, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <Link to="/" style={{ textDecoration: "none" }}>
             <span style={{ fontFamily: font.display, fontSize: 22, fontWeight: 400, color: c.ivory, letterSpacing: "0.02em" }}>HireStepX</span>
@@ -603,7 +709,7 @@ function BlogPostPage({ post }: { post: BlogPost }) {
       </nav>
 
       {/* Hero */}
-      <div style={{ position: "relative", height: 360, overflow: "hidden" }}>
+      <div className="blog-hero" style={{ position: "relative", height: 360, overflow: "hidden" }}>
         <img
           src={post.heroImage} alt={post.heroAlt}
           onError={e => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
@@ -630,7 +736,7 @@ function BlogPostPage({ post }: { post: BlogPost }) {
         <span style={{ fontFamily: font.ui, fontSize: 12, color: c.gilt }}>HireStepX Team</span>
       </div>
 
-      <article style={{ maxWidth: 720, margin: "0 auto", padding: "0 40px 80px" }}>
+      <article className="blog-article" style={{ maxWidth: 720, margin: "0 auto", padding: "0 40px 80px" }}>
         {/* Intro */}
         <p style={{ fontFamily: font.ui, fontSize: 17, color: c.chalk, lineHeight: 1.75, marginBottom: 48, borderLeft: `3px solid ${c.gilt}`, paddingLeft: 20 }}>
           {post.intro}
@@ -724,7 +830,7 @@ function BlogPostPage({ post }: { post: BlogPost }) {
             <h2 style={{ fontFamily: font.ui, fontSize: 16, fontWeight: 600, color: c.ivory, marginBottom: 20, letterSpacing: "0.02em" }}>
               Continue Reading
             </h2>
-            <div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.min(related.length, 3)}, 1fr)`, gap: 16 }}>
+            <div className="blog-related-grid" style={{ display: "grid", gridTemplateColumns: `repeat(${Math.min(related.length, 3)}, 1fr)`, gap: 16 }}>
               {related.map(r => (
                 <Link key={r.slug} to={`/blog/${r.slug}`} style={{
                   background: c.graphite, borderRadius: 12, border: `1px solid ${c.border}`,
