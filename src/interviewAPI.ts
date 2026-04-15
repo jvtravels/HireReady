@@ -181,9 +181,18 @@ export async function fetchLLMQuestions(params: {
       const data = await res.json().catch(() => ({}));
       throw new Error(data.retryAfter ? `Too many requests. Please wait ${data.retryAfter} seconds and try again.` : "Too many requests. Please wait a moment and try again.");
     }
-    if (!res.ok) return null;
+    if (!res.ok) {
+      const errBody = await res.text().catch(() => "");
+      const reason = res.status === 401 ? "auth" : res.status === 403 ? "limit" : res.status === 503 ? "not-configured" : `error-${res.status}`;
+      console.warn(`[questions] generate-questions failed: ${res.status} (${reason})`, errBody.slice(0, 300));
+      // Throw with reason so caller can show specific message instead of generic fallback
+      throw new Error(`Question generation failed: ${reason === "auth" ? "not logged in" : reason === "limit" ? "session limit reached" : reason === "not-configured" ? "AI not configured on server" : `server error ${res.status}`}`);
+    }
     const data = await res.json();
-    if (!data.questions || !Array.isArray(data.questions)) return null;
+    if (!data.questions || !Array.isArray(data.questions)) {
+      console.warn("[questions] generate-questions returned invalid data:", JSON.stringify(data).slice(0, 300));
+      return null;
+    }
     return data.questions
       .map((q: { type?: string; aiText?: string; text?: string; scoreNote?: string }) => ({
         type: (q.type || "question") as InterviewStep["type"],
@@ -200,8 +209,12 @@ export async function fetchLLMQuestions(params: {
     try {
       return await attempt();
     } catch (err) {
-      if (err instanceof Error && err.message.includes("Too many requests")) throw err;
-      if (i === 1 || !(err instanceof TypeError)) return null;
+      const msg = err instanceof Error ? err.message : String(err);
+      console.warn(`[questions] attempt ${i + 1} failed:`, msg);
+      // Propagate actionable errors (auth, limit, rate limit) so user sees specific message
+      if (err instanceof Error && (msg.includes("Too many requests") || msg.includes("Question generation failed"))) throw err;
+      // Only retry network errors (TypeError), not server errors
+      if (i === 1 || !(err instanceof TypeError)) throw new Error(msg || "Could not generate questions");
       await new Promise(r => setTimeout(r, 1500));
     }
   }

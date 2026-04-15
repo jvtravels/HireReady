@@ -80,11 +80,13 @@ describe("getMiniScript", () => {
 
   it("falls back to behavioral for unknown interview type", () => {
     const unknownSteps = getMiniScript(null, undefined, "nonexistent-type");
-    const behavioralSteps = getMiniScript(null, undefined, "behavioral");
-    // Questions should match behavioral
-    expect(unknownSteps[1].aiText).toBe(behavioralSteps[1].aiText);
-    expect(unknownSteps[2].aiText).toBe(behavioralSteps[2].aiText);
-    expect(unknownSteps[3].aiText).toBe(behavioralSteps[3].aiText);
+    // Should still have 5 steps (intro + 3q + closing)
+    expect(unknownSteps).toHaveLength(5);
+    expect(unknownSteps[0].type).toBe("intro");
+    expect(unknownSteps[4].type).toBe("closing");
+    // Questions should come from behavioral pool (randomized, so just check they exist)
+    expect(unknownSteps[1].type).toBe("question");
+    expect(unknownSteps[1].aiText.length).toBeGreaterThan(10);
   });
 
   it("includes user name and company in intro", () => {
@@ -160,8 +162,8 @@ describe("getScript", () => {
   it("returns correct script for each type", () => {
     for (const type of ALL_SCRIPT_TYPES) {
       const script = getScript(type, null, null);
-      // Should have same number of steps as base
-      expect(script.length).toBe(scriptsByType[type].length);
+      // intro + up to 5 randomized questions + closing (at least 5 steps)
+      expect(script.length).toBeGreaterThanOrEqual(5);
       // First step should be intro, last should be closing
       expect(script[0].type).toBe("intro");
       expect(script[script.length - 1].type).toBe("closing");
@@ -171,9 +173,10 @@ describe("getScript", () => {
   it("falls back to behavioral for null/unknown type", () => {
     const nullScript = getScript(null, null, null);
     const unknownScript = getScript("nonexistent", null, null);
-    const behavioralScript = getScript("behavioral", null, null);
-    expect(nullScript.length).toBe(behavioralScript.length);
-    expect(unknownScript.length).toBe(behavioralScript.length);
+    // Both should have same structure (intro + questions + closing)
+    expect(nullScript.length).toBe(unknownScript.length);
+    expect(nullScript[0].type).toBe("intro");
+    expect(unknownScript[0].type).toBe("intro");
   });
 
   it("applies warmup difficulty (slower durations)", () => {

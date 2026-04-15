@@ -93,7 +93,8 @@ describe("interviewScripts", () => {
   describe("getScript", () => {
     it("returns personalized behavioral script by default", () => {
       const script = getScript(null, null, null);
-      expect(script.length).toBe(5);
+      // intro + 5 randomized questions + closing = 7
+      expect(script.length).toBe(7);
       expect(script[0].type).toBe("intro");
       expect(script[0].aiText).toContain("behavioral");
     });

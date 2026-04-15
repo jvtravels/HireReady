@@ -23,6 +23,40 @@ function normalizePersona(persona: string): string {
   return PERSONA_NORM[persona.toLowerCase()] || persona;
 }
 
+/* ─── Thinking phrases — brief acknowledgments spoken before the next question ─── */
+const THINKING_PHRASES = [
+  "Hmm… okay.",
+  "That's a good point.",
+  "Interesting.",
+  "Right, right.",
+  "I see.",
+  "Okay, let me think about that.",
+  "Got it.",
+  "Alright.",
+  "Mmhmm.",
+  "Fair enough.",
+  "Let's explore that.",
+  "Okay, understood.",
+];
+
+/* ─── Silence nudge phrases — spoken when user pauses too long during answer ─── */
+const SILENCE_NUDGES = [
+  "Take your time…",
+  "Whenever you're ready.",
+  "No rush — take a moment to think.",
+  "Feel free to continue.",
+  "I'm listening.",
+];
+
+function pickRandom<T>(arr: T[]): T {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
+/** Random delay in [min, max] ms */
+function randomDelay(min: number, max: number): number {
+  return min + Math.floor(Math.random() * (max - min));
+}
+
 function extractScore(raw: unknown): number {
   if (typeof raw === "number") return raw;
   if (typeof raw === "object" && raw !== null && "score" in raw) return (raw as { score: number }).score;
@@ -169,15 +203,20 @@ export function useInterviewEngine() {
     Promise.race([llmPromise, timeoutPromise]).then(questions => {
       if (cancelled) return;
       if (questions && questions.length > 0 && currentStepRef.current === 0) {
+        console.info(`[interview] LLM generated ${questions.length} custom questions`);
         setInterviewScript(questions);
       } else if (!questions) {
+        console.warn("[interview] LLM returned null — using fallback questions");
         setSaveWarning(`Custom ${interviewType} questions unavailable. Using practice questions instead.`);
         if (!isMiniMode) toast(`Using practice questions — custom ${interviewType} generation unavailable.`, "info");
+      } else if (currentStepRef.current !== 0) {
+        console.warn("[interview] LLM questions arrived too late — user already started (step", currentStepRef.current, ")");
       }
       setLlmLoading(false);
     }).catch(err => {
       if (cancelled) return;
       const msg = err.message || "Could not generate questions.";
+      console.warn("[interview] LLM question generation error:", msg);
       setSaveWarning(`${msg} Using practice questions.`);
       if (!isMiniMode) toast(`Using practice questions — ${msg.toLowerCase()}`, "info");
       setLlmLoading(false);
@@ -241,6 +280,8 @@ export function useInterviewEngine() {
   const [lastSessionId, setLastSessionId] = useState<string | null>(null);
   const noSpeechCountRef = useRef(0);
   const recognitionRestartCountRef = useRef(0);
+  const silenceNudgeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const silenceNudgeFiredRef = useRef(false);
   const deepgramRetryRef = useRef(0);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const nextBtnRef = useRef<HTMLButtonElement>(null);
@@ -537,6 +578,39 @@ export function useInterviewEngine() {
     };
   }, [phase, isMuted]);
 
+  // Feature 3: Silence nudge — if user is silent for 15s during listening, speak a gentle prompt
+  useEffect(() => {
+    if (phase !== "listening" || !aiVoiceEnabled) {
+      if (silenceNudgeTimerRef.current) { clearTimeout(silenceNudgeTimerRef.current); silenceNudgeTimerRef.current = null; }
+      return;
+    }
+    silenceNudgeFiredRef.current = false;
+    const startNudgeTimer = () => {
+      if (silenceNudgeTimerRef.current) clearTimeout(silenceNudgeTimerRef.current);
+      silenceNudgeTimerRef.current = setTimeout(() => {
+        if (silenceNudgeFiredRef.current || interviewEndedRef.current) return;
+        silenceNudgeFiredRef.current = true;
+        const nudge = pickRandom(SILENCE_NUDGES);
+        // Add nudge to transcript so user sees it
+        setTranscript(prev => [...prev, { speaker: "ai", text: `[${nudge}]`, time: formatTime(elapsed) }]);
+        // Speak the nudge — don't block; user can start talking anytime
+        speak(nudge, () => {}, () => {}).catch(() => {});
+      }, 15_000);
+    };
+    startNudgeTimer();
+    return () => {
+      if (silenceNudgeTimerRef.current) { clearTimeout(silenceNudgeTimerRef.current); silenceNudgeTimerRef.current = null; }
+    };
+  }, [phase, aiVoiceEnabled, currentStep]);
+
+  // Reset silence nudge timer when user starts speaking (transcript changes)
+  useEffect(() => {
+    if (phase !== "listening" || !aiVoiceEnabled || !currentTranscript) return;
+    // User is speaking — cancel any pending nudge
+    if (silenceNudgeTimerRef.current) { clearTimeout(silenceNudgeTimerRef.current); silenceNudgeTimerRef.current = null; }
+    silenceNudgeFiredRef.current = true; // Don't nudge once they've started
+  }, [currentTranscript, phase, aiVoiceEnabled]);
+
   // User answer timer
   const [answerTimer, setAnswerTimer] = useState(0);
 
@@ -616,6 +690,10 @@ export function useInterviewEngine() {
       prefetchTTS(step.aiText);
     }
 
+    // Whether this step should get a thinking phrase (question/follow-up, not first step)
+    const shouldUseThinkingPhrase = currentStep > 0 && (step.type === "question" || step.type === "follow-up");
+    const thinkingPhrase = shouldUseThinkingPhrase ? pickRandom(THINKING_PHRASES) : null;
+
     const startSpeaking = () => {
       if (isStale()) return;
       setPhase("speaking");
@@ -637,6 +715,8 @@ export function useInterviewEngine() {
         setIsRecording(false);
         if (step.waitForUser) {
           setPhase("listening");
+          // Reset silence nudge for the new listening phase
+          silenceNudgeFiredRef.current = false;
           const nextStep = interviewScript[currentStep + 1];
           if (nextStep && aiVoiceEnabled) {
             prefetchTTS(nextStep.aiText);
@@ -682,6 +762,29 @@ export function useInterviewEngine() {
       }
     };
 
+    // Speak a thinking phrase (e.g. "Hmm… okay.") before the actual question for realism
+    const startWithThinkingPhrase = () => {
+      if (isStale() || !thinkingPhrase) { startSpeaking(); return; }
+      if (aiVoiceEnabled) {
+        const phraseInstanceId = ++ttsInstanceIdRef.current;
+        const onPhraseDone = () => {
+          if (isStale()) return;
+          // Brief micro-pause between phrase and question (300-600ms)
+          setTimeout(startSpeaking, randomDelay(300, 600));
+        };
+        speak(thinkingPhrase, onPhraseDone, onPhraseDone).then(handle => {
+          if (ttsInstanceIdRef.current === phraseInstanceId) {
+            ttsCancelRef.current = handle.cancel;
+          } else {
+            handle.cancel();
+          }
+        }).catch(() => { if (!isStale()) startSpeaking(); });
+      } else {
+        // Without voice, just add a slightly longer delay to simulate thinking
+        setTimeout(startSpeaking, randomDelay(400, 800));
+      }
+    };
+
     const pendingFollowUp = pendingFollowUpRef.current;
     if (pendingFollowUp) {
       pendingFollowUpRef.current = null;
@@ -706,13 +809,20 @@ export function useInterviewEngine() {
             ...prev.slice(currentStep),
           ]);
         } else {
-          setTimeout(startSpeaking, step.thinkingDuration);
+          // Micro-delay: randomize thinking duration for more natural pacing (800-1500ms for questions)
+          const microDelay = shouldUseThinkingPhrase ? randomDelay(800, 1500) : step.thinkingDuration;
+          setTimeout(startWithThinkingPhrase, microDelay);
         }
       }).catch(() => {
-        if (!isStale()) setTimeout(startSpeaking, step.thinkingDuration);
+        if (!isStale()) {
+          const microDelay = shouldUseThinkingPhrase ? randomDelay(800, 1500) : step.thinkingDuration;
+          setTimeout(startWithThinkingPhrase, microDelay);
+        }
       });
     } else {
-      const thinkTimer = setTimeout(startSpeaking, step.thinkingDuration);
+      // Micro-delay: use randomized thinking duration for question steps
+      const microDelay = shouldUseThinkingPhrase ? randomDelay(800, 1500) : step.thinkingDuration;
+      const thinkTimer = setTimeout(startWithThinkingPhrase, microDelay);
       return () => {
         cancelled = true;
         clearTimeout(thinkTimer);

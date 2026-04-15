@@ -2,6 +2,16 @@
 
 import type { User } from "./AuthContext";
 
+/** Fisher-Yates shuffle + pick N items — ensures different questions every session */
+function shuffleAndPick<T>(arr: T[], n: number): T[] {
+  const copy = [...arr];
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy.slice(0, n);
+}
+
 export interface InterviewStep {
   type: "intro" | "question" | "follow-up" | "closing";
   aiText: string;
@@ -101,57 +111,90 @@ export const scriptsByType: Record<string, InterviewStep[]> = {
 
 export const defaultScript = scriptsByType.behavioral;
 
-/** Type-specific mini question banks for 3-question practice rounds */
-const miniQuestionsByType: Record<string, { q: string; qResume: string; scoreNote: string }[]> = {
+/** Type-specific question banks for practice rounds — expanded pools for randomization */
+type QuestionBank = { q: string; qResume: string; scoreNote: string };
+const miniQuestionsByType: Record<string, QuestionBank[]> = {
   behavioral: [
     { q: "Tell me about a time you had to make a tough decision with incomplete information. What was the situation, and how did you approach it?", qResume: "Based on your experience as {title}, tell me about a time you had to make a tough decision with incomplete information. What was the situation, and how did you approach it?", scoreNote: "STAR structure, decision-making clarity, outcome" },
     { q: "What's the biggest challenge you've faced working with cross-functional teams, and how did you handle it?", qResume: "In your role as {title}, what's the biggest challenge you faced working with cross-functional teams, and how did you handle it?", scoreNote: "Collaboration, communication, conflict resolution" },
     { q: "If you joined a new team tomorrow as a {role} and found that velocity had dropped 40% over the last quarter, what would be your first three steps?", qResume: "Imagine you're stepping into a new {role} position and you find that team velocity has dropped 40% over the last quarter. Given your background, what would be your first three steps?", scoreNote: "Analytical thinking, prioritization, leadership approach" },
+    { q: "Describe a time when you received critical feedback that was hard to hear. How did you respond, and what changed as a result?", qResume: "As {title}, describe a time when you received critical feedback that was hard to hear. How did you respond, and what changed?", scoreNote: "Self-awareness, resilience, growth mindset" },
+    { q: "Tell me about a project that failed or didn't meet expectations. What happened, and what did you learn?", qResume: "From your time as {title}, tell me about a project that didn't meet expectations. What happened, and what did you learn?", scoreNote: "Accountability, learning from failure, honesty" },
+    { q: "Give me an example of when you had to influence someone without having direct authority over them. How did you get buy-in?", qResume: "In your role as {title}, give me an example of when you had to influence someone without direct authority. How did you get buy-in?", scoreNote: "Influence, persuasion, stakeholder management" },
+    { q: "Tell me about a time you had to deliver results under extreme time pressure. What trade-offs did you make?", qResume: "As {title}, tell me about a time you delivered results under extreme time pressure. What trade-offs did you make?", scoreNote: "Prioritization under pressure, decision-making speed, outcome focus" },
+    { q: "Describe a situation where you had to onboard quickly into an unfamiliar domain. How did you get up to speed?", qResume: "When you started as {title}, how did you get up to speed quickly in an unfamiliar domain? Walk me through your approach.", scoreNote: "Learning agility, resourcefulness, adaptability" },
   ],
   "hr-round": [
     { q: "Tell me about yourself — your background, what drives you, and why you're interested in this role.", qResume: "Walk me through your journey from {title} to where you are now. What motivates you, and why are you looking at this role?", scoreNote: "Concise narrative, motivation, role alignment" },
     { q: "What are your greatest strengths and one area you're actively working to improve? Give me a specific example.", qResume: "From your experience as {title}, what would you say is your greatest strength? And what's one area you're actively working to improve?", scoreNote: "Self-awareness, honesty, growth mindset" },
     { q: "Why should we hire you over other candidates? What unique value do you bring?", qResume: "Given your background as {title}, why should we hire you over other candidates? What unique value do you bring to this {role} position?", scoreNote: "Confidence without arrogance, unique value proposition, role fit" },
+    { q: "How do you handle stress and pressure at work? Give me a specific example.", qResume: "As {title}, how did you handle stress during high-pressure periods? Walk me through a specific example.", scoreNote: "Stress management, emotional regulation, practical strategies" },
+    { q: "What kind of work culture do you thrive in? What values matter most to you in a workplace?", qResume: "Having worked as {title}, what kind of work culture helps you do your best work? What values matter most?", scoreNote: "Cultural fit awareness, values articulation, self-knowledge" },
+    { q: "Where do you see yourself professionally in the next 3-5 years? How does this role help you get there?", qResume: "Where do you see your career heading in 3-5 years after {title}? How does this {role} position fit your trajectory?", scoreNote: "Career clarity, ambition, realistic planning" },
   ],
   "campus-placement": [
     { q: "Tell me about yourself — your academic background, key projects, and what you're looking for in your first role.", qResume: "I can see you've been involved in some interesting work. Tell me about your academic background, your role as {title}, and what you're looking for in your career.", scoreNote: "Concise intro, relevant highlights, career clarity" },
     { q: "Walk me through a project you're most proud of. What was your specific contribution, and what did you learn from the challenges?", qResume: "Walk me through your experience as {title}. What was your specific contribution, and what did you learn from the challenges you faced?", scoreNote: "Technical depth, ownership, learning mindset" },
     { q: "Where do you see yourself in 5 years? How does this role fit into your long-term goals?", qResume: "Where do you see yourself in 5 years? How does transitioning from {title} to a {role} fit into your long-term goals?", scoreNote: "Ambition, alignment with role, realistic goals" },
+    { q: "What was the toughest technical problem you solved during your studies or internship? Walk me through your approach.", qResume: "As {title}, what was the toughest technical problem you tackled? Walk me through your debugging or problem-solving approach.", scoreNote: "Problem-solving methodology, technical thinking, persistence" },
+    { q: "Tell me about a time you worked in a team where not everyone contributed equally. How did you handle it?", qResume: "During your time as {title}, tell me about working with a team where contributions were uneven. How did you handle it?", scoreNote: "Teamwork, conflict handling, leadership potential" },
+    { q: "Why did you choose your field of study? How has it prepared you for this career?", qResume: "What led you to become {title}? How has that experience prepared you for a career as {role}?", scoreNote: "Self-awareness, motivation, career narrative" },
   ],
   strategic: [
     { q: "If you joined a company as {role} and the tech stack was aging but product-market fit was strong, how would you approach building a technical strategy?", qResume: "Based on your experience as {title}, if you joined a company where the tech stack was aging but PMF was strong, how would you build a technical strategy?", scoreNote: "Strategic vision, prioritization, stakeholder buy-in" },
     { q: "Tell me about a time you had to pivot a major initiative. How did you recognize the need and communicate the change?", qResume: "In your role as {title}, tell me about a time you had to pivot a major initiative. How did you recognize the need and communicate the change?", scoreNote: "Adaptability, communication, decisiveness" },
     { q: "How do you ensure your work stays aligned with broader business goals? Walk me through your approach.", qResume: "As {title}, how did you ensure your team's work stayed aligned with broader business goals?", scoreNote: "Cross-functional alignment, planning rigor" },
+    { q: "You've been given a budget of ₹5 crore and 6 months to launch a new product line. How do you allocate resources and de-risk the initiative?", qResume: "Drawing on your experience as {title}, you have ₹5 crore and 6 months to launch a new product line. How do you plan and de-risk it?", scoreNote: "Resource allocation, risk management, strategic planning" },
+    { q: "How do you decide what NOT to build? Walk me through your framework for saying no to stakeholder requests.", qResume: "As {title}, how did you decide what NOT to build? Walk me through a time you said no to a stakeholder.", scoreNote: "Prioritization discipline, stakeholder management, strategic focus" },
+    { q: "Your competitor just raised $100M and is underpricing you. What's your 12-month strategic response?", qResume: "With your experience as {title}, a competitor just raised $100M and is underpricing you. What's your 12-month strategic response?", scoreNote: "Competitive strategy, market positioning, long-term thinking" },
   ],
   technical: [
     { q: "Describe a system you worked on that had to handle significant scale. What were the key architectural decisions and trade-offs?", qResume: "From your time as {title}, describe a system you designed or worked on at scale. What were the key architectural trade-offs?", scoreNote: "Scalability thinking, trade-off analysis" },
     { q: "Tell me about a major production issue you dealt with. How did you approach the investigation and what systemic changes followed?", qResume: "In your role as {title}, tell me about a major production issue you dealt with. How did you approach the investigation?", scoreNote: "Incident management, systemic thinking" },
     { q: "How do you evaluate and introduce new technologies? Walk me through a recent technology decision.", qResume: "As {title}, how did you evaluate and introduce new technologies into your stack? Walk me through a specific decision.", scoreNote: "Tech evaluation rigor, risk management" },
+    { q: "If you had to migrate a monolithic application to microservices, how would you approach it? What would you NOT decompose?", qResume: "Given your experience as {title}, how would you approach migrating a monolith to microservices? What would you keep together?", scoreNote: "Architecture migration, boundary identification, pragmatism" },
+    { q: "How do you approach technical debt? When is it worth paying down vs living with?", qResume: "As {title}, how did you manage technical debt? Give me a specific example of when you chose to pay it down vs defer.", scoreNote: "Technical judgment, business impact awareness, pragmatism" },
+    { q: "Design a notification system that handles 10 million users. Walk me through the key components and failure modes.", qResume: "Drawing on your experience as {title}, design a notification system for 10M users. Walk me through components and failure handling.", scoreNote: "System design, failure mode thinking, scalability" },
   ],
   "case-study": [
     { q: "Your core product has strong uptime but customers are churning citing quality issues. Latency is high. How would you investigate and address this?", qResume: "Drawing on your experience as {title} — your core product has strong uptime but customers are churning citing quality issues. How would you investigate?", scoreNote: "Problem decomposition, data-driven approach" },
     { q: "A competitor launched a feature in 2 months. Your team estimates 6 months due to tech debt. Leadership wants it in 3. How do you handle this?", qResume: "As a {role} with your background as {title} — a competitor shipped in 2 months, your team says 6, leadership wants 3. How do you handle this?", scoreNote: "Negotiation, creative solutions, scope management" },
     { q: "Your team of 40 has 25% attrition. Exit interviews cite lack of growth and unclear direction. You have 90 days to turn it around. What do you do?", qResume: "Given your experience as {title} — your team has 25% attrition citing lack of growth. You have 90 days. What do you do?", scoreNote: "People leadership, organizational design, quick wins" },
+    { q: "Your app's daily active users dropped 15% in the last month but signups are steady. What's your investigation plan?", qResume: "As {title}, your app's DAU dropped 15% but signups are steady. Walk me through your investigation and fix plan.", scoreNote: "Analytical thinking, metrics understanding, hypothesis formation" },
+    { q: "Two of your top engineers want to rewrite a critical system from scratch. The rest of the team thinks it's risky. How do you decide?", qResume: "With your background as {title}, two senior engineers want a full rewrite of a critical system. Others disagree. How do you decide?", scoreNote: "Technical judgment, team dynamics, risk assessment" },
+    { q: "You're launching in a new market where your main competitor has 70% share. Your budget is limited. What's your go-to-market strategy?", qResume: "Given your experience as {title}, you're entering a market where a competitor has 70% share with limited budget. What's your strategy?", scoreNote: "Market analysis, resource constraint thinking, creative strategy" },
   ],
   management: [
     { q: "How do you approach building and scaling a team? Walk me through how you'd staff up a new initiative from scratch.", qResume: "From your experience as {title}, how do you approach building and scaling a team? Walk me through your process.", scoreNote: "Hiring strategy, team composition, scaling approach" },
     { q: "Tell me about a time you had to give difficult feedback to a team member. How did you approach it and what was the outcome?", qResume: "As {title}, tell me about a time you had to give difficult feedback to a team member. How did you approach it?", scoreNote: "Coaching ability, empathy, directness" },
     { q: "How do you balance technical excellence with delivery speed? Give me an example of a trade-off you made.", qResume: "In your role as {title}, how did you balance technical excellence with delivery speed? Share a specific trade-off.", scoreNote: "Prioritization, pragmatism, team alignment" },
+    { q: "One of your best performers wants to leave for a competitor. How do you handle the conversation?", qResume: "As {title}, one of your best performers wants to leave. How do you handle that retention conversation?", scoreNote: "Retention strategy, empathy, honest conversation" },
+    { q: "Your team consistently misses sprint commitments. Morale is still high but stakeholders are frustrated. What do you do?", qResume: "In your role as {title}, your team keeps missing sprint goals but morale is fine — stakeholders are frustrated. What do you do?", scoreNote: "Process improvement, stakeholder management, root cause analysis" },
+    { q: "How do you ensure remote or distributed team members feel equally included and productive?", qResume: "As {title}, how did you keep remote or distributed team members equally included and productive?", scoreNote: "Remote management, inclusion, communication systems" },
   ],
   panel: [
     { q: "Tell us about yourself and what draws you to this {role} position.", qResume: "Walk us through your journey from {title} to applying for this {role} position. What draws you to this opportunity?", scoreNote: "Concise intro, multi-audience awareness, role motivation" },
     { q: "Describe a project where you had to coordinate across multiple teams or stakeholders with competing priorities.", qResume: "From your time as {title}, describe a project where you coordinated across multiple teams with competing priorities.", scoreNote: "Cross-functional collaboration, stakeholder management" },
     { q: "What's your approach when you disagree with a decision made by leadership? Walk me through a specific example.", qResume: "As {title}, what's your approach when you disagree with a decision made by leadership? Give a specific example.", scoreNote: "Professional disagreement, influence without authority, outcome focus" },
+    { q: "How would you describe your working style to someone who's never worked with you? What should we expect?", qResume: "Having been {title}, how would you describe your working style? What would your previous team say about working with you?", scoreNote: "Self-awareness, team fit, communication" },
+    { q: "Tell us about a technical challenge that required you to step outside your comfort zone. How did you approach it?", qResume: "As {title}, tell us about a time you had to step outside your comfort zone technically. How did you handle it?", scoreNote: "Learning agility, intellectual curiosity, problem-solving" },
+    { q: "If you had to pick one metric to measure your success in this {role} role, what would it be and why?", qResume: "Based on your experience as {title}, if you had to pick one metric to measure your success as {role}, what would it be?", scoreNote: "Impact thinking, metric-driven mindset, role understanding" },
   ],
   "salary-negotiation": [
     { q: "We'd like to discuss compensation. What salary range are you expecting for this {role} position, and what's your reasoning?", qResume: "Given your experience as {title}, what salary range are you expecting for this {role} position? Walk me through your reasoning.", scoreNote: "Anchoring strategy, market data usage, value framing" },
     { q: "That's above our initial budget. We could stretch to meet partway. Would you accept a lower number with a performance review in 6 months?", qResume: "That's above our initial budget for someone transitioning from {title}. We could meet partway with a 6-month review. Would you accept?", scoreNote: "Counter-offer handling, not accepting first counter, creative alternatives" },
     { q: "Let's talk about the full package. What other elements beyond base salary are important to you?", qResume: "Beyond base salary, what elements of the total compensation package matter most to you as you move from {title} to {role}?", scoreNote: "Total comp thinking, prioritization, professional framing" },
+    { q: "We can offer you a 15% equity stake with a 4-year vest, or a 20% higher base salary. Which do you prefer and why?", qResume: "Given your career stage after being {title}, would you prefer 15% equity with 4-year vest or 20% higher base salary? Walk me through your thinking.", scoreNote: "Compensation structure understanding, risk assessment, long-term thinking" },
+    { q: "I should be transparent — this is our final offer. If you turn it down, we'd need to move to our next candidate. How do you respond?", qResume: "This is our final offer. If you turn it down, we move on. As someone coming from {title}, how do you respond to this pressure?", scoreNote: "Negotiation under pressure, emotional regulation, strategic response" },
+    { q: "You have a competing offer from another company that's 10% higher. How do you bring that up professionally?", qResume: "You have a competing offer that's 10% higher than this {role} position. Given your background as {title}, how do you leverage it professionally?", scoreNote: "Leverage usage, professionalism, relationship preservation" },
   ],
   "government-psu": [
     { q: "Why do you want to work in the public sector? What motivates you about government service?", qResume: "With your background as {title}, why are you interested in public sector work? What motivates you about government service?", scoreNote: "Public service motivation, alignment with government values" },
     { q: "How would you handle a situation where a colleague is not following proper procedures? Walk me through your approach.", qResume: "Drawing from your experience as {title}, how would you handle a situation where a colleague is not following proper procedures?", scoreNote: "Ethics, procedural awareness, diplomacy" },
     { q: "Describe how you would handle a situation where you need to implement a new policy that is unpopular with staff.", qResume: "As someone who's been {title}, how would you handle implementing a new policy that's unpopular with the team?", scoreNote: "Change management, leadership, communication under pressure" },
+    { q: "What are the biggest challenges facing public administration in India today, and how would you address them in your role?", qResume: "Given your experience as {title}, what do you see as the biggest challenges in Indian public administration? How would you tackle them?", scoreNote: "Current affairs, analytical thinking, practical governance" },
+    { q: "A senior official asks you to approve a file that you believe has procedural irregularities. What do you do?", qResume: "As someone with {title} experience, a senior official asks you to approve a file with procedural issues. How do you handle it?", scoreNote: "Integrity, ethical courage, procedural knowledge" },
+    { q: "How would you improve citizen service delivery in a district with poor infrastructure and limited digital access?", qResume: "Drawing from your background as {title}, how would you improve citizen service delivery in a resource-constrained district?", scoreNote: "Ground-level thinking, innovation within constraints, empathy" },
   ],
 };
 
@@ -171,7 +214,9 @@ export function getMiniScript(user: User | null, company?: string, interviewType
 
   const typeKey = interviewType && miniQuestionsByType[interviewType] ? interviewType : "behavioral";
   const typeLabel = typeKey.replace(/-/g, " ");
-  const questions = miniQuestionsByType[typeKey];
+  // Randomly select 3 questions from the expanded pool for variety
+  const pool = miniQuestionsByType[typeKey];
+  const questions = shuffleAndPick(pool, 3);
 
   const makeQ = (bank: { q: string; qResume: string; scoreNote: string }) => {
     const raw = hasResume && title ? bank.qResume : bank.q;
@@ -199,7 +244,8 @@ export function getMiniScript(user: User | null, company?: string, interviewType
 
 /** Generate a full interview script with difficulty scaling and personalization */
 export function getScript(type: string | null, difficulty: string | null, user: User | null): InterviewStep[] {
-  const base = (type && scriptsByType[type]) ? scriptsByType[type] : defaultScript;
+  const typeKey = type || "behavioral";
+  const base = (typeKey && scriptsByType[typeKey]) ? scriptsByType[typeKey] : defaultScript;
 
   const speedMultiplier = difficulty === "warmup" ? 1.4 : difficulty === "intense" ? 0.6 : 1;
   const thinkMultiplier = difficulty === "warmup" ? 1.5 : difficulty === "intense" ? 0.5 : 1;
@@ -210,18 +256,20 @@ export function getScript(type: string | null, difficulty: string | null, user: 
   const name = user?.name?.split(" ")[0] || "";
   const feedbackStyle = user?.learningStyle || "direct";
   const hasResume = !!user?.resumeFileName;
+  const latestRole = user?.resumeData?.experience?.[0];
+  const title = latestRole?.title || "";
 
   const companyContext = company ? ` at ${company}` : "";
   const industryContext = industry ? ` in the ${industry} space` : "";
   const resumeContext = hasResume ? " I've reviewed your resume, so these questions will draw from your actual experience." : "";
 
-  const isPanel = type === "panel";
+  const isPanel = typeKey === "panel";
 
   const personalizedIntro: InterviewStep = {
     type: "intro",
     aiText: isPanel
       ? `Hi${name ? ` ${name}` : ""}! Welcome to your panel interview. I'm the hiring manager, and I'll be joined by our technical lead and HR partner. We'll be focusing on ${role} position${companyContext}${industryContext}.${resumeContext} ${difficulty === "warmup" ? "This will be conversational — no pressure." : difficulty === "intense" ? "We'll be pushing you hard today." : "This will take about 15 minutes."} We'll each ask you questions from our perspective. Ready to begin?`
-      : `Hi${name ? ` ${name}` : ""}! Welcome to your mock interview. I'm your AI interviewer today. We'll be focusing on ${(type || "behavioral").replace(/-/g, " ")} questions for the ${role} position${companyContext}${industryContext}.${resumeContext} ${difficulty === "warmup" ? "This will be conversational — no pressure, just practice." : difficulty === "intense" ? "I'll be pushing you hard today — expect rapid follow-ups and high expectations." : "This will take about 15 minutes. Feel free to take your time."} Ready to begin?`,
+      : `Hi${name ? ` ${name}` : ""}! Welcome to your mock interview. I'm your AI interviewer today. We'll be focusing on ${(typeKey).replace(/-/g, " ")} questions for the ${role} position${companyContext}${industryContext}.${resumeContext} ${difficulty === "warmup" ? "This will be conversational — no pressure, just practice." : difficulty === "intense" ? "I'll be pushing you hard today — expect rapid follow-ups and high expectations." : "This will take about 15 minutes. Feel free to take your time."} Ready to begin?`,
     thinkingDuration: 1000,
     speakingDuration: 6000,
     waitForUser: true,
@@ -243,9 +291,35 @@ export function getScript(type: string | null, difficulty: string | null, user: 
     ...(isPanel && base[base.length - 1]?.persona ? { persona: base[base.length - 1].persona } : {}),
   };
 
+  // Use the expanded mini question pools to randomize full interview questions too
+  // Pick 5 random questions (or 3 for mini-style types) from the pool, then personalize
+  const pool = miniQuestionsByType[typeKey] || miniQuestionsByType["behavioral"];
+  let questionSteps: InterviewStep[];
+  if (pool && pool.length > 0) {
+    const questionCount = Math.min(5, pool.length);
+    const selected = shuffleAndPick(pool, questionCount);
+    const panelPersonas = ["Technical Lead", "Hiring Manager", "HR Partner", "Technical Lead", "Hiring Manager"];
+    questionSteps = selected.map((bank, i) => {
+      const raw = hasResume && title ? bank.qResume : bank.q;
+      const aiText = raw.replace(/\{title\}/g, title).replace(/\{role\}/g, role);
+      return {
+        type: "question" as const,
+        aiText,
+        thinkingDuration: 700,
+        speakingDuration: 5000,
+        waitForUser: true,
+        scoreNote: bank.scoreNote,
+        ...(isPanel ? { persona: panelPersonas[i % panelPersonas.length] } : {}),
+      };
+    });
+  } else {
+    // Fall back to the hardcoded base questions (shouldn't happen with expanded pools)
+    questionSteps = base.slice(1, -1);
+  }
+
   const steps = [
     personalizedIntro,
-    ...base.slice(1, -1),
+    ...questionSteps,
     personalizedClosing,
   ];
 
