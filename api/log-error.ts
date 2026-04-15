@@ -9,6 +9,12 @@ export default async function handler(req: Request): Promise<Response> {
     return new Response("Method not allowed", { status: 405 });
   }
 
+  // Reject oversized payloads
+  const contentLength = parseInt(req.headers.get("content-length") || "0", 10);
+  if (contentLength > 65536) {
+    return new Response("Payload too large", { status: 413 });
+  }
+
   try {
     const body = await req.json();
 

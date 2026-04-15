@@ -18,6 +18,9 @@ const APP_URL = (process.env.APP_URL || "https://hirestepx.vercel.app").replace(
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const origin = applyCorsHeaders(req, res);
   if (handlePreflightAndMethod(req, res)) return;
+
+  const bodyLen = parseInt((req.headers["content-length"] as string) || "0", 10);
+  if (bodyLen > 1048576) return res.status(413).json({ error: "Request too large" });
   if (!origin) return res.status(403).json({ error: "Forbidden" });
 
   const SUPABASE_URL = supabaseUrl();

@@ -304,7 +304,7 @@ export function UpgradeModal({ onClose, sessionsUsed, user, currentTier, onPayme
 
   return (
     // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions -- dialog backdrop dismissal
-    <div style={{ position: "fixed", inset: 0, zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(5,5,6,0.88)", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)" }} onClick={onClose} role="dialog" aria-modal="true" aria-label="Choose your plan">
+    <div style={{ position: "fixed", inset: 0, zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(5,5,6,0.88)", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)" }} onClick={onClose} role="dialog" aria-modal="true" aria-labelledby="upgrade-modal-title">
       {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- stops click propagation to backdrop */}
       <div ref={modalRef} onClick={(e) => e.stopPropagation()} className="upgrade-modal-inner" style={{ background: "linear-gradient(180deg, rgba(30,30,32,0.85) 0%, rgba(17,17,19,0.9) 100%)", backdropFilter: "blur(32px)", WebkitBackdropFilter: "blur(32px)", border: `1px solid rgba(255,255,255,0.08)`, borderRadius: 20, padding: "36px 32px 32px", maxWidth: 960, width: "96%", position: "relative", boxShadow: "0 20px 60px rgba(0,0,0,0.5)" }}>
         <button onClick={onClose} aria-label="Close dialog" style={{ position: "absolute", top: 14, right: 14, background: "none", border: "none", color: c.stone, cursor: "pointer", padding: 4 }}>
@@ -312,7 +312,7 @@ export function UpgradeModal({ onClose, sessionsUsed, user, currentTier, onPayme
         </button>
 
         <div style={{ textAlign: "center", marginBottom: 28 }}>
-          <h2 style={{ fontFamily: font.display, fontSize: 24, fontWeight: 400, color: c.ivory, marginBottom: 6 }}>Choose Your Plan</h2>
+          <h2 id="upgrade-modal-title" style={{ fontFamily: font.display, fontSize: 24, fontWeight: 400, color: c.ivory, marginBottom: 6 }}>Choose Your Plan</h2>
           <p style={{ fontFamily: font.ui, fontSize: 13, color: c.stone, lineHeight: 1.5 }}>
             {currentTier === "free" ? `You've used ${sessionsUsed} of ${FREE_SESSION_LIMIT} free sessions. Buy a session for ₹10 or upgrade.` : "Manage your plan"}
           </p>

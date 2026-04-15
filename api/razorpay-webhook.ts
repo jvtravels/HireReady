@@ -44,23 +44,23 @@ function getRawBody(req: VercelRequest): Promise<string> {
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Global timeout — ensure we respond before Vercel's 10s limit
   const globalTimeout = setTimeout(() => {
+    if (res.headersSent) return;
     console.error("[webhook] Global timeout reached (8s)");
-    if (!res.headersSent) res.status(504).json({ error: "Processing timeout" });
+    res.status(504).json({ error: "Processing timeout" });
   }, 8000);
-  const clearGlobal = () => clearTimeout(globalTimeout);
 
   // Webhooks are POST only, no CORS needed (server-to-server)
-  if (req.method !== "POST") { clearGlobal(); return res.status(405).json({ error: "Method not allowed" }); }
+  if (req.method !== "POST") { clearTimeout(globalTimeout); return res.status(405).json({ error: "Method not allowed" }); }
 
   if (!RAZORPAY_WEBHOOK_SECRET || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-    clearGlobal();
+    clearTimeout(globalTimeout);
     return res.status(503).json({ error: "Webhook not configured" });
   }
 
   // Verify Razorpay webhook signature using raw body (preserves original key order)
   const signature = req.headers["x-razorpay-signature"] as string;
   if (!signature) {
-    clearGlobal();
+    clearTimeout(globalTimeout);
     return res.status(400).json({ error: "Missing signature" });
   }
 
@@ -72,13 +72,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         ? JSON.stringify(req.body) // fallback if bodyParser wasn't actually disabled
         : await getRawBody(req);
   } catch (bodyErr) {
-    clearGlobal();
+    clearTimeout(globalTimeout);
     console.error("[webhook] Failed to read body:", bodyErr);
     return res.status(400).json({ error: "Invalid body" });
   }
 
   if (rawBody.length > 1048576) {
-    clearGlobal();
+    clearTimeout(globalTimeout);
     return res.status(413).json({ error: "Body too large" });
   }
 
@@ -90,7 +90,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const sigBuffer = Buffer.from(signature);
   const expectedBuffer = Buffer.from(expectedSignature);
   if (sigBuffer.length !== expectedBuffer.length || !timingSafeEqual(sigBuffer, expectedBuffer)) {
-    clearGlobal();
+    clearTimeout(globalTimeout);
     console.error("[webhook] Signature mismatch");
     return res.status(400).json({ error: "Invalid signature" });
   }
@@ -100,14 +100,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     event = JSON.parse(rawBody);
   } catch {
-    clearGlobal();
+    clearTimeout(globalTimeout);
     return res.status(400).json({ error: "Invalid JSON" });
   }
   const eventType = event?.event;
   const eventId = event?.entity?.id || event?.payload?.payment?.entity?.id || event?.payload?.subscription?.entity?.id || "";
   const dedupKey = `${eventType}:${eventId}`;
   if (dedupKey.length > 5 && !markProcessed(dedupKey)) {
-    clearGlobal();
+    clearTimeout(globalTimeout);
     return res.status(200).json({ received: true, skipped: "duplicate" });
   }
 
@@ -445,6 +445,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     console.error("[webhook] Error:", err);
     return res.status(500).json({ error: "Internal error" });
   } finally {
-    clearGlobal();
+    clearTimeout(globalTimeout);
   }
 }
