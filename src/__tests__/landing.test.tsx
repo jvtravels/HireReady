@@ -28,15 +28,15 @@ beforeEach(() => {
 });
 
 describe("Landing Data", () => {
-  it("has exactly 4 pricing plans", async () => {
+  it("has exactly 5 pricing plans", async () => {
     const { plans } = await import("../landingData");
-    expect(plans).toHaveLength(4);
+    expect(plans).toHaveLength(5);
   });
 
   it("plans have correct names", async () => {
     const { plans } = await import("../landingData");
     const names = plans.map(p => p.name);
-    expect(names).toEqual(["Free", "Single Session", "Starter", "Pro"]);
+    expect(names).toEqual(["Free", "Single Session", "Starter", "Pro", "Annual"]);
   });
 
   it("each plan has required fields", async () => {
@@ -92,7 +92,7 @@ describe("PricingSection", () => {
         <PricingSection />
       </MemoryRouter>
     );
-    expect(screen.getByText("Transparent. No surprises.")).toBeInTheDocument();
+    expect(screen.getByText("Less than a cup of chai per session.")).toBeInTheDocument();
     expect(screen.getByText("Start Free")).toBeInTheDocument();
     expect(screen.getByText("Get Started")).toBeInTheDocument();
     expect(screen.getByText("Go Pro")).toBeInTheDocument();
