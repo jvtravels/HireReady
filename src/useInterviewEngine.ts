@@ -837,7 +837,9 @@ export function useInterviewEngine() {
       if (safetyTimer) clearTimeout(safetyTimer);
       ttsCancelRef.current?.();
     };
-  }, [currentStep, aiVoiceEnabled]);
+  // interviewScript.length: re-run when follow-up steps are inserted at currentStep
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentStep, aiVoiceEnabled, interviewScript.length]);
 
   // Handle user "finishing" their answer
   const advancingRef = useRef(false);
