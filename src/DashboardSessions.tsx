@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useMemo, memo } from "react";
 import { useNavigate } from "react-router-dom";
 import { c, font } from "./tokens";
 import { scoreLabel, scoreLabelColor, sessionTypes } from "./dashboardTypes";
+import type { DashboardSession } from "./dashboardTypes";
 import { useDashboard } from "./DashboardContext";
 import { DataLoadingSkeleton } from "./dashboardComponents";
 import { useDocTitle } from "./useDocTitle";
@@ -22,6 +23,49 @@ function relativeTime(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
+/* ─── Memoized session row to avoid re-rendering the full list ─── */
+const SessionRow = memo(function SessionRow({ session, onClick }: { session: DashboardSession; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      style={{ width: "100%", padding: "18px 20px", borderRadius: 14, textAlign: "left" as const, background: c.graphite, border: `1px solid ${c.border}`, cursor: "pointer", display: "flex", alignItems: "center", gap: 18, transition: "all 0.2s ease", outline: "none" }}
+      onMouseEnter={(e) => { e.currentTarget.style.borderColor = c.borderHover; }}
+      onMouseLeave={(e) => { e.currentTarget.style.borderColor = c.border; }}
+    >
+      <div style={{ width: 52, height: 52, flexShrink: 0, position: "relative", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <svg width="52" height="52" viewBox="0 0 52 52" style={{ position: "absolute", transform: "rotate(-90deg)" }}>
+          <circle cx="26" cy="26" r="23" fill="none" stroke="rgba(245,242,237,0.06)" strokeWidth="2.5" />
+          <circle cx="26" cy="26" r="23" fill="none" stroke={scoreLabelColor(session.score)} strokeWidth="2.5"
+            strokeDasharray={`${(session.score / 100) * 2 * Math.PI * 23} ${2 * Math.PI * 23}`}
+            strokeLinecap="round" className="score-ring" />
+        </svg>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+          <span style={{ fontFamily: font.mono, fontSize: 18, fontWeight: 700, color: c.ivory, lineHeight: 1 }}>{session.score}</span>
+          <span style={{ fontFamily: font.ui, fontSize: 8, color: scoreLabelColor(session.score), fontWeight: 600, marginTop: 1 }}>{scoreLabel(session.score)}</span>
+        </div>
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
+          <span style={{ fontFamily: font.ui, fontSize: 14, fontWeight: 600, color: c.ivory }}>{session.type}</span>
+          <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase" as const, color: c.gilt, background: "rgba(212,179,127,0.08)", padding: "2px 8px", borderRadius: 4 }}>{session.role}</span>
+        </div>
+        <div style={{ display: "flex", gap: 16 }}>
+          <span style={{ fontFamily: font.ui, fontSize: 12, color: c.stone }}><span style={{ color: c.sage, fontWeight: 500 }}>{session.topStrength}</span></span>
+          <span style={{ fontFamily: font.ui, fontSize: 12, color: c.stone }}>Improve: <span style={{ color: c.ember, fontWeight: 500 }}>{session.topWeakness}</span></span>
+        </div>
+      </div>
+      <div style={{ textAlign: "right" as const, flexShrink: 0 }} title={session.dateLabel}>
+        <span style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.chalk, display: "block", marginBottom: 2 }}>{relativeTime(session.date)}</span>
+        <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>{session.duration}</span>
+      </div>
+      <div style={{ padding: "4px 10px", borderRadius: 10, flexShrink: 0, background: session.change > 0 ? "rgba(122,158,126,0.08)" : "rgba(196,112,90,0.08)", border: `1px solid ${session.change > 0 ? "rgba(122,158,126,0.15)" : "rgba(196,112,90,0.15)"}` }}>
+        <span style={{ fontFamily: font.mono, fontSize: 12, fontWeight: 600, color: session.change > 0 ? c.sage : c.ember }}>{session.change > 0 ? "+" : ""}{session.change}</span>
+      </div>
+      <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={c.stone} strokeWidth="2" strokeLinecap="round" style={{ flexShrink: 0 }}><polyline points="9 18 15 12 9 6" /></svg>
+    </button>
+  );
+});
+
 export default function DashboardSessions() {
   useDocTitle("Sessions");
   const sessionNav = useNavigate();
@@ -34,14 +78,14 @@ export default function DashboardSessions() {
   if (dataLoading) return <DataLoadingSkeleton />;
 
   const sessions = recentSessions;
-  const filtered = sessions
+  const filtered = useMemo(() => sessions
     .filter(s => filter === "All" || s.type === filter)
     .filter(s => {
       if (!search) return true;
       const q = search.toLowerCase();
       return s.type.toLowerCase().includes(q) || (s.topStrength || "").toLowerCase().includes(q) || (s.topWeakness || "").toLowerCase().includes(q);
     })
-    .sort((a, b) => sortBy === "score" ? b.score - a.score : new Date(b.date).getTime() - new Date(a.date).getTime());
+    .sort((a, b) => sortBy === "score" ? b.score - a.score : new Date(b.date).getTime() - new Date(a.date).getTime()), [sessions, filter, search, sortBy]);
   const visible = filtered.slice(0, showCount);
   const hasMore = filtered.length > showCount;
 
@@ -156,43 +200,7 @@ export default function DashboardSessions() {
           </div>
         ) : (
           visible.map(session => (
-            <button key={session.id}
-              onClick={() => sessionNav(`/session/${session.id}`)}
-              style={{ width: "100%", padding: "18px 20px", borderRadius: 14, textAlign: "left", background: c.graphite, border: `1px solid ${c.border}`, cursor: "pointer", display: "flex", alignItems: "center", gap: 18, transition: "all 0.2s ease", outline: "none" }}
-              onMouseEnter={(e) => { e.currentTarget.style.borderColor = c.borderHover; }}
-              onMouseLeave={(e) => { e.currentTarget.style.borderColor = c.border; }}
-            >
-              <div style={{ width: 52, height: 52, flexShrink: 0, position: "relative", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <svg width="52" height="52" viewBox="0 0 52 52" style={{ position: "absolute", transform: "rotate(-90deg)" }}>
-                  <circle cx="26" cy="26" r="23" fill="none" stroke="rgba(245,242,237,0.06)" strokeWidth="2.5" />
-                  <circle cx="26" cy="26" r="23" fill="none" stroke={scoreLabelColor(session.score)} strokeWidth="2.5"
-                    strokeDasharray={`${(session.score / 100) * 2 * Math.PI * 23} ${2 * Math.PI * 23}`}
-                    strokeLinecap="round" className="score-ring" />
-                </svg>
-                <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-                  <span style={{ fontFamily: font.mono, fontSize: 18, fontWeight: 700, color: c.ivory, lineHeight: 1 }}>{session.score}</span>
-                  <span style={{ fontFamily: font.ui, fontSize: 8, color: scoreLabelColor(session.score), fontWeight: 600, marginTop: 1 }}>{scoreLabel(session.score)}</span>
-                </div>
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
-                  <span style={{ fontFamily: font.ui, fontSize: 14, fontWeight: 600, color: c.ivory }}>{session.type}</span>
-                  <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", color: c.gilt, background: "rgba(212,179,127,0.08)", padding: "2px 8px", borderRadius: 4 }}>{session.role}</span>
-                </div>
-                <div style={{ display: "flex", gap: 16 }}>
-                  <span style={{ fontFamily: font.ui, fontSize: 12, color: c.stone }}><span style={{ color: c.sage, fontWeight: 500 }}>{session.topStrength}</span></span>
-                  <span style={{ fontFamily: font.ui, fontSize: 12, color: c.stone }}>Improve: <span style={{ color: c.ember, fontWeight: 500 }}>{session.topWeakness}</span></span>
-                </div>
-              </div>
-              <div style={{ textAlign: "right", flexShrink: 0 }} title={session.dateLabel}>
-                <span style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.chalk, display: "block", marginBottom: 2 }}>{relativeTime(session.date)}</span>
-                <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>{session.duration}</span>
-              </div>
-              <div style={{ padding: "4px 10px", borderRadius: 10, flexShrink: 0, background: session.change > 0 ? "rgba(122,158,126,0.08)" : "rgba(196,112,90,0.08)", border: `1px solid ${session.change > 0 ? "rgba(122,158,126,0.15)" : "rgba(196,112,90,0.15)"}` }}>
-                <span style={{ fontFamily: font.mono, fontSize: 12, fontWeight: 600, color: session.change > 0 ? c.sage : c.ember }}>{session.change > 0 ? "+" : ""}{session.change}</span>
-              </div>
-              <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={c.stone} strokeWidth="2" strokeLinecap="round" style={{ flexShrink: 0 }}><polyline points="9 18 15 12 9 6" /></svg>
-            </button>
+            <SessionRow key={session.id} session={session} onClick={() => sessionNav(`/session/${session.id}`)} />
           ))
         )}
         {hasMore && (

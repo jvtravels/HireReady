@@ -21,6 +21,23 @@ export default class ErrorBoundary extends Component<Props, State> {
     return { hasError: true, error };
   }
 
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error("[HireStepX Error]", error, errorInfo);
+
+    // Report error to server (fire and forget)
+    fetch("/api/log-error", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        message: error.message,
+        stack: error.stack?.slice(0, 500),
+        componentStack: errorInfo?.componentStack?.slice(0, 500),
+        url: window.location.href,
+        timestamp: new Date().toISOString(),
+      }),
+    }).catch(() => {});
+  }
+
   handleReset = () => {
     this.setState({ hasError: false, error: null });
   };
@@ -144,7 +161,20 @@ export class RouteErrorBoundary extends Component<{ children: ReactNode }, Route
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
-    console.error("[RouteErrorBoundary]", error, info.componentStack);
+    console.error("[HireStepX RouteError]", error, info);
+
+    // Report error to server (fire and forget)
+    fetch("/api/log-error", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        message: error.message,
+        stack: error.stack?.slice(0, 500),
+        componentStack: info?.componentStack?.slice(0, 500),
+        url: window.location.href,
+        timestamp: new Date().toISOString(),
+      }),
+    }).catch(() => {});
   }
 
   render() {
@@ -200,7 +230,20 @@ export class SectionErrorBoundary extends Component<{ children: ReactNode; label
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
-    console.error(`[SectionError${this.props.label ? `: ${this.props.label}` : ""}]`, error, info.componentStack);
+    console.error(`[HireStepX SectionError${this.props.label ? `: ${this.props.label}` : ""}]`, error, info);
+
+    // Report error to server (fire and forget)
+    fetch("/api/log-error", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        message: error.message,
+        stack: error.stack?.slice(0, 500),
+        componentStack: info?.componentStack?.slice(0, 500),
+        url: window.location.href,
+        timestamp: new Date().toISOString(),
+      }),
+    }).catch(() => {});
   }
 
   render() {

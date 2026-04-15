@@ -41,7 +41,9 @@ const TempoHost = lazy(() => {
   }
   return Promise.resolve({ default: () => null });
 });
-const LegalPage = lazy(() => import("./LegalPage"));
+const PrivacyPolicy = lazy(() => import("./PrivacyPolicy"));
+const TermsOfService = lazy(() => import("./TermsOfService"));
+const RefundPolicy = lazy(() => import("./RefundPolicy"));
 const SignUp = lazy(() => import("./SignUp"));
 const Onboarding = lazy(() => import("./Onboarding"));
 const OnboardingComplete = lazy(() => import("./OnboardingComplete"));
@@ -142,6 +144,7 @@ const ROUTE_TITLES: Record<string, string> = {
   "/reset-password": "Reset Password — HireStepX",
   "/terms": "Terms of Service — HireStepX",
   "/privacy": "Privacy Policy — HireStepX",
+  "/refund": "Refund Policy — HireStepX",
   "/blog": "Blog — HireStepX",
 };
 
@@ -242,8 +245,9 @@ createRoot(document.getElementById("root")!).render(
               <Route path="/session/new" element={<RequireAuth><div className="page-enter"><SessionSetup /></div></RequireAuth>} />
               <Route path="/interview" element={<RequireAuth><RouteErrorBoundary><Interview /></RouteErrorBoundary></RequireAuth>} />
               <Route path="/reset-password" element={<div className="page-enter"><ResetPassword /></div>} />
-              <Route path="/terms" element={<div className="page-enter"><LegalPage type="terms" /></div>} />
-              <Route path="/privacy" element={<div className="page-enter"><LegalPage type="privacy" /></div>} />
+              <Route path="/terms" element={<div className="page-enter"><TermsOfService /></div>} />
+              <Route path="/privacy" element={<div className="page-enter"><PrivacyPolicy /></div>} />
+              <Route path="/refund" element={<div className="page-enter"><RefundPolicy /></div>} />
               <Route path="/session/:id" element={<RequireAuth><div className="page-enter"><RouteErrorBoundary><SessionDetail /></RouteErrorBoundary></div></RequireAuth>} />
               <Route path="/blog" element={<div className="page-enter"><BlogPage /></div>} />
               <Route path="/blog/:slug" element={<div className="page-enter"><BlogPage /></div>} />

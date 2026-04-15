@@ -1,9 +1,7 @@
 User-agent: *
 Allow: /
 Disallow: /dashboard
-Disallow: /onboarding
 Disallow: /interview
-Disallow: /session/
-Disallow: /reset-password
-
+Disallow: /onboarding
+Disallow: /api/
 Sitemap: https://hirestepx.com/sitemap.xml

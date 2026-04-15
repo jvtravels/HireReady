@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { track } from "@vercel/analytics";
 import { c, font, shadow, gradient } from "./tokens";
 import { useAuth } from "./AuthContext";
 import { getSessionById, saveFeedback, getSessionFeedback } from "./supabase";
@@ -111,10 +112,13 @@ export default function SessionDetail() {
   useEffect(() => {
     if (!id) { setLoading(false); return; }
     const local = loadLocalSession(id);
-    if (local) { setSession(local); setPrevSession(loadPreviousSession(id)); setLoading(false); return; }
+    if (local) { setSession(local); setPrevSession(loadPreviousSession(id)); setLoading(false); track("session_result_viewed", { score: local.score || 0 }); return; }
     if (user?.id) {
       getSessionById(id, user.id).then(record => {
-        if (record) setSession({ id: record.id, date: record.date, type: record.type, difficulty: record.difficulty, focus: record.focus, duration: record.duration, score: record.score, questions: record.questions, transcript: record.transcript, ai_feedback: record.ai_feedback, skill_scores: record.skill_scores });
+        if (record) {
+          setSession({ id: record.id, date: record.date, type: record.type, difficulty: record.difficulty, focus: record.focus, duration: record.duration, score: record.score, questions: record.questions, transcript: record.transcript, ai_feedback: record.ai_feedback, skill_scores: record.skill_scores });
+          track("session_result_viewed", { score: record.score || 0 });
+        }
         setLoading(false);
       }).catch(() => setLoading(false));
     } else { setLoading(false); }

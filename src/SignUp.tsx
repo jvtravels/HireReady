@@ -168,6 +168,7 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
           setError(result.error || "Signup failed");
           return;
         }
+        track("signup_completed", { method: "email" });
         if (!supabaseConfigured) {
           // localStorage fallback — user is already logged in, useEffect handles redirect
           return;

@@ -147,6 +147,7 @@ function PricingCard({ plan, delay }: { plan: (typeof plans)[0]; delay: number }
               const verifyData = await verifyRes.json();
               if (verifyData.success) {
                 track("payment_success", { plan: plan.planId, method: "subscription" });
+                track("payment_completed", { plan: plan.planId || "session_pack" });
                 updateUser({ subscriptionTier: verifyData.subscriptionTier, subscriptionStart: verifyData.subscriptionStart, subscriptionEnd: verifyData.subscriptionEnd });
                 navigate("/dashboard?payment=success");
               } else {
@@ -180,6 +181,7 @@ function PricingCard({ plan, delay }: { plan: (typeof plans)[0]; delay: number }
               const verifyData = await verifyRes.json();
               if (verifyData.success) {
                 track("payment_success", { plan: plan.planId, method: "order" });
+                track("payment_completed", { plan: plan.planId || "session_pack" });
                 updateUser({ subscriptionTier: verifyData.subscriptionTier, subscriptionStart: verifyData.subscriptionStart, subscriptionEnd: verifyData.subscriptionEnd });
                 navigate("/dashboard?payment=success");
               } else {
@@ -197,6 +199,7 @@ function PricingCard({ plan, delay }: { plan: (typeof plans)[0]; delay: number }
 
         const rzp = new RazorpayClass(options);
         rzp.on("payment.failed", () => { track("payment_failed", { plan: plan.planId }); setError("Payment failed. Please try again."); setLoading(false); });
+        track("payment_initiated", { plan: plan.planId || "session_pack" });
         rzp.open();
       }
     } catch {

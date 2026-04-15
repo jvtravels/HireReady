@@ -471,6 +471,7 @@ export default function Onboarding() {
     const FOCUS_TO_TYPE: Record<string, string> = { "Behavioral": "behavioral", "Strategic": "strategic", "Technical Leadership": "technical", "Case Study": "case-study", "Campus Placement": "campus-placement", "HR Round": "hr-round", "Management": "management", "Panel Interview": "panel", "Salary Negotiation": "salary-negotiation", "Government / PSU": "government-psu" };
     const focusType = FOCUS_TO_TYPE[interviewFocus[0]] || "behavioral";
     track("onboarding_complete", { focus: focusType, sessionLength, role: targetRole, hasMic: micStatus === "granted" });
+    track("onboarding_completed", { targetRole: targetRole || "", hasResume: !!fileName });
     // Show launch animation before navigating
     setLaunching(true);
     await new Promise(r => setTimeout(r, 1400));

@@ -67,7 +67,9 @@ export function initErrorReporter() {
   window.addEventListener("unhandledrejection", (event) => {
     const reason = event.reason;
     const message = reason instanceof Error ? reason.message : String(reason);
+    // Don't report aborted fetches or common non-errors
+    if (message.includes("AbortError") || message.includes("Failed to fetch")) return;
     const stack = reason instanceof Error ? reason.stack : undefined;
-    sendError(buildReport(message, stack));
+    sendError(buildReport(`Unhandled rejection: ${message.slice(0, 200)}`, stack));
   });
 }

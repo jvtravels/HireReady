@@ -593,6 +593,10 @@ export function useInterviewEngine() {
     const step = interviewScript[currentStep];
     if (!step) return;
 
+    if (currentStep === 0) {
+      track("interview_started", { type: interviewType, mode: isMiniMode ? "mini" : "full", isPanel: isPanelInterview });
+    }
+
     const gen = ++flowGenerationRef.current;
     let safetyTimer: ReturnType<typeof setTimeout> | null = null;
     let cancelled = false;
@@ -1148,6 +1152,7 @@ export function useInterviewEngine() {
       hasSkillScores: !!skillScores,
       hasFeedback: !!aiFeedback,
     });
+    track("interview_completed", { type: interviewType, questionsAnswered: currentStep, duration: elapsed });
 
     try { localStorage.removeItem(draftKey); } catch { /* expected: localStorage cleanup is non-critical */ }
     try { await deleteFromIDB(draftKey); } catch { /* expected: IDB cleanup is non-critical */ }

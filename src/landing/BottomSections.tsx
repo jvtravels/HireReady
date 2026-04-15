@@ -343,12 +343,13 @@ export function Footer() {
     "Interview Tips": "/blog",
     "Privacy Policy": "/privacy",
     "Terms of Service": "/terms",
+    "Refund Policy": "/refund",
   };
   const columns = [
     { title: "Product", links: ["Interview Practice", "AI Feedback", "Score Analytics", "Pricing"] },
     { title: "Company", links: ["About", "Blog", "Careers", "Contact"] },
     { title: "Resources", links: ["Help Center", "Interview Tips"] },
-    { title: "Legal", links: ["Privacy Policy", "Terms of Service"] },
+    { title: "Legal", links: ["Privacy Policy", "Terms of Service", "Refund Policy"] },
   ];
 
   return (
