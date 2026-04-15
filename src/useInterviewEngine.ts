@@ -3,14 +3,14 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { track } from "@vercel/analytics";
 
 import { useAuth } from "./AuthContext";
-import { speak, prefetchTTS, cleanupTTS, setTTSLanguage } from "./tts";
+import { speak, speakAs, prefetchTTS, cleanupTTS, fetchCartesiaVoices } from "./tts";
 import { useToast } from "./Toast";
 import { saveToIDB, loadFromIDB, deleteFromIDB } from "./interviewIDB";
 import type { InterviewStep } from "./interviewScripts";
 import { getMiniScript, getScript } from "./interviewScripts";
 import { saveSessionResult, fetchLLMQuestions, fetchLLMEvaluation, fetchFollowUp, retryQueuedEvals, getAdaptiveHints } from "./interviewAPI";
 import { createDeepgramSTT, type DeepgramSTTHandle } from "./deepgramSTT";
-import { getInterviewerName, formatTime } from "./InterviewComponents";
+import { getInterviewerName, getPanelMembers, formatTime } from "./InterviewComponents";
 import { createSpeechRecognition } from "./speechRecognition";
 import type { SpeechRecognitionInstance, SpeechRecognitionEvent } from "./speechRecognition";
 import { safeUUID } from "./utils";
@@ -44,9 +44,9 @@ export function useInterviewEngine() {
   const interviewFocus = searchParams.get("focus") || "general";
   const interviewDifficulty = searchParams.get("difficulty") || "standard";
   const targetCompany = searchParams.get("company") || "";
+  const targetRole = searchParams.get("role") || "";
   const isMiniMode = searchParams.get("mini") === "true";
   const shouldUseResume = searchParams.get("useResume") !== "false";
-  const interviewLanguage = searchParams.get("language") || "en";
   const jobDescription = searchParams.get("jd") || "";
 
   const [jdAnalysisData] = useState(() => {
@@ -80,10 +80,12 @@ export function useInterviewEngine() {
     }
   }
 
-  const fallbackScript = isMiniMode ? getMiniScript(user, targetCompany) : getScript(interviewType, interviewDifficulty, user);
+  const fallbackScript = isMiniMode ? getMiniScript(user, targetCompany, interviewType) : getScript(interviewType, interviewDifficulty, user);
   const [interviewScript, setInterviewScript] = useState<InterviewStep[]>(
     draftRef.current?.script && draftRef.current.script.length > 0 ? draftRef.current.script : fallbackScript
   );
+  const interviewScriptRef = useRef(interviewScript);
+  useEffect(() => { interviewScriptRef.current = interviewScript; }, [interviewScript]);
   const [llmLoading, setLlmLoading] = useState(!draftRef.current && !isMiniMode);
 
   // Interview state
@@ -118,15 +120,8 @@ export function useInterviewEngine() {
     return () => { cancelled = true; };
   }, []);
 
-  // Set TTS language for non-English interviews
-  useEffect(() => {
-    if (interviewLanguage !== "en") setTTSLanguage(interviewLanguage);
-    return () => { if (interviewLanguage !== "en") setTTSLanguage("en"); };
-  }, [interviewLanguage]);
-
   // Fetch LLM-generated questions on mount
   useEffect(() => {
-    if (isMiniMode) return;
     if (!navigator.onLine) {
       toast("Offline — using practice questions.", "info");
       setLlmLoading(false);
@@ -147,18 +142,20 @@ export function useInterviewEngine() {
       type: interviewType,
       focus: interviewFocus,
       difficulty: interviewDifficulty,
-      role: user?.targetRole || "the role",
+      role: targetRole || user?.targetRole || "the role",
       company: targetCompany || user?.targetCompany,
       industry: user?.industry,
       resumeText: shouldUseResume ? user?.resumeText : undefined,
-      language: interviewLanguage !== "en" ? interviewLanguage : undefined,
       pastTopics: adaptiveHints.pastTopics.length > 0 ? adaptiveHints.pastTopics : undefined,
       weakSkills: adaptiveHints.weakSkills.length > 0 ? adaptiveHints.weakSkills : undefined,
       jobDescription: jobDescription || undefined,
       experienceLevel: user?.experienceLevel || undefined,
+      mini: isMiniMode || undefined,
     });
+    // Shorter timeout for mini mode (onboarding) to keep first experience snappy
+    const timeoutMs = isMiniMode ? 12_000 : 30_000;
     const timeoutPromise = new Promise<null>((_, reject) => {
-      const tid = setTimeout(() => reject(new Error("Question generation timed out")), 30_000);
+      const tid = setTimeout(() => reject(new Error("Question generation timed out")), timeoutMs);
       (timeoutPromise as unknown as { _tid: ReturnType<typeof setTimeout> })._tid = tid;
     });
     Promise.race([llmPromise, timeoutPromise]).then(questions => {
@@ -167,14 +164,14 @@ export function useInterviewEngine() {
         setInterviewScript(questions);
       } else if (!questions) {
         setSaveWarning(`Custom ${interviewType} questions unavailable. Using practice questions instead.`);
-        toast(`Using practice questions — custom ${interviewType} generation unavailable.`, "info");
+        if (!isMiniMode) toast(`Using practice questions — custom ${interviewType} generation unavailable.`, "info");
       }
       setLlmLoading(false);
     }).catch(err => {
       if (cancelled) return;
       const msg = err.message || "Could not generate questions.";
       setSaveWarning(`${msg} Using practice questions.`);
-      toast(`Using practice questions — ${msg.toLowerCase()}`, "info");
+      if (!isMiniMode) toast(`Using practice questions — ${msg.toLowerCase()}`, "info");
       setLlmLoading(false);
     });
     return () => { cancelled = true; };
@@ -243,6 +240,46 @@ export function useInterviewEngine() {
   const [evalElapsed, setEvalElapsed] = useState(0);
   const micStreamRef = useRef<MediaStream | null>(null);
   const interviewerName = useMemo(() => getInterviewerName(`${interviewType}-${interviewFocus}-${targetCompany}-${user?.id || ""}`), [interviewType, interviewFocus, targetCompany, user?.id]);
+
+  // Panel interview: 3 members with gender-matched voices
+  const isPanelInterview = interviewType === "panel";
+  const panelMembers = useMemo(() =>
+    isPanelInterview ? getPanelMembers(`${interviewType}-${interviewFocus}-${targetCompany}-${user?.id || ""}`) : null,
+    [isPanelInterview, interviewType, interviewFocus, targetCompany, user?.id]
+  );
+
+  // Resolve Cartesia voices for panel members (male/female)
+  const panelVoicesRef = useRef<Record<string, string>>({});
+  useEffect(() => {
+    if (!isPanelInterview || !panelMembers) return;
+    let cancelled = false;
+    fetchCartesiaVoices("en_IN").then(voices => {
+      if (cancelled) return;
+      const maleVoices = voices.filter(v => v.gender === "male");
+      const femaleVoices = voices.filter(v => v.gender === "female");
+      if (maleVoices.length === 0 && femaleVoices.length === 0) {
+        toast("Using default voice for all panelists — voice library unavailable.", "info");
+        return;
+      }
+      const voiceMap: Record<string, string> = {};
+      let maleIdx = 0, femaleIdx = 0;
+      for (const member of panelMembers) {
+        const pool = member.gender === "male" ? maleVoices : femaleVoices;
+        // If gender-specific pool is empty, fall back to any available voice
+        const fallbackPool = pool.length > 0 ? pool : (maleVoices.length > 0 ? maleVoices : femaleVoices);
+        const idxRef = member.gender === "male" ? maleIdx : femaleIdx;
+        if (fallbackPool.length > 0) {
+          voiceMap[member.title] = fallbackPool[idxRef % fallbackPool.length].id;
+          if (member.gender === "male") maleIdx++; else femaleIdx++;
+        }
+      }
+      panelVoicesRef.current = voiceMap;
+    }).catch(() => {
+      if (!cancelled) toast("Using default voice for all panelists.", "info");
+    });
+    return () => { cancelled = true; };
+  }, [isPanelInterview, panelMembers]);
+
   const [microFeedback, setMicroFeedback] = useState<string | null>(null);
 
   // Eval elapsed timer
@@ -357,7 +394,7 @@ export function useInterviewEngine() {
               startWebSpeechAPI();
             }
           },
-        }, { language: interviewLanguage });
+        });
         if (stopped) { handle?.abort(); return; }
         if (handle) {
           deepgramRef.current = handle;
@@ -451,7 +488,7 @@ export function useInterviewEngine() {
       tryDeepgram();
 
       const safetyTimer = setTimeout(() => {
-        if (!stopped && phase === "listening") {
+        if (!stopped && !interviewEndedRef.current && phase === "listening") {
           console.warn("[interview] Listening safety timeout — enabling text fallback");
           setSpeechUnavailable(true);
           setMicError("Having trouble hearing you? Type your answer instead.");
@@ -494,7 +531,13 @@ export function useInterviewEngine() {
   const [answerTimer, setAnswerTimer] = useState(0);
 
   const step = interviewScript[currentStep] ?? interviewScript[interviewScript.length - 1];
-  const activeInterviewerName = step?.persona || interviewerName;
+  const rawPersona = step?.persona || (panelMembers ? panelMembers[0].title : "");
+  // Normalize persona for consistent matching
+  const PERSONA_MAP: Record<string, string> = { "hiring manager": "Hiring Manager", "technical lead": "Technical Lead", "hr partner": "HR Partner" };
+  const activePersona = PERSONA_MAP[rawPersona.toLowerCase()] || rawPersona;
+  const activeInterviewerName = isPanelInterview && panelMembers
+    ? (panelMembers.find(m => m.title === activePersona)?.name || interviewerName)
+    : (step?.persona || interviewerName);
   const totalQuestions = useMemo(() => interviewScript.filter(s => s.type === "question" || s.type === "follow-up").length, [interviewScript]);
   const currentQuestionNum = useMemo(() => interviewScript.slice(0, currentStep + 1).filter(s => s.type === "question" || s.type === "follow-up").length, [interviewScript, currentStep]);
 
@@ -553,7 +596,7 @@ export function useInterviewEngine() {
     const gen = ++flowGenerationRef.current;
     let safetyTimer: ReturnType<typeof setTimeout> | null = null;
     let cancelled = false;
-    const isStale = () => cancelled || gen !== flowGenerationRef.current;
+    const isStale = () => cancelled || gen !== flowGenerationRef.current || interviewEndedRef.current;
 
     setPhase("thinking");
 
@@ -600,7 +643,14 @@ export function useInterviewEngine() {
 
       if (aiVoiceEnabled) {
         const instanceId = ++ttsInstanceIdRef.current;
-        speak(step.aiText, onSpeechEnd, onSpeechEnd).then(handle => {
+        // For panel interviews, use the panelist-specific voice
+        // Normalize persona for case-insensitive voice lookup
+        const normalizedPersona = step.persona ? ({"hiring manager": "Hiring Manager", "technical lead": "Technical Lead", "hr partner": "HR Partner"} as Record<string, string>)[step.persona.toLowerCase()] || step.persona : null;
+        const panelVoiceId = isPanelInterview && normalizedPersona ? panelVoicesRef.current[normalizedPersona] : null;
+        const ttsPromise = panelVoiceId
+          ? speakAs(step.aiText, panelVoiceId, onSpeechEnd, onSpeechEnd)
+          : speak(step.aiText, onSpeechEnd, onSpeechEnd);
+        ttsPromise.then(handle => {
           if (ttsInstanceIdRef.current === instanceId) {
             ttsCancelRef.current = handle.cancel;
           } else {
@@ -620,6 +670,8 @@ export function useInterviewEngine() {
       Promise.race([pendingFollowUp, timeout]).then(result => {
         if (isStale()) return;
         if (result?.needsFollowUp && result.followUpText && currentStepRef.current === currentStep) {
+          // Preserve persona from the original question (or from API response) for panel interviews
+          const followUpPersona = isPanelInterview ? ((result as { persona?: string }).persona || step.persona) : undefined;
           const followUpStep: InterviewStep = {
             type: "follow-up",
             aiText: result.followUpText,
@@ -627,6 +679,7 @@ export function useInterviewEngine() {
             speakingDuration: 4000,
             waitForUser: true,
             scoreNote: "Dynamic follow-up based on candidate's answer",
+            persona: followUpPersona,
           };
           setInterviewScript(prev => [
             ...prev.slice(0, currentStep),
@@ -764,6 +817,7 @@ export function useInterviewEngine() {
           company: user?.targetCompany,
           followUpDepth: depth,
           previousFollowUps: recentFollowUps.length > 0 ? recentFollowUps : undefined,
+          persona: isPanelInterview ? currentStepObj?.persona : undefined,
         });
       } else {
         pendingFollowUpRef.current = null;
@@ -782,7 +836,7 @@ export function useInterviewEngine() {
     } else {
       setPhase("done");
     }
-  }, [phase, currentStep, answerTimer, elapsed, interviewScript, interviewType, user]);
+  }, [phase, currentStep, answerTimer, elapsed, interviewScript, interviewType, user, currentTranscript]);
 
   // Keep ref in sync for answer timer auto-advance
   useEffect(() => { handleNextRef.current = handleNextQuestion; }, [handleNextQuestion]);
@@ -866,46 +920,42 @@ export function useInterviewEngine() {
     setIsMuted(true);
     setEvaluating(true);
 
-    let sessionId = safeUUID();
+    const sessionId = safeUUID();
+    setLastSessionId(sessionId);
     let score = 0;
     let aiFeedback = "";
     let skillScores: Record<string, number> | null = null;
-    const safetyTimer = setTimeout(async () => {
-      console.warn("[interview] handleEnd safety timeout — forcing navigation");
-      setEvaluating(false);
-      toast("Evaluation took too long. Session saved with estimated score. AI feedback will update when ready.", "info");
-      // Queue for background retry so LLM feedback can be added later
-      try {
-        const retryKey = `hirestepx_eval_retry_${sessionId}`;
-        await saveToIDB(retryKey, {
-          transcript,
-          type: interviewType,
-          difficulty: interviewDifficulty,
-          role: user?.targetRole || "the role",
-          company: user?.targetCompany,
-          questions: interviewScript.filter(s => s.type === "question" || s.type === "follow-up").map(s => s.aiText),
-          sessionId,
-          queuedAt: Date.now(),
-        });
-      } catch { /* IDB save is best-effort */ }
-      try {
-        navigate(`/session/${sessionId}`);
-      } catch { /* already navigating or unmounted */ }
-    }, 45_000);
+
+    // Flush any in-progress answer before evaluation
+    const pendingAnswer = currentTranscript.trim();
+    let evalTranscript = [...transcript];
+    if (pendingAnswer && pendingAnswer.length > 0) {
+      const flushedEntry = { speaker: "user" as const, text: pendingAnswer, time: formatTime(elapsed) };
+      setTranscript(prev => [...prev, flushedEntry]);
+      evalTranscript = [...evalTranscript, flushedEntry];
+      setCurrentTranscript("");
+    }
+
+    // Evaluation timeout controller — used to abort the fetch if it exceeds 40s
+    const evalAbort = new AbortController();
+    const safetyTimer = setTimeout(() => {
+      console.warn("[interview] handleEnd evaluation timeout (40s) — aborting fetch");
+      evalAbort.abort();
+    }, 40_000);
 
     try {
     const completionRatio = currentStep / Math.max(1, interviewScript.length);
     const baseScore = 65 + Math.round(completionRatio * 20);
     const difficultyBonus = interviewDifficulty === "intense" ? 5 : interviewDifficulty === "warmup" ? -3 : 0;
     const timeBonus = elapsed > 300 ? 5 : elapsed > 120 ? 3 : 0;
-    const questionBonus = Math.min(5, Math.floor(transcript.filter(t => t.speaker === "user").length * 1.5));
+    const questionBonus = Math.min(5, Math.floor(evalTranscript.filter(t => t.speaker === "user").length * 1.5));
     const fallbackScore = Math.min(98, Math.max(60, baseScore + difficultyBonus + timeBonus + questionBonus));
 
-    const hasAnyAnswers = transcript.some(t => t.speaker === "user" && t.text.length > 10 && !/^\[.*\]$/.test(t.text.trim()));
+    const hasAnyAnswers = evalTranscript.some(t => t.speaker === "user" && t.text.length > 10 && !/^\[.*\]$/.test(t.text.trim()));
     score = hasAnyAnswers ? fallbackScore : Math.min(30, fallbackScore);
 
     // Build heuristic skill scores for fallback (used when LLM eval fails/times out)
-    const userAnswers = transcript.filter(t => t.speaker === "user");
+    const userAnswers = evalTranscript.filter(t => t.speaker === "user");
     const avgAnswerLen = userAnswers.length > 0 ? userAnswers.reduce((s, t) => s + t.text.length, 0) / userAnswers.length : 0;
     const hasMetrics = userAnswers.some(t => /\d+%|\d+x|\$[\d,]+|\d+ (users|customers|months|days|hours|team|people)/.test(t.text));
     const usesI = userAnswers.some(t => /\bI\b/.test(t.text));
@@ -953,18 +1003,27 @@ export function useInterviewEngine() {
           }
         } catch { /* expected: localStorage may be unavailable */ }
 
-        const evaluation = await fetchLLMEvaluation({
-          transcript,
-          type: interviewType,
-          difficulty: interviewDifficulty,
-          role: user?.targetRole || "the role",
-          company: user?.targetCompany,
-          questions: originalQuestions,
-          resumeText: shouldUseResume ? user?.resumeText : undefined,
-          language: interviewLanguage !== "en" ? interviewLanguage : undefined,
-          jobDescription: jobDescription || undefined,
-          previousScores,
-        });
+        // Race the LLM evaluation against the 40s abort signal
+        const evaluation = await Promise.race([
+          fetchLLMEvaluation({
+            transcript: evalTranscript,
+            type: interviewType,
+            difficulty: interviewDifficulty,
+            role: targetRole || user?.targetRole || "the role",
+            company: user?.targetCompany,
+            questions: originalQuestions,
+            resumeText: shouldUseResume ? user?.resumeText : undefined,
+            jobDescription: jobDescription || undefined,
+            previousScores,
+          }),
+          new Promise<null>((_, reject) => {
+            evalAbort.signal.addEventListener("abort", () =>
+              reject(new Error("Evaluation timed out after 40 seconds."))
+            );
+            // If already aborted (race condition), reject immediately
+            if (evalAbort.signal.aborted) reject(new Error("Evaluation timed out after 40 seconds."));
+          }),
+        ]);
         if (evaluation) {
           score = Math.min(100, Math.max(0, evaluation.overallScore || fallbackScore));
           aiFeedback = evaluation.feedback || "";
@@ -977,35 +1036,37 @@ export function useInterviewEngine() {
           if (Array.isArray(evaluation.improvements)) improvements = evaluation.improvements;
           if (Array.isArray(evaluation.nextSteps)) nextSteps = evaluation.nextSteps;
         } else {
+          // fetchLLMEvaluation returned null (API error / bad response)
           setUsedFallbackScore(true);
           skillScores = fallbackSkillScores;
-          aiFeedback = "AI evaluation was unavailable. Scores are estimated based on answer length, structure, and specificity. Practice again for a full AI evaluation.";
+          aiFeedback = "Evaluation unavailable — score estimated from session metrics. Your estimated score is based on answer count, length, structure, and specificity. Practice again for a full AI evaluation.";
         }
       } catch (err) {
         const errMsg = err instanceof Error ? err.message : "Could not get AI feedback. Using estimated score.";
         if (errMsg.toLowerCase().includes("timed out") || errMsg.toLowerCase().includes("timeout")) {
           setEvalTimedOut(true);
+          toast("Evaluation took too long — using estimated scores.", "info");
         } else {
           setUsedFallbackScore(true);
         }
         // Always provide skill scores even on error
-        if (!skillScores) {
-          skillScores = fallbackSkillScores;
-          if (!aiFeedback) aiFeedback = "AI feedback unavailable — scores estimated from your answers. Try again for full AI analysis.";
-        }
+        skillScores = fallbackSkillScores;
+        aiFeedback = aiFeedback || "Evaluation unavailable — score estimated from session metrics. Your score reflects answer count, length, and structure. Try again for full AI analysis.";
         setSaveWarning(errMsg);
         if (!navigator.onLine || errMsg.toLowerCase().includes("network") || errMsg.toLowerCase().includes("fetch")) {
-          const retryKey = `hirestepx_eval_retry_${Date.now().toString(36)}`;
-          await saveToIDB(retryKey, {
-            transcript,
-            type: interviewType,
-            difficulty: interviewDifficulty,
-            role: user?.targetRole || "the role",
-            company: user?.targetCompany,
-            questions: interviewScript.filter(s => s.type === "question" || s.type === "follow-up").map(s => s.aiText),
-            sessionId: Date.now().toString(36),
-            queuedAt: Date.now(),
-          });
+          try {
+            const retryKey = `hirestepx_eval_retry_${sessionId}`;
+            await saveToIDB(retryKey, {
+              transcript: evalTranscript,
+              type: interviewType,
+              difficulty: interviewDifficulty,
+              role: targetRole || user?.targetRole || "the role",
+              company: user?.targetCompany,
+              questions: interviewScriptRef.current.filter(s => s.type === "question" || s.type === "follow-up").map(s => s.aiText),
+              sessionId,
+              queuedAt: Date.now(),
+            });
+          } catch { /* IDB save is best-effort */ }
         }
       }
     } else {
@@ -1014,12 +1075,18 @@ export function useInterviewEngine() {
       if (!hasAnyAnswers) {
         aiFeedback = "No answers were recorded in this session. Try speaking clearly into your microphone, or use the text input option.";
       } else {
-        aiFeedback = "AI evaluation was unavailable. Scores are estimated based on answer length, structure, and specificity.";
+        aiFeedback = "Evaluation unavailable — score estimated from session metrics. Your score reflects answer count, length, and structure.";
       }
     }
 
-    sessionId = safeUUID();
-    setLastSessionId(sessionId);
+    // Refresh auth token before saving results
+    try {
+      const { getSupabase } = await import("./supabase");
+      const client = await getSupabase();
+      const { error } = await client.auth.refreshSession();
+      if (error) console.warn("[interview] Auth refresh failed:", error.message);
+    } catch { /* best effort */ }
+
     let localOk = false;
     let cloudOk = false;
     try {
@@ -1032,7 +1099,7 @@ export function useInterviewEngine() {
         duration: elapsed,
         score,
         questions: totalQuestions,
-        transcript,
+        transcript: evalTranscript,
         ai_feedback: aiFeedback,
         skill_scores: skillScores,
         ideal_answers: idealAnswers.length > 0 ? idealAnswers : undefined,
@@ -1058,7 +1125,7 @@ export function useInterviewEngine() {
         await saveToIDB(`hirestepx_unsaved_${sessionId}`, {
           id: sessionId, date: new Date().toISOString(), type: interviewType,
           difficulty: interviewDifficulty, focus: interviewFocus, duration: elapsed,
-          score, questions: totalQuestions, transcript, ai_feedback: aiFeedback,
+          score, questions: totalQuestions, transcript: evalTranscript, ai_feedback: aiFeedback,
           skill_scores: skillScores,
         });
         setSaveWarning("Session saved to backup storage. Will sync when connection restores.");
@@ -1115,7 +1182,7 @@ export function useInterviewEngine() {
       clearTimeout(safetyTimer);
       setEvaluating(false);
     }
-  }, [navigate, elapsed, interviewType, interviewDifficulty, interviewFocus, totalQuestions, user, updateUser, currentStep, interviewScript.length, transcript]);
+  }, [navigate, elapsed, interviewType, interviewDifficulty, interviewFocus, totalQuestions, user, updateUser, currentStep, interviewScript.length, transcript, currentTranscript]);
 
   // Live speech metrics (computed from current transcript)
   const liveMetrics = useMemo(() => {
@@ -1192,6 +1259,9 @@ export function useInterviewEngine() {
     displayCompany,
     displayFocus,
     interviewerName: activeInterviewerName,
+    isPanelInterview,
+    panelMembers,
+    activePersona: activePersona || "",
     liveMetrics,
 
     // Setters the UI needs

@@ -2,8 +2,8 @@
 
 export const config = { runtime: "edge" };
 
-import { handleCorsPreflightOrMethod, corsHeaders, isRateLimited, getClientIp, rateLimitResponse, verifyAuth, unauthorizedResponse, validateOrigin, sanitizeForLLM, withRequestId } from "./_shared";
-import { callLLM, extractJSON } from "./_llm";
+import { handleCorsPreflightOrMethod, corsHeaders, isRateLimited, getClientIp, rateLimitResponse, verifyAuth, unauthorizedResponse, validateOrigin, sanitizeForLLM, withRequestId } from "./_shared.js";
+import { callLLM, extractJSON } from "./_llm.js";
 
 declare const process: { env: Record<string, string | undefined> };
 const GROQ_KEY = process.env.GROQ_API_KEY || "";
@@ -37,10 +37,11 @@ export default async function handler(req: Request): Promise<Response> {
   }
 
   try {
-    const { question, answer, type, role, jobDescription, company, followUpDepth = 0, previousFollowUps } = await req.json() as {
+    const { question, answer, type, role, jobDescription, company, followUpDepth = 0, previousFollowUps, persona } = await req.json() as {
       question: string; answer: string; type: string; role: string;
       jobDescription?: string; company?: string;
       followUpDepth?: number; previousFollowUps?: string[];
+      persona?: string;
     };
 
     if (!question || typeof question !== "string" || !answer || typeof answer !== "string") {
@@ -104,7 +105,9 @@ Your goal: Pivot to an adjacent competency area revealed by the candidate's answ
 Be conversational and genuinely curious. 2-3 sentences max.`;
     }
 
-    const prompt = `You are an expert interviewer. Given a candidate's answer to an interview question, decide if a follow-up question is needed.
+    const panelContext = persona ? `\nYou are the "${sanitizeForLLM(persona, 30)}" panelist in a panel interview. Your follow-up should reflect your role's perspective.` : "";
+
+    const prompt = `You are an expert interviewer. Given a candidate's answer to an interview question, decide if a follow-up question is needed.${panelContext}
 
 Interview type: ${sanitizeForLLM(type, 50) || "behavioral"}
 Role: ${sanitizeForLLM(role, 100) || "senior role"}${company ? `\nCompany: ${sanitizeForLLM(company, 100)}` : ""}${jdContext ? `\n${jdContext}` : ""}
@@ -130,6 +133,7 @@ Respond JSON only:
       needsFollowUp,
       followUpText: parsed.followUpText || "",
       followUpType: followUpTypeLabel,
+      persona: persona || undefined,
     }), { status: 200, headers });
   } catch (err) {
     console.error("Follow-up generation error:", err);

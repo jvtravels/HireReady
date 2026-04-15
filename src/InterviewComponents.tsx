@@ -63,14 +63,69 @@ export const WaveformVisualizer = React.memo(function WaveformVisualizer({ activ
 
 /* ─── Interviewer Names (deterministic per session) ─── */
 export const INTERVIEWER_NAMES = [
-  "Arjun Mehta", "Priya Sharma", "David Chen", "Sarah Williams", "Rohan Kapoor",
-  "Ananya Patel", "James Mitchell", "Kavya Nair", "Michael Torres", "Neha Gupta",
-  "Benjamin Kofman", "Aisha Rahman", "Chris Anderson", "Deepika Iyer", "Alex Morgan",
+  "Arjun Mehta", "Priya Sharma", "Rohan Kapoor", "Ananya Patel", "Vikram Desai",
+  "Kavya Nair", "Siddharth Joshi", "Neha Gupta", "Aditya Rao", "Deepika Iyer",
+  "Karthik Nair", "Aisha Rahman", "Rajesh Iyer", "Meera Reddy", "Tanvi Kulkarni",
 ];
 export function getInterviewerName(seed: string): string {
   let hash = 0;
   for (let i = 0; i < seed.length; i++) hash = ((hash << 5) - hash + seed.charCodeAt(i)) | 0;
   return INTERVIEWER_NAMES[Math.abs(hash) % INTERVIEWER_NAMES.length];
+}
+
+/* ─── Panel Interview Members ─── */
+export interface PanelMember {
+  name: string;
+  title: string;          // "Hiring Manager", "Technical Lead", "HR Partner"
+  gender: "male" | "female";
+  color: string;          // accent color for UI distinction
+}
+
+/** Deterministically pick 3 panelists (Hiring Manager, Technical Lead, HR Partner)
+ *  with gender-matched names. Same seed → same panel every time. */
+const MALE_NAMES = ["Arjun Mehta", "Rohan Kapoor", "Vikram Desai", "Siddharth Joshi", "Aditya Rao", "Karthik Nair", "Rajesh Iyer"];
+const FEMALE_NAMES = ["Priya Sharma", "Ananya Patel", "Kavya Nair", "Neha Gupta", "Deepika Iyer", "Meera Reddy", "Aisha Rahman"];
+
+function hashString(s: string): number {
+  let hash = 0;
+  for (let i = 0; i < s.length; i++) hash = ((hash << 5) - hash + s.charCodeAt(i)) | 0;
+  return Math.abs(hash);
+}
+
+export function getPanelMembers(seed: string): PanelMember[] {
+  const h = hashString(seed);
+  // Roles with assigned accent colors
+  const roles: { title: string; color: string }[] = [
+    { title: "Hiring Manager", color: "#D4B37F" },   // gilt
+    { title: "Technical Lead", color: "#7A9E7E" },    // sage
+    { title: "HR Partner", color: "#A8B4C4" },        // soft blue-gray
+  ];
+  // Distribute genders: use hash bits to decide. At least 1 male, 1 female.
+  // Bit 0 → role[0] gender, bit 1 → role[1] gender, but clamp so we get mix
+  const genderBits = h % 6; // 6 combos with at least 1M and 1F
+  const genderPatterns: ("male" | "female")[][] = [
+    ["male", "female", "female"],
+    ["female", "male", "female"],
+    ["female", "female", "male"],
+    ["male", "male", "female"],
+    ["male", "female", "male"],
+    ["female", "male", "male"],
+  ];
+  const genders = genderPatterns[genderBits];
+
+  const usedMale = new Set<number>();
+  const usedFemale = new Set<number>();
+
+  return roles.map((role, i) => {
+    const gender = genders[i];
+    const pool = gender === "male" ? MALE_NAMES : FEMALE_NAMES;
+    const used = gender === "male" ? usedMale : usedFemale;
+    // Pick a name from the pool using hash + index, avoiding duplicates
+    let idx = (h + i * 7 + i) % pool.length;
+    while (used.has(idx)) idx = (idx + 1) % pool.length;
+    used.add(idx);
+    return { name: pool[idx], title: role.title, gender, color: role.color };
+  });
 }
 
 /* ─── Network Indicator ─── */

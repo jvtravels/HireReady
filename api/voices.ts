@@ -3,9 +3,19 @@
 
 export const config = { runtime: "edge" };
 
-import { corsHeaders, validateOrigin, withRequestId } from "./_shared";
+import { corsHeaders, validateOrigin, withRequestId, getClientIp } from "./_shared.js";
 
 declare const process: { env: Record<string, string | undefined> };
+
+const _rateLimit = new Map<string, number[]>();
+function checkRate(ip: string, max: number, windowMs: number): boolean {
+  const now = Date.now();
+  const hits = (_rateLimit.get(ip) || []).filter(t => now - t < windowMs);
+  if (hits.length >= max) return false;
+  hits.push(now);
+  _rateLimit.set(ip, hits);
+  return true;
+}
 const CARTESIA_API_KEY = process.env.CARTESIA_API_KEY || "";
 
 type VoiceEntry = { id: string; name: string; desc: string; gender: string; language: string };
@@ -24,6 +34,11 @@ export default async function handler(req: Request): Promise<Response> {
 
   const headers = withRequestId(corsHeaders(req));
 
+  const ip = getClientIp(req);
+  if (!checkRate(ip, 10, 60_000)) {
+    return new Response(JSON.stringify({ error: "Too many requests" }), { status: 429, headers });
+  }
+
   if (!CARTESIA_API_KEY) {
     return new Response(JSON.stringify({ error: "Not configured" }), { status: 503, headers });
   }
@@ -34,7 +49,7 @@ export default async function handler(req: Request): Promise<Response> {
 
   // Support ?language=en or ?language=en_IN — whitelist to prevent injection
   const url = new URL(req.url);
-  const VALID_LANGUAGES = ["en", "en_IN", "hi", "hinglish", "en_US", "en_GB"];
+  const VALID_LANGUAGES = ["en", "en_IN", "en_US", "en_GB"];
   const rawLang = url.searchParams.get("language") || "en";
   const language = VALID_LANGUAGES.includes(rawLang) ? rawLang : "en";
   const cacheKey = `voices_${language}`;

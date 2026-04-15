@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { c, font } from "./tokens";
 import {
-  StatusToasts, InterviewHeader, AvatarStage, QuestionCard,
+  StatusToasts, InterviewHeader, AvatarStage, PanelAvatarStage, QuestionCard,
   UserAnswerArea, CompletionCard, MicroFeedbackPanel,
   ControlsBar, TranscriptPanel, EndModal, EvaluatingOverlay,
 } from "./InterviewPanels";
@@ -25,6 +25,7 @@ export default function Interview() {
     totalQuestions, currentQuestionNum,
     timeRemaining, timePercent,
     displayRole, displayCompany, displayFocus, interviewerName,
+    isPanelInterview, panelMembers, activePersona,
     interviewScript, saveWarning, liveMetrics,
 
     setCurrentTranscript, setSpeechUnavailable, setIsMuted,
@@ -117,7 +118,11 @@ export default function Interview() {
 
         <div style={{ width: "100%", maxWidth: 560, display: "flex", flexDirection: "column", alignItems: "center", gap: 20 }}>
 
-          <AvatarStage phase={phase} interviewerName={interviewerName} isMuted={isMuted} speechUnavailable={speechUnavailable} skipSpeaking={skipSpeaking} />
+          {isPanelInterview && panelMembers ? (
+            <PanelAvatarStage phase={phase} panelMembers={panelMembers} activePersona={activePersona} isMuted={isMuted} speechUnavailable={speechUnavailable} skipSpeaking={skipSpeaking} />
+          ) : (
+            <AvatarStage phase={phase} interviewerName={interviewerName} isMuted={isMuted} speechUnavailable={speechUnavailable} skipSpeaking={skipSpeaking} />
+          )}
 
           <QuestionCard step={step} phase={phase} showCaptions={showCaptions} timeRemaining={timeRemaining} timePercent={timePercent} />
 
@@ -162,6 +167,7 @@ export default function Interview() {
         <TranscriptPanel
           transcript={transcript} interviewerName={interviewerName}
           setShowTranscript={setShowTranscript} transcriptRef={transcriptRef}
+          panelMembers={panelMembers ?? undefined}
         />
       )}
 

@@ -891,6 +891,7 @@ input[type="range"]::-moz-range-thumb {
   .session-detail-card { padding: 20px 16px !important; }
   .sticky-cta-bar { display: none !important; }
   .footer-grid { grid-template-columns: 1fr !important; gap: 24px !important; }
+  .dash-skeleton-grid { grid-template-columns: 1fr !important; }
 
   /* Hero stats */
   .hero-stats { flex-direction: column !important; gap: 16px !important; }

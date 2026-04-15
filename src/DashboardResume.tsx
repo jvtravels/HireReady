@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
 import { c, font } from "./tokens";
 import { useAuth } from "./AuthContext";
 import { useDocTitle } from "./useDocTitle";
@@ -36,75 +35,115 @@ interface ATSResult {
   suggestions: string[];
 }
 
-function computeATSScore(resumeText: string, _targetRole?: string, jdText?: string): ATSResult {
+function computeATSScore(resumeText: string, _targetRole?: string): ATSResult {
   const text = resumeText.toLowerCase();
+  const lines = resumeText.split("\n").filter(l => l.trim().length > 0);
 
-  // Common ATS-required sections
+  // ATS-required sections — check for clear section headings (not just word mentions)
   const requiredSections = [
-    { name: "Contact Info", keywords: ["email", "@", "phone", "linkedin"] },
-    { name: "Work Experience", keywords: ["experience", "worked", "role", "position", "company"] },
-    { name: "Education", keywords: ["education", "university", "degree", "bachelor", "master", "b.tech", "b.e", "mba"] },
-    { name: "Skills", keywords: ["skills", "technologies", "tools", "proficient"] },
+    { name: "Contact Info", keywords: ["email", "@", "phone", "linkedin", "github"] },
+    { name: "Work Experience", keywords: ["experience", "employment", "work history", "professional experience"] },
+    { name: "Education", keywords: ["education", "academic", "university", "degree", "college"] },
+    { name: "Skills", keywords: ["skills", "technical skills", "technologies", "competencies", "tools"] },
   ];
 
-  // Common action verbs ATS systems look for
-  const actionVerbs = ["achieved", "led", "managed", "developed", "implemented", "designed", "built", "increased", "reduced", "improved", "launched", "delivered", "created", "optimized", "coordinated", "analyzed"];
+  // Bonus sections
+  const bonusSections = [
+    { name: "Summary", keywords: ["summary", "objective", "profile", "about"] },
+    { name: "Projects", keywords: ["projects", "portfolio"] },
+    { name: "Certifications", keywords: ["certifications", "certificates", "licenses"] },
+  ];
+
+  // Action verbs — require more for a high score
+  const actionVerbs = ["achieved", "led", "managed", "developed", "implemented", "designed", "built", "increased", "reduced", "improved", "launched", "delivered", "created", "optimized", "coordinated", "analyzed", "spearheaded", "orchestrated", "streamlined", "pioneered", "established", "transformed", "automated", "mentored", "negotiated", "resolved"];
 
   // Metrics/quantification patterns
-  const hasMetrics = /\d+%|\$\d|[0-9]+\+?\s*(users|customers|team|members|engineers|projects|clients|revenue)/i.test(resumeText);
+  const metricPatterns = [
+    /\d+%/,
+    /\$[\d,]+/,
+    /\d+\+?\s*(users|customers|team|members|engineers|projects|clients|people)/i,
+    /\d+x\b/i,
+    /\b(revenue|growth|savings|reduction|increase|improvement)\b.*\d/i,
+  ];
+  const metricsFound = metricPatterns.filter(p => p.test(resumeText)).length;
+  const hasMetrics = metricsFound > 0;
 
   // Check sections
   const foundSections = requiredSections.filter(s => s.keywords.some(k => text.includes(k)));
   const missingSections = requiredSections.filter(s => !s.keywords.some(k => text.includes(k)));
+  const foundBonus = bonusSections.filter(s => s.keywords.some(k => text.includes(k)));
 
   // Check action verbs
   const foundVerbs = actionVerbs.filter(v => new RegExp(`\\b${v}\\w*\\b`, "i").test(text));
 
-  // JD keyword matching if JD provided
-  let jdKeywords: string[] = [];
-  let foundJdKeywords: string[] = [];
-  let missingJdKeywords: string[] = [];
-  if (jdText) {
-    const jdWords = jdText.toLowerCase().match(/\b[a-z]{3,}\b/g) || [];
-    const commonWords = new Set(["the", "and", "for", "are", "but", "not", "you", "all", "can", "her", "was", "one", "our", "out", "with", "they", "been", "have", "from", "this", "that", "will", "would", "there", "their", "what", "about", "which", "when", "make", "like", "time", "just", "know", "take", "come", "could", "than", "look", "only", "into", "year", "your", "some", "them", "also", "should", "able", "work", "experience", "must", "strong"]);
-    const freq: Record<string, number> = {};
-    for (const w of jdWords) {
-      if (!commonWords.has(w) && w.length > 3) freq[w] = (freq[w] || 0) + 1;
-    }
-    jdKeywords = Object.entries(freq).filter(([, c]) => c >= 2).map(([w]) => w).slice(0, 20);
-    foundJdKeywords = jdKeywords.filter(k => new RegExp(`\\b${k}\\b`, "i").test(text));
-    missingJdKeywords = jdKeywords.filter(k => !new RegExp(`\\b${k}\\b`, "i").test(text));
-  }
+  // Length & density checks
+  const wordCount = resumeText.trim().split(/\s+/).length;
+  const hasSufficientLength = wordCount >= 150;
+  const hasGoodLength = wordCount >= 300 && wordCount <= 1200;
+  const bulletCount = (resumeText.match(/^[\s]*[-•●◦▪]/gm) || []).length;
+  const hasBullets = bulletCount >= 3;
 
-  // Score
+  // Formatting red flags
+  const hasLongParagraphs = lines.some(l => l.trim().split(/\s+/).length > 60);
+  const hasAllCapsBlocks = (resumeText.match(/^[A-Z\s]{20,}$/gm) || []).length > 3;
+
+  // Score: 100 points total, harder to max out
   let score = 0;
-  score += foundSections.length * 15; // up to 60
-  score += Math.min(20, foundVerbs.length * 3); // up to 20
-  score += hasMetrics ? 10 : 0;
-  score += jdKeywords.length > 0 ? Math.round((foundJdKeywords.length / jdKeywords.length) * 10) : 10;
-  score = Math.min(100, Math.max(0, score));
+
+  // Sections: up to 30 pts (required) + 6 pts (bonus)
+  score += foundSections.length * 7.5;  // up to 30
+  score += Math.min(6, foundBonus.length * 2); // up to 6
+
+  // Action verbs: up to 15 pts (need 8+ verbs for full marks)
+  score += Math.min(15, foundVerbs.length * 1.9);
+
+  // Metrics: up to 15 pts (more metrics = higher score)
+  score += Math.min(15, metricsFound * 5);
+
+  // Structure: up to 14 pts
+  score += hasSufficientLength ? 4 : 0;
+  score += hasGoodLength ? 4 : 0;
+  score += hasBullets ? 4 : 0;
+  score += (!hasLongParagraphs) ? 2 : 0;
+
+  // Formatting: up to 10 pts
+  score += (!hasAllCapsBlocks) ? 3 : 0;
+  score += (foundSections.length >= 3) ? 4 : 0;
+  score += (wordCount > 100 && bulletCount >= 5) ? 3 : 0;
+
+  // Penalties
+  if (!hasSufficientLength) score -= 5;
+  if (missingSections.length >= 2) score -= 5;
+  if (foundVerbs.length < 3) score -= 5;
+
+  score = Math.min(100, Math.max(0, Math.round(score)));
 
   const label = score >= 85 ? "Excellent" : score >= 70 ? "Good" : score >= 50 ? "Needs Work" : "Poor";
 
   const found = [
     ...foundSections.map(s => s.name),
+    ...foundBonus.map(s => s.name),
     foundVerbs.length > 0 ? `${foundVerbs.length} action verbs` : null,
     hasMetrics ? "Quantified achievements" : null,
-    ...foundJdKeywords.map(k => `JD keyword: ${k}`),
+    hasBullets ? "Bullet-point formatting" : null,
+    hasGoodLength ? "Good length" : null,
   ].filter(Boolean) as string[];
 
   const missing = [
     ...missingSections.map(s => `Missing: ${s.name} section`),
-    foundVerbs.length < 5 ? "Add more action verbs (achieved, led, built...)" : null,
+    foundVerbs.length < 5 ? "Add more action verbs (achieved, led, built, implemented...)" : null,
     !hasMetrics ? "Add quantified metrics (%, $, numbers)" : null,
-    ...missingJdKeywords.slice(0, 5).map(k => `Missing JD keyword: ${k}`),
+    !hasBullets ? "Use bullet points for better readability" : null,
+    !hasSufficientLength ? "Resume is too short — add more detail" : null,
+    hasLongParagraphs ? "Break long paragraphs into bullet points" : null,
   ].filter(Boolean) as string[];
 
   const suggestions = [
     missingSections.length > 0 ? `Add clear section headers: ${missingSections.map(s => s.name).join(", ")}` : null,
-    !hasMetrics ? "Quantify your achievements with specific numbers, percentages, or dollar amounts" : null,
-    foundVerbs.length < 5 ? "Start bullet points with strong action verbs: achieved, led, implemented, designed" : null,
-    missingJdKeywords.length > 3 ? "Mirror key terms from the job description in your resume" : null,
+    !hasMetrics ? "Quantify achievements with specific numbers (e.g., 'increased revenue by 30%')" : null,
+    foundVerbs.length < 8 ? "Start bullet points with strong action verbs: achieved, led, implemented, designed" : null,
+    !hasBullets ? "Format experience as bullet points for ATS readability" : null,
+    hasLongParagraphs ? "Keep paragraphs under 3 lines — ATS and recruiters prefer concise bullets" : null,
     "Use standard section headings (Experience, Education, Skills) for better ATS parsing",
     "Avoid tables, graphics, and complex formatting that ATS cannot read",
   ].filter(Boolean) as string[];
@@ -130,54 +169,20 @@ export default function DashboardResume() {
   const [analysisSource, setAnalysisSource] = useState<"ai" | "fallback" | null>(null);
   const [truncated, setTruncated] = useState(false);
   const [tooltipVisible, setTooltipVisible] = useState(false);
-  const [jdText, setJdText] = useState("");
-  const [jdComparing, setJdComparing] = useState(false);
-  const [jdResult, setJdResult] = useState<{
-    matchScore: number;
-    matchLabel: string;
-    matchedSkills: string[];
-    missingSkills: string[];
-    keyStrengths: string[];
-    gaps: string[];
-    interviewTips: string[];
-    suggestedFocus: string;
-  } | null>(null);
   const analyzingRef = useRef(false);
   const abortControllerRef = useRef<AbortController | null>(null);
-  const navigate = useNavigate();
 
   // ATS compliance check — auto-computes when resume/JD changes
   const atsResult = useMemo<ATSResult | null>(() => {
     const rText = user?.resumeText || resumeText;
     if (!rText) return null;
-    return computeATSScore(rText, user?.targetRole, jdText || undefined);
-  }, [user?.resumeText, resumeText, user?.targetRole, jdText]);
+    return computeATSScore(rText, user?.targetRole);
+  }, [user?.resumeText, resumeText, user?.targetRole]);
 
   // Cleanup abort controller on unmount
   useEffect(() => {
     return () => { abortControllerRef.current?.abort(); };
   }, []);
-
-  const handleJDCompare = async () => {
-    if (!jdText.trim() || !user?.resumeText) return;
-    setJdComparing(true);
-    try {
-      const { getSupabase } = await import("./supabase");
-      const sb = await getSupabase();
-      const token = (await sb.auth.getSession()).data.session?.access_token;
-      const res = await fetch("/api/analyze-jd-match", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ resumeText: user.resumeText, jobDescription: jdText.trim() }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setJdResult(data.analysis);
-        try { sessionStorage.setItem("hirestepx_jd_analysis", JSON.stringify(data.analysis)); } catch { /* quota */ }
-      }
-    } catch { /* non-critical */ }
-    setJdComparing(false);
-  };
 
   useEffect(() => {
     if (user?.resumeText) setResumeText(user.resumeText);
@@ -642,159 +647,6 @@ export default function DashboardResume() {
               </div>
             </div>
           )}
-        </div>
-      )}
-
-      {/* ─── JD Comparison ─── */}
-      <div style={{ background: c.graphite, borderRadius: 14, border: `1px solid ${c.border}`, padding: "20px 24px", marginBottom: 14 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
-          <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={c.ivory} strokeWidth="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-          <h3 style={{ fontFamily: font.ui, fontSize: 14, fontWeight: 600, color: c.ivory, margin: 0 }}>Job Description Match</h3>
-        </div>
-        <textarea
-          value={jdText}
-          onChange={e => setJdText(e.target.value)}
-          placeholder="Paste a job description to compare against your resume..."
-          style={{
-            width: "100%", minHeight: 100, padding: 12, fontFamily: font.ui, fontSize: 13,
-            background: c.obsidian, color: c.ivory, border: `1px solid ${c.border}`, borderRadius: 8,
-            resize: "vertical", outline: "none", boxSizing: "border-box", lineHeight: 1.5,
-          }}
-        />
-        {user?.resumeText && (
-          <button
-            onClick={handleJDCompare}
-            disabled={!jdText.trim() || jdComparing}
-            style={{
-              marginTop: 10, padding: "8px 20px", fontFamily: font.ui, fontSize: 13, fontWeight: 600,
-              background: !jdText.trim() || jdComparing ? c.stone : c.sage, color: c.obsidian,
-              border: "none", borderRadius: 8, cursor: !jdText.trim() || jdComparing ? "not-allowed" : "pointer",
-              opacity: !jdText.trim() || jdComparing ? 0.5 : 1, transition: "opacity 0.2s",
-            }}
-          >
-            {jdComparing ? "Comparing..." : "Compare"}
-          </button>
-        )}
-      </div>
-
-      {jdResult && (
-        <div style={{ background: c.graphite, borderRadius: 14, border: `1px solid ${c.border}`, padding: "20px 24px", marginBottom: 14 }}>
-          {/* Match Score */}
-          <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 18 }}>
-            <div style={{
-              width: 56, height: 56, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center",
-              border: `3px solid ${jdResult.matchScore >= 70 ? c.sage : jdResult.matchScore >= 40 ? c.gilt : c.ember}`,
-            }}>
-              <span style={{ fontFamily: font.mono, fontSize: 20, fontWeight: 700, color: jdResult.matchScore >= 70 ? c.sage : jdResult.matchScore >= 40 ? c.gilt : c.ember }}>
-                {jdResult.matchScore}
-              </span>
-            </div>
-            <div>
-              <div style={{ fontFamily: font.ui, fontSize: 15, fontWeight: 600, color: c.ivory }}>{jdResult.matchLabel}</div>
-              <div style={{ fontFamily: font.ui, fontSize: 12, color: c.stone }}>Match Score</div>
-            </div>
-          </div>
-
-          {/* Matched Skills */}
-          {jdResult.matchedSkills.length > 0 && (
-            <div style={{ marginBottom: 14 }}>
-              <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.stone, textTransform: "uppercase", letterSpacing: "0.05em" }}>Matched Skills</span>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 6 }}>
-                {jdResult.matchedSkills.map((s, i) => (
-                  <span key={i} style={{ fontFamily: font.ui, fontSize: 11, padding: "3px 10px", borderRadius: 20, background: `${c.sage}22`, color: c.sage, border: `1px solid ${c.sage}44` }}>{s}</span>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Missing Skills */}
-          {jdResult.missingSkills.length > 0 && (
-            <div style={{ marginBottom: 14 }}>
-              <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.stone, textTransform: "uppercase", letterSpacing: "0.05em" }}>Missing Skills</span>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 6 }}>
-                {jdResult.missingSkills.map((s, i) => (
-                  <span key={i} style={{ fontFamily: font.ui, fontSize: 11, padding: "3px 10px", borderRadius: 20, background: `${c.ember}22`, color: c.ember, border: `1px solid ${c.ember}44` }}>{s}</span>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Key Strengths */}
-          {jdResult.keyStrengths.length > 0 && (
-            <div style={{ marginBottom: 14 }}>
-              <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.stone, textTransform: "uppercase", letterSpacing: "0.05em" }}>Key Strengths</span>
-              <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 6 }}>
-                {jdResult.keyStrengths.map((s, i) => (
-                  <div key={i} style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
-                    <span style={{ width: 5, height: 5, borderRadius: "50%", background: c.sage, flexShrink: 0, marginTop: 6 }} />
-                    <span style={{ fontFamily: font.ui, fontSize: 12.5, color: c.chalk, lineHeight: 1.5 }}>{s}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Gaps */}
-          {jdResult.gaps.length > 0 && (
-            <div style={{ marginBottom: 14 }}>
-              <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.stone, textTransform: "uppercase", letterSpacing: "0.05em" }}>Gaps</span>
-              <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 6 }}>
-                {jdResult.gaps.map((g, i) => (
-                  <div key={i} style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
-                    <span style={{ width: 5, height: 5, borderRadius: "50%", background: c.gilt, flexShrink: 0, marginTop: 6 }} />
-                    <span style={{ fontFamily: font.ui, fontSize: 12.5, color: c.chalk, lineHeight: 1.5 }}>{g}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Interview Tips */}
-          {jdResult.interviewTips.length > 0 && (
-            <div style={{ marginBottom: 14 }}>
-              <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.stone, textTransform: "uppercase", letterSpacing: "0.05em" }}>Interview Tips</span>
-              <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 6 }}>
-                {jdResult.interviewTips.map((t, i) => (
-                  <div key={i} style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
-                    <span style={{ width: 5, height: 5, borderRadius: "50%", background: c.ivory, flexShrink: 0, marginTop: 6 }} />
-                    <span style={{ fontFamily: font.ui, fontSize: 12.5, color: c.chalk, lineHeight: 1.5 }}>{t}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Suggested Focus */}
-          {jdResult.suggestedFocus && (
-            <div style={{ marginBottom: 14, padding: 12, background: c.obsidian, borderRadius: 8 }}>
-              <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.stone, textTransform: "uppercase", letterSpacing: "0.05em" }}>Suggested Focus</span>
-              <p style={{ fontFamily: font.ui, fontSize: 13, color: c.ivory, margin: "6px 0 10px" }}>{jdResult.suggestedFocus}</p>
-              <button
-                onClick={() => { navigate("/session/new"); }}
-                style={{
-                  padding: "6px 14px", fontFamily: font.ui, fontSize: 12, fontWeight: 600,
-                  background: c.sage, color: c.obsidian, border: "none", borderRadius: 6, cursor: "pointer",
-                }}
-              >
-                Practice this
-              </button>
-            </div>
-          )}
-
-          {/* Use JD in next interview */}
-          <button
-            onClick={() => {
-              try { sessionStorage.setItem("hirestepx_jd_text", jdText); } catch { /* quota */ }
-              navigate("/session/new");
-            }}
-            style={{
-              width: "100%", padding: "10px 16px", fontFamily: font.ui, fontSize: 13, fontWeight: 600,
-              background: "transparent", color: c.sage, border: `1px solid ${c.sage}`, borderRadius: 8,
-              cursor: "pointer", transition: "background 0.2s",
-            }}
-          >
-            Use this JD in your next interview
-          </button>
         </div>
       )}
 

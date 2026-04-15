@@ -410,7 +410,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
   }, [user?.name, user?.targetRole, user?.resumeFileName, user?.interviewDate]);
 
   const displayName = user?.name || persisted.userName || "User";
-  const isNewUser = !hasData;
+  const isNewUser = !hasData && !user?.hasCompletedOnboarding && !persisted.hasCompletedFirstSession;
 
   // Mobile detection
   useEffect(() => {

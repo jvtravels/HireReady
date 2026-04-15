@@ -37,8 +37,30 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!email || typeof email !== "string") {
     return res.status(400).json({ error: "Email is required" });
   }
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) {
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email) || email.length > 256) {
     return res.status(400).json({ error: "Invalid email format" });
+  }
+
+  // Rate limit: max 3 welcome emails per IP per hour
+  const UPSTASH_URL = process.env.UPSTASH_REDIS_REST_URL || "";
+  const UPSTASH_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN || "";
+  if (UPSTASH_URL && UPSTASH_TOKEN) {
+    try {
+      const ip = (req.headers["x-forwarded-for"] as string || "127.0.0.1").split(",")[0].trim();
+      const rlKey = `rl:email:${ip}`;
+      const rlRes = await fetch(`${UPSTASH_URL}/pipeline`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${UPSTASH_TOKEN}`, "Content-Type": "application/json" },
+        body: JSON.stringify([["INCR", rlKey], ["EXPIRE", rlKey, 3600]]),
+      });
+      if (rlRes.ok) {
+        const results = await rlRes.json();
+        const count = results[0]?.result || 0;
+        if (count > 3) {
+          return res.status(429).json({ error: "Too many email requests. Try again later." });
+        }
+      }
+    } catch { /* rate limit check failed, allow through */ }
   }
 
   if (!RESEND_API_KEY) {

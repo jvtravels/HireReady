@@ -162,9 +162,9 @@ export function getAdaptiveHints(sessions: { skill_scores?: Record<string, unkno
 /** Fetch LLM-generated interview questions */
 export async function fetchLLMQuestions(params: {
   type: string; focus?: string; difficulty: string; role: string;
-  company?: string; industry?: string; resumeText?: string; language?: string;
+  company?: string; industry?: string; resumeText?: string;
   pastTopics?: string[]; weakSkills?: string[]; jobDescription?: string;
-  experienceLevel?: string;
+  experienceLevel?: string; mini?: boolean;
 }): Promise<InterviewStep[] | null> {
   // Client-side rate limit: max 3 question generations per 60s
   if (!checkRateLimit("generate-questions", 3, 60_000)) {
@@ -213,7 +213,7 @@ export async function fetchLLMEvaluation(params: {
   transcript: { speaker: string; text: string }[];
   type: string; difficulty: string; role: string; company?: string;
   questions?: string[];
-  resumeText?: string; language?: string;
+  resumeText?: string;
   jobDescription?: string;
   previousScores?: { overall: number; skills: Record<string, number> } | null;
 }, timeoutMs = 35000): Promise<EvaluationResult | null> {
@@ -254,6 +254,7 @@ export async function fetchFollowUp(params: {
   jobDescription?: string; company?: string;
   followUpDepth?: number;
   previousFollowUps?: string[];
+  persona?: string;
 }): Promise<{ needsFollowUp: boolean; followUpText: string; followUpType?: string } | null> {
   // Client-side rate limit: max 10 follow-ups per 60s
   if (!checkRateLimit("follow-up", 10, 60_000)) return null;

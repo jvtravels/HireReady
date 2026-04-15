@@ -7,7 +7,8 @@ import {
   supabaseUrl,
   supabaseAnonKey,
   supabaseServiceHeaders,
-} from "./_shared";
+  escapeHtml,
+} from "./_shared.js";
 
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 const RAZORPAY_KEY_ID = (process.env.RAZORPAY_KEY_ID || "").trim();
@@ -108,7 +109,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const endDate = profile.subscription_end
         ? new Date(profile.subscription_end).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })
         : "the end of your billing period";
-      const safeName = (profile.name || "there").replace(/[&<>"]/g, "");
+      const safeName = escapeHtml(profile.name || "there");
       try {
         await fetch("https://api.resend.com/emails", {
           method: "POST",

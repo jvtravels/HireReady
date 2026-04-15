@@ -15,13 +15,17 @@ import {
   PlanSection,
 } from "./settingsSections";
 
-const SECTIONS = [
+const ALL_SECTIONS = [
   { id: "account", label: "Account", icon: icons.account },
   { id: "interview", label: "Interview", icon: icons.interview },
-  { id: "notifications", label: "Notifications", icon: icons.notifications },
+  // Hidden until fully implemented:
+  // { id: "notifications", label: "Notifications", icon: icons.notifications },
   { id: "plan", label: "Plan & Data", icon: icons.plan },
-  { id: "referral", label: "Referral", icon: icons.referral },
+  // Hidden until fully implemented:
+  // { id: "referral", label: "Referral", icon: icons.referral },
 ] as const;
+
+const SECTIONS = ALL_SECTIONS;
 
 export default function SettingsPage() {
   useDocTitle("Settings");

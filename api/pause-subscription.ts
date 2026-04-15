@@ -6,7 +6,8 @@ import {
   handlePreflightAndMethod,
   supabaseUrl,
   supabaseAnonKey,
-} from "./_shared";
+  escapeHtml,
+} from "./_shared.js";
 
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 const RAZORPAY_KEY_ID = (process.env.RAZORPAY_KEY_ID || "").trim();
@@ -117,7 +118,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // Send pause/resume confirmation email (best-effort)
     if (RESEND_API_KEY && profile?.email) {
-      const safeName = (profile.name || "there").replace(/[&<>"]/g, "");
+      const safeName = escapeHtml(profile.name || "there");
       const subject = action === "pause"
         ? "Subscription paused"
         : "Subscription resumed";

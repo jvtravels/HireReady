@@ -2,12 +2,12 @@
 
 export const config = { runtime: "edge" };
 
-import { callLLM, extractJSON } from "./_llm";
+import { callLLM, extractJSON } from "./_llm.js";
 import {
   handleCorsPreflightOrMethod, corsHeaders, verifyAuth,
   unauthorizedResponse, isRateLimited, getClientIp, rateLimitResponse,
   checkBodySize, validateOrigin, withRequestId, getSubscriptionTier,
-} from "./_shared";
+} from "./_shared.js";
 
 export default async function handler(req: Request) {
   const preflight = handleCorsPreflightOrMethod(req);

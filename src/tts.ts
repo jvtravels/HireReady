@@ -100,10 +100,10 @@ export function saveTTSSettings(settings: TTSSettings) {
   } catch { /* expected: localStorage may be unavailable */ }
 }
 
-/** Set TTS language for the current session (e.g., "en", "hi") */
+/** Set TTS language for the current session */
 export function setTTSLanguage(lang: string) {
   const settings = loadTTSSettings();
-  settings.language = lang === "hinglish" ? "hi" : lang;
+  settings.language = lang;
   saveTTSSettings(settings);
 }
 
@@ -112,28 +112,42 @@ let _cachedApiKey: string | null = null;
 let _apiKeyExpiry = 0;
 const API_KEY_TTL = 5 * 60 * 1000; // 5 min
 
+let _refreshPromise: Promise<string | null> | null = null;
+
 async function getCartesiaApiKey(): Promise<string | null> {
   // Refresh at 80% TTL to avoid mid-session expiry
   const refreshAt = _apiKeyExpiry - API_KEY_TTL * 0.2;
   if (_cachedApiKey && refreshAt > 0 && Date.now() < refreshAt) return _cachedApiKey;
-  try {
-    const { authHeaders } = await import("./supabase");
-    const headers = await authHeaders();
-    const res = await fetch("/api/tts-token", { method: "POST", headers });
-    if (!res.ok) return null;
-    const data = await res.json();
-    _cachedApiKey = data.apiKey || null;
-    _apiKeyExpiry = Date.now() + API_KEY_TTL;
-    return _cachedApiKey;
-  } catch {
-    return null;
-  }
+  // Deduplicate concurrent refresh calls
+  if (_refreshPromise) return _refreshPromise;
+  _refreshPromise = (async () => {
+    try {
+      const { authHeaders } = await import("./supabase");
+      const headers = await authHeaders();
+      const res = await fetch("/api/tts-token", { method: "POST", headers });
+      if (!res.ok) return null;
+      const data = await res.json();
+      _cachedApiKey = data.apiKey || null;
+      _apiKeyExpiry = Date.now() + API_KEY_TTL;
+      return _cachedApiKey;
+    } catch {
+      return null;
+    } finally {
+      _refreshPromise = null;
+    }
+  })();
+  return _refreshPromise;
 }
 
 /* ─── TTS Audio Pre-fetch Cache (LRU, max 10, 5-min TTL) ─── */
 const PREFETCH_MAX = 10;
 const PREFETCH_TTL = 5 * 60 * 1000; // 5 minutes
 const _prefetchCache = new Map<string, { promise: Promise<Blob | null>; createdAt: number }>();
+
+/** Clear the entire prefetch cache — call on memory pressure or page cleanup */
+export function clearPrefetchCache(): void {
+  _prefetchCache.clear();
+}
 
 /* Pre-fetch TTS audio for a text so it's ready when needed */
 export async function prefetchTTS(text: string): Promise<void> {
@@ -143,10 +157,11 @@ export async function prefetchTTS(text: string): Promise<void> {
   const settings = loadTTSSettings();
   if (settings.provider !== "cartesia") return;
 
-  // Evict expired + oldest entries if cache is full
+  // Evict expired entries first
   for (const [key, entry] of _prefetchCache) {
     if (Date.now() - entry.createdAt >= PREFETCH_TTL) _prefetchCache.delete(key);
   }
+  // LRU eviction: remove the oldest entry (first inserted in Map iteration order)
   while (_prefetchCache.size >= PREFETCH_MAX) {
     const oldest = _prefetchCache.keys().next().value;
     if (oldest !== undefined) _prefetchCache.delete(oldest);
@@ -194,6 +209,9 @@ let _persistentWsApiKey: string | null = null;
 let _wsIdleTimer: ReturnType<typeof setTimeout> | null = null;
 let _wsMessageHandler: ((event: MessageEvent) => void) | null = null;
 
+// Utterance queue — prevents concurrent WebSocket messages from interleaving
+let _utteranceQueue: Promise<void> = Promise.resolve();
+
 function resetWsIdleTimer() {
   if (_wsIdleTimer) clearTimeout(_wsIdleTimer);
   _wsIdleTimer = setTimeout(() => {
@@ -210,14 +228,18 @@ async function getOrCreateWs(apiKey: string): Promise<WebSocket | null> {
     resetWsIdleTimer();
     return _persistentWs;
   }
-  // Close stale connection
+  // Close stale or dead connection (CLOSED / CLOSING / mismatched key)
   if (_persistentWs) {
+    if (_persistentWs.readyState === WebSocket.CLOSED || _persistentWs.readyState === WebSocket.CLOSING) {
+      console.info("[TTS-WS] detected CLOSED/CLOSING socket, creating fresh connection");
+    }
     try { _persistentWs.close(); } catch { /* expected: WebSocket may already be closed */ }
     _persistentWs = null;
+    _persistentWsApiKey = null;
   }
 
   return new Promise((resolve) => {
-    const wsUrl = `${CARTESIA_WS_URL}?api_key=${apiKey}&cartesia_version=2024-06-10`;
+    const wsUrl = `${CARTESIA_WS_URL}?api_key=${apiKey}&cartesia_version=2026-03-01`;
     const ws = new WebSocket(wsUrl);
     const timeout = setTimeout(() => {
       if (ws.readyState !== WebSocket.OPEN) {
@@ -251,6 +273,25 @@ async function speakWithWebSocket(
   onEnd: () => void,
   onError: () => void,
 ): Promise<{ cancel: () => void }> {
+  // Serialize utterances to prevent WebSocket message interleaving
+  let resolveQueue: () => void;
+  const prevQueue = _utteranceQueue;
+  _utteranceQueue = new Promise(r => { resolveQueue = r; });
+  await prevQueue;
+  const markDone = () => resolveQueue!();
+  const wrappedOnEnd = () => { markDone(); onEnd(); };
+  const wrappedOnError = () => { markDone(); onError(); };
+  return _speakWithWebSocketInner(text, voiceId, wrappedOnEnd, wrappedOnError, markDone, false);
+}
+
+async function _speakWithWebSocketInner(
+  text: string,
+  voiceId: string,
+  onEnd: () => void,
+  onError: () => void,
+  markDone: () => void,
+  isRetry: boolean,
+): Promise<{ cancel: () => void }> {
   let settled = false;
   const settle = (cb: () => void) => { if (!settled) { settled = true; cb(); } };
   let audioCtx: AudioContext | null = null;
@@ -277,9 +318,16 @@ async function speakWithWebSocket(
       return speakWithProxy(text, voiceId, onEnd, onError);
     }
 
-    const ws = await getOrCreateWs(apiKey);
+    let ws = await getOrCreateWs(apiKey);
+    if ((!ws || ws.readyState !== WebSocket.OPEN) && !isRetry) {
+      // First attempt failed — try one more time with a fresh connection
+      console.warn("[TTS-WS] connection failed, attempting one reconnect");
+      _persistentWs = null;
+      _persistentWsApiKey = null;
+      ws = await getOrCreateWs(apiKey);
+    }
     if (!ws || ws.readyState !== WebSocket.OPEN) {
-      console.warn("[TTS-WS] connection failed, falling back to REST");
+      console.warn("[TTS-WS] connection failed after retry, falling back to REST");
       return speakWithProxy(text, voiceId, onEnd, onError);
     }
 
@@ -362,9 +410,20 @@ async function speakWithWebSocket(
       clearTimeout(wsTimeout);
       if (cancelled) return;
       if (!allChunksReceived) {
-        if (chunksReceived === 0) {
-          // No chunks at all — fall back to REST TTS
-          console.warn("[TTS-WS] closed before any chunks, falling back to REST");
+        if (chunksReceived === 0 && !isRetry) {
+          // No chunks received — attempt ONE reconnect before falling back to REST
+          console.warn("[TTS-WS] closed before any chunks, attempting reconnect (1 retry)");
+          closeCtx();
+          // Force-clear the dead socket so getOrCreateWs creates a fresh one
+          _persistentWs = null;
+          _speakWithWebSocketInner(text, voiceId, onEnd, onError, markDone, true)
+            .then((retryHandle) => {
+              // Propagate the new cancel handle up to _activeCancel
+              _activeCancel = retryHandle.cancel;
+            });
+        } else if (chunksReceived === 0 && isRetry) {
+          // Already retried once — fall back to REST
+          console.warn("[TTS-WS] reconnect also failed, falling back to REST");
           closeCtx();
           speakWithProxy(text, voiceId, onEnd, onError);
         } else {
@@ -404,6 +463,7 @@ async function speakWithWebSocket(
     cancel: () => {
       cancelled = true;
       settled = true;
+      markDone(); // Release utterance queue so next utterance can proceed
       // Detach message handler to prevent stale callbacks
       if (_wsMessageHandler && _persistentWs) {
         _persistentWs.removeEventListener("message", _wsMessageHandler);
@@ -643,6 +703,7 @@ let _activeCancel: (() => void) | null = null;
 export function cleanupTTS() {
   _activeCancel?.();
   _activeCancel = null;
+  clearPrefetchCache();
   // Close persistent WebSocket and remove listeners
   if (_persistentWs) {
     if (_wsMessageHandler) {
@@ -653,6 +714,54 @@ export function cleanupTTS() {
     _persistentWs = null;
   }
   if (_wsIdleTimer) { clearTimeout(_wsIdleTimer); _wsIdleTimer = null; }
+}
+
+/* ─── Speak with a specific voice (for panel interviews) ─── */
+export async function speakAs(
+  text: string,
+  voiceId: string,
+  onEnd: () => void,
+  onError: () => void,
+): Promise<{ cancel: () => void }> {
+  const settings = loadTTSSettings();
+  if (settings.provider !== "cartesia") {
+    // Browser TTS doesn't support voice switching — use default
+    return speak(text, onEnd, onError);
+  }
+
+  let handle: { cancel: () => void };
+
+  const deepgramFallback = async () => {
+    console.warn("Trying Deepgram TTS fallback (speakAs)");
+    handle = await speakWithDeepgram(text, onEnd, () => {
+      console.warn("Deepgram TTS failed, falling back to browser TTS");
+      const browserHandle = speakWithBrowser(text, onEnd, onError);
+      handle = browserHandle;
+      _activeCancel = browserHandle.cancel;
+    });
+    _activeCancel = handle.cancel;
+  };
+
+  const prefetchEntry = _prefetchCache.get(text);
+  const hasPrefetch = !!prefetchEntry && Date.now() - prefetchEntry.createdAt < PREFETCH_TTL;
+  if (hasPrefetch) {
+    handle = await speakWithProxy(text, voiceId, onEnd, async () => {
+      console.warn("Cartesia REST failed (speakAs), trying Deepgram");
+      await deepgramFallback();
+    });
+  } else {
+    handle = await speakWithWebSocket(text, voiceId, onEnd, async () => {
+      console.warn("Cartesia WebSocket failed (speakAs), falling back to REST");
+      handle = await speakWithProxy(text, voiceId, onEnd, async () => {
+        console.warn("Cartesia REST also failed (speakAs), trying Deepgram");
+        await deepgramFallback();
+      });
+      _activeCancel = handle.cancel;
+    });
+  }
+
+  _activeCancel = handle.cancel;
+  return handle;
 }
 
 /* ─── Unified speak function ─── */
@@ -669,7 +778,9 @@ export async function speak(
       console.warn("Trying Deepgram TTS fallback");
       handle = await speakWithDeepgram(text, onEnd, () => {
         console.warn("Deepgram TTS failed, falling back to browser TTS");
-        speakWithBrowser(text, onEnd, onError);
+        const browserHandle = speakWithBrowser(text, onEnd, onError);
+        handle = browserHandle;
+        _activeCancel = browserHandle.cancel;
       });
       _activeCancel = handle.cancel;
     };

@@ -38,7 +38,6 @@ export interface DeepgramSTTCallbacks {
  */
 export async function createDeepgramSTT(
   callbacks: DeepgramSTTCallbacks,
-  options?: { language?: string },
 ): Promise<DeepgramSTTHandle | null> {
   const apiKey = await getDeepgramApiKey();
   if (!apiKey) {
@@ -64,8 +63,7 @@ export async function createDeepgramSTT(
     console.info("[Deepgram] Detected non-standard sample rate:", sampleRate);
   }
 
-  const langMap: Record<string, string> = { hi: "hi", hinglish: "hi", ta: "ta", te: "te", bn: "bn", mr: "mr", gu: "gu", kn: "kn", ml: "ml" };
-  const dgLang = (options?.language && langMap[options.language]) || "en-US";
+  const dgLang = "en-US";
   const wsUrl =
     `wss://api.deepgram.com/v1/listen` +
     `?model=nova-2` +
@@ -90,17 +88,17 @@ export async function createDeepgramSTT(
   let aborted = false;
   let finalText = "";
   let audioCtx: AudioContext | null = null;
-  let scriptNode: ScriptProcessorNode | null = null;
+  let processorNode: AudioWorkletNode | ScriptProcessorNode | null = null;
   let sourceNode: MediaStreamAudioSourceNode | null = null;
 
   function cleanup() {
     aborted = true;
-    scriptNode?.disconnect();
+    processorNode?.disconnect();
     sourceNode?.disconnect();
     audioCtx?.close().catch(() => {});
     stream.getTracks().forEach(t => t.stop());
     audioCtx = null;
-    scriptNode = null;
+    processorNode = null;
     sourceNode = null;
   }
 
@@ -127,16 +125,54 @@ export async function createDeepgramSTT(
     try { ws.close(); } catch { /* expected: WebSocket may already be closed */ }
   }
 
-  ws.onopen = () => {
-    if (aborted) { ws.close(); return; }
+  /** Set up audio capture using AudioWorklet (preferred) with ScriptProcessorNode fallback */
+  async function setupAudioCapture(ctx: AudioContext, source: MediaStreamAudioSourceNode) {
+    // Try AudioWorklet first — it runs off the main thread and is the modern API
+    try {
+      if (ctx.audioWorklet) {
+        const workletCode = `
+class PCMProcessor extends AudioWorkletProcessor {
+  process(inputs) {
+    const input = inputs[0];
+    if (!input || !input[0]) return true;
+    const float32 = input[0];
+    const int16 = new Int16Array(float32.length);
+    for (let i = 0; i < float32.length; i++) {
+      const s = Math.max(-1, Math.min(1, float32[i]));
+      int16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+    }
+    this.port.postMessage(int16.buffer, [int16.buffer]);
+    return true;
+  }
+}
+registerProcessor('pcm-processor', PCMProcessor);
+`;
+        const blob = new Blob([workletCode], { type: "application/javascript" });
+        const url = URL.createObjectURL(blob);
+        await ctx.audioWorklet.addModule(url);
+        URL.revokeObjectURL(url);
 
-    // Set up audio capture via ScriptProcessorNode
-    audioCtx = new AudioContext({ sampleRate });
-    sourceNode = audioCtx.createMediaStreamSource(stream);
+        const workletNode = new AudioWorkletNode(ctx, "pcm-processor");
+        workletNode.port.onmessage = (e: MessageEvent) => {
+          if (aborted || ws.readyState !== WebSocket.OPEN) return;
+          ws.send(e.data);
+        };
+
+        source.connect(workletNode);
+        workletNode.connect(ctx.destination);
+        processorNode = workletNode;
+        console.info("[Deepgram] Using AudioWorklet for audio capture");
+        return;
+      }
+    } catch (err) {
+      console.warn("[Deepgram] AudioWorklet setup failed, falling back to ScriptProcessorNode:", err);
+    }
+
+    // Fallback: ScriptProcessorNode (deprecated but widely supported)
     // Buffer size 4096 gives ~85ms chunks at 48kHz — good latency/overhead balance
-    scriptNode = audioCtx.createScriptProcessor(4096, 1, 1);
+    const scriptNode = ctx.createScriptProcessor(4096, 1, 1);
 
-    scriptNode.onaudioprocess = (e) => {
+    scriptNode.onaudioprocess = (e: AudioProcessingEvent) => {
       if (aborted || ws.readyState !== WebSocket.OPEN) return;
       const float32 = e.inputBuffer.getChannelData(0);
       // Convert float32 [-1,1] to int16 PCM
@@ -148,8 +184,22 @@ export async function createDeepgramSTT(
       ws.send(int16.buffer);
     };
 
-    sourceNode.connect(scriptNode);
-    scriptNode.connect(audioCtx.destination);
+    source.connect(scriptNode);
+    scriptNode.connect(ctx.destination);
+    processorNode = scriptNode;
+    console.info("[Deepgram] Using ScriptProcessorNode fallback for audio capture");
+  }
+
+  ws.onopen = () => {
+    if (aborted) { ws.close(); return; }
+
+    audioCtx = new AudioContext({ sampleRate });
+    sourceNode = audioCtx.createMediaStreamSource(stream);
+
+    setupAudioCapture(audioCtx, sourceNode).catch((err) => {
+      console.warn("[Deepgram] Audio capture setup failed:", err);
+      callbacks.onError("audio-setup");
+    });
   };
 
   ws.onmessage = (event) => {

@@ -12,10 +12,10 @@ function Section({ children, className, animIndex = 0 }: { children: React.React
   return (
     <div className={`sd-anim ${className || ""}`} style={{
       background: c.graphite,
-      borderRadius: 16,
+      borderRadius: 14,
       border: `1px solid ${c.border}`,
-      padding: "28px 32px",
-      marginBottom: 16,
+      padding: "18px 22px",
+      marginBottom: 10,
       animationDelay: `${0.1 + animIndex * 0.06}s`,
     }}>
       {children}
@@ -25,8 +25,8 @@ function Section({ children, className, animIndex = 0 }: { children: React.React
 
 function SectionTitle({ children, icon, action }: { children: React.ReactNode; icon?: React.ReactNode; action?: React.ReactNode }) {
   return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
-      <h3 style={{ fontSize: 16, fontWeight: 600, color: c.ivory, margin: 0, display: "flex", alignItems: "center", gap: 10 }}>
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+      <h3 style={{ fontSize: 15, fontWeight: 600, color: c.ivory, margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
         {icon}
         {children}
       </h3>
@@ -55,6 +55,25 @@ export default function SessionDetail() {
   const [showTranscript, setShowTranscript] = useState(false);
   const [showFillerBreakdown, setShowFillerBreakdown] = useState(false);
   const [expandedSkill, setExpandedSkill] = useState<string | null>(null);
+  const [collapsedQuestions, setCollapsedQuestions] = useState<Set<number>>(new Set());
+
+  // Score count-up animation
+  const [displayScore, setDisplayScore] = useState(0);
+  useEffect(() => {
+    if (!session?.score) return;
+    const target = session.score;
+    const duration = 1000; // 1 second
+    const start = performance.now();
+    const animate = (now: number) => {
+      const elapsed = now - start;
+      const progress = Math.min(elapsed / duration, 1);
+      // Ease-out curve
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setDisplayScore(Math.round(eased * target));
+      if (progress < 1) requestAnimationFrame(animate);
+    };
+    requestAnimationFrame(animate);
+  }, [session?.score]);
 
   // Load existing feedback
   useEffect(() => {
@@ -116,7 +135,7 @@ export default function SessionDetail() {
       "HIRESTEPX — ANALYSIS REPORT & ANSWER KEY",
       "━".repeat(50),
       `Type: ${type}  |  Date: ${dateLabel}  |  Duration: ${durationMin} min  |  Difficulty: ${session.difficulty}`,
-      `Overall Score: ${session.score}/100 (${scoreLabel(session.score)})`,
+      `Overall Score: ${session.score ?? "N/A"}/100 (${scoreLabel(session.score ?? 0)})`,
       "",
     ];
     if (speechMetrics) {
@@ -142,13 +161,17 @@ export default function SessionDetail() {
     }
     if (session.ideal_answers && session.ideal_answers.length > 0) {
       lines.push("RESPONSE ANALYSIS");
+      lines.push("─".repeat(50));
       session.ideal_answers.forEach((item, i) => {
-        lines.push(`\nQ${i + 1}: ${item.question}`);
-        lines.push(`  Rating: ${item.rating || "reviewed"}`);
-        lines.push(`  Your Answer: ${item.candidateSummary}`);
-        lines.push(`  STAR-Restructured: ${item.ideal}`);
-        if (item.workedWell) lines.push(`  ✓ ${item.workedWell}`);
-        if (item.toImprove) lines.push(`  → ${item.toImprove}`);
+        lines.push(`\n  Q${i + 1}: ${item.question}`);
+        lines.push(`  ${"─".repeat(40)}`);
+        lines.push(`  Candidate Summary:`);
+        lines.push(`    ${item.candidateSummary}`);
+        lines.push(`  Ideal Answer:`);
+        lines.push(`    ${item.ideal}`);
+        if (item.rating) lines.push(`  Rating: ${item.rating}`);
+        if (item.workedWell) lines.push(`  Worked Well: ${item.workedWell}`);
+        if (item.toImprove) lines.push(`  To Improve: ${item.toImprove}`);
       });
       lines.push("");
     }
@@ -244,7 +267,8 @@ export default function SessionDetail() {
     ctx.fillText(typeText, W / 2, 281);
 
     // Score circle
-    const scoreColor = session.score >= 85 ? "#7A9E7E" : session.score >= 70 ? "#D4B37F" : "#C4705A";
+    const safeScore = session.score ?? 0;
+    const scoreColor = safeScore >= 85 ? "#7A9E7E" : safeScore >= 70 ? "#D4B37F" : "#C4705A";
     ctx.beginPath();
     ctx.arc(W / 2, 370, 50, 0, Math.PI * 2);
     ctx.strokeStyle = scoreColor;
@@ -252,7 +276,7 @@ export default function SessionDetail() {
     ctx.stroke();
     ctx.fillStyle = "#F5F2ED";
     ctx.font = "700 32px 'JetBrains Mono', monospace";
-    ctx.fillText(String(session.score), W / 2, 378);
+    ctx.fillText(String(safeScore), W / 2, 378);
     ctx.fillStyle = scoreColor;
     ctx.font = "600 11px 'Inter', sans-serif";
     ctx.fillText("/100", W / 2, 400);
@@ -355,7 +379,8 @@ export default function SessionDetail() {
     ctx.fillText(typeText, 42, 73);
 
     // Score circle (center-right area)
-    const scoreColor = session.score >= 85 ? "#7A9E7E" : session.score >= 75 ? "#D4B37F" : "#C4705A";
+    const safeScore2 = session.score ?? 0;
+    const scoreColor = safeScore2 >= 85 ? "#7A9E7E" : safeScore2 >= 75 ? "#D4B37F" : "#C4705A";
     const cx = 480, cy = 120;
     // Score arc (filled percentage)
     ctx.beginPath();
@@ -364,7 +389,7 @@ export default function SessionDetail() {
     ctx.lineWidth = 6;
     ctx.stroke();
     ctx.beginPath();
-    ctx.arc(cx, cy, 52, -Math.PI / 2, -Math.PI / 2 + (Math.PI * 2 * session.score / 100));
+    ctx.arc(cx, cy, 52, -Math.PI / 2, -Math.PI / 2 + (Math.PI * 2 * safeScore2 / 100));
     ctx.strokeStyle = scoreColor;
     ctx.lineWidth = 6;
     ctx.lineCap = "round";
@@ -372,11 +397,11 @@ export default function SessionDetail() {
     ctx.textAlign = "center";
     ctx.fillStyle = "#F5F2ED";
     ctx.font = "700 28px 'JetBrains Mono', monospace";
-    ctx.fillText(String(session.score), cx, cy + 6);
+    ctx.fillText(String(safeScore2), cx, cy + 6);
     ctx.fillStyle = scoreColor;
     ctx.font = "600 10px 'Inter', sans-serif";
     ctx.fillText("/100", cx, cy + 24);
-    ctx.fillText(scoreLabel(session.score), cx, cy + 60);
+    ctx.fillText(scoreLabel(safeScore2), cx, cy + 60);
 
     // Candidate name
     ctx.textAlign = "left";
@@ -463,7 +488,7 @@ export default function SessionDetail() {
     return (
       <div style={{ minHeight: "100vh", background: c.obsidian, fontFamily: font.ui }}>
         <div style={{ position: "fixed", top: 0, left: 0, right: 0, height: 300, background: gradient.meshBg, pointerEvents: "none", zIndex: 0 }} />
-        <div style={{ position: "relative", zIndex: 1, maxWidth: 860, margin: "0 auto", padding: "32px 24px 80px" }}>
+        <div style={{ position: "relative", zIndex: 1, maxWidth: 860, margin: "0 auto", padding: "20px 24px 60px" }}>
           {/* Header skeleton */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 32 }}>
             <div>
@@ -533,19 +558,19 @@ export default function SessionDetail() {
       {/* Subtle top gradient */}
       <div style={{ position: "fixed", top: 0, left: 0, right: 0, height: 300, background: gradient.meshBg, pointerEvents: "none", zIndex: 0 }} />
 
-      <div style={{ position: "relative", zIndex: 1, maxWidth: 860, margin: "0 auto", padding: "32px 24px 80px" }}>
+      <div style={{ position: "relative", zIndex: 1, maxWidth: 860, margin: "0 auto", padding: "20px 24px 60px" }}>
 
         {/* ═══ HEADER ═══ */}
-        <div className="sd-anim" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 32, animationDelay: "0s" }}>
+        <div className="sd-anim" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16, animationDelay: "0s" }}>
           <div>
             <button onClick={() => { if (window.history.length > 1) navigate(-1); else navigate("/dashboard"); }} style={{
               display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: c.stone,
-              background: "none", border: "none", cursor: "pointer", outline: "none", marginBottom: 16, padding: 0,
+              background: "none", border: "none", cursor: "pointer", outline: "none", marginBottom: 10, padding: 0,
             }}>
               <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>
               Back
             </button>
-            <h1 style={{ fontFamily: font.display, fontSize: 28, fontWeight: 400, color: c.ivory, margin: "0 0 8px", letterSpacing: "-0.01em" }}>
+            <h1 style={{ fontFamily: font.display, fontSize: 22, fontWeight: 400, color: c.ivory, margin: "0 0 6px", letterSpacing: "-0.01em" }}>
               Analysis Report & Answer Key
             </h1>
             <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
@@ -566,7 +591,7 @@ export default function SessionDetail() {
               display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
               boxShadow: `0 0 24px ${scoreLabelColor(session.score)}20`,
             }}>
-              <span aria-hidden="true" style={{ fontFamily: font.mono, fontSize: 24, fontWeight: 700, color: c.ivory, lineHeight: 1 }}>{session.score}</span>
+              <span aria-hidden="true" style={{ fontFamily: font.mono, fontSize: 24, fontWeight: 700, color: c.ivory, lineHeight: 1 }}>{displayScore}</span>
               <span aria-hidden="true" style={{ fontSize: 10, color: scoreLabelColor(session.score), fontWeight: 600 }}>/100</span>
             </div>
             <span title={scoreTip(session.score)} style={{ fontSize: 11, fontWeight: 600, color: scoreLabelColor(session.score), marginTop: 6, display: "block", cursor: "help" }}>
@@ -576,7 +601,7 @@ export default function SessionDetail() {
         </div>
 
         {/* Action bar */}
-        <div className="sd-anim" style={{ display: "flex", gap: 8, marginBottom: 24, animationDelay: "0.05s" }}>
+        <div className="sd-anim" style={{ display: "flex", gap: 8, marginBottom: 12, animationDelay: "0.05s", flexWrap: "wrap" }}>
           <button onClick={handleCopy} aria-label="Copy report" style={{
             padding: "7px 14px", borderRadius: 8, fontSize: 12, fontWeight: 500,
             background: copied ? "rgba(122,158,126,0.08)" : "transparent",
@@ -639,6 +664,7 @@ export default function SessionDetail() {
             let bestDelta = 0;
             for (const [name, raw] of Object.entries(session.skill_scores)) {
               const curr = extractScore(raw);
+              if (isNaN(curr)) continue;
               const prev = prevSession.skill_scores[name] ? extractScore(prevSession.skill_scores[name]) : NaN;
               if (!isNaN(prev) && curr - prev > bestDelta) {
                 bestDelta = curr - prev;
@@ -657,7 +683,8 @@ export default function SessionDetail() {
           if (avgDelta !== null && avgDelta > 5) narrativeParts.push(`You're ${avgDelta} points above your average — great trajectory.`);
           if (streak >= 2) narrativeParts.push(`${streak}-day streak — keep the momentum.`);
 
-          const hasProgress = scoreDelta !== null || avgDelta !== null || totalCount > 1;
+          const isFirstSession = totalCount <= 1;
+          const hasProgress = !isFirstSession && (scoreDelta !== null || avgDelta !== null || totalCount > 1);
 
           // Sparkline SVG data (last 10 sessions)
           const sparkData = scoreHistory.slice(-10);
@@ -679,9 +706,9 @@ export default function SessionDetail() {
               background: `linear-gradient(135deg, ${scoreDelta !== null && scoreDelta > 0 ? "rgba(122,158,126,0.06)" : scoreDelta !== null && scoreDelta < 0 ? "rgba(196,112,90,0.06)" : "rgba(212,179,127,0.05)"} 0%, ${c.graphite} 100%)`,
               borderRadius: 16,
               border: `1px solid ${scoreDelta !== null && scoreDelta > 0 ? "rgba(122,158,126,0.15)" : scoreDelta !== null && scoreDelta < 0 ? "rgba(196,112,90,0.12)" : "rgba(212,179,127,0.1)"}`,
-              padding: "24px 28px", marginBottom: 16, animationDelay: "0.06s",
+              padding: "16px 20px", marginBottom: 10, animationDelay: "0.06s",
             }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                   <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={scoreDelta !== null && scoreDelta > 0 ? c.sage : scoreDelta !== null && scoreDelta < 0 ? c.ember : c.gilt} strokeWidth="2" strokeLinecap="round">
                     <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/>
@@ -702,47 +729,47 @@ export default function SessionDetail() {
               </div>
 
               {narrativeParts.length > 0 && (
-                <p style={{ fontSize: 14, color: c.chalk, lineHeight: 1.6, margin: "0 0 16px" }}>
+                <p style={{ fontSize: 13, color: c.chalk, lineHeight: 1.5, margin: "0 0 10px" }}>
                   {narrativeParts.join(" ")}
                 </p>
               )}
 
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 10 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: 8 }}>
                 {scoreDelta !== null && (
-                  <div style={{ padding: "14px 16px", borderRadius: 12, background: c.obsidian, border: `1px solid ${c.border}`, textAlign: "center" }}>
-                    <span style={{ fontSize: 10, color: c.stone, display: "block", marginBottom: 4 }}>vs Last Session</span>
-                    <span style={{ fontFamily: font.mono, fontSize: 22, fontWeight: 600, color: scoreDelta > 0 ? c.sage : scoreDelta < 0 ? c.ember : c.stone }}>
+                  <div style={{ padding: "10px 12px", borderRadius: 10, background: c.obsidian, border: `1px solid ${c.border}`, textAlign: "center" }}>
+                    <span style={{ fontSize: 9, color: c.stone, display: "block", marginBottom: 2 }}>vs Last Session</span>
+                    <span style={{ fontFamily: font.mono, fontSize: 18, fontWeight: 600, color: scoreDelta > 0 ? c.sage : scoreDelta < 0 ? c.ember : c.stone }}>
                       {scoreDelta > 0 ? `+${scoreDelta}` : scoreDelta === 0 ? "—" : `${scoreDelta}`}
                     </span>
                   </div>
                 )}
                 {avgDelta !== null && (
-                  <div style={{ padding: "14px 16px", borderRadius: 12, background: c.obsidian, border: `1px solid ${c.border}`, textAlign: "center" }}>
-                    <span style={{ fontSize: 10, color: c.stone, display: "block", marginBottom: 4 }}>vs Your Average</span>
-                    <span style={{ fontFamily: font.mono, fontSize: 22, fontWeight: 600, color: avgDelta > 0 ? c.sage : avgDelta < 0 ? c.ember : c.stone }}>
+                  <div style={{ padding: "10px 12px", borderRadius: 10, background: c.obsidian, border: `1px solid ${c.border}`, textAlign: "center" }}>
+                    <span style={{ fontSize: 9, color: c.stone, display: "block", marginBottom: 2 }}>vs Your Average</span>
+                    <span style={{ fontFamily: font.mono, fontSize: 18, fontWeight: 600, color: avgDelta > 0 ? c.sage : avgDelta < 0 ? c.ember : c.stone }}>
                       {avgDelta > 0 ? `+${avgDelta}` : avgDelta === 0 ? "—" : `${avgDelta}`}
                     </span>
                   </div>
                 )}
                 {strongest && (
-                  <div style={{ padding: "14px 16px", borderRadius: 12, background: c.obsidian, border: `1px solid ${c.border}`, textAlign: "center" }}>
-                    <span style={{ fontSize: 10, color: c.stone, display: "block", marginBottom: 4 }}>Top Skill</span>
-                    <span style={{ fontSize: 13, fontWeight: 600, color: c.sage, display: "block" }}>{strongest.name}</span>
-                    <span style={{ fontFamily: font.mono, fontSize: 11, color: c.stone }}>{strongest.score}/100</span>
+                  <div style={{ padding: "10px 12px", borderRadius: 10, background: c.obsidian, border: `1px solid ${c.border}`, textAlign: "center" }}>
+                    <span style={{ fontSize: 9, color: c.stone, display: "block", marginBottom: 2 }}>Top Skill</span>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: c.sage, display: "block" }}>{strongest.name}</span>
+                    <span style={{ fontFamily: font.mono, fontSize: 10, color: c.stone }}>{strongest.score}/100</span>
                   </div>
                 )}
                 {weakest && weakest.name !== strongest?.name && (
-                  <div style={{ padding: "14px 16px", borderRadius: 12, background: c.obsidian, border: `1px solid ${c.border}`, textAlign: "center" }}>
-                    <span style={{ fontSize: 10, color: c.stone, display: "block", marginBottom: 4 }}>Focus Area</span>
-                    <span style={{ fontSize: 13, fontWeight: 600, color: c.ember, display: "block" }}>{weakest.name}</span>
-                    <span style={{ fontFamily: font.mono, fontSize: 11, color: c.stone }}>{weakest.score}/100</span>
+                  <div style={{ padding: "10px 12px", borderRadius: 10, background: c.obsidian, border: `1px solid ${c.border}`, textAlign: "center" }}>
+                    <span style={{ fontSize: 9, color: c.stone, display: "block", marginBottom: 2 }}>Focus Area</span>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: c.ember, display: "block" }}>{weakest.name}</span>
+                    <span style={{ fontFamily: font.mono, fontSize: 10, color: c.stone }}>{weakest.score}/100</span>
                   </div>
                 )}
               </div>
 
               {/* Score sparkline */}
               {sparkPath && (
-                <div style={{ marginTop: 14, padding: "12px 16px", borderRadius: 10, background: c.obsidian, border: `1px solid ${c.border}`, display: "flex", alignItems: "center", gap: 14 }}>
+                <div style={{ marginTop: 8, padding: "8px 14px", borderRadius: 8, background: c.obsidian, border: `1px solid ${c.border}`, display: "flex", alignItems: "center", gap: 12 }}>
                   <span style={{ fontSize: 10, color: c.stone, whiteSpace: "nowrap" }}>Score trend</span>
                   <svg width={sparkW} height={sparkH} viewBox={`0 0 ${sparkW} ${sparkH}`} style={{ flexShrink: 0 }}>
                     <path d={sparkPath} fill="none" stroke={c.gilt} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -761,6 +788,43 @@ export default function SessionDetail() {
                   </span>
                 </div>
               )}
+            </div>
+          ) : isFirstSession ? (
+            <div className="sd-anim" style={{
+              background: `linear-gradient(135deg, rgba(212,179,127,0.06) 0%, ${c.graphite} 100%)`,
+              borderRadius: 14,
+              border: `1px solid rgba(212,179,127,0.12)`,
+              padding: "16px 20px", marginBottom: 10, animationDelay: "0.06s",
+            }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+                <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="2" strokeLinecap="round">
+                  <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/>
+                </svg>
+                <h3 style={{ fontSize: 16, fontWeight: 600, color: c.ivory, margin: 0 }}>First Session Complete!</h3>
+              </div>
+              <p style={{ fontSize: 14, color: c.chalk, lineHeight: 1.6, margin: "0 0 16px" }}>
+                Great start! This is your baseline score. Practice again to track your improvement over time.
+              </p>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 10 }}>
+                {strongest && (
+                  <div style={{ padding: "14px 16px", borderRadius: 12, background: c.obsidian, border: `1px solid ${c.border}`, textAlign: "center" }}>
+                    <span style={{ fontSize: 10, color: c.stone, display: "block", marginBottom: 4 }}>Top Skill</span>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: c.sage, display: "block" }}>{strongest.name}</span>
+                    <span style={{ fontFamily: font.mono, fontSize: 11, color: c.stone }}>{strongest.score}/100</span>
+                  </div>
+                )}
+                {weakest && weakest.name !== strongest?.name && (
+                  <div style={{ padding: "14px 16px", borderRadius: 12, background: c.obsidian, border: `1px solid ${c.border}`, textAlign: "center" }}>
+                    <span style={{ fontSize: 10, color: c.stone, display: "block", marginBottom: 4 }}>Focus Area</span>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: c.ember, display: "block" }}>{weakest.name}</span>
+                    <span style={{ fontFamily: font.mono, fontSize: 11, color: c.stone }}>{weakest.score}/100</span>
+                  </div>
+                )}
+                <div style={{ padding: "14px 16px", borderRadius: 12, background: c.obsidian, border: `1px solid ${c.border}`, textAlign: "center" }}>
+                  <span style={{ fontSize: 10, color: c.stone, display: "block", marginBottom: 4 }}>Baseline Score</span>
+                  <span style={{ fontFamily: font.mono, fontSize: 22, fontWeight: 600, color: c.gilt }}>{session.score}</span>
+                </div>
+              </div>
             </div>
           ) : null;
         })()}
@@ -1259,10 +1323,21 @@ export default function SessionDetail() {
             <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
               {session.ideal_answers.map((item, i) => {
                 const badge = ratingBadge(item.rating);
+                const isCollapsed = collapsedQuestions.has(i);
+                const toggleCollapse = () => setCollapsedQuestions(prev => {
+                  const next = new Set(prev);
+                  if (next.has(i)) next.delete(i); else next.add(i);
+                  return next;
+                });
                 return (
                   <div key={i} style={{ borderRadius: 14, border: `1px solid ${c.border}`, overflow: "hidden" }}>
-                    {/* Question header */}
-                    <div style={{ padding: "16px 20px", background: "rgba(212,179,127,0.03)", borderBottom: `1px solid ${c.border}`, display: "flex", alignItems: "flex-start", gap: 12 }}>
+                    {/* Question header (clickable to toggle) */}
+                    <div
+                      role="button" tabIndex={0} aria-expanded={!isCollapsed}
+                      onClick={toggleCollapse}
+                      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggleCollapse(); } }}
+                      style={{ padding: "16px 20px", background: "rgba(212,179,127,0.03)", borderBottom: isCollapsed ? "none" : `1px solid ${c.border}`, display: "flex", alignItems: "flex-start", gap: 12, cursor: "pointer" }}
+                    >
                       <div style={{
                         width: 28, height: 28, borderRadius: 8, flexShrink: 0, marginTop: 2,
                         background: "rgba(212,179,127,0.08)", border: `1px solid rgba(212,179,127,0.15)`,
@@ -1274,9 +1349,14 @@ export default function SessionDetail() {
                         <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: c.gilt, display: "block", marginBottom: 4 }}>Interview Question</span>
                         <p style={{ fontSize: 14, fontWeight: 500, color: c.ivory, lineHeight: 1.5, margin: 0 }}>{item.question}</p>
                       </div>
+                      <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.stone} strokeWidth="2" strokeLinecap="round"
+                        style={{ flexShrink: 0, marginTop: 6, transform: isCollapsed ? "rotate(0deg)" : "rotate(180deg)", transition: "transform 0.2s ease" }}>
+                        <polyline points="6 9 12 15 18 9"/>
+                      </svg>
                     </div>
 
-                    {/* Two-column: Your Answer vs Restructured */}
+                    {/* Two-column: Your Answer vs Restructured (expanded by default) */}
+                    {!isCollapsed && (
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", minHeight: 0 }}>
                       {/* Your Answer */}
                       <div style={{ padding: "16px 20px", borderRight: `1px solid ${c.border}` }}>
@@ -1330,6 +1410,7 @@ export default function SessionDetail() {
                         </div>
                       </div>
                     </div>
+                    )}
                   </div>
                 );
               })}
@@ -1498,7 +1579,15 @@ export default function SessionDetail() {
                         borderTopLeftRadius: msg.speaker === "ai" ? 4 : 12,
                         borderTopRightRadius: msg.speaker === "user" ? 4 : 12,
                       }}>
-                        {msg.text}
+                        {msg.speaker === "ai" && msg.text.match(/^\[(.+?)\]\s*/) ? (
+                          <>
+                            <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, color: msg.text.startsWith("[Technical") ? "#7A9E7E" : msg.text.startsWith("[HR") ? "#A8B4C4" : c.gilt, display: "inline-block", marginBottom: 4, opacity: 0.8 }}>
+                              {msg.text.match(/^\[(.+?)\]/)?.[1]}
+                            </span>
+                            <br />
+                            {msg.text.replace(/^\[.+?\]\s*/, "")}
+                          </>
+                        ) : msg.text}
                       </div>
                     </div>
                   </div>
@@ -1558,7 +1647,7 @@ export default function SessionDetail() {
             <SectionTitle icon={
               <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="2" strokeLinecap="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
             }>vs Previous Session</SectionTitle>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
               {[
                 { label: "Score", current: session.score, prev: prevSession.score, suffix: "" },
                 { label: "Duration", current: Math.ceil(session.duration / 60), prev: Math.ceil(prevSession.duration / 60), suffix: "m" },
@@ -1566,10 +1655,10 @@ export default function SessionDetail() {
               ].map((m) => {
                 const diff = m.current - m.prev;
                 return (
-                  <div key={m.label} style={{ padding: "14px", borderRadius: 12, background: c.obsidian, border: `1px solid ${c.border}`, textAlign: "center" }}>
-                    <span style={{ fontSize: 10, color: c.stone, display: "block", marginBottom: 4 }}>{m.label}</span>
-                    <span style={{ fontFamily: font.mono, fontSize: 22, fontWeight: 600, color: c.ivory, display: "block" }}>{m.current}{m.suffix}</span>
-                    <span style={{ fontFamily: font.mono, fontSize: 11, color: diff > 0 ? c.sage : diff < 0 ? c.ember : c.stone, fontWeight: 600 }}>
+                  <div key={m.label} style={{ padding: "10px 12px", borderRadius: 10, background: c.obsidian, border: `1px solid ${c.border}`, textAlign: "center" }}>
+                    <span style={{ fontSize: 9, color: c.stone, display: "block", marginBottom: 2 }}>{m.label}</span>
+                    <span style={{ fontFamily: font.mono, fontSize: 18, fontWeight: 600, color: c.ivory, display: "block" }}>{m.current}{m.suffix}</span>
+                    <span style={{ fontFamily: font.mono, fontSize: 10, color: diff > 0 ? c.sage : diff < 0 ? c.ember : c.stone, fontWeight: 600 }}>
                       {diff > 0 ? `↑ ${diff}` : diff < 0 ? `↓ ${Math.abs(diff)}` : "—"}{diff !== 0 ? m.suffix : ""}
                     </span>
                   </div>

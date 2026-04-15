@@ -11,7 +11,7 @@ import {
   escapeHtml,
   supabaseUrl,
   supabaseAnonKey,
-} from "./_shared";
+} from "./_shared.js";
 
 /** Fetch with AbortController timeout (default 8s) */
 function fetchWithTimeout(url: string, opts: RequestInit & { timeout?: number } = {}): Promise<Response> {
@@ -248,9 +248,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // 1. Verify Razorpay signature (HMAC-SHA256)
-    // Subscriptions sign: payment_id|subscription_id; orders sign: order_id|payment_id
+    // Subscriptions sign: subscription_id|payment_id; orders sign: order_id|payment_id
     const signPayload = razorpay_subscription_id
-      ? `${razorpay_payment_id}|${razorpay_subscription_id}`
+      ? `${razorpay_subscription_id}|${razorpay_payment_id}`
       : `${razorpay_order_id}|${razorpay_payment_id}`;
     const expectedSignature = createHmac("sha256", RAZORPAY_KEY_SECRET)
       .update(signPayload)
@@ -306,15 +306,42 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       throw rzpErr;
     } finally { clearTimeout(rzpTimer); }
 
-    // 3. Duplicate check FIRST — before any state mutations
-    // Check payments table for any user with this payment ID (cross-user replay)
-    const dupCheck = await fetchWithTimeout(
-      `${SUPABASE_URL}/rest/v1/payments?razorpay_payment_id=eq.${encodeURIComponent(razorpay_payment_id)}&select=id`,
-      { headers: { apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` } },
-    );
-    const dupRows = await dupCheck.json();
-    if (Array.isArray(dupRows) && dupRows.length > 0) {
+    // 3. Atomic duplicate check — INSERT with ON CONFLICT to prevent race conditions
+    // Try inserting a dedup record first; if it already exists, payment was already processed
+    const dedupId = `dedup_${razorpay_payment_id}`;
+    const dedupRes = await fetchWithTimeout(`${SUPABASE_URL}/rest/v1/payment_dedup`, {
+      method: "POST",
+      headers: {
+        apikey: SUPABASE_SERVICE_ROLE_KEY,
+        Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+        "Content-Type": "application/json",
+        Prefer: "return=minimal",
+      },
+      body: JSON.stringify({ razorpay_payment_id }),
+    });
+    // 409 = unique constraint violation = already processed
+    if (dedupRes.status === 409) {
       return res.status(409).json({ error: "Payment already processed" });
+    }
+    // 201 = successfully inserted dedup record = new payment, proceed
+    if (dedupRes.status === 201) {
+      // Dedup succeeded — continue processing below
+    } else {
+      // Non-201, non-409: Supabase error (500, timeout, etc.)
+      // Fallback: check payments table (legacy check) to avoid blocking legitimate retries
+      // of payments that were already fully processed before the dedup table existed
+      console.error("[verify-payment] Dedup INSERT returned unexpected status:", dedupRes.status);
+      const dupCheck = await fetchWithTimeout(
+        `${SUPABASE_URL}/rest/v1/payments?razorpay_payment_id=eq.${encodeURIComponent(razorpay_payment_id)}&select=id`,
+        { headers: { apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` } },
+      );
+      const dupRows = await dupCheck.json();
+      if (Array.isArray(dupRows) && dupRows.length > 0) {
+        return res.status(409).json({ error: "Payment already processed" });
+      }
+      // Payment not found in legacy table either — we cannot safely determine if this is
+      // a new payment or a duplicate, so return 503 to tell the client to retry
+      return res.status(503).json({ error: "Payment deduplication temporarily unavailable. Please retry.", code: "DEDUP_UNAVAILABLE" });
     }
 
     // 3b. Check profile for duplicate + subscription state
@@ -375,6 +402,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const isUpgrade = current && currentEnd && currentEnd > now
       && (TIER_RANK[current.subscription_tier] || 0) < (TIER_RANK[tier] || 0);
 
+    // Resolve plan duration in days (avoid setMonth which has month-end overflow bugs)
+    const planDaysMap: Record<string, number> = { single: 0, weekly: 7, monthly: 30, "yearly-starter": 365, "yearly-pro": 365 };
+    const planDays = planDaysMap[plan];
+    if (planDays === undefined) {
+      return res.status(400).json({ error: "Invalid plan duration", code: "INVALID_PLAN" });
+    }
+
     let end: Date;
     let proratedDays = 0;
     if (isUpgrade && currentEnd) {
@@ -385,29 +419,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const currentPlanAmount = current.subscription_tier === "starter" ? 4900 : 14900;
       const newPlanAmount = PLAN_AMOUNT[plan];
       // Convert remaining days to credit ratio and add proportional bonus days
-      const isAnnual = plan.startsWith("yearly-");
-      const newPlanDays = plan === "monthly" ? 30 : isAnnual ? 365 : PLAN_DURATION[plan];
-      proratedDays = Math.floor((remainingDays / currentPlanDuration) * (currentPlanAmount / newPlanAmount) * newPlanDays);
+      proratedDays = Math.floor((remainingDays / currentPlanDuration) * (currentPlanAmount / newPlanAmount) * planDays);
       end = new Date(now);
-      if (plan === "monthly") {
-        end.setMonth(end.getMonth() + 1);
-      } else if (isAnnual) {
-        end.setFullYear(end.getFullYear() + 1);
-      } else {
-        end.setDate(end.getDate() + PLAN_DURATION[plan]);
-      }
-      end.setDate(end.getDate() + proratedDays);
+      end.setDate(end.getDate() + planDays + proratedDays);
     } else {
       // Extend from current end if still active (same tier renewal)
       const base = currentEnd && currentEnd > now ? currentEnd : now;
       end = new Date(base);
-      if (plan === "monthly") {
-        end.setMonth(end.getMonth() + 1);
-      } else if (plan.startsWith("yearly-")) {
-        end.setFullYear(end.getFullYear() + 1);
-      } else {
-        end.setDate(end.getDate() + PLAN_DURATION[plan]);
-      }
+      end.setDate(end.getDate() + planDays);
     }
 
     // 5. Store payment record FIRST (critical — must succeed before activating subscription)

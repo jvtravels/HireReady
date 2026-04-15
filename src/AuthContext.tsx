@@ -486,9 +486,10 @@ export function RequireAuth({ children }: { children: ReactNode }) {
       // If there's a stored session token, Supabase may still be restoring it.
       // Wait and retry before redirecting — don't log the user out prematurely.
       if (hasStoredSession() && retryCount.current < 3) {
+        const delay = 500 * Math.pow(2, retryCount.current); // 500ms, 1s, 2s
         retryCount.current++;
-        // Trigger a re-check by getting the session again
-        getSupabase().then(c => c.auth.getSession());
+        // Trigger a re-check by getting the session again with exponential backoff
+        setTimeout(() => getSupabase().then(c => c.auth.getSession()), delay);
         return;
       }
       navigate("/login", { replace: true, state: { from: location.pathname } });

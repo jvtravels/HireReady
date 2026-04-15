@@ -314,7 +314,7 @@ export function Hero() {
         }}>
           <span style={{ width: 6, height: 6, borderRadius: "50%", background: c.sage, display: "inline-block", animation: "giltPulse 2s ease-in-out infinite" }} />
           <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: c.chalk, letterSpacing: "0.02em" }}>
-            Launching May 2 — 3 free sessions, no credit card
+            3 free sessions, no credit card required
           </span>
         </div>
 

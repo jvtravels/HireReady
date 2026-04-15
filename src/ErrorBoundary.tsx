@@ -105,7 +105,7 @@ export default class ErrorBoundary extends Component<Props, State> {
               Try Again
             </button>
             <button
-              onClick={() => { window.location.href = "/dashboard"; }}
+              onClick={() => { window.location.replace("/dashboard"); }}
               style={{
                 padding: "10px 24px",
                 borderRadius: 8,

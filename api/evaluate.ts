@@ -2,8 +2,8 @@
 
 export const config = { runtime: "edge" };
 
-import { handleCorsPreflightOrMethod, corsHeaders, isRateLimited, getClientIp, rateLimitResponse, verifyAuth, unauthorizedResponse, checkSessionLimit, validateOrigin, sanitizeForLLM, withRequestId, checkLLMQuota } from "./_shared";
-import { callLLM, extractJSON } from "./_llm";
+import { handleCorsPreflightOrMethod, corsHeaders, isRateLimited, getClientIp, rateLimitResponse, verifyAuth, unauthorizedResponse, checkSessionLimit, validateOrigin, sanitizeForLLM, withRequestId, checkLLMQuota } from "./_shared.js";
+import { callLLM, extractJSON } from "./_llm.js";
 
 declare const process: { env: Record<string, string | undefined> };
 const GROQ_KEY = process.env.GROQ_API_KEY || "";
@@ -98,12 +98,7 @@ export default async function handler(req: Request): Promise<Response> {
       ? `\nJob Description the candidate is targeting (use to evaluate relevance of answers):\n${sanitizeForLLM(jobDescription, 2000)}\n`
       : "";
 
-    const sanitizedLang = sanitizeForLLM(language, 20);
-    const languageNote = sanitizedLang === "hi"
-      ? "\nIMPORTANT: The interview was conducted in Hindi. Evaluate the candidate's Hindi communication quality. Provide feedback in English but cite Hindi quotes from their answers."
-      : sanitizedLang === "hinglish"
-      ? "\nIMPORTANT: The interview was conducted in Hinglish (Hindi-English mix). This is natural for Indian professionals. Do NOT penalize for language mixing — evaluate content quality. Provide feedback in English but cite their actual Hinglish quotes."
-      : "";
+    const languageNote = "";
 
     // Role-specific skill weighting guidance
     const skillWeightingMap: Record<string, string> = {
@@ -116,7 +111,7 @@ export default async function handler(req: Request): Promise<Response> {
       "government-psu": "For this government/public sector interview, weight current affairs knowledge, ethical reasoning, communication, and policy awareness highest. Technical depth is secondary.",
       teaching: "For this teaching interview, weight pedagogy, classroom management, communication clarity, and student-centered thinking highest.",
       "salary-negotiation": "For this salary negotiation session, weight communication, confidence, negotiation strategy, and composure highest. Technical depth is not relevant.",
-      "panel": "For this panel interview, evaluate across all dimensions equally — communication, technical depth, leadership, cultural fit, and adaptability are all important as the candidate faced multiple interviewers.",
+      "panel": "For this panel interview, the candidate faced THREE panelists: Hiring Manager (leadership, strategy), Technical Lead (architecture, technical depth), and HR Partner (cultural fit, soft skills). In the transcript, panelist questions are prefixed with [Role]. Evaluate how well the candidate adapted their answers to each panelist's perspective. Note which panelist's questions the candidate handled best/worst in your feedback.",
     };
     const skillWeighting = skillWeightingMap[interviewType] || "Weight all skills equally for this case study interview.";
 

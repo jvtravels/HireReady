@@ -3,7 +3,7 @@
 
 export const config = { runtime: "edge" };
 
-import { handleCorsPreflightOrMethod, corsHeaders, isRateLimited, getClientIp, rateLimitResponse, verifyAuth, unauthorizedResponse, validateOrigin, withRequestId } from "./_shared";
+import { handleCorsPreflightOrMethod, corsHeaders, isRateLimited, getClientIp, rateLimitResponse, verifyAuth, unauthorizedResponse, validateOrigin, withRequestId } from "./_shared.js";
 
 declare const process: { env: Record<string, string | undefined> };
 const DEEPGRAM_API_KEY = process.env.DEEPGRAM_API_KEY || "";
@@ -30,9 +30,8 @@ export default async function handler(req: Request): Promise<Response> {
     return rateLimitResponse(headers);
   }
 
-  // Try Deepgram's scoped key API for a time-limited token; fall back to raw key
+  // Try Deepgram's scoped key API for a time-limited token
   const expiresAt = Date.now() + 2 * 60 * 1000; // 2 minutes (shorter TTL)
-  let scopedKey = DEEPGRAM_API_KEY;
   try {
     const ac = new AbortController();
     const timer = setTimeout(() => ac.abort(), 5000);
@@ -45,17 +44,20 @@ export default async function handler(req: Request): Promise<Response> {
     clearTimeout(timer);
     if (keyRes.ok) {
       const keyData = await keyRes.json();
-      if (keyData.key) scopedKey = keyData.key;
+      if (keyData.key) {
+        return new Response(JSON.stringify({
+          apiKey: keyData.key,
+          expiresAt,
+        }), {
+          status: 200,
+          headers: { ...headers, "Cache-Control": "no-store, no-cache, max-age=0" },
+        });
+      }
     }
+    // Scoped key creation returned non-ok or missing key — do not expose raw key
+    return new Response(JSON.stringify({ error: "Failed to create scoped STT token. Please retry." }), { status: 503, headers });
   } catch {
-    // Fall back to raw key — scoped key creation is best-effort
+    // Scoped key creation failed — do not fall back to raw API key
+    return new Response(JSON.stringify({ error: "STT token service unavailable. Please retry." }), { status: 503, headers });
   }
-
-  return new Response(JSON.stringify({
-    apiKey: scopedKey,
-    expiresAt,
-  }), {
-    status: 200,
-    headers: { ...headers, "Cache-Control": "no-store, no-cache, max-age=0" },
-  });
 }

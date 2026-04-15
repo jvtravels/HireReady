@@ -8,7 +8,7 @@ import {
   getVercelClientIp,
   supabaseUrl,
   supabaseAnonKey,
-} from "./_shared";
+} from "./_shared.js";
 
 const RAZORPAY_KEY_ID = (process.env.RAZORPAY_KEY_ID || "").trim();
 const RAZORPAY_KEY_SECRET = (process.env.RAZORPAY_KEY_SECRET || "").trim();
@@ -83,30 +83,54 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const finalAmount = plan === "single" ? price.amount * quantity : price.amount;
     const finalDescription = plan === "single" && quantity > 1 ? `${quantity} Sessions — ₹${quantity * 10} · ${quantity} AI mock interviews` : price.description;
 
-    // Idempotency: prevent duplicate orders for same user+plan within 30s
+    // Idempotency: atomic lock to prevent duplicate orders for same user+plan within 30s
     const resolvedUserId = authenticatedUserId || (typeof userId === "string" ? userId : "");
     const idempotencyKey = `order:${resolvedUserId}:${plan}`;
     if (UPSTASH_URL && UPSTASH_TOKEN && resolvedUserId) {
       try {
-        const dedupRes = await fetch(`${UPSTASH_URL}/pipeline`, {
-          method: "POST",
-          headers: { Authorization: `Bearer ${UPSTASH_TOKEN}`, "Content-Type": "application/json" },
-          body: JSON.stringify([["SET", idempotencyKey, "1", "NX", "EX", 30], ["GET", `${idempotencyKey}:oid`]]),
+        // Atomic: SET NX returns OK if key was set (we got the lock), null if it existed (duplicate)
+        const lockRes = await fetch(`${UPSTASH_URL}/SET/${encodeURIComponent(idempotencyKey)}/pending/NX/EX/30`, {
+          headers: { Authorization: `Bearer ${UPSTASH_TOKEN}` },
         });
-        if (dedupRes.ok) {
-          const results = await dedupRes.json();
-          const wasSet = results[0]?.result; // null = key already existed (duplicate)
-          const cachedOrderId = results[1]?.result;
-          if (!wasSet && cachedOrderId) {
-            // Return cached order instead of creating duplicate
-            return res.status(200).json({
-              orderId: cachedOrderId,
-              amount: price.amount,
-              currency: "INR",
-              keyId: RAZORPAY_KEY_ID,
-              name: price.name,
-              description: price.description,
+        if (lockRes.ok) {
+          const lockData = await lockRes.json();
+          if (lockData.result === null) {
+            // Key already existed — check if there's a cached order ID
+            const oidRes = await fetch(`${UPSTASH_URL}/GET/${encodeURIComponent(`${idempotencyKey}:oid`)}`, {
+              headers: { Authorization: `Bearer ${UPSTASH_TOKEN}` },
             });
+            if (oidRes.ok) {
+              const oidData = await oidRes.json();
+              if (oidData.result) {
+                return res.status(200).json({
+                  orderId: oidData.result,
+                  amount: price.amount,
+                  currency: "INR",
+                  keyId: RAZORPAY_KEY_ID,
+                  name: price.name,
+                  description: price.description,
+                });
+              }
+            }
+            // Lock exists but no order yet — another request is in flight, wait briefly
+            await new Promise(r => setTimeout(r, 2000));
+            const retryRes = await fetch(`${UPSTASH_URL}/GET/${encodeURIComponent(`${idempotencyKey}:oid`)}`, {
+              headers: { Authorization: `Bearer ${UPSTASH_TOKEN}` },
+            });
+            if (retryRes.ok) {
+              const retryData = await retryRes.json();
+              if (retryData.result) {
+                return res.status(200).json({
+                  orderId: retryData.result,
+                  amount: price.amount,
+                  currency: "INR",
+                  keyId: RAZORPAY_KEY_ID,
+                  name: price.name,
+                  description: price.description,
+                });
+              }
+            }
+            return res.status(429).json({ error: "Order already in progress. Please wait a moment." });
           }
         }
       } catch (dedupErr) { console.warn("[create-order] Idempotency check failed:", dedupErr); }

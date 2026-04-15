@@ -1,9 +1,10 @@
-import React, { memo, useRef } from "react";
+import React, { memo, useRef, useState, useEffect } from "react";
 import { c, font } from "./tokens";
 import {
   WaveformVisualizer, NetworkIndicator, DotGridVisualizer,
   LiveCaptions, ControlButton, formatTime,
 } from "./InterviewComponents";
+import type { PanelMember } from "./InterviewComponents";
 
 /* ═══════════════════════════════════════════════
    Extracted presentational components from Interview.tsx
@@ -146,6 +147,130 @@ export const AvatarStage = memo(function AvatarStage({ phase, interviewerName, i
           <span role="status" aria-live="polite" style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, color: c.sage, letterSpacing: "0.05em", textTransform: "uppercase" }}>Recording</span>
         </div>
       )}
+      {phase === "speaking" && (
+        <button onClick={skipSpeaking} style={{
+          fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: c.chalk,
+          background: "rgba(245,242,237,0.06)", border: `1px solid ${c.border}`,
+          borderRadius: 8, padding: "6px 16px", cursor: "pointer",
+          display: "inline-flex", alignItems: "center", gap: 6,
+          transition: "all 0.2s", marginTop: 4,
+        }}
+        onMouseEnter={e => { e.currentTarget.style.background = "rgba(245,242,237,0.1)"; e.currentTarget.style.borderColor = "rgba(245,242,237,0.15)"; }}
+        onMouseLeave={e => { e.currentTarget.style.background = "rgba(245,242,237,0.06)"; e.currentTarget.style.borderColor = c.border; }}>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polygon points="5 4 15 12 5 20 5 4"/><line x1="19" y1="5" x2="19" y2="19"/></svg>
+          Skip · Enter
+        </button>
+      )}
+    </div>
+  );
+});
+
+/* ─── Panel Interview: 3 Avatars ─── */
+
+export const PanelAvatarStage = memo(function PanelAvatarStage({ phase, panelMembers, activePersona, isMuted, speechUnavailable, skipSpeaking }: {
+  phase: string;
+  panelMembers: PanelMember[];
+  activePersona: string; // title of the currently speaking panelist
+  isMuted: boolean;
+  speechUnavailable: boolean;
+  skipSpeaking: () => void;
+}) {
+  const activeIdx = panelMembers.findIndex(m => m.title === activePersona);
+  const activeMember = activeIdx >= 0 ? panelMembers[activeIdx] : panelMembers[0];
+
+  const [isMobile, setIsMobile] = useState(() => window.matchMedia("(max-width: 600px)").matches);
+  useEffect(() => {
+    const mql = window.matchMedia("(max-width: 600px)");
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mql.addEventListener("change", handler);
+    return () => mql.removeEventListener("change", handler);
+  }, []);
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, padding: "20px 0" }}>
+      {/* Three avatars in a row */}
+      <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "center", gap: isMobile ? 8 : 12 }}>
+        {panelMembers.map((member) => {
+          const isActive = member.title === activeMember.title;
+          const isActiveSpeaking = isActive && phase === "speaking";
+          const size = isActive ? (isMobile ? 72 : 100) : (isMobile ? 44 : 64);
+
+          return (
+            <div key={member.title} role="img" aria-label={`${member.name}, ${member.title}${isActive ? (phase === "speaking" ? ", currently speaking" : phase === "thinking" ? ", preparing question" : "") : ""}`} style={{
+              display: "flex", flexDirection: "column", alignItems: "center", gap: 6,
+              transition: "all 0.4s ease",
+              opacity: isActive ? 1 : 0.5,
+              transform: isActive ? "translateY(-4px)" : "translateY(0)",
+            }}>
+              <div style={{
+                width: size, height: size, borderRadius: "50%",
+                background: isActiveSpeaking ? `${member.color}10` : "rgba(245,242,237,0.02)",
+                border: `2px solid ${isActive ? `${member.color}50` : c.border}`,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                transition: "all 0.4s ease",
+                boxShadow: isActiveSpeaking ? `0 0 30px ${member.color}15` : "none",
+                position: "relative",
+              }}>
+                {isActive ? (
+                  <DotGridVisualizer active={phase === "speaking"} thinking={phase === "thinking"} />
+                ) : (
+                  /* Initials for inactive panelists */
+                  <span style={{
+                    fontFamily: font.display, fontSize: size * 0.28, fontWeight: 600,
+                    color: `${member.color}80`,
+                    letterSpacing: "0.02em",
+                  }}>
+                    {member.name.split(" ").map(n => n[0]).join("")}
+                  </span>
+                )}
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
+                <span style={{
+                  fontFamily: font.ui, fontSize: isActive ? (isMobile ? 11 : 13) : (isMobile ? 9 : 10), fontWeight: isActive ? 600 : 500,
+                  color: isActive ? c.ivory : c.stone,
+                  transition: "all 0.3s ease",
+                  whiteSpace: "nowrap",
+                }}>
+                  {member.name}
+                </span>
+                <span style={{
+                  fontFamily: font.ui, fontSize: isActive ? (isMobile ? 9 : 10) : (isMobile ? 8 : 9), fontWeight: 500,
+                  color: member.color, opacity: isActive ? 0.8 : 0.5,
+                  whiteSpace: "nowrap",
+                }}>
+                  {member.title}
+                </span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Status line for active panelist */}
+      <span aria-live="polite" aria-atomic="true" role="status" style={{
+        fontFamily: font.ui, fontSize: 11, fontWeight: 500,
+        color: phase === "speaking" ? activeMember.color : phase === "listening" ? c.sage : c.stone,
+        marginTop: 4,
+      }}>
+        {phase === "thinking" ? `${activeMember.name} is preparing...`
+          : phase === "speaking" ? `${activeMember.name} is speaking...`
+          : phase === "listening" ? "Listening"
+          : "Complete"}
+      </span>
+
+      {/* Recording indicator */}
+      {phase === "listening" && !isMuted && !speechUnavailable && (
+        <div style={{
+          display: "flex", alignItems: "center", gap: 6, padding: "4px 12px",
+          borderRadius: 100, background: "rgba(122,158,126,0.08)", border: "1px solid rgba(122,158,126,0.15)",
+          animation: "fadeUp 0.3s ease",
+        }}>
+          <div style={{ width: 6, height: 6, borderRadius: "50%", background: c.sage, animation: "recordPulse 1s ease-in-out infinite" }} />
+          <span role="status" aria-live="polite" style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, color: c.sage, letterSpacing: "0.05em", textTransform: "uppercase" }}>Recording</span>
+        </div>
+      )}
+
+      {/* Skip button */}
       {phase === "speaking" && (
         <button onClick={skipSpeaking} style={{
           fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: c.chalk,
@@ -547,12 +672,21 @@ export const ControlsBar = memo(function ControlsBar({ isMuted, setIsMuted, aiVo
 
 /* ─── Transcript Slide-Over Panel ─── */
 
-export const TranscriptPanel = memo(function TranscriptPanel({ transcript, interviewerName, setShowTranscript, transcriptRef }: {
+export const TranscriptPanel = memo(function TranscriptPanel({ transcript, interviewerName, setShowTranscript, transcriptRef, panelMembers }: {
   transcript: { speaker: "ai" | "user"; text: string; time: string }[];
   interviewerName: string;
   setShowTranscript: (v: boolean) => void;
   transcriptRef: React.RefObject<HTMLDivElement | null>;
+  panelMembers?: PanelMember[];
 }) {
+  const [isMobile, setIsMobile] = useState(() => window.matchMedia("(max-width: 600px)").matches);
+  useEffect(() => {
+    const mql = window.matchMedia("(max-width: 600px)");
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mql.addEventListener("change", handler);
+    return () => mql.removeEventListener("change", handler);
+  }, []);
+
   return (
     <>
       {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- modal backdrop dismissal */}
@@ -560,11 +694,22 @@ export const TranscriptPanel = memo(function TranscriptPanel({ transcript, inter
         onClick={() => setShowTranscript(false)}
         style={{
           position: "fixed", inset: 0, zIndex: 49,
-          background: "rgba(0,0,0,0.5)", backdropFilter: "blur(2px)", WebkitBackdropFilter: "blur(2px)",
+          background: isMobile ? "transparent" : "rgba(0,0,0,0.5)",
+          backdropFilter: isMobile ? "none" : "blur(2px)",
+          WebkitBackdropFilter: isMobile ? "none" : "blur(2px)",
           animation: "fadeUp 0.15s ease",
         }}
       />
-      <div className="iv-transcript-panel" style={{
+      <div className="iv-transcript-panel" style={isMobile ? {
+        position: "fixed", bottom: 0, left: 0, right: 0,
+        maxHeight: "40vh",
+        background: c.graphite,
+        borderTop: `1px solid ${c.border}`,
+        borderRadius: "16px 16px 0 0",
+        display: "flex", flexDirection: "column",
+        zIndex: 50, animation: "slideUpSheet 0.25s ease",
+        boxShadow: "0 -8px 32px rgba(0,0,0,0.3)",
+      } : {
         position: "fixed", top: 0, right: 0, bottom: 0,
         width: 380, maxWidth: "100vw",
         background: c.graphite,
@@ -573,6 +718,12 @@ export const TranscriptPanel = memo(function TranscriptPanel({ transcript, inter
         zIndex: 50, animation: "slideInRight 0.25s ease",
         boxShadow: "-8px 0 32px rgba(0,0,0,0.3)",
       }}>
+        {/* Drag handle (mobile only, decorative) */}
+        {isMobile && (
+          <div style={{ display: "flex", justifyContent: "center", padding: "8px 0 0" }}>
+            <div style={{ width: 36, height: 4, borderRadius: 2, background: "rgba(255,255,255,0.15)" }} />
+          </div>
+        )}
         <div style={{
           padding: "14px 20px", borderBottom: `1px solid ${c.border}`,
           display: "flex", justifyContent: "space-between", alignItems: "center",
@@ -601,12 +752,12 @@ export const TranscriptPanel = memo(function TranscriptPanel({ transcript, inter
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 2 }}>
-                  <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, color: msg.speaker === "ai" ? c.gilt : c.sage }}>
-                    {msg.speaker === "ai" ? interviewerName : "You"}
+                  <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, color: msg.speaker === "ai" ? ((() => { if (panelMembers) { const match = msg.text.match(/^\[(.+?)\]/); if (match) { const member = panelMembers.find(m => m.title === match[1]); if (member) return member.color; } } return c.gilt; })()) : c.sage }}>
+                    {msg.speaker === "ai" ? ((() => { if (panelMembers) { const match = msg.text.match(/^\[(.+?)\]/); if (match) { const member = panelMembers.find(m => m.title === match[1]); if (member) return member.name; } } return interviewerName; })()) : "You"}
                   </span>
                   <span style={{ fontFamily: font.mono, fontSize: 10, color: c.stone }}>{msg.time}</span>
                 </div>
-                <p style={{ fontFamily: font.ui, fontSize: 12, color: c.chalk, lineHeight: 1.55, margin: 0, wordBreak: "break-word", overflowWrap: "break-word" }}>{msg.text}</p>
+                <p style={{ fontFamily: font.ui, fontSize: 12, color: c.chalk, lineHeight: 1.55, margin: 0, wordBreak: "break-word", overflowWrap: "break-word" }}>{panelMembers && msg.speaker === "ai" ? msg.text.replace(/^\[.+?\]\s*/, "") : msg.text}</p>
               </div>
             </div>
           ))}

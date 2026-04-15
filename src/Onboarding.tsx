@@ -170,6 +170,13 @@ export default function Onboarding() {
   const [resumeSkipped, setResumeSkipped] = useState(false);
   const undoTimerRef = useRef<number>(0);
 
+  // Cleanup undo timer on unmount
+  useEffect(() => {
+    return () => {
+      if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
+    };
+  }, []);
+
   // ─── Restore resume from user profile on mount/refresh ───
   const resumeRestoredRef = useRef(false);
   useEffect(() => {
@@ -461,13 +468,13 @@ export default function Onboarding() {
     clearObStep();
     unlockAudio();
     // Map onboarding focus labels to SessionSetup type IDs
-    const FOCUS_TO_TYPE: Record<string, string> = { "Behavioral": "behavioral", "Strategic": "strategic", "Technical Leadership": "technical", "Case Study": "case-study" };
+    const FOCUS_TO_TYPE: Record<string, string> = { "Behavioral": "behavioral", "Strategic": "strategic", "Technical Leadership": "technical", "Case Study": "case-study", "Campus Placement": "campus-placement", "HR Round": "hr-round", "Management": "management", "Panel Interview": "panel", "Salary Negotiation": "salary-negotiation", "Government / PSU": "government-psu" };
     const focusType = FOCUS_TO_TYPE[interviewFocus[0]] || "behavioral";
     track("onboarding_complete", { focus: focusType, sessionLength, role: targetRole, hasMic: micStatus === "granted" });
     // Show launch animation before navigating
     setLaunching(true);
     await new Promise(r => setTimeout(r, 1400));
-    navigate(`/interview?type=${encodeURIComponent(focusType)}&difficulty=standard&mini=true`);
+    navigate(`/interview?type=${encodeURIComponent(focusType)}&focus=${encodeURIComponent(focusType)}&difficulty=standard&mini=true`);
   };
 
   const isStep1Busy = step === 1 && (resumeParsing || aiPhase === "analyzing");

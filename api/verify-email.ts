@@ -2,7 +2,7 @@
 /* Validates HMAC token and sets email_confirmed_at on Supabase Auth user */
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { createHmac } from "crypto";
+import { createHmac, timingSafeEqual } from "crypto";
 
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || "";
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
@@ -31,9 +31,12 @@ function validateToken(email: string, token: string): boolean {
   const currentWindow = Math.floor(Date.now() / (24 * 60 * 60 * 1000));
   if (currentWindow - expiry > 1) return false; // Expired (more than ~48 hours old)
 
-  // Regenerate and compare
+  // Regenerate and compare using timing-safe comparison
   const expected = generateVerifyToken(email, expiry);
-  return token === expected;
+  const tokenBuf = Buffer.from(token);
+  const expectedBuf = Buffer.from(expected);
+  if (tokenBuf.length !== expectedBuf.length) return false;
+  return timingSafeEqual(tokenBuf, expectedBuf);
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {

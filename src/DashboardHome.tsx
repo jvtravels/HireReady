@@ -53,6 +53,89 @@ const badgeIcons: Record<string, (color: string) => React.ReactNode> = {
 
 
 
+/* ─── Memoized session row to avoid re-rendering the full list ─── */
+import type { DashboardSession } from "./dashboardTypes";
+const SessionRow = memo(function SessionRow({ session, isExpanded, isFeedbackVisible, onToggle, onFeedbackToggle, onViewTranscript, onRedo }: {
+  session: DashboardSession; isExpanded: boolean; isFeedbackVisible: boolean;
+  onToggle: () => void; onFeedbackToggle: () => void; onViewTranscript: () => void; onRedo: () => void;
+}) {
+  return (
+    <div>
+      <button className="dash-focus" onClick={onToggle} aria-expanded={isExpanded}
+        style={{ width: "100%", padding: "16px 18px", borderRadius: radius.md, background: isExpanded ? "rgba(212,179,127,0.03)" : c.obsidian, border: "none", boxShadow: isExpanded ? "0 0 0 1px rgba(212,179,127,0.1)" : "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 16, transition: "all 0.25s cubic-bezier(0.16,1,0.3,1)", textAlign: "left" }}
+        onMouseEnter={(e) => { if (!isExpanded) e.currentTarget.style.background = "rgba(245,242,237,0.02)"; }}
+        onMouseLeave={(e) => { if (!isExpanded) e.currentTarget.style.background = c.obsidian; }}>
+        <div style={{ width: 48, height: 48, flexShrink: 0, position: "relative", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <svg width="48" height="48" viewBox="0 0 48 48" style={{ position: "absolute", transform: "rotate(-90deg)" }}>
+            <circle cx="24" cy="24" r="21" fill="none" stroke="rgba(245,242,237,0.06)" strokeWidth="2.5" />
+            <circle cx="24" cy="24" r="21" fill="none" stroke={scoreLabelColor(session.score)} strokeWidth="2.5"
+              strokeDasharray={`${(session.score / 100) * 2 * Math.PI * 21} ${2 * Math.PI * 21}`}
+              strokeLinecap="round" className="score-ring" />
+          </svg>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+            <span style={{ fontFamily: font.mono, fontSize: 15, fontWeight: 600, color: c.ivory, lineHeight: 1 }}>{session.score}</span>
+            <span style={{ fontFamily: font.ui, fontSize: 8, color: scoreLabelColor(session.score), fontWeight: 600, lineHeight: 1, marginTop: 1 }}>{scoreLabel(session.score)}</span>
+          </div>
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
+            <span style={{ fontFamily: font.ui, fontSize: 14, fontWeight: 600, color: c.ivory }}>{session.type}</span>
+            <span style={{ fontFamily: font.mono, fontSize: 12, fontWeight: 600, color: session.change > 0 ? c.sage : c.ember }}>{session.change > 0 ? "+" : ""}{session.change}</span>
+          </div>
+          <span style={{ fontFamily: font.ui, fontSize: 13, color: c.stone, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "block" }}>{session.role}</span>
+        </div>
+        <div style={{ textAlign: "right", flexShrink: 0 }} title={session.dateLabel}>
+          <span style={{ fontFamily: font.ui, fontSize: 13, color: c.chalk, display: "block" }}>{relativeTime(session.date)}</span>
+          <span style={{ fontFamily: font.ui, fontSize: 12, color: c.stone }}>{session.duration}</span>
+        </div>
+        <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.stone} strokeWidth="2" strokeLinecap="round" style={{ transform: isExpanded ? "rotate(180deg)" : "rotate(0)", transition: "transform 0.2s", flexShrink: 0 }}><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+      {isExpanded && (
+        <div style={{ padding: "18px 22px", margin: "6px 0", background: c.obsidian, borderRadius: radius.md, animation: "slideDown 0.2s ease" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: isFeedbackVisible ? 16 : 0 }}>
+            <div>
+              <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.sage, letterSpacing: "0.06em", textTransform: "uppercase", display: "block", marginBottom: 4 }}>Top Strength</span>
+              <span style={{ fontFamily: font.ui, fontSize: 14, color: c.ivory }}>{session.topStrength}</span>
+            </div>
+            <div>
+              <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.ember, letterSpacing: "0.06em", textTransform: "uppercase", display: "block", marginBottom: 4 }}>To Improve</span>
+              <span style={{ fontFamily: font.ui, fontSize: 14, color: c.ivory }}>{session.topWeakness}</span>
+            </div>
+          </div>
+          {isFeedbackVisible && (
+            <div style={{ padding: "16px 18px", borderRadius: radius.sm, background: "rgba(212,179,127,0.02)", borderLeft: `3px solid rgba(212,179,127,0.15)`, marginBottom: 14 }}>
+              <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.gilt, letterSpacing: "0.06em", textTransform: "uppercase", display: "block", marginBottom: 8 }}>AI Feedback</span>
+              <p style={{ fontFamily: font.ui, fontSize: 14, color: c.chalk, lineHeight: 1.7, margin: 0 }}>{session.feedback}</p>
+            </div>
+          )}
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <button onClick={onFeedbackToggle}
+              style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.gilt, background: c.glow, border: "none", borderRadius: radius.sm, padding: "8px 16px", cursor: "pointer", transition: "background 0.2s" }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(212,179,127,0.12)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(212,179,127,0.06)"; }}>
+              {isFeedbackVisible ? "Hide Feedback" : "View Feedback"}
+            </button>
+            <button onClick={onViewTranscript}
+              style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.ivory, background: "rgba(245,242,237,0.04)", border: "none", borderRadius: radius.sm, padding: "8px 16px", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, transition: "background 0.2s" }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(245,242,237,0.08)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(245,242,237,0.04)"; }}>
+              <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
+              Full Transcript
+            </button>
+            <button onClick={onRedo}
+              style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.stone, background: "transparent", border: "none", borderRadius: radius.sm, padding: "8px 16px", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, transition: "color 0.2s" }}
+              onMouseEnter={(e) => { e.currentTarget.style.color = c.ivory; }}
+              onMouseLeave={(e) => { e.currentTarget.style.color = c.stone; }}>
+              <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+              Redo {session.type}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+});
+
 /* ─── Relative time formatter ─── */
 function relativeTime(dateStr: string): string {
   const now = Date.now();
@@ -1206,80 +1289,14 @@ export default function DashboardHome() {
             </div>
           ) : (
             filteredSessions.slice(0, sessionsToShow).map((session) => (
-              <div key={session.id}>
-                <button className="dash-focus" onClick={() => setExpandedSession(expandedSession === session.id ? null : session.id)} aria-expanded={expandedSession === session.id}
-                  style={{ width: "100%", padding: "16px 18px", borderRadius: radius.md, background: expandedSession === session.id ? "rgba(212,179,127,0.03)" : c.obsidian, border: "none", boxShadow: expandedSession === session.id ? "0 0 0 1px rgba(212,179,127,0.1)" : "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 16, transition: "all 0.25s cubic-bezier(0.16,1,0.3,1)", textAlign: "left" }}
-                  onMouseEnter={(e) => { if (expandedSession !== session.id) e.currentTarget.style.background = "rgba(245,242,237,0.02)"; }}
-                  onMouseLeave={(e) => { if (expandedSession !== session.id) e.currentTarget.style.background = c.obsidian; }}>
-                  <div style={{ width: 48, height: 48, flexShrink: 0, position: "relative", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    <svg width="48" height="48" viewBox="0 0 48 48" style={{ position: "absolute", transform: "rotate(-90deg)" }}>
-                      <circle cx="24" cy="24" r="21" fill="none" stroke="rgba(245,242,237,0.06)" strokeWidth="2.5" />
-                      <circle cx="24" cy="24" r="21" fill="none" stroke={scoreLabelColor(session.score)} strokeWidth="2.5"
-                        strokeDasharray={`${(session.score / 100) * 2 * Math.PI * 21} ${2 * Math.PI * 21}`}
-                        strokeLinecap="round" className="score-ring" />
-                    </svg>
-                    <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-                      <span style={{ fontFamily: font.mono, fontSize: 15, fontWeight: 600, color: c.ivory, lineHeight: 1 }}>{session.score}</span>
-                      <span style={{ fontFamily: font.ui, fontSize: 8, color: scoreLabelColor(session.score), fontWeight: 600, lineHeight: 1, marginTop: 1 }}>{scoreLabel(session.score)}</span>
-                    </div>
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
-                      <span style={{ fontFamily: font.ui, fontSize: 14, fontWeight: 600, color: c.ivory }}>{session.type}</span>
-                      <span style={{ fontFamily: font.mono, fontSize: 12, fontWeight: 600, color: session.change > 0 ? c.sage : c.ember }}>{session.change > 0 ? "+" : ""}{session.change}</span>
-                    </div>
-                    <span style={{ fontFamily: font.ui, fontSize: 13, color: c.stone, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "block" }}>{session.role}</span>
-                  </div>
-                  <div style={{ textAlign: "right", flexShrink: 0 }} title={session.dateLabel}>
-                    <span style={{ fontFamily: font.ui, fontSize: 13, color: c.chalk, display: "block" }}>{relativeTime(session.date)}</span>
-                    <span style={{ fontFamily: font.ui, fontSize: 12, color: c.stone }}>{session.duration}</span>
-                  </div>
-                  <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.stone} strokeWidth="2" strokeLinecap="round" style={{ transform: expandedSession === session.id ? "rotate(180deg)" : "rotate(0)", transition: "transform 0.2s", flexShrink: 0 }}><polyline points="6 9 12 15 18 9"/></svg>
-                </button>
-
-                {expandedSession === session.id && (
-                  <div style={{ padding: "18px 22px", margin: "6px 0", background: c.obsidian, borderRadius: radius.md, animation: "slideDown 0.2s ease" }}>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: feedbackSession === session.id ? 16 : 0 }}>
-                      <div>
-                        <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.sage, letterSpacing: "0.06em", textTransform: "uppercase", display: "block", marginBottom: 4 }}>Top Strength</span>
-                        <span style={{ fontFamily: font.ui, fontSize: 14, color: c.ivory }}>{session.topStrength}</span>
-                      </div>
-                      <div>
-                        <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.ember, letterSpacing: "0.06em", textTransform: "uppercase", display: "block", marginBottom: 4 }}>To Improve</span>
-                        <span style={{ fontFamily: font.ui, fontSize: 14, color: c.ivory }}>{session.topWeakness}</span>
-                      </div>
-                    </div>
-                    {feedbackSession === session.id && (
-                      <div style={{ padding: "16px 18px", borderRadius: radius.sm, background: "rgba(212,179,127,0.02)", borderLeft: `3px solid rgba(212,179,127,0.15)`, marginBottom: 14 }}>
-                        <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.gilt, letterSpacing: "0.06em", textTransform: "uppercase", display: "block", marginBottom: 8 }}>AI Feedback</span>
-                        <p style={{ fontFamily: font.ui, fontSize: 14, color: c.chalk, lineHeight: 1.7, margin: 0 }}>{session.feedback}</p>
-                      </div>
-                    )}
-                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                      <button onClick={() => setFeedbackSession(feedbackSession === session.id ? null : session.id)}
-                        style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.gilt, background: c.glow, border: "none", borderRadius: radius.sm, padding: "8px 16px", cursor: "pointer", transition: "background 0.2s" }}
-                        onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(212,179,127,0.12)"; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(212,179,127,0.06)"; }}>
-                        {feedbackSession === session.id ? "Hide Feedback" : "View Feedback"}
-                      </button>
-                      <button onClick={() => setViewingSession(session.id)}
-                        style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.ivory, background: "rgba(245,242,237,0.04)", border: "none", borderRadius: radius.sm, padding: "8px 16px", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, transition: "background 0.2s" }}
-                        onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(245,242,237,0.08)"; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(245,242,237,0.04)"; }}>
-                        <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
-                        Full Transcript
-                      </button>
-                      <button onClick={() => nav(`/session/new?type=${session.type.toLowerCase().replace(" ", "-")}`)}
-                        style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.stone, background: "transparent", border: "none", borderRadius: radius.sm, padding: "8px 16px", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, transition: "color 0.2s" }}
-                        onMouseEnter={(e) => { e.currentTarget.style.color = c.ivory; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.color = c.stone; }}>
-                        <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
-                        Redo {session.type}
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
+              <SessionRow key={session.id} session={session}
+                isExpanded={expandedSession === session.id}
+                isFeedbackVisible={feedbackSession === session.id}
+                onToggle={() => setExpandedSession(expandedSession === session.id ? null : session.id)}
+                onFeedbackToggle={() => setFeedbackSession(feedbackSession === session.id ? null : session.id)}
+                onViewTranscript={() => setViewingSession(session.id)}
+                onRedo={() => nav(`/session/new?type=${session.type.toLowerCase().replace(" ", "-")}`)}
+              />
             ))
           )}
           {filteredSessions.length > sessionsToShow && (

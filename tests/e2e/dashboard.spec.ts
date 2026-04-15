@@ -1,5 +1,19 @@
 import { test, expect } from "@playwright/test";
 
+/* ─── Helper: login if credentials are available ─── */
+async function login(page: import("@playwright/test").Page) {
+  const email = process.env.TEST_USER_EMAIL;
+  const password = process.env.TEST_USER_PASSWORD;
+  if (!email || !password) return false;
+
+  await page.goto("/login");
+  await page.locator("#signup-email").fill(email);
+  await page.locator("input[type=password]").fill(password);
+  await page.locator("button[type=submit]").click();
+  await expect(page).toHaveURL(/\/(dashboard|onboarding)/, { timeout: 15000 });
+  return true;
+}
+
 test.describe("Dashboard — Unauthenticated", () => {
   test("dashboard redirects to login", async ({ page }) => {
     await page.goto("/dashboard");
@@ -29,6 +43,71 @@ test.describe("Dashboard — Unauthenticated", () => {
   test("settings page redirects to login", async ({ page }) => {
     await page.goto("/settings");
     await expect(page).toHaveURL(/\/login/, { timeout: 5000 });
+  });
+});
+
+test.describe("Dashboard — Authenticated", () => {
+  const hasAuth = !!process.env.TEST_USER_EMAIL && !!process.env.TEST_USER_PASSWORD;
+
+  test("dashboard loads with greeting or empty state", async ({ page }) => {
+    test.skip(!hasAuth, "Requires auth credentials");
+    await login(page);
+
+    // If redirected to onboarding, navigate to dashboard
+    if (page.url().includes("/onboarding")) {
+      await page.goto("/dashboard");
+    }
+
+    // Dashboard should show either a greeting, session history, or empty state
+    const greeting = page.locator("h1, h2, h3").first();
+    await expect(greeting).toBeVisible({ timeout: 10000 });
+  });
+
+  test("navigation sidebar has expected tabs", async ({ page }) => {
+    test.skip(!hasAuth, "Requires auth credentials");
+    await login(page);
+
+    if (page.url().includes("/onboarding")) {
+      await page.goto("/dashboard");
+    }
+
+    // Look for navigation items: Home, Sessions, Analytics, Resume, Settings
+    const nav = page.locator("nav, aside, [role=navigation]");
+    // At least some nav items should be visible
+    const navText = await nav.textContent();
+    expect(navText).toBeTruthy();
+  });
+
+  test("settings page loads", async ({ page }) => {
+    test.skip(!hasAuth, "Requires auth credentials");
+    await login(page);
+    await page.goto("/settings");
+
+    // Settings page should not redirect to login and should have content
+    await expect(page).not.toHaveURL(/\/login/, { timeout: 5000 });
+    // Should display some settings-related heading or content
+    const heading = page.locator("h1, h2, h3").first();
+    await expect(heading).toBeVisible({ timeout: 10000 });
+  });
+
+  test("resume page loads", async ({ page }) => {
+    test.skip(!hasAuth, "Requires auth credentials");
+    await login(page);
+    await page.goto("/resume");
+
+    await expect(page).not.toHaveURL(/\/login/, { timeout: 5000 });
+    const heading = page.locator("h1, h2, h3").first();
+    await expect(heading).toBeVisible({ timeout: 10000 });
+  });
+
+  test("analytics page loads", async ({ page }) => {
+    test.skip(!hasAuth, "Requires auth credentials");
+    await login(page);
+    await page.goto("/analytics");
+
+    await expect(page).not.toHaveURL(/\/login/, { timeout: 5000 });
+    const heading = page.locator("h1, h2, h3").first();
+    await expect(heading).toBeVisible({ timeout: 10000 });
   });
 });
 

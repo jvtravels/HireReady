@@ -39,7 +39,7 @@ export default function DashboardSessions() {
     .filter(s => {
       if (!search) return true;
       const q = search.toLowerCase();
-      return s.type.toLowerCase().includes(q) || s.topStrength.toLowerCase().includes(q) || s.topWeakness.toLowerCase().includes(q);
+      return s.type.toLowerCase().includes(q) || (s.topStrength || "").toLowerCase().includes(q) || (s.topWeakness || "").toLowerCase().includes(q);
     })
     .sort((a, b) => sortBy === "score" ? b.score - a.score : new Date(b.date).getTime() - new Date(a.date).getTime());
   const visible = filtered.slice(0, showCount);

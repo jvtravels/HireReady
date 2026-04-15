@@ -262,7 +262,7 @@ export function generateFallbackInsights(user: UserContext, sk?: SkillData[], ve
   }
 
   // Session recommendation based on data
-  const avgScore = Math.round(theSkills.reduce((s, sk2) => s + sk2.score, 0) / theSkills.length);
+  const avgScore = theSkills.length > 0 ? Math.round(theSkills.reduce((s, sk2) => s + sk2.score, 0) / theSkills.length) : 0;
   if (avgScore < 70) {
     insights.push({ type: "action", text: "Do 2 warmup sessions this week focusing on STAR structure. Build confidence before increasing difficulty.", action: "/session/new?type=behavioral&difficulty=warmup" });
   } else if (avgScore < 85) {

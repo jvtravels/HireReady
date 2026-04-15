@@ -80,7 +80,7 @@ export function DataLoadingSkeleton() {
         <div className="skeleton skeleton-text" style={{ width: "70%", marginBottom: 16 }} />
         <div className="skeleton" style={{ width: 140, height: 40 }} />
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 320px", gap: 20 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr minmax(0, 320px)", gap: 20 }} className="dash-skeleton-grid">
         <div className="skeleton-card" style={{ minHeight: 200 }}>
           <div className="skeleton skeleton-text" style={{ width: "30%" }} />
           <div className="skeleton" style={{ height: 140, width: "100%", marginTop: 12 }} />
