@@ -172,6 +172,27 @@ export default async function handler(req: Request): Promise<Response> {
 - Focus on: team building, delegation, performance management, strategic planning, cross-functional leadership
 - Questions should test leadership philosophy, handling underperformers, scaling teams, and organizational design
 - Expect answers with org-wide impact and people management depth`,
+      "behavioral": `This is a BEHAVIORAL interview using the STAR method.
+- Every question must ask about a specific past experience or situation
+- Expect answers structured as: Situation → Task → Action → Result
+- Test different competencies: leadership, conflict resolution, decision-making, collaboration, failure/learning
+- Do NOT ask hypothetical or case-study questions — ask "Tell me about a time when..."
+- Each question should target a distinct competency`,
+      "strategic": `This is a STRATEGIC THINKING interview.
+- Questions should test vision-setting, roadmap planning, business alignment, and long-term thinking
+- Ask about resource allocation, competitive strategy, market positioning, and stakeholder influence
+- Expect candidates to demonstrate business acumen, prioritization frameworks, and strategic trade-offs
+- Include at least one question about navigating uncertainty or pivoting strategy`,
+      "technical": `This is a TECHNICAL LEADERSHIP interview.
+- Focus on: system design, architecture decisions, technology evaluation, tech debt management, scaling systems
+- Questions should test both depth (specific technical trade-offs) and breadth (cross-system thinking)
+- Ask about production incidents, migration strategies, build-vs-buy decisions, and performance optimization
+- Do NOT ask pure coding/algorithm questions — focus on architecture and technical judgment`,
+      "teaching": `This is a TEACHING POSITION interview.
+- Focus on: teaching philosophy, classroom management, student engagement, pedagogical methods
+- Ask about handling diverse learners, integrating technology, parent communication, and curriculum design
+- Include scenarios about student discipline, learning assessments, and inclusive education
+- Questions should reflect typical school/college teaching interview patterns`,
     };
     const typeGuidance = TYPE_GUIDANCE[interviewType] || "";
 
