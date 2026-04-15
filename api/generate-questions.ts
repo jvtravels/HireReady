@@ -138,6 +138,40 @@ export default async function handler(req: Request): Promise<Response> {
 
     const roleCompContext = getRoleCompetencies(targetRole);
 
+    // Interview-type-specific guidance to ensure questions match the format
+    const TYPE_GUIDANCE: Record<string, string> = {
+      "salary-negotiation": `CRITICAL: This is a SALARY NEGOTIATION simulation, NOT a behavioral interview. You must play the role of a hiring manager making/discussing an offer.
+- The intro should set up the scenario: "We'd like to extend you an offer..."
+- Questions must simulate actual negotiation scenarios: presenting an initial offer, asking for salary expectations, presenting counteroffers, discussing equity vs base, handling competing offers, discussing benefits/perks
+- Do NOT ask behavioral STAR-format questions. Do NOT ask about past projects or technical skills.
+- Example good question: "We can offer $X base with standard benefits. How does that sound to you?"
+- Example bad question: "Tell me about a time you led a project." (this is behavioral, NOT negotiation)
+- The closing should summarize negotiation performance and tips`,
+      "campus-placement": `This is a CAMPUS PLACEMENT interview for freshers/recent graduates.
+- Questions should be appropriate for 0-2 years experience
+- Focus on: academic projects, internships, technical fundamentals, problem-solving approach, teamwork in college
+- Do NOT ask about years of professional experience, P&L ownership, or executive decisions
+- Include at least one question about a college project or academic achievement`,
+      "hr-round": `This is an HR ROUND interview focusing on culture fit, motivation, and soft skills.
+- Focus on: why this company, career goals, work-life balance expectations, conflict resolution, teamwork values
+- Do NOT ask deep technical or system design questions
+- Include questions about motivation, cultural fit, and communication style`,
+      "case-study": `This is a CASE STUDY interview.
+- Present a specific business problem/scenario for the candidate to analyze
+- Questions should ask the candidate to structure their thinking, identify key issues, propose solutions, and estimate impact
+- Use frameworks: market sizing, profitability analysis, product launch, competitive strategy
+- Do NOT ask standard behavioral STAR questions`,
+      "government-psu": `This is a GOVERNMENT/PSU interview.
+- Focus on: general knowledge, current affairs, ethical decision-making, public service motivation, administrative skills
+- Questions should reflect government/PSU interview patterns: panel-style, formal, testing integrity and dedication
+- Include questions about why public service, handling bureaucracy, and ethical dilemmas`,
+      "management": `This is a MANAGEMENT-level interview.
+- Focus on: team building, delegation, performance management, strategic planning, cross-functional leadership
+- Questions should test leadership philosophy, handling underperformers, scaling teams, and organizational design
+- Expect answers with org-wide impact and people management depth`,
+    };
+    const typeGuidance = TYPE_GUIDANCE[interviewType] || "";
+
     const panelNote = interviewType === "panel"
       ? `\nThis is a PANEL interview with three panelists. Include a "persona" field in EVERY question object.
 Panelist roles and what they should ask:
@@ -151,7 +185,7 @@ The intro persona should be "Hiring Manager". Distribute questions across all th
     const stepCount = questionCount + 2; // intro + questions + closing
 
     const prompt = `You are an expert interviewer conducting a ${interviewType.replace(/-/g, " ")} mock interview for a ${targetRole} candidate. ${tone}
-${languageContext ? `\nLANGUAGE INSTRUCTION: ${languageContext}\n` : ""}${experienceCalibration ? `\n${experienceCalibration}\n` : ""}
+${typeGuidance ? `\n${typeGuidance}\n` : ""}${languageContext ? `\nLANGUAGE INSTRUCTION: ${languageContext}\n` : ""}${experienceCalibration ? `\n${experienceCalibration}\n` : ""}
 Context:
 ${companyContext ? `- ${companyContext}\n` : ""}${industryContext ? `- ${industryContext}\n` : ""}${focusContext ? `- ${focusContext}\n` : ""}${roleCompContext ? `- Role competencies to test: ${roleCompContext}\n` : ""}${resumeContext ? `- ${resumeContext}\n` : ""}${jdContext ? `- ${jdContext}\n` : ""}${avoidTopics ? `- ${avoidTopics}\n` : ""}${weakSkillsContext ? `- ${weakSkillsContext}\n` : ""}
 Generate exactly ${stepCount} interview steps as a JSON array. Sequence: intro, ${Array(questionCount).fill("question").join(", ")}, closing. Do NOT include follow-up steps — those are generated dynamically based on the candidate's answers.
