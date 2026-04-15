@@ -63,7 +63,13 @@ function createStaticServer() {
 
 async function prerender() {
   // Dynamic import — Playwright is a dev dependency
-  const { chromium } = await import("playwright");
+  let chromium;
+  try {
+    ({ chromium } = await import("playwright"));
+  } catch {
+    console.warn("[prerender] Skipped — Playwright not available.");
+    return;
+  }
 
   const server = createStaticServer();
   await new Promise((resolve) => server.listen(PORT, resolve));
@@ -110,6 +116,11 @@ async function prerender() {
 }
 
 prerender().catch((err) => {
+  // Playwright not installed (e.g. CI build step without browsers) — skip gracefully
+  if (err.message && (err.message.includes("playwright") || err.message.includes("browserType.launch") || err.message.includes("Executable doesn't exist"))) {
+    console.warn("[prerender] Skipped — Playwright browsers not installed. Run 'npx playwright install chromium' to enable.");
+    process.exit(0);
+  }
   console.error("[prerender] Fatal:", err);
   process.exit(1);
 });
