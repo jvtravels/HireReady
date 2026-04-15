@@ -272,6 +272,7 @@ async function speakWithWebSocket(
   voiceId: string,
   onEnd: () => void,
   onError: () => void,
+  gender?: "male" | "female",
 ): Promise<{ cancel: () => void }> {
   // Serialize utterances to prevent WebSocket message interleaving
   let resolveQueue: () => void;
@@ -281,7 +282,7 @@ async function speakWithWebSocket(
   const markDone = () => resolveQueue!();
   const wrappedOnEnd = () => { markDone(); onEnd(); };
   const wrappedOnError = () => { markDone(); onError(); };
-  return _speakWithWebSocketInner(text, voiceId, wrappedOnEnd, wrappedOnError, markDone, false);
+  return _speakWithWebSocketInner(text, voiceId, wrappedOnEnd, wrappedOnError, markDone, false, gender);
 }
 
 async function _speakWithWebSocketInner(
@@ -291,6 +292,7 @@ async function _speakWithWebSocketInner(
   onError: () => void,
   markDone: () => void,
   isRetry: boolean,
+  gender?: "male" | "female",
 ): Promise<{ cancel: () => void }> {
   let settled = false;
   const settle = (cb: () => void) => { if (!settled) { settled = true; cb(); } };
@@ -315,7 +317,7 @@ async function _speakWithWebSocketInner(
     const apiKey = await getCartesiaApiKey();
     if (!apiKey) {
       console.warn("[TTS-WS] no API key, falling back to REST");
-      return speakWithProxy(text, voiceId, onEnd, onError);
+      return speakWithProxy(text, voiceId, onEnd, onError, gender);
     }
 
     let ws = await getOrCreateWs(apiKey);
@@ -328,7 +330,7 @@ async function _speakWithWebSocketInner(
     }
     if (!ws || ws.readyState !== WebSocket.OPEN) {
       console.warn("[TTS-WS] connection failed after retry, falling back to REST");
-      return speakWithProxy(text, voiceId, onEnd, onError);
+      return speakWithProxy(text, voiceId, onEnd, onError, gender);
     }
 
     audioCtx = new AudioContext({ sampleRate: WS_SAMPLE_RATE });
@@ -342,7 +344,7 @@ async function _speakWithWebSocketInner(
         console.warn("[TTS-WS] timeout — no data received, falling back to REST");
         closeCtx();
         settle(() => {});
-        speakWithProxy(text, voiceId, onEnd, onError);
+        speakWithProxy(text, voiceId, onEnd, onError, gender);
       }
     }, 10000);
 
@@ -393,7 +395,7 @@ async function _speakWithWebSocketInner(
           clearTimeout(wsTimeout);
           closeCtx();
           settle(() => {});
-          speakWithProxy(text, voiceId, onEnd, onError);
+          speakWithProxy(text, voiceId, onEnd, onError, gender);
         }
       } catch (e) {
         console.warn("[TTS-WS] message parse error:", e);
@@ -416,7 +418,7 @@ async function _speakWithWebSocketInner(
           closeCtx();
           // Force-clear the dead socket so getOrCreateWs creates a fresh one
           _persistentWs = null;
-          _speakWithWebSocketInner(text, voiceId, onEnd, onError, markDone, true)
+          _speakWithWebSocketInner(text, voiceId, onEnd, onError, markDone, true, gender)
             .then((retryHandle) => {
               // Propagate the new cancel handle up to _activeCancel
               _activeCancel = retryHandle.cancel;
@@ -425,7 +427,7 @@ async function _speakWithWebSocketInner(
           // Already retried once — fall back to REST
           console.warn("[TTS-WS] reconnect also failed, falling back to REST");
           closeCtx();
-          speakWithProxy(text, voiceId, onEnd, onError);
+          speakWithProxy(text, voiceId, onEnd, onError, gender);
         } else {
           // Partial playback — some chunks received but connection dropped.
           // Mark as done so remaining queued chunks play out, then onEnd fires.
@@ -455,7 +457,7 @@ async function _speakWithWebSocketInner(
   } catch (err: unknown) {
     console.warn("[TTS-WS] setup error:", err instanceof Error ? err.message : err);
     closeCtx();
-    return speakWithProxy(text, voiceId, onEnd, onError);
+    return speakWithProxy(text, voiceId, onEnd, onError, gender);
   }
 
   const capturedCtx = audioCtx;
@@ -759,7 +761,7 @@ export async function speakAs(
         await deepgramFallback();
       }, gender);
       _activeCancel = handle.cancel;
-    });
+    }, gender);
   }
 
   _activeCancel = handle.cancel;
