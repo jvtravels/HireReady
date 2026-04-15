@@ -244,7 +244,7 @@ function CareersPage() {
 function AccordionItem({ q, a }: { q: string; a: string }) {
   const [open, setOpen] = useState(false);
   return (
-    <div style={{ ...card, marginBottom: 12, cursor: "pointer" }} onClick={() => setOpen(!open)}>
+    <div role="button" tabIndex={0} style={{ ...card, marginBottom: 12, cursor: "pointer" }} onClick={() => setOpen(!open)} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setOpen(!open); } }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <h3 style={{ fontSize: 15, fontWeight: 600, color: c.ivory }}>{q}</h3>
         <span style={{ color: c.gilt, fontSize: 18, transition: "transform 0.2s", transform: open ? "rotate(45deg)" : "rotate(0deg)" }}>+</span>

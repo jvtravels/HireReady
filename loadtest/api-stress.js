@@ -53,6 +53,7 @@ export const options = {
   },
 };
 
+/* global __ENV */
 const BASE_URL = __ENV.BASE_URL || 'https://hirestepx.com';
 
 // Test data

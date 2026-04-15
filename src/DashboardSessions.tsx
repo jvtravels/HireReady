@@ -75,8 +75,6 @@ export default function DashboardSessions() {
   const [sortBy, setSortBy] = useState<"date" | "score">("date");
   const [showCount, setShowCount] = useState(20);
 
-  if (dataLoading) return <DataLoadingSkeleton />;
-
   const sessions = recentSessions;
   const filtered = useMemo(() => sessions
     .filter(s => filter === "All" || s.type === filter)
@@ -86,6 +84,9 @@ export default function DashboardSessions() {
       return s.type.toLowerCase().includes(q) || (s.topStrength || "").toLowerCase().includes(q) || (s.topWeakness || "").toLowerCase().includes(q);
     })
     .sort((a, b) => sortBy === "score" ? b.score - a.score : new Date(b.date).getTime() - new Date(a.date).getTime()), [sessions, filter, search, sortBy]);
+
+  if (dataLoading) return <DataLoadingSkeleton />;
+
   const visible = filtered.slice(0, showCount);
   const hasMore = filtered.length > showCount;
 
