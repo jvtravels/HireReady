@@ -85,7 +85,8 @@ export function useInterviewEngine() {
   const interviewDifficulty = searchParams.get("difficulty") || "standard";
   const targetCompany = searchParams.get("company") || "";
   const targetRole = searchParams.get("role") || "";
-  const isMiniMode = searchParams.get("mini") === "true";
+  const sessionLength = searchParams.get("length") || "";
+  const isMiniMode = searchParams.get("mini") === "true" || sessionLength === "10m";
   const shouldUseResume = searchParams.get("useResume") !== "false";
   const jobDescription = searchParams.get("jd") || "";
 
