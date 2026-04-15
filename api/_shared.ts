@@ -21,7 +21,7 @@ const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || "").split(",").map(s => 
 /** Resolve allowed CORS origin from a raw origin string. Returns empty string if not allowed. */
 export function getAllowedOriginFromString(origin: string): string {
   if (ALLOWED_ORIGINS.length > 0 && ALLOWED_ORIGINS.includes(origin)) return origin;
-  if (origin.startsWith("http://localhost:")) return origin;
+  if (isAllowedDomain(origin)) return origin;
   return "";
 }
 
@@ -277,9 +277,26 @@ export async function getSubscriptionTier(userId: string): Promise<"free" | "sta
 /** Validate that the request origin is in the allowlist. Returns false for missing origins. */
 export function validateOrigin(req: Request): boolean {
   const origin = req.headers.get("origin") || "";
-  if (!origin) return false; // POST requests must have an Origin header
+  if (!origin) {
+    // GET requests from same-origin may not include Origin header — allow if Referer matches
+    const referer = req.headers.get("referer") || "";
+    if (referer && isAllowedDomain(referer)) return true;
+    return false;
+  }
   if (ALLOWED_ORIGINS.length > 0 && ALLOWED_ORIGINS.includes(origin)) return true;
-  if (origin.startsWith("http://localhost:")) return true;
+  if (isAllowedDomain(origin)) return true;
+  return false;
+}
+
+/** Check if a URL/origin belongs to an allowed domain */
+function isAllowedDomain(urlOrOrigin: string): boolean {
+  if (urlOrOrigin.startsWith("http://localhost:")) return true;
+  try {
+    const hostname = urlOrOrigin.includes("://") ? new URL(urlOrOrigin).hostname : urlOrOrigin;
+    // Allow *.hirestepx.com and Vercel preview deployments
+    if (hostname === "hirestepx.com" || hostname.endsWith(".hirestepx.com")) return true;
+    if (hostname.endsWith(".vercel.app")) return true;
+  } catch { /* invalid URL */ }
   return false;
 }
 

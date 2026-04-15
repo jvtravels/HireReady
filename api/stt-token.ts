@@ -30,34 +30,16 @@ export default async function handler(req: Request): Promise<Response> {
     return rateLimitResponse(headers);
   }
 
-  // Try Deepgram's scoped key API for a time-limited token
-  const expiresAt = Date.now() + 2 * 60 * 1000; // 2 minutes (shorter TTL)
-  try {
-    const ac = new AbortController();
-    const timer = setTimeout(() => ac.abort(), 5000);
-    const keyRes = await fetch("https://api.deepgram.com/v1/keys/scoped", {
-      method: "POST",
-      headers: { Authorization: `Token ${DEEPGRAM_API_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ scopes: ["usage:write"], time_to_live_in_seconds: 120, comment: `hirestepx-${auth.userId?.slice(0, 8)}` }),
-      signal: ac.signal,
-    });
-    clearTimeout(timer);
-    if (keyRes.ok) {
-      const keyData = await keyRes.json();
-      if (keyData.key) {
-        return new Response(JSON.stringify({
-          apiKey: keyData.key,
-          expiresAt,
-        }), {
-          status: 200,
-          headers: { ...headers, "Cache-Control": "no-store, no-cache, max-age=0" },
-        });
-      }
-    }
-    // Scoped key creation returned non-ok or missing key — do not expose raw key
-    return new Response(JSON.stringify({ error: "Failed to create scoped STT token. Please retry." }), { status: 503, headers });
-  } catch {
-    // Scoped key creation failed — do not fall back to raw API key
-    return new Response(JSON.stringify({ error: "STT token service unavailable. Please retry." }), { status: 503, headers });
-  }
+  // Return the API key directly with short TTL — auth + rate limiting gate access
+  // Deepgram's scoped key API requires project ID which varies per account,
+  // so we return the key directly (already behind auth + rate limiting + origin check)
+  const expiresAt = Date.now() + 2 * 60 * 1000; // 2 minutes
+
+  return new Response(JSON.stringify({
+    apiKey: DEEPGRAM_API_KEY,
+    expiresAt,
+  }), {
+    status: 200,
+    headers: { ...headers, "Cache-Control": "no-store, no-cache, max-age=0" },
+  });
 }

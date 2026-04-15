@@ -178,12 +178,22 @@ export function getMiniScript(user: User | null, company?: string, interviewType
     return raw.replace(/\{title\}/g, title).replace(/\{role\}/g, role);
   };
 
+  const isPanel = typeKey === "panel";
+  // Panel persona rotation: HM intro, TL q1, HM q2, HR q3, HM closing
+  const panelPersonas = ["Hiring Manager", "Technical Lead", "Hiring Manager", "HR Partner", "Hiring Manager"];
+
   return [
-    { type: "intro", aiText: `Hi${name ? ` ${name}` : ""}! Welcome to HireStepX. This is a quick 3-question ${typeLabel} practice round for the ${role} position${companyContext}.${resumeContext} I'll ask you real interview questions and give you a score at the end. Ready? Let's go.`, thinkingDuration: 800, speakingDuration: 5000, waitForUser: true },
-    { type: "question", aiText: makeQ(questions[0]), thinkingDuration: 1200, speakingDuration: 4000, waitForUser: true, scoreNote: questions[0].scoreNote },
-    { type: "question", aiText: makeQ(questions[1]), thinkingDuration: 1200, speakingDuration: 3500, waitForUser: true, scoreNote: questions[1].scoreNote },
-    { type: "question", aiText: makeQ(questions[2]), thinkingDuration: 1200, speakingDuration: 4000, waitForUser: true, scoreNote: questions[2].scoreNote },
-    { type: "closing", aiText: "Great answers! That wraps up your quick practice round. Any final thoughts before I calculate your score?", thinkingDuration: 1000, speakingDuration: 4000, waitForUser: true },
+    { type: "intro" as const, aiText: isPanel
+      ? `Hi${name ? ` ${name}` : ""}! Welcome to your panel interview at HireStepX. I'm the hiring manager, and I'll be joined by our technical lead and HR partner. This is a quick 3-question practice round for the ${role} position${companyContext}.${resumeContext} We'll each ask you questions from our perspective. Ready? Let's go.`
+      : `Hi${name ? ` ${name}` : ""}! Welcome to HireStepX. This is a quick 3-question ${typeLabel} practice round for the ${role} position${companyContext}.${resumeContext} I'll ask you real interview questions and give you a score at the end. Ready? Let's go.`,
+      thinkingDuration: 800, speakingDuration: 5000, waitForUser: true, ...(isPanel ? { persona: panelPersonas[0] } : {}) },
+    { type: "question" as const, aiText: makeQ(questions[0]), thinkingDuration: 1200, speakingDuration: 4000, waitForUser: true, scoreNote: questions[0].scoreNote, ...(isPanel ? { persona: panelPersonas[1] } : {}) },
+    { type: "question" as const, aiText: makeQ(questions[1]), thinkingDuration: 1200, speakingDuration: 3500, waitForUser: true, scoreNote: questions[1].scoreNote, ...(isPanel ? { persona: panelPersonas[2] } : {}) },
+    { type: "question" as const, aiText: makeQ(questions[2]), thinkingDuration: 1200, speakingDuration: 4000, waitForUser: true, scoreNote: questions[2].scoreNote, ...(isPanel ? { persona: panelPersonas[3] } : {}) },
+    { type: "closing" as const, aiText: isPanel
+      ? "Thank you for speaking with all of us today. We've covered some great ground. Any final thoughts before we calculate your score?"
+      : "Great answers! That wraps up your quick practice round. Any final thoughts before I calculate your score?",
+      thinkingDuration: 1000, speakingDuration: 4000, waitForUser: true, ...(isPanel ? { persona: panelPersonas[4] } : {}) },
   ];
 }
 
@@ -205,12 +215,17 @@ export function getScript(type: string | null, difficulty: string | null, user: 
   const industryContext = industry ? ` in the ${industry} space` : "";
   const resumeContext = hasResume ? " I've reviewed your resume, so these questions will draw from your actual experience." : "";
 
+  const isPanel = type === "panel";
+
   const personalizedIntro: InterviewStep = {
     type: "intro",
-    aiText: `Hi${name ? ` ${name}` : ""}! Welcome to your mock interview. I'm your AI interviewer today. We'll be focusing on ${(type || "behavioral").replace(/-/g, " ")} questions for the ${role} position${companyContext}${industryContext}.${resumeContext} ${difficulty === "warmup" ? "This will be conversational — no pressure, just practice." : difficulty === "intense" ? "I'll be pushing you hard today — expect rapid follow-ups and high expectations." : "This will take about 15 minutes. Feel free to take your time."} Ready to begin?`,
+    aiText: isPanel
+      ? `Hi${name ? ` ${name}` : ""}! Welcome to your panel interview. I'm the hiring manager, and I'll be joined by our technical lead and HR partner. We'll be focusing on ${role} position${companyContext}${industryContext}.${resumeContext} ${difficulty === "warmup" ? "This will be conversational — no pressure." : difficulty === "intense" ? "We'll be pushing you hard today." : "This will take about 15 minutes."} We'll each ask you questions from our perspective. Ready to begin?`
+      : `Hi${name ? ` ${name}` : ""}! Welcome to your mock interview. I'm your AI interviewer today. We'll be focusing on ${(type || "behavioral").replace(/-/g, " ")} questions for the ${role} position${companyContext}${industryContext}.${resumeContext} ${difficulty === "warmup" ? "This will be conversational — no pressure, just practice." : difficulty === "intense" ? "I'll be pushing you hard today — expect rapid follow-ups and high expectations." : "This will take about 15 minutes. Feel free to take your time."} Ready to begin?`,
     thinkingDuration: 1000,
     speakingDuration: 6000,
     waitForUser: true,
+    ...(isPanel && base[0]?.persona ? { persona: base[0].persona } : {}),
   };
 
   const closingPrefix = feedbackStyle === "encouraging"
@@ -219,10 +234,13 @@ export function getScript(type: string | null, difficulty: string | null, user: 
 
   const personalizedClosing: InterviewStep = {
     type: "closing",
-    aiText: `${closingPrefix}${base[base.length - 1].aiText.replace(/^.*?\./, "")}${company ? ` For ${company} specifically, I'd recommend emphasizing your ${industry || "industry"} domain expertise more.` : ""} Any final thoughts before we wrap up?`,
+    aiText: isPanel
+      ? `${closingPrefix}Thank you for speaking with all of us today. We've covered technical depth, leadership, and cultural fit.${company ? ` For ${company} specifically, I'd recommend emphasizing your ${industry || "industry"} domain expertise more.` : ""} For panel interviews, remember to address each panelist's perspective directly. Any final thoughts before we wrap up?`
+      : `${closingPrefix}${base[base.length - 1].aiText.replace(/^.*?\./, "")}${company ? ` For ${company} specifically, I'd recommend emphasizing your ${industry || "industry"} domain expertise more.` : ""} Any final thoughts before we wrap up?`,
     thinkingDuration: 2000,
     speakingDuration: 7000,
     waitForUser: true,
+    ...(isPanel && base[base.length - 1]?.persona ? { persona: base[base.length - 1].persona } : {}),
   };
 
   const steps = [
