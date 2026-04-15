@@ -663,18 +663,21 @@ export function useInterviewEngine() {
   useEffect(() => {
     setAnswerTimer(0);
   }, [currentStep]);
+  const autoAdvancedRef = useRef(false);
+  useEffect(() => { autoAdvancedRef.current = false; }, [currentStep]);
   useEffect(() => {
     if (phase === "done") return;
     const timer = setInterval(() => setAnswerTimer(t => {
       if (!tabVisibleRef.current) return t;
       const next = t + 1;
-      if (next === 100 && phase === "listening") {
+      if (next === 100 && phase === "listening" && !autoAdvancedRef.current) {
         toast("20 seconds remaining for this answer.", "info");
       }
-      if (next >= 120 && phase === "listening") {
+      if (next >= 120 && phase === "listening" && !autoAdvancedRef.current) {
+        autoAdvancedRef.current = true;
         toast("Time's up — moving to the next question.", "info");
         handleNextRef.current();
-        return t;
+        return next;
       }
       return next;
     }), 1000);
@@ -809,7 +812,7 @@ export function useInterviewEngine() {
       pendingFollowUpRef.current = null;
       const timeout = new Promise<null>(r => setTimeout(() => r(null), 4000));
       Promise.race([pendingFollowUp, timeout]).then(result => {
-        if (isStale()) return;
+        if (isStale() || interviewEndedRef.current) return;
         if (result?.needsFollowUp && result.followUpText && currentStepRef.current === currentStep) {
           // Preserve persona from the original question (or from API response) for panel interviews
           const followUpPersona = isPanelInterview ? ((result as { persona?: string }).persona || step.persona) : undefined;
@@ -827,15 +830,15 @@ export function useInterviewEngine() {
             followUpStep,
             ...prev.slice(currentStep),
           ]);
-        } else {
+        } else if (!interviewEndedRef.current) {
           // Micro-delay: randomize thinking duration for more natural pacing (800-1500ms for questions)
           const microDelay = shouldUseThinkingPhrase ? randomDelay(800, 1500) : step.thinkingDuration;
-          setTimeout(startWithThinkingPhrase, microDelay);
+          setTimeout(() => { if (!isStale() && !interviewEndedRef.current) startWithThinkingPhrase(); }, microDelay);
         }
       }).catch(() => {
-        if (!isStale()) {
+        if (!isStale() && !interviewEndedRef.current) {
           const microDelay = shouldUseThinkingPhrase ? randomDelay(800, 1500) : step.thinkingDuration;
-          setTimeout(startWithThinkingPhrase, microDelay);
+          setTimeout(() => { if (!isStale() && !interviewEndedRef.current) startWithThinkingPhrase(); }, microDelay);
         }
       });
     } else {
@@ -1167,11 +1170,12 @@ export function useInterviewEngine() {
             previousScores,
           }),
           new Promise<null>((_, reject) => {
-            evalAbort.signal.addEventListener("abort", () =>
-              reject(new Error("Evaluation timed out after 40 seconds."))
-            );
-            // If already aborted (race condition), reject immediately
-            if (evalAbort.signal.aborted) reject(new Error("Evaluation timed out after 40 seconds."));
+            if (evalAbort.signal.aborted) {
+              reject(new Error("Evaluation timed out after 40 seconds."));
+              return;
+            }
+            const onAbort = () => reject(new Error("Evaluation timed out after 40 seconds."));
+            evalAbort.signal.addEventListener("abort", onAbort, { once: true });
           }),
         ]);
         if (evaluation) {

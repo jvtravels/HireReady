@@ -61,10 +61,16 @@ export async function saveSessionResult(result: SessionResult, userId?: string):
     try {
       localStorage.setItem(RESULTS_KEY, JSON.stringify(sessions));
     } catch (quotaErr) {
-      // Quota exceeded — aggressively prune to 20 and retry
-      console.warn("[save] localStorage quota hit, pruning to 20 sessions");
-      sessions.length = Math.min(sessions.length, 20);
-      localStorage.setItem(RESULTS_KEY, JSON.stringify(sessions));
+      // Quota exceeded — aggressively prune to 10 and retry
+      console.warn("[save] localStorage quota hit, pruning to 10 sessions");
+      sessions.length = Math.min(sessions.length, 10);
+      try {
+        localStorage.setItem(RESULTS_KEY, JSON.stringify(sessions));
+      } catch {
+        // Still failing — clear old sessions and save only current
+        console.warn("[save] localStorage still full, saving only current session");
+        try { localStorage.setItem(RESULTS_KEY, JSON.stringify([sessions[0]])); } catch { /* give up on localStorage */ }
+      }
     }
     localOk = true;
   } catch (e) {
