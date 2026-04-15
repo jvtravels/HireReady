@@ -46,7 +46,7 @@ async function callGroq(opts: LLMOptions, signal?: AbortSignal): Promise<LLMResu
   const usage = data.usage;
   const tokensUsed = usage ? { prompt: usage.prompt_tokens, completion: usage.completion_tokens, total: usage.total_tokens } : undefined;
   if (tokensUsed) {
-    console.log(`[LLM] Groq ${model} — ${tokensUsed.total} tokens, ${latencyMs}ms`);
+    console.warn(`[LLM] Groq ${model} — ${tokensUsed.total} tokens, ${latencyMs}ms`);
   }
   return { text: data.choices?.[0]?.message?.content || "", model, fallback: false, tokensUsed, latencyMs };
 }
@@ -76,7 +76,7 @@ async function callGemini(opts: LLMOptions, signal?: AbortSignal): Promise<LLMRe
   const usage = data.usageMetadata;
   const tokensUsed = usage ? { prompt: usage.promptTokenCount, completion: usage.candidatesTokenCount, total: usage.totalTokenCount } : undefined;
   if (tokensUsed) {
-    console.log(`[LLM] Gemini — ${tokensUsed.total} tokens, ${latencyMs}ms`);
+    console.warn(`[LLM] Gemini — ${tokensUsed.total} tokens, ${latencyMs}ms`);
   }
   return { text: data.candidates?.[0]?.content?.parts?.[0]?.text || "", model: "gemini-2.0-flash", fallback: true, tokensUsed, latencyMs };
 }

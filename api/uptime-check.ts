@@ -65,7 +65,7 @@ export default async function handler(req: Request): Promise<Response> {
       });
     }
 
-    console.log(JSON.stringify({
+    console.warn(JSON.stringify({
       level: "info",
       source: "uptime-check",
       status: "healthy",

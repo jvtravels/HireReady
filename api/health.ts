@@ -55,7 +55,7 @@ export default async function handler(req: Request): Promise<Response> {
   const allOk = Object.values(checks).every(v => v === "ok");
 
   // Log detailed service status server-side only
-  console.log("[health]", JSON.stringify(checks));
+  console.warn("[health]", JSON.stringify(checks));
 
   return new Response(JSON.stringify({
     status: allOk ? "healthy" : "degraded",

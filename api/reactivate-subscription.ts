@@ -85,7 +85,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           if (subData.status === "active") {
             // Razorpay doesn't have a direct "un-cancel" API for cancel_at_cycle_end.
             // The subscription will continue normally — we just clear our DB flag.
-            console.log(`[reactivate] Razorpay subscription ${subscriptionId} is still active, clearing cancel flag`);
+            console.warn(`[reactivate] Razorpay subscription ${subscriptionId} is still active, clearing cancel flag`);
           } else if (subData.status === "cancelled" || subData.status === "completed") {
             console.warn(`[reactivate] Razorpay subscription ${subscriptionId} is ${subData.status} — user will need to re-subscribe at next period end`);
           }

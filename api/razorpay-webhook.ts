@@ -203,7 +203,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           return res.status(500).json({ error: "Profile update failed" });
         }
 
-        console.log(`[webhook] subscription.activated: ${tier} for user ${userId.slice(0, 8)}`);
+        console.warn(`[webhook] subscription.activated: ${tier} for user ${userId.slice(0, 8)}`);
         return res.status(200).json({ received: true, activated: true, tier });
       }
 
@@ -294,7 +294,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           } catch (emailErr) { console.error("[webhook] Renewal email failed:", emailErr); }
         }
 
-        console.log(`[webhook] subscription.charged: renewed ${tier} for user ${userId.slice(0, 8)}`);
+        console.warn(`[webhook] subscription.charged: renewed ${tier} for user ${userId.slice(0, 8)}`);
         return res.status(200).json({ received: true, renewed: true, tier });
       }
 
@@ -412,7 +412,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           } catch (emailErr) { console.error("[webhook] Payment-failed email failed:", emailErr); }
         }
 
-        console.log(`[webhook] subscription.halted: downgraded user ${userId.slice(0, 8)} to free`);
+        console.warn(`[webhook] subscription.halted: downgraded user ${userId.slice(0, 8)} to free`);
         return res.status(200).json({ received: true, downgraded: true });
       }
 
@@ -432,7 +432,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           return res.status(500).json({ error: "Profile update failed" });
         }
 
-        console.log(`[webhook] ${eventType}: user ${userId.slice(0, 8)} subscription ending at period end`);
+        console.warn(`[webhook] ${eventType}: user ${userId.slice(0, 8)} subscription ending at period end`);
         return res.status(200).json({ received: true, cancelled: true });
       }
 
@@ -449,7 +449,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           return res.status(500).json({ error: "Profile update failed" });
         }
 
-        console.log(`[webhook] ${eventType}: user ${userId.slice(0, 8)} subscription ${paused ? "paused" : "resumed"}`);
+        console.warn(`[webhook] ${eventType}: user ${userId.slice(0, 8)} subscription ${paused ? "paused" : "resumed"}`);
         return res.status(200).json({ received: true, paused });
       }
 
@@ -568,7 +568,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       } catch (emailErr) { console.error("[webhook] Payment email failed:", emailErr); }
     }
 
-    console.log(`[webhook] Activated ${tier} for user ${userId.slice(0, 8)}...`);
+    console.warn(`[webhook] Activated ${tier} for user ${userId.slice(0, 8)}...`);
     return res.status(200).json({ received: true, activated: true, tier });
   } catch (err) {
     console.error("[webhook] Error:", err);

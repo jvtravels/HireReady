@@ -66,7 +66,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       if (updateRes.ok) {
         downgraded++;
-        console.log(`[cron] Downgraded ${profile.id.slice(0, 8)}... from ${profile.subscription_tier} (expired ${profile.subscription_end})`);
+        console.warn(`[cron] Downgraded ${profile.id.slice(0, 8)}... from ${profile.subscription_tier} (expired ${profile.subscription_end})`);
 
         // Send expiration notification email (non-blocking per user)
         if (RESEND_API_KEY && profile.email) {
