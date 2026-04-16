@@ -201,13 +201,14 @@ export async function fetchLLMQuestions(params: {
       return null;
     }
     return data.questions
-      .map((q: { type?: string; aiText?: string; text?: string; scoreNote?: string }) => ({
+      .map((q: { type?: string; aiText?: string; text?: string; scoreNote?: string; persona?: string }) => ({
         type: (q.type || "question") as InterviewStep["type"],
         aiText: q.aiText || q.text || "",
         thinkingDuration: q.type === "intro" ? 500 : 600,
         speakingDuration: 5000,
         waitForUser: q.type !== "closing",
         scoreNote: q.scoreNote || "",
+        ...(q.persona ? { persona: q.persona } : {}),
       }))
       .filter((q: InterviewStep) => q.aiText.length >= 10)
       .map((q: InterviewStep) => q.type === "closing" ? { ...q, waitForUser: true } : q);

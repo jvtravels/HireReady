@@ -367,6 +367,18 @@ export default function Onboarding() {
       if (!targetRole && autoRole) profileSave.targetRole = autoRole;
       if (data.name) profileSave.name = data.name;
       if (data.location) profileSave.city = data.location;
+      // Auto-set experience level from AI seniority analysis
+      if (finalProfile.seniorityLevel) {
+        const seniorityMap: Record<string, string> = {
+          "entry": "entry", "junior": "entry", "fresher": "fresher", "intern": "fresher",
+          "mid": "mid", "mid-level": "mid",
+          "senior": "senior", "staff": "senior", "principal": "senior",
+          "lead": "lead",
+          "director": "executive", "vp": "executive", "c-suite": "executive", "executive": "executive",
+        };
+        const mapped = seniorityMap[finalProfile.seniorityLevel.toLowerCase()] || "";
+        if (mapped) profileSave.experienceLevel = mapped;
+      }
       setSaveStatus("saving");
       try {
         await updateUser(profileSave);
