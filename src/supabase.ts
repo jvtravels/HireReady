@@ -64,6 +64,7 @@ export interface Profile {
   email: string;
   target_role: string;
   target_company: string;
+  city: string;
   industry: string;
   interview_date: string;
   experience_level: string;

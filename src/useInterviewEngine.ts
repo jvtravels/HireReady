@@ -189,6 +189,7 @@ export function useInterviewEngine() {
   const interviewDifficulty = searchParams.get("difficulty") || "standard";
   const targetCompany = searchParams.get("company") || "";
   const targetRole = searchParams.get("role") || "";
+  const targetCity = searchParams.get("city") || "";
   const sessionLength = searchParams.get("length") || "";
   const isMiniMode = searchParams.get("mini") === "true" || sessionLength === "10m";
   const shouldUseResume = searchParams.get("useResume") !== "false";
@@ -322,6 +323,7 @@ export function useInterviewEngine() {
       difficulty: interviewDifficulty,
       role: targetRole || user?.targetRole || "the role",
       company: targetCompany || user?.targetCompany,
+      city: targetCity || user?.city,
       industry: user?.industry,
       resumeText: shouldUseResume ? user?.resumeText : undefined,
       pastTopics: adaptiveHints.pastTopics.length > 0 ? adaptiveHints.pastTopics : undefined,

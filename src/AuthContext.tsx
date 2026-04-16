@@ -55,6 +55,7 @@ export interface User {
   hasCompletedOnboarding: boolean;
   // Personalization fields
   targetCompany?: string;
+  city?: string;
   industry?: string;
   learningStyle?: "direct" | "encouraging";
   experienceLevel?: string;
@@ -106,6 +107,7 @@ function profileToUser(profile: Profile, session: Session): User {
     resumeFileName: profile.resume_file_name || null,
     hasCompletedOnboarding: completed,
     targetCompany: profile.target_company || undefined,
+    city: profile.city || undefined,
     industry: profile.industry || undefined,
     learningStyle: (profile.learning_style as "direct" | "encouraging") || "direct",
     experienceLevel: profile.experience_level || undefined,
@@ -424,6 +426,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (updates.name !== undefined) profileUpdates.name = updates.name;
     if (updates.targetRole !== undefined) profileUpdates.target_role = updates.targetRole;
     if (updates.targetCompany !== undefined) profileUpdates.target_company = updates.targetCompany;
+    if (updates.city !== undefined) (profileUpdates as Record<string, unknown>).city = updates.city;
     if (updates.industry !== undefined) profileUpdates.industry = updates.industry;
     if (updates.interviewDate !== undefined) profileUpdates.interview_date = updates.interviewDate;
     if (updates.learningStyle !== undefined) profileUpdates.learning_style = updates.learningStyle;
