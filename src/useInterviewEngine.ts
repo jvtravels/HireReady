@@ -217,7 +217,7 @@ export function useInterviewEngine() {
     return null;
   });
 
-  // Restore draft if resuming OR if a matching draft exists for the current session params
+  // Restore draft ONLY when explicitly resuming (resume=true in URL)
   const draftKey = `hirestepx_interview_draft_${user?.id || "anon"}`;
   const isResuming = searchParams.get("resume") === "true";
   const draftRef = useRef<InterviewDraft | null>(null);
@@ -225,28 +225,19 @@ export function useInterviewEngine() {
     try {
       const raw = localStorage.getItem(draftKey);
       if (raw) {
-        const parsed = JSON.parse(raw);
-        const DRAFT_TTL = 24 * 60 * 60 * 1000; // 24 hours
-        const isExpired = parsed?.savedAt && Date.now() - parsed.savedAt > DRAFT_TTL;
-        if (isExpired) {
+        if (!isResuming) {
+          // New session — clear any existing draft so we start fresh
           localStorage.removeItem(draftKey);
           deleteFromIDB(draftKey);
-        } else if (parsed && Array.isArray(parsed.transcript) && typeof parsed.currentStep === "number" && parsed.currentStep > 0) {
-          // Auto-restore ONLY if explicitly resuming OR if ALL session params match
-          // (type, difficulty, focus, role, company) — prevents stale drafts from different sessions
-          const draftMatchesSession = (
-            parsed.interviewType === interviewType &&
-            parsed.interviewDifficulty === interviewDifficulty &&
-            parsed.interviewFocus === interviewFocus &&
-            parsed.targetRole === targetRole &&
-            parsed.targetCompany === targetCompany
-          );
-          if (isResuming || draftMatchesSession) {
-            draftRef.current = parsed;
-          } else {
-            // Clear stale draft from a different session
+        } else {
+          const parsed = JSON.parse(raw);
+          const DRAFT_TTL = 24 * 60 * 60 * 1000; // 24 hours
+          const isExpired = parsed?.savedAt && Date.now() - parsed.savedAt > DRAFT_TTL;
+          if (isExpired) {
             localStorage.removeItem(draftKey);
             deleteFromIDB(draftKey);
+          } else if (parsed && Array.isArray(parsed.transcript) && typeof parsed.currentStep === "number" && parsed.currentStep > 0) {
+            draftRef.current = parsed;
           }
         }
       }
@@ -272,28 +263,16 @@ export function useInterviewEngine() {
     currentStepRef.current = currentStep;
   }, [currentStep]);
 
-  // Async IndexedDB fallback — try IDB if localStorage didn't have a draft
+  // Async IndexedDB fallback — try IDB only when explicitly resuming
   useEffect(() => {
-    if (draftRef.current) return; // Already restored from localStorage
+    if (draftRef.current || !isResuming) return;
     let cancelled = false;
     loadFromIDB(draftKey).then(data => {
-      if (cancelled) return; // Interview already started, skip stale IDB data
+      if (cancelled) return;
       if (data && typeof data === "object" && "transcript" in data) {
-        const d = data as InterviewDraft & { savedAt?: number; interviewType?: string; interviewDifficulty?: string; interviewFocus?: string; currentStep?: number; targetRole?: string; targetCompany?: string };
+        const d = data as InterviewDraft & { savedAt?: number; currentStep?: number };
         const DRAFT_TTL = 24 * 60 * 60 * 1000;
         if (d.savedAt && Date.now() - d.savedAt > DRAFT_TTL) {
-          deleteFromIDB(draftKey);
-          return;
-        }
-        // Only restore if draft matches ALL current session params or explicitly resuming
-        const draftMatchesSession = (
-          d.interviewType === interviewType &&
-          d.interviewDifficulty === interviewDifficulty &&
-          d.interviewFocus === interviewFocus &&
-          d.targetRole === targetRole &&
-          d.targetCompany === targetCompany
-        );
-        if (!isResuming && !draftMatchesSession) {
           deleteFromIDB(draftKey);
           return;
         }
