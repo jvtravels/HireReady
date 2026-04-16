@@ -224,18 +224,25 @@ export function getMiniScript(user: User | null, company?: string, interviewType
   };
 
   const isPanel = typeKey === "panel";
+  const isSalaryNeg = typeKey === "salary-negotiation";
   // Panel persona rotation: HM intro, TL q1, HM q2, HR q3, HM closing
   const panelPersonas = ["Hiring Manager", "Technical Lead", "Hiring Manager", "HR Partner", "Hiring Manager"];
 
+  const introText = isSalaryNeg
+    ? `Hi${name ? ` ${name}` : ""}! Good to see you again. We've completed all the interview rounds for the ${role} position${companyContext}, and the team was very impressed. I'm here to walk you through the offer we've put together. Let me get into the details.`
+    : isPanel
+    ? `Hi${name ? ` ${name}` : ""}! Welcome to your panel interview at HireStepX. I'm the hiring manager, and I'll be joined by our technical lead and HR partner. This is a quick 3-question practice round for the ${role} position${companyContext}.${resumeContext} We'll each ask you questions from our perspective. Ready? Let's go.`
+    : `Hi${name ? ` ${name}` : ""}! Welcome to HireStepX. This is a quick 3-question ${typeLabel} practice round for the ${role} position${companyContext}.${resumeContext} I'll ask you real interview questions and give you a score at the end. Ready? Let's go.`;
+
   return [
-    { type: "intro" as const, aiText: isPanel
-      ? `Hi${name ? ` ${name}` : ""}! Welcome to your panel interview at HireStepX. I'm the hiring manager, and I'll be joined by our technical lead and HR partner. This is a quick 3-question practice round for the ${role} position${companyContext}.${resumeContext} We'll each ask you questions from our perspective. Ready? Let's go.`
-      : `Hi${name ? ` ${name}` : ""}! Welcome to HireStepX. This is a quick 3-question ${typeLabel} practice round for the ${role} position${companyContext}.${resumeContext} I'll ask you real interview questions and give you a score at the end. Ready? Let's go.`,
+    { type: "intro" as const, aiText: introText,
       thinkingDuration: 800, speakingDuration: 5000, waitForUser: true, ...(isPanel ? { persona: panelPersonas[0] } : {}) },
     { type: "question" as const, aiText: makeQ(questions[0]), thinkingDuration: 1200, speakingDuration: 4000, waitForUser: true, scoreNote: questions[0].scoreNote, ...(isPanel ? { persona: panelPersonas[1] } : {}) },
     { type: "question" as const, aiText: makeQ(questions[1]), thinkingDuration: 1200, speakingDuration: 3500, waitForUser: true, scoreNote: questions[1].scoreNote, ...(isPanel ? { persona: panelPersonas[2] } : {}) },
     { type: "question" as const, aiText: makeQ(questions[2]), thinkingDuration: 1200, speakingDuration: 4000, waitForUser: true, scoreNote: questions[2].scoreNote, ...(isPanel ? { persona: panelPersonas[3] } : {}) },
-    { type: "closing" as const, aiText: isPanel
+    { type: "closing" as const, aiText: isSalaryNeg
+      ? `I think we've covered the key points. Let me summarize what we've discussed and I'll have HR send the formal offer letter. Take a couple of days to think it over${name ? `, ${name}` : ""} — we'd love to have you on board.`
+      : isPanel
       ? "Thank you for speaking with all of us today. We've covered some great ground. Any final thoughts before we calculate your score?"
       : "Great answers! That wraps up your quick practice round. Any final thoughts before I calculate your score?",
       thinkingDuration: 1000, speakingDuration: 4000, waitForUser: true, ...(isPanel ? { persona: panelPersonas[4] } : {}) },

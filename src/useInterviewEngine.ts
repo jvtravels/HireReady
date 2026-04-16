@@ -340,15 +340,17 @@ export function useInterviewEngine() {
     });
     Promise.race([llmPromise, timeoutPromise]).then(questions => {
       if (llmFetchCancelRef.current) return;
-      if (questions && questions.length > 0 && currentStepRef.current === 0) {
-        console.info(`[interview] LLM generated ${questions.length} custom questions`);
+      if (questions && questions.length > 0 && currentStepRef.current <= 1) {
+        // Accept LLM questions if user is on intro (step 0) or first question (step 1)
+        // The user hasn't provided a substantive answer yet, so swapping is seamless
+        console.info(`[interview] LLM generated ${questions.length} custom questions (replacing at step ${currentStepRef.current})`);
         setInterviewScript(questions);
         setSaveWarning("");
       } else if (!questions) {
         console.warn("[interview] LLM returned null — using fallback questions");
         setSaveWarning("Using practice questions. Tap retry for personalized ones.");
         if (!isMiniMode) toast("Using practice questions — tap retry for personalized ones.", "info");
-      } else if (currentStepRef.current !== 0) {
+      } else if (currentStepRef.current > 1) {
         console.warn("[interview] LLM questions arrived too late — user already started (step", currentStepRef.current, ")");
       }
       setLlmLoading(false);
