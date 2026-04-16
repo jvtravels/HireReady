@@ -222,30 +222,45 @@ export default async function handler(req: Request): Promise<Response> {
     const sanitizedCurrentCity = sanitizeForLLM(currentCity, 50);
     const sanitizedJobCity = sanitizeForLLM(jobCity, 50);
 
-    // Dynamic salary context — only for salary-negotiation and hr-round (replaces hardcoded 2,700-token salary tables)
-    const salaryCtx = (interviewType === "salary-negotiation" || interviewType === "hr-round")
+    // Dynamic salary context — only for hr-round (salary-negotiation gets it via buildSalaryNegotiationGuidance)
+    const salaryCtx = interviewType === "hr-round"
       ? buildExperienceSalaryContext({ role: targetRole, company: companyName, experienceLevel: expLevel, currentCity: sanitizedCurrentCity, jobCity: sanitizedJobCity })
       : "";
+
+    // For salary-negotiation, skip behavioral WHAT TO PROBE examples (they contradict the negotiation format)
+    const isSalaryType = interviewType === "salary-negotiation";
+    const probeEntry = isSalaryType
+      ? `WHAT TO PROBE: Salary expectations, notice period, willingness to negotiate, understanding of CTC vs in-hand.`
+      : `WHAT TO PROBE: Potential, learning agility, basic problem-solving, "tell me about a project you built", "how do you approach learning something new", "describe a team conflict in college"`;
+    const probeMid = isSalaryType
+      ? `WHAT TO PROBE: Current CTC breakdown, expected hike percentage, competing offers, joining timeline, relocation preferences.`
+      : `WHAT TO PROBE: "Walk me through a project you owned end-to-end", "How did you handle a disagreement with your manager?", "Describe a system you designed", "How do you mentor juniors?"`;
+    const probeSenior = isSalaryType
+      ? `WHAT TO PROBE: Total compensation expectations (base + bonus + equity), equity vesting preferences, role scope negotiation, leadership premium.`
+      : `WHAT TO PROBE: "How did you influence your company's technical strategy?", "Describe building/scaling a team", "Walk me through an architecture decision that had business implications", "How do you handle underperformers?", "How did you drive a cultural shift?"`;
+    const probeExec = isSalaryType
+      ? `WHAT TO PROBE: Executive compensation package (base + bonus + RSUs + perks), board-level equity, signing bonus, retention clauses, non-compete terms.`
+      : `WHAT TO PROBE: "How did you build an engineering/product/design org?", "Describe a bet you took that defined the company's direction", "How do you manage up to the board?", "Walk me through a company-wide transformation you led."`;
 
     const experienceCalibration = expLevel === "entry" || expLevel === "fresher"
       ? `EXPERIENCE CALIBRATION: Entry-level/Fresher (0-2 years).
 QUESTION DEPTH: Ask about academic projects, internships, learning experiences, and foundational knowledge. Do NOT expect org-wide impact, P&L ownership, or executive stakeholder management.
-WHAT TO PROBE: Potential, learning agility, basic problem-solving, "tell me about a project you built", "how do you approach learning something new", "describe a team conflict in college"
+${probeEntry}
 REALISTIC EXPECTATIONS: Answers may reference college projects, hackathons, internships, personal projects. That's okay — assess the thinking process, not the scale of impact.${salaryCtx}`
       : expLevel === "mid"
       ? `EXPERIENCE CALIBRATION: Mid-level (3-5 years).
 QUESTION DEPTH: Ask about individual ownership of features/modules, cross-team collaboration, technical depth, and measurable project impact. Expect concrete examples with metrics.
-WHAT TO PROBE: "Walk me through a project you owned end-to-end", "How did you handle a disagreement with your manager?", "Describe a system you designed", "How do you mentor juniors?"
+${probeMid}
 REALISTIC EXPECTATIONS: Should demonstrate initiative beyond assigned tasks, some cross-functional experience, beginning of specialization. May not have team management experience yet.${salaryCtx}`
       : expLevel === "senior" || expLevel === "lead"
       ? `EXPERIENCE CALIBRATION: Senior/Lead level (6-10+ years).
 QUESTION DEPTH: Ask about org-wide strategy, executive stakeholder management, team building/mentoring, architectural decisions with business impact, and driving technical direction.
-WHAT TO PROBE: "How did you influence your company's technical strategy?", "Describe building/scaling a team", "Walk me through an architecture decision that had business implications", "How do you handle underperformers?", "How did you drive a cultural shift?"
+${probeSenior}
 REALISTIC EXPECTATIONS: Should demonstrate leadership beyond direct reports, strategic thinking, trade-off reasoning at organizational level, mentoring track record.${salaryCtx}`
       : expLevel === "executive"
       ? `EXPERIENCE CALIBRATION: Executive level (VP/C-suite/Director).
 QUESTION DEPTH: Ask about company-wide vision, board-level decisions, organizational transformation, market strategy, and culture building. Expect enterprise-scale impact.
-WHAT TO PROBE: "How did you build an engineering/product/design org?", "Describe a bet you took that defined the company's direction", "How do you manage up to the board?", "Walk me through a company-wide transformation you led."
+${probeExec}
 REALISTIC EXPECTATIONS: Should demonstrate P&L ownership, hiring at scale, investor/board communication, multi-year strategic planning.${salaryCtx}`
       : "";
 

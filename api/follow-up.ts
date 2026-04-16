@@ -135,7 +135,8 @@ Be genuinely curious, not interrogative. 2-3 sentences max.`;
 
     // Salary context for salary-negotiation follow-ups (prevents losing city-adjusted rates)
     const salaryFollowUpCtx = (type === "salary-negotiation" || type === "hr-round")
-      ? `\n${lookupSalaryContext({ role, company, currentCity, jobCity })}\nUse ₹ and LPA. Follow-up offers/counters MUST stay within these ranges.`
+      ? `\n${lookupSalaryContext({ role, company, currentCity, jobCity })}\nUse ₹ and LPA. Follow-up offers/counters MUST stay within these ranges.
+CRITICAL: You are the HIRING MANAGER making a salary offer. Stay in character — do NOT switch to behavioral interview questions. Your follow-ups must be about compensation, benefits, joining timeline, notice buyout, or counter-offers.`
       : "";
 
     // Cross-question memory: earlier conversation for thematic connections

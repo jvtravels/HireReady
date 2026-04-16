@@ -90,27 +90,37 @@ const COMPANY_TIER_MAP: Record<string, CompanyTier> = {
 
   // IT Services
   tcs: "it-services",
+  "tata consultancy": "it-services",
+  "tata consultancy services": "it-services",
   infosys: "it-services",
   wipro: "it-services",
   hcl: "it-services",
+  "hcl technologies": "it-services",
+  "hcltech": "it-services",
   "tech mahindra": "it-services",
   cognizant: "it-services",
+  "cognizant technology solutions": "it-services",
   capgemini: "it-services",
   accenture: "it-services",
   ltimindtree: "it-services",
+  "lti mindtree": "it-services",
   "l&t infotech": "it-services",
   mphasis: "it-services",
   mindtree: "it-services",
 
   // Consulting — MBB
   mckinsey: "consulting-mbb",
+  "mckinsey & company": "consulting-mbb",
   bcg: "consulting-mbb",
   bain: "consulting-mbb",
+  "bain & company": "consulting-mbb",
   "boston consulting": "consulting-mbb",
+  "boston consulting group": "consulting-mbb",
 
   // Consulting — Big 4
   deloitte: "consulting-big4",
   pwc: "consulting-big4",
+  "pricewaterhousecoopers": "consulting-big4",
   ey: "consulting-big4",
   kpmg: "consulting-big4",
   "ernst & young": "consulting-big4",

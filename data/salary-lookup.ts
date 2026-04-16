@@ -139,7 +139,7 @@ export function lookupSalaryContext(params: SalaryLookupParams): string {
   const tierLabel = TIER_LABELS[companyTier];
   const cityNote = jobCityTier !== "tier1"
     ? ` (${jobCityTier === "tier2" ? "Tier 2 city" : "Tier 3 city"}, ~${Math.round(CITY_MULTIPLIERS[jobCityTier].min * 100)}-${Math.round(CITY_MULTIPLIERS[jobCityTier].max * 100)}% of Tier 1 rates)`
-    : "";
+    : " (Tier 1 city)";
 
   // Apply job city multiplier (salary = where the job is)
   const adj = (v: number) => jobCityTier === "tier1" ? v : adjustForCity(v, jobCityTier);
