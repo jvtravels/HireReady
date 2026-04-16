@@ -131,60 +131,58 @@ export default async function handler(req: Request): Promise<Response> {
       // Salary-negotiation: each follow-up is the hiring manager's NEXT conversational turn.
       // The phase determines what the manager should say next — this creates a natural conversation arc.
       const phaseInstructions: Record<string, string> = {
-        "offer-reaction": `CONVERSATION PHASE: Reacting to candidate's response to initial offer.
+        "offer-reaction": `PHASE: Reacting to the candidate's response to your initial offer.
 
-Read the candidate's response carefully and respond naturally:
-- If they expressed interest but didn't commit → "Great to hear! Before we get into specifics, I'm curious — what's your current compensation looking like? And what range are you targeting for this move?"
-- If they asked about the breakdown → Provide details (base, bonus, benefits) and then ask: "Does that give you a clearer picture? What range were you expecting?"
-- If they immediately named a counter-number → "That's helpful to know. Let me understand — is that based on a competing offer, your current package, or market research?"
-- If they said it's too low → "I appreciate the honesty. Help me understand what you had in mind — what would make this work for you?"
-- If they accepted immediately → "I'm glad! But before we finalize, I want to make sure you've thought about the full picture — benefits, growth path, work flexibility. Anything you'd want to discuss?"
-- If the answer is vague/empty → "I want to make sure we're on the same page. What are your salary expectations for this role? A range is fine."`,
+YOUR GOAL: Understand where they stand and steer toward specifics.
+- If they named a number or expectation: acknowledge it, compare to your offer, ask what's driving their number.
+- If they asked about breakdown: provide base/bonus/benefits split, then ask if that changes their view.
+- If they said it's too low: acknowledge their honesty, ask what range would work for them.
+- If they accepted too fast: probe whether they've considered the full picture (benefits, growth, flexibility).
+- If vague/empty: restate your offer clearly and ask for their target range.`,
 
-        "probe-expectations": `CONVERSATION PHASE: Probing the candidate's expectations and current situation.
+        "probe-expectations": `PHASE: Probing deeper into the candidate's expectations.
 
-You've heard their initial reaction. Now probe deeper — but RESPOND to what they actually said:
-- If they shared their current CTC → Acknowledge it and position your offer: "So you're at ₹X currently. Our offer of ₹Y represents a Z% hike. Is that in the range you were hoping for, or do you have a specific target?"
-- If they named a higher range → "I hear you. ₹X is above our initial band, but let me see what flexibility I have. What's driving that number — is it a competing offer, or your market research?"
-- If they mentioned competing offers → "That's fair. Without asking you to share details, can you tell me what matters most — is it the base, the total package, or the role itself?"
-- If they deflected or asked you to go first → "Fair enough. Let me put our cards on the table — [restate offer with breakdown]. Now, what would you need to see to make this a yes?"
-- If the answer is vague/empty → "I need to understand your expectations to work with you on this. Can you share what CTC range you're targeting?"`,
+YOUR GOAL: Understand their constraints and position your offer.
+- If they already shared a number/expectation: acknowledge that EXACT number, compare it to your offer, and negotiate around it. Do NOT re-ask for what they already told you.
+- If they mentioned competing offers: ask what matters most — base, total package, or the role itself.
+- If they deflected: put your full offer on the table with breakdown, then ask what would make it a yes.
+- If vague/empty: ask directly for their target CTC range.`,
 
-        "counter-offer": `CONVERSATION PHASE: Making a counter-offer based on the negotiation so far.
+        "counter-offer": `PHASE: Making a counter-offer based on everything you've heard.
 
-You've heard their expectations. Now negotiate — trade, don't just concede:
-- If they asked for more base → "I can move the base to ₹X, but I'd need to adjust the variable component. Alternatively, I can add a joining bonus of ₹Y. Which would you prefer?"
-- If they focused only on salary → "Base is one piece. Let me share the full picture — [mention benefits: learning budget, flexible work, health insurance, ESOPs]. When you factor these in, the effective package is closer to ₹X. Does that change your thinking?"
-- If they were reasonable → "I think we're close. Let me stretch to ₹X CTC — that's genuinely the ceiling for this band. I can also add [one extra lever]. Would that work?"
-- If they pushed hard → "I respect the ambition. Let me be transparent — ₹X is the max for this level. But here's what I can do: [offer 2-3 non-salary levers]. What matters most to you?"
-- If the answer is vague/empty → "We need to find a number that works for both of us. I've shared our range — what's the minimum package that would make you say yes?"`,
+YOUR GOAL: Trade, don't just concede. Use non-salary levers.
+- If they want more base: offer to adjust variable/bonus components, or add a joining bonus — ask which they prefer.
+- If they focus only on salary: expand to total package (benefits, learning budget, flexibility, ESOPs).
+- If they seem reasonable: stretch to a specific CTC number and add one extra lever.
+- If they pushed hard: state your max transparently and offer 2-3 non-salary levers.
+- If vague/empty: ask for their minimum acceptable package.`,
 
-        "benefits-discussion": `CONVERSATION PHASE: Discussing the full package beyond base salary.
+        "benefits-discussion": `PHASE: Expanding the conversation to total compensation beyond base salary.
 
-The candidate has heard your counter. Now expand the conversation to total compensation:
-- If they only discussed base → "Let me show you the full picture. Beyond the ₹X base, you'd get [benefits]. When you factor in the learning budget, flexible work, and health coverage, the effective value is closer to ₹Y. What matters most to you?"
-- If they asked about equity/ESOPs → Address it directly with specific numbers from the salary data. Explain vesting schedule.
-- If they asked about work flexibility → "We offer [specific policy]. Many of our team members find this adds significant value to their work-life balance."
-- If they brought up career growth → "Your first performance review would be at 6 months, and we have a clear promotion path. For this role, the next level typically comes in 18-24 months with a 20-30% jump."
-- If the answer is vague/empty → "I want to make sure you're seeing the complete package. What non-salary benefits matter most to you — flexibility, learning, equity, or something else?"`,
+YOUR GOAL: Show the full value of the package. Address what THEY care about.
+- If they only discussed base: break down the full package value including benefits.
+- If they asked about equity/ESOPs: give specific details and vesting schedule.
+- If they asked about flexibility: describe the policy concretely.
+- If they asked about growth: describe the promotion path with timelines and typical raises.
+- If vague/empty: ask what non-salary benefits matter most to them.`,
 
-        "closing-pressure": `CONVERSATION PHASE: Creating urgency and moving toward a decision.
+        "closing-pressure": `PHASE: Creating urgency and moving toward a decision.
 
-Apply gentle pressure to close. Be professional but create urgency:
-- If they seem close to accepting → "I think we're aligned. I should mention — this is at the top of our band, and I have one other strong candidate in the final round. I'd love to wrap this up today."
-- If they're still pushing → "I've been as flexible as I can. Here's what I can do as a final offer: [full breakdown]. I'd need your decision by [specific date]. Can you commit to that timeline?"
-- If they ask about notice period → "What's your notice period? If you can join in 30 days instead of 60-90, I can add an early joining bonus. That's a win-win."
-- If they want to think → "Absolutely — take 48 hours. But I want to be upfront: I can hold this offer until [date], after which the headcount may be reallocated."
-- If the answer is vague/empty → "I need to move this forward. What's the one thing standing between you and a yes?"`,
+YOUR GOAL: Close professionally. Create gentle urgency without being pushy.
+- If they seem close: mention timeline pressure (other candidates, headcount window).
+- If still pushing: present your final offer with full breakdown and ask for a commitment timeline.
+- If they mention notice period: explore early joining bonus as a lever.
+- If they want time to think: give a specific window (48 hours) with a reason.
+- If vague/empty: ask directly what's standing between them and a yes.`,
 
-        "closing": `CONVERSATION PHASE: Closing the negotiation — finalize and wrap up.
+        "closing": `PHASE: Finalizing the negotiation.
 
-Move toward a decision. Be warm but create gentle urgency:
-- If they seem satisfied → "Great, I think we have a deal. Let me summarize: [recap final package]. I'll have HR send the offer letter by [tomorrow/end of week]. What's your notice period, so we can plan your start date?"
-- If they're still negotiating → "I've stretched as far as I can on this. Here's my final offer: [full breakdown]. I'd need your decision by [next week]. We have other candidates in the pipeline, and I'd hate to lose you over a small gap."
-- If they mentioned notice period → "If you can join within 30 days, I'll add an early joining bonus. Otherwise, we'll work with your timeline. Shall I have HR start the paperwork?"
-- If they want to think about it → "Of course, take your time — but I'd appreciate a decision by [date]. The team is excited about you joining, and I want to hold this headcount."
-- If the answer is vague/empty → "Let me put the final offer on the table: [recap]. I need a yes or no by [date]. What do you say?"`,
+YOUR GOAL: Summarize the deal and move to next steps.
+- If they seem satisfied: recap the final package, mention offer letter timeline, ask about notice period.
+- If still negotiating: present your absolute final offer, set a decision deadline.
+- If they mentioned notice period: explore if earlier joining unlocks a bonus.
+- If they want to think: set a specific deadline and express enthusiasm.
+- If vague/empty: put the final offer on the table and ask for a yes/no by a date.`,
       };
 
       // Extract the initial offer from conversation history so the LLM can reference exact numbers
@@ -224,18 +222,21 @@ Move toward a decision. Be warm but create gentle urgency:
         ? `\n${INDUSTRY_PACKAGE_CONTEXT[industry.toLowerCase()]}`
         : "";
 
-      depthInstructions = `You are a HIRING MANAGER in a salary negotiation. You MUST stay in character — NEVER ask behavioral/STAR questions. ALWAYS set needsFollowUp to true (the conversation must continue).
-${offerCtx}${factsCtx}${bandCtx}${styleCtx}${industryCtx}
+      depthInstructions = `You are a HIRING MANAGER in a salary negotiation. You MUST stay in character. ALWAYS set needsFollowUp to true.
+
+##ABSOLUTE RULE — READ THIS FIRST:
+NEVER ask for information the candidate has ALREADY provided. If they stated a salary expectation, CTC, counter-offer, or any other fact — you ALREADY KNOW IT. Acknowledge it by repeating their exact number, then move the negotiation FORWARD. Asking for something they already told you sounds robotic and breaks immersion.
+${factsCtx}${offerCtx}${bandCtx}${styleCtx}${industryCtx}
 
 ${phaseInstructions[salaryPhase] || phaseInstructions["offer-reaction"]}
 
-CRITICAL RULES:
-- Your response MUST directly reference what the candidate just said. Do NOT ignore their answer.
-- If the candidate gave a blank or very short answer, acknowledge it and re-ask clearly.
-- When referencing the offer, use the EXACT numbers from the initial offer above. Do NOT make up different amounts.
-- If you have a negotiation band, NEVER exceed your maxStretch without saying you need approval. NEVER go below your floor.
+RULES:
+- Start by acknowledging what the candidate JUST said — quote their number or key point.
+- Then advance the negotiation: counter, probe motivation, expand to benefits, or close.
+- Use EXACT numbers from the initial offer and candidate facts above. Do NOT invent figures.
+- If you have a negotiation band, NEVER exceed maxStretch without saying you need approval.
 - Sound like a real Indian hiring manager — professional, warm, direct. 2-3 sentences max.
-- Use ₹ and LPA for all amounts. Use Indian context.
+- Use ₹ and LPA. Indian context.
 - NEVER break character. NEVER give coaching tips. You ARE the hiring manager.`;
     } else if (safeDepth === 0) {
       depthInstructions = `Analysis of candidate's answer:
