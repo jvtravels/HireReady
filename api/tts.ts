@@ -1,5 +1,5 @@
-/* Vercel Serverless Function — Cartesia TTS Proxy */
-/* Ultra-low latency voice synthesis — keeps API key server-side */
+/* Vercel Serverless Function — Cartesia TTS Proxy (Fallback) */
+/* Used when Azure TTS is unavailable — keeps API key server-side */
 
 export const config = { runtime: "edge" };
 
@@ -7,7 +7,6 @@ import { handleCorsPreflightOrMethod, corsHeaders, isRateLimited, getClientIp, r
 
 declare const process: { env: Record<string, string | undefined> };
 const CARTESIA_API_KEY = process.env.CARTESIA_API_KEY || "";
-const DEEPGRAM_API_KEY = process.env.DEEPGRAM_API_KEY || "";
 
 export default async function handler(req: Request): Promise<Response> {
   const earlyResponse = handleCorsPreflightOrMethod(req);
@@ -21,7 +20,7 @@ export default async function handler(req: Request): Promise<Response> {
     return new Response(JSON.stringify({ error: "Request too large" }), { status: 413, headers });
   }
 
-  if (!CARTESIA_API_KEY && !DEEPGRAM_API_KEY) {
+  if (!CARTESIA_API_KEY) {
     return new Response(JSON.stringify({ error: "TTS not configured" }), { status: 503, headers });
   }
 
@@ -82,52 +81,6 @@ export default async function handler(req: Request): Promise<Response> {
     if (!res.ok) {
       const errText = await res.text().catch(() => "");
       console.warn("Cartesia TTS error:", res.status, errText);
-
-      // Fallback to Deepgram TTS server-side (avoids client CORS issues)
-      if (DEEPGRAM_API_KEY) {
-        console.warn("Cartesia failed, trying Deepgram TTS server-side fallback");
-        // Gender-matched Deepgram voices for natural panel interviews
-        const dgMaleVoices = ["aura-2-orion-en", "aura-2-apollo-en", "aura-2-atlas-en"];
-        const dgFemaleVoices = ["aura-2-asteria-en", "aura-2-luna-en", "aura-2-athena-en"];
-        // Pick voice based on gender + voiceId hash for variety across panelists
-        const voicePool = gender === "male" ? dgMaleVoices : dgFemaleVoices;
-        const voiceHash = (voiceId || "").split("").reduce((h, c) => ((h << 5) - h + c.charCodeAt(0)) | 0, 0);
-        const dgVoice = voicePool[Math.abs(voiceHash) % voicePool.length];
-        try {
-          const dgController = new AbortController();
-          const dgTimeout = setTimeout(() => dgController.abort(), 12_000);
-          const dgRes = await fetch(`https://api.deepgram.com/v1/speak?model=${dgVoice}&encoding=mp3`, {
-            method: "POST",
-            headers: {
-              "Authorization": `Token ${DEEPGRAM_API_KEY}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ text: trimmedText }),
-            signal: dgController.signal,
-          });
-          clearTimeout(dgTimeout);
-
-          if (dgRes.ok) {
-            const dgAudio = await dgRes.arrayBuffer();
-            if (dgAudio.byteLength > 100) {
-              const audioHeaders: Record<string, string> = {
-                "Content-Type": "audio/mpeg",
-                "Content-Length": String(dgAudio.byteLength),
-                "Cache-Control": "no-store",
-                "X-Content-Type-Options": "nosniff",
-                "X-TTS-Provider": "deepgram",
-              };
-              const origin = headers["Access-Control-Allow-Origin"];
-              if (origin) { audioHeaders["Access-Control-Allow-Origin"] = origin; audioHeaders["Vary"] = "Origin"; }
-              return new Response(dgAudio, { status: 200, headers: audioHeaders });
-            }
-          }
-          console.warn("Deepgram TTS also failed:", dgRes.status);
-        } catch (dgErr) {
-          console.warn("Deepgram TTS error:", dgErr);
-        }
-      }
-
       return new Response(JSON.stringify({ error: "TTS generation failed", cartesiaStatus: res.status, detail: errText.slice(0, 200) }), { status: 502, headers });
     }
 

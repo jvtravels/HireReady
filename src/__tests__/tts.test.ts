@@ -6,34 +6,37 @@ import { describe, it, expect } from "vitest";
  */
 
 interface TTSSettings {
-  provider: "google" | "browser";
+  provider: "azure" | "cartesia" | "browser";
   voiceId: string;
   voiceName: string;
+  language?: string;
 }
 
 const DEFAULT_SETTINGS: TTSSettings = {
-  provider: "google",
-  voiceId: "en-US-Neural2-F",
-  voiceName: "Aria",
+  provider: "azure",
+  voiceId: "en-IN-NeerjaNeural",
+  voiceName: "Neerja (Indian English)",
+  language: "en_IN",
 };
 
-const GOOGLE_VOICES = [
-  { id: "en-US-Neural2-F", name: "Aria", gender: "female" },
-  { id: "en-US-Neural2-C", name: "Claire", gender: "female" },
-  { id: "en-US-Neural2-H", name: "Harper", gender: "female" },
-  { id: "en-US-Neural2-E", name: "Evelyn", gender: "female" },
-  { id: "en-US-Neural2-D", name: "James", gender: "male" },
-  { id: "en-US-Neural2-A", name: "Marcus", gender: "male" },
-  { id: "en-US-Neural2-I", name: "Nathan", gender: "male" },
-  { id: "en-US-Neural2-J", name: "Oliver", gender: "male" },
+const AZURE_VOICES = [
+  { id: "en-IN-NeerjaNeural", name: "Neerja", gender: "female" },
+  { id: "en-IN-AashiNeural", name: "Aashi", gender: "female" },
+  { id: "en-IN-AnanyaNeural", name: "Ananya", gender: "female" },
+  { id: "en-IN-KavyaNeural", name: "Kavya", gender: "female" },
+  { id: "en-IN-PrabhatNeural", name: "Prabhat", gender: "male" },
+  { id: "en-IN-AaravNeural", name: "Aarav", gender: "male" },
+  { id: "en-IN-KunalNeural", name: "Kunal", gender: "male" },
+  { id: "en-IN-RehaanNeural", name: "Rehaan", gender: "male" },
 ];
 
 function loadTTSSettingsFromRaw(raw: string | null): TTSSettings {
   try {
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (parsed.provider === "elevenlabs") {
-        parsed.provider = "google";
+      // Migrate old providers to Azure
+      if (parsed.provider === "elevenlabs" || parsed.provider === "google" || parsed.provider === "cartesia") {
+        parsed.provider = "azure";
         parsed.voiceId = DEFAULT_SETTINGS.voiceId;
         parsed.voiceName = DEFAULT_SETTINGS.voiceName;
       }
@@ -46,32 +49,54 @@ function loadTTSSettingsFromRaw(raw: string | null): TTSSettings {
 describe("TTS Settings", () => {
   it("returns defaults when no settings stored", () => {
     const settings = loadTTSSettingsFromRaw(null);
-    expect(settings.provider).toBe("google");
-    expect(settings.voiceId).toBe("en-US-Neural2-F");
-    expect(settings.voiceName).toBe("Aria");
+    expect(settings.provider).toBe("azure");
+    expect(settings.voiceId).toBe("en-IN-NeerjaNeural");
+    expect(settings.voiceName).toBe("Neerja (Indian English)");
+    expect(settings.language).toBe("en_IN");
   });
 
   it("loads saved settings", () => {
     const raw = JSON.stringify({
-      provider: "google",
-      voiceId: "en-US-Neural2-D",
-      voiceName: "James",
+      provider: "azure",
+      voiceId: "en-IN-PrabhatNeural",
+      voiceName: "Prabhat",
     });
     const settings = loadTTSSettingsFromRaw(raw);
-    expect(settings.voiceId).toBe("en-US-Neural2-D");
-    expect(settings.voiceName).toBe("James");
+    expect(settings.voiceId).toBe("en-IN-PrabhatNeural");
+    expect(settings.voiceName).toBe("Prabhat");
   });
 
-  it("migrates old ElevenLabs settings to Google", () => {
+  it("migrates old ElevenLabs settings to Azure", () => {
     const raw = JSON.stringify({
       provider: "elevenlabs",
       voiceId: "old-eleven-id",
       voiceName: "Rachel",
     });
     const settings = loadTTSSettingsFromRaw(raw);
-    expect(settings.provider).toBe("google");
-    expect(settings.voiceId).toBe("en-US-Neural2-F");
-    expect(settings.voiceName).toBe("Aria");
+    expect(settings.provider).toBe("azure");
+    expect(settings.voiceId).toBe("en-IN-NeerjaNeural");
+  });
+
+  it("migrates old Cartesia settings to Azure", () => {
+    const raw = JSON.stringify({
+      provider: "cartesia",
+      voiceId: "e07c00bc-4134-4eae-9ea4-1a55fb45746b",
+      voiceName: "Default",
+    });
+    const settings = loadTTSSettingsFromRaw(raw);
+    expect(settings.provider).toBe("azure");
+    expect(settings.voiceId).toBe("en-IN-NeerjaNeural");
+  });
+
+  it("migrates old Google settings to Azure", () => {
+    const raw = JSON.stringify({
+      provider: "google",
+      voiceId: "en-US-Neural2-F",
+      voiceName: "Aria",
+    });
+    const settings = loadTTSSettingsFromRaw(raw);
+    expect(settings.provider).toBe("azure");
+    expect(settings.voiceId).toBe("en-IN-NeerjaNeural");
   });
 
   it("handles corrupted data gracefully", () => {
@@ -80,40 +105,40 @@ describe("TTS Settings", () => {
   });
 
   it("merges partial settings with defaults", () => {
-    const raw = JSON.stringify({ voiceId: "en-US-Neural2-A" });
+    const raw = JSON.stringify({ voiceId: "en-IN-AaravNeural" });
     const settings = loadTTSSettingsFromRaw(raw);
-    expect(settings.provider).toBe("google");
-    expect(settings.voiceId).toBe("en-US-Neural2-A");
-    expect(settings.voiceName).toBe("Aria");
+    expect(settings.provider).toBe("azure");
+    expect(settings.voiceId).toBe("en-IN-AaravNeural");
+    expect(settings.voiceName).toBe("Neerja (Indian English)");
   });
 });
 
 describe("Voice Configuration", () => {
   it("has 8 voices (4 female + 4 male)", () => {
-    expect(GOOGLE_VOICES).toHaveLength(8);
-    expect(GOOGLE_VOICES.filter(v => v.gender === "female")).toHaveLength(4);
-    expect(GOOGLE_VOICES.filter(v => v.gender === "male")).toHaveLength(4);
+    expect(AZURE_VOICES).toHaveLength(8);
+    expect(AZURE_VOICES.filter(v => v.gender === "female")).toHaveLength(4);
+    expect(AZURE_VOICES.filter(v => v.gender === "male")).toHaveLength(4);
   });
 
   it("all voices have unique IDs", () => {
-    const ids = GOOGLE_VOICES.map(v => v.id);
+    const ids = AZURE_VOICES.map(v => v.id);
     expect(new Set(ids).size).toBe(ids.length);
   });
 
   it("all voices have unique names", () => {
-    const names = GOOGLE_VOICES.map(v => v.name);
+    const names = AZURE_VOICES.map(v => v.name);
     expect(new Set(names).size).toBe(names.length);
   });
 
   it("default voice is in the voice list", () => {
-    const defaultVoice = GOOGLE_VOICES.find(v => v.id === DEFAULT_SETTINGS.voiceId);
+    const defaultVoice = AZURE_VOICES.find(v => v.id === DEFAULT_SETTINGS.voiceId);
     expect(defaultVoice).toBeDefined();
-    expect(defaultVoice!.name).toBe(DEFAULT_SETTINGS.voiceName);
+    expect(defaultVoice!.name).toBe("Neerja");
   });
 
-  it("all voice IDs follow Google Neural2 format", () => {
-    GOOGLE_VOICES.forEach(v => {
-      expect(v.id).toMatch(/^en-US-Neural2-[A-Z]$/);
+  it("all voice IDs follow Azure en-IN Neural format", () => {
+    AZURE_VOICES.forEach(v => {
+      expect(v.id).toMatch(/^en-IN-[A-Z][a-z]+Neural$/);
     });
   });
 });

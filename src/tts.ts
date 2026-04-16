@@ -1,5 +1,7 @@
 /* ─── Text-to-Speech Service ─── */
-/* Uses server-side Cartesia TTS proxy (ultra-low latency) with Web Speech API fallback */
+/* Primary: Azure TTS (Indian English neural voices) via /api/azure-tts proxy
+   Fallback: Cartesia TTS via WebSocket + /api/tts REST proxy
+   Last resort: Browser Web Speech API */
 
 import { safeUUID } from "./utils";
 
@@ -27,7 +29,7 @@ export function unlockAudio() {
 const TTS_SETTINGS_KEY = "hirestepx_tts";
 
 export interface TTSSettings {
-  provider: "cartesia" | "browser";
+  provider: "azure" | "cartesia" | "browser";
   voiceId: string;
   voiceName: string;
   language?: string;
@@ -72,9 +74,10 @@ export function getCachedVoices(language = "en_IN"): CartesiaVoice[] {
 }
 
 const DEFAULT_SETTINGS: TTSSettings = {
-  provider: "cartesia",
-  voiceId: DEFAULT_VOICE_ID,
-  voiceName: "Default",
+  provider: "azure",
+  voiceId: "en-IN-NeerjaNeural",
+  voiceName: "Neerja (Indian English)",
+  language: "en_IN",
 };
 
 export function loadTTSSettings(): TTSSettings {
@@ -82,9 +85,9 @@ export function loadTTSSettings(): TTSSettings {
     const raw = localStorage.getItem(TTS_SETTINGS_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
-      // Migrate old providers to Cartesia
-      if (parsed.provider === "elevenlabs" || parsed.provider === "google") {
-        parsed.provider = "cartesia";
+      // Migrate old providers to Azure
+      if (parsed.provider === "elevenlabs" || parsed.provider === "google" || parsed.provider === "cartesia") {
+        parsed.provider = "azure";
         parsed.voiceId = DEFAULT_SETTINGS.voiceId;
         parsed.voiceName = DEFAULT_SETTINGS.voiceName;
       }
@@ -155,7 +158,7 @@ export async function prefetchTTS(text: string): Promise<void> {
   const existing = _prefetchCache.get(text);
   if (existing && Date.now() - existing.createdAt < PREFETCH_TTL) return;
   const settings = loadTTSSettings();
-  if (settings.provider !== "cartesia") return;
+  if (settings.provider === "browser") return;
 
   // Evict expired entries first
   for (const [key, entry] of _prefetchCache) {
@@ -172,7 +175,9 @@ export async function prefetchTTS(text: string): Promise<void> {
     try {
       const { authHeaders } = await import("./supabase");
       const headers = await authHeaders();
-      const res = await fetch("/api/tts", {
+      // Use Azure TTS endpoint (primary) for prefetch
+      const endpoint = settings.provider === "azure" ? "/api/azure-tts" : "/api/tts";
+      const res = await fetch(endpoint, {
         method: "POST",
         headers,
         body: JSON.stringify({ text, voiceId: settings.voiceId }),
@@ -445,7 +450,7 @@ async function _speakWithWebSocketInner(
       model_id: "sonic-3",
       transcript: text.trim().slice(0, 2000),
       voice: { mode: "id", id: voiceId },
-      language: loadTTSSettings().language || "en",
+      language: loadTTSSettings().language || "en_IN",
       output_format: {
         container: "raw",
         encoding: "pcm_f32le",
@@ -559,67 +564,45 @@ async function speakWithProxy(
   };
 }
 
-/* ─── Deepgram TTS (fallback before browser) ─── */
-let _cachedDeepgramKey: string | null = null;
-let _deepgramKeyExpiry = 0;
-
-async function getDeepgramApiKey(): Promise<string | null> {
-  const dgRefreshAt = _deepgramKeyExpiry - API_KEY_TTL * 0.2;
-  if (_cachedDeepgramKey && dgRefreshAt > 0 && Date.now() < dgRefreshAt) return _cachedDeepgramKey;
-  try {
-    const { authHeaders } = await import("./supabase");
-    const headers = await authHeaders();
-    const res = await fetch("/api/stt-token", { method: "POST", headers });
-    if (!res.ok) return null;
-    const data = await res.json();
-    _cachedDeepgramKey = data.apiKey || null;
-    _deepgramKeyExpiry = Date.now() + API_KEY_TTL;
-    return _cachedDeepgramKey;
-  } catch {
-    return null;
-  }
-}
-
-async function speakWithDeepgram(
+/* ─── Azure TTS (primary provider — Indian English neural voices) ─── */
+async function speakWithAzure(
   text: string,
   onEnd: () => void,
   onError: () => void,
+  gender?: "male" | "female",
+  voiceId?: string,
 ): Promise<{ cancel: () => void }> {
+  const controller = new AbortController();
   let audio: HTMLAudioElement | null = null;
   let settled = false;
   const settle = (cb: () => void) => { if (!settled) { settled = true; cb(); } };
 
   try {
-    const apiKey = await getDeepgramApiKey();
-    if (!apiKey) {
-      console.warn("[TTS-DG] no API key");
-      settle(onError);
-      return { cancel: () => {} };
-    }
+    const { authHeaders } = await import("./supabase");
+    const headers = await authHeaders();
 
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 12_000);
-
-    const res = await fetch("https://api.deepgram.com/v1/speak?model=aura-asteria-en&encoding=mp3", {
+    const timeout = setTimeout(() => controller.abort(), 15_000);
+    const res = await fetch("/api/azure-tts", {
       method: "POST",
-      headers: {
-        "Authorization": `Token ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ text: text.trim().slice(0, 2000) }),
+      headers,
+      body: JSON.stringify({
+        text: text.trim().slice(0, 2000),
+        voiceId: voiceId || loadTTSSettings().voiceId,
+        gender,
+      }),
       signal: controller.signal,
     });
     clearTimeout(timeout);
 
     if (!res.ok) {
-      console.warn("[TTS-DG] API error:", res.status);
+      console.warn("[TTS-Azure] API error:", res.status);
       settle(onError);
       return { cancel: () => {} };
     }
 
     const blob = await res.blob();
     if (!blob || blob.size < 100) {
-      console.warn("[TTS-DG] empty audio");
+      console.warn("[TTS-Azure] empty audio");
       settle(onError);
       return { cancel: () => {} };
     }
@@ -631,7 +614,7 @@ async function speakWithDeepgram(
     await audio.play();
   } catch (err: unknown) {
     if (err instanceof Error && err.name === "AbortError") return { cancel: () => {} };
-    console.warn("[TTS-DG] error:", err instanceof Error ? err.message : err);
+    console.warn("[TTS-Azure] error:", err instanceof Error ? err.message : err);
     settle(onError);
     return { cancel: () => {} };
   }
@@ -639,6 +622,7 @@ async function speakWithDeepgram(
   const capturedAudio = audio;
   return {
     cancel: () => {
+      controller.abort();
       settled = true;
       if (capturedAudio) {
         capturedAudio.pause();
@@ -667,7 +651,13 @@ function speakWithBrowser(
   utter.pitch = 1.0;
   utter.volume = 1.0;
   const voices = window.speechSynthesis.getVoices();
+  // Prefer Indian English voices, fall back to US English
   const preferred = voices.find(
+    (v) =>
+      v.lang === "en-IN" ||
+      v.name.includes("Indian") ||
+      v.name.includes("Hindi"),
+  ) || voices.find(
     (v) =>
       v.name.includes("Samantha") ||
       v.name.includes("Google US English") ||
@@ -728,41 +718,32 @@ export async function speakAs(
   gender?: "male" | "female",
 ): Promise<{ cancel: () => void }> {
   const settings = loadTTSSettings();
-  if (settings.provider !== "cartesia") {
-    // Browser TTS doesn't support voice switching — use default
+  if (settings.provider === "browser") {
     return speak(text, onEnd, onError);
   }
 
   let handle: { cancel: () => void };
 
-  const deepgramFallback = async () => {
-    console.warn("Trying Deepgram TTS fallback (speakAs)");
-    handle = await speakWithDeepgram(text, onEnd, () => {
-      console.warn("Deepgram TTS failed, falling back to browser TTS");
-      const browserHandle = speakWithBrowser(text, onEnd, onError);
-      handle = browserHandle;
-      _activeCancel = browserHandle.cancel;
-    });
-    _activeCancel = handle.cancel;
-  };
-
-  const prefetchEntry = _prefetchCache.get(text);
-  const hasPrefetch = !!prefetchEntry && Date.now() - prefetchEntry.createdAt < PREFETCH_TTL;
-  if (hasPrefetch) {
-    handle = await speakWithProxy(text, voiceId, onEnd, async () => {
-      console.warn("Cartesia REST failed (speakAs), trying Deepgram");
-      await deepgramFallback();
-    }, gender);
-  } else {
+  const cartesiaFallback = async () => {
+    console.warn("Trying Cartesia TTS fallback (speakAs)");
     handle = await speakWithWebSocket(text, voiceId, onEnd, async () => {
-      console.warn("Cartesia WebSocket failed (speakAs), falling back to REST");
-      handle = await speakWithProxy(text, voiceId, onEnd, async () => {
-        console.warn("Cartesia REST also failed (speakAs), trying Deepgram");
-        await deepgramFallback();
+      console.warn("Cartesia WS failed (speakAs), trying REST");
+      handle = await speakWithProxy(text, voiceId, onEnd, () => {
+        console.warn("Cartesia REST also failed (speakAs), falling back to browser TTS");
+        const browserHandle = speakWithBrowser(text, onEnd, onError);
+        handle = browserHandle;
+        _activeCancel = browserHandle.cancel;
       }, gender);
       _activeCancel = handle.cancel;
     }, gender);
-  }
+    _activeCancel = handle.cancel;
+  };
+
+  // Azure primary → Cartesia fallback → Browser fallback
+  handle = await speakWithAzure(text, onEnd, async () => {
+    console.warn("Azure TTS failed (speakAs), trying Cartesia");
+    await cartesiaFallback();
+  }, gender, voiceId);
 
   _activeCancel = handle.cancel;
   return handle;
@@ -777,38 +758,42 @@ export async function speak(
   const settings = loadTTSSettings();
   let handle: { cancel: () => void };
 
-  // Deepgram fallback (before browser TTS)
-    const deepgramFallback = async () => {
-      console.warn("Trying Deepgram TTS fallback");
-      handle = await speakWithDeepgram(text, onEnd, () => {
-        console.warn("Deepgram TTS failed, falling back to browser TTS");
+  // Cartesia fallback chain (before browser TTS)
+  const cartesiaFallback = async () => {
+    console.warn("Trying Cartesia TTS fallback");
+    const cartesiaVoice = DEFAULT_VOICE_ID;
+    const prefetchEntry = _prefetchCache.get(text);
+    const hasPrefetch = !!prefetchEntry && Date.now() - prefetchEntry.createdAt < PREFETCH_TTL;
+    if (hasPrefetch) {
+      handle = await speakWithProxy(text, cartesiaVoice, onEnd, () => {
+        console.warn("Cartesia REST also failed, falling back to browser TTS");
         const browserHandle = speakWithBrowser(text, onEnd, onError);
         handle = browserHandle;
         _activeCancel = browserHandle.cancel;
       });
-      _activeCancel = handle.cancel;
-    };
-
-  if (settings.provider === "cartesia") {
-    const prefetchEntry = _prefetchCache.get(text);
-    const hasPrefetch = !!prefetchEntry && Date.now() - prefetchEntry.createdAt < PREFETCH_TTL;
-    if (hasPrefetch) {
-      handle = await speakWithProxy(text, settings.voiceId, onEnd, async () => {
-        console.warn("Cartesia REST failed, trying Deepgram");
-        await deepgramFallback();
-      });
     } else {
-      handle = await speakWithWebSocket(text, settings.voiceId, onEnd, async () => {
-        console.warn("Cartesia WebSocket failed, falling back to REST");
-        handle = await speakWithProxy(text, settings.voiceId, onEnd, async () => {
-          console.warn("Cartesia REST also failed, trying Deepgram");
-          await deepgramFallback();
+      handle = await speakWithWebSocket(text, cartesiaVoice, onEnd, async () => {
+        console.warn("Cartesia WS failed, trying REST");
+        handle = await speakWithProxy(text, cartesiaVoice, onEnd, () => {
+          console.warn("Cartesia REST also failed, falling back to browser TTS");
+          const browserHandle = speakWithBrowser(text, onEnd, onError);
+          handle = browserHandle;
+          _activeCancel = browserHandle.cancel;
         });
         _activeCancel = handle.cancel;
       });
     }
-  } else {
+    _activeCancel = handle.cancel;
+  };
+
+  if (settings.provider === "browser") {
     handle = speakWithBrowser(text, onEnd, onError);
+  } else {
+    // Azure primary → Cartesia fallback → Browser fallback
+    handle = await speakWithAzure(text, onEnd, async () => {
+      console.warn("Azure TTS failed, trying Cartesia fallback");
+      await cartesiaFallback();
+    });
   }
 
   _activeCancel = handle.cancel;

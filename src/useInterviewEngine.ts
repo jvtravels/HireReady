@@ -10,6 +10,7 @@ import type { InterviewStep } from "./interviewScripts";
 import { getMiniScript, getScript } from "./interviewScripts";
 import { saveSessionResult, fetchLLMQuestions, fetchLLMEvaluation, fetchFollowUp, retryQueuedEvals, getAdaptiveHints } from "./interviewAPI";
 import { createDeepgramSTT, type DeepgramSTTHandle } from "./deepgramSTT";
+import { createSarvamSTT, type SarvamSTTHandle } from "./sarvamSTT";
 import { getInterviewerName, getPanelMembers, formatTime } from "./InterviewComponents";
 import { createSpeechRecognition } from "./speechRecognition";
 import type { SpeechRecognitionInstance, SpeechRecognitionEvent } from "./speechRecognition";
@@ -360,6 +361,7 @@ export function useInterviewEngine() {
   // Speech recognition
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
   const deepgramRef = useRef<DeepgramSTTHandle | null>(null);
+  const sarvamRef = useRef<SarvamSTTHandle | null>(null);
   const [currentTranscript, setCurrentTranscript] = useState("");
   const [phase, setPhase] = useState<"thinking" | "speaking" | "listening" | "done">("thinking");
   const [elapsed, setElapsed] = useState(draftRef.current?.elapsed || 0);
@@ -531,6 +533,7 @@ export function useInterviewEngine() {
       ttsCancelRef.current?.();
       recognitionRef.current?.stop();
       deepgramRef.current?.abort();
+      sarvamRef.current?.abort();
     };
   }, [aiVoiceEnabled]);
 
@@ -542,6 +545,51 @@ export function useInterviewEngine() {
       let stopped = false;
 
       let deepgramCleanup: (() => void) | null = null;
+      let sarvamCleanup: (() => void) | null = null;
+
+      // Fallback chain: Deepgram Nova-3 → Sarvam AI → Web Speech API
+      const trySarvam = async () => {
+        if (stopped) return;
+        console.info("[STT] Trying Sarvam AI fallback...");
+        const handle = await createSarvamSTT({
+          onTranscript: (finalText, interim) => {
+            if (!stopped) setCurrentTranscript(finalText + interim);
+          },
+          onError: (error) => {
+            if (stopped) return;
+            if (error === "not-allowed") {
+              setMicError("Microphone access denied. Check browser permissions.");
+              setSpeechUnavailable(true);
+              setShowCaptions(true);
+              setTimeout(() => textareaRef.current?.focus(), 100);
+            } else {
+              console.warn("[Sarvam] error, falling back to Web Speech API:", error);
+              toast("Speech recognition switched to browser fallback.", "info");
+              sarvamRef.current = null;
+              startWebSpeechAPI();
+            }
+          },
+          onEnd: () => {
+            if (stopped || interviewEndedRef.current) return;
+            sarvamRef.current = null;
+            console.warn("[Sarvam] connection ended, falling back to Web Speech API");
+            toast("Speech recognition switched to browser fallback.", "info");
+            startWebSpeechAPI();
+          },
+        });
+        if (stopped) { handle?.abort(); return; }
+        if (handle) {
+          sarvamRef.current = handle;
+          sarvamCleanup = () => {
+            handle.stop();
+            sarvamRef.current = null;
+          };
+        } else {
+          console.warn("[Sarvam] setup failed, falling back to Web Speech API");
+          startWebSpeechAPI();
+        }
+      };
+
       const tryDeepgram = async () => {
         if (stopped) return;
         const handle = await createDeepgramSTT({
@@ -556,16 +604,15 @@ export function useInterviewEngine() {
               setShowCaptions(true);
               setTimeout(() => textareaRef.current?.focus(), 100);
             } else {
-              console.warn("[Deepgram] error, falling back to Web Speech API:", error);
-              toast("Speech recognition switched to browser fallback.", "info");
+              console.warn("[Deepgram] error, falling back to Sarvam AI:", error);
               deepgramRef.current = null;
-              startWebSpeechAPI();
+              trySarvam();
             }
           },
           onEnd: () => {
             if (stopped || interviewEndedRef.current) return;
             deepgramRef.current = null;
-            // Retry Deepgram once before falling back to Web Speech API
+            // Retry Deepgram once before falling back to Sarvam
             if (navigator.onLine && deepgramRetryRef.current < 2) {
               deepgramRetryRef.current++;
               const backoffMs = 1000 * Math.pow(2, deepgramRetryRef.current - 1); // 1s, 2s
@@ -573,9 +620,8 @@ export function useInterviewEngine() {
               toast("Reconnecting speech recognition...", "info");
               setTimeout(() => { if (!stopped) tryDeepgram(); }, backoffMs);
             } else {
-              console.warn("[Deepgram] connection ended, falling back to Web Speech API");
-              toast("Speech recognition switched to browser fallback.", "info");
-              startWebSpeechAPI();
+              console.warn("[Deepgram] retries exhausted, falling back to Sarvam AI");
+              trySarvam();
             }
           },
         });
@@ -587,7 +633,8 @@ export function useInterviewEngine() {
             deepgramRef.current = null;
           };
         } else {
-          startWebSpeechAPI();
+          // Deepgram setup failed (no API key, etc.) — try Sarvam
+          trySarvam();
         }
       };
 
@@ -684,12 +731,15 @@ export function useInterviewEngine() {
         clearTimeout(safetyTimer);
         stopped = true;
         deepgramCleanup?.();
+        sarvamCleanup?.();
         recognitionRef.current?.stop();
         recognitionRef.current = null;
       };
     } else {
       deepgramRef.current?.abort();
       deepgramRef.current = null;
+      sarvamRef.current?.abort();
+      sarvamRef.current = null;
       recognitionRef.current?.stop();
       recognitionRef.current = null;
       return;
