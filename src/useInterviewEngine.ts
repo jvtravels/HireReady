@@ -230,15 +230,21 @@ export function useInterviewEngine() {
           localStorage.removeItem(draftKey);
           deleteFromIDB(draftKey);
         } else if (parsed && Array.isArray(parsed.transcript) && typeof parsed.currentStep === "number" && parsed.currentStep > 0) {
-          // Auto-restore if draft matches current session params (type, difficulty, focus)
-          // or if explicitly resuming via ?resume=true
+          // Auto-restore ONLY if explicitly resuming OR if ALL session params match
+          // (type, difficulty, focus, role, company) — prevents stale drafts from different sessions
           const draftMatchesSession = (
             parsed.interviewType === interviewType &&
             parsed.interviewDifficulty === interviewDifficulty &&
-            parsed.interviewFocus === interviewFocus
+            parsed.interviewFocus === interviewFocus &&
+            parsed.targetRole === targetRole &&
+            parsed.targetCompany === targetCompany
           );
           if (isResuming || draftMatchesSession) {
             draftRef.current = parsed;
+          } else {
+            // Clear stale draft from a different session
+            localStorage.removeItem(draftKey);
+            deleteFromIDB(draftKey);
           }
         }
       }
@@ -271,19 +277,24 @@ export function useInterviewEngine() {
     loadFromIDB(draftKey).then(data => {
       if (cancelled) return; // Interview already started, skip stale IDB data
       if (data && typeof data === "object" && "transcript" in data) {
-        const d = data as InterviewDraft & { savedAt?: number; interviewType?: string; interviewDifficulty?: string; interviewFocus?: string; currentStep?: number };
+        const d = data as InterviewDraft & { savedAt?: number; interviewType?: string; interviewDifficulty?: string; interviewFocus?: string; currentStep?: number; targetRole?: string; targetCompany?: string };
         const DRAFT_TTL = 24 * 60 * 60 * 1000;
         if (d.savedAt && Date.now() - d.savedAt > DRAFT_TTL) {
           deleteFromIDB(draftKey);
           return;
         }
-        // Only restore if draft matches current session or explicitly resuming
+        // Only restore if draft matches ALL current session params or explicitly resuming
         const draftMatchesSession = (
           d.interviewType === interviewType &&
           d.interviewDifficulty === interviewDifficulty &&
-          d.interviewFocus === interviewFocus
+          d.interviewFocus === interviewFocus &&
+          d.targetRole === targetRole &&
+          d.targetCompany === targetCompany
         );
-        if (!isResuming && !draftMatchesSession) return;
+        if (!isResuming && !draftMatchesSession) {
+          deleteFromIDB(draftKey);
+          return;
+        }
         if (!d.currentStep || d.currentStep === 0) return;
         draftRef.current = d;
         setCurrentStep(d.currentStep || 0);
@@ -550,6 +561,7 @@ export function useInterviewEngine() {
     const saveDraft = () => {
       const draftData = {
         transcript, currentStep, elapsed, interviewType, interviewDifficulty, interviewFocus,
+        targetRole, targetCompany,
         script: interviewScript,
         savedAt: Date.now(),
       };
