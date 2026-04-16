@@ -78,9 +78,13 @@ describe("interviewScripts", () => {
         resumeData: { experience: [{ title: "VP Engineering", company: "Acme" }] },
       } as any;
       const script = getMiniScript(user);
+      // Intro always mentions resume context
       expect(script[0].aiText).toContain("VP Engineering");
       expect(script[0].aiText).toContain("Acme");
-      expect(script[1].aiText).toContain("VP Engineering");
+      // At least one question should reference the resume title (randomized pool)
+      const questionTexts = script.filter(s => s.type === "question").map(s => s.aiText);
+      const hasResumeRef = questionTexts.some(t => t.includes("VP Engineering"));
+      expect(hasResumeRef).toBe(true);
     });
 
     it("all steps wait for user", () => {

@@ -1,10 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { c, font } from "./tokens";
 import {
   StatusToasts, InterviewHeader, AvatarStage, PanelAvatarStage, QuestionCard,
   UserAnswerArea, CompletionCard, MicroFeedbackPanel,
   ControlsBar, TranscriptPanel, EndModal, EvaluatingOverlay,
-  NegotiationCoachingCard, DealSummaryCard,
+  DealSummaryCard,
 } from "./InterviewPanels";
 import { useInterviewEngine } from "./useInterviewEngine";
 import { useVideoRecorder } from "./useVideoRecorder";
@@ -32,7 +32,7 @@ export default function Interview() {
     isPanelInterview, panelMembers, activePersona,
     ttsDurationMs, speechEnded,
     interviewScript, saveWarning, liveMetrics,
-    isSalaryNegotiation, negotiationStyle, negotiationBand,
+    isSalaryNegotiation, negotiationBand,
 
     setCurrentTranscript, setSpeechUnavailable, setIsMuted,
     setShowTranscript, setShowEndModal, setAiVoiceEnabled,
@@ -45,7 +45,6 @@ export default function Interview() {
   } = engine;
 
   // Coaching card state (salary negotiation only)
-  const [showCoaching, setShowCoaching] = useState(isSalaryNegotiation);
 
   // Stop video recording when interview ends
   useEffect(() => {
@@ -129,14 +128,6 @@ export default function Interview() {
         )}
 
         <div style={{ width: "100%", maxWidth: 560, display: "flex", flexDirection: "column", alignItems: "center", gap: 20 }}>
-
-          {/* Pre-interview coaching card for salary negotiation */}
-          {showCoaching && isSalaryNegotiation && phase !== "done" && (
-            <NegotiationCoachingCard
-              onDismiss={() => setShowCoaching(false)}
-              negotiationStyle={negotiationStyle}
-            />
-          )}
 
           {isPanelInterview && panelMembers ? (
             <PanelAvatarStage phase={phase} panelMembers={panelMembers} activePersona={activePersona} isMuted={isMuted} speechUnavailable={speechUnavailable} skipSpeaking={skipSpeaking} />

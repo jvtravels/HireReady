@@ -374,6 +374,7 @@ ${questionCount >= 5 ? "6" : "5"}. CLOSING: Summarize the final package, mention
 
 RULES:
 - Each question should REFERENCE what the candidate might have said in the previous turn (e.g., "I hear you — that's above our initial band" or "You mentioned...")
+- MONOTONIC OFFERS: Your offers can ONLY go UP as the negotiation progresses. If you offer ₹X initially, every subsequent offer/counter MUST be >= ₹X. You are negotiating UP from the initial offer, never down.
 - NEVER ask behavioral questions ("Tell me about a time...")
 - NEVER break character — you ARE the hiring manager, not a coach
 - The closing summarizes the deal and sets next steps — no coaching tips
