@@ -966,7 +966,30 @@ export function useInterviewEngine() {
       const lastAnswer = lastAnswerTextRef.current;
       const isIDontKnow = isIDontKnowAnswer(lastAnswer);
 
-      if (isIDontKnow && step.type !== "follow-up") {
+      if (interviewType === "salary-negotiation") {
+        // Salary-negotiation: hiring manager reactions (no topic transitions or time pressure)
+        if (isIDontKnow) {
+          thinkingPhrase = pickRandom([
+            "I need you to share your expectations so we can work this out.",
+            "Help me understand what you're looking for — I can't make this work without your input.",
+            "Let me rephrase that.",
+          ]);
+        } else if (quality === "strong") {
+          thinkingPhrase = pickRandom([
+            "That's fair.", "I hear you.", "Okay, let me think about that.",
+            "That's a reasonable ask.", "I appreciate the clarity.",
+          ]);
+        } else if (quality === "weak") {
+          thinkingPhrase = pickRandom([
+            "Hmm, okay.", "I see.", "Let me address that.",
+            "Alright.", "Noted.",
+          ]);
+        } else {
+          thinkingPhrase = pickRandom([
+            "Okay.", "Got it.", "I understand.", "Right.", "Sure.",
+          ]);
+        }
+      } else if (isIDontKnow && step.type !== "follow-up") {
         // "I don't know" response — redirect gracefully
         thinkingPhrase = pickRandom(REACTIONS.dontKnowRedirect);
         dontKnowCountRef.current++;
@@ -977,17 +1000,14 @@ export function useInterviewEngine() {
         // Personality-modulated reactions
         let reaction: string;
         if (personality === "tough") {
-          // Tough interviewer: muted praise, sharper on weak answers
           reaction = quality === "strong" ? pickRandom(["Okay.", "Alright, noted.", "Fair."]) :
                      quality === "weak" ? pickRandom(["Hmm.", "Okay… I was hoping for more specifics.", "Let's move on."]) :
                      pickRandom(REACTIONS[quality]);
         } else if (personality === "friendly") {
-          // Friendly interviewer: warmer on all answers
           reaction = quality === "strong" ? pickRandom(["That's great! Really well put.", "Excellent example — I love the detail.", "Very impressive."]) :
                      quality === "weak" ? pickRandom(["Okay, no problem. Let's try another.", "That's fine — let's keep going."]) :
                      pickRandom(REACTIONS[quality]);
         } else if (personality === "time-pressed") {
-          // Time-pressed: brief, moves fast
           reaction = pickRandom(["Got it.", "Okay.", "Right.", "Noted."]);
         } else {
           reaction = pickRandom(REACTIONS[quality]);
@@ -1106,28 +1126,43 @@ export function useInterviewEngine() {
     };
 
     const pendingFollowUp = pendingFollowUpRef.current;
+    const isSalaryNegConversation = interviewType === "salary-negotiation";
     if (pendingFollowUp) {
       pendingFollowUpRef.current = null;
-      const timeout = new Promise<null>(r => setTimeout(() => r(null), 4000));
+      const timeout = new Promise<null>(r => setTimeout(() => r(null), isSalaryNegConversation ? 6000 : 4000));
       Promise.race([pendingFollowUp, timeout]).then(result => {
         if (isStale() || interviewEndedRef.current) return;
         if (result?.needsFollowUp && result.followUpText && currentStepRef.current === currentStep) {
           // Preserve persona from the original question (or from API response) for panel interviews
           const followUpPersona = isPanelInterview ? ((result as { persona?: string }).persona || step.persona) : undefined;
           const followUpStep: InterviewStep = {
-            type: "follow-up",
+            type: isSalaryNegConversation ? "question" : "follow-up",
             aiText: result.followUpText,
             thinkingDuration: 300,
-            speakingDuration: 4000,
+            speakingDuration: 4500,
             waitForUser: true,
-            scoreNote: "Dynamic follow-up based on candidate's answer",
+            scoreNote: isSalaryNegConversation ? "Salary negotiation response — evaluate negotiation strategy" : "Dynamic follow-up based on candidate's answer",
             persona: followUpPersona,
           };
-          setInterviewScript(prev => [
-            ...prev.slice(0, currentStep),
-            followUpStep,
-            ...prev.slice(currentStep),
-          ]);
+          if (isSalaryNegConversation) {
+            // Replace the next pre-generated question with the dynamic response
+            // This makes the conversation flow naturally instead of jumping to a random question
+            setInterviewScript(prev => {
+              const nextQuestionIdx = prev.findIndex((s, i) => i >= currentStep && s.type === "question");
+              if (nextQuestionIdx >= currentStep && nextQuestionIdx < prev.length - 1) {
+                // Replace the next question with the dynamic one
+                return [...prev.slice(0, nextQuestionIdx), followUpStep, ...prev.slice(nextQuestionIdx + 1)];
+              }
+              // Fallback: insert before current step (standard follow-up behavior)
+              return [...prev.slice(0, currentStep), followUpStep, ...prev.slice(currentStep)];
+            });
+          } else {
+            setInterviewScript(prev => [
+              ...prev.slice(0, currentStep),
+              followUpStep,
+              ...prev.slice(currentStep),
+            ]);
+          }
         } else if (!interviewEndedRef.current) {
           // Quality-aware pause: longer pause after strong answers (interviewer absorbing), shorter after weak
           const quality = lastAnswerQualityRef.current;
@@ -1178,9 +1213,10 @@ export function useInterviewEngine() {
 
     const answerText = currentTranscript.trim() || `[Answer recorded — ${answerTimer}s]`;
 
-    // Validate text input — require at least 10 chars for a real answer
-    if (!answerText.startsWith("[Answer recorded") && answerText.length < 10) {
-      toast("Please provide a longer answer (at least a few words).", "info");
+    // Validate text input — require minimum length (shorter threshold for salary-negotiation since "₹25 LPA" is valid)
+    const minLength = interviewType === "salary-negotiation" ? 3 : 10;
+    if (!answerText.startsWith("[Answer recorded") && answerText.length < minLength) {
+      toast(interviewType === "salary-negotiation" ? "Please type your response." : "Please provide a longer answer (at least a few words).", "info");
       advancingRef.current = false;
       return;
     }
@@ -1203,55 +1239,104 @@ export function useInterviewEngine() {
     setMicroFeedback(null);
     if (answerText.length > 10 && !answerText.startsWith("[Answer recorded")) {
       const wordCount = answerText.trim().split(/\s+/).length;
-      const hasMetrics = /\d+%|\$\d|[0-9]+x|[0-9]+ (users|customers|engineers|people)/i.test(answerText);
-      const hasStructure = /first|second|then|finally|result|outcome|impact/i.test(answerText);
-      const hasFirstPerson = /\bI\b/i.test(answerText);
-      const hasCounterfactual = /without|otherwise|if.*not|had.*not|wouldn't/i.test(answerText);
 
-      // Score this answer (0-100) for dynamic difficulty tracking
-      let answerScore = 50;
-      if (wordCount >= 50) answerScore += 10;
-      if (wordCount >= 100) answerScore += 5;
-      if (hasMetrics) answerScore += 15;
-      if (hasStructure) answerScore += 10;
-      if (hasFirstPerson) answerScore += 5;
-      if (hasCounterfactual) answerScore += 5;
-      if (wordCount < 30) answerScore -= 15;
-      answerQualityRef.current.push(Math.min(100, Math.max(0, answerScore)));
+      if (interviewType === "salary-negotiation") {
+        // Salary-negotiation-specific micro-feedback
+        const mentionsNumber = /₹|lakh|lpa|lakhs|\d+\s*l(?:pa|akh)/i.test(answerText);
+        const mentionsBenefits = /benefit|esop|equity|bonus|flexible|remote|insurance|learning|budget/i.test(answerText);
+        const mentionsCompeting = /other offer|competing|another company|counter/i.test(answerText);
+        const acceptsImmediately = /(?:sounds good|i accept|that works|deal|perfect|okay sure|fine with me)/i.test(answerText) && wordCount < 20;
 
-      // Compute running average for dynamic difficulty
-      const scores = answerQualityRef.current;
-      const runningAvg = scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 50;
-      const isExcelling = runningAvg >= 80 && scores.length >= 2;
-      const isStruggling = runningAvg < 50 && scores.length >= 2;
-
-      if (wordCount < 30) {
-        setMicroFeedback(isStruggling
-          ? "Try to say more — even 2-3 sentences about the situation helps."
-          : "Try to elaborate more — aim for 60+ seconds per answer.");
-      } else if (!hasMetrics && !hasStructure) {
-        setMicroFeedback(isExcelling
-          ? "Good content — push further with specific metrics and counterfactual reasoning."
-          : "Good start! Try adding specific metrics and structuring with STAR.");
-      } else if (!hasMetrics) {
-        setMicroFeedback(isExcelling
-          ? "Nice structure! Add quantified impact — '$X revenue', '30% faster', etc."
-          : "Nice structure! Strengthen with specific numbers or metrics.");
-      } else if (!hasStructure) {
-        setMicroFeedback("Great data! Try structuring as Situation → Action → Result.");
-      } else if (isExcelling && !hasCounterfactual) {
-        setMicroFeedback("Strong answer! Next level: add counterfactual reasoning — 'Without this, X would have happened.'");
+        if (acceptsImmediately) {
+          setMicroFeedback("Tip: Don't accept too quickly — explore the full package first.");
+        } else if (wordCount < 15) {
+          setMicroFeedback("Tip: Elaborate on your reasoning — why that number? What's your basis?");
+        } else if (mentionsNumber && !mentionsBenefits) {
+          setMicroFeedback("Good anchor! Consider discussing beyond base — benefits, equity, flexibility.");
+        } else if (mentionsBenefits && mentionsNumber) {
+          setMicroFeedback("Strong negotiation — covering both compensation and package elements.");
+        } else if (mentionsCompeting) {
+          setMicroFeedback("Using leverage well. Be careful not to bluff — stay credible.");
+        } else if (wordCount >= 30) {
+          setMicroFeedback("Good response — clear and substantive.");
+        }
+        // Score for difficulty tracking
+        let answerScore = 50;
+        if (mentionsNumber) answerScore += 15;
+        if (mentionsBenefits) answerScore += 15;
+        if (wordCount >= 30) answerScore += 10;
+        if (!acceptsImmediately) answerScore += 10;
+        if (wordCount < 15) answerScore -= 15;
+        answerQualityRef.current.push(Math.min(100, Math.max(0, answerScore)));
       } else {
-        setMicroFeedback(isExcelling ? "Excellent — specific, structured, and impactful." : "Strong answer — specific and well-structured.");
+        // Standard behavioral/technical micro-feedback
+        const hasMetrics = /\d+%|\$\d|[0-9]+x|[0-9]+ (users|customers|engineers|people)/i.test(answerText);
+        const hasStructure = /first|second|then|finally|result|outcome|impact/i.test(answerText);
+        const hasFirstPerson = /\bI\b/i.test(answerText);
+        const hasCounterfactual = /without|otherwise|if.*not|had.*not|wouldn't/i.test(answerText);
+
+        let answerScore = 50;
+        if (wordCount >= 50) answerScore += 10;
+        if (wordCount >= 100) answerScore += 5;
+        if (hasMetrics) answerScore += 15;
+        if (hasStructure) answerScore += 10;
+        if (hasFirstPerson) answerScore += 5;
+        if (hasCounterfactual) answerScore += 5;
+        if (wordCount < 30) answerScore -= 15;
+        answerQualityRef.current.push(Math.min(100, Math.max(0, answerScore)));
+
+        const scores = answerQualityRef.current;
+        const runningAvg = scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 50;
+        const isExcelling = runningAvg >= 80 && scores.length >= 2;
+        const isStruggling = runningAvg < 50 && scores.length >= 2;
+
+        if (wordCount < 30) {
+          setMicroFeedback(isStruggling
+            ? "Try to say more — even 2-3 sentences about the situation helps."
+            : "Try to elaborate more — aim for 60+ seconds per answer.");
+        } else if (!hasMetrics && !hasStructure) {
+          setMicroFeedback(isExcelling
+            ? "Good content — push further with specific metrics and counterfactual reasoning."
+            : "Good start! Try adding specific metrics and structuring with STAR.");
+        } else if (!hasMetrics) {
+          setMicroFeedback(isExcelling
+            ? "Nice structure! Add quantified impact — '$X revenue', '30% faster', etc."
+            : "Nice structure! Strengthen with specific numbers or metrics.");
+        } else if (!hasStructure) {
+          setMicroFeedback("Great data! Try structuring as Situation → Action → Result.");
+        } else if (isExcelling && !hasCounterfactual) {
+          setMicroFeedback("Strong answer! Next level: add counterfactual reasoning — 'Without this, X would have happened.'");
+        } else {
+          setMicroFeedback(isExcelling ? "Excellent — specific, structured, and impactful." : "Strong answer — specific and well-structured.");
+        }
       }
     }
 
     // Fire follow-up check in background
-    const canFollowUp = (currentStepObj?.type === "question" || currentStepObj?.type === "follow-up")
-      && !isLastStep && answerText.length > 10 && !answerText.startsWith("[Answer recorded");
+    const isSalaryNegType = interviewType === "salary-negotiation";
+    // For salary-negotiation: always fire follow-up (conversation must continue naturally)
+    // For other types: standard follow-up logic
+    const canFollowUp = isSalaryNegType
+      ? ((currentStepObj?.type === "question" || currentStepObj?.type === "follow-up") && !isLastStep)
+      : ((currentStepObj?.type === "question" || currentStepObj?.type === "follow-up")
+        && !isLastStep && answerText.length > 10 && !answerText.startsWith("[Answer recorded"));
 
     if (canFollowUp) {
-      // Collect recent follow-up Q&A pairs for context
+      // Cross-question memory: build conversation history for context
+      const earlierTopics: string[] = [];
+      for (const t of transcript) {
+        if (t.speaker === "ai" && !t.text.startsWith("[")) {
+          earlierTopics.push(`Q: ${t.text.slice(0, 150)}`);
+        } else if (t.speaker === "user" && !t.text.startsWith("[")) {
+          earlierTopics.push(`A: ${t.text.slice(0, 120)}`);
+        }
+      }
+      // Add current exchange
+      earlierTopics.push(`Q: ${currentStepObj!.aiText.slice(0, 150)}`);
+      earlierTopics.push(`A: ${answerText.slice(0, 120)}`);
+      const conversationHistory = earlierTopics.slice(-16).join("\n");
+
+      // Collect recent follow-up Q&A pairs
       const recentFollowUps: string[] = [];
       for (let i = Math.max(0, currentStep - 4); i <= currentStep; i++) {
         const s = interviewScript[i];
@@ -1261,23 +1346,21 @@ export function useInterviewEngine() {
       }
       if (answerText) recentFollowUps.push(`A: ${answerText}`);
 
-      // Cross-question memory: build brief summary of earlier Q&A for thematic connections
-      const earlierTopics: string[] = [];
-      for (const t of transcript) {
-        if (t.speaker === "ai" && !t.text.startsWith("[")) {
-          earlierTopics.push(`Q: ${t.text.slice(0, 120)}`);
-        } else if (t.speaker === "user" && !t.text.startsWith("[")) {
-          earlierTopics.push(`A: ${t.text.slice(0, 100)}`);
-        }
-      }
-      // Keep only last 6 exchanges to avoid token bloat
-      const conversationHistory = earlierTopics.slice(-12).join("\n");
+      // For salary negotiation: always depth 0 (each response is a new conversational turn, not a stacked follow-up)
+      // For other types: increment depth for follow-up chains
+      const depth = isSalaryNegType ? 0 : (currentStepObj?.type === "follow-up" ? followUpDepthRef.current + 1 : 0);
 
-      const depth = currentStepObj?.type === "follow-up" ? followUpDepthRef.current + 1 : 0;
       // Guard: if pending follow-up fetch is still in flight, skip to avoid desync
       if (pendingFollowUpRef.current) {
         pendingFollowUpRef.current = null;
       }
+
+      // Determine negotiation phase from question index for salary-negotiation
+      const questionSteps = interviewScript.filter(s => s.type === "question" || s.type === "follow-up");
+      const currentQuestionIdx = interviewScript.slice(0, currentStep + 1).filter(s => s.type === "question" || s.type === "follow-up").length;
+      const totalQs = questionSteps.length;
+      const negotiationPhases = ["offer-reaction", "probe-expectations", "counter-offer", "closing"];
+      const salaryPhase = isSalaryNegType ? (negotiationPhases[Math.min(currentQuestionIdx - 1, negotiationPhases.length - 1)] || "offer-reaction") : undefined;
 
       if (depth <= 2) {
         followUpDepthRef.current = depth;
@@ -1294,6 +1377,9 @@ export function useInterviewEngine() {
           previousFollowUps: recentFollowUps.length > 0 ? recentFollowUps : undefined,
           persona: isPanelInterview ? currentStepObj?.persona : undefined,
           conversationHistory: conversationHistory || undefined,
+          negotiationPhase: salaryPhase,
+          questionIndex: isSalaryNegType ? currentQuestionIdx : undefined,
+          totalQuestions: isSalaryNegType ? totalQs : undefined,
         });
       } else {
         pendingFollowUpRef.current = null;

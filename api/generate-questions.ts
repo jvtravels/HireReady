@@ -331,14 +331,26 @@ Generate exactly ${stepCount} interview steps as a JSON array. Sequence: intro, 
 Each step: {"type":"intro|question|closing","aiText":"2-3 sentences spoken naturally by the interviewer","scoreNote":"specific evaluation criteria for this question"${interviewType === "panel" ? ',"persona":"Hiring Manager|Technical Lead|HR Partner"' : ""}}${panelNote}
 
 ${isSalaryType
-? `IMPORTANT closing rules:
-- The closing MUST stay in character as the hiring manager wrapping up the negotiation.
-- Do NOT break immersion with coaching tips or "Great practice session!" meta-commentary.
-- The closing should finalize the offer discussion: confirm next steps, mention paperwork/HR follow-up, set a decision deadline.
-- Example closing: "I think we've covered the key points. Let me summarize: we're at ₹X CTC with the joining bonus and flexible work arrangement we discussed. I'll have HR send the formal offer letter by tomorrow. Take a couple of days to think it over — we'd love to have you on board."
+? `CRITICAL: This is a SALARY NEGOTIATION CONVERSATION, not a list of independent questions. Each question MUST flow logically from the previous one as a real hiring manager would speak.
+
+MANDATORY CONVERSATION ARC — generate questions in this EXACT sequence:
+1. INTRO: Welcome the candidate, set context (rounds completed, team impressed)
+2. INITIAL OFFER: Present a specific CTC with breakdown (base, variable, benefits). Ask how it sounds. Use exact ₹ amounts from the salary data above.
+3. PROBE EXPECTATIONS: React to their response. Ask about their current CTC, target range, and reasoning. Reference what they might say.
+4. COUNTER-OFFER: Acknowledge their ask is above the band. Offer a specific counter with a trade (e.g., higher base but lower variable, or joining bonus, or ESOPs). Give them a choice between two options.
+${questionCount >= 5 ? `5. PACKAGE DISCUSSION: Present the full package (base + bonus + equity + benefits + flexibility). Ask what would make it a clear yes.` : ""}
+${questionCount >= 5 ? "6" : "5"}. CLOSING: Summarize the final package, mention HR sending the offer letter, set a decision deadline. Stay in character.
+
+RULES:
+- Each question should REFERENCE what the candidate might have said in the previous turn (e.g., "I hear you — that's above our initial band" or "You mentioned...")
+- NEVER ask behavioral questions ("Tell me about a time...")
+- NEVER break character — you ARE the hiring manager, not a coach
+- The closing summarizes the deal and sets next steps — no coaching tips
+- Use ₹ and LPA for all amounts
 
 Example good question: "We'd like to offer you ₹18 LPA — ₹14.5 LPA base with 10% performance bonus and standard benefits. How does that align with your expectations?"
-Example bad question: "Tell me about a time you led a cross-functional project." (behavioral, NOT salary negotiation)`
+Example bad question: "Tell me about a time you led a cross-functional project." (behavioral, NOT salary negotiation)
+Example bad question: "What salary range are you expecting?" (too generic — should follow from previous turn)`
 : `IMPORTANT closing rules:
 - The closing step MUST be a wrap-up summary, NOT an open-ended question
 - Do NOT ask "Do you have any questions?" or similar — the system handles that separately

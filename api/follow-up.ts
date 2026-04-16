@@ -38,12 +38,13 @@ export default async function handler(req: Request): Promise<Response> {
   }
 
   try {
-    const { question, answer, type, role, jobDescription, company, currentCity, jobCity, followUpDepth = 0, previousFollowUps, persona, conversationHistory } = await req.json() as {
+    const { question, answer, type, role, jobDescription, company, currentCity, jobCity, followUpDepth = 0, previousFollowUps, persona, conversationHistory, negotiationPhase, questionIndex, totalQuestions } = await req.json() as {
       question: string; answer: string; type: string; role: string;
       jobDescription?: string; company?: string;
       currentCity?: string; jobCity?: string;
       followUpDepth?: number; previousFollowUps?: string[];
       persona?: string; conversationHistory?: string;
+      negotiationPhase?: string; questionIndex?: number; totalQuestions?: number;
     };
 
     if (!question || typeof question !== "string" || !answer || typeof answer !== "string") {
@@ -66,7 +67,9 @@ export default async function handler(req: Request): Promise<Response> {
     // Depth 1: challenge / pushback
     // Depth 2: pivot to adjacent competency
     const safeDepth = Math.max(0, Math.min(2, Math.floor(followUpDepth)));
-    const followUpTypeLabel = safeDepth === 0 ? "probe_detail" : safeDepth === 1 ? "challenge" : "pivot";
+    const followUpTypeLabel = isSalaryNeg
+      ? (salaryPhase || "negotiation_response")
+      : (safeDepth === 0 ? "probe_detail" : safeDepth === 1 ? "challenge" : "pivot");
 
     // Determine answer strength for adaptive follow-up behavior
     const hasSpecifics = /specifically|for example|for instance|in particular|one time|at my previous|at our company|we decided/i.test(answer);
@@ -76,42 +79,66 @@ export default async function handler(req: Request): Promise<Response> {
 
     const isSalaryNeg = type === "salary-negotiation";
 
+    // For salary negotiation: determine conversation phase from questionIndex
+    const salaryPhase = isSalaryNeg
+      ? (negotiationPhase || (questionIndex !== undefined && totalQuestions
+        ? questionIndex <= 1 ? "offer-reaction" : questionIndex === 2 ? "probe-expectations" : questionIndex === 3 ? "counter-offer" : "closing"
+        : "offer-reaction"))
+      : "";
+
     let depthInstructions: string;
     if (isSalaryNeg) {
-      // Salary-negotiation follow-ups are fundamentally different — they're negotiation responses, not behavioral probes
-      if (safeDepth === 0) {
-        depthInstructions = `You are a HIRING MANAGER in a salary negotiation. Respond to the candidate's answer as a manager would.
+      // Salary-negotiation: each follow-up is the hiring manager's NEXT conversational turn.
+      // The phase determines what the manager should say next — this creates a natural conversation arc.
+      const phaseInstructions: Record<string, string> = {
+        "offer-reaction": `CONVERSATION PHASE: Reacting to candidate's response to initial offer.
 
-Analyze the candidate's response:
-- Did they state a specific number/range? → Respond to that number relative to your budget.
-- Did they ask about benefits/equity? → Provide details and ask what matters most to them.
-- Did they mention a competing offer? → Acknowledge it and position your offer competitively.
-- Did they accept too quickly? → Set needsFollowUp to true and probe: "Before we finalize, are there any other aspects of the package you'd like to discuss — benefits, flexible work, learning budget?"
-- Did they push back? → Counter-offer with a trade: "I can move on base if we adjust the joining bonus" or "Let me see if I can get approval for that range — what's the minimum you'd accept?"
-- Did they just say a number without reasoning? → Probe: "Help me understand how you arrived at that number — is it based on your current CTC, market research, or another offer?"
+Read the candidate's response carefully and respond naturally:
+- If they expressed interest but didn't commit → "Great to hear! Before we get into specifics, I'm curious — what's your current compensation looking like? And what range are you targeting for this move?"
+- If they asked about the breakdown → Provide details (base, bonus, benefits) and then ask: "Does that give you a clearer picture? What range were you expecting?"
+- If they immediately named a counter-number → "That's helpful to know. Let me understand — is that based on a competing offer, your current package, or market research?"
+- If they said it's too low → "I appreciate the honesty. Help me understand what you had in mind — what would make this work for you?"
+- If they accepted immediately → "I'm glad! But before we finalize, I want to make sure you've thought about the full picture — benefits, growth path, work flexibility. Anything you'd want to discuss?"
+- If the answer is vague/empty → "I want to make sure we're on the same page. What are your salary expectations for this role? A range is fine."`,
 
-You MUST stay in character as the hiring manager. NEVER ask behavioral questions. Set needsFollowUp to true unless the candidate has clearly accepted or rejected the offer.`;
-      } else if (safeDepth === 1) {
-        depthInstructions = `You are a HIRING MANAGER pushing back on the candidate's counter-offer. You MUST generate a follow-up — set needsFollowUp to true.
+        "probe-expectations": `CONVERSATION PHASE: Probing the candidate's expectations and current situation.
 
-Your goal: Test their negotiation resolve and explore package flexibility.
-- If they named a high number: "That's above our band for this level. What if I offered ₹X base with ₹Y in ESOPs to bridge the gap? Would that work?"
-- If they only focused on base salary: "Base is important, but let me tell you about our benefits — we offer ₹1.5 LPA learning budget, comprehensive family health coverage, and flexible work from day 1. Does that change how you think about the total package?"
-- If they mentioned a competing offer: "I appreciate your transparency. We can't always match on base, but our equity upside / learning culture / growth trajectory is something worth factoring in. What matters most to you beyond salary?"
-- If they seem hesitant: "I want to make sure you feel good about this. What would it take for you to say yes today?"
+You've heard their initial reaction. Now probe deeper — but RESPOND to what they actually said:
+- If they shared their current CTC → Acknowledge it and position your offer: "So you're at ₹X currently. Our offer of ₹Y represents a Z% hike. Is that in the range you were hoping for, or do you have a specific target?"
+- If they named a higher range → "I hear you. ₹X is above our initial band, but let me see what flexibility I have. What's driving that number — is it a competing offer, or your market research?"
+- If they mentioned competing offers → "That's fair. Without asking you to share details, can you tell me what matters most — is it the base, the total package, or the role itself?"
+- If they deflected or asked you to go first → "Fair enough. Let me put our cards on the table — [restate offer with breakdown]. Now, what would you need to see to make this a yes?"
+- If the answer is vague/empty → "I need to understand your expectations to work with you on this. Can you share what CTC range you're targeting?"`,
 
-Sound like a real Indian hiring manager — warm but firm. 2-3 sentences max.`;
-      } else {
-        depthInstructions = `You are a HIRING MANAGER closing the negotiation. You MUST generate a follow-up — set needsFollowUp to true.
+        "counter-offer": `CONVERSATION PHASE: Making a counter-offer based on the negotiation so far.
 
-Your goal: Move toward a decision with urgency.
-- Timeline: "We'd need your decision by [date]. We have other strong candidates in the pipeline."
-- Final offer: "Let me be upfront — I've stretched as far as I can on this. Here's my best offer: [summarize]. Can we shake on this?"
-- Notice period: "What's your notice period? If you can join within 30 days, I can add an early joining bonus of ₹X."
-- Soft close: "I think we've found a good middle ground. Shall I have HR send the offer letter?"
+You've heard their expectations. Now negotiate — trade, don't just concede:
+- If they asked for more base → "I can move the base to ₹X, but I'd need to adjust the variable component. Alternatively, I can add a joining bonus of ₹Y. Which would you prefer?"
+- If they focused only on salary → "Base is one piece. Let me share the full picture — [mention benefits: learning budget, flexible work, health insurance, ESOPs]. When you factor these in, the effective package is closer to ₹X. Does that change your thinking?"
+- If they were reasonable → "I think we're close. Let me stretch to ₹X CTC — that's genuinely the ceiling for this band. I can also add [one extra lever]. Would that work?"
+- If they pushed hard → "I respect the ambition. Let me be transparent — ₹X is the max for this level. But here's what I can do: [offer 2-3 non-salary levers]. What matters most to you?"
+- If the answer is vague/empty → "We need to find a number that works for both of us. I've shared our range — what's the minimum package that would make you say yes?"`,
 
-Be direct but respectful. This is the deal-closing moment. 2-3 sentences max.`;
-      }
+        "closing": `CONVERSATION PHASE: Closing the negotiation — finalize and wrap up.
+
+Move toward a decision. Be warm but create gentle urgency:
+- If they seem satisfied → "Great, I think we have a deal. Let me summarize: [recap final package]. I'll have HR send the offer letter by [tomorrow/end of week]. What's your notice period, so we can plan your start date?"
+- If they're still negotiating → "I've stretched as far as I can on this. Here's my final offer: [full breakdown]. I'd need your decision by [next week]. We have other candidates in the pipeline, and I'd hate to lose you over a small gap."
+- If they mentioned notice period → "If you can join within 30 days, I'll add an early joining bonus. Otherwise, we'll work with your timeline. Shall I have HR start the paperwork?"
+- If they want to think about it → "Of course, take your time — but I'd appreciate a decision by [date]. The team is excited about you joining, and I want to hold this headcount."
+- If the answer is vague/empty → "Let me put the final offer on the table: [recap]. I need a yes or no by [date]. What do you say?"`,
+      };
+
+      depthInstructions = `You are a HIRING MANAGER in a salary negotiation. You MUST stay in character — NEVER ask behavioral/STAR questions. ALWAYS set needsFollowUp to true (the conversation must continue).
+
+${phaseInstructions[salaryPhase] || phaseInstructions["offer-reaction"]}
+
+CRITICAL RULES:
+- Your response MUST directly reference what the candidate just said. Do NOT ignore their answer.
+- If the candidate gave a blank or very short answer, acknowledge it and re-ask clearly.
+- Sound like a real Indian hiring manager — professional, warm, direct. 2-3 sentences max.
+- Use ₹ and LPA for all amounts. Use Indian context.
+- NEVER break character. NEVER give coaching tips. You ARE the hiring manager.`;
     } else if (safeDepth === 0) {
       depthInstructions = `Analysis of candidate's answer:
 - Word count: ${wordCount} ${isShort ? "(SHORT — likely needs follow-up)" : "(adequate length)"}
@@ -202,8 +229,8 @@ Respond JSON only:
       return new Response(JSON.stringify({ needsFollowUp: false }), { status: 200, headers });
     }
 
-    // Depths 1-2 always generate a follow-up
-    const needsFollowUp = safeDepth >= 1 ? true : !!parsed.needsFollowUp;
+    // Salary-negotiation: always continue the conversation. Other types: depths 1-2 always follow up.
+    const needsFollowUp = isSalaryNeg ? true : (safeDepth >= 1 ? true : !!parsed.needsFollowUp);
 
     return new Response(JSON.stringify({
       needsFollowUp,

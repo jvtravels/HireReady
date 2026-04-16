@@ -275,6 +275,7 @@ export async function fetchFollowUp(params: {
   jobDescription?: string; company?: string;
   currentCity?: string; jobCity?: string;
   followUpDepth?: number;
+  negotiationPhase?: string; questionIndex?: number; totalQuestions?: number;
   previousFollowUps?: string[];
   persona?: string;
   conversationHistory?: string;
