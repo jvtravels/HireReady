@@ -588,9 +588,14 @@ export function useInterviewEngine() {
     return () => window.removeEventListener("beforeunload", handleUnload);
   }, []);
 
-  // Auto-save draft
+  // Auto-save draft (clear draft when interview completes to prevent stale restore)
   useEffect(() => {
-    if (phase === "done" || evaluating) return;
+    if (phase === "done" || evaluating) {
+      // Interview completed — clear draft so next session starts fresh
+      try { localStorage.removeItem(draftKey); } catch { /* non-critical */ }
+      deleteFromIDB(draftKey);
+      return;
+    }
     const saveDraft = () => {
       const draftData = {
         transcript, currentStep, elapsed, interviewType, interviewDifficulty, interviewFocus,
