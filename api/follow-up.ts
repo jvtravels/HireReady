@@ -4,6 +4,7 @@ export const config = { runtime: "edge" };
 
 import { handleCorsPreflightOrMethod, corsHeaders, isRateLimited, getClientIp, rateLimitResponse, verifyAuth, unauthorizedResponse, validateOrigin, sanitizeForLLM, withRequestId } from "./_shared.js";
 import { callLLM, extractJSON } from "./_llm.js";
+import { lookupSalaryContext } from "../data/salary-lookup.js";
 
 declare const process: { env: Record<string, string | undefined> };
 const GROQ_KEY = process.env.GROQ_API_KEY || "";
@@ -37,9 +38,10 @@ export default async function handler(req: Request): Promise<Response> {
   }
 
   try {
-    const { question, answer, type, role, jobDescription, company, followUpDepth = 0, previousFollowUps, persona, conversationHistory } = await req.json() as {
+    const { question, answer, type, role, jobDescription, company, currentCity, jobCity, followUpDepth = 0, previousFollowUps, persona, conversationHistory } = await req.json() as {
       question: string; answer: string; type: string; role: string;
       jobDescription?: string; company?: string;
+      currentCity?: string; jobCity?: string;
       followUpDepth?: number; previousFollowUps?: string[];
       persona?: string; conversationHistory?: string;
     };
@@ -131,6 +133,11 @@ Be genuinely curious, not interrogative. 2-3 sentences max.`;
 
     const panelContext = persona ? `\nYou are the "${sanitizeForLLM(persona, 30)}" panelist in a panel interview. Your follow-up should reflect your role's perspective.` : "";
 
+    // Salary context for salary-negotiation follow-ups (prevents losing city-adjusted rates)
+    const salaryFollowUpCtx = (type === "salary-negotiation" || type === "hr-round")
+      ? `\n${lookupSalaryContext({ role, company, currentCity, jobCity })}\nUse ₹ and LPA. Follow-up offers/counters MUST stay within these ranges.`
+      : "";
+
     // Cross-question memory: earlier conversation for thematic connections
     const historyContext = conversationHistory
       ? `\nEARLIER IN THIS INTERVIEW (use for thematic connections — reference earlier answers when relevant):\n${sanitizeForLLM(conversationHistory, 1500)}`
@@ -139,7 +146,7 @@ Be genuinely curious, not interrogative. 2-3 sentences max.`;
     const prompt = `You are an expert interviewer. Given a candidate's answer to an interview question, decide if a follow-up question is needed.${panelContext}
 
 Interview type: ${sanitizeForLLM(type, 50) || "behavioral"}
-Role: ${sanitizeForLLM(role, 100) || "senior role"}${company ? `\nCompany: ${sanitizeForLLM(company, 100)}` : ""}${jdContext ? `\n${jdContext}` : ""}${historyContext}
+Role: ${sanitizeForLLM(role, 100) || "senior role"}${company ? `\nCompany: ${sanitizeForLLM(company, 100)}` : ""}${salaryFollowUpCtx}${jdContext ? `\n${jdContext}` : ""}${historyContext}
 
 Question asked: "${sanitizeForLLM(question, 500)}"
 Candidate's answer: "${sanitizeForLLM(answer, 1000)}"${previousContext}

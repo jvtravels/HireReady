@@ -239,7 +239,8 @@ export default function SessionSetup() {
   const [targetRole, setTargetRole] = useState(user?.targetRole || "");
   const [roleTouched, setRoleTouched] = useState(false);
   const [targetCompany, setTargetCompany] = useState(user?.targetCompany || "");
-  const [targetCity, setTargetCity] = useState(user?.city || "");
+  const [currentCity, setCurrentCity] = useState(user?.city || "");
+  const [jobCity, setJobCity] = useState("");
   const [interviewFocus, setInterviewFocus] = useState<string[]>(() => {
     if (preselectedFocus) {
       const match = Object.entries(focusToType).find(([, v]) => v === preselectedFocus);
@@ -388,7 +389,7 @@ export default function SessionSetup() {
     }
     setTimeout(() => {
       setCountdown(0);
-      navigate(`/interview?type=${focusType}&difficulty=standard${targetCompany ? `&company=${encodeURIComponent(targetCompany)}` : ""}${targetCity ? `&city=${encodeURIComponent(targetCity)}` : ""}&role=${encodeURIComponent(targetRole)}&length=${sessionLength}${useResume ? "" : "&useResume=false"}${jobDescription.trim() ? `&jd=${encodeURIComponent(jobDescription.trim().slice(0, 2000))}` : ""}${micStatus === "denied" ? "&nomic=1" : ""}`);
+      navigate(`/interview?type=${focusType}&difficulty=standard${targetCompany ? `&company=${encodeURIComponent(targetCompany)}` : ""}${currentCity ? `&currentCity=${encodeURIComponent(currentCity)}` : ""}${jobCity ? `&jobCity=${encodeURIComponent(jobCity)}` : ""}&role=${encodeURIComponent(targetRole)}&length=${sessionLength}${useResume ? "" : "&useResume=false"}${jobDescription.trim() ? `&jd=${encodeURIComponent(jobDescription.trim().slice(0, 2000))}` : ""}${micStatus === "denied" ? "&nomic=1" : ""}`);
     }, 3000);
   };
 
@@ -409,7 +410,7 @@ export default function SessionSetup() {
         .ob-card { background: ${c.graphite}; border: 1px solid ${c.border}; }
         .ob-mic-pulse { animation: pulse 2s ease-in-out infinite; }
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
-        .ob-s2-role-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+        .ob-s2-role-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
         .ob-s2-focus-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
         .ob-s2-session-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
         @media (max-width: 600px) {
@@ -535,7 +536,10 @@ export default function SessionSetup() {
                       <AutocompleteInput id="setup-company" value={targetCompany} onChange={setTargetCompany} suggestions={COMPANY_SUGGESTIONS} placeholder="e.g. Google, Stripe..." label="Company (optional)" />
                     </div>
                     <div>
-                      <AutocompleteInput id="setup-city" value={targetCity} onChange={setTargetCity} suggestions={CITY_SUGGESTIONS} placeholder="e.g. Bangalore, Mumbai..." label="City (optional)" />
+                      <AutocompleteInput id="setup-current-city" value={currentCity} onChange={setCurrentCity} suggestions={CITY_SUGGESTIONS} placeholder="e.g. Chennai, Pune..." label="Current City" />
+                    </div>
+                    <div>
+                      <AutocompleteInput id="setup-job-city" value={jobCity} onChange={setJobCity} suggestions={CITY_SUGGESTIONS} placeholder="e.g. Bangalore, Remote..." label="Job Location" />
                     </div>
                   </div>
                 </div>
@@ -727,7 +731,7 @@ export default function SessionSetup() {
                       { label: "Resume", value: user?.resumeFileName || "Not uploaded", icon: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={c.stone} strokeWidth="1.5" strokeLinecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>, editStep: 0 },
                       { label: "Target Role", value: targetRole || "Not set", icon: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={c.stone} strokeWidth="1.5" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>, editStep: 1 },
                       { label: "Target Company", value: targetCompany || "Exploring", icon: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={c.stone} strokeWidth="1.5" strokeLinecap="round"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="9" y1="6" x2="15" y2="6"/><line x1="9" y1="10" x2="15" y2="10"/><line x1="9" y1="14" x2="15" y2="14"/></svg>, editStep: 1 },
-                      { label: "City", value: targetCity || "Not set", icon: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={c.stone} strokeWidth="1.5" strokeLinecap="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>, editStep: 1 },
+                      { label: "Location", value: currentCity && jobCity && currentCity !== jobCity ? `${currentCity} → ${jobCity}` : jobCity || currentCity || "Not set", icon: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={c.stone} strokeWidth="1.5" strokeLinecap="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>, editStep: 1 },
                       { label: "Interview Focus", value: interviewFocus.length > 0 ? interviewFocus.join(", ") : "None selected", icon: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={c.stone} strokeWidth="1.5" strokeLinecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>, editStep: 1 },
                       { label: "Session Length", value: sessionLengthLabel, icon: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={c.stone} strokeWidth="1.5" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>, editStep: 1 },
                     ].map((item, i, arr) => (

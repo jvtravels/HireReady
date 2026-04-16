@@ -190,7 +190,7 @@ export default async function handler(req: Request): Promise<Response> {
   }
 
   try {
-    const { type, focus, difficulty, role, company, industry, resumeText, pastTopics, weakSkills, language, jobDescription, experienceLevel, mini, city } = await req.json();
+    const { type, focus, difficulty, role, company, industry, resumeText, pastTopics, weakSkills, language, jobDescription, experienceLevel, mini, currentCity, jobCity } = await req.json();
     const isMini = mini === true;
 
     const interviewType = sanitizeForLLM(type, 50) || "behavioral";
@@ -219,11 +219,12 @@ export default async function handler(req: Request): Promise<Response> {
       : "Professional and balanced. Expect specific examples but don't demand exhaustive detail.";
 
     const expLevel = sanitizeForLLM(experienceLevel, 30);
-    const targetCity = sanitizeForLLM(city, 50);
+    const sanitizedCurrentCity = sanitizeForLLM(currentCity, 50);
+    const sanitizedJobCity = sanitizeForLLM(jobCity, 50);
 
     // Dynamic salary context — only for salary-negotiation and hr-round (replaces hardcoded 2,700-token salary tables)
     const salaryCtx = (interviewType === "salary-negotiation" || interviewType === "hr-round")
-      ? buildExperienceSalaryContext({ role: targetRole, company: companyName, experienceLevel: expLevel, city: targetCity })
+      ? buildExperienceSalaryContext({ role: targetRole, company: companyName, experienceLevel: expLevel, currentCity: sanitizedCurrentCity, jobCity: sanitizedJobCity })
       : "";
 
     const experienceCalibration = expLevel === "entry" || expLevel === "fresher"
@@ -253,7 +254,7 @@ REALISTIC EXPECTATIONS: Should demonstrate P&L ownership, hiring at scale, inves
     // Interview-type-specific guidance to ensure questions match the format
     // Salary-negotiation guidance is dynamically generated from structured data (~100 tokens vs ~2,000 tokens)
     const salaryNegGuidance = interviewType === "salary-negotiation"
-      ? buildSalaryNegotiationGuidance({ role: targetRole, company: companyName, experienceLevel: expLevel, city: targetCity })
+      ? buildSalaryNegotiationGuidance({ role: targetRole, company: companyName, experienceLevel: expLevel, currentCity: sanitizedCurrentCity, jobCity: sanitizedJobCity })
       : "";
 
     const TYPE_GUIDANCE: Record<string, string> = {

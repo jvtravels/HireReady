@@ -1,6 +1,9 @@
 /**
- * Salary lookup: resolves (role, company, experience, city) → compact salary context string.
+ * Salary lookup: resolves (role, company, experience, currentCity, jobCity) → compact salary context string.
  * Replaces ~2,700 tokens of hardcoded salary tables with ~100-150 tokens of targeted data.
+ *
+ * Distinguishes between current city (where candidate lives) and job city (where the role is based).
+ * When relocating, adds relocation context (notice buyout premium, HRA adjustment, relocation allowance).
  */
 
 import { SALARY_DATA, ROLE_ALIASES, matchRoleKey, type RoleKey, type ExperienceLevel, type SalaryEntry } from "./salaries";
@@ -11,7 +14,10 @@ export interface SalaryLookupParams {
   role: string;
   company?: string;
   experienceLevel?: string;
-  city?: string;
+  /** Where the candidate currently lives/works */
+  currentCity?: string;
+  /** Where the job is located (offer salary based on this) */
+  jobCity?: string;
 }
 
 /** Normalize experience level string to our enum */
@@ -47,7 +53,6 @@ const EXP_LABELS: Record<ExperienceLevel, string> = {
  * Tries: exact role → alias → tier fallback → adjacent experience levels
  */
 function findSalaryEntry(roleKey: RoleKey, tier: CompanyTier, exp: ExperienceLevel): SalaryEntry | null {
-  // Try exact role + tier
   const roleData = SALARY_DATA[roleKey];
   if (roleData) {
     const tierData = roleData[tier];
@@ -56,7 +61,6 @@ function findSalaryEntry(roleKey: RoleKey, tier: CompanyTier, exp: ExperienceLev
         if (tierData[fallbackExp]) return tierData[fallbackExp]!;
       }
     }
-    // Try salary tier fallback (e.g., saas-product → indian-unicorn)
     const fallbackTier = getSalaryTierFallback(tier);
     if (fallbackTier !== tier) {
       const fbTierData = roleData[fallbackTier];
@@ -66,25 +70,19 @@ function findSalaryEntry(roleKey: RoleKey, tier: CompanyTier, exp: ExperienceLev
         }
       }
     }
-    // Try faang as ultimate fallback (it exists for most roles)
     if (tier !== "faang" && roleData["faang"]) {
       for (const fallbackExp of EXP_FALLBACK_ORDER[exp]) {
         if (roleData["faang"]![fallbackExp]) return roleData["faang"]![fallbackExp]!;
       }
     }
   }
-
-  // Try role alias (e.g., ai-engineer → ml-engineer)
   const alias = ROLE_ALIASES[roleKey];
   if (alias && alias !== roleKey) {
     return findSalaryEntry(alias, tier, exp);
   }
-
-  // Ultimate fallback: software-engineer at same tier
   if (roleKey !== "software-engineer") {
     return findSalaryEntry("software-engineer", tier, exp);
   }
-
   return null;
 }
 
@@ -102,15 +100,36 @@ function fmtRange(min: number, max: number): string {
   return `${fmtLPA(min)}-${fmtLPA(max).replace("₹", "")}`;
 }
 
+/** Determine if two cities represent a relocation scenario */
+function isRelocation(currentCity: string | undefined, jobCity: string | undefined): boolean {
+  if (!currentCity || !jobCity) return false;
+  const a = currentCity.toLowerCase().trim();
+  const b = jobCity.toLowerCase().trim();
+  if (a === b) return false;
+  // Same metro area
+  if ((a.includes("bangalore") || a.includes("bengaluru")) && (b.includes("bangalore") || b.includes("bengaluru"))) return false;
+  if ((a.includes("delhi") || a.includes("gurgaon") || a.includes("gurugram") || a.includes("noida")) &&
+      (b.includes("delhi") || b.includes("gurgaon") || b.includes("gurugram") || b.includes("noida"))) return false;
+  if ((a.includes("mumbai") || a.includes("bombay")) && (b.includes("mumbai") || b.includes("bombay"))) return false;
+  return true;
+}
+
 /**
- * Main lookup: returns a compact salary context string (~100-150 tokens)
+ * Main lookup: returns a compact salary context string (~100-180 tokens)
  * for injection into the LLM prompt.
+ *
+ * Salary is based on JOB CITY (where the role is), not current city.
+ * When relocating, adds relocation context.
  */
 export function lookupSalaryContext(params: SalaryLookupParams): string {
   const roleKey = matchRoleKey(params.role);
   const companyTier = getCompanyTier(params.company) ?? "indian-unicorn";
   const exp = normalizeExp(params.experienceLevel);
-  const cityTier = getCityTier(params.city);
+
+  // Salary based on JOB location (where the offer is), fallback to current city, fallback to Tier 1
+  const jobCityTier = getCityTier(params.jobCity || params.currentCity);
+  const currentCityTier = getCityTier(params.currentCity);
+  const relocating = isRelocation(params.currentCity, params.jobCity);
 
   const entry = findSalaryEntry(roleKey, companyTier, exp);
   if (!entry) {
@@ -118,17 +137,22 @@ export function lookupSalaryContext(params: SalaryLookupParams): string {
   }
 
   const tierLabel = TIER_LABELS[companyTier];
-  const cityNote = cityTier !== "tier1"
-    ? ` (${cityTier === "tier2" ? "Tier 2 city" : "Tier 3 city"}, ~${Math.round(CITY_MULTIPLIERS[cityTier].min * 100)}-${Math.round(CITY_MULTIPLIERS[cityTier].max * 100)}% of Tier 1 rates)`
+  const cityNote = jobCityTier !== "tier1"
+    ? ` (${jobCityTier === "tier2" ? "Tier 2 city" : "Tier 3 city"}, ~${Math.round(CITY_MULTIPLIERS[jobCityTier].min * 100)}-${Math.round(CITY_MULTIPLIERS[jobCityTier].max * 100)}% of Tier 1 rates)`
     : "";
 
-  // Apply city multiplier
-  const adj = (v: number) => cityTier === "tier1" ? v : adjustForCity(v, cityTier);
+  // Apply job city multiplier (salary = where the job is)
+  const adj = (v: number) => jobCityTier === "tier1" ? v : adjustForCity(v, jobCityTier);
 
   const parts: string[] = [];
 
-  // Line 1: Role + Company + Level + City
-  parts.push(`SALARY DATA for ${params.role || roleKey} at ${params.company || tierLabel} (${tierLabel}), ${EXP_LABELS[exp]}${cityNote}:`);
+  // Line 1: Role + Company + Level + Job City
+  const locationLabel = params.jobCity
+    ? params.jobCity
+    : params.currentCity
+    ? params.currentCity
+    : tierLabel;
+  parts.push(`SALARY DATA for ${params.role || roleKey} at ${params.company || tierLabel} (${tierLabel}), ${EXP_LABELS[exp]}, ${locationLabel}${cityNote}:`);
 
   // Line 2: Compensation breakdown
   const base = `Base: ${fmtRange(adj(entry.base_min), adj(entry.base_max))}`;
@@ -160,19 +184,43 @@ export function lookupSalaryContext(params: SalaryLookupParams): string {
     parts.push(`Note: ${entry.notes}`);
   }
 
+  // Line 6: Relocation context (when current city ≠ job city)
+  if (relocating && params.currentCity && params.jobCity) {
+    const relocParts: string[] = [];
+    relocParts.push(`RELOCATION: Candidate is moving from ${params.currentCity} to ${params.jobCity}.`);
+
+    // Relocation allowance
+    relocParts.push(`Relocation allowance: ₹50K-3 LPA one-time (cross-state: up to 2 months basic salary).`);
+
+    // Cost of living adjustment
+    if (currentCityTier !== jobCityTier) {
+      if (jobCityTier === "tier1" && currentCityTier !== "tier1") {
+        relocParts.push(`CoL adjustment: ${params.jobCity} is a Tier 1 city — expect 15-40% higher rent/expenses vs ${params.currentCity}. Candidate should negotiate accordingly.`);
+      } else if (currentCityTier === "tier1" && jobCityTier !== "tier1") {
+        relocParts.push(`CoL benefit: ${params.jobCity} has lower living costs than ${params.currentCity}. Base salary may be lower but purchasing power is higher.`);
+      }
+    }
+
+    // Temporary accommodation
+    relocParts.push(`Companies typically offer: economy airfare for family, 15 days hotel accommodation, moving expenses.`);
+
+    // Notice period buyout for relocation hires
+    relocParts.push(`Notice buyout: Employer often pays 2x notice salary as joining bonus to accelerate the move.`);
+
+    parts.push(relocParts.join(" "));
+  }
+
   return parts.join("\n");
 }
 
 /**
  * Build the complete salary negotiation guidance for the LLM prompt.
  * Combines the lookup result with structural rules (equity constraints, examples).
- * Replaces the old 113-line TYPE_GUIDANCE["salary-negotiation"] block.
  */
 export function buildSalaryNegotiationGuidance(params: SalaryLookupParams): string {
   const salaryContext = lookupSalaryContext(params);
   const exp = normalizeExp(params.experienceLevel);
 
-  // Equity rules — these are structural and role-independent
   const equityRule = exp === "entry"
     ? "EQUITY RULE: Do NOT mention equity, stock options, or ESOPs. Freshers don't get equity. Negotiate only base salary + joining bonus + benefits."
     : exp === "mid"
@@ -203,7 +251,6 @@ Example bad: "We can offer $120,000." (wrong currency), "Tell me about a time yo
 /**
  * Build compact salary context for experienceCalibration blocks.
  * Only injected for salary-negotiation and hr-round interview types.
- * Replaces the hardcoded SALARY CONTEXT sections (~711 tokens → ~50 tokens).
  */
 export function buildExperienceSalaryContext(params: SalaryLookupParams): string {
   if (!params.role && !params.company) return "";

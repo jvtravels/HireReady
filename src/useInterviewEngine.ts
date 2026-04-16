@@ -189,7 +189,8 @@ export function useInterviewEngine() {
   const interviewDifficulty = searchParams.get("difficulty") || "standard";
   const targetCompany = searchParams.get("company") || "";
   const targetRole = searchParams.get("role") || "";
-  const targetCity = searchParams.get("city") || "";
+  const currentCity = searchParams.get("currentCity") || user?.city || "";
+  const jobCity = searchParams.get("jobCity") || "";
   const sessionLength = searchParams.get("length") || "";
   const isMiniMode = searchParams.get("mini") === "true" || sessionLength === "10m";
   const shouldUseResume = searchParams.get("useResume") !== "false";
@@ -323,7 +324,8 @@ export function useInterviewEngine() {
       difficulty: interviewDifficulty,
       role: targetRole || user?.targetRole || "the role",
       company: targetCompany || user?.targetCompany,
-      city: targetCity || user?.city,
+      currentCity: currentCity,
+      jobCity: jobCity,
       industry: user?.industry,
       resumeText: shouldUseResume ? user?.resumeText : undefined,
       pastTopics: adaptiveHints.pastTopics.length > 0 ? adaptiveHints.pastTopics : undefined,
@@ -1272,6 +1274,8 @@ export function useInterviewEngine() {
           role: user?.targetRole || "senior role",
           jobDescription: jobDescription || undefined,
           company: user?.targetCompany,
+          currentCity: currentCity || undefined,
+          jobCity: jobCity || undefined,
           followUpDepth: depth,
           previousFollowUps: recentFollowUps.length > 0 ? recentFollowUps : undefined,
           persona: isPanelInterview ? currentStepObj?.persona : undefined,

@@ -168,7 +168,7 @@ export function getAdaptiveHints(sessions: { skill_scores?: Record<string, unkno
 /** Fetch LLM-generated interview questions */
 export async function fetchLLMQuestions(params: {
   type: string; focus?: string; difficulty: string; role: string;
-  company?: string; city?: string; industry?: string; resumeText?: string;
+  company?: string; currentCity?: string; jobCity?: string; industry?: string; resumeText?: string;
   pastTopics?: string[]; weakSkills?: string[]; jobDescription?: string;
   experienceLevel?: string; mini?: boolean;
 }): Promise<InterviewStep[] | null> {
@@ -273,6 +273,7 @@ export async function fetchLLMEvaluation(params: {
 export async function fetchFollowUp(params: {
   question: string; answer: string; type: string; role: string;
   jobDescription?: string; company?: string;
+  currentCity?: string; jobCity?: string;
   followUpDepth?: number;
   previousFollowUps?: string[];
   persona?: string;
