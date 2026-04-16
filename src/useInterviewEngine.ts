@@ -1148,13 +1148,13 @@ export function useInterviewEngine() {
             // Replace the next pre-generated question with the dynamic response
             // This makes the conversation flow naturally instead of jumping to a random question
             setInterviewScript(prev => {
-              const nextQuestionIdx = prev.findIndex((s, i) => i >= currentStep && s.type === "question");
-              if (nextQuestionIdx >= currentStep && nextQuestionIdx < prev.length - 1) {
+              const nextQuestionIdx = prev.findIndex((s, i) => i > currentStep && s.type === "question");
+              if (nextQuestionIdx > currentStep && nextQuestionIdx < prev.length - 1) {
                 // Replace the next question with the dynamic one
                 return [...prev.slice(0, nextQuestionIdx), followUpStep, ...prev.slice(nextQuestionIdx + 1)];
               }
-              // Fallback: insert before current step (standard follow-up behavior)
-              return [...prev.slice(0, currentStep), followUpStep, ...prev.slice(currentStep)];
+              // No more questions to replace — let the interview proceed to closing naturally
+              return prev;
             });
           } else {
             setInterviewScript(prev => [
@@ -1314,10 +1314,13 @@ export function useInterviewEngine() {
 
     // Fire follow-up check in background
     const isSalaryNegType = interviewType === "salary-negotiation";
-    // For salary-negotiation: always fire follow-up (conversation must continue naturally)
-    // For other types: standard follow-up logic
+    // For salary-negotiation: fire follow-up only if there are remaining pre-generated questions to replace
+    // This prevents infinite question growth — once all questions are consumed, we proceed to closing
+    const remainingQuestions = isSalaryNegType
+      ? interviewScript.filter((s, i) => i > currentStep && s.type === "question").length
+      : 0;
     const canFollowUp = isSalaryNegType
-      ? ((currentStepObj?.type === "question" || currentStepObj?.type === "follow-up") && !isLastStep)
+      ? ((currentStepObj?.type === "question" || currentStepObj?.type === "follow-up") && !isLastStep && remainingQuestions > 0)
       : ((currentStepObj?.type === "question" || currentStepObj?.type === "follow-up")
         && !isLastStep && answerText.length > 10 && !answerText.startsWith("[Answer recorded"));
 
