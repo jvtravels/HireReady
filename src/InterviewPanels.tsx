@@ -344,7 +344,7 @@ export const QuestionCard = memo(function QuestionCard({ step, phase, showCaptio
           </span>
         </div>
       )}
-      {step?.scoreNote && phase !== "done" && (
+      {step?.scoreNote && phase !== "done" && phase !== "thinking" && (
         <p style={{
           fontFamily: font.ui, fontSize: 11, color: "rgba(212,179,127,0.5)",
           margin: "0 0 10px", display: "flex", alignItems: "center", gap: 5,
@@ -355,6 +355,8 @@ export const QuestionCard = memo(function QuestionCard({ step, phase, showCaptio
       )}
       {phase === "speaking" ? (
         <LiveCaptions text={step?.aiText || ""} isTyping={true} speakingDuration={step?.speakingDuration} />
+      ) : phase === "thinking" ? (
+        <p style={{ fontFamily: font.ui, fontSize: 13, color: c.stone, lineHeight: 1.6, margin: 0, fontStyle: "italic" }}>Preparing next question...</p>
       ) : step?.aiText ? (
         <p style={{ fontFamily: font.ui, fontSize: 14, color: c.chalk, lineHeight: 1.75, margin: 0, opacity: phase === "listening" && !showCaptions ? 0.55 : 1 }}>{step.aiText}</p>
       ) : null}
