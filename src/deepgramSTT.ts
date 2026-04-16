@@ -60,7 +60,7 @@ export async function createDeepgramSTT(
   if (!trackSettings?.sampleRate) {
     console.warn("[Deepgram] Could not detect mic sample rate, defaulting to 48kHz");
   } else if (sampleRate !== 16000 && sampleRate !== 48000) {
-    console.info("[Deepgram] Detected non-standard sample rate:", sampleRate);
+    console.warn("[Deepgram] Detected non-standard sample rate:", sampleRate);
   }
 
   const dgLang = "multi";
@@ -161,7 +161,7 @@ registerProcessor('pcm-processor', PCMProcessor);
         source.connect(workletNode);
         workletNode.connect(ctx.destination);
         processorNode = workletNode;
-        console.info("[Deepgram] Using AudioWorklet for audio capture");
+        console.warn("[Deepgram] Using AudioWorklet for audio capture");
         return;
       }
     } catch (err) {
@@ -187,7 +187,7 @@ registerProcessor('pcm-processor', PCMProcessor);
     source.connect(scriptNode);
     scriptNode.connect(ctx.destination);
     processorNode = scriptNode;
-    console.info("[Deepgram] Using ScriptProcessorNode fallback for audio capture");
+    console.warn("[Deepgram] Using ScriptProcessorNode fallback for audio capture");
   }
 
   ws.onopen = () => {

@@ -367,13 +367,13 @@ export function useInterviewEngine() {
       const step = currentStepRef.current;
       if (questions && questions.length > 0 && step <= 1) {
         // Accept LLM questions if user is on intro (step 0) or first question (step 1)
-        console.info(`[interview] LLM generated ${questions.length} custom questions (replacing at step ${step})`);
+        console.warn(`[interview] LLM generated ${questions.length} custom questions (replacing at step ${step})`);
         setInterviewScript(questions);
         setSaveWarning("");
       } else if (questions && questions.length > 0 && step >= 2) {
         // Late arrival: merge remaining LLM questions into the script from the current position onward
         // This replaces the upcoming fallback questions while preserving already-answered ones
-        console.info(`[interview] LLM questions arrived late (step ${step}) — merging remaining questions`);
+        console.warn(`[interview] LLM questions arrived late (step ${step}) — merging remaining questions`);
         setInterviewScript(prev => {
           // Keep everything up to and including the current step from the old script
           const keepPrefix = prev.slice(0, step + 1);

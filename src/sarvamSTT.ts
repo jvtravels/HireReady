@@ -181,7 +181,7 @@ registerProcessor('sarvam-pcm-processor', SarvamPCMProcessor);
         source.connect(workletNode);
         workletNode.connect(ctx.destination);
         processorNode = workletNode;
-        console.info("[Sarvam] Using AudioWorklet for audio capture");
+        console.warn("[Sarvam] Using AudioWorklet for audio capture");
         return;
       }
     } catch (err) {
@@ -203,7 +203,7 @@ registerProcessor('sarvam-pcm-processor', SarvamPCMProcessor);
     source.connect(scriptNode);
     scriptNode.connect(ctx.destination);
     processorNode = scriptNode;
-    console.info("[Sarvam] Using ScriptProcessorNode fallback for audio capture");
+    console.warn("[Sarvam] Using ScriptProcessorNode fallback for audio capture");
   }
 
   ws.onopen = () => {

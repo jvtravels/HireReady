@@ -257,7 +257,7 @@ async function getOrCreateWs(apiKey: string): Promise<WebSocket | null> {
   // Close stale or dead connection (CLOSED / CLOSING / mismatched key)
   if (_persistentWs) {
     if (_persistentWs.readyState === WebSocket.CLOSED || _persistentWs.readyState === WebSocket.CLOSING) {
-      console.info("[TTS-WS] detected CLOSED/CLOSING socket, creating fresh connection");
+      console.warn("[TTS-WS] detected CLOSED/CLOSING socket, creating fresh connection");
     }
     try { _persistentWs.close(); } catch { /* expected: WebSocket may already be closed */ }
     _persistentWs = null;

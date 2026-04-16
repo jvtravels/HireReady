@@ -3,7 +3,6 @@ import {
   getMiniScript,
   getScript,
   scriptsByType,
-  type InterviewStep,
 } from "../../src/interviewScripts";
 
 const ALL_MINI_TYPES = [

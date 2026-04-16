@@ -69,7 +69,7 @@ export function useInterviewSTT(
       // Fallback chain: Deepgram Nova-3 → Sarvam AI → Web Speech API
       const trySarvam = async () => {
         if (stopped) return;
-        console.info("[STT] Trying Sarvam AI fallback...");
+        console.warn("[STT] Trying Sarvam AI fallback...");
         const handle = await createSarvamSTT({
           onTranscript: (finalText, interim) => {
             if (!stopped) callbacks.setCurrentTranscript(finalText + interim);
