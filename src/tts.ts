@@ -9,6 +9,10 @@ import { safeUUID } from "./utils";
    before navigating to pages that auto-play audio. This creates a
    silent AudioContext that satisfies the browser's autoplay policy. */
 let _audioUnlocked = false;
+/** Track if autoplay is blocked — once detected, skip all TTS providers immediately */
+let _autoplayBlocked = false;
+export function isAutoplayBlocked(): boolean { return _autoplayBlocked; }
+
 export function unlockAudio() {
   if (_audioUnlocked) return;
   try {
@@ -21,9 +25,26 @@ export function unlockAudio() {
     // Also play a silent HTML5 audio to unlock that pathway
     const audio = new Audio("data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=");
     audio.volume = 0;
-    audio.play().catch(() => {});
+    audio.play().then(() => {
+      _autoplayBlocked = false;
+    }).catch(() => {});
     _audioUnlocked = true;
+    _autoplayBlocked = false;
   } catch { /* expected: audio unlock may fail before user gesture */ }
+}
+
+/** Call on any user click/tap inside the interview page to retry unlocking audio */
+export function retryUnlockAudio() {
+  _audioUnlocked = false;
+  _autoplayBlocked = false;
+  unlockAudio();
+}
+
+/** Check if a play() error is an autoplay policy block */
+function isAutoplayError(err: unknown): boolean {
+  if (err instanceof DOMException && (err.name === "NotAllowedError" || err.name === "AbortError")) return true;
+  if (err instanceof Error && /not.allowed|interact.*document|autoplay/i.test(err.message)) return true;
+  return false;
 }
 
 const TTS_SETTINGS_KEY = "hirestepx_tts";
@@ -491,6 +512,12 @@ async function speakWithProxy(
   onError: () => void,
   gender?: "male" | "female",
 ): Promise<{ cancel: () => void }> {
+  // If autoplay is blocked, skip immediately
+  if (_autoplayBlocked) {
+    onEnd();
+    return { cancel: () => {} };
+  }
+
   const controller = new AbortController();
   let audio: HTMLAudioElement | null = null;
   let settled = false;
@@ -546,6 +573,11 @@ async function speakWithProxy(
     await audio.play();
   } catch (err: unknown) {
     if (err instanceof Error && err.name === "AbortError") return { cancel: () => {} };
+    if (isAutoplayError(err)) {
+      _autoplayBlocked = true;
+      settle(onEnd);
+      return { cancel: () => {} };
+    }
     settle(onError);
     return { cancel: () => {} };
   }
@@ -572,6 +604,13 @@ async function speakWithAzure(
   gender?: "male" | "female",
   voiceId?: string,
 ): Promise<{ cancel: () => void }> {
+  // If autoplay is already known to be blocked, skip immediately
+  if (_autoplayBlocked) {
+    console.warn("[TTS-Azure] autoplay blocked, skipping");
+    onEnd(); // Treat as silent success — let interview proceed without voice
+    return { cancel: () => {} };
+  }
+
   const controller = new AbortController();
   let audio: HTMLAudioElement | null = null;
   let settled = false;
@@ -614,6 +653,13 @@ async function speakWithAzure(
     await audio.play();
   } catch (err: unknown) {
     if (err instanceof Error && err.name === "AbortError") return { cancel: () => {} };
+    // Detect autoplay policy block — skip ALL TTS providers, proceed silently
+    if (isAutoplayError(err)) {
+      console.warn("[TTS-Azure] autoplay blocked by browser policy — disabling voice for session");
+      _autoplayBlocked = true;
+      settle(onEnd); // Silent success — let interview proceed without voice
+      return { cancel: () => {} };
+    }
     console.warn("[TTS-Azure] error:", err instanceof Error ? err.message : err);
     settle(onError);
     return { cancel: () => {} };
@@ -639,6 +685,11 @@ function speakWithBrowser(
   onEnd: () => void,
   onError: () => void,
 ): { cancel: () => void } {
+  // If autoplay is blocked, skip — browser TTS also requires user gesture
+  if (_autoplayBlocked) {
+    onEnd();
+    return { cancel: () => {} };
+  }
   if (!window.speechSynthesis) {
     console.warn("Browser speech synthesis not available");
     onError();

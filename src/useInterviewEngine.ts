@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { track } from "@vercel/analytics";
 
 import { useAuth } from "./AuthContext";
-import { speak, speakAs, prefetchTTS, cleanupTTS, fetchCartesiaVoices } from "./tts";
+import { speak, speakAs, prefetchTTS, cleanupTTS, fetchCartesiaVoices, retryUnlockAudio, isAutoplayBlocked } from "./tts";
 import { useToast } from "./Toast";
 import { saveToIDB, loadFromIDB, deleteFromIDB } from "./interviewIDB";
 import type { InterviewStep } from "./interviewScripts";
@@ -409,6 +409,23 @@ export function useInterviewEngine() {
       }
     };
     return () => ch.close();
+  }, []);
+
+  // Retry audio unlock on any user click inside the interview page
+  // This recovers from autoplay blocks when the user interacts with the page
+  useEffect(() => {
+    const handler = () => {
+      if (isAutoplayBlocked()) {
+        retryUnlockAudio();
+        toast("Audio re-enabled. Voice will play on next question.", "info");
+      }
+    };
+    document.addEventListener("click", handler, { once: false });
+    document.addEventListener("touchstart", handler, { once: false });
+    return () => {
+      document.removeEventListener("click", handler);
+      document.removeEventListener("touchstart", handler);
+    };
   }, []);
 
   // Prevent accidental navigation/close during active interview
@@ -1006,12 +1023,17 @@ export function useInterviewEngine() {
         }
       };
 
+      // Safety timer: if TTS is working, allow speakingDuration + 5s buffer
+      // If autoplay is blocked, use a short 2s timeout since no audio will play
+      const safetyMs = isAutoplayBlocked()
+        ? 2000
+        : Math.max(step.speakingDuration + 5000, 15000);
       safetyTimer = setTimeout(() => {
         if (!speechEnded) {
           console.warn("[interview] TTS safety timeout — forcing phase transition");
           onSpeechEnd();
         }
-      }, Math.max(step.speakingDuration + 5000, 30000));
+      }, safetyMs);
 
       if (aiVoiceEnabled) {
         const instanceId = ++ttsInstanceIdRef.current;
