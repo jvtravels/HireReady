@@ -70,7 +70,61 @@ const REACTIONS = {
     "Let's switch topics.",
     "Right — now I want to explore another angle.",
   ],
+  dontKnowRedirect: [
+    "That's okay — let me rephrase that differently.",
+    "No worries. Let me ask this from another angle.",
+    "That's honest. Let me try a different approach.",
+    "Fair enough — let me give you something closer to your experience.",
+    "Okay, let's pivot. Think about it this way instead —",
+  ],
+  ramblingInterject: [
+    "Sorry to interrupt — can you get to the outcome?",
+    "I want to make sure we cover everything. What was the result?",
+    "Let me jump in — what was the bottom line?",
+    "I'm getting the context. Now tell me — what happened?",
+    "Let me pause you there. What was the impact?",
+  ],
+  timePressure: [
+    "We're running short on time, so let me pick up the pace.",
+    "Just a couple more questions — let's keep it tight.",
+    "We have a few minutes left. Let's make them count.",
+  ],
+  lastQuestion: [
+    "Alright, last question for you.",
+    "One final question before we wrap up.",
+    "Last one — make it count.",
+  ],
 };
+
+/** Detect "I don't know" or surrender responses */
+function isIDontKnowAnswer(text: string): boolean {
+  if (!text || text.length < 5) return false;
+  const lower = text.toLowerCase().trim();
+  const patterns = [
+    /^i don'?t know/,
+    /^i'?m not sure/,
+    /^i have no idea/,
+    /^i haven'?t (done|experienced|faced)/,
+    /^no experience with/,
+    /^i can'?t (think of|recall|remember)/,
+    /^nothing comes to mind/,
+    /^i don'?t have (an? )?(example|answer|experience)/,
+    /^pass$/,
+    /^skip$/,
+    /^i'?ll skip/,
+  ];
+  return patterns.some(p => p.test(lower)) || (lower.length < 30 && /don'?t know|not sure|no idea|can'?t think/i.test(lower));
+}
+
+/* ─── Session interviewer personality ─── */
+type InterviewerPersonality = "balanced" | "tough" | "friendly" | "time-pressed";
+function pickPersonality(): InterviewerPersonality {
+  const roll = Math.random();
+  if (roll < 0.3) return "tough";
+  if (roll < 0.55) return "friendly";
+  if (roll < 0.7) return "time-pressed";
+  return "balanced";
+}
 
 /** Assess answer quality for reaction selection */
 function assessAnswerQuality(answer: string): "strong" | "decent" | "weak" | "short" {
@@ -138,6 +192,17 @@ export function useInterviewEngine() {
   const isMiniMode = searchParams.get("mini") === "true" || sessionLength === "10m";
   const shouldUseResume = searchParams.get("useResume") !== "false";
   const jobDescription = searchParams.get("jd") || "";
+
+  // Session-level interviewer personality (persists for entire interview)
+  const [personality] = useState<InterviewerPersonality>(() => pickPersonality());
+  // Rambling interjection ref
+  const ramblingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const ramblingFiredRef = useRef(false);
+  // "I don't know" count for evaluation context
+  const dontKnowCountRef = useRef(0);
+  // Time pressure spoken flag
+  const timePressureSpokenRef = useRef(false);
+  const lastQuestionSpokenRef = useRef(false);
 
   const [jdAnalysisData] = useState(() => {
     try {
@@ -679,6 +744,30 @@ export function useInterviewEngine() {
     silenceNudgeFiredRef.current = true; // Don't nudge once they've started
   }, [currentTranscript, phase, aiVoiceEnabled]);
 
+  // Rambling interjection — if user has been speaking for 90s+, interject to wrap up
+  useEffect(() => {
+    if (phase !== "listening" || !aiVoiceEnabled) {
+      if (ramblingTimerRef.current) { clearTimeout(ramblingTimerRef.current); ramblingTimerRef.current = null; }
+      ramblingFiredRef.current = false;
+      return;
+    }
+    ramblingFiredRef.current = false;
+    ramblingTimerRef.current = setTimeout(() => {
+      if (ramblingFiredRef.current || interviewEndedRef.current) return;
+      // Only interject if user is actually speaking (has transcript)
+      if (!currentTranscript || currentTranscript.trim().split(/\s+/).length < 40) return;
+      ramblingFiredRef.current = true;
+      const interjection = pickRandom(REACTIONS.ramblingInterject);
+      setTranscript(prev => [...prev, { speaker: "ai", text: `[${interjection}]`, time: formatTime(elapsed) }]);
+      speak(interjection, () => {}, () => {}).catch(() => {});
+      toast("Tip: Keep answers under 90 seconds for best impact.", "info");
+    }, 90_000);
+    return () => {
+      if (ramblingTimerRef.current) { clearTimeout(ramblingTimerRef.current); ramblingTimerRef.current = null; }
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, aiVoiceEnabled, currentStep]);
+
   // User answer timer
   const [answerTimer, setAnswerTimer] = useState(0);
 
@@ -766,17 +855,53 @@ export function useInterviewEngine() {
 
     // Whether this step should get a reaction phrase (question/follow-up, not first step)
     const shouldUseThinkingPhrase = currentStep > 0 && (step.type === "question" || step.type === "follow-up");
-    // Select reaction based on the user's LAST answer quality, not randomly
+
+    // Build context-aware reaction phrase
     let thinkingPhrase: string | null = null;
     if (shouldUseThinkingPhrase) {
       const quality = lastAnswerQualityRef.current;
-      if (step.type === "follow-up") {
+      const lastAnswer = lastAnswerTextRef.current;
+      const isIDontKnow = isIDontKnowAnswer(lastAnswer);
+
+      if (isIDontKnow && step.type !== "follow-up") {
+        // "I don't know" response — redirect gracefully
+        thinkingPhrase = pickRandom(REACTIONS.dontKnowRedirect);
+        dontKnowCountRef.current++;
+      } else if (step.type === "follow-up") {
         // Follow-ups get bridge phrases that signal "I'm probing deeper"
         thinkingPhrase = pickRandom(REACTIONS.followUpBridge);
       } else {
-        // Regular questions get quality-aware reactions + topic transition
-        const reaction = pickRandom(REACTIONS[quality]);
-        const transition = pickRandom(REACTIONS.topicTransition);
+        // Personality-modulated reactions
+        let reaction: string;
+        if (personality === "tough") {
+          // Tough interviewer: muted praise, sharper on weak answers
+          reaction = quality === "strong" ? pickRandom(["Okay.", "Alright, noted.", "Fair."]) :
+                     quality === "weak" ? pickRandom(["Hmm.", "Okay… I was hoping for more specifics.", "Let's move on."]) :
+                     pickRandom(REACTIONS[quality]);
+        } else if (personality === "friendly") {
+          // Friendly interviewer: warmer on all answers
+          reaction = quality === "strong" ? pickRandom(["That's great! Really well put.", "Excellent example — I love the detail.", "Very impressive."]) :
+                     quality === "weak" ? pickRandom(["Okay, no problem. Let's try another.", "That's fine — let's keep going."]) :
+                     pickRandom(REACTIONS[quality]);
+        } else if (personality === "time-pressed") {
+          // Time-pressed: brief, moves fast
+          reaction = pickRandom(["Got it.", "Okay.", "Right.", "Noted."]);
+        } else {
+          reaction = pickRandom(REACTIONS[quality]);
+        }
+
+        // Time pressure announcements
+        const questionsRemaining = interviewScript.filter((s, i) => i > currentStep && s.type === "question").length;
+        let transition: string;
+        if (questionsRemaining === 1 && !lastQuestionSpokenRef.current) {
+          lastQuestionSpokenRef.current = true;
+          transition = pickRandom(REACTIONS.lastQuestion);
+        } else if (questionsRemaining <= 2 && !timePressureSpokenRef.current && currentStep > 2) {
+          timePressureSpokenRef.current = true;
+          transition = pickRandom(REACTIONS.timePressure);
+        } else {
+          transition = pickRandom(REACTIONS.topicTransition);
+        }
         thinkingPhrase = `${reaction} ${transition}`;
       }
     }
@@ -1028,6 +1153,18 @@ export function useInterviewEngine() {
       }
       if (answerText) recentFollowUps.push(`A: ${answerText}`);
 
+      // Cross-question memory: build brief summary of earlier Q&A for thematic connections
+      const earlierTopics: string[] = [];
+      for (const t of transcript) {
+        if (t.speaker === "ai" && !t.text.startsWith("[")) {
+          earlierTopics.push(`Q: ${t.text.slice(0, 120)}`);
+        } else if (t.speaker === "user" && !t.text.startsWith("[")) {
+          earlierTopics.push(`A: ${t.text.slice(0, 100)}`);
+        }
+      }
+      // Keep only last 6 exchanges to avoid token bloat
+      const conversationHistory = earlierTopics.slice(-12).join("\n");
+
       const depth = currentStepObj?.type === "follow-up" ? followUpDepthRef.current + 1 : 0;
       // Guard: if pending follow-up fetch is still in flight, skip to avoid desync
       if (pendingFollowUpRef.current) {
@@ -1046,6 +1183,7 @@ export function useInterviewEngine() {
           followUpDepth: depth,
           previousFollowUps: recentFollowUps.length > 0 ? recentFollowUps : undefined,
           persona: isPanelInterview ? currentStepObj?.persona : undefined,
+          conversationHistory: conversationHistory || undefined,
         });
       } else {
         pendingFollowUpRef.current = null;

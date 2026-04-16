@@ -37,11 +37,11 @@ export default async function handler(req: Request): Promise<Response> {
   }
 
   try {
-    const { question, answer, type, role, jobDescription, company, followUpDepth = 0, previousFollowUps, persona } = await req.json() as {
+    const { question, answer, type, role, jobDescription, company, followUpDepth = 0, previousFollowUps, persona, conversationHistory } = await req.json() as {
       question: string; answer: string; type: string; role: string;
       jobDescription?: string; company?: string;
       followUpDepth?: number; previousFollowUps?: string[];
-      persona?: string;
+      persona?: string; conversationHistory?: string;
     };
 
     if (!question || typeof question !== "string" || !answer || typeof answer !== "string") {
@@ -131,15 +131,22 @@ Be genuinely curious, not interrogative. 2-3 sentences max.`;
 
     const panelContext = persona ? `\nYou are the "${sanitizeForLLM(persona, 30)}" panelist in a panel interview. Your follow-up should reflect your role's perspective.` : "";
 
+    // Cross-question memory: earlier conversation for thematic connections
+    const historyContext = conversationHistory
+      ? `\nEARLIER IN THIS INTERVIEW (use for thematic connections — reference earlier answers when relevant):\n${sanitizeForLLM(conversationHistory, 1500)}`
+      : "";
+
     const prompt = `You are an expert interviewer. Given a candidate's answer to an interview question, decide if a follow-up question is needed.${panelContext}
 
 Interview type: ${sanitizeForLLM(type, 50) || "behavioral"}
-Role: ${sanitizeForLLM(role, 100) || "senior role"}${company ? `\nCompany: ${sanitizeForLLM(company, 100)}` : ""}${jdContext ? `\n${jdContext}` : ""}
+Role: ${sanitizeForLLM(role, 100) || "senior role"}${company ? `\nCompany: ${sanitizeForLLM(company, 100)}` : ""}${jdContext ? `\n${jdContext}` : ""}${historyContext}
 
 Question asked: "${sanitizeForLLM(question, 500)}"
 Candidate's answer: "${sanitizeForLLM(answer, 1000)}"${previousContext}
 
 ${depthInstructions}
+
+CROSS-QUESTION MEMORY: If the candidate mentioned something interesting in an earlier answer (visible in the conversation history above), you MAY reference it naturally: "Earlier you mentioned X — how does that connect to what you just described?" This makes the interview feel like a real conversation, not a checklist.
 
 Respond JSON only:
 {"needsFollowUp":true/false,"followUpText":"The follow-up question (2-3 sentences, conversational). Only include if needsFollowUp is true.","followUpType":"${followUpTypeLabel}","reason":"Brief reason"}`;

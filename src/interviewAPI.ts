@@ -276,6 +276,7 @@ export async function fetchFollowUp(params: {
   followUpDepth?: number;
   previousFollowUps?: string[];
   persona?: string;
+  conversationHistory?: string;
 }): Promise<{ needsFollowUp: boolean; followUpText: string; followUpType?: string } | null> {
   // Client-side rate limit: max 10 follow-ups per 60s
   if (!checkRateLimit("follow-up", 10, 60_000)) return null;
