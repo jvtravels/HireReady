@@ -227,40 +227,30 @@ export default async function handler(req: Request): Promise<Response> {
       ? buildExperienceSalaryContext({ role: targetRole, company: companyName, experienceLevel: expLevel, currentCity: sanitizedCurrentCity, jobCity: sanitizedJobCity })
       : "";
 
-    // For salary-negotiation, skip behavioral WHAT TO PROBE examples (they contradict the negotiation format)
+    // For salary-negotiation, suppress behavioral experience calibration entirely — salary guidance handles it
     const isSalaryType = interviewType === "salary-negotiation";
-    const probeEntry = isSalaryType
-      ? `WHAT TO PROBE: Salary expectations, notice period, willingness to negotiate, understanding of CTC vs in-hand.`
-      : `WHAT TO PROBE: Potential, learning agility, basic problem-solving, "tell me about a project you built", "how do you approach learning something new", "describe a team conflict in college"`;
-    const probeMid = isSalaryType
-      ? `WHAT TO PROBE: Current CTC breakdown, expected hike percentage, competing offers, joining timeline, relocation preferences.`
-      : `WHAT TO PROBE: "Walk me through a project you owned end-to-end", "How did you handle a disagreement with your manager?", "Describe a system you designed", "How do you mentor juniors?"`;
-    const probeSenior = isSalaryType
-      ? `WHAT TO PROBE: Total compensation expectations (base + bonus + equity), equity vesting preferences, role scope negotiation, leadership premium.`
-      : `WHAT TO PROBE: "How did you influence your company's technical strategy?", "Describe building/scaling a team", "Walk me through an architecture decision that had business implications", "How do you handle underperformers?", "How did you drive a cultural shift?"`;
-    const probeExec = isSalaryType
-      ? `WHAT TO PROBE: Executive compensation package (base + bonus + RSUs + perks), board-level equity, signing bonus, retention clauses, non-compete terms.`
-      : `WHAT TO PROBE: "How did you build an engineering/product/design org?", "Describe a bet you took that defined the company's direction", "How do you manage up to the board?", "Walk me through a company-wide transformation you led."`;
 
-    const experienceCalibration = expLevel === "entry" || expLevel === "fresher"
+    const experienceCalibration = isSalaryType
+      ? "" // salary-negotiation gets all calibration from buildSalaryNegotiationGuidance
+      : expLevel === "entry" || expLevel === "fresher"
       ? `EXPERIENCE CALIBRATION: Entry-level/Fresher (0-2 years).
 QUESTION DEPTH: Ask about academic projects, internships, learning experiences, and foundational knowledge. Do NOT expect org-wide impact, P&L ownership, or executive stakeholder management.
-${probeEntry}
+WHAT TO PROBE: Potential, learning agility, basic problem-solving, "tell me about a project you built", "how do you approach learning something new", "describe a team conflict in college"
 REALISTIC EXPECTATIONS: Answers may reference college projects, hackathons, internships, personal projects. That's okay — assess the thinking process, not the scale of impact.${salaryCtx}`
       : expLevel === "mid"
       ? `EXPERIENCE CALIBRATION: Mid-level (3-5 years).
 QUESTION DEPTH: Ask about individual ownership of features/modules, cross-team collaboration, technical depth, and measurable project impact. Expect concrete examples with metrics.
-${probeMid}
+WHAT TO PROBE: "Walk me through a project you owned end-to-end", "How did you handle a disagreement with your manager?", "Describe a system you designed", "How do you mentor juniors?"
 REALISTIC EXPECTATIONS: Should demonstrate initiative beyond assigned tasks, some cross-functional experience, beginning of specialization. May not have team management experience yet.${salaryCtx}`
       : expLevel === "senior" || expLevel === "lead"
       ? `EXPERIENCE CALIBRATION: Senior/Lead level (6-10+ years).
 QUESTION DEPTH: Ask about org-wide strategy, executive stakeholder management, team building/mentoring, architectural decisions with business impact, and driving technical direction.
-${probeSenior}
+WHAT TO PROBE: "How did you influence your company's technical strategy?", "Describe building/scaling a team", "Walk me through an architecture decision that had business implications", "How do you handle underperformers?", "How did you drive a cultural shift?"
 REALISTIC EXPECTATIONS: Should demonstrate leadership beyond direct reports, strategic thinking, trade-off reasoning at organizational level, mentoring track record.${salaryCtx}`
       : expLevel === "executive"
       ? `EXPERIENCE CALIBRATION: Executive level (VP/C-suite/Director).
 QUESTION DEPTH: Ask about company-wide vision, board-level decisions, organizational transformation, market strategy, and culture building. Expect enterprise-scale impact.
-${probeExec}
+WHAT TO PROBE: "How did you build an engineering/product/design org?", "Describe a bet you took that defined the company's direction", "How do you manage up to the board?", "Walk me through a company-wide transformation you led."
 REALISTIC EXPECTATIONS: Should demonstrate P&L ownership, hiring at scale, investor/board communication, multi-year strategic planning.${salaryCtx}`
       : "";
 
@@ -335,7 +325,7 @@ The intro persona should be "Hiring Manager". Distribute questions across all th
     const prompt = `You are an expert interviewer conducting a ${interviewType.replace(/-/g, " ")} mock interview for a ${targetRole} candidate. ${tone}
 ${typeGuidance ? `\n${typeGuidance}\n` : ""}${languageContext ? `\nLANGUAGE INSTRUCTION: ${languageContext}\n` : ""}${experienceCalibration ? `\n${experienceCalibration}\n` : ""}
 Context:
-${companyContext ? `- ${companyContext}\n` : ""}${industryContext ? `- ${industryContext}\n` : ""}${focusContext ? `- ${focusContext}\n` : ""}${roleCompContext ? `- Role competencies to test: ${roleCompContext}\n` : ""}${resumeContext ? `- ${resumeContext}\n` : ""}${jdContext ? `- ${jdContext}\n` : ""}${avoidTopics ? `- ${avoidTopics}\n` : ""}${weakSkillsContext ? `- ${weakSkillsContext}\n` : ""}
+${companyContext ? `- ${companyContext}\n` : ""}${industryContext ? `- ${industryContext}\n` : ""}${focusContext ? `- ${focusContext}\n` : ""}${!isSalaryType && roleCompContext ? `- Role competencies to test: ${roleCompContext}\n` : ""}${resumeContext ? `- ${resumeContext}\n` : ""}${jdContext ? `- ${jdContext}\n` : ""}${avoidTopics ? `- ${avoidTopics}\n` : ""}${weakSkillsContext ? `- ${weakSkillsContext}\n` : ""}
 Generate exactly ${stepCount} interview steps as a JSON array. Sequence: intro, ${Array(questionCount).fill("question").join(", ")}, closing. Do NOT include follow-up steps — those are generated dynamically based on the candidate's answers.
 
 Each step: {"type":"intro|question|closing","aiText":"2-3 sentences spoken naturally by the interviewer","scoreNote":"specific evaluation criteria for this question"${interviewType === "panel" ? ',"persona":"Hiring Manager|Technical Lead|HR Partner"' : ""}}${panelNote}
@@ -346,8 +336,11 @@ IMPORTANT closing rules:
 - The closing should thank the candidate, summarize their performance highlights, and give one specific improvement tip
 - Example closing: "Great session! You demonstrated strong strategic thinking, especially around prioritization. To improve, try anchoring your examples with specific metrics — numbers make your stories more compelling."
 
-Example good question: "Walk me through a system you designed that had to handle 10x growth. What were the key architectural trade-offs you made, and how did you validate them?"
-Example bad question: "Tell me about your experience." (too vague, not role-specific)
+${isSalaryType
+? `Example good question: "We'd like to offer you ₹18 LPA — ₹14.5 LPA base with 10% performance bonus and standard benefits. How does that align with your expectations?"
+Example bad question: "Tell me about a time you led a cross-functional project." (behavioral, NOT salary negotiation)`
+: `Example good question: "Walk me through a system you designed that had to handle 10x growth. What were the key architectural trade-offs you made, and how did you validate them?"
+Example bad question: "Tell me about your experience." (too vague, not role-specific)`}
 
 Requirements:
 - MARKET: This product serves the Indian job market. Use Indian Rupees (₹) and LPA (Lakhs Per Annum) for any salary/compensation references. Use Indian company examples and cultural context where relevant.
