@@ -302,7 +302,10 @@ export function getScript(type: string | null, difficulty: string | null, user: 
   let questionSteps: InterviewStep[];
   if (pool && pool.length > 0) {
     const questionCount = Math.min(5, pool.length);
-    const selected = shuffleAndPick(pool, questionCount);
+    // Salary-negotiation: maintain sequential order (conversation arc). Others: randomize.
+    const selected = typeKey === "salary-negotiation"
+      ? pool.slice(0, questionCount)
+      : shuffleAndPick(pool, questionCount);
     const panelPersonas = ["Technical Lead", "Hiring Manager", "HR Partner", "Technical Lead", "Hiring Manager"];
     questionSteps = selected.map((bank, i) => {
       const raw = hasResume && title ? bank.qResume : bank.q;

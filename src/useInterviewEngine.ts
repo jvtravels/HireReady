@@ -931,8 +931,7 @@ export function useInterviewEngine() {
   const flowGenerationRef = useRef(0);
   const pendingFollowUpRef = useRef<Promise<{ needsFollowUp: boolean; followUpText: string; followUpType?: string } | null> | null>(null);
   const followUpDepthRef = useRef(0);
-  // Track inserted salary-negotiation follow-ups to cap total turns
-  const salaryInsertedRef = useRef(0);
+  // (Follow-up cap for salary-negotiation is counted from the script itself inside setInterviewScript)
   // Dynamic difficulty: track answer quality mid-interview for escalation/de-escalation
   const answerQualityRef = useRef<number[]>([]);
   // Last answer quality for contextual reactions
@@ -961,7 +960,7 @@ export function useInterviewEngine() {
     }
 
     // Whether this step should get a reaction phrase (question/follow-up, not first step)
-    const shouldUseThinkingPhrase = currentStep > 0 && (step.type === "question" || step.type === "follow-up");
+    const shouldUseThinkingPhrase = currentStep > 0 && (step.type === "question" || step.type === "follow-up" || (step.type === "closing" && interviewType === "salary-negotiation"));
 
     // Build context-aware reaction phrase
     let thinkingPhrase: string | null = null;
@@ -1160,9 +1159,10 @@ export function useInterviewEngine() {
               }
               // No more questions to replace — check if we can insert a follow-up probe
               // (e.g., last question before closing, or vague answer needs probing)
-              if (salaryInsertedRef.current < (isMiniMode ? 2 : 3)) {
-                salaryInsertedRef.current++;
-                // Insert as a follow-up before the closing step
+              // Cap check inside setInterviewScript to prevent race condition
+              const maxInserts = isMiniMode ? 2 : 3;
+              const alreadyInserted = prev.filter(s => s.type === "follow-up").length;
+              if (alreadyInserted < maxInserts) {
                 const closingIdx = prev.findIndex((s, i) => i > currentStep && s.type === "closing");
                 if (closingIdx > currentStep) {
                   const insertStep = { ...followUpStep, type: "follow-up" as const };
@@ -1227,7 +1227,14 @@ export function useInterviewEngine() {
     ttsCancelRef.current?.();
     recognitionRef.current?.stop();
 
-    const answerText = currentTranscript.trim() || `[Answer recorded — ${answerTimer}s]`;
+    const answerText = currentTranscript.trim() || (answerTimer > 2 ? `[Answer recorded — ${answerTimer}s]` : "");
+
+    // Block completely empty answers (silence with no speech detected)
+    if (!answerText) {
+      toast("Please speak or type your response before continuing.", "info");
+      advancingRef.current = false;
+      return;
+    }
 
     // Validate text input — require minimum length (shorter threshold for salary-negotiation since "₹25 LPA" is valid)
     const minLength = interviewType === "salary-negotiation" ? 3 : 10;
@@ -1260,13 +1267,21 @@ export function useInterviewEngine() {
         // Salary-negotiation-specific micro-feedback
         const mentionsNumber = /₹|lakh|lpa|lakhs|\d+\s*l(?:pa|akh)/i.test(answerText);
         const mentionsBenefits = /benefit|esop|equity|bonus|flexible|remote|insurance|learning|budget/i.test(answerText);
+        const mentionsEquityVague = /esop|equity|stock|option|vest/i.test(answerText) && !/₹|\d+\s*(?:lakh|lpa|%)/i.test(answerText);
         const mentionsCompeting = /other offer|competing|another company|counter/i.test(answerText);
-        const acceptsImmediately = /(?:sounds good|i accept|that works|deal|perfect|okay sure|fine with me)/i.test(answerText) && wordCount < 20;
+        const acceptsImmediately = /(?:sounds good|i accept|that works|deal|perfect|okay sure|fine with me|yes.*accept)/i.test(answerText) && wordCount < 25;
+        const rejectsOutright = /(?:way too low|not interested|can'?t accept|wouldn'?t consider|absolutely not|that'?s insulting|no way)/i.test(answerText);
 
-        if (acceptsImmediately) {
+        if (rejectsOutright && wordCount < 30) {
+          setMicroFeedback("Tip: Stay open and professional — counter with data, don't reject outright.");
+        } else if (acceptsImmediately) {
           setMicroFeedback("Tip: Don't accept too quickly — explore the full package first.");
+        } else if (wordCount > 100) {
+          setMicroFeedback("Tip: Keep negotiation points concise — 2-3 sentences per response works best.");
         } else if (wordCount < 15) {
           setMicroFeedback("Tip: Elaborate on your reasoning — why that number? What's your basis?");
+        } else if (mentionsEquityVague) {
+          setMicroFeedback("Good interest in equity! Ask for the vesting schedule and annual value in ₹.");
         } else if (mentionsNumber && !mentionsBenefits) {
           setMicroFeedback("Good anchor! Consider discussing beyond base — benefits, equity, flexibility.");
         } else if (mentionsBenefits && mentionsNumber) {
@@ -1281,7 +1296,8 @@ export function useInterviewEngine() {
         if (mentionsNumber) answerScore += 15;
         if (mentionsBenefits) answerScore += 15;
         if (wordCount >= 30) answerScore += 10;
-        if (!acceptsImmediately) answerScore += 10;
+        if (!acceptsImmediately && !rejectsOutright) answerScore += 10;
+        if (rejectsOutright) answerScore -= 10;
         if (wordCount < 15) answerScore -= 15;
         answerQualityRef.current.push(Math.min(100, Math.max(0, answerScore)));
       } else {
