@@ -54,7 +54,14 @@ export async function saveSessionResult(result: SessionResult, userId?: string):
   let cloudOk = false;
   try {
     const raw = localStorage.getItem(RESULTS_KEY);
-    const sessions: SessionResult[] = raw ? JSON.parse(raw) : [];
+    let sessions: SessionResult[];
+    try {
+      sessions = raw ? JSON.parse(raw) : [];
+      if (!Array.isArray(sessions)) sessions = [];
+    } catch {
+      console.warn("[save] localStorage data corrupted, starting fresh");
+      sessions = [];
+    }
     sessions.unshift(result);
     // Prune to most recent 50 sessions to prevent localStorage overflow
     if (sessions.length > 50) sessions.length = 50;
@@ -165,18 +172,39 @@ export function getAdaptiveHints(sessions: { skill_scores?: Record<string, unkno
   };
 }
 
+/** Negotiation band returned by generate-questions API */
+export interface NegotiationBandData {
+  initialOffer: number;
+  minOffer: number;
+  maxStretch: number;
+  walkAway: number;
+  joiningBonusRange: [number, number];
+  hasEquity: boolean;
+  equityRange: [number, number];
+  bandContext: string;
+}
+
+/** Result from fetchLLMQuestions — includes questions + optional negotiation band */
+export interface LLMQuestionsResult {
+  questions: InterviewStep[];
+  negotiationBand?: NegotiationBandData;
+}
+
 /** Fetch LLM-generated interview questions */
 export async function fetchLLMQuestions(params: {
   type: string; focus?: string; difficulty: string; role: string;
   company?: string; currentCity?: string; jobCity?: string; industry?: string; resumeText?: string;
   pastTopics?: string[]; weakSkills?: string[]; jobDescription?: string;
   experienceLevel?: string; mini?: boolean;
-}): Promise<InterviewStep[] | null> {
+  resumeStrengths?: string[]; resumeGaps?: string[]; resumeTopSkills?: string[];
+  candidateName?: string;
+  negotiationStyle?: string;
+}): Promise<LLMQuestionsResult | null> {
   // Client-side rate limit: max 3 question generations per 60s
   if (!checkRateLimit("generate-questions", 3, 60_000)) {
     throw new Error("Too many requests. Please wait a moment and try again.");
   }
-  const attempt = async (): Promise<InterviewStep[] | null> => {
+  const attempt = async (): Promise<LLMQuestionsResult | null> => {
     const { authHeaders: getAuthHeaders } = await import("./supabase");
     const headers = await getAuthHeaders();
     const res = await fetch("/api/generate-questions", {
@@ -200,18 +228,25 @@ export async function fetchLLMQuestions(params: {
       console.warn("[questions] generate-questions returned invalid data:", JSON.stringify(data).slice(0, 300));
       return null;
     }
-    return data.questions
-      .map((q: { type?: string; aiText?: string; text?: string; scoreNote?: string; persona?: string }) => ({
-        type: (q.type || "question") as InterviewStep["type"],
-        aiText: q.aiText || q.text || "",
-        thinkingDuration: q.type === "intro" ? 500 : 600,
-        speakingDuration: 5000,
-        waitForUser: q.type !== "closing",
-        scoreNote: q.scoreNote || "",
-        ...(q.persona ? { persona: q.persona } : {}),
-      }))
+    const questions = data.questions
+      .map((q: { type?: string; aiText?: string; text?: string; scoreNote?: string; persona?: string }) => {
+        const text = q.aiText || q.text || "";
+        // Compute speakingDuration from word count (~150 WPM for TTS, 1.5s padding)
+        const wordCount = text.split(/\s+/).length;
+        const estimatedMs = Math.max(3000, Math.round((wordCount / 150) * 60 * 1000) + 1500);
+        return {
+          type: (q.type || "question") as InterviewStep["type"],
+          aiText: text,
+          thinkingDuration: q.type === "intro" ? 500 : 600,
+          speakingDuration: estimatedMs,
+          waitForUser: q.type !== "closing",
+          scoreNote: q.scoreNote || "",
+          ...(q.persona ? { persona: q.persona } : {}),
+        };
+      })
       .filter((q: InterviewStep) => q.aiText.length >= 10)
       .map((q: InterviewStep) => q.type === "closing" ? { ...q, waitForUser: true } : q);
+    return { questions, negotiationBand: data.negotiationBand || undefined };
   };
   for (let i = 0; i < 2; i++) {
     try {
@@ -280,6 +315,20 @@ export async function fetchFollowUp(params: {
   previousFollowUps?: string[];
   persona?: string;
   conversationHistory?: string;
+  resumeTopSkills?: string[];
+  initialOfferText?: string;
+  negotiationFacts?: {
+    acceptedImmediately: boolean;
+    rejectedOutright: boolean;
+    candidateCounter: string | null;
+    candidateCurrentCTC: string | null;
+    hasCompetingOffers: boolean;
+    topicsRaised: string[];
+    deflectedNumbers: boolean;
+  };
+  negotiationStyle?: string;
+  negotiationBand?: NegotiationBandData;
+  industry?: string;
 }): Promise<{ needsFollowUp: boolean; followUpText: string; followUpType?: string } | null> {
   // Client-side rate limit: max 10 follow-ups per 60s
   if (!checkRateLimit("follow-up", 10, 60_000)) return null;
@@ -287,7 +336,7 @@ export async function fetchFollowUp(params: {
     const { authHeaders: getAuthHeaders } = await import("./supabase");
     const headers = await getAuthHeaders();
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 4000);
+    const timer = setTimeout(() => controller.abort(), 10_000);
     const res = await fetch("/api/follow-up", {
       method: "POST",
       headers,

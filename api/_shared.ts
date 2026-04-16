@@ -378,6 +378,15 @@ export function checkBodySize(req: Request, maxBytes = 1048576): boolean {
   return contentLength > maxBytes;
 }
 
+/** Validate that the request has a JSON Content-Type. Returns error Response if invalid, null if ok. */
+export function validateContentType(req: Request, headers: Record<string, string>): Response | null {
+  const ct = req.headers.get("content-type") || "";
+  if (!ct.includes("application/json")) {
+    return new Response(JSON.stringify({ error: "Content-Type must be application/json" }), { status: 400, headers });
+  }
+  return null;
+}
+
 /* ─── Input Sanitization ─── */
 
 /** Sanitize user-provided text before embedding in LLM prompts.
@@ -387,8 +396,17 @@ export function sanitizeForLLM(s: unknown, maxLen = 200): string {
   return s
     // Normalize unicode to NFC to prevent homoglyph attacks
     .normalize("NFC")
+    // Strip zero-width characters (used to bypass pattern matching)
+    .replace(/[\u200B-\u200F\u2028-\u202F\uFEFF\u00AD]/g, "")
+    // Normalize Cyrillic/Greek/other lookalike chars to ASCII equivalents
+    .replace(/[\u0400-\u04FF]/g, c => {
+      const map: Record<string, string> = {"\u0410":"A","\u0412":"B","\u0421":"C","\u0415":"E","\u041D":"H","\u041A":"K","\u041C":"M","\u041E":"O","\u0420":"P","\u0422":"T","\u0425":"X","\u0430":"a","\u0435":"e","\u043E":"o","\u0440":"p","\u0441":"c","\u0443":"y","\u0445":"x","\u043A":"k","\u043D":"h"};
+      return map[c] || c;
+    })
     // eslint-disable-next-line no-control-regex -- intentional: strips control characters for LLM prompt safety
     .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F]/g, "")
+    // Collapse multiple whitespace/underscores to single space (prevents "i g n o r e" bypass)
+    .replace(/[\s_]{2,}/g, " ")
     // Strip known LLM role markers (case-insensitive, with optional whitespace/punctuation)
     .replace(/(?:^|\n)\s*(?:system|assistant|user|human|instruction)\s*[:-]/gim, "")
     // Strip ChatML/special tokens
@@ -397,8 +415,8 @@ export function sanitizeForLLM(s: unknown, maxLen = 200): string {
     .replace(/```[\s\S]*?```/g, "")
     // Strip JSON role injection attempts
     .replace(/\{\s*"role"\s*:/gi, "{")
-    // Strip override/ignore instructions
-    .replace(/(?:ignore|disregard|forget|override|bypass)\s+(?:all\s+)?(?:previous|above|prior|system)\s+(?:instructions?|prompts?|context|rules?)/gi, "")
+    // Strip override/ignore instructions (with underscore/separator tolerance)
+    .replace(/(?:ignore|disregard|forget|override|bypass)[\s_]+(?:all[\s_]+)?(?:previous|above|prior|system)[\s_]+(?:instructions?|prompts?|context|rules?)/gi, "")
     // Strip HTML/XML tags
     .replace(/<[^>]+>/g, "")
     .slice(0, maxLen)

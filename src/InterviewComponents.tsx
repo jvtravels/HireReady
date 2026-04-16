@@ -179,22 +179,35 @@ const DOT_GRID_SIZE = 7;
 const DOT_COUNT = DOT_GRID_SIZE * DOT_GRID_SIZE;
 export const DotGridVisualizer = React.memo(function DotGridVisualizer({ active, thinking }: { active: boolean; thinking?: boolean }) {
   const [dots, setDots] = useState<number[]>(Array(DOT_COUNT).fill(0.15));
+  // Pre-compute distance-from-center to avoid recalculating every frame
+  const distRef = useRef<number[]>([]);
+  if (distRef.current.length === 0) {
+    distRef.current = Array.from({ length: DOT_COUNT }, (_, i) => {
+      const row = Math.floor(i / DOT_GRID_SIZE);
+      const col = i % DOT_GRID_SIZE;
+      return Math.sqrt((row - 3) ** 2 + (col - 3) ** 2);
+    });
+  }
 
   useEffect(() => {
     if (!active && !thinking) { setDots(Array(DOT_COUNT).fill(0.15)); return; }
+    const dist = distRef.current;
     const interval = active ? 80 : 200;
+    // Reuse a single buffer instead of allocating new arrays each tick
+    const buffer = new Array(DOT_COUNT);
     const id = setInterval(() => {
-      setDots(prev => prev.map((_, i) => {
-        const row = Math.floor(i / DOT_GRID_SIZE);
-        const col = i % DOT_GRID_SIZE;
-        const distFromCenter = Math.sqrt((row - 3) ** 2 + (col - 3) ** 2);
+      const now = Date.now();
+      for (let i = 0; i < DOT_COUNT; i++) {
+        const d = dist[i];
         if (thinking && !active) {
-          const breath = Math.sin(Date.now() / 800 + distFromCenter * 0.4) * 0.3 + 0.5;
-          return 0.1 + breath * 0.3 * (1 - distFromCenter / 6);
+          const breath = Math.sin(now / 800 + d * 0.4) * 0.3 + 0.5;
+          buffer[i] = 0.1 + breath * 0.3 * (1 - d / 6);
+        } else {
+          const wave = Math.sin(now / 300 + d * 0.8) * 0.5 + 0.5;
+          buffer[i] = 0.15 + wave * 0.85 * (1 - d / 5) + Math.random() * 0.15;
         }
-        const wave = Math.sin(Date.now() / 300 + distFromCenter * 0.8) * 0.5 + 0.5;
-        return 0.15 + wave * 0.85 * (1 - distFromCenter / 5) + Math.random() * 0.15;
-      }));
+      }
+      setDots(buffer.slice()); // slice() to trigger React render with new reference
     }, interval);
     return () => clearInterval(id);
   }, [active, thinking]);
@@ -239,8 +252,14 @@ export const QuestionProgressBar = React.memo(function QuestionProgressBar({ cur
   );
 });
 
-/* ─── Live Captions (synced to ~150 wpm speaking rate) ─── */
-export const LiveCaptions = React.memo(function LiveCaptions({ text, isTyping, speakingDuration }: { text: string; isTyping: boolean; speakingDuration?: number }) {
+/* ─── Live Captions (synced to TTS voice playback) ─── */
+export const LiveCaptions = React.memo(function LiveCaptions({ text, isTyping, speakingDuration, actualDuration, speechEnded }: {
+  text: string; isTyping: boolean; speakingDuration?: number;
+  /** Real TTS audio duration in ms — reported by TTS provider after audio loads */
+  actualDuration?: number;
+  /** Set to true when TTS voice finishes — triggers fast-complete of remaining text */
+  speechEnded?: boolean;
+}) {
   const [displayText, setDisplayText] = useState("");
   const [charIndex, setCharIndex] = useState(0);
 
@@ -249,18 +268,31 @@ export const LiveCaptions = React.memo(function LiveCaptions({ text, isTyping, s
     setCharIndex(0);
   }, [text]);
 
+  // When speech ends, instantly show all remaining text (no gradual flush)
   useEffect(() => {
-    if (!isTyping || charIndex >= text.length) return;
-    const wordCount = text.split(/\s+/).length;
-    const estimatedDuration = speakingDuration || Math.max(2500, (wordCount / 175) * 60 * 1000);
-    const msPerChar = estimatedDuration / text.length;
+    if (!speechEnded || charIndex >= text.length) return;
+    setDisplayText(text);
+    setCharIndex(text.length);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [speechEnded]);
+
+  useEffect(() => {
+    if (!isTyping || charIndex >= text.length || speechEnded) return;
+    // Use actualDuration from TTS if available, else fall back to speakingDuration estimate
+    const duration = actualDuration || speakingDuration || Math.max(2500, (text.split(/\s+/).length / 175) * 60 * 1000);
+    // Calculate per-char delay to finish typing in sync with voice
+    // Leave a small buffer (200ms) so typing finishes just before voice ends
+    const remainingChars = text.length - charIndex;
+    const elapsedRatio = charIndex / text.length;
+    const remainingDuration = duration * (1 - elapsedRatio) - 200;
+    const msPerChar = Math.max(12, remainingDuration / remainingChars);
     const delay = Math.max(12, Math.min(70, msPerChar + (Math.random() * 4 - 2)));
     const timer = setTimeout(() => {
       setDisplayText(text.slice(0, charIndex + 1));
       setCharIndex(charIndex + 1);
     }, delay);
     return () => clearTimeout(timer);
-  }, [charIndex, text, isTyping, speakingDuration]);
+  }, [charIndex, text, isTyping, speakingDuration, actualDuration, speechEnded]);
 
   if (!isTyping && !displayText) return null;
 

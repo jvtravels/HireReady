@@ -33,10 +33,11 @@ describe("interviewScripts", () => {
       expect(closing?.waitForUser).toBe(true);
     });
 
-    it.each(Object.keys(scriptsByType))("%s has 3–4 questions", (type) => {
+    it.each(Object.keys(scriptsByType))("%s has 3–5 questions", (type) => {
       const questions = scriptsByType[type].filter(s => s.type === "question");
       expect(questions.length).toBeGreaterThanOrEqual(3);
-      expect(questions.length).toBeLessThanOrEqual(4);
+      // Salary-negotiation has 5 questions for a longer conversation arc
+      expect(questions.length).toBeLessThanOrEqual(5);
     });
   });
 

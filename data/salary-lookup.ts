@@ -20,6 +20,126 @@ export interface SalaryLookupParams {
   jobCity?: string;
 }
 
+/** Negotiation band: defines the range the hiring manager can negotiate within */
+export interface NegotiationBand {
+  /** Initial offer CTC (what the manager opens with) */
+  initialOffer: number;
+  /** Minimum the company would accept (walk-away floor for candidate) */
+  minOffer: number;
+  /** Maximum stretch the manager can go to */
+  maxStretch: number;
+  /** Walk-away point — if candidate demands above this, manager must decline */
+  walkAway: number;
+  /** Joining bonus range */
+  joiningBonusRange: [number, number];
+  /** Whether equity is available at this level */
+  hasEquity: boolean;
+  /** Equity annual value range (LPA) */
+  equityRange: [number, number];
+  /** Formatted string for LLM context */
+  bandContext: string;
+}
+
+/** Negotiation style: modifies how the hiring manager behaves */
+export type NegotiationStyle = "cooperative" | "aggressive" | "defensive";
+
+/** Industry-specific package flavor text for LLM */
+export const INDUSTRY_PACKAGE_CONTEXT: Record<string, string> = {
+  fintech: `INDUSTRY: Fintech/Payments. Comp structure leans heavily on variable pay (15-25% of CTC). ESOPs are common at growth-stage. Compliance bonuses exist. Expect candidates to benchmark against Razorpay, PhonePe, CRED, Zerodha. Perks: wealth management tools, financial literacy budget, stock trading accounts.`,
+  faang: `INDUSTRY: FAANG/Big Tech. RSUs are a major component (20-40% of total comp). Annual refreshers common. L4-L7 leveling matters — one level up = 30-50% more. Perks: relocation packages, immigration support, sabbaticals, mental health budget. Candidates benchmark against Google, Microsoft, Amazon, Meta India.`,
+  startup: `INDUSTRY: Early/Growth-Stage Startup. Cash-heavy comp with aggressive ESOPs (0.01-0.5% for IC, 0.1-2% for leadership). Joining bonus common to offset ESOP illiquidity. Fast promotion cycles. Perks: unlimited PTO, learning budget, co-working spaces. Candidates benchmark against YC/Sequoia portfolio companies.`,
+  ecommerce: `INDUSTRY: E-commerce/D2C. Mix of base + performance bonus tied to GMV/revenue targets. ESOPs at growth stage. Seasonal pressure (festive sales = crunch). Perks: employee discounts, wellness budgets. Candidates benchmark against Flipkart, Meesho, Myntra, Nykaa.`,
+  consulting: `INDUSTRY: Consulting/IT Services. Lower base but strong variable (20-30% of CTC). Overseas deputation = 2-3x salary. Limited equity. Notice periods are long (60-90 days). Perks: client-site allowances, certification budgets, travel perks. Candidates benchmark against TCS, Infosys, Wipro (services) or McKinsey, BCG (strategy).`,
+  government: `INDUSTRY: Government/PSU. Pay fixed by 7th CPC bands. No negotiation on base. Negotiate: grade level, posting city (HRA varies 8-24%), housing, deputation allowance, training budget. Pension is the real wealth — defined benefit worth ₹50-150 LPA actuarially. Job security is the key selling point.`,
+};
+
+/** Generate a negotiation band for a given role/company/experience/city combination */
+export function generateNegotiationBand(params: SalaryLookupParams): NegotiationBand {
+  const roleKey = matchRoleKey(params.role);
+  const companyTier = getCompanyTier(params.company) ?? "indian-unicorn";
+  const exp = normalizeExp(params.experienceLevel);
+  const jobCityTier = getCityTier(params.jobCity || params.currentCity);
+
+  const entry = findSalaryEntry(roleKey, companyTier, exp);
+
+  // Fallback band if no salary data
+  if (!entry) {
+    return {
+      initialOffer: 12, minOffer: 10, maxStretch: 16, walkAway: 20,
+      joiningBonusRange: [0, 1.5], hasEquity: false, equityRange: [0, 0],
+      bandContext: "No specific salary data. Use general market rates. Initial offer: ₹12 LPA, max stretch: ₹16 LPA.",
+    };
+  }
+
+  const adj = (v: number) => jobCityTier === "tier1" ? v : adjustForCity(v, jobCityTier);
+
+  // Initial offer: ~75th percentile of the range (leaves room to negotiate up)
+  const totalMin = adj(entry.total_min);
+  const totalMax = adj(entry.total_max);
+  const initialOffer = Math.round((totalMin + (totalMax - totalMin) * 0.35) * 10) / 10;
+
+  // Min offer: slightly below the data range min (floor)
+  const minOffer = Math.round(totalMin * 0.95 * 10) / 10;
+
+  // Max stretch: 90th percentile of range
+  const maxStretch = Math.round((totalMin + (totalMax - totalMin) * 0.85) * 10) / 10;
+
+  // Walk-away: above the top of the range — if candidate demands more, manager declines
+  const walkAway = Math.round(totalMax * 1.1 * 10) / 10;
+
+  const hasEquity = entry.equity_type !== "none";
+  const equityRange: [number, number] = hasEquity
+    ? [adj(entry.equity_annual_min), adj(entry.equity_annual_max)]
+    : [0, 0];
+
+  const joiningBonusRange: [number, number] = [
+    entry.joining_bonus_min,
+    entry.joining_bonus_max > 0 ? entry.joining_bonus_max : Math.round(initialOffer * 0.08 * 10) / 10,
+  ];
+
+  const bandContext = `NEGOTIATION BAND (your authority as hiring manager):
+- Initial offer: ${fmtLPA(initialOffer)} CTC
+- Floor (minimum you can offer): ${fmtLPA(minOffer)} CTC
+- Max stretch (with approval): ${fmtLPA(maxStretch)} CTC
+- Walk-away ceiling: ${fmtLPA(walkAway)} — if candidate demands above this, politely decline: "That's beyond our band for this level. I'd need to explore a senior/staff position instead."
+- Joining bonus authority: ${fmtRange(joiningBonusRange[0], joiningBonusRange[1])}
+${hasEquity ? `- Equity: ${fmtRange(equityRange[0], equityRange[1])}/yr (${entry.equity_vesting})` : "- No equity at this level"}
+RULES: Start at initial offer. Concede in small increments (₹1-2 LPA per round). Never jump to max. Trade — don't just give. If you raise base, reduce variable or delay review cycle. Always have a reason for each concession.`;
+
+  return { initialOffer, minOffer, maxStretch, walkAway, joiningBonusRange, hasEquity, equityRange, bandContext };
+}
+
+/** Get negotiation style instructions for the LLM */
+export function getNegotiationStyleContext(style: NegotiationStyle): string {
+  switch (style) {
+    case "cooperative":
+      return `NEGOTIATION STYLE: COOPERATIVE
+You are a friendly, collaborative hiring manager. You genuinely want the candidate to succeed and feel valued.
+- Lead with transparency: share your band range early
+- Actively suggest creative solutions: "What if we do X instead of Y?"
+- Show empathy: "I understand that's important to you"
+- Goal: reach win-win. You'll stretch budget if the candidate gives reasonable justification
+- Tone: warm, supportive, solution-oriented`;
+    case "aggressive":
+      return `NEGOTIATION STYLE: AGGRESSIVE
+You are a tough, budget-conscious hiring manager. The company is watching costs closely.
+- Anchor LOW — start at the bottom of your band
+- Push back on every counter: "That's ambitious. Help me justify that to finance."
+- Use pressure: "We have other strong candidates", "Budget is tight this quarter"
+- Concede slowly and only when the candidate provides strong reasoning
+- Create urgency: "I need an answer by Friday"
+- Tone: professional but firm, slightly skeptical, data-driven`;
+    case "defensive":
+      return `NEGOTIATION STYLE: DEFENSIVE
+You are a cautious hiring manager who avoids confrontation but protects the budget.
+- Deflect direct salary questions: "Let me check with finance", "That's above our standard band"
+- Offer non-monetary benefits instead of raising base: flexibility, learning budget, title upgrade
+- Avoid committing to numbers: "I'll see what I can do" rather than specific counters
+- When pushed, cite policy: "Our compensation committee sets the bands"
+- Tone: polite, slightly evasive, bureaucratic — the candidate must be persistent to get concessions`;
+  }
+}
+
 /** Normalize experience level string to our enum */
 function normalizeExp(exp: string | undefined): ExperienceLevel {
   if (!exp) return "mid";

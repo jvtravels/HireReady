@@ -276,9 +276,13 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     return () => { cancelled = true; clearTimeout(timeout); };
   }, [user?.id]);
 
-  // Refetch sessions from Supabase
+  // Refetch sessions from Supabase (debounced to prevent rapid-fire calls)
+  const refreshTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const refreshSessions = useCallback(() => {
     if (!user?.id) return;
+    // Debounce: skip if a refresh was triggered within the last 5 seconds
+    if (refreshTimeoutRef.current) return;
+    refreshTimeoutRef.current = setTimeout(() => { refreshTimeoutRef.current = null; }, 5000);
     getUserSessions(user.id).then(sessions => {
       const mapped = sessions.map(s => ({
         id: s.id, date: s.date, type: s.type, difficulty: s.difficulty,
@@ -298,7 +302,10 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
       refreshSessions();
     };
     document.addEventListener("visibilitychange", handleVisibility);
-    return () => document.removeEventListener("visibilitychange", handleVisibility);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibility);
+      if (refreshTimeoutRef.current) { clearTimeout(refreshTimeoutRef.current); refreshTimeoutRef.current = null; }
+    };
   }, [user?.id, refreshSessions]);
 
   // Session data

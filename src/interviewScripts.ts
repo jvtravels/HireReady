@@ -101,10 +101,11 @@ export const scriptsByType: Record<string, InterviewStep[]> = {
   ],
   "salary-negotiation": [
     { type: "intro", aiText: "Good to see you again. We've completed all the interview rounds, and the team was really impressed with your profile. I'm here to discuss the offer details and see if we can make this work. Let me walk you through what we've put together.", thinkingDuration: 500, speakingDuration: 5500, waitForUser: true },
-    { type: "question", aiText: "We'd like to offer you the position with a CTC of 18 lakhs per annum. That breaks down to ₹14.5 lakhs base salary, a 10% performance bonus, and standard benefits including health insurance for you and your family. How does this sound to you?", thinkingDuration: 600, speakingDuration: 5500, waitForUser: true, scoreNote: "Phase: Initial offer. Evaluate: Did they accept too quickly? Did they ask clarifying questions? Did they express interest without committing?" },
-    { type: "question", aiText: "I appreciate you sharing that. Before we go further, I'd like to understand your expectations better. What is your current compensation package, and what range were you targeting for this move? I want to make sure we find something that works for both sides.", thinkingDuration: 700, speakingDuration: 5000, waitForUser: true, scoreNote: "Phase: Probe expectations. Evaluate: Did they anchor high with market data? Did they avoid revealing exact current CTC? Did they frame it around value, not needs?" },
-    { type: "question", aiText: "I hear you. That's a bit above our initial band for this level. Let me see what I can do — I could stretch to ₹21 lakhs CTC, and add a joining bonus of ₹1.5 lakhs to bridge the gap. Alternatively, we have some flexibility on ESOPs. What matters more to you — a higher base or equity upside?", thinkingDuration: 700, speakingDuration: 5500, waitForUser: true, scoreNote: "Phase: Counter-offer. Evaluate: Did they negotiate beyond just base? Did they explore multiple levers? Did they maintain leverage without being adversarial?" },
-    { type: "question", aiText: "Let me lay out the full picture then. With the revised numbers, you'd get ₹21 LPA CTC, plus ₹1.5 LPA joining bonus, ESOPs worth roughly ₹2 lakhs per year with 4-year vesting, a ₹50,000 learning budget, and flexible work 3 days a week. I think that's a strong package. What would make this a clear yes for you?", thinkingDuration: 700, speakingDuration: 5500, waitForUser: true, scoreNote: "Phase: Closing. Evaluate: Did they think about total compensation? Did they prioritize clearly? Did they ask about timeline and next steps?" },
+    { type: "question", aiText: "We'd like to offer you the position with a CTC of 18 lakhs per annum. That breaks down to ₹14.5 lakhs base salary, a 10% performance bonus, and standard benefits including health insurance for you and your family. How does this sound to you?", thinkingDuration: 600, speakingDuration: 5500, waitForUser: true, scoreNote: "Phase: offer-reaction. Evaluate: Did they accept too quickly? Did they ask clarifying questions? Did they express interest without committing?" },
+    { type: "question", aiText: "I appreciate you sharing that. Before we go further, I'd like to understand your expectations better. What is your current compensation package, and what range were you targeting for this move? I want to make sure we find something that works for both sides.", thinkingDuration: 700, speakingDuration: 5000, waitForUser: true, scoreNote: "Phase: probe-expectations. Evaluate: Did they anchor high with market data? Did they avoid revealing exact current CTC? Did they frame it around value, not needs?" },
+    { type: "question", aiText: "I hear you. That's a bit above our initial band for this level. Let me see what I can do — I could stretch to ₹21 lakhs CTC, and add a joining bonus of ₹1.5 lakhs to bridge the gap. Alternatively, we have some flexibility on ESOPs. What matters more to you — a higher base or equity upside?", thinkingDuration: 700, speakingDuration: 5500, waitForUser: true, scoreNote: "Phase: counter-offer. Evaluate: Did they negotiate beyond just base? Did they explore multiple levers? Did they maintain leverage without being adversarial?" },
+    { type: "question", aiText: "Let me lay out the full picture then. With the revised numbers, you'd get ₹21 LPA CTC, plus ₹1.5 LPA joining bonus, ESOPs worth roughly ₹2 lakhs per year with 4-year vesting, a ₹50,000 learning budget, and flexible work 3 days a week. I think that's a strong package. What would make this a clear yes for you?", thinkingDuration: 700, speakingDuration: 5500, waitForUser: true, scoreNote: "Phase: benefits-discussion. Evaluate: Did they think about total compensation? Did they prioritize clearly? Did they explore non-salary items?" },
+    { type: "question", aiText: "I appreciate the thorough discussion. I should mention — this is genuinely at the top of our approved band for this level. I've got one other strong candidate at final stage. I'd love to close this today. What's your notice period, and when could you realistically join us?", thinkingDuration: 700, speakingDuration: 5000, waitForUser: true, scoreNote: "Phase: closing-pressure. Evaluate: Did they handle pressure well? Did they negotiate notice buyout? Did they set a clear timeline?" },
     { type: "closing", aiText: "I think we've found good ground here. Let me summarize — we're looking at ₹21 LPA CTC with the joining bonus and the benefits we discussed. I'll have HR send you the formal offer letter by tomorrow. Take a day or two to review it, and let us know. We'd really love to have you on the team.", thinkingDuration: 800, speakingDuration: 6000, waitForUser: true },
   ],
 };
@@ -181,10 +182,13 @@ const miniQuestionsByType: Record<string, QuestionBank[]> = {
     { q: "If you had to pick one metric to measure your success in this {role} role, what would it be and why?", qResume: "Based on your experience as {title}, if you had to pick one metric to measure your success as {role}, what would it be?", scoreNote: "Impact thinking, metric-driven mindset, role understanding" },
   ],
   "salary-negotiation": [
-    // These are ordered as a conversation arc: offer → probe → counter. The engine picks 3 in order for mini sessions.
-    { q: "We'd like to offer you the {role} position at ₹18 LPA — that's ₹14.5 lakhs base with a 10% variable component and standard benefits. How does that sound to you?", qResume: "We'd like to offer you the {role} position at ₹18 LPA — ₹14.5 lakhs base, 10% variable, and standard benefits including family health insurance. Given your experience as {title}, how does this align with your expectations?", scoreNote: "Phase: Initial offer. Evaluate: not accepting immediately, asking clarifying questions, expressing measured interest" },
-    { q: "That's helpful. Can you share what range you were targeting for this move? And is that based on your current package, market research, or another offer?", qResume: "That's helpful. Given your background as {title}, what range were you targeting for this {role} position? Is that based on your current package, market data, or another offer?", scoreNote: "Phase: Probe expectations. Evaluate: anchoring high with reasoning, avoiding revealing exact current CTC, using data not emotion" },
-    { q: "I hear you. That's above our initial band, but let me see what I can do. I could stretch to ₹21 LPA CTC with a ₹1.5 lakh joining bonus. Beyond salary, we also offer flexible work and a learning budget. What matters most to you in the package?", qResume: "I hear you. That's above our initial band for someone at your level. I could stretch to ₹21 LPA with a joining bonus of ₹1.5 lakhs. We also offer flexible work and a ₹50K learning budget. As you transition from {title} to {role}, what matters most to you?", scoreNote: "Phase: Counter-offer. Evaluate: exploring beyond base salary, total comp thinking, professional framing, not accepting first counter" },
+    // Ordered as a conversation arc: offer → probe → counter → benefits → closing. Engine picks in order.
+    { q: "We'd like to offer you the {role} position at ₹18 LPA — that's ₹14.5 lakhs base with a 10% variable component and standard benefits. How does that sound to you?", qResume: "We'd like to offer you the {role} position at ₹18 LPA — ₹14.5 lakhs base, 10% variable, and standard benefits including family health insurance. Given your experience as {title}, how does this align with your expectations?", scoreNote: "Phase: offer-reaction. Evaluate: not accepting immediately, asking clarifying questions, expressing measured interest" },
+    { q: "That's helpful. Can you share what range you were targeting for this move? And is that based on your current package, market research, or another offer?", qResume: "That's helpful. Given your background as {title}, what range were you targeting for this {role} position? Is that based on your current package, market data, or another offer?", scoreNote: "Phase: probe-expectations. Evaluate: anchoring high with reasoning, avoiding revealing exact current CTC, using data not emotion" },
+    { q: "I hear you. That's above our initial band, but let me see what I can do. I could stretch to ₹21 LPA CTC with a ₹1.5 lakh joining bonus. Beyond salary, we also offer flexible work and a learning budget. What matters most to you in the package?", qResume: "I hear you. That's above our initial band for someone at your level. I could stretch to ₹21 LPA with a joining bonus of ₹1.5 lakhs. We also offer flexible work and a ₹50K learning budget. As you transition from {title} to {role}, what matters most to you?", scoreNote: "Phase: counter-offer. Evaluate: exploring beyond base salary, total comp thinking, professional framing, not accepting first counter" },
+    { q: "Let me lay out the complete picture. With the revised numbers you'd get the enhanced base, plus the joining bonus, health coverage for your family, a ₹50,000 learning budget, and flexible work 3 days a week. Is there anything else that would make this a clear yes?", qResume: "Let me lay out the full picture for you. With the revised package — enhanced base, joining bonus, family health insurance, ₹50K learning budget, and 3-day flexible work — how does this compare to what you were looking at as {title}? What else would make this a yes?", scoreNote: "Phase: benefits-discussion. Evaluate: did they negotiate non-salary items, ask about growth, explore equity/ESOPs, think about total comp" },
+    { q: "I appreciate the thorough discussion. Let me be transparent — this is at the top of our band for this level. I've got one other strong candidate, and I'd love to close this today. What's your notice period, and when could you realistically join?", qResume: "I appreciate the conversation. This package is genuinely at the top of our band for this {role} level. I'd love to close today — what's your notice period from your current role as {title}, and when could you realistically start?", scoreNote: "Phase: closing-pressure. Evaluate: handling deadline pressure, not caving under urgency, negotiating notice buyout, setting timeline" },
+    { q: "Alright, I think we're very close. Let me summarize the final offer so we're both clear — and I'll have HR send the formal letter. Take a day or two to review it. We'd really love to have you on the team.", qResume: "Great, I think we have a deal. Let me summarize everything we've agreed on, and I'll have HR send the offer letter by tomorrow. Take a day to review it, {title} to {role} is a strong move — we're excited to have you.", scoreNote: "Phase: closing. Evaluate: confirming understanding, asking about anything missed, professional close" },
   ],
   "government-psu": [
     { q: "Why do you want to work in the public sector? What motivates you about government service?", qResume: "With your background as {title}, why are you interested in public sector work? What motivates you about government service?", scoreNote: "Public service motivation, alignment with government values" },
@@ -212,9 +216,11 @@ export function getMiniScript(user: User | null, company?: string, interviewType
 
   const typeKey = interviewType && miniQuestionsByType[interviewType] ? interviewType : "behavioral";
   const typeLabel = typeKey.replace(/-/g, " ");
-  // For salary-negotiation: maintain sequential order (conversation arc). Others: random selection.
+  // For salary-negotiation: maintain sequential order (conversation arc), use 5 questions for richer negotiation.
   const pool = miniQuestionsByType[typeKey];
-  const questions = typeKey === "salary-negotiation" ? pool.slice(0, 3) : shuffleAndPick(pool, 3);
+  const isSalaryNeg = typeKey === "salary-negotiation";
+  const questionCount = isSalaryNeg ? Math.min(5, pool.length) : 3;
+  const questions = isSalaryNeg ? pool.slice(0, questionCount) : shuffleAndPick(pool, 3);
 
   const makeQ = (bank: { q: string; qResume: string; scoreNote: string }) => {
     const raw = hasResume && title ? bank.qResume : bank.q;
@@ -222,7 +228,6 @@ export function getMiniScript(user: User | null, company?: string, interviewType
   };
 
   const isPanel = typeKey === "panel";
-  const isSalaryNeg = typeKey === "salary-negotiation";
   // Panel persona rotation: HM intro, TL q1, HM q2, HR q3, HM closing
   const panelPersonas = ["Hiring Manager", "Technical Lead", "Hiring Manager", "HR Partner", "Hiring Manager"];
 
@@ -232,12 +237,21 @@ export function getMiniScript(user: User | null, company?: string, interviewType
     ? `Hi${name ? ` ${name}` : ""}! Welcome to your panel interview at HireStepX. I'm the hiring manager, and I'll be joined by our technical lead and HR partner. This is a quick 3-question practice round for the ${role} position${companyContext}.${resumeContext} We'll each ask you questions from our perspective. Ready? Let's go.`
     : `Hi${name ? ` ${name}` : ""}! Welcome to HireStepX. This is a quick 3-question ${typeLabel} practice round for the ${role} position${companyContext}.${resumeContext} I'll ask you real interview questions and give you a score at the end. Ready? Let's go.`;
 
+  // Build question steps dynamically (salary-neg gets 5, others get 3)
+  const questionSteps: InterviewStep[] = questions.map((bank, i) => ({
+    type: "question" as const,
+    aiText: makeQ(bank),
+    thinkingDuration: i === 0 ? 1200 : 1200,
+    speakingDuration: 4000,
+    waitForUser: true,
+    scoreNote: bank.scoreNote,
+    ...(isPanel ? { persona: panelPersonas[Math.min(i + 1, panelPersonas.length - 1)] } : {}),
+  }));
+
   return [
     { type: "intro" as const, aiText: introText,
       thinkingDuration: 800, speakingDuration: 5000, waitForUser: true, ...(isPanel ? { persona: panelPersonas[0] } : {}) },
-    { type: "question" as const, aiText: makeQ(questions[0]), thinkingDuration: 1200, speakingDuration: 4000, waitForUser: true, scoreNote: questions[0].scoreNote, ...(isPanel ? { persona: panelPersonas[1] } : {}) },
-    { type: "question" as const, aiText: makeQ(questions[1]), thinkingDuration: 1200, speakingDuration: 3500, waitForUser: true, scoreNote: questions[1].scoreNote, ...(isPanel ? { persona: panelPersonas[2] } : {}) },
-    { type: "question" as const, aiText: makeQ(questions[2]), thinkingDuration: 1200, speakingDuration: 4000, waitForUser: true, scoreNote: questions[2].scoreNote, ...(isPanel ? { persona: panelPersonas[3] } : {}) },
+    ...questionSteps,
     { type: "closing" as const, aiText: isSalaryNeg
       ? `I think we've covered the key points. Let me summarize what we've discussed and I'll have HR send the formal offer letter. Take a couple of days to think it over${name ? `, ${name}` : ""} — we'd love to have you on board.`
       : isPanel

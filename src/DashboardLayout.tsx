@@ -56,6 +56,10 @@ export default function DashboardLayout() {
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
+  const [helpFeedback, setHelpFeedback] = useState("");
+  const [helpSending, setHelpSending] = useState(false);
+  const [helpSent, setHelpSent] = useState(false);
   const shortcutsDialogRef = useRef<HTMLDivElement>(null);
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
 
@@ -393,6 +397,145 @@ export default function DashboardLayout() {
           <span style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.ivory }}>{toast}</span>
         </div>
       )}
+
+      {/* Floating help widget */}
+      <div style={{ position: "fixed", bottom: 24, right: 24, zIndex: 80 }}>
+        {helpOpen && (
+          <div style={{
+            width: 320, maxHeight: 440, overflowY: "auto", marginBottom: 12,
+            background: c.graphite, border: `1px solid ${c.border}`, borderRadius: 14,
+            padding: "20px 20px 16px", boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
+            animation: "slideDown 0.2s ease",
+          }}>
+            {/* Header */}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+              <h3 style={{ fontFamily: font.ui, fontSize: 15, fontWeight: 600, color: c.ivory, margin: 0 }}>Help & Support</h3>
+              <button onClick={() => setHelpOpen(false)} aria-label="Close help panel" style={{ background: "none", border: "none", color: c.stone, cursor: "pointer", padding: 4, borderRadius: 6, transition: "color 0.15s" }}
+                onMouseEnter={(e) => e.currentTarget.style.color = c.ivory}
+                onMouseLeave={(e) => e.currentTarget.style.color = c.stone}>
+                <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            </div>
+
+            {/* Quick links */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
+              {/* Getting Started */}
+              <Link to="/page/help" style={{ textDecoration: "none" }} onClick={() => setHelpOpen(false)}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 8, border: `1px solid ${c.border}`, background: "rgba(245,242,237,0.02)", cursor: "pointer", transition: "all 0.15s", color: c.chalk, fontFamily: font.ui, fontSize: 13, fontWeight: 500 }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(212,179,127,0.06)"; e.currentTarget.style.borderColor = "rgba(212,179,127,0.25)"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(245,242,237,0.02)"; e.currentTarget.style.borderColor = c.border; }}>
+                  <span style={{ color: c.gilt, flexShrink: 0 }}><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></span>
+                  Getting Started
+                </div>
+              </Link>
+              {/* FAQs */}
+              <Link to="/#faq" style={{ textDecoration: "none" }} onClick={() => setHelpOpen(false)}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 8, border: `1px solid ${c.border}`, background: "rgba(245,242,237,0.02)", cursor: "pointer", transition: "all 0.15s", color: c.chalk, fontFamily: font.ui, fontSize: 13, fontWeight: 500 }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(212,179,127,0.06)"; e.currentTarget.style.borderColor = "rgba(212,179,127,0.25)"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(245,242,237,0.02)"; e.currentTarget.style.borderColor = c.border; }}>
+                  <span style={{ color: c.gilt, flexShrink: 0 }}><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span>
+                  FAQs
+                </div>
+              </Link>
+              {/* Keyboard Shortcuts */}
+              <button onClick={() => { setShowShortcuts(true); setHelpOpen(false); }} style={{ background: "none", border: "none", padding: 0, textAlign: "left", cursor: "pointer" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 8, border: `1px solid ${c.border}`, background: "rgba(245,242,237,0.02)", cursor: "pointer", transition: "all 0.15s", color: c.chalk, fontFamily: font.ui, fontSize: 13, fontWeight: 500 }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(212,179,127,0.06)"; e.currentTarget.style.borderColor = "rgba(212,179,127,0.25)"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(245,242,237,0.02)"; e.currentTarget.style.borderColor = c.border; }}>
+                  <span style={{ color: c.gilt, flexShrink: 0 }}><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="4" width="20" height="16" rx="2" ry="2"/><path d="M6 8h.001"/><path d="M10 8h.001"/><path d="M14 8h.001"/><path d="M18 8h.001"/><path d="M8 12h.001"/><path d="M12 12h.001"/><path d="M16 12h.001"/><line x1="7" y1="16" x2="17" y2="16"/></svg></span>
+                  Keyboard Shortcuts
+                </div>
+              </button>
+            </div>
+
+            {/* Contact section */}
+            <div style={{ marginBottom: 16, padding: "12px", borderRadius: 8, background: "rgba(245,242,237,0.02)" }}>
+              <p style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: c.chalk, marginBottom: 8 }}>Need help?</p>
+              <a href="mailto:support@hirestepx.com" style={{
+                display: "block", textAlign: "center", padding: "8px 0", borderRadius: 8,
+                background: "rgba(212,179,127,0.08)", border: `1px solid rgba(212,179,127,0.2)`,
+                color: c.gilt, fontFamily: font.ui, fontSize: 12, fontWeight: 600, textDecoration: "none",
+                transition: "background 0.15s",
+              }}
+                onMouseEnter={(e) => e.currentTarget.style.background = "rgba(212,179,127,0.14)"}
+                onMouseLeave={(e) => e.currentTarget.style.background = "rgba(212,179,127,0.08)"}>
+                support@hirestepx.com
+              </a>
+              <p style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, marginTop: 6 }}>We typically respond within 24 hours</p>
+            </div>
+
+            {/* Feedback section */}
+            <div>
+              <textarea
+                rows={2}
+                placeholder="Describe your issue or suggestion..."
+                value={helpFeedback}
+                onChange={(e) => { setHelpFeedback(e.target.value); if (helpSent) setHelpSent(false); }}
+                style={{
+                  width: "100%", boxSizing: "border-box", padding: "8px 10px", borderRadius: 8,
+                  background: "rgba(245,242,237,0.03)", border: `1px solid ${c.border}`,
+                  color: c.ivory, fontFamily: font.ui, fontSize: 12, resize: "vertical",
+                  outline: "none", transition: "border-color 0.15s",
+                }}
+                onFocus={(e) => e.currentTarget.style.borderColor = "rgba(212,179,127,0.4)"}
+                onBlur={(e) => e.currentTarget.style.borderColor = c.border}
+              />
+              {helpSent ? (
+                <p style={{ fontFamily: font.ui, fontSize: 12, color: c.sage, marginTop: 8, fontWeight: 500 }}>Thanks! We'll look into it.</p>
+              ) : (
+                <button
+                  disabled={helpSending || !helpFeedback.trim()}
+                  onClick={async () => {
+                    if (!helpFeedback.trim()) return;
+                    setHelpSending(true);
+                    try {
+                      const { getSupabase } = await import("./supabase");
+                      const sb = await getSupabase();
+                      const { error } = await sb.from("feedback").insert({ message: helpFeedback.trim(), email: user?.email || null });
+                      if (error) throw error;
+                      setHelpFeedback("");
+                      setHelpSent(true);
+                    } catch {
+                      window.location.href = `mailto:support@hirestepx.com?body=${encodeURIComponent(helpFeedback.trim())}`;
+                    } finally {
+                      setHelpSending(false);
+                    }
+                  }}
+                  style={{
+                    marginTop: 8, width: "100%", padding: "8px 0", borderRadius: 8,
+                    border: "none", cursor: helpSending || !helpFeedback.trim() ? "default" : "pointer",
+                    background: helpSending || !helpFeedback.trim() ? "rgba(245,242,237,0.04)" : `linear-gradient(135deg, ${c.gilt}, ${c.giltDark})`,
+                    color: helpSending || !helpFeedback.trim() ? c.stone : c.obsidian,
+                    fontFamily: font.ui, fontSize: 12, fontWeight: 600, transition: "opacity 0.15s",
+                    opacity: helpSending ? 0.7 : 1,
+                  }}
+                  onMouseEnter={(e) => { if (!helpSending && helpFeedback.trim()) e.currentTarget.style.opacity = "0.9"; }}
+                  onMouseLeave={(e) => e.currentTarget.style.opacity = "1"}>
+                  {helpSending ? "Sending..." : "Send Feedback"}
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* FAB button */}
+        <button
+          onClick={() => setHelpOpen(v => !v)}
+          aria-label={helpOpen ? "Close help" : "Open help"}
+          style={{
+            width: 48, height: 48, borderRadius: "50%", border: `1px solid ${c.border}`,
+            background: c.graphite, color: c.ivory, cursor: "pointer",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            boxShadow: "0 4px 16px rgba(0,0,0,0.4)", transition: "border-color 0.2s, transform 0.2s",
+            marginLeft: "auto",
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.borderColor = c.gilt; e.currentTarget.style.transform = "scale(1.05)"; }}
+          onMouseLeave={(e) => { e.currentTarget.style.borderColor = c.border; e.currentTarget.style.transform = "scale(1)"; }}>
+          <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+          </svg>
+        </button>
+      </div>
 
       {/* Command palette */}
       <CommandPalette onStartSession={handleStartSession} onExport={handleExport} sessions={recentSessions} />

@@ -43,7 +43,12 @@ export default async function handler(req: Request) {
   }
 
   try {
-    const body = await req.json();
+    let body: Record<string, unknown>;
+    try {
+      body = await req.json();
+    } catch {
+      return new Response(JSON.stringify({ error: "Invalid JSON body" }), { status: 400, headers });
+    }
     const { role, company, industry, skills, recentSessions, sessionCount } = body;
 
     if (!skills || !Array.isArray(skills) || skills.length === 0) {

@@ -1,15 +1,19 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { c, font } from "./tokens";
 import {
   StatusToasts, InterviewHeader, AvatarStage, PanelAvatarStage, QuestionCard,
   UserAnswerArea, CompletionCard, MicroFeedbackPanel,
   ControlsBar, TranscriptPanel, EndModal, EvaluatingOverlay,
+  NegotiationCoachingCard, DealSummaryCard,
 } from "./InterviewPanels";
 import { useInterviewEngine } from "./useInterviewEngine";
 import { useVideoRecorder } from "./useVideoRecorder";
+import { InterviewProvider } from "./InterviewContext";
 
 /* ═══════════════════════════════════════════════
    INTERVIEW SCREEN
+   Wraps with InterviewProvider so any child component
+   can call useInterview() instead of receiving props.
    ═══════════════════════════════════════════════ */
 export default function Interview() {
   const engine = useInterviewEngine();
@@ -26,7 +30,9 @@ export default function Interview() {
     timeRemaining, timePercent,
     displayRole, displayCompany, displayFocus, interviewerName,
     isPanelInterview, panelMembers, activePersona,
+    ttsDurationMs, speechEnded,
     interviewScript, saveWarning, liveMetrics,
+    isSalaryNegotiation, negotiationStyle, negotiationBand,
 
     setCurrentTranscript, setSpeechUnavailable, setIsMuted,
     setShowTranscript, setShowEndModal, setAiVoiceEnabled,
@@ -38,6 +44,9 @@ export default function Interview() {
     micStreamRef, noSpeechCountRef, ttsCancelRef, interviewEndedRef,
   } = engine;
 
+  // Coaching card state (salary negotiation only)
+  const [showCoaching, setShowCoaching] = useState(isSalaryNegotiation);
+
   // Stop video recording when interview ends
   useEffect(() => {
     if (engine.phase === "done" && video.isRecording) {
@@ -46,6 +55,7 @@ export default function Interview() {
   }, [engine.phase, video.isRecording, video.stopRecording]);
 
   return (
+    <InterviewProvider value={engine}>
     <div style={{
       width: "100vw", height: "100vh", background: c.obsidian,
       display: "flex", flexDirection: "column", overflow: "hidden",
@@ -120,6 +130,14 @@ export default function Interview() {
 
         <div style={{ width: "100%", maxWidth: 560, display: "flex", flexDirection: "column", alignItems: "center", gap: 20 }}>
 
+          {/* Pre-interview coaching card for salary negotiation */}
+          {showCoaching && isSalaryNegotiation && phase !== "done" && (
+            <NegotiationCoachingCard
+              onDismiss={() => setShowCoaching(false)}
+              negotiationStyle={negotiationStyle}
+            />
+          )}
+
           {isPanelInterview && panelMembers ? (
             <PanelAvatarStage phase={phase} panelMembers={panelMembers} activePersona={activePersona} isMuted={isMuted} speechUnavailable={speechUnavailable} skipSpeaking={skipSpeaking} />
           ) : (
@@ -128,6 +146,7 @@ export default function Interview() {
 
           <QuestionCard step={step} phase={phase} showCaptions={showCaptions} timeRemaining={timeRemaining} timePercent={timePercent}
             panelPersona={isPanelInterview && panelMembers ? panelMembers.find(m => m.title === activePersona) || null : null}
+            actualDuration={ttsDurationMs} speechEnded={speechEnded}
           />
 
           {phase === "listening" && (
@@ -143,12 +162,27 @@ export default function Interview() {
           )}
 
           {phase === "done" && (
-            <CompletionCard
-              currentQuestionNum={currentQuestionNum} elapsed={elapsed}
-              usedFallbackScore={usedFallbackScore} evalTimedOut={evalTimedOut}
-              evaluating={evaluating} handleEnd={handleEnd}
-              videoURL={video.videoURL}
-            />
+            <>
+              {isSalaryNegotiation && (
+                <DealSummaryCard
+                  transcript={transcript}
+                  negotiationBand={negotiationBand}
+                  onReplay={(style) => {
+                    // Replay the negotiation with a different hiring manager style
+                    const params = new URLSearchParams(window.location.search);
+                    params.set("negotiationStyle", style);
+                    navigate(`/interview?${params.toString()}`);
+                    window.location.reload();
+                  }}
+                />
+              )}
+              <CompletionCard
+                currentQuestionNum={currentQuestionNum} elapsed={elapsed}
+                usedFallbackScore={usedFallbackScore} evalTimedOut={evalTimedOut}
+                evaluating={evaluating} handleEnd={handleEnd}
+                videoURL={video.videoURL}
+              />
+            </>
           )}
 
           {(phase === "thinking" || phase === "speaking") && (
@@ -193,5 +227,6 @@ export default function Interview() {
         />
       )}
     </div>
+    </InterviewProvider>
   );
 }

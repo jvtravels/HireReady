@@ -1,8 +1,7 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, memo } from "react";
 import { c, font } from "./tokens";
 import { scoreLabel, scoreLabelColor } from "./dashboardTypes";
 import type { DashboardSession } from "./dashboardTypes";
-// useAuth removed — was unused
 import { FREE_SESSION_LIMIT, STARTER_WEEKLY_LIMIT, PRO_MONTHLY_LIMIT } from "./dashboardData";
 
 declare global {
@@ -104,7 +103,7 @@ const PLANS = [
   { id: "monthly", tier: "pro", name: "Pro", price: "\u20B9149", period: "/mo", desc: `Best value \u2014 ${PRO_MONTHLY_LIMIT} sessions/month`, features: [`${PRO_MONTHLY_LIMIT} sessions/month`, "Everything in Starter", "AI coaching & improvement plan", "Analytics & trends", "Interview calendar", "Export PDF, CSV, JSON"], featured: true },
 ];
 
-export function UpgradeModal({ onClose, sessionsUsed, user, currentTier, onPaymentSuccess }: { onClose: () => void; sessionsUsed: number; user?: { id?: string; email?: string; name?: string } | null; currentTier: string; onPaymentSuccess: (tier: string, start: string, end: string) => void }) {
+export const UpgradeModal = memo(function UpgradeModal({ onClose, sessionsUsed, user, currentTier, onPaymentSuccess }: { onClose: () => void; sessionsUsed: number; user?: { id?: string; email?: string; name?: string } | null; currentTier: string; onPaymentSuccess: (tier: string, start: string, end: string) => void }) {
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [sessionQty, setSessionQty] = useState(1);
@@ -434,7 +433,7 @@ export function UpgradeModal({ onClose, sessionsUsed, user, currentTier, onPayme
       </div>
     </div>
   );
-}
+});
 
 /* ─── Pro Feature Gate ─── */
 const featureHighlights: Record<string, { icon: string; items: string[] }> = {
@@ -442,7 +441,7 @@ const featureHighlights: Record<string, { icon: string; items: string[] }> = {
   "Interview Calendar": { icon: "calendar", items: ["Month grid view", "Interview countdown timers", "Google Calendar sync", ".ics file export", "Prep reminders before interviews"] },
 };
 
-export function ProGate({ feature, onUpgrade }: { feature: string; onUpgrade: () => void }) {
+export const ProGate = memo(function ProGate({ feature, onUpgrade }: { feature: string; onUpgrade: () => void }) {
   const highlights = featureHighlights[feature];
   return (
     <div style={{ position: "relative", minHeight: 400, overflow: "hidden" }}>
@@ -492,10 +491,10 @@ export function ProGate({ feature, onUpgrade }: { feature: string; onUpgrade: ()
       </div>
     </div>
   );
-}
+});
 
 /* ─── Welcome Dashboard (no sessions) ─── */
-export function EmptyState({ onStart, userName, targetRole, isMobile }: { onStart: () => void; userName: string; targetRole: string; isMobile?: boolean }) {
+export const EmptyState = memo(function EmptyState({ onStart, userName, targetRole, isMobile }: { onStart: () => void; userName: string; targetRole: string; isMobile?: boolean }) {
   const hour = new Date().getHours();
   const timeGreeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
   const firstName = userName ? userName.split(" ")[0] : "there";
@@ -578,10 +577,10 @@ export function EmptyState({ onStart, userName, targetRole, isMobile }: { onStar
       </div>
     </div>
   );
-}
+});
 
 /* ─── Session Detail View ─── */
-export function SessionDetailView({ session, onBack }: { session: DashboardSession; onBack: () => void }) {
+export const SessionDetailView = memo(function SessionDetailView({ session, onBack }: { session: DashboardSession; onBack: () => void }) {
   return (
     <div style={{ maxWidth: 800, margin: "0 auto" }}>
       <button onClick={onBack} style={{ display: "flex", alignItems: "center", gap: 8, fontFamily: font.ui, fontSize: 13, color: c.stone, background: "none", border: "none", cursor: "pointer", padding: "0 0 20px", outline: "none" }}
@@ -688,4 +687,4 @@ export function SessionDetailView({ session, onBack }: { session: DashboardSessi
       </div>
     </div>
   );
-}
+});

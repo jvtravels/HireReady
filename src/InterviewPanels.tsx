@@ -327,11 +327,15 @@ export const PanelAvatarStage = memo(function PanelAvatarStage({ phase, panelMem
 
 /* ─── Question Card with timer ─── */
 
-export const QuestionCard = memo(function QuestionCard({ step, phase, showCaptions, timeRemaining, timePercent, panelPersona }: {
+export const QuestionCard = memo(function QuestionCard({ step, phase, showCaptions, timeRemaining, timePercent, panelPersona, actualDuration, speechEnded }: {
   step: { aiText: string; scoreNote?: string; speakingDuration: number } | undefined;
   phase: string; showCaptions: boolean;
   timeRemaining: number; timePercent: number;
   panelPersona?: { name: string; title: string; color: string } | null;
+  /** Real TTS audio duration in ms — from TTS provider */
+  actualDuration?: number;
+  /** True when TTS voice playback has finished */
+  speechEnded?: boolean;
 }) {
   return (
     <div aria-live="polite" aria-atomic="true" style={{
@@ -361,7 +365,7 @@ export const QuestionCard = memo(function QuestionCard({ step, phase, showCaptio
         </p>
       )}
       {phase === "speaking" ? (
-        <LiveCaptions text={step?.aiText || ""} isTyping={true} speakingDuration={step?.speakingDuration} />
+        <LiveCaptions text={step?.aiText || ""} isTyping={true} speakingDuration={step?.speakingDuration} actualDuration={actualDuration} speechEnded={speechEnded} />
       ) : phase === "thinking" ? (
         <p style={{ fontFamily: font.ui, fontSize: 13, color: c.stone, lineHeight: 1.6, margin: 0, fontStyle: "italic" }}>Preparing next question...</p>
       ) : step?.aiText ? (
@@ -406,6 +410,17 @@ export const UserAnswerArea = memo(function UserAnswerArea({ currentTranscript, 
   currentStep: number; interviewScriptLength: number;
   liveMetrics: { wordCount: number; wpm: number; fillerCount: number; lengthGuidance: string | null } | null;
 }) {
+  const [isEditingTranscript, setIsEditingTranscript] = useState(false);
+  const hintDismissed = useRef(false);
+  const [showHint, setShowHint] = useState(false);
+
+  // Show hint once when transcript exceeds 20 chars in speech mode
+  useEffect(() => {
+    if (!hintDismissed.current && !speechUnavailable && currentTranscript.length > 20) {
+      setShowHint(true);
+    }
+  }, [currentTranscript, speechUnavailable]);
+
   return (
     <div style={{
       width: "100%", borderRadius: 16,
@@ -422,6 +437,25 @@ export const UserAnswerArea = memo(function UserAnswerArea({ currentTranscript, 
         </div>
         <WaveformVisualizer active={!isMuted && !speechUnavailable} color={c.sage} barCount={14} stream={micStreamRef.current} />
       </div>
+      {showHint && !hintDismissed.current && (
+        <div style={{
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          padding: "5px 10px", marginBottom: 8, borderRadius: 8,
+          background: "rgba(122,158,126,0.04)", border: "1px solid rgba(122,158,126,0.08)",
+        }}>
+          <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, fontStyle: "italic" }}>
+            Tip: If speech recognition misses a word, tap &lsquo;Edit&rsquo; to correct it before moving on.
+          </span>
+          <button
+            onClick={() => { hintDismissed.current = true; setShowHint(false); }}
+            aria-label="Dismiss tip"
+            style={{
+              fontFamily: font.ui, fontSize: 12, color: c.stone, background: "transparent",
+              border: "none", cursor: "pointer", padding: "0 4px", lineHeight: 1,
+            }}
+          >&times;</button>
+        </div>
+      )}
       <div role="log" aria-live="polite" aria-label="Speech transcript" style={{ minHeight: 60, marginBottom: 10 }}>
         {speechUnavailable ? (
           <>
@@ -455,27 +489,70 @@ export const UserAnswerArea = memo(function UserAnswerArea({ currentTranscript, 
         ) : (
           <>
             {currentTranscript ? (
-              <p style={{ fontFamily: font.ui, fontSize: 13, color: c.ivory, lineHeight: 1.7, margin: 0, opacity: 0.9 }}>
-                {currentTranscript}
-                <span style={{ display: "inline-block", width: 2, height: 14, background: c.sage, marginLeft: 2, verticalAlign: "text-bottom", animation: "blink 0.8s ease-in-out infinite" }} />
-              </p>
+              isEditingTranscript ? (
+                <>
+                  <textarea
+                    value={currentTranscript}
+                    onChange={(e) => setCurrentTranscript(e.target.value)}
+                    // eslint-disable-next-line jsx-a11y/no-autofocus -- user-initiated: edit mode activated by user
+                    autoFocus
+                    style={{
+                      width: "100%", minHeight: 70, fontFamily: font.ui, fontSize: 13, color: c.ivory,
+                      lineHeight: 1.7, background: "transparent", border: "none", outline: "none",
+                      resize: "none", padding: 0, margin: 0,
+                    }}
+                  />
+                  <button
+                    onClick={() => setIsEditingTranscript(false)}
+                    style={{
+                      fontFamily: font.ui, fontSize: 11, fontWeight: 500, color: c.sage,
+                      background: "rgba(122,158,126,0.06)", border: "1px solid rgba(122,158,126,0.15)",
+                      borderRadius: 10, padding: "4px 12px", cursor: "pointer", marginTop: 4,
+                      display: "inline-flex", alignItems: "center", gap: 5, transition: "all 0.2s",
+                    }}>
+                    Done editing
+                  </button>
+                </>
+              ) : (
+                <p style={{ fontFamily: font.ui, fontSize: 13, color: c.ivory, lineHeight: 1.7, margin: 0, opacity: 0.9 }}>
+                  {currentTranscript}
+                  <span style={{ display: "inline-block", width: 2, height: 14, background: c.sage, marginLeft: 2, verticalAlign: "text-bottom", animation: "blink 0.8s ease-in-out infinite" }} />
+                </p>
+              )
             ) : (
               <p style={{ fontFamily: font.ui, fontSize: 13, color: c.stone, lineHeight: 1.7, margin: 0, fontStyle: "italic" }}>
                 Start speaking — your answer will appear here...
               </p>
             )}
-            <button onClick={() => { setSpeechUnavailable(true); setMicError(""); }}
-              aria-label="Type instead"
-              style={{
-                fontFamily: font.ui, fontSize: 11, fontWeight: 500, color: c.stone,
-                background: "transparent", border: "none", padding: "4px 0", cursor: "pointer",
-                marginTop: 6, display: "inline-flex", alignItems: "center", gap: 5, transition: "color 0.2s",
-              }}
-              onMouseEnter={(e) => { e.currentTarget.style.color = c.chalk; }}
-              onMouseLeave={(e) => { e.currentTarget.style.color = c.stone; }}>
-              <svg aria-hidden="true" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M6 8h.01"/><path d="M10 8h.01"/><path d="M14 8h.01"/><path d="M18 8h.01"/><path d="M6 12h.01"/><path d="M18 12h.01"/><path d="M8 16h8"/></svg>
-              Prefer typing? Switch to text
-            </button>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 6 }}>
+              <button onClick={() => { setSpeechUnavailable(true); setMicError(""); }}
+                aria-label="Type instead"
+                style={{
+                  fontFamily: font.ui, fontSize: 11, fontWeight: 500, color: c.stone,
+                  background: "transparent", border: "none", padding: "4px 0", cursor: "pointer",
+                  display: "inline-flex", alignItems: "center", gap: 5, transition: "color 0.2s",
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.color = c.chalk; }}
+                onMouseLeave={(e) => { e.currentTarget.style.color = c.stone; }}>
+                <svg aria-hidden="true" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M6 8h.01"/><path d="M10 8h.01"/><path d="M14 8h.01"/><path d="M18 8h.01"/><path d="M6 12h.01"/><path d="M18 12h.01"/><path d="M8 16h8"/></svg>
+                Prefer typing? Switch to text
+              </button>
+              {currentTranscript && !isEditingTranscript && (
+                <button
+                  onClick={() => setIsEditingTranscript(true)}
+                  aria-label="Edit transcript"
+                  style={{
+                    fontFamily: font.ui, fontSize: 11, fontWeight: 500, color: c.stone,
+                    background: "transparent", border: "none", padding: "4px 0", cursor: "pointer",
+                    display: "inline-flex", alignItems: "center", gap: 5, transition: "color 0.2s",
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.color = c.chalk; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.color = c.stone; }}>
+                  <svg aria-hidden="true" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                  Edit
+                </button>
+              )}
+            </div>
           </>
         )}
       </div>
@@ -531,6 +608,205 @@ export const UserAnswerArea = memo(function UserAnswerArea({ currentTranscript, 
         {currentStep < interviewScriptLength - 1 ? "Next Question" : "Finish"}
         <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
       </button>
+    </div>
+  );
+});
+
+/* ─── Salary Negotiation Coaching Card (shown before session starts) ─── */
+
+export const NegotiationCoachingCard = memo(function NegotiationCoachingCard({ onDismiss, negotiationStyle }: {
+  onDismiss: () => void;
+  negotiationStyle?: string;
+}) {
+  const styleLabel = negotiationStyle === "aggressive" ? "Aggressive" : negotiationStyle === "defensive" ? "Defensive" : "Cooperative";
+  const styleDesc = negotiationStyle === "aggressive"
+    ? "The hiring manager will be budget-conscious and push back hard. Practice holding your ground."
+    : negotiationStyle === "defensive"
+    ? "The hiring manager will deflect and avoid committing. Practice being persistent."
+    : "The hiring manager will be collaborative. Practice maximizing value through creative trade-offs.";
+
+  return (
+    <div style={{
+      width: "100%", maxWidth: 480, borderRadius: 16,
+      background: "rgba(212,179,127,0.04)",
+      border: "1px solid rgba(212,179,127,0.15)",
+      padding: "24px", display: "flex", flexDirection: "column", gap: 16,
+      animation: "slideUp 0.5s ease",
+    }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="2" strokeLinecap="round">
+          <circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>
+        </svg>
+        <span style={{ fontFamily: font.display, fontSize: 15, fontWeight: 600, color: c.ivory }}>Negotiation Tips</span>
+        {negotiationStyle && (
+          <span style={{ fontFamily: font.ui, fontSize: 11, color: c.gilt, padding: "2px 8px", borderRadius: 6, background: "rgba(212,179,127,0.1)", marginLeft: "auto" }}>
+            {styleLabel} Manager
+          </span>
+        )}
+      </div>
+
+      {negotiationStyle && (
+        <p style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, margin: 0, lineHeight: 1.5 }}>
+          {styleDesc}
+        </p>
+      )}
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        {[
+          { icon: "1", title: "Don't accept immediately", desc: "Thank them, express interest, then ask for details before responding." },
+          { icon: "2", title: "Anchor high with reasoning", desc: "State your target range backed by market data, not your current salary." },
+          { icon: "3", title: "Think total comp", desc: "Negotiate equity, joining bonus, flexibility, and learning budget — not just base." },
+          { icon: "4", title: "Trade, don't just ask", desc: "\"I can accept ₹X base if you add a ₹Y joining bonus\" — give something to get something." },
+          { icon: "5", title: "Close with next steps", desc: "Ask about timeline, offer letter, and start date. Don't leave it open-ended." },
+        ].map(tip => (
+          <div key={tip.icon} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+            <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 700, color: c.gilt, minWidth: 20, height: 20, borderRadius: "50%", background: "rgba(212,179,127,0.12)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{tip.icon}</span>
+            <div>
+              <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: c.ivory }}>{tip.title}</span>
+              <p style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, margin: "2px 0 0", lineHeight: 1.4 }}>{tip.desc}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <button
+        onClick={onDismiss}
+        style={{
+          fontFamily: font.ui, fontSize: 13, fontWeight: 600,
+          padding: "10px 20px", borderRadius: 10, marginTop: 4,
+          background: `linear-gradient(135deg, ${c.gilt}, ${c.giltDark})`,
+          border: "none", color: c.obsidian, cursor: "pointer",
+          transition: "all 0.2s ease",
+        }}
+      >
+        Got it — start negotiation
+      </button>
+    </div>
+  );
+});
+
+/* ─── Post-Interview Deal Summary (shown after salary negotiation) ─── */
+
+export const DealSummaryCard = memo(function DealSummaryCard({ transcript, negotiationBand, onReplay }: {
+  transcript: { speaker: string; text: string; time: string }[];
+  negotiationBand?: { initialOffer: number; maxStretch: number; walkAway: number } | null;
+  onReplay?: (style: string) => void;
+}) {
+  // Extract key numbers from the conversation
+  const aiTexts = transcript.filter(t => t.speaker === "ai").map(t => t.text);
+  const userTexts = transcript.filter(t => t.speaker === "user").map(t => t.text);
+  const allText = [...aiTexts, ...userTexts].join(" ");
+
+  // Find the last salary number mentioned by AI (likely the final offer)
+  const aiNumbers = aiTexts.join(" ").match(/₹?\s*(\d+(?:\.\d+)?)\s*(?:lpa|lakh|lakhs|l\b)/gi) || [];
+  const userNumbers = userTexts.join(" ").match(/₹?\s*(\d+(?:\.\d+)?)\s*(?:lpa|lakh|lakhs|l\b)/gi) || [];
+
+  const parseNum = (s: string) => {
+    const m = s.match(/(\d+(?:\.\d+)?)/);
+    return m ? parseFloat(m[1]) : 0;
+  };
+
+  const initialOffer = negotiationBand?.initialOffer || (aiNumbers.length > 0 ? parseNum(aiNumbers[0] ?? "") : 0);
+  const finalOffer = aiNumbers.length > 0 ? parseNum(aiNumbers[aiNumbers.length - 1] ?? "") : initialOffer;
+  const candidateAsk = userNumbers.length > 0 ? parseNum(userNumbers[userNumbers.length - 1] ?? "") : 0;
+
+  const improvement = initialOffer > 0 ? Math.round(((finalOffer - initialOffer) / initialOffer) * 100) : 0;
+
+  // Detect benefits negotiated
+  const benefits: string[] = [];
+  if (/joining bonus|sign.?on/i.test(allText)) benefits.push("Joining Bonus");
+  if (/esop|equity|stock|rsu/i.test(allText)) benefits.push("Equity/ESOPs");
+  if (/flexible|remote|wfh|hybrid/i.test(allText)) benefits.push("Flexible Work");
+  if (/learning|training|budget|upskill/i.test(allText)) benefits.push("Learning Budget");
+  if (/health|medical|insurance/i.test(allText)) benefits.push("Health Insurance");
+  if (/relocation|relocat/i.test(allText)) benefits.push("Relocation Support");
+  if (/notice.*buyout|early.*joining/i.test(allText)) benefits.push("Notice Buyout");
+
+  // Grade
+  const grade = improvement >= 15 ? "A" : improvement >= 10 ? "B+" : improvement >= 5 ? "B" : improvement > 0 ? "C+" : "C";
+  const gradeColor = grade.startsWith("A") ? c.sage : grade.startsWith("B") ? c.gilt : c.ember;
+
+  if (initialOffer === 0) return null;
+
+  return (
+    <div style={{
+      width: "100%", borderRadius: 16,
+      background: "rgba(212,179,127,0.03)",
+      border: "1px solid rgba(212,179,127,0.12)",
+      padding: "20px", display: "flex", flexDirection: "column", gap: 14,
+      animation: "slideUp 0.5s ease",
+    }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <span style={{ fontFamily: font.display, fontSize: 14, fontWeight: 600, color: c.ivory }}>Deal Summary</span>
+        <span style={{ fontFamily: font.ui, fontSize: 20, fontWeight: 700, color: gradeColor }}>{grade}</span>
+      </div>
+
+      {/* Numbers row */}
+      <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+        {[
+          { label: "Initial Offer", value: `₹${initialOffer} LPA`, color: c.stone },
+          ...(candidateAsk > 0 ? [{ label: "Your Ask", value: `₹${candidateAsk} LPA`, color: c.chalk }] : []),
+          { label: "Final Package", value: `₹${finalOffer} LPA`, color: c.gilt },
+        ].map(item => (
+          <div key={item.label} style={{ flex: 1, minWidth: 80, padding: "10px 12px", borderRadius: 10, background: "rgba(245,242,237,0.03)", border: "1px solid rgba(245,242,237,0.06)" }}>
+            <p style={{ fontFamily: font.ui, fontSize: 10, color: c.stone, margin: 0, textTransform: "uppercase", letterSpacing: "0.05em" }}>{item.label}</p>
+            <p style={{ fontFamily: font.ui, fontSize: 15, fontWeight: 600, color: item.color, margin: "4px 0 0" }}>{item.value}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Improvement */}
+      {improvement !== 0 && (
+        <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", borderRadius: 10, background: improvement > 0 ? "rgba(122,158,126,0.06)" : "rgba(196,112,90,0.06)", border: `1px solid ${improvement > 0 ? "rgba(122,158,126,0.15)" : "rgba(196,112,90,0.15)"}` }}>
+          <span style={{ fontFamily: font.ui, fontSize: 18, fontWeight: 700, color: improvement > 0 ? c.sage : c.ember }}>
+            {improvement > 0 ? "+" : ""}{improvement}%
+          </span>
+          <span style={{ fontFamily: font.ui, fontSize: 12, color: c.stone }}>
+            {improvement > 0 ? "improvement from initial offer" : "below initial offer"}
+          </span>
+        </div>
+      )}
+
+      {/* Benefits negotiated */}
+      {benefits.length > 0 && (
+        <div>
+          <p style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, margin: "0 0 6px", textTransform: "uppercase", letterSpacing: "0.05em" }}>Benefits Discussed</p>
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+            {benefits.map(b => (
+              <span key={b} style={{ fontFamily: font.ui, fontSize: 11, color: c.gilt, padding: "3px 8px", borderRadius: 6, background: "rgba(212,179,127,0.08)", border: "1px solid rgba(212,179,127,0.12)" }}>{b}</span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Negotiation Replay — try again with a different hiring manager style */}
+      {onReplay && (
+        <div>
+          <p style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, margin: "0 0 6px", textTransform: "uppercase", letterSpacing: "0.05em" }}>Replay with different style</p>
+          <div style={{ display: "flex", gap: 8 }}>
+            {([
+              { style: "cooperative", label: "Friendly", emoji: "" },
+              { style: "aggressive", label: "Tough", emoji: "" },
+              { style: "defensive", label: "Evasive", emoji: "" },
+            ] as const).map(s => (
+              <button
+                key={s.style}
+                onClick={() => onReplay(s.style)}
+                style={{
+                  flex: 1, fontFamily: font.ui, fontSize: 11, fontWeight: 500,
+                  padding: "8px 10px", borderRadius: 8,
+                  background: "rgba(245,242,237,0.04)",
+                  border: "1px solid rgba(245,242,237,0.08)",
+                  color: c.chalk, cursor: "pointer",
+                  transition: "all 0.15s ease",
+                }}
+              >
+                {s.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 });

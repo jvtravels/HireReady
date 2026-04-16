@@ -299,6 +299,7 @@ async function speakWithWebSocket(
   onEnd: () => void,
   onError: () => void,
   gender?: "male" | "female",
+  onDurationKnown?: (ms: number) => void,
 ): Promise<{ cancel: () => void }> {
   // Serialize utterances to prevent WebSocket message interleaving
   let resolveQueue: () => void;
@@ -308,7 +309,7 @@ async function speakWithWebSocket(
   const markDone = () => resolveQueue!();
   const wrappedOnEnd = () => { markDone(); onEnd(); };
   const wrappedOnError = () => { markDone(); onError(); };
-  return _speakWithWebSocketInner(text, voiceId, wrappedOnEnd, wrappedOnError, markDone, false, gender);
+  return _speakWithWebSocketInner(text, voiceId, wrappedOnEnd, wrappedOnError, markDone, false, gender, onDurationKnown);
 }
 
 async function _speakWithWebSocketInner(
@@ -319,6 +320,7 @@ async function _speakWithWebSocketInner(
   markDone: () => void,
   isRetry: boolean,
   gender?: "male" | "female",
+  onDurationKnown?: (ms: number) => void,
 ): Promise<{ cancel: () => void }> {
   let settled = false;
   const settle = (cb: () => void) => { if (!settled) { settled = true; cb(); } };
@@ -331,6 +333,8 @@ async function _speakWithWebSocketInner(
   let allChunksReceived = false;
   let chunksPlayed = 0;
   let totalChunksScheduled = 0;
+  let totalPcmBytes = 0;
+  let durationReported = false;
 
   const checkPlaybackComplete = () => {
     if (allChunksReceived && chunksPlayed >= totalChunksScheduled) {
@@ -370,7 +374,7 @@ async function _speakWithWebSocketInner(
         console.warn("[TTS-WS] timeout — no data received, falling back to REST");
         closeCtx();
         settle(() => {});
-        speakWithProxy(text, voiceId, onEnd, onError, gender);
+        speakWithProxy(text, voiceId, onEnd, onError, gender, onDurationKnown);
       }
     }, 10000);
 
@@ -390,6 +394,15 @@ async function _speakWithWebSocketInner(
             bytes[i] = binaryStr.charCodeAt(i);
           }
           const float32 = new Float32Array(bytes.buffer);
+          totalPcmBytes += bytes.length;
+
+          // Report estimated duration after first chunk (refine on subsequent chunks)
+          if (!durationReported && onDurationKnown && chunksReceived >= 1) {
+            // Estimate total duration from text length — refine when "done" arrives
+            const estimatedTotalMs = (text.split(/\s+/).length / 150) * 60 * 1000; // ~150 wpm
+            onDurationKnown(Math.max(2000, estimatedTotalMs));
+            durationReported = true;
+          }
 
           const buffer = capturedCtx.createBuffer(1, float32.length, WS_SAMPLE_RATE);
           buffer.getChannelData(0).set(float32);
@@ -413,6 +426,11 @@ async function _speakWithWebSocketInner(
           }
         } else if (msg.type === "done" || msg.done) {
           allChunksReceived = true;
+          // Report accurate duration from total PCM bytes: bytes / (sampleRate * 4 bytes per float32)
+          if (onDurationKnown && totalPcmBytes > 0) {
+            const accurateMs = (totalPcmBytes / (WS_SAMPLE_RATE * 4)) * 1000;
+            onDurationKnown(accurateMs);
+          }
           // Don't close WS — reuse for next question
           if (totalChunksScheduled === 0) settle(onEnd);
           else checkPlaybackComplete();
@@ -421,7 +439,7 @@ async function _speakWithWebSocketInner(
           clearTimeout(wsTimeout);
           closeCtx();
           settle(() => {});
-          speakWithProxy(text, voiceId, onEnd, onError, gender);
+          speakWithProxy(text, voiceId, onEnd, onError, gender, onDurationKnown);
         }
       } catch (e) {
         console.warn("[TTS-WS] message parse error:", e);
@@ -444,7 +462,7 @@ async function _speakWithWebSocketInner(
           closeCtx();
           // Force-clear the dead socket so getOrCreateWs creates a fresh one
           _persistentWs = null;
-          _speakWithWebSocketInner(text, voiceId, onEnd, onError, markDone, true, gender)
+          _speakWithWebSocketInner(text, voiceId, onEnd, onError, markDone, true, gender, onDurationKnown)
             .then((retryHandle) => {
               // Propagate the new cancel handle up to _activeCancel
               _activeCancel = retryHandle.cancel;
@@ -453,7 +471,7 @@ async function _speakWithWebSocketInner(
           // Already retried once — fall back to REST
           console.warn("[TTS-WS] reconnect also failed, falling back to REST");
           closeCtx();
-          speakWithProxy(text, voiceId, onEnd, onError, gender);
+          speakWithProxy(text, voiceId, onEnd, onError, gender, onDurationKnown);
         } else {
           // Partial playback — some chunks received but connection dropped.
           // Mark as done so remaining queued chunks play out, then onEnd fires.
@@ -483,7 +501,7 @@ async function _speakWithWebSocketInner(
   } catch (err: unknown) {
     console.warn("[TTS-WS] setup error:", err instanceof Error ? err.message : err);
     closeCtx();
-    return speakWithProxy(text, voiceId, onEnd, onError, gender);
+    return speakWithProxy(text, voiceId, onEnd, onError, gender, onDurationKnown);
   }
 
   const capturedCtx = audioCtx;
@@ -511,6 +529,7 @@ async function speakWithProxy(
   onEnd: () => void,
   onError: () => void,
   gender?: "male" | "female",
+  onDurationKnown?: (ms: number) => void,
 ): Promise<{ cancel: () => void }> {
   // If autoplay is blocked, skip immediately
   if (_autoplayBlocked) {
@@ -561,6 +580,11 @@ async function speakWithProxy(
     const url = URL.createObjectURL(blob);
     audio = new Audio(url);
 
+    audio.onloadedmetadata = () => {
+      if (audio && isFinite(audio.duration) && audio.duration > 0 && onDurationKnown) {
+        onDurationKnown(audio.duration * 1000);
+      }
+    };
     audio.onended = () => {
       URL.revokeObjectURL(url);
       settle(onEnd);
@@ -603,6 +627,7 @@ async function speakWithAzure(
   onError: () => void,
   gender?: "male" | "female",
   voiceId?: string,
+  onDurationKnown?: (ms: number) => void,
 ): Promise<{ cancel: () => void }> {
   // If autoplay is already known to be blocked, skip immediately
   if (_autoplayBlocked) {
@@ -648,6 +673,11 @@ async function speakWithAzure(
 
     const url = URL.createObjectURL(blob);
     audio = new Audio(url);
+    audio.onloadedmetadata = () => {
+      if (audio && isFinite(audio.duration) && audio.duration > 0 && onDurationKnown) {
+        onDurationKnown(audio.duration * 1000);
+      }
+    };
     audio.onended = () => { URL.revokeObjectURL(url); settle(onEnd); };
     audio.onerror = () => { URL.revokeObjectURL(url); settle(onError); };
     await audio.play();
@@ -744,6 +774,14 @@ function speakWithBrowser(
 
 /* ─── Cleanup for page unload ─── */
 let _activeCancel: (() => void) | null = null;
+
+// Auto-cleanup on page unload to prevent WebSocket/AudioContext leaks
+if (typeof window !== "undefined") {
+  window.addEventListener("beforeunload", () => cleanupTTS());
+  // Also clean up when navigating away (SPA route changes via pagehide)
+  window.addEventListener("pagehide", () => cleanupTTS());
+}
+
 export function cleanupTTS() {
   _activeCancel?.();
   _activeCancel = null;
@@ -767,6 +805,7 @@ export async function speakAs(
   onEnd: () => void,
   onError: () => void,
   gender?: "male" | "female",
+  onDurationKnown?: (ms: number) => void,
 ): Promise<{ cancel: () => void }> {
   const settings = loadTTSSettings();
   if (settings.provider === "browser") {
@@ -784,9 +823,9 @@ export async function speakAs(
         const browserHandle = speakWithBrowser(text, onEnd, onError);
         handle = browserHandle;
         _activeCancel = browserHandle.cancel;
-      }, gender);
+      }, gender, onDurationKnown);
       _activeCancel = handle.cancel;
-    }, gender);
+    }, gender, onDurationKnown);
     _activeCancel = handle.cancel;
   };
 
@@ -794,7 +833,7 @@ export async function speakAs(
   handle = await speakWithAzure(text, onEnd, async () => {
     console.warn("Azure TTS failed (speakAs), trying Cartesia");
     await cartesiaFallback();
-  }, gender, voiceId);
+  }, gender, voiceId, onDurationKnown);
 
   _activeCancel = handle.cancel;
   return handle;
@@ -806,6 +845,7 @@ export async function speak(
   onEnd: () => void,
   onError: () => void,
   gender?: "male" | "female",
+  onDurationKnown?: (ms: number) => void,
 ): Promise<{ cancel: () => void }> {
   const settings = loadTTSSettings();
   let handle: { cancel: () => void };
@@ -822,7 +862,7 @@ export async function speak(
         const browserHandle = speakWithBrowser(text, onEnd, onError);
         handle = browserHandle;
         _activeCancel = browserHandle.cancel;
-      });
+      }, undefined, onDurationKnown);
     } else {
       handle = await speakWithWebSocket(text, cartesiaVoice, onEnd, async () => {
         console.warn("Cartesia WS failed, trying REST");
@@ -831,9 +871,9 @@ export async function speak(
           const browserHandle = speakWithBrowser(text, onEnd, onError);
           handle = browserHandle;
           _activeCancel = browserHandle.cancel;
-        });
+        }, undefined, onDurationKnown);
         _activeCancel = handle.cancel;
-      });
+      }, undefined, onDurationKnown);
     }
     _activeCancel = handle.cancel;
   };
@@ -845,7 +885,7 @@ export async function speak(
     handle = await speakWithAzure(text, onEnd, async () => {
       console.warn("Azure TTS failed, trying Cartesia fallback");
       await cartesiaFallback();
-    }, gender);
+    }, gender, undefined, onDurationKnown);
   }
 
   _activeCancel = handle.cancel;

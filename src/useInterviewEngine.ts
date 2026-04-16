@@ -9,12 +9,16 @@ import { saveToIDB, loadFromIDB, deleteFromIDB } from "./interviewIDB";
 import type { InterviewStep } from "./interviewScripts";
 import { getMiniScript, getScript } from "./interviewScripts";
 import { saveSessionResult, fetchLLMQuestions, fetchLLMEvaluation, fetchFollowUp, retryQueuedEvals, getAdaptiveHints } from "./interviewAPI";
-import { createDeepgramSTT, type DeepgramSTTHandle } from "./deepgramSTT";
-import { createSarvamSTT, type SarvamSTTHandle } from "./sarvamSTT";
+import type { NegotiationBandData } from "./interviewAPI";
+import type { DeepgramSTTHandle } from "./deepgramSTT";
+import type { SarvamSTTHandle } from "./sarvamSTT";
 import { getInterviewerName, getInterviewerGender, getPanelMembers, formatTime } from "./InterviewComponents";
-import { createSpeechRecognition } from "./speechRecognition";
-import type { SpeechRecognitionInstance, SpeechRecognitionEvent } from "./speechRecognition";
+import type { SpeechRecognitionInstance } from "./speechRecognition";
 import { safeUUID } from "./utils";
+import { computeMicroFeedback } from "./interviewMicroFeedback";
+import { useInterviewTimers } from "./useInterviewTimers";
+import { useInterviewSTT } from "./useInterviewSTT";
+import { computeFallbackScores, loadPreviousScores, processLLMEvaluation, extractNegotiationFacts } from "./interviewEvaluation";
 
 /* ─── Helpers ─── */
 
@@ -203,6 +207,10 @@ export function useInterviewEngine() {
   const ramblingFiredRef = useRef(false);
   // "I don't know" count for evaluation context
   const dontKnowCountRef = useRef(0);
+  // Negotiation band (populated by LLM question generation for salary-neg)
+  const negotiationBandRef = useRef<NegotiationBandData | null>(null);
+  // Negotiation style from URL params
+  const negotiationStyle = searchParams.get("negotiationStyle") || undefined;
   // Time pressure spoken flag
   const timePressureSpokenRef = useRef(false);
   const lastQuestionSpokenRef = useRef(false);
@@ -329,6 +337,7 @@ export function useInterviewEngine() {
       }
     } catch { /* silent */ }
 
+    const aiProfile = (user?.resumeData as Record<string, unknown> | undefined)?.aiProfile as { interviewStrengths?: string[]; interviewGaps?: string[]; topSkills?: string[] } | undefined;
     const llmPromise = fetchLLMQuestions({
       type: interviewType,
       focus: interviewFocus,
@@ -344,25 +353,48 @@ export function useInterviewEngine() {
       jobDescription: jobDescription || undefined,
       experienceLevel: user?.experienceLevel || undefined,
       mini: isMiniMode || undefined,
+      resumeStrengths: shouldUseResume ? aiProfile?.interviewStrengths : undefined,
+      resumeGaps: shouldUseResume ? aiProfile?.interviewGaps : undefined,
+      resumeTopSkills: shouldUseResume ? aiProfile?.topSkills : undefined,
+      candidateName: user?.name || undefined,
+      negotiationStyle: negotiationStyle || undefined,
     });
     const timeoutMs = isMiniMode ? 12_000 : 30_000;
     const timeoutPromise = new Promise<null>((_, reject) => {
       setTimeout(() => reject(new Error("Question generation timed out")), timeoutMs);
     });
-    Promise.race([llmPromise, timeoutPromise]).then(questions => {
+    Promise.race([llmPromise, timeoutPromise]).then(result => {
       if (llmFetchCancelRef.current) return;
-      if (questions && questions.length > 0 && currentStepRef.current <= 1) {
+      const questions = result?.questions ?? null;
+      // Store negotiation band for follow-up API calls
+      if (result?.negotiationBand) {
+        negotiationBandRef.current = result.negotiationBand;
+      }
+      const step = currentStepRef.current;
+      if (questions && questions.length > 0 && step <= 1) {
         // Accept LLM questions if user is on intro (step 0) or first question (step 1)
-        // The user hasn't provided a substantive answer yet, so swapping is seamless
-        console.info(`[interview] LLM generated ${questions.length} custom questions (replacing at step ${currentStepRef.current})`);
+        console.info(`[interview] LLM generated ${questions.length} custom questions (replacing at step ${step})`);
         setInterviewScript(questions);
+        setSaveWarning("");
+      } else if (questions && questions.length > 0 && step >= 2) {
+        // Late arrival: merge remaining LLM questions into the script from the current position onward
+        // This replaces the upcoming fallback questions while preserving already-answered ones
+        console.info(`[interview] LLM questions arrived late (step ${step}) — merging remaining questions`);
+        setInterviewScript(prev => {
+          // Keep everything up to and including the current step from the old script
+          const keepPrefix = prev.slice(0, step + 1);
+          // Take future questions from the LLM script (skip intro + already-passed questions)
+          const llmFutureSteps = questions.filter(
+            (q: { type: string }, i: number) => i > step && (q.type === "question" || q.type === "closing"),
+          );
+          if (llmFutureSteps.length === 0) return prev; // Nothing useful to merge
+          return [...keepPrefix, ...llmFutureSteps];
+        });
         setSaveWarning("");
       } else if (!questions) {
         console.warn("[interview] LLM returned null — using fallback questions");
         setSaveWarning("Using practice questions. Tap retry for personalized ones.");
         if (!isMiniMode) toast("Using practice questions — tap retry for personalized ones.", "info");
-      } else if (currentStepRef.current > 1) {
-        console.warn("[interview] LLM questions arrived too late — user already started (step", currentStepRef.current, ")");
       }
       setLlmLoading(false);
     }).catch(err => {
@@ -398,8 +430,17 @@ export function useInterviewEngine() {
   const sarvamRef = useRef<SarvamSTTHandle | null>(null);
   const [currentTranscript, setCurrentTranscript] = useState("");
   const [phase, setPhase] = useState<"thinking" | "speaking" | "listening" | "done">("thinking");
-  const [elapsed, setElapsed] = useState(draftRef.current?.elapsed || 0);
   const [isRecording, setIsRecording] = useState(false);
+
+  // Timers: elapsed clock, answer timer with auto-advance, tab visibility
+  const {
+    elapsed, setElapsed, answerTimer, timeRemaining, timePercent,
+    handleNextRef, tabVisibleRef,
+  } = useInterviewTimers(phase, currentStep, draftRef.current?.elapsed || 0, toast);
+
+  // TTS-caption sync: actual audio duration (from TTS provider) and speech-ended flag
+  const [ttsDurationMs, setTtsDurationMs] = useState<number | undefined>(undefined);
+  const [speechEnded, setSpeechEnded] = useState(false);
   const [speechUnavailable, setSpeechUnavailable] = useState(searchParams.get("nomic") === "1");
 
   // Controls
@@ -465,10 +506,8 @@ export function useInterviewEngine() {
   const [evalTimedOut, setEvalTimedOut] = useState(false);
   const [lastSessionId, setLastSessionId] = useState<string | null>(null);
   const noSpeechCountRef = useRef(0);
-  const recognitionRestartCountRef = useRef(0);
   const silenceNudgeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const silenceNudgeFiredRef = useRef(false);
-  const deepgramRetryRef = useRef(0);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const nextBtnRef = useRef<HTMLButtonElement>(null);
   const [evaluating, setEvaluating] = useState(false);
@@ -590,229 +629,13 @@ export function useInterviewEngine() {
     };
   }, [aiVoiceEnabled]);
 
-  // Start/stop speech recognition based on phase (re-runs when speechUnavailable toggles for retry)
-  useEffect(() => {
-    if (phase === "listening" && !isMuted && !speechUnavailable) {
-      recognitionRestartCountRef.current = 0;
-      deepgramRetryRef.current = 0;
-      let stopped = false;
-
-      let deepgramCleanup: (() => void) | null = null;
-      let sarvamCleanup: (() => void) | null = null;
-
-      // Fallback chain: Deepgram Nova-3 → Sarvam AI → Web Speech API
-      const trySarvam = async () => {
-        if (stopped) return;
-        console.info("[STT] Trying Sarvam AI fallback...");
-        const handle = await createSarvamSTT({
-          onTranscript: (finalText, interim) => {
-            if (!stopped) setCurrentTranscript(finalText + interim);
-          },
-          onError: (error) => {
-            if (stopped) return;
-            if (error === "not-allowed") {
-              setMicError("Microphone access denied. Check browser permissions.");
-              setSpeechUnavailable(true);
-              setShowCaptions(true);
-              setTimeout(() => textareaRef.current?.focus(), 100);
-            } else {
-              console.warn("[Sarvam] error, falling back to Web Speech API:", error);
-              toast("Speech recognition switched to browser fallback.", "info");
-              sarvamRef.current = null;
-              startWebSpeechAPI();
-            }
-          },
-          onEnd: () => {
-            if (stopped || interviewEndedRef.current) return;
-            sarvamRef.current = null;
-            console.warn("[Sarvam] connection ended, falling back to Web Speech API");
-            toast("Speech recognition switched to browser fallback.", "info");
-            startWebSpeechAPI();
-          },
-        });
-        if (stopped) { handle?.abort(); return; }
-        if (handle) {
-          sarvamRef.current = handle;
-          sarvamCleanup = () => {
-            handle.stop();
-            sarvamRef.current = null;
-          };
-        } else {
-          console.warn("[Sarvam] setup failed, falling back to Web Speech API");
-          startWebSpeechAPI();
-        }
-      };
-
-      const tryDeepgram = async () => {
-        if (stopped) return;
-        const handle = await createDeepgramSTT({
-          onTranscript: (finalText, interim) => {
-            if (!stopped) setCurrentTranscript(finalText + interim);
-          },
-          onError: (error) => {
-            if (stopped) return;
-            if (error === "not-allowed") {
-              setMicError("Microphone access denied. Check browser permissions.");
-              setSpeechUnavailable(true);
-              setShowCaptions(true);
-              setTimeout(() => textareaRef.current?.focus(), 100);
-            } else {
-              console.warn("[Deepgram] error, falling back to Sarvam AI:", error);
-              deepgramRef.current = null;
-              trySarvam();
-            }
-          },
-          onEnd: () => {
-            if (stopped || interviewEndedRef.current) return;
-            deepgramRef.current = null;
-            // Retry Deepgram once before falling back to Sarvam
-            if (navigator.onLine && deepgramRetryRef.current < 2) {
-              deepgramRetryRef.current++;
-              const backoffMs = 1000 * Math.pow(2, deepgramRetryRef.current - 1); // 1s, 2s
-              console.warn(`[Deepgram] connection ended, retrying in ${backoffMs}ms (attempt ${deepgramRetryRef.current}/2)`);
-              toast("Reconnecting speech recognition...", "info");
-              setTimeout(() => { if (!stopped) tryDeepgram(); }, backoffMs);
-            } else {
-              console.warn("[Deepgram] retries exhausted, falling back to Sarvam AI");
-              trySarvam();
-            }
-          },
-        });
-        if (stopped) { handle?.abort(); return; }
-        if (handle) {
-          deepgramRef.current = handle;
-          deepgramCleanup = () => {
-            handle.stop();
-            deepgramRef.current = null;
-          };
-        } else {
-          // Deepgram setup failed (no API key, etc.) — try Sarvam
-          trySarvam();
-        }
-      };
-
-      function startWebSpeechAPI() {
-        if (stopped) return;
-        const recognition = createSpeechRecognition();
-        if (!recognition) {
-          setSpeechUnavailable(true);
-          return;
-        }
-        let finalText = "";
-        recognition.onresult = (event: SpeechRecognitionEvent) => {
-          let interim = "";
-          for (let i = event.resultIndex; i < event.results.length; i++) {
-            const result = event.results[i];
-            if (result.isFinal) {
-              finalText += result[0].transcript + " ";
-            } else {
-              interim = result[0].transcript;
-            }
-          }
-          setCurrentTranscript(finalText + interim);
-        };
-        recognition.onerror = (event: { error: string }) => {
-          const error = event?.error || "unknown";
-          if (error === "not-allowed") {
-            setMicError("Microphone access denied. Check browser permissions.");
-            setSpeechUnavailable(true);
-            setShowCaptions(true);
-            setTimeout(() => textareaRef.current?.focus(), 100);
-          } else if (error === "no-speech") {
-            noSpeechCountRef.current += 1;
-            if (noSpeechCountRef.current >= 3) {
-              setMicError("No speech detected after multiple attempts. Type your answer below.");
-              setSpeechUnavailable(true);
-              setTimeout(() => textareaRef.current?.focus(), 100);
-            }
-          } else if (error === "network") {
-            setMicError("Speech recognition network error. Type your answer below.");
-            setSpeechUnavailable(true);
-            setTimeout(() => textareaRef.current?.focus(), 100);
-          } else if (error !== "aborted") {
-            setMicError("Microphone issue detected. Try unmuting or refreshing.");
-            setSpeechUnavailable(true);
-            setTimeout(() => textareaRef.current?.focus(), 100);
-          }
-        };
-        recognition.onresult = ((origOnResult) => {
-          return (event: SpeechRecognitionEvent) => {
-            noSpeechCountRef.current = 0;
-            recognitionRestartCountRef.current = 0;
-            origOnResult(event);
-          };
-        })(recognition.onresult);
-        recognition.onend = () => {
-          if (interviewEndedRef.current) return;
-          if (!stopped) {
-            recognitionRestartCountRef.current++;
-            if (recognitionRestartCountRef.current > 5) {
-              console.warn("[speech] too many restarts, falling back to text input");
-              setSpeechUnavailable(true);
-              setMicError("Speech recognition keeps stopping. Type your answer below.");
-              toast("Mic issues detected — switching to text input.", "info");
-              setTimeout(() => textareaRef.current?.focus(), 100);
-              return;
-            }
-            try { recognition.start(); } catch (e) {
-              console.warn("[speech] restart failed, enabling text fallback:", e);
-              setSpeechUnavailable(true);
-              setMicError("Speech recognition stopped unexpectedly. Type your answer below.");
-              setTimeout(() => textareaRef.current?.focus(), 100);
-            }
-          }
-        };
-        try { recognition.start(); } catch (e) {
-          console.warn("Speech recognition failed to start:", e);
-          setMicError("Could not start speech recognition. Try refreshing.");
-        }
-        recognitionRef.current = recognition;
-      }
-
-      tryDeepgram();
-
-      const safetyTimer = setTimeout(() => {
-        if (!stopped && !interviewEndedRef.current && phase === "listening") {
-          console.warn("[interview] Listening safety timeout — enabling text fallback");
-          setSpeechUnavailable(true);
-          setMicError("Having trouble hearing you? Type your answer instead.");
-          setTimeout(() => textareaRef.current?.focus(), 100);
-        }
-      }, 30_000);
-
-      return () => {
-        clearTimeout(safetyTimer);
-        stopped = true;
-        deepgramCleanup?.();
-        sarvamCleanup?.();
-        recognitionRef.current?.stop();
-        recognitionRef.current = null;
-      };
-    } else {
-      deepgramRef.current?.abort();
-      deepgramRef.current = null;
-      sarvamRef.current?.abort();
-      sarvamRef.current = null;
-      recognitionRef.current?.stop();
-      recognitionRef.current = null;
-      return;
-    }
-  }, [phase, isMuted, speechUnavailable]);
-
-  // Capture mic stream for real waveform visualizer
-  useEffect(() => {
-    if (phase !== "listening" || isMuted) { micStreamRef.current = null; return; }
-    let cancelled = false;
-    navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
-      if (cancelled) { stream.getTracks().forEach(t => t.stop()); return; }
-      micStreamRef.current = stream;
-    }).catch(() => {});
-    return () => {
-      cancelled = true;
-      micStreamRef.current?.getTracks().forEach(t => t.stop());
-      micStreamRef.current = null;
-    };
-  }, [phase, isMuted]);
+  // STT fallback chain: Deepgram → Sarvam → Web Speech API + mic stream capture
+  useInterviewSTT(phase, isMuted, speechUnavailable, {
+    setCurrentTranscript, setMicError, setSpeechUnavailable, setShowCaptions,
+    toast, textareaRef, interviewEndedRef,
+  }, {
+    recognitionRef, deepgramRef, sarvamRef, noSpeechCountRef, micStreamRef,
+  });
 
   // Feature 3: Silence nudge — if user is silent for 15s during listening, speak a gentle prompt
   useEffect(() => {
@@ -871,9 +694,6 @@ export function useInterviewEngine() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, aiVoiceEnabled, currentStep]);
 
-  // User answer timer
-  const [answerTimer, setAnswerTimer] = useState(0);
-
   const step = interviewScript[currentStep] ?? interviewScript[interviewScript.length - 1];
   const rawPersona = step?.persona || (panelMembers ? panelMembers[0].title : "");
   const activePersona = normalizePersona(rawPersona);
@@ -884,48 +704,6 @@ export function useInterviewEngine() {
   const baseQuestionCount = useMemo(() => interviewScript.filter(s => s.type === "question").length, [interviewScript]);
   const currentQuestionNum = useMemo(() => interviewScript.slice(0, currentStep + 1).filter(s => s.type === "question" || s.type === "follow-up").length, [interviewScript, currentStep]);
   const isCurrentFollowUp = step?.type === "follow-up";
-
-  // Timer — pauses when tab is hidden (laptop sleep / tab switch)
-  useEffect(() => {
-    if (phase === "done") return;
-    const timer = setInterval(() => {
-      if (!tabVisibleRef.current) return;
-      setElapsed(e => e + 1);
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [phase]);
-
-  // Answer timer with max 120s, pauses when tab is backgrounded
-  const handleNextRef = useRef<() => void>(() => {});
-  const tabVisibleRef = useRef(true);
-  useEffect(() => {
-    const onVisibility = () => { tabVisibleRef.current = !document.hidden; };
-    document.addEventListener("visibilitychange", onVisibility);
-    return () => document.removeEventListener("visibilitychange", onVisibility);
-  }, []);
-  useEffect(() => {
-    setAnswerTimer(0);
-  }, [currentStep]);
-  const autoAdvancedRef = useRef(false);
-  useEffect(() => { autoAdvancedRef.current = false; }, [currentStep]);
-  useEffect(() => {
-    if (phase === "done") return;
-    const timer = setInterval(() => setAnswerTimer(t => {
-      if (!tabVisibleRef.current) return t;
-      const next = t + 1;
-      if (next === 100 && phase === "listening" && !autoAdvancedRef.current) {
-        toast("20 seconds remaining for this answer.", "info");
-      }
-      if (next >= 120 && phase === "listening" && !autoAdvancedRef.current) {
-        autoAdvancedRef.current = true;
-        toast("Time's up — moving to the next question.", "info");
-        handleNextRef.current();
-        return next;
-      }
-      return next;
-    }), 1000);
-    return () => clearInterval(timer);
-  }, [phase]);
 
   // Interview flow: thinking -> speaking (with TTS) -> listening
   const flowGenerationRef = useRef(0);
@@ -952,6 +730,10 @@ export function useInterviewEngine() {
     let safetyTimer: ReturnType<typeof setTimeout> | null = null;
     let cancelled = false;
     const isStale = () => cancelled || gen !== flowGenerationRef.current || interviewEndedRef.current;
+
+    // Cancel any in-flight TTS from previous generation to prevent overlap
+    ttsCancelRef.current?.();
+    ttsCancelRef.current = null;
 
     setPhase("thinking");
 
@@ -1036,6 +818,9 @@ export function useInterviewEngine() {
       if (isStale()) return;
       setPhase("speaking");
       setIsRecording(true);
+      // Reset TTS-caption sync state for this question
+      setTtsDurationMs(undefined);
+      setSpeechEnded(false);
 
       setTranscript(prev => [...prev, {
         speaker: "ai",
@@ -1045,10 +830,11 @@ export function useInterviewEngine() {
 
       ttsCancelRef.current?.();
 
-      let speechEnded = false;
+      let localSpeechEnded = false;
       const onSpeechEnd = () => {
-        if (speechEnded || isStale()) return;
-        speechEnded = true;
+        if (localSpeechEnded || isStale()) return;
+        localSpeechEnded = true;
+        setSpeechEnded(true);
         if (safetyTimer) clearTimeout(safetyTimer);
         setIsRecording(false);
         if (step.waitForUser) {
@@ -1064,13 +850,13 @@ export function useInterviewEngine() {
         }
       };
 
-      // Safety timer: if TTS is working, allow speakingDuration + 5s buffer
-      // If autoplay is blocked, use a short 2s timeout since no audio will play
+      // Safety timer: allow speakingDuration + 8s buffer for TTS latency/network jitter
+      // If autoplay is blocked, use a short 3s timeout since no audio will play
       const safetyMs = isAutoplayBlocked()
-        ? 2000
-        : Math.max(step.speakingDuration + 5000, 15000);
+        ? 3000
+        : Math.max(step.speakingDuration + 8000, 18000);
       safetyTimer = setTimeout(() => {
-        if (!speechEnded) {
+        if (!localSpeechEnded) {
           console.warn("[interview] TTS safety timeout — forcing phase transition");
           onSpeechEnd();
         }
@@ -1078,6 +864,10 @@ export function useInterviewEngine() {
 
       if (aiVoiceEnabled) {
         const instanceId = ++ttsInstanceIdRef.current;
+        // Callback: TTS provider reports actual audio duration → sync caption typing speed
+        const onDurationKnown = (ms: number) => {
+          if (ttsInstanceIdRef.current === instanceId) setTtsDurationMs(ms);
+        };
         // For panel interviews, wait for voices to load before speaking (prevents race condition)
         const speakPanel = async () => {
           if (isPanelInterview && panelVoicesReadyRef.current) {
@@ -1089,8 +879,8 @@ export function useInterviewEngine() {
             ? panelMembers.find(m => m.title === normalizedPersona)?.gender
             : undefined;
           return panelVoiceId
-            ? speakAs(step.aiText, panelVoiceId, onSpeechEnd, onSpeechEnd, panelGender)
-            : speak(step.aiText, onSpeechEnd, onSpeechEnd, interviewerGender);
+            ? speakAs(step.aiText, panelVoiceId, onSpeechEnd, onSpeechEnd, panelGender, onDurationKnown)
+            : speak(step.aiText, onSpeechEnd, onSpeechEnd, interviewerGender, onDurationKnown);
         };
         speakPanel().then(handle => {
           if (ttsInstanceIdRef.current === instanceId) {
@@ -1132,17 +922,20 @@ export function useInterviewEngine() {
     const isSalaryNegConversation = interviewType === "salary-negotiation";
     if (pendingFollowUp) {
       pendingFollowUpRef.current = null;
-      const timeout = new Promise<null>(r => setTimeout(() => r(null), isSalaryNegConversation ? 6000 : 4000));
+      const timeout = new Promise<null>(r => setTimeout(() => r(null), isSalaryNegConversation ? 9000 : 4000));
       Promise.race([pendingFollowUp, timeout]).then(result => {
         if (isStale() || interviewEndedRef.current) return;
         if (result?.needsFollowUp && result.followUpText && currentStepRef.current === currentStep) {
           // Preserve persona from the original question (or from API response) for panel interviews
           const followUpPersona = isPanelInterview ? ((result as { persona?: string }).persona || step.persona) : undefined;
+          // Compute speakingDuration from word count (~150 WPM for TTS, with a 2s floor)
+          const followUpWords = result.followUpText.split(/\s+/).length;
+          const followUpSpeakMs = Math.max(3000, Math.round((followUpWords / 150) * 60 * 1000) + 1500);
           const followUpStep: InterviewStep = {
             type: isSalaryNegConversation ? "question" : "follow-up",
             aiText: result.followUpText,
             thinkingDuration: 300,
-            speakingDuration: 4500,
+            speakingDuration: followUpSpeakMs,
             waitForUser: true,
             scoreNote: isSalaryNegConversation ? "Salary negotiation response — evaluate negotiation strategy" : "Dynamic follow-up based on candidate's answer",
             persona: followUpPersona,
@@ -1227,13 +1020,19 @@ export function useInterviewEngine() {
     ttsCancelRef.current?.();
     recognitionRef.current?.stop();
 
-    const answerText = currentTranscript.trim() || (answerTimer > 2 ? `[Answer recorded — ${answerTimer}s]` : "");
+    const rawTranscript = currentTranscript.trim();
+    const answerText = rawTranscript || (answerTimer > 2 ? `[Answer recorded — ${answerTimer}s]` : "");
 
     // Block completely empty answers (silence with no speech detected)
     if (!answerText) {
       toast("Please speak or type your response before continuing.", "info");
       advancingRef.current = false;
       return;
+    }
+
+    // Warn user when STT captured nothing — encourage typing
+    if (!rawTranscript && answerTimer > 2) {
+      toast("Speech wasn't detected clearly. Try typing your response next time.", "info");
     }
 
     // Validate text input — require minimum length (shorter threshold for salary-negotiation since "₹25 LPA" is valid)
@@ -1261,253 +1060,9 @@ export function useInterviewEngine() {
     // Generate micro-feedback with dynamic difficulty awareness
     setMicroFeedback(null);
     if (answerText.length > 10 && !answerText.startsWith("[Answer recorded")) {
-      const wordCount = answerText.trim().split(/\s+/).length;
-
-      if (interviewType === "salary-negotiation") {
-        // Salary-negotiation-specific micro-feedback
-        const mentionsNumber = /₹|lakh|lpa|lakhs|\d+\s*l(?:pa|akh)/i.test(answerText);
-        const mentionsBenefits = /benefit|esop|equity|bonus|flexible|remote|insurance|learning|budget/i.test(answerText);
-        const mentionsEquityVague = /esop|equity|stock|option|vest/i.test(answerText) && !/₹|\d+\s*(?:lakh|lpa|%)/i.test(answerText);
-        const mentionsCompeting = /other offer|competing|another company|counter/i.test(answerText);
-        const acceptsImmediately = /(?:sounds good|i accept|that works|deal|perfect|okay sure|fine with me|yes.*accept)/i.test(answerText) && wordCount < 25;
-        const rejectsOutright = /(?:way too low|not interested|can'?t accept|wouldn'?t consider|absolutely not|that'?s insulting|no way)/i.test(answerText);
-
-        if (rejectsOutright && wordCount < 30) {
-          setMicroFeedback("Tip: Stay open and professional — counter with data, don't reject outright.");
-        } else if (acceptsImmediately) {
-          setMicroFeedback("Tip: Don't accept too quickly — explore the full package first.");
-        } else if (wordCount > 100) {
-          setMicroFeedback("Tip: Keep negotiation points concise — 2-3 sentences per response works best.");
-        } else if (wordCount < 15) {
-          setMicroFeedback("Tip: Elaborate on your reasoning — why that number? What's your basis?");
-        } else if (mentionsEquityVague) {
-          setMicroFeedback("Good interest in equity! Ask for the vesting schedule and annual value in ₹.");
-        } else if (mentionsNumber && !mentionsBenefits) {
-          setMicroFeedback("Good anchor! Consider discussing beyond base — benefits, equity, flexibility.");
-        } else if (mentionsBenefits && mentionsNumber) {
-          setMicroFeedback("Strong negotiation — covering both compensation and package elements.");
-        } else if (mentionsCompeting) {
-          setMicroFeedback("Using leverage well. Be careful not to bluff — stay credible.");
-        } else if (wordCount >= 30) {
-          setMicroFeedback("Good response — clear and substantive.");
-        }
-        // Score for difficulty tracking
-        let answerScore = 50;
-        if (mentionsNumber) answerScore += 15;
-        if (mentionsBenefits) answerScore += 15;
-        if (wordCount >= 30) answerScore += 10;
-        if (!acceptsImmediately && !rejectsOutright) answerScore += 10;
-        if (rejectsOutright) answerScore -= 10;
-        if (wordCount < 15) answerScore -= 15;
-        answerQualityRef.current.push(Math.min(100, Math.max(0, answerScore)));
-      } else if (interviewType === "government-psu") {
-        // Government/PSU-specific micro-feedback
-        const mentionsPolicy = /policy|scheme|act|bill|amendment|article|constitution|nep|dpdp|rti|panchayat|niti aayog|budget/i.test(answerText);
-        const mentionsEthics = /ethic|integrity|transparen|accountab|corrupt|honest|impartial|fair|justice|public interest/i.test(answerText);
-        const isBalanced = /however|on the other hand|while|although|both|balance|trade-?off|at the same time/i.test(answerText);
-        const mentionsGovt = /government|ministry|department|district|collector|ias|ips|upsc|commission|committee|parliament/i.test(answerText);
-
-        let answerScore = 50;
-        if (wordCount >= 50) answerScore += 10;
-        if (mentionsPolicy) answerScore += 15;
-        if (mentionsEthics) answerScore += 10;
-        if (isBalanced) answerScore += 10;
-        if (mentionsGovt) answerScore += 5;
-        if (wordCount < 30) answerScore -= 15;
-        answerQualityRef.current.push(Math.min(100, Math.max(0, answerScore)));
-
-        if (wordCount < 30) {
-          setMicroFeedback("Elaborate more — government interviews expect detailed, well-reasoned answers.");
-        } else if (!mentionsPolicy && !mentionsEthics) {
-          setMicroFeedback("Tip: Reference specific policies, schemes, or constitutional provisions to strengthen your answer.");
-        } else if (!isBalanced) {
-          setMicroFeedback("Good points! Present a balanced perspective — acknowledge trade-offs and multiple viewpoints.");
-        } else if (mentionsPolicy && isBalanced) {
-          setMicroFeedback("Strong answer — policy-aware and balanced. Well articulated.");
-        } else {
-          setMicroFeedback("Good response — clear reasoning and relevant context.");
-        }
-      } else if (interviewType === "teaching") {
-        // Teaching-specific micro-feedback
-        const mentionsStudents = /student|learner|child|classroom|class|pupil/i.test(answerText);
-        const mentionsPedagogy = /pedagogy|curriculum|lesson plan|assessment|learning objective|differentiat|scaffold|bloom|formative|summative|inclusive|engagement/i.test(answerText);
-        const mentionsExample = /for example|for instance|in my class|when I taught|one time|in a lesson/i.test(answerText);
-        const mentionsTech = /technology|digital|online|app|video|interactive|smart board|gamif/i.test(answerText);
-
-        let answerScore = 50;
-        if (wordCount >= 50) answerScore += 10;
-        if (mentionsStudents) answerScore += 10;
-        if (mentionsPedagogy) answerScore += 15;
-        if (mentionsExample) answerScore += 10;
-        if (mentionsTech) answerScore += 5;
-        if (wordCount < 30) answerScore -= 15;
-        answerQualityRef.current.push(Math.min(100, Math.max(0, answerScore)));
-
-        if (wordCount < 30) {
-          setMicroFeedback("Elaborate more — describe your approach and reasoning with examples.");
-        } else if (!mentionsStudents && !mentionsPedagogy) {
-          setMicroFeedback("Tip: Center your answer on student outcomes — how does this approach help learners?");
-        } else if (!mentionsExample) {
-          setMicroFeedback("Good thinking! Add a specific classroom example to make it concrete.");
-        } else if (mentionsPedagogy && mentionsExample) {
-          setMicroFeedback("Excellent — practical, student-centered, and well-supported with examples.");
-        } else {
-          setMicroFeedback("Good answer — clear and student-focused.");
-        }
-      } else if (interviewType === "case-study") {
-        // Case study-specific micro-feedback
-        const hasFramework = /framework|hypothesis|assumption|estimate|segment|prioriti|trade-?off|constraint|root cause|funnel|cohort|a\/b test/i.test(answerText);
-        const hasStructure = /first|second|third|step \d|approach.*would be|i would start/i.test(answerText);
-        const hasData = /\d+%|\d+x|₹[\d,]+|\$[\d,]+|\d+ (users|customers|million|crore|lakh)/i.test(answerText);
-        const hasRecommendation = /recommend|suggest|conclusion|therefore|my proposal|i would choose|the best option/i.test(answerText);
-
-        let answerScore = 50;
-        if (wordCount >= 50) answerScore += 10;
-        if (hasFramework) answerScore += 15;
-        if (hasStructure) answerScore += 10;
-        if (hasData) answerScore += 10;
-        if (hasRecommendation) answerScore += 5;
-        if (wordCount < 30) answerScore -= 15;
-        answerQualityRef.current.push(Math.min(100, Math.max(0, answerScore)));
-
-        if (wordCount < 30) {
-          setMicroFeedback("Case studies need structured thinking — walk through your approach step by step.");
-        } else if (!hasFramework && !hasStructure) {
-          setMicroFeedback("Tip: Structure your answer — state your hypothesis, break down the problem, then recommend.");
-        } else if (!hasData && hasStructure) {
-          setMicroFeedback("Good structure! Strengthen with data estimates or metrics to support your reasoning.");
-        } else if (!hasRecommendation) {
-          setMicroFeedback("Good analysis! Close with a clear recommendation and expected impact.");
-        } else if (hasFramework && hasData) {
-          setMicroFeedback("Excellent — structured, data-backed, with a clear recommendation.");
-        } else {
-          setMicroFeedback("Good analysis — logical and well-reasoned.");
-        }
-      } else if (interviewType === "hr-round") {
-        // HR round-specific micro-feedback
-        const showsSelfAwareness = /strength|weakness|learned|realized|improved|growth|feedback|reflect/i.test(answerText);
-        const showsMotivation = /passion|motivat|excit|interest|driven|purpose|goal|aspir|value/i.test(answerText);
-        const showsCulturalFit = /team|collaborat|culture|value|inclusive|diverse|together|support/i.test(answerText);
-        const isAuthentic = /honestly|personally|I believe|I feel|for me|in my experience/i.test(answerText);
-        const hasFirstPerson = /\bI\b/.test(answerText);
-
-        let answerScore = 50;
-        if (wordCount >= 40) answerScore += 10;
-        if (showsSelfAwareness) answerScore += 15;
-        if (showsMotivation) answerScore += 10;
-        if (showsCulturalFit) answerScore += 5;
-        if (isAuthentic) answerScore += 5;
-        if (hasFirstPerson) answerScore += 5;
-        if (wordCount < 25) answerScore -= 15;
-        answerQualityRef.current.push(Math.min(100, Math.max(0, answerScore)));
-
-        if (wordCount < 25) {
-          setMicroFeedback("HR rounds value thoughtful answers — share your genuine perspective and reasoning.");
-        } else if (!showsSelfAwareness && !showsMotivation) {
-          setMicroFeedback("Tip: Show self-awareness — reflect on what drives you and how you've grown.");
-        } else if (!showsCulturalFit) {
-          setMicroFeedback("Good answer! Connect it to teamwork or the company's values for cultural fit.");
-        } else if (showsSelfAwareness && showsMotivation) {
-          setMicroFeedback("Great — authentic, self-aware, and clearly motivated.");
-        } else {
-          setMicroFeedback("Good answer — genuine and well-articulated.");
-        }
-      } else if (interviewType === "management") {
-        // Management-specific micro-feedback
-        const mentionsPeople = /team|report|member|hire|coach|mentor|delegate|1[:-]1|one-on-one|performance|feedback/i.test(answerText);
-        const mentionsScale = /\d+\s*(people|engineers|reports|members|team)|scaled|grew|built.*team/i.test(answerText);
-        const hasOutcome = /result|outcome|impact|improved|reduced|achieved|delivered|shipped/i.test(answerText);
-        const mentionsProcess = /process|framework|standup|retro|sprint|okr|kpi|metric|cadence|ritual/i.test(answerText);
-
-        let answerScore = 50;
-        if (wordCount >= 50) answerScore += 10;
-        if (mentionsPeople) answerScore += 15;
-        if (mentionsScale) answerScore += 10;
-        if (hasOutcome) answerScore += 10;
-        if (mentionsProcess) answerScore += 5;
-        if (wordCount < 30) answerScore -= 15;
-        answerQualityRef.current.push(Math.min(100, Math.max(0, answerScore)));
-
-        if (wordCount < 30) {
-          setMicroFeedback("Management answers need depth — describe your approach and its impact on the team.");
-        } else if (!mentionsPeople) {
-          setMicroFeedback("Tip: Center on people — how did your approach affect your team, reports, or stakeholders?");
-        } else if (!mentionsScale && !hasOutcome) {
-          setMicroFeedback("Good people focus! Add team size and measurable outcomes to show impact.");
-        } else if (mentionsPeople && hasOutcome) {
-          setMicroFeedback("Strong — people-focused with clear outcomes. Well articulated.");
-        } else {
-          setMicroFeedback("Good answer — clear leadership thinking.");
-        }
-      } else if (interviewType === "campus-placement") {
-        // Campus placement-specific micro-feedback (gentler, fresher-appropriate)
-        const mentionsProject = /project|built|developed|created|designed|implemented|hackathon|internship/i.test(answerText);
-        const hasLearning = /learned|realized|taught me|takeaway|improved|grew|mistake|challenge/i.test(answerText);
-        const hasClarity = /because|reason|approach|decided|goal|objective/i.test(answerText);
-        const hasFirstPerson = /\bI\b/.test(answerText);
-
-        let answerScore = 50;
-        if (wordCount >= 40) answerScore += 10;
-        if (mentionsProject) answerScore += 15;
-        if (hasLearning) answerScore += 10;
-        if (hasClarity) answerScore += 10;
-        if (hasFirstPerson) answerScore += 5;
-        if (wordCount < 20) answerScore -= 10;
-        answerQualityRef.current.push(Math.min(100, Math.max(0, answerScore)));
-
-        if (wordCount < 20) {
-          setMicroFeedback("Try to say a bit more — even briefly describing your approach helps.");
-        } else if (!mentionsProject && !hasLearning) {
-          setMicroFeedback("Tip: Reference a specific project or experience — concrete examples are powerful.");
-        } else if (!hasLearning) {
-          setMicroFeedback("Good example! Share what you learned or how the experience shaped your thinking.");
-        } else if (mentionsProject && hasLearning) {
-          setMicroFeedback("Great answer — specific, reflective, and shows your growth mindset.");
-        } else {
-          setMicroFeedback("Good answer — clear and well-communicated.");
-        }
-      } else {
-        // Standard behavioral/technical/strategic/panel micro-feedback
-        const hasMetrics = /\d+%|\$\d|[0-9]+x|[0-9]+ (users|customers|engineers|people)/i.test(answerText);
-        const hasStructure = /first|second|then|finally|result|outcome|impact/i.test(answerText);
-        const hasFirstPerson = /\bI\b/i.test(answerText);
-        const hasCounterfactual = /without|otherwise|if.*not|had.*not|wouldn't/i.test(answerText);
-
-        let answerScore = 50;
-        if (wordCount >= 50) answerScore += 10;
-        if (wordCount >= 100) answerScore += 5;
-        if (hasMetrics) answerScore += 15;
-        if (hasStructure) answerScore += 10;
-        if (hasFirstPerson) answerScore += 5;
-        if (hasCounterfactual) answerScore += 5;
-        if (wordCount < 30) answerScore -= 15;
-        answerQualityRef.current.push(Math.min(100, Math.max(0, answerScore)));
-
-        const scores = answerQualityRef.current;
-        const runningAvg = scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 50;
-        const isExcelling = runningAvg >= 80 && scores.length >= 2;
-        const isStruggling = runningAvg < 50 && scores.length >= 2;
-
-        if (wordCount < 30) {
-          setMicroFeedback(isStruggling
-            ? "Try to say more — even 2-3 sentences about the situation helps."
-            : "Try to elaborate more — aim for 60+ seconds per answer.");
-        } else if (!hasMetrics && !hasStructure) {
-          setMicroFeedback(isExcelling
-            ? "Good content — push further with specific metrics and counterfactual reasoning."
-            : "Good start! Try adding specific metrics and structuring with STAR.");
-        } else if (!hasMetrics) {
-          setMicroFeedback(isExcelling
-            ? "Nice structure! Add quantified impact — '$X revenue', '30% faster', etc."
-            : "Nice structure! Strengthen with specific numbers or metrics.");
-        } else if (!hasStructure) {
-          setMicroFeedback("Great data! Try structuring as Situation → Action → Result.");
-        } else if (isExcelling && !hasCounterfactual) {
-          setMicroFeedback("Strong answer! Next level: add counterfactual reasoning — 'Without this, X would have happened.'");
-        } else {
-          setMicroFeedback(isExcelling ? "Excellent — specific, structured, and impactful." : "Strong answer — specific and well-structured.");
-        }
-      }
+      const { feedback, score: answerScore } = computeMicroFeedback(answerText, interviewType, answerQualityRef.current);
+      answerQualityRef.current.push(answerScore);
+      if (feedback) setMicroFeedback(feedback);
     }
 
     // Fire follow-up check in background
@@ -1533,7 +1088,7 @@ export function useInterviewEngine() {
       // Add current exchange
       earlierTopics.push(`Q: ${currentStepObj!.aiText.slice(0, 150)}`);
       earlierTopics.push(`A: ${answerText.slice(0, 120)}`);
-      const conversationHistory = earlierTopics.slice(-16).join("\n");
+      const conversationHistory = earlierTopics.slice(-20).join("\n");
 
       // Collect recent follow-up Q&A pairs
       const recentFollowUps: string[] = [];
@@ -1558,11 +1113,22 @@ export function useInterviewEngine() {
       const questionSteps = interviewScript.filter(s => s.type === "question" || s.type === "follow-up");
       const currentQuestionIdx = interviewScript.slice(0, currentStep + 1).filter(s => s.type === "question" || s.type === "follow-up").length;
       const totalQs = questionSteps.length;
-      const negotiationPhases = ["offer-reaction", "probe-expectations", "counter-offer", "closing"];
+      const negotiationPhases = ["offer-reaction", "probe-expectations", "counter-offer", "benefits-discussion", "closing-pressure", "closing"];
       const salaryPhase = isSalaryNegType ? (negotiationPhases[Math.min(currentQuestionIdx - 1, negotiationPhases.length - 1)] || "offer-reaction") : undefined;
 
       if (depth <= 2) {
         followUpDepthRef.current = depth;
+        const followUpAiProfile = (user?.resumeData as Record<string, unknown> | undefined)?.aiProfile as { topSkills?: string[] } | undefined;
+        // For salary negotiation: find the initial offer question text so the LLM can reference exact numbers
+        const initialOfferText = isSalaryNegType
+          ? interviewScript.find(s => s.type === "question" && /₹|lpa|ctc|offer|base/i.test(s.aiText))?.aiText
+          : undefined;
+
+        // Extract structured negotiation facts from the full transcript (including current answer)
+        const negotiationFacts = isSalaryNegType
+          ? extractNegotiationFacts([...transcript, { speaker: "user", text: answerText, time: "" }])
+          : undefined;
+
         pendingFollowUpRef.current = fetchFollowUp({
           question: currentStepObj!.aiText,
           answer: answerText,
@@ -1579,6 +1145,12 @@ export function useInterviewEngine() {
           negotiationPhase: salaryPhase,
           questionIndex: isSalaryNegType ? currentQuestionIdx : undefined,
           totalQuestions: isSalaryNegType ? totalQs : undefined,
+          resumeTopSkills: followUpAiProfile?.topSkills,
+          initialOfferText,
+          negotiationFacts,
+          negotiationStyle: negotiationStyle || undefined,
+          negotiationBand: negotiationBandRef.current || undefined,
+          industry: user?.industry || undefined,
         });
       } else {
         pendingFollowUpRef.current = null;
@@ -1705,33 +1277,12 @@ export function useInterviewEngine() {
     }, 40_000);
 
     try {
-    const completionRatio = currentStep / Math.max(1, interviewScript.length);
-    const baseScore = 65 + Math.round(completionRatio * 20);
-    const difficultyBonus = interviewDifficulty === "intense" ? 5 : interviewDifficulty === "warmup" ? -3 : 0;
-    const timeBonus = elapsed > 300 ? 5 : elapsed > 120 ? 3 : 0;
-    const questionBonus = Math.min(5, Math.floor(evalTranscript.filter(t => t.speaker === "user").length * 1.5));
-    const fallbackScore = Math.min(98, Math.max(60, baseScore + difficultyBonus + timeBonus + questionBonus));
-
-    const hasAnyAnswers = evalTranscript.some(t => t.speaker === "user" && t.text.length > 10 && !/^\[.*\]$/.test(t.text.trim()));
-    score = hasAnyAnswers ? fallbackScore : Math.min(30, fallbackScore);
-
-    // Build heuristic skill scores for fallback (used when LLM eval fails/times out)
-    const userAnswers = evalTranscript.filter(t => t.speaker === "user");
-    const avgAnswerLen = userAnswers.length > 0 ? userAnswers.reduce((s, t) => s + t.text.length, 0) / userAnswers.length : 0;
-    const hasMetrics = userAnswers.some(t => /\d+%|\d+x|\$[\d,]+|\d+ (users|customers|months|days|hours|team|people)/.test(t.text));
-    const usesI = userAnswers.some(t => /\bI\b/.test(t.text));
-    const fillerCount = userAnswers.reduce((s, t) => s + (t.text.match(/\b(um|uh|like|basically|actually|you know)\b/gi) || []).length, 0);
-    const structureScore = Math.min(100, fallbackScore + (avgAnswerLen > 200 ? 5 : -5) + (hasMetrics ? 8 : -3));
-    const commScore = Math.min(100, fallbackScore + (fillerCount < 3 ? 5 : -5) + (avgAnswerLen > 100 ? 3 : -5));
-    const fallbackSkillScores: Record<string, number> = {
-      communication: Math.max(40, Math.min(95, commScore)),
-      structure: Math.max(40, Math.min(95, structureScore)),
-      technicalDepth: Math.max(40, Math.min(95, fallbackScore + (avgAnswerLen > 300 ? 5 : -5))),
-      leadership: Math.max(40, Math.min(95, fallbackScore + (usesI ? 3 : -5))),
-      problemSolving: Math.max(40, Math.min(95, fallbackScore)),
-      confidence: Math.max(40, Math.min(95, fallbackScore + (fillerCount < 2 ? 5 : -8))),
-      specificity: Math.max(40, Math.min(95, fallbackScore + (hasMetrics ? 10 : -10))),
-    };
+    const fallback = computeFallbackScores({
+      transcript: evalTranscript, currentStep, scriptLength: interviewScript.length,
+      difficulty: interviewDifficulty, elapsed,
+    });
+    score = fallback.score;
+    const fallbackSkillScores = fallback.skillScores;
 
     let idealAnswers: { question: string; ideal: string; candidateSummary: string; rating?: string; starBreakdown?: Record<string, string>; workedWell?: string; toImprove?: string }[] = [];
     let starAnalysis: { overall: number; breakdown: Record<string, number>; tip: string } | undefined;
@@ -1739,30 +1290,13 @@ export function useInterviewEngine() {
     let improvements: string[] | undefined;
     let nextSteps: string[] | undefined;
 
-    if (hasAnyAnswers) {
+    if (fallback.hasAnyAnswers) {
       try {
         const originalQuestions = interviewScript
           .filter(s => s.type === "question" || s.type === "follow-up")
           .map(s => s.aiText);
 
-        // Load previous session scores for delta-aware LLM feedback
-        let previousScores: { overall: number; skills: Record<string, number> } | null = null;
-        try {
-          const raw = localStorage.getItem("hirestepx_sessions");
-          if (raw) {
-            const sessions = JSON.parse(raw);
-            if (Array.isArray(sessions) && sessions.length > 0) {
-              const prev = sessions[0]; // most recent completed session
-              if (prev.score && prev.skill_scores) {
-                const skills: Record<string, number> = {};
-                for (const [k, v] of Object.entries(prev.skill_scores)) {
-                  skills[k] = typeof v === "number" ? v : typeof v === "object" && v !== null && "score" in (v as Record<string, unknown>) ? (v as { score: number }).score : 0;
-                }
-                previousScores = { overall: prev.score, skills };
-              }
-            }
-          }
-        } catch { /* expected: localStorage may be unavailable */ }
+        const previousScores = loadPreviousScores();
 
         // Race the LLM evaluation against the 40s abort signal
         const evaluation = await Promise.race([
@@ -1787,18 +1321,16 @@ export function useInterviewEngine() {
           }),
         ]);
         if (evaluation) {
-          score = Math.min(100, Math.max(0, evaluation.overallScore || fallbackScore));
-          aiFeedback = evaluation.feedback || "";
-          skillScores = evaluation.skillScores && typeof evaluation.skillScores === "object"
-            ? Object.fromEntries(Object.entries(evaluation.skillScores).map(([k, v]) => [k, extractScore(v)]))
-            : {};
-          idealAnswers = Array.isArray(evaluation.idealAnswers) ? evaluation.idealAnswers : [];
-          if (evaluation.starAnalysis && typeof evaluation.starAnalysis === "object") starAnalysis = evaluation.starAnalysis;
-          if (Array.isArray(evaluation.strengths)) strengths = evaluation.strengths;
-          if (Array.isArray(evaluation.improvements)) improvements = evaluation.improvements;
-          if (Array.isArray(evaluation.nextSteps)) nextSteps = evaluation.nextSteps;
+          const processed = processLLMEvaluation(evaluation, fallback.score);
+          score = processed.score;
+          aiFeedback = processed.feedback;
+          skillScores = processed.skillScores;
+          idealAnswers = processed.idealAnswers;
+          if (processed.starAnalysis) starAnalysis = processed.starAnalysis;
+          if (processed.strengths) strengths = processed.strengths;
+          if (processed.improvements) improvements = processed.improvements;
+          if (processed.nextSteps) nextSteps = processed.nextSteps;
         } else {
-          // fetchLLMEvaluation returned null (API error / bad response)
           setUsedFallbackScore(true);
           skillScores = fallbackSkillScores;
           aiFeedback = "Evaluation unavailable — score estimated from session metrics. Your estimated score is based on answer count, length, structure, and specificity. Practice again for a full AI evaluation.";
@@ -1811,7 +1343,6 @@ export function useInterviewEngine() {
         } else {
           setUsedFallbackScore(true);
         }
-        // Always provide skill scores even on error
         skillScores = fallbackSkillScores;
         aiFeedback = aiFeedback || "Evaluation unavailable — score estimated from session metrics. Your score reflects answer count, length, and structure. Try again for full AI analysis.";
         setSaveWarning(errMsg);
@@ -1834,11 +1365,7 @@ export function useInterviewEngine() {
     } else {
       setUsedFallbackScore(true);
       skillScores = fallbackSkillScores;
-      if (!hasAnyAnswers) {
-        aiFeedback = "No answers were recorded in this session. Try speaking clearly into your microphone, or use the text input option.";
-      } else {
-        aiFeedback = "Evaluation unavailable — score estimated from session metrics. Your score reflects answer count, length, and structure.";
-      }
+      aiFeedback = "No answers were recorded in this session. Try speaking clearly into your microphone, or use the text input option.";
     }
 
     // Refresh auth token before saving results
@@ -1980,9 +1507,6 @@ export function useInterviewEngine() {
     return { wordCount, wpm, fillerCount, lengthGuidance };
   }, [currentTranscript, answerTimer]);
 
-  const QUESTION_TIME_LIMIT = 120;
-  const timeRemaining = QUESTION_TIME_LIMIT - answerTimer;
-  const timePercent = (answerTimer / QUESTION_TIME_LIMIT) * 100;
   const displayRole = targetRole || user?.targetRole || interviewType.split("-").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
   const displayCompany = targetCompany || user?.targetCompany || "";
   const displayFocus = interviewFocus !== "general" ? interviewFocus.split("-").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ") : interviewType.split("-").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
@@ -2027,7 +1551,12 @@ export function useInterviewEngine() {
     isPanelInterview,
     panelMembers,
     activePersona: activePersona || "",
+    ttsDurationMs,
+    speechEnded,
     liveMetrics,
+    isSalaryNegotiation: interviewType === "salary-negotiation",
+    negotiationStyle: negotiationStyle || undefined,
+    negotiationBand: negotiationBandRef.current,
 
     // Setters the UI needs
     setCurrentTranscript,

@@ -2,7 +2,7 @@
 
 export const config = { runtime: "edge" };
 
-import { handleCorsPreflightOrMethod, corsHeaders, isRateLimited, getClientIp, rateLimitResponse, verifyAuth, unauthorizedResponse, validateOrigin, sanitizeForLLM, withRequestId } from "./_shared.js";
+import { handleCorsPreflightOrMethod, corsHeaders, isRateLimited, getClientIp, rateLimitResponse, verifyAuth, unauthorizedResponse, validateOrigin, sanitizeForLLM, withRequestId, checkLLMQuota } from "./_shared.js";
 import { callLLM, extractJSON } from "./_llm.js";
 
 declare const process: { env: Record<string, string | undefined> };
@@ -38,6 +38,12 @@ export default async function handler(req: Request): Promise<Response> {
   const ip = getClientIp(req);
   if (await isRateLimited(ip, "analyze-resume", 5, 60_000)) {
     return rateLimitResponse(headers);
+  }
+
+  // LLM quota check
+  const quota = await checkLLMQuota(auth.userId!, "analyze-resume");
+  if (!quota.allowed) {
+    return new Response(JSON.stringify({ error: quota.reason }), { status: 429, headers });
   }
 
   try {

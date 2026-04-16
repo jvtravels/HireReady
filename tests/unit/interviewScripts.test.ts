@@ -40,15 +40,17 @@ function makeUser(overrides: Record<string, unknown> = {}) {
 
 describe("getMiniScript", () => {
   it.each(ALL_MINI_TYPES)(
-    "returns 5 steps (intro, 3 questions, closing) for type=%s",
+    "returns correct steps (intro, questions, closing) for type=%s",
     (type) => {
       const steps = getMiniScript(null, undefined, type);
-      expect(steps).toHaveLength(5);
+      // Salary-negotiation gets 5 questions (longer arc), others get 3
+      const expectedQuestions = type === "salary-negotiation" ? 5 : 3;
+      expect(steps).toHaveLength(expectedQuestions + 2); // +2 for intro + closing
       expect(steps[0].type).toBe("intro");
-      expect(steps[1].type).toBe("question");
-      expect(steps[2].type).toBe("question");
-      expect(steps[3].type).toBe("question");
-      expect(steps[4].type).toBe("closing");
+      for (let i = 1; i <= expectedQuestions; i++) {
+        expect(steps[i].type).toBe("question");
+      }
+      expect(steps[steps.length - 1].type).toBe("closing");
     },
   );
 

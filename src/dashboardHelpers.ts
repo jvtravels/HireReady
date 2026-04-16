@@ -1,5 +1,3 @@
-// tokens import removed — was unused
-
 /* ─── Interview Events (Calendar Integration) ─── */
 export interface InterviewEvent {
   id: string;

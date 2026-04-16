@@ -33,6 +33,17 @@ if ("serviceWorker" in navigator && import.meta.env.PROD) {
   });
 }
 
+// Cleanup stale IndexedDB drafts — deferred so it never blocks page load
+if (typeof requestIdleCallback !== "undefined") {
+  requestIdleCallback(() => {
+    import("./interviewIDB").then(m => m.cleanupStaleIDB());
+  });
+} else {
+  setTimeout(() => {
+    import("./interviewIDB").then(m => m.cleanupStaleIDB());
+  }, 5000);
+}
+
 const TempoHost = lazy(() => {
   if (typeof window !== "undefined" && window.location.pathname.startsWith("/tempo-host")) {
     const base = "..";
