@@ -205,7 +205,7 @@ export function lookupSalaryContext(params: SalaryLookupParams): string {
     relocParts.push(`Companies typically offer: economy airfare for family, 15 days hotel accommodation, moving expenses.`);
 
     // Notice period buyout for relocation hires
-    relocParts.push(`Notice buyout: Employer often pays 2x notice salary as joining bonus to accelerate the move.`);
+    relocParts.push(`Notice buyout formula: (notice_days ÷ 30) × (monthly_base) × 1.5-2x = joining bonus. For 90-day notice at ₹50K/month base → ₹2.25-3 LPA buyout.`);
 
     parts.push(relocParts.join(" "));
   }
@@ -233,13 +233,40 @@ export function buildSalaryNegotiationGuidance(params: SalaryLookupParams): stri
 
   // Government/PSU has very different negotiation dynamics
   const govNote = companyTier === "government-psu"
-    ? `\nGOVERNMENT/PSU NOTE: Salary negotiation is VERY different here. Pay is fixed by pay bands/grades (7th CPC). There is almost NO negotiation on base salary. Instead, negotiate: joining level/grade, posting location preference, deputation allowance, housing (Type IV/V quarters), training opportunities, and performance-linked incentives. Do NOT present this as a normal corporate salary negotiation.`
+    ? `\nGOVERNMENT/PSU NOTE: Salary negotiation is VERY different here. Pay is fixed by 7th CPC pay bands — there is almost NO negotiation on base salary.
+
+7TH CPC GRADE STRUCTURE (use these in conversation):
+- Entry (Grade Pay ₹4,200-4,600): Level 6-7, Basic ₹35,400-44,900. Total: ₹5-8 LPA.
+- Mid (Grade Pay ₹4,800-5,400): Level 8-9, Basic ₹47,600-53,100. Total: ₹8-14 LPA.
+- Senior (Grade Pay ₹6,600-7,600): Level 10-12, Basic ₹56,100-78,800. Total: ₹14-25 LPA.
+- Director/SAG (Grade Pay ₹8,700-10,000): Level 13-14, Basic ₹1,23,100-1,44,200. Total: ₹25-40 LPA.
+Actual take-home includes DA (~46% of basic), HRA (8-24% by city), Transport, and pension contribution.
+
+WHAT TO NEGOTIATE (instead of base):
+- Joining grade/level (one level higher = 15-20% more)
+- Posting location (metro = higher HRA: 24% vs 8% for Tier 3)
+- Deputation allowance (20% extra if posted to another department)
+- Housing (Type IV/V quarters worth ₹5-15 LPA in metros)
+- Training budget (foreign training, conferences)
+- Performance-linked incentive (PLI: ₹10K-2 LPA/yr)
+- Pension value: defined benefit pension is worth ₹50-150 LPA actuarially over retirement
+
+Do NOT present this as a normal corporate salary negotiation. Frame it as: "Let me walk you through the grade and posting we've approved for you."`
     : "";
 
-  // Relocation narration instruction
-  const relocNote = relocating && params.currentCity && params.jobCity
-    ? `\nRELOCATION NARRATION: The candidate is relocating from ${params.currentCity} to ${params.jobCity}. You MUST reference this in the conversation. Mention the relocation package in your offer presentation (e.g., "Since you'd be relocating from ${params.currentCity}, we're including a relocation allowance of ₹X and 2 weeks temporary accommodation"). Use relocation as a negotiation lever — candidates expect companies to sweeten the deal for relocation.`
-    : "";
+  // Relocation narration instruction with CoL context
+  const jobCityTier = getCityTier(params.jobCity || params.currentCity);
+  const currentCityTier = getCityTier(params.currentCity);
+  let relocNote = "";
+  if (relocating && params.currentCity && params.jobCity) {
+    relocNote = `\nRELOCATION NARRATION: The candidate is relocating from ${params.currentCity} to ${params.jobCity}. You MUST reference this in the conversation. Mention the relocation package in your offer presentation (e.g., "Since you'd be relocating from ${params.currentCity}, we're including a relocation allowance of ₹X and 2 weeks temporary accommodation"). Use relocation as a negotiation lever — candidates expect companies to sweeten the deal for relocation.`;
+    // Add CoL context so the hiring manager can address it proactively
+    if (jobCityTier === "tier1" && currentCityTier !== "tier1") {
+      relocNote += `\nCOST OF LIVING: ${params.jobCity} (Tier 1) has 20-40% higher rent than ${params.currentCity}. Proactively mention this: "I know living costs are higher in ${params.jobCity}, which is why we've factored in a higher base and HRA." Use this to justify the offer level or add a relocation top-up.`;
+    } else if (currentCityTier === "tier1" && jobCityTier !== "tier1") {
+      relocNote += `\nCOST OF LIVING: ${params.jobCity} has lower living costs than ${params.currentCity}. You can mention: "The purchasing power in ${params.jobCity} is actually higher — your ₹X here goes further than ₹X in ${params.currentCity}."`;
+    }
+  }
 
   return `CRITICAL: This is a SALARY NEGOTIATION simulation, NOT a behavioral interview. You ARE the hiring manager — stay in character throughout.
 - Do NOT ask behavioral STAR questions, technical questions, or about past projects.
@@ -257,11 +284,28 @@ NEGOTIATION FLOW — Each question MUST follow this progression:
 ${salaryContext}
 
 ${equityRule}
-- Amazon RSUs: back-loaded 5/15/40/40 over 4 years. Google: quarterly. Indian startups: 4-year vest, 1-year cliff.
+EQUITY VESTING DETAILS (use when candidate asks):
+- Amazon RSUs: back-loaded 5/15/40/40 over 4 years (Year 1 = only 5%).
+- Google/Meta: quarterly vesting after 1-year cliff (25% each year, spread quarterly).
+- Indian startups: 4-year vest, 1-year cliff. ESOPs are illiquid until IPO/exit.
+- If candidate asks to accelerate vesting: "Standard is 4 years, but I can check with finance about 3-year vesting as an exception."
+- If candidate asks about ESOP value: "At current valuation, your ₹X/yr in ESOPs could be worth ₹Y on exit, but that's speculative."
+
+COMPENSATION RULES:
 - Present CTC breakdown: Base + Bonus + RSUs/ESOPs (if applicable) + Benefits.
 - The offer MUST match the candidate's level and company type — use the salary data above.
 - Typical switching hike: 20-35% lateral, 40-100% services-to-product. Annual increment avg: 9.5%.
-- Joining bonus often 2x notice buyout. Companies pay 10-15% extra for candidates joining within 30 vs 90 days.${govNote}${relocNote}
+
+NOTICE PERIOD & BUYOUT:
+- Notice buyout formula: (notice_days ÷ 30) × (annual_base ÷ 12) = buyout amount. Often offered as 1.5-2× this amount as joining bonus.
+- Fast-joining premium: Companies pay 10-15% extra for candidates joining within 30 vs 90 days.
+- If candidate says "I have 3 months notice": Respond with "If you can negotiate it down to 30 days, I can add ₹X as an early joining bonus."
+
+HANDLING COUNTER-OFFERS (when candidate says their current employer will match):
+- If candidate says "My current company will counter": Respond: "I understand, and that's your call. But consider — why did you start looking? Counter-offers rarely address the root cause. We're offering [growth/scope/culture] that's different."
+- If candidate asks you to match a competing offer: "I can't get into a bidding war, but let me see what flexibility I have on [specific lever]. What would make this a clear yes?"
+- If candidate keeps pushing beyond your ceiling: "I've stretched as far as I can on base. Here's my best: ₹X CTC + ₹Y joining bonus + [benefits]. I'd need your decision by [date]."
+- NEVER say "take it or leave it" — always offer a graceful path: "Take 48 hours. I genuinely want you on the team."${govNote}${relocNote}
 
 PRESSURE TACTICS (use naturally, not all at once):
 - Competing candidates: "We have two other strong candidates at final stage."

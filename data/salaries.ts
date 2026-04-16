@@ -211,6 +211,11 @@ export const SALARY_DATA: Partial<Record<RoleKey, SalaryTable>> = {
       mid: s([12, 20], [1, 3], ESOP(2, 5), [14, 26], { negotiation_leverage: "medium" }),
       senior: s([20, 35], [3, 5], ESOP(5, 10), [26, 45], { negotiation_leverage: "high" }),
     },
+    "saas-product": {
+      entry: s([8, 12], [0.5, 1], ESOP(1, 2), [10, 15], { hot_skills: ["Product Analytics", "A/B Testing", "ML Ops"] }),
+      mid: s([14, 22], [1, 3], ESOP(2, 5), [16, 28], {}),
+      senior: s([22, 35], [3, 6], ESOP(4, 8), [28, 45], { negotiation_leverage: "high" }),
+    },
   },
 
   // ─── DATA ANALYST ─────────────────────────────────────────────
@@ -293,6 +298,11 @@ export const SALARY_DATA: Partial<Record<RoleKey, SalaryTable>> = {
       entry: s([3.5, 6], [0.2, 0.4], NO_EQ, [3.5, 7], { notice_period_days: 90, negotiation_leverage: "low", notes: "CKA/AWS certs: +20-30%" }),
       mid: s([7, 14], [0.5, 1], NO_EQ, [8, 15], {}),
       senior: s([14, 25], [1, 2], NO_EQ, [15, 28], {}),
+    },
+    "government-psu": {
+      entry: s([5, 8], [0, 0.5], NO_EQ, [5, 9], { in_hand_ratio: 0.78, notice_period_days: 90, negotiation_leverage: "low", notes: "ISRO/DRDO/Railways infra. 7th CPC Level 7-8" }),
+      mid: s([8, 14], [0.5, 1], NO_EQ, [9, 15], { negotiation_leverage: "low" }),
+      senior: s([14, 22], [1, 2], NO_EQ, [15, 24], {}),
     },
   },
   "cloud-engineer": { /* alias — falls back to devops-sre */ },
@@ -379,6 +389,11 @@ export const SALARY_DATA: Partial<Record<RoleKey, SalaryTable>> = {
       mid: s([8, 14], [1, 2], NO_EQ, [9, 16], {}),
       senior: s([15, 25], [2, 4], NO_EQ, [17, 30], {}),
       executive: s([30, 55], [5, 10], NO_EQ, [35, 65], {}),
+    },
+    "saas-product": {
+      entry: s([5, 8], [0.3, 0.8], ESOP(0.5, 1.5), [6, 10], { hot_skills: ["PLG/Growth", "Content Marketing", "SEO/SEM", "Developer Evangelism"] }),
+      mid: s([10, 18], [1, 3], ESOP(1, 3), [12, 22], {}),
+      senior: s([18, 30], [2, 5], ESOP(3, 6), [22, 38], { negotiation_leverage: "high" }),
     },
   },
 
@@ -530,6 +545,11 @@ export const SALARY_DATA: Partial<Record<RoleKey, SalaryTable>> = {
       mid: s([20, 32], [3, 6], RSU(5, 10), [26, 45], {}),
       senior: s([32, 50], [6, 12], RSU(8, 20), [42, 75], {}),
     },
+    "government-psu": {
+      entry: s([5, 8], [0, 0.5], NO_EQ, [5, 9], { in_hand_ratio: 0.78, notice_period_days: 90, negotiation_leverage: "low", notes: "CERT-In / NIC / DRDO cyber. 7th CPC Level 7-8 (₹44,900-1,42,400 basic)" }),
+      mid: s([8, 14], [0.5, 1], NO_EQ, [9, 15], { negotiation_leverage: "low" }),
+      senior: s([14, 22], [1, 2], NO_EQ, [15, 24], { notes: "Group A gazetted officer level" }),
+    },
   },
 
   // ─── BLOCKCHAIN / WEB3 ────────────────────────────────────────
@@ -563,6 +583,11 @@ export const SALARY_DATA: Partial<Record<RoleKey, SalaryTable>> = {
       entry: s([10, 18], [1, 3], NO_EQ, [12, 22], { notes: "Compliance/regulatory roles: premium" }),
       mid: s([18, 30], [3, 6], NO_EQ, [22, 38], {}),
       senior: s([30, 50], [6, 12], NO_EQ, [38, 65], {}),
+    },
+    "bfsi-domestic": {
+      entry: s([5, 8], [0.3, 0.5], NO_EQ, [5, 9], { notes: "Compliance officer / legal analyst at Indian banks" }),
+      mid: s([10, 18], [0.8, 2], NO_EQ, [11, 20], {}),
+      senior: s([18, 30], [2, 4], NO_EQ, [20, 35], { notes: "RBI/SEBI regulatory expertise: +20% premium" }),
     },
   },
 
