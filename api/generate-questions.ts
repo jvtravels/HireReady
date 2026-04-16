@@ -170,11 +170,12 @@ SALARY CONTEXT (if relevant — use these REALISTIC 2025-26 ranges):
   IT Services (TCS/Infosys/Wipro/HCL): ₹3.5-7 LPA (elite tracks like TCS Digital/Infosys SP: ₹7-11 LPA)
   Indian Unicorns (Flipkart/Razorpay/CRED/Swiggy/PhonePe): ₹8-16 LPA
   FAANG India (Google/Amazon/Meta): ₹26-50 LPA (includes RSUs worth ₹8-15 LPA/yr)
-  Microsoft India: ₹12-18 LPA
+  Microsoft India: ₹21-35 LPA (median ₹27 LPA)
+  Atlassian India: ₹40-52 LPA (P30 level — among the highest for freshers)
   Banking (Goldman Sachs/JP Morgan): ₹18-30 LPA
   Startups (Series A-C): ₹5-12 LPA
-  MBB Consulting (McKinsey/BCG/Bain): ₹25-35 LPA
-  Typical negotiables: joining bonus (₹0-5 LPA), relocation support, health insurance.
+  MBB Consulting (McKinsey/BCG/Bain post-MBA): ₹25-35 LPA | Big 4 (Deloitte/EY): ₹13-16 LPA
+  Typical negotiables: joining bonus (₹0-5 LPA), relocation support (₹50K-3 LPA), health insurance.
   NO equity/ESOPs for freshers — do not mention stock options at this level.`
       : expLevel === "mid"
       ? `EXPERIENCE CALIBRATION: Mid-level (3-5 years).
@@ -185,11 +186,12 @@ SALARY CONTEXT (if relevant — use these REALISTIC 2025-26 ranges):
   IT Services: ₹6-15 LPA
   Indian Unicorns: ₹18-35 LPA
   FAANG India: ₹45-80 LPA (includes RSUs worth ₹15-30 LPA/yr)
-  Microsoft India: ₹25-40 LPA
-  Banking (GS/JPM): ₹28-45 LPA
+  Microsoft India: ₹32-53 LPA (median ₹42 LPA for SDE II)
+  Atlassian India: ₹59-85 LPA (P40 level)
+  Banking (GS/JPM): ₹28-50 LPA
   Startups (Series A-C): ₹12-25 LPA
-  MBB Consulting: ₹35-50 LPA
-  Big 4 (Deloitte/EY): ₹16-25 LPA
+  MBB Consulting: ₹24-37 LPA (Consultant to Sr Consultant)
+  Big 4 (Deloitte/EY): ₹16-24 LPA
   Typical negotiables: base salary, performance bonus (10-20%), joining bonus, WFH allowance, learning budget.
   ESOPs only at startups, quoted by ANNUAL VALUE (e.g., "ESOPs worth ₹2-5 LPA/yr vesting over 4 years") — NEVER as percentage of company.`
       : expLevel === "senior" || expLevel === "lead"
@@ -201,10 +203,11 @@ SALARY CONTEXT (if relevant — use these REALISTIC 2025-26 ranges):
   IT Services: ₹12-28 LPA
   Indian Unicorns: ₹30-55 LPA
   FAANG India: ₹70 LPA-1.5 Cr (RSUs = 40-60% of total comp, worth ₹30-60 LPA/yr)
-  Microsoft India: ₹40-70 LPA
+  Microsoft India: ₹58-88 LPA (median ₹76 LPA for Senior SDE)
+  Atlassian India: ₹79-118 LPA (P50 level)
   Banking (GS/JPM): ₹50-80 LPA
   Startups (Series A-C): ₹25-50 LPA
-  MBB Consulting: ₹55-90 LPA (Engagement Manager level)
+  MBB Consulting: ₹58-90 LPA (Engagement Manager to Principal)
   Typical negotiables: base, RSUs/ESOPs (₹10-25 LPA/yr vesting), retention bonus, performance bonus (15-20%), signing bonus (₹5-15 LPA).
   ESOPs at startups: 0.05-0.5% equity — NEVER more than 1%. At large/public companies, discuss RSUs by annual value, not percentage.`
       : expLevel === "executive"
@@ -216,7 +219,7 @@ SALARY CONTEXT (if relevant — use these REALISTIC 2025-26 ranges):
   IT Services: ₹30-55 LPA
   Indian Unicorns: ₹80 LPA-2 Cr
   FAANG India: ₹2-4 Cr (RSUs dominate — worth ₹60 LPA-1.5 Cr/yr)
-  Microsoft India: ₹1-2 Cr
+  Microsoft India: ₹1.1-2 Cr (Principal SDE median ₹129 LPA, and above)
   Banking (GS/JPM MD level): ₹1.5-3 Cr
   Startups (Series A-C): ₹60 LPA-1.2 Cr
   MBB Consulting (Partner): ₹1.5-3 Cr+
@@ -272,29 +275,59 @@ SALES:
   Top SaaS sellers at unicorns can earn 2-3x their base via commissions.
 
 CONSULTANT:
-  MBB (McKinsey/BCG/Bain): Analyst ₹25-35 LPA | Consultant ₹35-50 LPA | EM ₹55-90 LPA | Partner ₹1.5-3 Cr+
-  Big 4 (Deloitte/EY): ₹10-16 LPA (entry) to ₹45-75 LPA (director)
+  MBB (McKinsey/BCG/Bain): Associate ₹16 LPA | Consultant ₹24 LPA | Sr Consultant ₹37 LPA | EM ₹58 LPA | Principal ₹90 LPA | Partner ₹2.1 Cr+
+  Big 4 (Deloitte/EY/PwC/KPMG): Associate ₹13 LPA | Consultant ₹16 LPA | Sr Consultant ₹24 LPA | Manager ₹40 LPA | Principal ₹64 LPA | Partner ₹92 LPA
 
 DEVOPS/SRE:
   Fresher: ₹3.5-6 LPA (services) to ₹25-40 LPA (FAANG) | Mid: ₹7-15 LPA to ₹40-60 LPA | Senior: ₹15-28 LPA to ₹55-90 LPA
+  Kubernetes/CKA cert adds 20-30% premium. DevSecOps specialization adds 25-50%.
 
 HR:
-  Fresher: ₹2.5-5 LPA | Mid: ₹5-10 LPA | Senior HRBP: ₹10-18 LPA | CHRO: ₹25-90 LPA
+  Fresher: ₹2.5-5 LPA | Mid: ₹5-10 LPA | HRBP: ₹12-22 LPA | Sr HRBP: ₹28-45 LPA | Director HRBP: ₹48-65 LPA | CHRO: ₹50-120 LPA
+  TA Manager: ₹10-20 LPA | Head of TA: ₹25-45 LPA
 
 QA ENGINEER:
-  Fresher: ₹3-5 LPA (services) to ₹15-25 LPA (FAANG) | SDET/automation roles pay 50-100% more than manual QA.
+  Fresher: ₹3-5 LPA (manual) / ₹5-7 LPA (SDET) | Mid: ₹5-8 LPA / ₹8-15 LPA | Senior: ₹8-12 LPA / ₹15-25 LPA | Lead: ₹12-18 LPA / ₹25-40 LPA
+  SDET/automation roles pay 50-100% more than manual QA. Product companies pay significantly more than services.
 
 BANKING/FINANCE:
   Goldman Sachs/JP Morgan India — Analyst: ₹18-30 LPA | Associate: ₹28-50 LPA | VP: ₹45-80 LPA | MD: ₹1.5-3 Cr
   HDFC/ICICI Bank — much lower: ₹4-10 LPA (entry) to ₹30-50 LPA (senior VP)
+  CA at Big 4: ₹9-14 LPA (fresher) to ₹40-60 LPA (senior)
+
+CONTENT/TECHNICAL WRITER:
+  Content Writer: ₹3.5-4 LPA (fresher) | ₹4.5-5.5 LPA (mid) | ₹8-12 LPA (senior)
+  Technical Writer: ₹3-5 LPA (fresher) | ₹6-10 LPA (mid) | ₹12-18 LPA (senior)
+  UX Writer: ₹8-12 LPA (fresher) | ₹14-20 LPA (mid) — significant premium over content writers
+
+CYBERSECURITY/INFOSEC:
+  Fresher: ₹4-8 LPA | Mid: ₹10-15 LPA | Senior: ₹12-28 LPA | Architect: ₹25-45 LPA | CISO: ₹30-60+ LPA
+  BFSI sector pays 15-25% premium.
+
+BLOCKCHAIN/WEB3:
+  Fresher: ₹3-6 LPA | Mid: ₹6-15 LPA | Senior: ₹15-45 LPA | Architect: ₹22-35 LPA
+  Solidity specialists: ₹16-27 LPA. Blockchain fresher salary is 30-40% higher than regular SDE.
+
+LEGAL/COMPLIANCE:
+  Fresher: ₹1.5-18 LPA (top law firms) | Mid (3-5 PQE): ₹10-25 LPA | Senior: ₹20-40 LPA | GC: ₹50-200 LPA
+  Data privacy/compliance specialists in demand with 20-30% premium.
+
+OPERATIONS/SUPPLY CHAIN:
+  Entry: ₹4-8 LPA | Mid: ₹12-21 LPA | Senior: ₹15-28 LPA | Divisional Manager: ₹25-35 LPA
+  E-commerce/logistics (Flipkart/Amazon/Swiggy) pay 20-40% above general industry.
+
+CUSTOMER SUCCESS:
+  Entry: ₹5-8 LPA | Mid: ₹10-15 LPA | Senior: ₹14-30 LPA | Head: ₹25-45 LPA
 
 BONUS & BENEFITS TO NEGOTIATE:
-  Joining bonus: ₹0 (services) to ₹5-25 LPA (FAANG senior hires)
-  Performance bonus: 5-15% (IT services), 15-20% (FAANG), 20-40% (MBB consulting)
+  Joining bonus: ₹0 (services) to ₹5-25 LPA (FAANG senior hires). Joining bonus is typically 2x the notice buyout amount.
+  Performance bonus: 5-15% (IT services), 15-20% (FAANG), 20-40% (MBB consulting), 30-100%+ (IB)
   Health insurance: Family floater ₹3-25 LPA cover
   WFH allowance: ₹15,000-50,000/year
-  Relocation: ₹50K-3 LPA one-time
+  Relocation: ₹50K-3 LPA one-time (up to 2 months basic for cross-state moves)
   Learning budget: ₹50K-2 LPA/year at top companies
+  Notice period buyout: New employer often reimburses; companies pay 10-15% extra for candidates joining within 30 vs 90 days
+  Typical switching hike: 20-35% lateral, 40-100% services-to-product. Annual increment: avg 9.5% (2025)
 
 - EQUITY/STOCK RULES (CRITICAL — follow strictly based on candidate's experience level):
   * FRESHERS/ENTRY-LEVEL (0-2 yrs): Do NOT mention equity, stock options, or ESOPs at all. Negotiate only base salary + joining bonus + benefits.
