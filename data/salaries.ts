@@ -79,7 +79,7 @@ export const SALARY_DATA: Partial<Record<RoleKey, SalaryTable>> = {
   // ─── SOFTWARE ENGINEER ────────────────────────────────────────
   "software-engineer": {
     faang: {
-      entry: s([20, 28], [1, 3], RSU(8, 17, "quarterly after cliff"), [32, 50], { joining_bonus_min: 0, joining_bonus_max: 5, notice_period_days: 30, negotiation_leverage: "medium", hot_skills: ["System Design", "DSA", "GenAI/LLM"] }),
+      entry: s([20, 28], [1, 3], RSU(3, 8, "quarterly after 1-year cliff"), [25, 40], { joining_bonus_min: 0, joining_bonus_max: 5, notice_period_days: 30, negotiation_leverage: "low", hot_skills: ["System Design", "DSA", "GenAI/LLM"], notes: "L3/E3 level. RSUs are modest at entry — bulk of comp is base." }),
       mid: s([40, 50], [3, 5], RSU(15, 30), [60, 80], { joining_bonus_min: 5, joining_bonus_max: 15, negotiation_leverage: "medium", hot_skills: ["System Design", "Distributed Systems", "GenAI"] }),
       senior: s([55, 70], [5, 10], RSU(35, 70), [90, 150], { joining_bonus_min: 5, joining_bonus_max: 15, notice_period_days: 60, negotiation_leverage: "high", hot_skills: ["ML Systems", "Platform Engineering", "Staff-level scope"] }),
       lead: s([70, 90], [10, 25], RSU(70, 150), [150, 250], { joining_bonus_min: 10, joining_bonus_max: 25, notice_period_days: 60, negotiation_leverage: "high" }),
@@ -133,7 +133,7 @@ export const SALARY_DATA: Partial<Record<RoleKey, SalaryTable>> = {
   // ─── PRODUCT MANAGER ──────────────────────────────────────────
   "product-manager": {
     faang: {
-      entry: s([25, 35], [3, 5], RSU(8, 15), [35, 50], { joining_bonus_min: 5, joining_bonus_max: 10, notice_period_days: 30, negotiation_leverage: "medium", hot_skills: ["AI/ML PM", "Growth", "Platform"] }),
+      entry: s([25, 35], [3, 5], RSU(3, 8, "quarterly after 1-year cliff"), [32, 45], { joining_bonus_min: 2, joining_bonus_max: 8, notice_period_days: 30, negotiation_leverage: "low", hot_skills: ["AI/ML PM", "Growth", "Platform"], notes: "APM/L3 level. RSUs modest at entry." }),
       mid: s([40, 55], [5, 8], RSU(15, 25), [60, 80], { joining_bonus_min: 5, joining_bonus_max: 15, negotiation_leverage: "high" }),
       senior: s([55, 75], [8, 15], RSU(25, 50), [90, 130], { notice_period_days: 60, negotiation_leverage: "high" }),
       lead: s([70, 100], [12, 20], RSU(40, 80), [120, 180], { negotiation_leverage: "high" }),
@@ -160,6 +160,11 @@ export const SALARY_DATA: Partial<Record<RoleKey, SalaryTable>> = {
       entry: s([14, 18], [2, 4], NO_EQ, [16, 22], { notice_period_days: 30, negotiation_leverage: "low" }),
       mid: s([20, 30], [5, 8], NO_EQ, [25, 38], { negotiation_leverage: "medium" }),
       senior: s([35, 55], [8, 15], NO_EQ, [45, 70], { negotiation_leverage: "medium" }),
+    },
+    "government-psu": {
+      entry: s([5, 8], [0, 0.5], NO_EQ, [5, 9], { in_hand_ratio: 0.78, notice_period_days: 90, negotiation_leverage: "low", notes: "7th CPC pay bands. Negotiate grade/level, not base salary. Perks: housing, DA, HRA, pension." }),
+      mid: s([8, 14], [0.5, 1], NO_EQ, [9, 15], { negotiation_leverage: "low", notes: "PSU manager grade. Fixed pay bands with DA increments." }),
+      senior: s([14, 25], [1, 2], NO_EQ, [15, 28], { negotiation_leverage: "low", notes: "Senior manager/DGM level. Negotiate posting location and deputation allowance." }),
     },
   },
 

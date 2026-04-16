@@ -330,16 +330,22 @@ Generate exactly ${stepCount} interview steps as a JSON array. Sequence: intro, 
 
 Each step: {"type":"intro|question|closing","aiText":"2-3 sentences spoken naturally by the interviewer","scoreNote":"specific evaluation criteria for this question"${interviewType === "panel" ? ',"persona":"Hiring Manager|Technical Lead|HR Partner"' : ""}}${panelNote}
 
-IMPORTANT closing rules:
+${isSalaryType
+? `IMPORTANT closing rules:
+- The closing MUST stay in character as the hiring manager wrapping up the negotiation.
+- Do NOT break immersion with coaching tips or "Great practice session!" meta-commentary.
+- The closing should finalize the offer discussion: confirm next steps, mention paperwork/HR follow-up, set a decision deadline.
+- Example closing: "I think we've covered the key points. Let me summarize: we're at ₹X CTC with the joining bonus and flexible work arrangement we discussed. I'll have HR send the formal offer letter by tomorrow. Take a couple of days to think it over — we'd love to have you on board."
+
+Example good question: "We'd like to offer you ₹18 LPA — ₹14.5 LPA base with 10% performance bonus and standard benefits. How does that align with your expectations?"
+Example bad question: "Tell me about a time you led a cross-functional project." (behavioral, NOT salary negotiation)`
+: `IMPORTANT closing rules:
 - The closing step MUST be a wrap-up summary, NOT an open-ended question
 - Do NOT ask "Do you have any questions?" or similar — the system handles that separately
 - The closing should thank the candidate, summarize their performance highlights, and give one specific improvement tip
 - Example closing: "Great session! You demonstrated strong strategic thinking, especially around prioritization. To improve, try anchoring your examples with specific metrics — numbers make your stories more compelling."
 
-${isSalaryType
-? `Example good question: "We'd like to offer you ₹18 LPA — ₹14.5 LPA base with 10% performance bonus and standard benefits. How does that align with your expectations?"
-Example bad question: "Tell me about a time you led a cross-functional project." (behavioral, NOT salary negotiation)`
-: `Example good question: "Walk me through a system you designed that had to handle 10x growth. What were the key architectural trade-offs you made, and how did you validate them?"
+Example good question: "Walk me through a system you designed that had to handle 10x growth. What were the key architectural trade-offs you made, and how did you validate them?"
 Example bad question: "Tell me about your experience." (too vague, not role-specific)`}
 
 Requirements:

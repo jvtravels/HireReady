@@ -74,8 +74,45 @@ export default async function handler(req: Request): Promise<Response> {
     const qualitySignals = [!isShort, hasMetrics, !hasPassiveVoice, !lacksFirstPerson, hasSpecifics, hasStructure].filter(Boolean).length;
     const answerStrength = qualitySignals >= 5 ? "strong" : qualitySignals >= 3 ? "decent" : qualitySignals >= 1 ? "weak" : "very_weak";
 
+    const isSalaryNeg = type === "salary-negotiation";
+
     let depthInstructions: string;
-    if (safeDepth === 0) {
+    if (isSalaryNeg) {
+      // Salary-negotiation follow-ups are fundamentally different — they're negotiation responses, not behavioral probes
+      if (safeDepth === 0) {
+        depthInstructions = `You are a HIRING MANAGER in a salary negotiation. Respond to the candidate's answer as a manager would.
+
+Analyze the candidate's response:
+- Did they state a specific number/range? → Respond to that number relative to your budget.
+- Did they ask about benefits/equity? → Provide details and ask what matters most to them.
+- Did they mention a competing offer? → Acknowledge it and position your offer competitively.
+- Did they accept too quickly? → Set needsFollowUp to true and probe: "Before we finalize, are there any other aspects of the package you'd like to discuss — benefits, flexible work, learning budget?"
+- Did they push back? → Counter-offer with a trade: "I can move on base if we adjust the joining bonus" or "Let me see if I can get approval for that range — what's the minimum you'd accept?"
+- Did they just say a number without reasoning? → Probe: "Help me understand how you arrived at that number — is it based on your current CTC, market research, or another offer?"
+
+You MUST stay in character as the hiring manager. NEVER ask behavioral questions. Set needsFollowUp to true unless the candidate has clearly accepted or rejected the offer.`;
+      } else if (safeDepth === 1) {
+        depthInstructions = `You are a HIRING MANAGER pushing back on the candidate's counter-offer. You MUST generate a follow-up — set needsFollowUp to true.
+
+Your goal: Test their negotiation resolve and explore package flexibility.
+- If they named a high number: "That's above our band for this level. What if I offered ₹X base with ₹Y in ESOPs to bridge the gap? Would that work?"
+- If they only focused on base salary: "Base is important, but let me tell you about our benefits — we offer ₹1.5 LPA learning budget, comprehensive family health coverage, and flexible work from day 1. Does that change how you think about the total package?"
+- If they mentioned a competing offer: "I appreciate your transparency. We can't always match on base, but our equity upside / learning culture / growth trajectory is something worth factoring in. What matters most to you beyond salary?"
+- If they seem hesitant: "I want to make sure you feel good about this. What would it take for you to say yes today?"
+
+Sound like a real Indian hiring manager — warm but firm. 2-3 sentences max.`;
+      } else {
+        depthInstructions = `You are a HIRING MANAGER closing the negotiation. You MUST generate a follow-up — set needsFollowUp to true.
+
+Your goal: Move toward a decision with urgency.
+- Timeline: "We'd need your decision by [date]. We have other strong candidates in the pipeline."
+- Final offer: "Let me be upfront — I've stretched as far as I can on this. Here's my best offer: [summarize]. Can we shake on this?"
+- Notice period: "What's your notice period? If you can join within 30 days, I can add an early joining bonus of ₹X."
+- Soft close: "I think we've found a good middle ground. Shall I have HR send the offer letter?"
+
+Be direct but respectful. This is the deal-closing moment. 2-3 sentences max.`;
+      }
+    } else if (safeDepth === 0) {
       depthInstructions = `Analysis of candidate's answer:
 - Word count: ${wordCount} ${isShort ? "(SHORT — likely needs follow-up)" : "(adequate length)"}
 - Contains metrics/numbers: ${hasMetrics ? "yes" : "NO — probe for quantified impact"}

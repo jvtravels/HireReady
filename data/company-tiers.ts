@@ -230,10 +230,16 @@ export function getCompanyTier(company: string | undefined | null): CompanyTier 
 
   // Check for startup/enterprise keywords
   if (key.includes("startup")) return "startup-growth";
-  if (key.includes("government") || key.includes("psu")) return "government-psu";
+  if (key.includes("government") || key.includes("psu") || key.includes("ministry") || key.includes("railways") || key.includes("defence")) return "government-psu";
   if (key.includes("mnc") || key.includes("enterprise")) return "big-tech";
+  if (key.includes("bank") || key.includes("finance") || key.includes("insurance")) return "bfsi-domestic";
+  if (key.includes("consult")) return "consulting-big4";
+  if (key.includes("edtech") || key.includes("education") || key.includes("learning")) return "edtech";
+  if (key.includes("saas") || key.includes("software") || key.includes("tech")) return "saas-product";
+  if (key.includes("services") || key.includes("solutions") || key.includes("infotech") || key.includes("technologies")) return "it-services";
+  if (key.includes("fmcg") || key.includes("consumer") || key.includes("retail")) return "fmcg-mnc";
 
-  return null; // unknown company — caller uses defaults
+  return null; // unknown company — caller defaults to indian-unicorn
 }
 
 /**

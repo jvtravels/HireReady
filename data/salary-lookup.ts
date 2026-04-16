@@ -220,6 +220,8 @@ export function lookupSalaryContext(params: SalaryLookupParams): string {
 export function buildSalaryNegotiationGuidance(params: SalaryLookupParams): string {
   const salaryContext = lookupSalaryContext(params);
   const exp = normalizeExp(params.experienceLevel);
+  const companyTier = getCompanyTier(params.company);
+  const relocating = isRelocation(params.currentCity, params.jobCity);
 
   const equityRule = exp === "entry"
     ? "EQUITY RULE: Do NOT mention equity, stock options, or ESOPs. Freshers don't get equity. Negotiate only base salary + joining bonus + benefits."
@@ -229,22 +231,54 @@ export function buildSalaryNegotiationGuidance(params: SalaryLookupParams): stri
     ? "EQUITY RULE: May discuss RSUs/ESOPs. Quote by annual value (₹10-60 LPA/yr). At startups: 0.05-0.5% max. NEVER more than 1%."
     : "EQUITY RULE: Equity at startups: 0.5-2% max. Public companies: RSUs by annual value. NEVER offer 5%+ — that's co-founder territory.";
 
-  return `CRITICAL: This is a SALARY NEGOTIATION simulation, NOT a behavioral interview. Play the role of a hiring manager making/discussing an offer.
-- The intro must set up: "We'd like to extend you an offer..."
-- Questions must simulate real negotiation: presenting offers, salary expectations, counteroffers, competing offers, benefits/perks
-- Do NOT ask behavioral STAR questions or about past projects/technical skills.
+  // Government/PSU has very different negotiation dynamics
+  const govNote = companyTier === "government-psu"
+    ? `\nGOVERNMENT/PSU NOTE: Salary negotiation is VERY different here. Pay is fixed by pay bands/grades (7th CPC). There is almost NO negotiation on base salary. Instead, negotiate: joining level/grade, posting location preference, deputation allowance, housing (Type IV/V quarters), training opportunities, and performance-linked incentives. Do NOT present this as a normal corporate salary negotiation.`
+    : "";
+
+  // Relocation narration instruction
+  const relocNote = relocating && params.currentCity && params.jobCity
+    ? `\nRELOCATION NARRATION: The candidate is relocating from ${params.currentCity} to ${params.jobCity}. You MUST reference this in the conversation. Mention the relocation package in your offer presentation (e.g., "Since you'd be relocating from ${params.currentCity}, we're including a relocation allowance of ₹X and 2 weeks temporary accommodation"). Use relocation as a negotiation lever — candidates expect companies to sweeten the deal for relocation.`
+    : "";
+
+  return `CRITICAL: This is a SALARY NEGOTIATION simulation, NOT a behavioral interview. You ARE the hiring manager — stay in character throughout.
+- Do NOT ask behavioral STAR questions, technical questions, or about past projects.
 - Use Indian Rupees (₹) and LPA (Lakhs Per Annum). CTC = Cost to Company. In-hand = 65-75% of CTC.
+
+VOICE: Sound like a real Indian hiring manager — warm but businesslike. Use phrases like "We've been impressed with your profile", "Let me walk you through the offer", "I'll be transparent about our bands", "Let me see what I can do". Avoid robotic or overly formal language.
+
+NEGOTIATION FLOW — Each question MUST follow this progression:
+1. INTRO: Welcome + set context. "We'd like to extend an offer for the [Role] position..."
+2. OFFER PRESENTATION: Present a specific CTC breakdown from the salary data below. State base, bonus, benefits. Ask: "How does this align with your expectations?"
+3. EXPECTATION PROBE: Ask about their current CTC, expected hike, competing offers, and notice period. React to what they say — if they name a higher number, acknowledge it: "That's above our initial band, but let me see what flexibility we have."
+4. COUNTER-OFFER: Based on their response, present an improved package. Trade levers: base vs joining bonus vs flexible work vs relocation support vs learning budget. Example: "I can stretch the base to ₹X, or keep it at ₹Y and add a ₹Z joining bonus — which works better for you?"
+5. CLOSING: Finalize with timeline. "If we can agree on this, when can you join? What's your notice period situation?"
 
 ${salaryContext}
 
 ${equityRule}
 - Amazon RSUs: back-loaded 5/15/40/40 over 4 years. Google: quarterly. Indian startups: 4-year vest, 1-year cliff.
 - Present CTC breakdown: Base + Bonus + RSUs/ESOPs (if applicable) + Benefits.
-- The offer MUST match the candidate's level and company type.
+- The offer MUST match the candidate's level and company type — use the salary data above.
 - Typical switching hike: 20-35% lateral, 40-100% services-to-product. Annual increment avg: 9.5%.
-- Joining bonus often 2x notice buyout. Companies pay 10-15% extra for candidates joining within 30 vs 90 days.
+- Joining bonus often 2x notice buyout. Companies pay 10-15% extra for candidates joining within 30 vs 90 days.${govNote}${relocNote}
 
-Example good: "We'd like to offer you ₹18 LPA — ₹14.5 LPA base with 10% performance bonus and standard benefits. How does that align with your expectations?"
+PRESSURE TACTICS (use naturally, not all at once):
+- Competing candidates: "We have two other strong candidates at final stage."
+- Deadline: "We'd need your decision by end of this week."
+- Budget ceiling: "This is at the top of our band for this level."
+- Notice buyout: "If you can join within 30 days instead of 60, we can add ₹X as an early joining bonus."
+
+THINGS TO NEGOTIATE BEYOND SALARY (bring these up if candidate only focuses on base):
+- Joining bonus (one-time)
+- Flexible/hybrid work policy
+- Learning & development budget (₹50K-2 LPA/yr)
+- Health insurance (family coverage upgrade)
+- Relocation support
+- Performance review timeline (6-month vs annual)
+- Title/level adjustment
+
+Example good: "We'd like to offer you ₹18 LPA — that's ₹14.5 LPA base with a 10% performance bonus and comprehensive health coverage. How does that compare with what you're looking at?"
 Example bad: "We can offer $120,000." (wrong currency), "Tell me about a time you led a project." (behavioral, not negotiation), "We're offering 15% equity." (unrealistically high)`;
 }
 
