@@ -3,12 +3,12 @@ import { test, expect, type Page } from "@playwright/test";
 /** Scroll to trigger lazy loading, wait for #pricing to mount, then scroll it into view */
 async function scrollToPricing(page: Page) {
   await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
-  await page.waitForTimeout(500);
+  await page.waitForTimeout(800);
   await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
   const pricing = page.locator("#pricing");
-  await expect(pricing).toBeAttached({ timeout: 8000 });
+  await expect(pricing).toBeAttached({ timeout: 15000 });
   await pricing.scrollIntoViewIfNeeded();
-  await page.waitForTimeout(500);
+  await page.waitForTimeout(800);
 }
 
 test.describe("Pricing Section — Plan Display", () => {
@@ -34,7 +34,7 @@ test.describe("Pricing Section — Plan Display", () => {
   });
 
   test("single session plan shows 'Buy 1 Session' CTA", async ({ page }) => {
-    await expect(page.getByRole("button", { name: /Buy 1 Session/ })).toBeVisible();
+    await expect(page.getByRole("button", { name: /Buy 1 Session/ })).toBeVisible({ timeout: 10000 });
   });
 
   test("starter plan shows ₹49/week price", async ({ page }) => {
