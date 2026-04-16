@@ -213,11 +213,11 @@ export function useInterviewEngine() {
     return null;
   });
 
-  // Restore draft if resuming
+  // Restore draft if resuming OR if a matching draft exists for the current session params
   const draftKey = `hirestepx_interview_draft_${user?.id || "anon"}`;
   const isResuming = searchParams.get("resume") === "true";
   const draftRef = useRef<InterviewDraft | null>(null);
-  if (isResuming && !draftRef.current) {
+  if (!draftRef.current) {
     try {
       const raw = localStorage.getItem(draftKey);
       if (raw) {
@@ -227,8 +227,17 @@ export function useInterviewEngine() {
         if (isExpired) {
           localStorage.removeItem(draftKey);
           deleteFromIDB(draftKey);
-        } else if (parsed && Array.isArray(parsed.transcript) && typeof parsed.currentStep === "number") {
-          draftRef.current = parsed;
+        } else if (parsed && Array.isArray(parsed.transcript) && typeof parsed.currentStep === "number" && parsed.currentStep > 0) {
+          // Auto-restore if draft matches current session params (type, difficulty, focus)
+          // or if explicitly resuming via ?resume=true
+          const draftMatchesSession = (
+            parsed.interviewType === interviewType &&
+            parsed.interviewDifficulty === interviewDifficulty &&
+            parsed.interviewFocus === interviewFocus
+          );
+          if (isResuming || draftMatchesSession) {
+            draftRef.current = parsed;
+          }
         }
       }
     } catch (e) {
@@ -253,19 +262,27 @@ export function useInterviewEngine() {
     currentStepRef.current = currentStep;
   }, [currentStep]);
 
-  // Async IndexedDB fallback
+  // Async IndexedDB fallback — try IDB if localStorage didn't have a draft
   useEffect(() => {
-    if (!isResuming || draftRef.current) return;
+    if (draftRef.current) return; // Already restored from localStorage
     let cancelled = false;
     loadFromIDB(draftKey).then(data => {
       if (cancelled) return; // Interview already started, skip stale IDB data
       if (data && typeof data === "object" && "transcript" in data) {
-        const d = data as InterviewDraft & { savedAt?: number };
+        const d = data as InterviewDraft & { savedAt?: number; interviewType?: string; interviewDifficulty?: string; interviewFocus?: string; currentStep?: number };
         const DRAFT_TTL = 24 * 60 * 60 * 1000;
         if (d.savedAt && Date.now() - d.savedAt > DRAFT_TTL) {
           deleteFromIDB(draftKey);
           return;
         }
+        // Only restore if draft matches current session or explicitly resuming
+        const draftMatchesSession = (
+          d.interviewType === interviewType &&
+          d.interviewDifficulty === interviewDifficulty &&
+          d.interviewFocus === interviewFocus
+        );
+        if (!isResuming && !draftMatchesSession) return;
+        if (!d.currentStep || d.currentStep === 0) return;
         draftRef.current = d;
         setCurrentStep(d.currentStep || 0);
         setTranscript(d.transcript || []);

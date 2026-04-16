@@ -166,25 +166,62 @@ export default async function handler(req: Request): Promise<Response> {
 QUESTION DEPTH: Ask about academic projects, internships, learning experiences, and foundational knowledge. Do NOT expect org-wide impact, P&L ownership, or executive stakeholder management.
 WHAT TO PROBE: Potential, learning agility, basic problem-solving, "tell me about a project you built", "how do you approach learning something new", "describe a team conflict in college"
 REALISTIC EXPECTATIONS: Answers may reference college projects, hackathons, internships, personal projects. That's okay — assess the thinking process, not the scale of impact.
-SALARY CONTEXT (if relevant): ₹3-8 LPA for freshers at Indian product companies, ₹10-20 LPA at top-tier (Google, Microsoft, Amazon India).`
+SALARY CONTEXT (if relevant — use these REALISTIC 2025-26 ranges):
+  IT Services (TCS/Infosys/Wipro/HCL): ₹3.5-7 LPA (elite tracks like TCS Digital/Infosys SP: ₹7-11 LPA)
+  Indian Unicorns (Flipkart/Razorpay/CRED/Swiggy/PhonePe): ₹8-16 LPA
+  FAANG India (Google/Amazon/Meta): ₹26-50 LPA (includes RSUs worth ₹8-15 LPA/yr)
+  Microsoft India: ₹12-18 LPA
+  Banking (Goldman Sachs/JP Morgan): ₹18-30 LPA
+  Startups (Series A-C): ₹5-12 LPA
+  MBB Consulting (McKinsey/BCG/Bain): ₹25-35 LPA
+  Typical negotiables: joining bonus (₹0-5 LPA), relocation support, health insurance.
+  NO equity/ESOPs for freshers — do not mention stock options at this level.`
       : expLevel === "mid"
       ? `EXPERIENCE CALIBRATION: Mid-level (3-5 years).
 QUESTION DEPTH: Ask about individual ownership of features/modules, cross-team collaboration, technical depth, and measurable project impact. Expect concrete examples with metrics.
 WHAT TO PROBE: "Walk me through a project you owned end-to-end", "How did you handle a disagreement with your manager?", "Describe a system you designed", "How do you mentor juniors?"
 REALISTIC EXPECTATIONS: Should demonstrate initiative beyond assigned tasks, some cross-functional experience, beginning of specialization. May not have team management experience yet.
-SALARY CONTEXT (if relevant): ₹12-25 LPA at Indian product companies, ₹25-45 LPA at top-tier.`
+SALARY CONTEXT (if relevant — use these REALISTIC 2025-26 ranges):
+  IT Services: ₹6-15 LPA
+  Indian Unicorns: ₹18-35 LPA
+  FAANG India: ₹45-80 LPA (includes RSUs worth ₹15-30 LPA/yr)
+  Microsoft India: ₹25-40 LPA
+  Banking (GS/JPM): ₹28-45 LPA
+  Startups (Series A-C): ₹12-25 LPA
+  MBB Consulting: ₹35-50 LPA
+  Big 4 (Deloitte/EY): ₹16-25 LPA
+  Typical negotiables: base salary, performance bonus (10-20%), joining bonus, WFH allowance, learning budget.
+  ESOPs only at startups, quoted by ANNUAL VALUE (e.g., "ESOPs worth ₹2-5 LPA/yr vesting over 4 years") — NEVER as percentage of company.`
       : expLevel === "senior" || expLevel === "lead"
       ? `EXPERIENCE CALIBRATION: Senior/Lead level (6-10+ years).
 QUESTION DEPTH: Ask about org-wide strategy, executive stakeholder management, team building/mentoring, architectural decisions with business impact, and driving technical direction.
 WHAT TO PROBE: "How did you influence your company's technical strategy?", "Describe building/scaling a team", "Walk me through an architecture decision that had business implications", "How do you handle underperformers?", "How did you drive a cultural shift?"
 REALISTIC EXPECTATIONS: Should demonstrate leadership beyond direct reports, strategic thinking, trade-off reasoning at organizational level, mentoring track record.
-SALARY CONTEXT (if relevant): ₹30-60 LPA at Indian product companies, ₹60-1.2 Cr at top-tier (FAANG India, unicorns).`
+SALARY CONTEXT (if relevant — use these REALISTIC 2025-26 ranges):
+  IT Services: ₹12-28 LPA
+  Indian Unicorns: ₹30-55 LPA
+  FAANG India: ₹70 LPA-1.5 Cr (RSUs = 40-60% of total comp, worth ₹30-60 LPA/yr)
+  Microsoft India: ₹40-70 LPA
+  Banking (GS/JPM): ₹50-80 LPA
+  Startups (Series A-C): ₹25-50 LPA
+  MBB Consulting: ₹55-90 LPA (Engagement Manager level)
+  Typical negotiables: base, RSUs/ESOPs (₹10-25 LPA/yr vesting), retention bonus, performance bonus (15-20%), signing bonus (₹5-15 LPA).
+  ESOPs at startups: 0.05-0.5% equity — NEVER more than 1%. At large/public companies, discuss RSUs by annual value, not percentage.`
       : expLevel === "executive"
       ? `EXPERIENCE CALIBRATION: Executive level (VP/C-suite/Director).
 QUESTION DEPTH: Ask about company-wide vision, board-level decisions, organizational transformation, market strategy, and culture building. Expect enterprise-scale impact.
 WHAT TO PROBE: "How did you build an engineering/product/design org?", "Describe a bet you took that defined the company's direction", "How do you manage up to the board?", "Walk me through a company-wide transformation you led."
 REALISTIC EXPECTATIONS: Should demonstrate P&L ownership, hiring at scale, investor/board communication, multi-year strategic planning.
-SALARY CONTEXT (if relevant): ₹80 LPA-2 Cr+ at Indian companies, ₹1.5-4 Cr at top-tier.`
+SALARY CONTEXT (if relevant — use these REALISTIC 2025-26 ranges):
+  IT Services: ₹30-55 LPA
+  Indian Unicorns: ₹80 LPA-2 Cr
+  FAANG India: ₹2-4 Cr (RSUs dominate — worth ₹60 LPA-1.5 Cr/yr)
+  Microsoft India: ₹1-2 Cr
+  Banking (GS/JPM MD level): ₹1.5-3 Cr
+  Startups (Series A-C): ₹60 LPA-1.2 Cr
+  MBB Consulting (Partner): ₹1.5-3 Cr+
+  Typical negotiables: base + significant RSU/ESOP grants, retention bonus (₹10-30 LPA), accelerated vesting, board observer seat.
+  Equity at startups: 0.5-2% max. At public companies, RSUs by annual value (₹50 LPA+). NEVER offer 5%+ — that's co-founder territory.`
       : "";
 
     const roleCompContext = getRoleCompetencies(targetRole);
@@ -193,12 +230,86 @@ SALARY CONTEXT (if relevant): ₹80 LPA-2 Cr+ at Indian companies, ₹1.5-4 Cr a
     const TYPE_GUIDANCE: Record<string, string> = {
       "salary-negotiation": `CRITICAL: This is a SALARY NEGOTIATION simulation, NOT a behavioral interview. You must play the role of a hiring manager making/discussing an offer.
 - The intro should set up the scenario: "We'd like to extend you an offer..."
-- Questions must simulate actual negotiation scenarios: presenting an initial offer, asking for salary expectations, presenting counteroffers, discussing equity vs base, handling competing offers, discussing benefits/perks
+- Questions must simulate actual negotiation scenarios: presenting an initial offer, asking for salary expectations, presenting counteroffers, handling competing offers, discussing benefits/perks
 - Do NOT ask behavioral STAR-format questions. Do NOT ask about past projects or technical skills.
-- IMPORTANT: Use Indian Rupees (₹) and Indian salary conventions (LPA = Lakhs Per Annum). Example ranges: ₹6-10 LPA for freshers, ₹12-25 LPA for mid-level, ₹30-60 LPA for senior, ₹80 LPA+ for top-tier companies like Google/Amazon.
-- Example good question: "We'd like to offer you ₹18 LPA with standard benefits. How does that sound to you?"
+- IMPORTANT: Use Indian Rupees (₹) and Indian salary conventions (LPA = Lakhs Per Annum, Cr = Crore Per Annum). CTC = Cost to Company (total package). In-hand is typically 65-75% of CTC.
+
+REALISTIC SALARY RANGES BY ROLE AND COMPANY TYPE (2025-26 India market data):
+
+SOFTWARE ENGINEER:
+  Fresher: IT Services ₹3.5-7 LPA | Unicorns ₹8-16 LPA | FAANG ₹26-50 LPA | Startups ₹5-12 LPA
+  Mid (3-5y): IT Services ₹6-14 LPA | Unicorns ₹18-30 LPA | FAANG ₹45-80 LPA | Startups ₹12-25 LPA
+  Senior (6-10y): IT Services ₹12-25 LPA | Unicorns ₹30-55 LPA | FAANG ₹70 LPA-1.5 Cr | Startups ₹25-50 LPA
+  Lead/Principal (10-15y): IT Services ₹20-35 LPA | Unicorns ₹50-80 LPA | FAANG ₹1-2.5 Cr | Startups ₹40-70 LPA
+
+PRODUCT MANAGER:
+  Fresher/APM: IT Services ₹5-9 LPA | Unicorns ₹10-18 LPA | FAANG ₹25-40 LPA | Startups ₹8-15 LPA
+  Mid PM (3-5y): IT Services ₹10-18 LPA | Unicorns ₹20-35 LPA | FAANG ₹40-65 LPA | Startups ₹15-28 LPA
+  Senior PM (6-10y): IT Services ₹18-30 LPA | Unicorns ₹40-70 LPA | FAANG ₹60 LPA-1.2 Cr | Startups ₹30-50 LPA
+  GPM/Director (10-15y): IT Services ₹25-45 LPA | Unicorns ₹60 LPA-1 Cr | FAANG ₹80 LPA-1.6 Cr
+
+DESIGNER (UI/UX/Product Designer):
+  Fresher: IT Services ₹3-5 LPA | Unicorns ₹5-10 LPA | FAANG ₹15-25 LPA | Startups ₹4-8 LPA
+  Mid (3-5y): IT Services ₹6-12 LPA | Unicorns ₹12-22 LPA | FAANG ₹25-40 LPA | Startups ₹8-18 LPA
+  Senior (6-10y): IT Services ₹12-20 LPA | Unicorns ₹20-35 LPA | FAANG ₹35-60 LPA | Startups ₹16-30 LPA
+  Lead (10-15y): IT Services ₹18-30 LPA | Unicorns ₹30-50 LPA | FAANG ₹50-80 LPA
+
+DATA SCIENTIST:
+  Fresher: IT Services ₹4-8 LPA | Unicorns ₹8-14 LPA | FAANG ₹25-40 LPA | Startups ₹6-12 LPA
+  Mid (3-5y): IT Services ₹8-15 LPA | Unicorns ₹15-25 LPA | FAANG ₹40-65 LPA | Startups ₹12-22 LPA
+  Senior (6-10y): IT Services ₹15-25 LPA | Unicorns ₹25-45 LPA | FAANG ₹60 LPA-1 Cr | Startups ₹22-40 LPA
+
+DATA ANALYST:
+  Fresher: ₹3-5 LPA (services) to ₹12-20 LPA (FAANG) | Mid: ₹5-10 LPA to ₹20-35 LPA | Senior: ₹10-18 LPA to ₹30-50 LPA
+
+MARKETING:
+  Fresher: ₹3-5 LPA (services) to ₹5-9 LPA (unicorns) | Mid: ₹6-12 LPA to ₹10-18 LPA | Senior: ₹12-22 LPA to ₹18-33 LPA
+  Performance/growth marketing roles pay 20-30% premium.
+
+SALES:
+  Variable pay is 30-50% of CTC (commission-based). Base ranges:
+  Fresher: ₹3-5 LPA + variable | Mid: ₹6-12 LPA + variable | Senior: ₹12-22 LPA + variable
+  Top SaaS sellers at unicorns can earn 2-3x their base via commissions.
+
+CONSULTANT:
+  MBB (McKinsey/BCG/Bain): Analyst ₹25-35 LPA | Consultant ₹35-50 LPA | EM ₹55-90 LPA | Partner ₹1.5-3 Cr+
+  Big 4 (Deloitte/EY): ₹10-16 LPA (entry) to ₹45-75 LPA (director)
+
+DEVOPS/SRE:
+  Fresher: ₹3.5-6 LPA (services) to ₹25-40 LPA (FAANG) | Mid: ₹7-15 LPA to ₹40-60 LPA | Senior: ₹15-28 LPA to ₹55-90 LPA
+
+HR:
+  Fresher: ₹2.5-5 LPA | Mid: ₹5-10 LPA | Senior HRBP: ₹10-18 LPA | CHRO: ₹25-90 LPA
+
+QA ENGINEER:
+  Fresher: ₹3-5 LPA (services) to ₹15-25 LPA (FAANG) | SDET/automation roles pay 50-100% more than manual QA.
+
+BANKING/FINANCE:
+  Goldman Sachs/JP Morgan India — Analyst: ₹18-30 LPA | Associate: ₹28-50 LPA | VP: ₹45-80 LPA | MD: ₹1.5-3 Cr
+  HDFC/ICICI Bank — much lower: ₹4-10 LPA (entry) to ₹30-50 LPA (senior VP)
+
+BONUS & BENEFITS TO NEGOTIATE:
+  Joining bonus: ₹0 (services) to ₹5-25 LPA (FAANG senior hires)
+  Performance bonus: 5-15% (IT services), 15-20% (FAANG), 20-40% (MBB consulting)
+  Health insurance: Family floater ₹3-25 LPA cover
+  WFH allowance: ₹15,000-50,000/year
+  Relocation: ₹50K-3 LPA one-time
+  Learning budget: ₹50K-2 LPA/year at top companies
+
+- EQUITY/STOCK RULES (CRITICAL — follow strictly based on candidate's experience level):
+  * FRESHERS/ENTRY-LEVEL (0-2 yrs): Do NOT mention equity, stock options, or ESOPs at all. Negotiate only base salary + joining bonus + benefits.
+  * MID-LEVEL (3-5 yrs): Do NOT offer equity percentages. May mention ESOPs at startups as a small part of the package (e.g., "ESOPs worth ₹2-5 LPA/yr vesting over 4 years"), but NEVER as a percentage. Focus on base + performance bonus + benefits.
+  * SENIOR/LEAD (6-10 yrs): May discuss ESOPs/RSUs. At FAANG: RSUs worth ₹30-60 LPA/yr. At startups: 0.05-0.5% equity max. At unicorns: ESOPs worth ₹10-25 LPA/yr. NEVER offer more than 1%.
+  * EXECUTIVE (VP/C-suite): Equity at startups: 0.5-2% max. At public companies: RSU grants by annual value (₹50 LPA+). NEVER offer 5%+ — that's co-founder territory.
+  * Amazon RSU vesting is back-loaded (5/15/40/40 over 4 years). Google vests quarterly. Most Indian startups: 4-year vest with 1-year cliff.
+- The offer amount MUST match the candidate's experience level and the company type. A fresher at TCS should NOT receive a ₹30 LPA offer. A senior SDE at Google should NOT receive a ₹15 LPA offer.
+- Present the offer with CTC breakdown: Base salary + Performance bonus + RSUs/ESOPs (if applicable) + Benefits
+- Example good question: "We'd like to offer you ₹18 LPA — that's ₹14.5 LPA base with a 10% performance bonus and standard benefits. How does that align with your expectations?"
+- Example good question (senior): "The total package is ₹85 LPA — ₹45 LPA base, ₹8 LPA annual bonus, RSUs worth ₹28 LPA per year vesting quarterly, and ₹4 LPA in benefits."
 - Example bad question: "We can offer $120,000." (wrong currency — use ₹ and LPA)
 - Example bad question: "Tell me about a time you led a project." (this is behavioral, NOT negotiation)
+- Example bad question: "We're offering 15% equity." (unrealistically high — only co-founders get this)
+- Example bad question: "We'll offer ₹50 LPA for this entry-level role." (unrealistic for the level)
 - The closing should summarize negotiation performance and tips`,
       "campus-placement": `This is a CAMPUS PLACEMENT interview for freshers/recent graduates.
 - Questions should be appropriate for 0-2 years experience
