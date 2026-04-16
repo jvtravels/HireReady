@@ -754,6 +754,7 @@ export async function speak(
   text: string,
   onEnd: () => void,
   onError: () => void,
+  gender?: "male" | "female",
 ): Promise<{ cancel: () => void }> {
   const settings = loadTTSSettings();
   let handle: { cancel: () => void };
@@ -793,7 +794,7 @@ export async function speak(
     handle = await speakWithAzure(text, onEnd, async () => {
       console.warn("Azure TTS failed, trying Cartesia fallback");
       await cartesiaFallback();
-    });
+    }, gender);
   }
 
   _activeCancel = handle.cancel;

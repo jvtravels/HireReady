@@ -73,6 +73,13 @@ export function getInterviewerName(seed: string): string {
   return INTERVIEWER_NAMES[Math.abs(hash) % INTERVIEWER_NAMES.length];
 }
 
+const FEMALE_FIRST_NAMES = new Set(["Priya", "Ananya", "Kavya", "Neha", "Deepika", "Aisha", "Meera", "Tanvi"]);
+/** Determine gender from interviewer name */
+export function getInterviewerGender(name: string): "male" | "female" {
+  const firstName = name.split(" ")[0];
+  return FEMALE_FIRST_NAMES.has(firstName) ? "female" : "male";
+}
+
 /* ─── Panel Interview Members ─── */
 export interface PanelMember {
   name: string;

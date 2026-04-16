@@ -11,7 +11,7 @@ import { getMiniScript, getScript } from "./interviewScripts";
 import { saveSessionResult, fetchLLMQuestions, fetchLLMEvaluation, fetchFollowUp, retryQueuedEvals, getAdaptiveHints } from "./interviewAPI";
 import { createDeepgramSTT, type DeepgramSTTHandle } from "./deepgramSTT";
 import { createSarvamSTT, type SarvamSTTHandle } from "./sarvamSTT";
-import { getInterviewerName, getPanelMembers, formatTime } from "./InterviewComponents";
+import { getInterviewerName, getInterviewerGender, getPanelMembers, formatTime } from "./InterviewComponents";
 import { createSpeechRecognition } from "./speechRecognition";
 import type { SpeechRecognitionInstance, SpeechRecognitionEvent } from "./speechRecognition";
 import { safeUUID } from "./utils";
@@ -424,6 +424,7 @@ export function useInterviewEngine() {
   const [evalElapsed, setEvalElapsed] = useState(0);
   const micStreamRef = useRef<MediaStream | null>(null);
   const interviewerName = useMemo(() => getInterviewerName(`${interviewType}-${interviewFocus}-${targetCompany}-${user?.id || ""}`), [interviewType, interviewFocus, targetCompany, user?.id]);
+  const interviewerGender = useMemo(() => getInterviewerGender(interviewerName), [interviewerName]);
 
   // Panel interview: 3 members with gender-matched voices
   const isPanelInterview = interviewType === "panel";
@@ -777,7 +778,7 @@ export function useInterviewEngine() {
         // Add nudge to transcript so user sees it
         setTranscript(prev => [...prev, { speaker: "ai", text: `[${nudge}]`, time: formatTime(elapsed) }]);
         // Speak the nudge — don't block; user can start talking anytime
-        speak(nudge, () => {}, () => {}).catch(() => {});
+        speak(nudge, () => {}, () => {}, interviewerGender).catch(() => {});
       }, 15_000);
     };
     startNudgeTimer();
@@ -809,7 +810,7 @@ export function useInterviewEngine() {
       ramblingFiredRef.current = true;
       const interjection = pickRandom(REACTIONS.ramblingInterject);
       setTranscript(prev => [...prev, { speaker: "ai", text: `[${interjection}]`, time: formatTime(elapsed) }]);
-      speak(interjection, () => {}, () => {}).catch(() => {});
+      speak(interjection, () => {}, () => {}, interviewerGender).catch(() => {});
       toast("Tip: Keep answers under 90 seconds for best impact.", "info");
     }, 90_000);
     return () => {
@@ -1009,7 +1010,7 @@ export function useInterviewEngine() {
             : undefined;
           return panelVoiceId
             ? speakAs(step.aiText, panelVoiceId, onSpeechEnd, onSpeechEnd, panelGender)
-            : speak(step.aiText, onSpeechEnd, onSpeechEnd);
+            : speak(step.aiText, onSpeechEnd, onSpeechEnd, interviewerGender);
         };
         speakPanel().then(handle => {
           if (ttsInstanceIdRef.current === instanceId) {
@@ -1034,7 +1035,7 @@ export function useInterviewEngine() {
           // Brief micro-pause between phrase and question (300-600ms)
           setTimeout(startSpeaking, randomDelay(300, 600));
         };
-        speak(thinkingPhrase, onPhraseDone, onPhraseDone).then(handle => {
+        speak(thinkingPhrase, onPhraseDone, onPhraseDone, interviewerGender).then(handle => {
           if (ttsInstanceIdRef.current === phraseInstanceId) {
             ttsCancelRef.current = handle.cancel;
           } else {
