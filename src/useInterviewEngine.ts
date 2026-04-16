@@ -23,21 +23,69 @@ function normalizePersona(persona: string): string {
   return PERSONA_NORM[persona.toLowerCase()] || persona;
 }
 
-/* ─── Thinking phrases — brief acknowledgments spoken before the next question ─── */
-const THINKING_PHRASES = [
-  "Hmm… okay.",
-  "That's a good point.",
-  "Interesting.",
-  "Right, right.",
-  "I see.",
-  "Okay, let me think about that.",
-  "Got it.",
-  "Alright.",
-  "Mmhmm.",
-  "Fair enough.",
-  "Let's explore that.",
-  "Okay, understood.",
-];
+/* ─── Answer-quality-aware reaction phrases ─── */
+/* Instead of random acknowledgments, react based on what the user actually said */
+const REACTIONS = {
+  strong: [
+    "That's a really strong example.",
+    "Great — I like how specific you were.",
+    "Excellent. That's the kind of detail I'm looking for.",
+    "Very well articulated.",
+    "Good answer — you clearly thought that through.",
+    "I appreciate the specificity there.",
+  ],
+  decent: [
+    "Okay, got it.",
+    "Alright.",
+    "I see where you're going with that.",
+    "Hmm, okay.",
+    "Right, understood.",
+    "Fair enough.",
+  ],
+  weak: [
+    "Okay… let me ask you something else.",
+    "Alright, let's move on.",
+    "Hmm, I see.",
+    "Noted.",
+    "Okay.",
+  ],
+  short: [
+    "I'd love to hear more, but let's keep going.",
+    "Okay — we'll come back to depth later.",
+    "Alright, moving on.",
+    "Hmm, that was brief — let's continue.",
+  ],
+  followUpBridge: [
+    "Actually, before we move on —",
+    "Hold on, I want to dig deeper on that.",
+    "Wait — one more thing about what you just said.",
+    "Let me push on that a bit more.",
+    "I'm curious about something you mentioned —",
+    "Before the next topic, I want to understand —",
+  ],
+  topicTransition: [
+    "Alright, let me shift gears.",
+    "Good. Let's talk about something different.",
+    "Okay, moving to the next area.",
+    "Let's switch topics.",
+    "Right — now I want to explore another angle.",
+  ],
+};
+
+/** Assess answer quality for reaction selection */
+function assessAnswerQuality(answer: string): "strong" | "decent" | "weak" | "short" {
+  if (!answer || answer.startsWith("[Answer recorded") || answer.length < 15) return "short";
+  const words = answer.trim().split(/\s+/).length;
+  if (words < 25) return "short";
+  const hasMetrics = /\d+%|\d+x|₹[\d,]+|\$[\d,]+|\d+ (users|customers|months|days|people|team|engineers|percent)/i.test(answer);
+  const hasStructure = /first|second|then|finally|result|outcome|impact|as a result|because of this|the key/i.test(answer);
+  const hasFirstPerson = /\bI\b/.test(answer);
+  const hasSpecific = /specifically|for example|for instance|in particular|one time|at my|at our|we decided/i.test(answer);
+  const qualitySignals = [hasMetrics, hasStructure, hasFirstPerson, hasSpecific].filter(Boolean).length;
+  if (qualitySignals >= 3 && words >= 50) return "strong";
+  if (qualitySignals >= 1 && words >= 35) return "decent";
+  return "weak";
+}
 
 /* ─── Silence nudge phrases — spoken when user pauses too long during answer ─── */
 const SILENCE_NUDGES = [
@@ -46,6 +94,7 @@ const SILENCE_NUDGES = [
   "No rush — take a moment to think.",
   "Feel free to continue.",
   "I'm listening.",
+  "Still with me? Take your time.",
 ];
 
 function pickRandom<T>(arr: T[]): T {
@@ -690,6 +739,9 @@ export function useInterviewEngine() {
   const followUpDepthRef = useRef(0);
   // Dynamic difficulty: track answer quality mid-interview for escalation/de-escalation
   const answerQualityRef = useRef<number[]>([]);
+  // Last answer quality for contextual reactions
+  const lastAnswerQualityRef = useRef<"strong" | "decent" | "weak" | "short">("decent");
+  const lastAnswerTextRef = useRef("");
 
   useEffect(() => {
     if (phase === "done") return;
@@ -712,9 +764,22 @@ export function useInterviewEngine() {
       prefetchTTS(step.aiText);
     }
 
-    // Whether this step should get a thinking phrase (question/follow-up, not first step)
+    // Whether this step should get a reaction phrase (question/follow-up, not first step)
     const shouldUseThinkingPhrase = currentStep > 0 && (step.type === "question" || step.type === "follow-up");
-    const thinkingPhrase = shouldUseThinkingPhrase ? pickRandom(THINKING_PHRASES) : null;
+    // Select reaction based on the user's LAST answer quality, not randomly
+    let thinkingPhrase: string | null = null;
+    if (shouldUseThinkingPhrase) {
+      const quality = lastAnswerQualityRef.current;
+      if (step.type === "follow-up") {
+        // Follow-ups get bridge phrases that signal "I'm probing deeper"
+        thinkingPhrase = pickRandom(REACTIONS.followUpBridge);
+      } else {
+        // Regular questions get quality-aware reactions + topic transition
+        const reaction = pickRandom(REACTIONS[quality]);
+        const transition = pickRandom(REACTIONS.topicTransition);
+        thinkingPhrase = `${reaction} ${transition}`;
+      }
+    }
 
     const startSpeaking = () => {
       if (isStale()) return;
@@ -831,8 +896,10 @@ export function useInterviewEngine() {
             ...prev.slice(currentStep),
           ]);
         } else if (!interviewEndedRef.current) {
-          // Micro-delay: randomize thinking duration for more natural pacing (800-1500ms for questions)
-          const microDelay = shouldUseThinkingPhrase ? randomDelay(800, 1500) : step.thinkingDuration;
+          // Quality-aware pause: longer pause after strong answers (interviewer absorbing), shorter after weak
+          const quality = lastAnswerQualityRef.current;
+          const pauseRange = quality === "strong" ? [1200, 2000] : quality === "decent" ? [800, 1400] : [500, 900];
+          const microDelay = shouldUseThinkingPhrase ? randomDelay(pauseRange[0], pauseRange[1]) : step.thinkingDuration;
           setTimeout(() => { if (!isStale() && !interviewEndedRef.current) startWithThinkingPhrase(); }, microDelay);
         }
       }).catch(() => {
@@ -842,8 +909,12 @@ export function useInterviewEngine() {
         }
       });
     } else {
-      // Micro-delay: use randomized thinking duration for question steps
-      const microDelay = shouldUseThinkingPhrase ? randomDelay(800, 1500) : step.thinkingDuration;
+      // Quality-aware pause before next question
+      const quality = lastAnswerQualityRef.current;
+      const pauseRange = shouldUseThinkingPhrase
+        ? (quality === "strong" ? [1200, 2000] : quality === "decent" ? [800, 1400] : [500, 900])
+        : [step.thinkingDuration, step.thinkingDuration];
+      const microDelay = randomDelay(pauseRange[0], pauseRange[1]);
       const thinkTimer = setTimeout(startWithThinkingPhrase, microDelay);
       return () => {
         cancelled = true;
@@ -880,6 +951,10 @@ export function useInterviewEngine() {
       advancingRef.current = false;
       return;
     }
+
+    // Store answer quality for contextual reaction in next thinking phase
+    lastAnswerQualityRef.current = assessAnswerQuality(answerText);
+    lastAnswerTextRef.current = answerText;
 
     setTranscript(prev => [...prev, {
       speaker: "user",
