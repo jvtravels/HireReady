@@ -63,6 +63,15 @@ export default async function handler(req: Request): Promise<Response> {
       ? `\nPrevious follow-up exchange:\n${previousFollowUps.map(s => sanitizeForLLM(s, 300)).join("\n")}`
       : "";
 
+    const isSalaryNeg = type === "salary-negotiation";
+
+    // For salary negotiation: determine conversation phase from questionIndex
+    const salaryPhase = isSalaryNeg
+      ? (negotiationPhase || (questionIndex !== undefined && totalQuestions
+        ? questionIndex <= 1 ? "offer-reaction" : questionIndex === 2 ? "probe-expectations" : questionIndex === 3 ? "counter-offer" : "closing"
+        : "offer-reaction"))
+      : "";
+
     // Depth 0: probe for detail (existing behavior)
     // Depth 1: challenge / pushback
     // Depth 2: pivot to adjacent competency
@@ -76,15 +85,6 @@ export default async function handler(req: Request): Promise<Response> {
     const hasStructure = /first|second|then|finally|result|outcome|impact|as a result|because of this/i.test(answer);
     const qualitySignals = [!isShort, hasMetrics, !hasPassiveVoice, !lacksFirstPerson, hasSpecifics, hasStructure].filter(Boolean).length;
     const answerStrength = qualitySignals >= 5 ? "strong" : qualitySignals >= 3 ? "decent" : qualitySignals >= 1 ? "weak" : "very_weak";
-
-    const isSalaryNeg = type === "salary-negotiation";
-
-    // For salary negotiation: determine conversation phase from questionIndex
-    const salaryPhase = isSalaryNeg
-      ? (negotiationPhase || (questionIndex !== undefined && totalQuestions
-        ? questionIndex <= 1 ? "offer-reaction" : questionIndex === 2 ? "probe-expectations" : questionIndex === 3 ? "counter-offer" : "closing"
-        : "offer-reaction"))
-      : "";
 
     let depthInstructions: string;
     if (isSalaryNeg) {
