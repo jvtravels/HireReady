@@ -959,6 +959,10 @@ export function useInterviewEngine() {
               // Hard cap reached or no closing found — proceed naturally
               return prev;
             });
+            // Start speaking the current step — script replacement doesn't change length,
+            // so the effect won't re-run; we must explicitly kick off the thinking phase.
+            const microDelay = shouldUseThinkingPhrase ? randomDelay(800, 1500) : step.thinkingDuration;
+            setTimeout(() => { if (!isStale() && !interviewEndedRef.current) startWithThinkingPhrase(); }, microDelay);
           } else {
             setInterviewScript(prev => [
               ...prev.slice(0, currentStep),
