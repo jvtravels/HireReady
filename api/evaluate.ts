@@ -118,33 +118,91 @@ export default async function handler(req: Request): Promise<Response> {
     const diffLevel = sanitizeForLLM(difficulty, 20) || "standard";
 
     const isSalaryNeg = interviewType === "salary-negotiation";
+    const isCampusPlacement = interviewType === "campus-placement";
+    const isGovPsu = interviewType === "government-psu";
+    const isTeaching = interviewType === "teaching";
+    const isHrRound = interviewType === "hr-round";
+    const isCaseStudy = interviewType === "case-study";
 
-    const scoringRubric = isSalaryNeg
-      ? `Scoring rubric (SALARY NEGOTIATION — evaluate negotiation skill, NOT behavioral answers):
+    let scoringRubric: string;
+    if (isSalaryNeg) {
+      scoringRubric = `Scoring rubric (SALARY NEGOTIATION — evaluate negotiation skill, NOT behavioral answers):
 - 90-100: Candidate anchored with market data, negotiated beyond base salary (equity, benefits, flexibility, joining bonus), maintained composure under pressure, asked clarifying questions about package structure, closed with clear next steps.
 - 75-89: Good negotiation instincts — stated expectations with reasoning, explored multiple compensation components, but missed one key lever (equity, relocation, notice buyout) or accepted too quickly.
 - 60-74: Basic negotiation — stated a number but without market justification, didn't explore beyond base salary, or revealed current salary too early without leverage.
 - Below 60: No negotiation attempted — accepted first offer, gave no counter, or couldn't articulate salary expectations.
-NOTE: Do NOT penalize for lack of STAR structure. This is a negotiation, not a behavioral interview. Score based on: anchoring strategy, market awareness, composure, package breadth, and closing skill.`
-      : diffLevel === "warmup"
-      ? `Scoring rubric (WARMUP — be encouraging, score generously for effort and structure):
+NOTE: Do NOT penalize for lack of STAR structure. This is a negotiation, not a behavioral interview. Score based on: anchoring strategy, market awareness, composure, package breadth, and closing skill.`;
+    } else if (isCampusPlacement) {
+      // Campus placement ALWAYS uses a fresher-appropriate rubric regardless of difficulty
+      scoringRubric = `Scoring rubric (CAMPUS PLACEMENT — calibrate for freshers/entry-level with 0-2 years experience):
+- 90-100: Clear communication, specific project examples with personal contribution, shows learning mindset, articulates career goals, handles follow-ups well. Does NOT need business metrics or P&L impact — college project outcomes and learning are sufficient.
+- 75-89: Decent structure, mentions specific projects or experiences, shows self-awareness, but could be more specific about personal role or learning.
+- 60-74: Basic answers with some relevant content but lacks specifics — generic descriptions of projects, vague goals, or overly rehearsed responses.
+- Below 60: Off-topic, extremely brief, or no substantive content.
+NOTE: This is a CAMPUS PLACEMENT interview for freshers. Do NOT penalize for lacking business metrics, org-wide impact, or years of professional experience. Evaluate based on: communication clarity, project knowledge, learning mindset, teamwork, and career awareness. College projects, hackathons, and internships are valid experience.`;
+    } else if (isGovPsu) {
+      scoringRubric = `Scoring rubric (GOVERNMENT/PSU — evaluate knowledge, reasoning, and public service aptitude):
+- 90-100: Demonstrates strong knowledge of relevant policies/schemes/constitutional provisions, presents balanced perspectives acknowledging trade-offs, shows ethical clarity and practical governance thinking, references current affairs accurately.
+- 75-89: Good awareness of governance issues with reasonable analysis, but missing specific policy references or presenting a one-sided view without acknowledging counter-arguments.
+- 60-74: Basic understanding of the topic but lacks depth — generic answers without policy specifics, limited current affairs awareness, or overly idealistic without practical grounding.
+- Below 60: Off-topic, factually incorrect, or shows no awareness of governance/policy context.
+NOTE: Do NOT evaluate using STAR structure. Government interviews test: policy awareness, ethical reasoning, balanced analysis, administrative aptitude, and public service motivation. Score based on these criteria.`;
+    } else if (isTeaching) {
+      scoringRubric = `Scoring rubric (TEACHING — evaluate pedagogical thinking and student-centered approach):
+- 90-100: Demonstrates clear teaching philosophy, uses specific classroom examples, shows student-centered thinking with differentiated approaches, references pedagogical methods or frameworks, addresses diverse learner needs.
+- 75-89: Good pedagogical awareness with some practical examples, but missing differentiation strategies or specific classroom management techniques.
+- 60-74: Basic answers about teaching with generic approaches — lacks specific examples, limited awareness of inclusive education or modern pedagogy.
+- Below 60: Off-topic, shows no understanding of teaching methodology, or purely theoretical without practical application.
+NOTE: Do NOT evaluate using STAR/business metrics. Teaching interviews test: pedagogy, classroom management, student engagement, inclusivity, and curriculum thinking. Score based on these criteria.`;
+    } else if (isHrRound) {
+      scoringRubric = diffLevel === "warmup"
+        ? `Scoring rubric (HR ROUND — WARMUP — be encouraging):
+- 90-100: Genuine self-awareness, clear motivation for the role, shows cultural fit. No need for perfect polish — authenticity counts.
+- 75-89: Reasonable self-reflection with some role alignment. Missing detail is OK.
+- 60-74: Basic but honest answers. Give credit for sincerity.
+- Below 60: Only if completely off-topic or no substance.
+NOTE: HR warmup. Be supportive — highlight authenticity and communication.`
+        : `Scoring rubric (HR ROUND — evaluate soft skills, motivation, and cultural fit):
+- 90-100: Authentic self-reflection, clear motivation tied to the company/role, demonstrates emotional intelligence, shows genuine cultural alignment, articulates career narrative coherently.
+- 75-89: Good self-awareness and communication, but missing connection to company values or career narrative lacks coherence.
+- 60-74: Generic answers that could apply to any company, lacks personal reflection, or overly rehearsed without authenticity.
+- Below 60: Off-topic, defensive, or shows no self-awareness.
+NOTE: Do NOT heavily penalize for lacking business metrics. HR rounds test: communication, self-awareness, motivation, cultural fit, conflict resolution, and emotional intelligence.`;
+    } else if (isCaseStudy) {
+      scoringRubric = diffLevel === "warmup"
+        ? `Scoring rubric (CASE STUDY — WARMUP — be encouraging):
+- 90-100: Shows structured thinking with some framework application. Estimates or data not required — logical approach counts.
+- 75-89: Reasonable attempt at structuring the problem. Missing depth is OK if direction is right.
+- 60-74: Some relevant points but lacks structure. Give credit for effort.
+- Below 60: Only if completely off-topic.
+NOTE: Warmup case study. Be supportive — reward any structured thinking.`
+        : `Scoring rubric (CASE STUDY — evaluate analytical and problem-solving skills):
+- 90-100: Clear problem decomposition with hypothesis-driven approach, uses frameworks appropriately, supports reasoning with data estimates, presents actionable recommendation with expected impact.
+- 75-89: Good structure and analysis but missing data-backed reasoning OR recommendation lacks specificity.
+- 60-74: Identifies some issues but analysis is shallow — no clear framework, jumps to solutions without diagnosis, or recommendations are generic.
+- Below 60: No structured analysis, completely off-track, or fails to engage with the problem.
+NOTE: Evaluate based on: problem structuring, hypothesis formation, analytical reasoning, use of data/estimates, and quality of recommendation. STAR structure is NOT required — case studies follow a different format.`;
+    } else if (diffLevel === "warmup") {
+      scoringRubric = `Scoring rubric (WARMUP — be encouraging, score generously for effort and structure):
 - 90-100: Clear structure with some specifics. Doesn't need perfect metrics — effort and clarity count.
 - 75-89: Reasonable attempt with basic structure. Missing detail is OK if direction is right.
 - 60-74: Minimal structure but shows understanding. Give credit for trying.
 - Below 60: Only if completely off-topic or no substantive content at all.
-NOTE: This is a warmup session. Be supportive and highlight what went WELL before suggesting improvements.`
-      : diffLevel === "intense"
-      ? `Scoring rubric (INTENSE — be rigorous, demand excellence):
+NOTE: This is a warmup session. Be supportive and highlight what went WELL before suggesting improvements.`;
+    } else if (diffLevel === "intense") {
+      scoringRubric = `Scoring rubric (INTENSE — be rigorous, demand excellence):
 - 90-100: Perfect STAR structure, specific quantified metrics (%, $, x improvement), clear personal attribution with "I", business impact connected to revenue/growth/efficiency, counterfactual reasoning ("without this, X would have happened").
 - 75-89: Good structure with metrics but missing counterfactual reasoning OR incomplete business impact chain.
 - 60-74: Has structure but relies on "we" language, vague metrics ("improved significantly"), or missing clear personal contribution.
 - Below 60: Vague, generic, no metrics, no structure, or uses unsubstantiated claims.
-NOTE: This is an intense session. Hold the candidate to the highest standard. Deduct for missing metrics, vague claims, lack of counterfactual reasoning, and "we" without clarifying individual role.`
-      : `Scoring rubric:
+NOTE: This is an intense session. Hold the candidate to the highest standard. Deduct for missing metrics, vague claims, lack of counterfactual reasoning, and "we" without clarifying individual role.`;
+    } else {
+      scoringRubric = `Scoring rubric:
 - 90-100: Uses STAR structure, includes specific metrics/numbers, clearly states personal role, connects to business impact
 - 75-89: Good structure but missing quantified impact OR specific metrics
 - 60-74: Vague, generic, uses "we" without clarifying individual role, no metrics
 - Below 60: Off-topic, extremely brief, or no substantive content`;
+    }
 
     // Previous session context for delta-aware feedback
     const prevContext = previousScores && typeof previousScores === "object" && typeof previousScores.overall === "number"

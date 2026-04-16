@@ -1300,8 +1300,174 @@ export function useInterviewEngine() {
         if (rejectsOutright) answerScore -= 10;
         if (wordCount < 15) answerScore -= 15;
         answerQualityRef.current.push(Math.min(100, Math.max(0, answerScore)));
+      } else if (interviewType === "government-psu") {
+        // Government/PSU-specific micro-feedback
+        const mentionsPolicy = /policy|scheme|act|bill|amendment|article|constitution|nep|dpdp|rti|panchayat|niti aayog|budget/i.test(answerText);
+        const mentionsEthics = /ethic|integrity|transparen|accountab|corrupt|honest|impartial|fair|justice|public interest/i.test(answerText);
+        const isBalanced = /however|on the other hand|while|although|both|balance|trade-?off|at the same time/i.test(answerText);
+        const mentionsGovt = /government|ministry|department|district|collector|ias|ips|upsc|commission|committee|parliament/i.test(answerText);
+
+        let answerScore = 50;
+        if (wordCount >= 50) answerScore += 10;
+        if (mentionsPolicy) answerScore += 15;
+        if (mentionsEthics) answerScore += 10;
+        if (isBalanced) answerScore += 10;
+        if (mentionsGovt) answerScore += 5;
+        if (wordCount < 30) answerScore -= 15;
+        answerQualityRef.current.push(Math.min(100, Math.max(0, answerScore)));
+
+        if (wordCount < 30) {
+          setMicroFeedback("Elaborate more — government interviews expect detailed, well-reasoned answers.");
+        } else if (!mentionsPolicy && !mentionsEthics) {
+          setMicroFeedback("Tip: Reference specific policies, schemes, or constitutional provisions to strengthen your answer.");
+        } else if (!isBalanced) {
+          setMicroFeedback("Good points! Present a balanced perspective — acknowledge trade-offs and multiple viewpoints.");
+        } else if (mentionsPolicy && isBalanced) {
+          setMicroFeedback("Strong answer — policy-aware and balanced. Well articulated.");
+        } else {
+          setMicroFeedback("Good response — clear reasoning and relevant context.");
+        }
+      } else if (interviewType === "teaching") {
+        // Teaching-specific micro-feedback
+        const mentionsStudents = /student|learner|child|classroom|class|pupil/i.test(answerText);
+        const mentionsPedagogy = /pedagogy|curriculum|lesson plan|assessment|learning objective|differentiat|scaffold|bloom|formative|summative|inclusive|engagement/i.test(answerText);
+        const mentionsExample = /for example|for instance|in my class|when I taught|one time|in a lesson/i.test(answerText);
+        const mentionsTech = /technology|digital|online|app|video|interactive|smart board|gamif/i.test(answerText);
+
+        let answerScore = 50;
+        if (wordCount >= 50) answerScore += 10;
+        if (mentionsStudents) answerScore += 10;
+        if (mentionsPedagogy) answerScore += 15;
+        if (mentionsExample) answerScore += 10;
+        if (mentionsTech) answerScore += 5;
+        if (wordCount < 30) answerScore -= 15;
+        answerQualityRef.current.push(Math.min(100, Math.max(0, answerScore)));
+
+        if (wordCount < 30) {
+          setMicroFeedback("Elaborate more — describe your approach and reasoning with examples.");
+        } else if (!mentionsStudents && !mentionsPedagogy) {
+          setMicroFeedback("Tip: Center your answer on student outcomes — how does this approach help learners?");
+        } else if (!mentionsExample) {
+          setMicroFeedback("Good thinking! Add a specific classroom example to make it concrete.");
+        } else if (mentionsPedagogy && mentionsExample) {
+          setMicroFeedback("Excellent — practical, student-centered, and well-supported with examples.");
+        } else {
+          setMicroFeedback("Good answer — clear and student-focused.");
+        }
+      } else if (interviewType === "case-study") {
+        // Case study-specific micro-feedback
+        const hasFramework = /framework|hypothesis|assumption|estimate|segment|prioriti|trade-?off|constraint|root cause|funnel|cohort|a\/b test/i.test(answerText);
+        const hasStructure = /first|second|third|step \d|approach.*would be|i would start/i.test(answerText);
+        const hasData = /\d+%|\d+x|₹[\d,]+|\$[\d,]+|\d+ (users|customers|million|crore|lakh)/i.test(answerText);
+        const hasRecommendation = /recommend|suggest|conclusion|therefore|my proposal|i would choose|the best option/i.test(answerText);
+
+        let answerScore = 50;
+        if (wordCount >= 50) answerScore += 10;
+        if (hasFramework) answerScore += 15;
+        if (hasStructure) answerScore += 10;
+        if (hasData) answerScore += 10;
+        if (hasRecommendation) answerScore += 5;
+        if (wordCount < 30) answerScore -= 15;
+        answerQualityRef.current.push(Math.min(100, Math.max(0, answerScore)));
+
+        if (wordCount < 30) {
+          setMicroFeedback("Case studies need structured thinking — walk through your approach step by step.");
+        } else if (!hasFramework && !hasStructure) {
+          setMicroFeedback("Tip: Structure your answer — state your hypothesis, break down the problem, then recommend.");
+        } else if (!hasData && hasStructure) {
+          setMicroFeedback("Good structure! Strengthen with data estimates or metrics to support your reasoning.");
+        } else if (!hasRecommendation) {
+          setMicroFeedback("Good analysis! Close with a clear recommendation and expected impact.");
+        } else if (hasFramework && hasData) {
+          setMicroFeedback("Excellent — structured, data-backed, with a clear recommendation.");
+        } else {
+          setMicroFeedback("Good analysis — logical and well-reasoned.");
+        }
+      } else if (interviewType === "hr-round") {
+        // HR round-specific micro-feedback
+        const showsSelfAwareness = /strength|weakness|learned|realized|improved|growth|feedback|reflect/i.test(answerText);
+        const showsMotivation = /passion|motivat|excit|interest|driven|purpose|goal|aspir|value/i.test(answerText);
+        const showsCulturalFit = /team|collaborat|culture|value|inclusive|diverse|together|support/i.test(answerText);
+        const isAuthentic = /honestly|personally|I believe|I feel|for me|in my experience/i.test(answerText);
+        const hasFirstPerson = /\bI\b/.test(answerText);
+
+        let answerScore = 50;
+        if (wordCount >= 40) answerScore += 10;
+        if (showsSelfAwareness) answerScore += 15;
+        if (showsMotivation) answerScore += 10;
+        if (showsCulturalFit) answerScore += 5;
+        if (isAuthentic) answerScore += 5;
+        if (hasFirstPerson) answerScore += 5;
+        if (wordCount < 25) answerScore -= 15;
+        answerQualityRef.current.push(Math.min(100, Math.max(0, answerScore)));
+
+        if (wordCount < 25) {
+          setMicroFeedback("HR rounds value thoughtful answers — share your genuine perspective and reasoning.");
+        } else if (!showsSelfAwareness && !showsMotivation) {
+          setMicroFeedback("Tip: Show self-awareness — reflect on what drives you and how you've grown.");
+        } else if (!showsCulturalFit) {
+          setMicroFeedback("Good answer! Connect it to teamwork or the company's values for cultural fit.");
+        } else if (showsSelfAwareness && showsMotivation) {
+          setMicroFeedback("Great — authentic, self-aware, and clearly motivated.");
+        } else {
+          setMicroFeedback("Good answer — genuine and well-articulated.");
+        }
+      } else if (interviewType === "management") {
+        // Management-specific micro-feedback
+        const mentionsPeople = /team|report|member|hire|coach|mentor|delegate|1[:-]1|one-on-one|performance|feedback/i.test(answerText);
+        const mentionsScale = /\d+\s*(people|engineers|reports|members|team)|scaled|grew|built.*team/i.test(answerText);
+        const hasOutcome = /result|outcome|impact|improved|reduced|achieved|delivered|shipped/i.test(answerText);
+        const mentionsProcess = /process|framework|standup|retro|sprint|okr|kpi|metric|cadence|ritual/i.test(answerText);
+
+        let answerScore = 50;
+        if (wordCount >= 50) answerScore += 10;
+        if (mentionsPeople) answerScore += 15;
+        if (mentionsScale) answerScore += 10;
+        if (hasOutcome) answerScore += 10;
+        if (mentionsProcess) answerScore += 5;
+        if (wordCount < 30) answerScore -= 15;
+        answerQualityRef.current.push(Math.min(100, Math.max(0, answerScore)));
+
+        if (wordCount < 30) {
+          setMicroFeedback("Management answers need depth — describe your approach and its impact on the team.");
+        } else if (!mentionsPeople) {
+          setMicroFeedback("Tip: Center on people — how did your approach affect your team, reports, or stakeholders?");
+        } else if (!mentionsScale && !hasOutcome) {
+          setMicroFeedback("Good people focus! Add team size and measurable outcomes to show impact.");
+        } else if (mentionsPeople && hasOutcome) {
+          setMicroFeedback("Strong — people-focused with clear outcomes. Well articulated.");
+        } else {
+          setMicroFeedback("Good answer — clear leadership thinking.");
+        }
+      } else if (interviewType === "campus-placement") {
+        // Campus placement-specific micro-feedback (gentler, fresher-appropriate)
+        const mentionsProject = /project|built|developed|created|designed|implemented|hackathon|internship/i.test(answerText);
+        const hasLearning = /learned|realized|taught me|takeaway|improved|grew|mistake|challenge/i.test(answerText);
+        const hasClarity = /because|reason|approach|decided|goal|objective/i.test(answerText);
+        const hasFirstPerson = /\bI\b/.test(answerText);
+
+        let answerScore = 50;
+        if (wordCount >= 40) answerScore += 10;
+        if (mentionsProject) answerScore += 15;
+        if (hasLearning) answerScore += 10;
+        if (hasClarity) answerScore += 10;
+        if (hasFirstPerson) answerScore += 5;
+        if (wordCount < 20) answerScore -= 10;
+        answerQualityRef.current.push(Math.min(100, Math.max(0, answerScore)));
+
+        if (wordCount < 20) {
+          setMicroFeedback("Try to say a bit more — even briefly describing your approach helps.");
+        } else if (!mentionsProject && !hasLearning) {
+          setMicroFeedback("Tip: Reference a specific project or experience — concrete examples are powerful.");
+        } else if (!hasLearning) {
+          setMicroFeedback("Good example! Share what you learned or how the experience shaped your thinking.");
+        } else if (mentionsProject && hasLearning) {
+          setMicroFeedback("Great answer — specific, reflective, and shows your growth mindset.");
+        } else {
+          setMicroFeedback("Good answer — clear and well-communicated.");
+        }
       } else {
-        // Standard behavioral/technical micro-feedback
+        // Standard behavioral/technical/strategic/panel micro-feedback
         const hasMetrics = /\d+%|\$\d|[0-9]+x|[0-9]+ (users|customers|engineers|people)/i.test(answerText);
         const hasStructure = /first|second|then|finally|result|outcome|impact/i.test(answerText);
         const hasFirstPerson = /\bI\b/i.test(answerText);
