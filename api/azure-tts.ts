@@ -24,8 +24,20 @@ function escapeXml(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&apos;");
 }
 
+/** Check if a voice name matches the requested gender */
+function voiceMatchesGender(voiceName: string, gender: "male" | "female"): boolean {
+  const maleVoices = new Set(VOICES["en-IN"].male);
+  const femaleVoices = new Set(VOICES["en-IN"].female);
+  if (gender === "male") return maleVoices.has(voiceName);
+  return femaleVoices.has(voiceName);
+}
+
 function pickVoice(gender?: "male" | "female", voiceHint?: string): string {
-  if (voiceHint && voiceHint.startsWith("en-IN-")) return voiceHint;
+  // If voiceHint is a valid en-IN voice AND matches the requested gender, use it directly
+  if (voiceHint && voiceHint.startsWith("en-IN-")) {
+    if (!gender || voiceMatchesGender(voiceHint, gender)) return voiceHint;
+    // Gender mismatch — voiceHint is wrong gender, pick from correct pool below
+  }
   const pool = VOICES["en-IN"][gender || "female"];
   // Use voiceHint hash for consistent voice across a session
   if (voiceHint) {
