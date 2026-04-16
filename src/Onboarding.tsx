@@ -366,6 +366,7 @@ export default function Onboarding() {
       };
       if (!targetRole && autoRole) profileSave.targetRole = autoRole;
       if (data.name) profileSave.name = data.name;
+      if (data.location) profileSave.city = data.location;
       setSaveStatus("saving");
       try {
         await updateUser(profileSave);

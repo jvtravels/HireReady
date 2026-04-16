@@ -210,6 +210,56 @@ function extractContact(text: string): Pick<ParsedResume, "name" | "email" | "ph
   const locationMatch = text.match(/([A-Z][a-z]+(?:\s[A-Z][a-z]+)*,\s*[A-Z]{2})\b/) ||
     text.match(/([A-Z][a-z]+(?:\s[A-Z][a-z]+)*,\s*[A-Z][a-z]+(?:\s[A-Z][a-z]+)*)/);
 
+  // Indian city detection fallback
+  const INDIAN_CITIES = new Set([
+    "bangalore", "bengaluru", "mumbai", "bombay", "delhi", "new delhi", "delhi ncr",
+    "gurgaon", "gurugram", "noida", "greater noida", "ghaziabad", "faridabad",
+    "hyderabad", "pune", "chennai", "madras", "kolkata", "calcutta",
+    "ahmedabad", "jaipur", "chandigarh", "mohali", "kochi", "cochin",
+    "thiruvananthapuram", "trivandrum", "lucknow", "indore", "coimbatore",
+    "nagpur", "visakhapatnam", "vizag", "bhubaneswar", "mysore", "mysuru",
+    "mangalore", "mangaluru", "vadodara", "baroda", "surat",
+    "bhopal", "patna", "ranchi", "dehradun", "raipur", "guwahati",
+    "agra", "varanasi", "amritsar", "jodhpur", "udaipur", "kanpur",
+    "allahabad", "prayagraj", "nashik", "aurangabad", "rajkot", "hubli",
+    "belgaum", "belagavi", "salem", "tiruchirappalli", "trichy", "madurai",
+    "vijayawada", "guntur", "warangal", "navi mumbai", "thane",
+    "pimpri-chinchwad", "gandhinagar", "shimla", "srinagar", "jammu",
+    "panaji", "imphal", "shillong", "aizawl", "kohima", "agartala",
+    "itanagar", "gangtok", "pondicherry", "puducherry",
+    "nellore", "tirupati", "kakinada", "rajahmundry",
+    "jalandhar", "ludhiana", "patiala", "bathinda",
+    "meerut", "aligarh", "bareilly", "moradabad",
+    "jamshedpur", "dhanbad", "bokaro",
+    "cuttack", "rourkela", "sambalpur",
+    "siliguri", "durgapur", "asansol",
+    "kozhikode", "calicut", "thrissur", "kollam",
+    "tiruvallur", "vellore", "erode", "tirunelveli",
+    "belgaum", "dharwad", "gulbarga", "kalaburagi",
+    "kolhapur", "solapur", "sangli", "satara",
+  ]);
+
+  let resolvedLocation = locationMatch?.[1] || "";
+
+  // If no location found or found location doesn't contain an Indian city, scan header lines
+  if (!resolvedLocation || !Array.from(INDIAN_CITIES).some(c => resolvedLocation.toLowerCase().includes(c))) {
+    const headerLines = lines.slice(0, 15);
+    for (const line of headerLines) {
+      const lower = line.toLowerCase();
+      for (const city of INDIAN_CITIES) {
+        if (lower.includes(city)) {
+          // Use the original case from the line
+          const idx = lower.indexOf(city);
+          resolvedLocation = line.substring(idx, idx + city.length);
+          // Capitalize first letter
+          resolvedLocation = resolvedLocation.charAt(0).toUpperCase() + resolvedLocation.slice(1);
+          break;
+        }
+      }
+      if (resolvedLocation && INDIAN_CITIES.has(resolvedLocation.toLowerCase())) break;
+    }
+  }
+
   // Name: first non-empty line that isn't an email/phone/url/section header
   const sectionHeaderPattern = /^(contact|details|personal\s*info|personal\s*details|resume|curriculum\s*vitae|cv|bio|biodata|info|about|address|references|summary|profile|objective|about\s*me|professional\s*summary|career\s*summary|executive\s*summary|experience|work\s*history|employment|professional\s*experience|work\s*experience|career\s*history|education|academic|qualifications|degrees?|skills|technical\s*skills|core\s*competencies|competencies|technologies|tools|proficiencies|expertise|certifications?|licenses?|credentials|accreditations?|professional\s*development|projects?|achievements?|awards?|publications?|interests?|hobbies?|languages?|declaration)$/i;
   let name = "";
@@ -230,7 +280,7 @@ function extractContact(text: string): Pick<ParsedResume, "name" | "email" | "ph
     name,
     email: emailMatch?.[0] || "",
     phone: phoneMatch?.[0] || "",
-    location: locationMatch?.[1] || "",
+    location: resolvedLocation,
     linkedin: linkedinMatch?.[0] || "",
   };
 }
