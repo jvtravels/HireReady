@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { track } from "@vercel/analytics";
 
 import { useAuth } from "./AuthContext";
-import { speak, speakAs, prefetchTTS, cleanupTTS, fetchCartesiaVoices, retryUnlockAudio, isAutoplayBlocked } from "./tts";
+import { speak, speakAs, prefetchTTS, cleanupTTS, fetchCartesiaVoices, retryUnlockAudio, isAutoplayBlocked, unlockAudio } from "./tts";
 import { useToast } from "./Toast";
 import { saveToIDB, loadFromIDB, deleteFromIDB } from "./interviewIDB";
 import type { InterviewStep } from "./interviewScripts";
@@ -427,6 +427,9 @@ export function useInterviewEngine() {
   // End interview modal
   const [showEndModal, setShowEndModal] = useState(false);
   const endModalTriggerRef = useRef<HTMLSpanElement>(null);
+
+  // Ensure audio is unlocked on interview mount (belt-and-suspenders for Q1 voice)
+  useEffect(() => { unlockAudio(); }, []);
 
   // Multi-tab guard
   const [tabConflict, setTabConflict] = useState(false);

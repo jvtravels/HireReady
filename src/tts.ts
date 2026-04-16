@@ -596,7 +596,10 @@ async function speakWithProxy(
 
     await audio.play();
   } catch (err: unknown) {
-    if (err instanceof Error && err.name === "AbortError") return { cancel: () => {} };
+    if (err instanceof Error && err.name === "AbortError") {
+      if (!settled) settle(onError); // Timeout abort — trigger fallback
+      return { cancel: () => {} };
+    }
     if (isAutoplayError(err)) {
       _autoplayBlocked = true;
       settle(onEnd);
@@ -642,29 +645,40 @@ async function speakWithAzure(
   const settle = (cb: () => void) => { if (!settled) { settled = true; cb(); } };
 
   try {
-    const { authHeaders } = await import("./supabase");
-    const headers = await authHeaders();
+    let blob: Blob | null = null;
 
-    const timeout = setTimeout(() => controller.abort(), 15_000);
-    const res = await fetch("/api/azure-tts", {
-      method: "POST",
-      headers,
-      body: JSON.stringify({
-        text: text.trim().slice(0, 2000),
-        voiceId: voiceId || loadTTSSettings().voiceId,
-        gender,
-      }),
-      signal: controller.signal,
-    });
-    clearTimeout(timeout);
-
-    if (!res.ok) {
-      console.warn("[TTS-Azure] API error:", res.status);
-      settle(onError);
-      return { cancel: () => {} };
+    // Check prefetch cache first — avoids duplicate request on cold start (Q1)
+    const cached = consumePrefetch(text);
+    if (cached) {
+      blob = await cached;
     }
 
-    const blob = await res.blob();
+    if (!blob) {
+      const { authHeaders } = await import("./supabase");
+      const headers = await authHeaders();
+
+      const timeout = setTimeout(() => controller.abort(), 15_000);
+      const res = await fetch("/api/azure-tts", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          text: text.trim().slice(0, 2000),
+          voiceId: voiceId || loadTTSSettings().voiceId,
+          gender,
+        }),
+        signal: controller.signal,
+      });
+      clearTimeout(timeout);
+
+      if (!res.ok) {
+        console.warn("[TTS-Azure] API error:", res.status);
+        settle(onError);
+        return { cancel: () => {} };
+      }
+
+      blob = await res.blob();
+    }
+
     if (!blob || blob.size < 100) {
       console.warn("[TTS-Azure] empty audio");
       settle(onError);
@@ -682,7 +696,11 @@ async function speakWithAzure(
     audio.onerror = () => { URL.revokeObjectURL(url); settle(onError); };
     await audio.play();
   } catch (err: unknown) {
-    if (err instanceof Error && err.name === "AbortError") return { cancel: () => {} };
+    // Timeout abort (not user-cancel) — trigger fallback chain
+    if (err instanceof Error && err.name === "AbortError") {
+      if (!settled) settle(onError);
+      return { cancel: () => {} };
+    }
     // Detect autoplay policy block — skip ALL TTS providers, proceed silently
     if (isAutoplayError(err)) {
       console.warn("[TTS-Azure] autoplay blocked by browser policy — disabling voice for session");

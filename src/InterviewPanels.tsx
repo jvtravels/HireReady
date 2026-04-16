@@ -697,9 +697,10 @@ export const DealSummaryCard = memo(function DealSummaryCard({ transcript, negot
   const userTexts = transcript.filter(t => t.speaker === "user").map(t => t.text);
   const allText = [...aiTexts, ...userTexts].join(" ");
 
-  // Find the last salary number mentioned by AI (likely the final offer)
-  const aiNumbers = aiTexts.join(" ").match(/₹?\s*(\d+(?:\.\d+)?)\s*(?:lpa|lakh|lakhs|l\b)/gi) || [];
-  const userNumbers = userTexts.join(" ").match(/₹?\s*(\d+(?:\.\d+)?)\s*(?:lpa|lakh|lakhs|l\b)/gi) || [];
+  // Extract salary numbers from conversation
+  const salaryRe = /₹?\s*(\d+(?:\.\d+)?)\s*(?:lpa|lakh|lakhs|l\b)/gi;
+  const aiNumbers = aiTexts.join(" ").match(salaryRe) || [];
+  const userNumbers = userTexts.join(" ").match(salaryRe) || [];
 
   const parseNum = (s: string) => {
     const m = s.match(/(\d+(?:\.\d+)?)/);
@@ -707,8 +708,16 @@ export const DealSummaryCard = memo(function DealSummaryCard({ transcript, negot
   };
 
   const initialOffer = negotiationBand?.initialOffer || (aiNumbers.length > 0 ? parseNum(aiNumbers[0] ?? "") : 0);
-  const finalOffer = aiNumbers.length > 0 ? parseNum(aiNumbers[aiNumbers.length - 1] ?? "") : initialOffer;
-  const candidateAsk = userNumbers.length > 0 ? parseNum(userNumbers[userNumbers.length - 1] ?? "") : 0;
+
+  // Final offer: use the MAX number from the last AI message (total CTC > component breakdowns)
+  // e.g. "₹32 LPA total CTC with ₹25 LPA base, ₹4 LPA variable, ₹3 LPA ESOPs" → 32
+  const lastAiText = aiTexts.length > 0 ? aiTexts[aiTexts.length - 1] : "";
+  const lastAiNumbers = lastAiText.match(salaryRe) || [];
+  const finalOffer = lastAiNumbers.length > 0
+    ? Math.max(...lastAiNumbers.map(parseNum))
+    : (aiNumbers.length > 0 ? Math.max(...aiNumbers.map(parseNum)) : initialOffer);
+
+  const candidateAsk = userNumbers.length > 0 ? Math.max(...userNumbers.map(parseNum)) : 0;
 
   const improvement = initialOffer > 0 ? Math.round(((finalOffer - initialOffer) / initialOffer) * 100) : 0;
 
