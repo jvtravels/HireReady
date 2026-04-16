@@ -211,9 +211,15 @@ export default function Onboarding() {
         .catch(() => {})
         .finally(() => setAiPhase("done"));
     }
-    if (data.experience?.[0]?.title && !targetRole) {
-      setTargetRole(data.experience[0].title);
-      setRoleAutoFilled(true);
+    if (!targetRole) {
+      // Prefer AI headline (accurate role title) over raw parser title (may be company name)
+      const aiRole = savedAiProfile?.headline && savedAiProfile.headline !== "Analyzing..." ? savedAiProfile.headline : "";
+      const parserRole = data.experience?.[0]?.title || "";
+      const autoRole = aiRole || parserRole;
+      if (autoRole) {
+        setTargetRole(autoRole);
+        setRoleAutoFilled(true);
+      }
     }
   }, [user?.resumeFileName, user?.resumeText]);
 
@@ -331,8 +337,9 @@ export default function Onboarding() {
           finalProfile = result.profile;
           setAiProfile(finalProfile);
           aiSuccess = true;
-          // Auto-fill role from AI headline if client parser didn't extract one
-          if (!targetRole && !autoRole && finalProfile.headline) {
+          // Auto-fill role from AI headline — it's more accurate than the raw parser
+          // Override if role was auto-filled (not user-edited) or empty
+          if (finalProfile.headline && finalProfile.headline !== "Analyzing..." && (!roleTouched)) {
             setTargetRole(finalProfile.headline);
             setRoleAutoFilled(true);
           }
