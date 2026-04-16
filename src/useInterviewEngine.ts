@@ -165,12 +165,6 @@ function randomDelay(min: number, max: number): number {
   return min + Math.floor(Math.random() * (max - min));
 }
 
-function extractScore(raw: unknown): number {
-  if (typeof raw === "number") return raw;
-  if (typeof raw === "object" && raw !== null && "score" in raw) return (raw as { score: number }).score;
-  return 0;
-}
-
 /* ─── Draft data shape (for IDB restore) ─── */
 interface InterviewDraft {
   transcript: { speaker: "ai" | "user"; text: string; time: string }[];
@@ -435,7 +429,7 @@ export function useInterviewEngine() {
   // Timers: elapsed clock, answer timer with auto-advance, tab visibility
   const {
     elapsed, setElapsed, answerTimer, timeRemaining, timePercent,
-    handleNextRef, tabVisibleRef,
+    handleNextRef,
   } = useInterviewTimers(phase, currentStep, draftRef.current?.elapsed || 0, toast);
 
   // TTS-caption sync: actual audio duration (from TTS provider) and speech-ended flag
@@ -1321,7 +1315,7 @@ export function useInterviewEngine() {
           }),
         ]);
         if (evaluation) {
-          const processed = processLLMEvaluation(evaluation, fallback.score);
+          const processed = processLLMEvaluation(evaluation as unknown as Record<string, unknown>, fallback.score);
           score = processed.score;
           aiFeedback = processed.feedback;
           skillScores = processed.skillScores;

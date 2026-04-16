@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useCallback, useRef, useEff
 import { c, font } from "./tokens";
 
 /* ─── Types ─── */
-type ToastType = "success" | "error" | "info";
+export type ToastType = "success" | "error" | "info";
 interface Toast {
   id: number;
   message: string;

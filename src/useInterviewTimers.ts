@@ -3,6 +3,7 @@
    tab visibility tracking, and time remaining/percent. */
 
 import { useState, useEffect, useRef } from "react";
+import type { ToastType } from "./Toast";
 
 const QUESTION_TIME_LIMIT = 120;
 
@@ -10,7 +11,7 @@ export function useInterviewTimers(
   phase: string,
   currentStep: number,
   initialElapsed: number,
-  toast: (msg: string, type: string) => void,
+  toast: (msg: string, type?: ToastType) => void,
 ) {
   const [elapsed, setElapsed] = useState(initialElapsed);
   const [answerTimer, setAnswerTimer] = useState(0);

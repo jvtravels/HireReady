@@ -8,13 +8,14 @@ import { createDeepgramSTT, type DeepgramSTTHandle } from "./deepgramSTT";
 import { createSarvamSTT, type SarvamSTTHandle } from "./sarvamSTT";
 import { createSpeechRecognition } from "./speechRecognition";
 import type { SpeechRecognitionInstance, SpeechRecognitionEvent } from "./speechRecognition";
+import type { ToastType } from "./Toast";
 
 export interface STTCallbacks {
   setCurrentTranscript: (text: string) => void;
   setMicError: (msg: string) => void;
   setSpeechUnavailable: (v: boolean) => void;
   setShowCaptions: (v: boolean) => void;
-  toast: (msg: string, type: string) => void;
+  toast: (msg: string, type?: ToastType) => void;
   textareaRef: React.RefObject<HTMLTextAreaElement | null>;
   interviewEndedRef: React.MutableRefObject<boolean>;
 }
