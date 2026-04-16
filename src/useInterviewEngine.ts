@@ -929,6 +929,8 @@ export function useInterviewEngine() {
   const flowGenerationRef = useRef(0);
   const pendingFollowUpRef = useRef<Promise<{ needsFollowUp: boolean; followUpText: string; followUpType?: string } | null> | null>(null);
   const followUpDepthRef = useRef(0);
+  // Track inserted salary-negotiation follow-ups to cap total turns
+  const salaryInsertedRef = useRef(0);
   // Dynamic difficulty: track answer quality mid-interview for escalation/de-escalation
   const answerQualityRef = useRef<number[]>([]);
   // Last answer quality for contextual reactions
@@ -1145,15 +1147,27 @@ export function useInterviewEngine() {
             persona: followUpPersona,
           };
           if (isSalaryNegConversation) {
-            // Replace the next pre-generated question with the dynamic response
-            // This makes the conversation flow naturally instead of jumping to a random question
+            // Salary negotiation: make the conversation contextual
+            // Strategy: REPLACE the next pre-generated question with a contextual one,
+            // OR INSERT a follow-up probe if the answer was vague (with a hard cap).
             setInterviewScript(prev => {
               const nextQuestionIdx = prev.findIndex((s, i) => i > currentStep && s.type === "question");
               if (nextQuestionIdx > currentStep && nextQuestionIdx < prev.length - 1) {
-                // Replace the next question with the dynamic one
+                // Replace the next pre-generated question with the dynamic contextual response
                 return [...prev.slice(0, nextQuestionIdx), followUpStep, ...prev.slice(nextQuestionIdx + 1)];
               }
-              // No more questions to replace — let the interview proceed to closing naturally
+              // No more questions to replace — check if we can insert a follow-up probe
+              // (e.g., last question before closing, or vague answer needs probing)
+              if (salaryInsertedRef.current < (isMiniMode ? 2 : 3)) {
+                salaryInsertedRef.current++;
+                // Insert as a follow-up before the closing step
+                const closingIdx = prev.findIndex((s, i) => i > currentStep && s.type === "closing");
+                if (closingIdx > currentStep) {
+                  const insertStep = { ...followUpStep, type: "follow-up" as const };
+                  return [...prev.slice(0, closingIdx), insertStep, ...prev.slice(closingIdx)];
+                }
+              }
+              // Hard cap reached or no closing found — proceed naturally
               return prev;
             });
           } else {
@@ -1314,13 +1328,11 @@ export function useInterviewEngine() {
 
     // Fire follow-up check in background
     const isSalaryNegType = interviewType === "salary-negotiation";
-    // For salary-negotiation: fire follow-up only if there are remaining pre-generated questions to replace
-    // This prevents infinite question growth — once all questions are consumed, we proceed to closing
-    const remainingQuestions = isSalaryNegType
-      ? interviewScript.filter((s, i) => i > currentStep && s.type === "question").length
-      : 0;
+    // For salary-negotiation: always fire follow-up to make conversation contextual.
+    // The resolution handler decides whether to REPLACE the next question or INSERT a probe.
+    // Hard cap on total inserted follow-ups prevents infinite growth (max 2-3 extra turns).
     const canFollowUp = isSalaryNegType
-      ? ((currentStepObj?.type === "question" || currentStepObj?.type === "follow-up") && !isLastStep && remainingQuestions > 0)
+      ? ((currentStepObj?.type === "question" || currentStepObj?.type === "follow-up") && !isLastStep)
       : ((currentStepObj?.type === "question" || currentStepObj?.type === "follow-up")
         && !isLastStep && answerText.length > 10 && !answerText.startsWith("[Answer recorded"));
 
