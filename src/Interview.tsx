@@ -22,7 +22,7 @@ export default function Interview() {
     usedFallbackScore, evalTimedOut, lastSessionId,
     evaluating, evalElapsed, aiVoiceEnabled,
     showCaptions, currentTranscript, microFeedback,
-    totalQuestions, currentQuestionNum,
+    totalQuestions, baseQuestionCount, currentQuestionNum, isCurrentFollowUp,
     timeRemaining, timePercent,
     displayRole, displayCompany, displayFocus, interviewerName,
     isPanelInterview, panelMembers, activePersona,
@@ -78,6 +78,7 @@ export default function Interview() {
         displayCompany={displayCompany} displayRole={displayRole} displayFocus={displayFocus}
         llmLoading={llmLoading} currentStep={currentStep} phase={phase} elapsed={elapsed}
         currentQuestionNum={currentQuestionNum} totalQuestions={totalQuestions}
+        baseQuestionCount={baseQuestionCount} isCurrentFollowUp={isCurrentFollowUp}
         saveWarning={saveWarning} onRetry={retryQuestions}
       />
 

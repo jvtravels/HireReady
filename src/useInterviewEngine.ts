@@ -881,7 +881,9 @@ export function useInterviewEngine() {
     ? (panelMembers.find(m => m.title === activePersona)?.name || interviewerName)
     : (step?.persona || interviewerName);
   const totalQuestions = useMemo(() => interviewScript.filter(s => s.type === "question" || s.type === "follow-up").length, [interviewScript]);
+  const baseQuestionCount = useMemo(() => interviewScript.filter(s => s.type === "question").length, [interviewScript]);
   const currentQuestionNum = useMemo(() => interviewScript.slice(0, currentStep + 1).filter(s => s.type === "question" || s.type === "follow-up").length, [interviewScript, currentStep]);
+  const isCurrentFollowUp = step?.type === "follow-up";
 
   // Timer — pauses when tab is hidden (laptop sleep / tab switch)
   useEffect(() => {
@@ -1831,7 +1833,9 @@ export function useInterviewEngine() {
     currentTranscript,
     microFeedback,
     totalQuestions,
+    baseQuestionCount,
     currentQuestionNum,
+    isCurrentFollowUp,
     timeRemaining,
     timePercent,
     displayRole,

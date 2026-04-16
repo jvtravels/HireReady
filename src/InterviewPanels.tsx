@@ -42,11 +42,12 @@ export const StatusToasts = memo(function StatusToasts({ tabConflict, isOffline,
 
 /* ─── Interview Header (top info bar) ─── */
 
-export const InterviewHeader = memo(function InterviewHeader({ displayCompany, displayRole, displayFocus, llmLoading, currentStep, phase, elapsed, currentQuestionNum, totalQuestions, saveWarning, onRetry }: {
+export const InterviewHeader = memo(function InterviewHeader({ displayCompany, displayRole, displayFocus, llmLoading, currentStep, phase, elapsed, currentQuestionNum, totalQuestions, baseQuestionCount, isCurrentFollowUp, saveWarning, onRetry }: {
   displayCompany: string; displayRole: string; displayFocus: string;
   llmLoading: boolean; currentStep: number;
   phase: string; elapsed: number;
   currentQuestionNum: number; totalQuestions: number;
+  baseQuestionCount?: number; isCurrentFollowUp?: boolean;
   saveWarning?: string; onRetry?: () => void;
 }) {
   return (
@@ -105,18 +106,24 @@ export const InterviewHeader = memo(function InterviewHeader({ displayCompany, d
       {phase !== "done" && (
         <div style={{ padding: "0 24px 10px" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
-            <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.ivory }}>
-              Question {currentQuestionNum} of {totalQuestions}
+            <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: isCurrentFollowUp ? c.gilt : c.ivory }}>
+              {isCurrentFollowUp
+                ? `Follow-up · Question ${Math.min(currentQuestionNum, baseQuestionCount || totalQuestions)} of ${baseQuestionCount || totalQuestions}`
+                : `Question ${currentQuestionNum} of ${baseQuestionCount || totalQuestions}`}
             </span>
             <span style={{ fontFamily: font.mono, fontSize: 10, color: c.stone }}>
-              {Math.round((currentQuestionNum / totalQuestions) * 100)}%
+              {Math.round((Math.min(currentQuestionNum, baseQuestionCount || totalQuestions) / (baseQuestionCount || totalQuestions)) * 100)}%
             </span>
           </div>
           <div style={{ display: "flex", gap: 3, height: 3 }}>
-            {Array.from({ length: totalQuestions }).map((_, i) => (
+            {Array.from({ length: baseQuestionCount || totalQuestions }).map((_, i) => (
               <div key={i} style={{
                 flex: 1, borderRadius: 2, height: 3,
-                background: i < currentQuestionNum ? c.gilt : i === currentQuestionNum ? "rgba(212,179,127,0.4)" : "rgba(245,242,237,0.08)",
+                background: i < Math.min(currentQuestionNum, baseQuestionCount || totalQuestions)
+                  ? c.gilt
+                  : i === Math.min(currentQuestionNum, baseQuestionCount || totalQuestions)
+                    ? "rgba(212,179,127,0.4)"
+                    : "rgba(245,242,237,0.08)",
                 transition: "all 0.4s ease",
               }} />
             ))}
