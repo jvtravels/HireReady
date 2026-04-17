@@ -203,8 +203,12 @@ export function useInterviewEngine() {
   const dontKnowCountRef = useRef(0);
   // Negotiation band (populated by LLM question generation for salary-neg)
   const negotiationBandRef = useRef<NegotiationBandData | null>(null);
-  // Negotiation style from URL params
-  const negotiationStyle = searchParams.get("negotiationStyle") || undefined;
+  // Negotiation style: randomly assigned per session for variety
+  const [negotiationStyle] = useState(() => {
+    if (interviewType !== "salary-negotiation") return undefined;
+    const styles = ["cooperative", "aggressive", "defensive"] as const;
+    return styles[Math.floor(Math.random() * styles.length)];
+  });
   // Time pressure spoken flag
   const timePressureSpokenRef = useRef(false);
   const lastQuestionSpokenRef = useRef(false);

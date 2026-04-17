@@ -249,7 +249,7 @@ export default function SessionSetup() {
     return ["Behavioral"];
   });
   const [sessionLength, setSessionLength] = useState("10m");
-  const [negotiationStyle, setNegotiationStyle] = useState("cooperative");
+  // negotiationStyle is now randomly assigned per session in useInterviewEngine
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const isFreeUser = !user?.subscriptionTier || user.subscriptionTier === "free";
   const { toast } = useToast();
@@ -390,7 +390,7 @@ export default function SessionSetup() {
     }
     setTimeout(() => {
       setCountdown(0);
-      navigate(`/interview?type=${focusType}&difficulty=standard&new=1${targetCompany ? `&company=${encodeURIComponent(targetCompany)}` : ""}${currentCity ? `&currentCity=${encodeURIComponent(currentCity)}` : ""}${jobCity ? `&jobCity=${encodeURIComponent(jobCity)}` : ""}&role=${encodeURIComponent(targetRole)}&length=${sessionLength}${useResume ? "" : "&useResume=false"}${jobDescription.trim() ? `&jd=${encodeURIComponent(jobDescription.trim().slice(0, 2000))}` : ""}${micStatus === "denied" ? "&nomic=1" : ""}${focusType === "salary-negotiation" && negotiationStyle !== "cooperative" ? `&negotiationStyle=${negotiationStyle}` : ""}`);
+      navigate(`/interview?type=${focusType}&difficulty=standard&new=1${targetCompany ? `&company=${encodeURIComponent(targetCompany)}` : ""}${currentCity ? `&currentCity=${encodeURIComponent(currentCity)}` : ""}${jobCity ? `&jobCity=${encodeURIComponent(jobCity)}` : ""}&role=${encodeURIComponent(targetRole)}&length=${sessionLength}${useResume ? "" : "&useResume=false"}${jobDescription.trim() ? `&jd=${encodeURIComponent(jobDescription.trim().slice(0, 2000))}` : ""}${micStatus === "denied" ? "&nomic=1" : ""}`);
     }, 3000);
   };
 
@@ -637,38 +637,7 @@ export default function SessionSetup() {
                   </div>
                 </div>
 
-                {/* ── Section 3.5: Negotiation Style (salary-negotiation only) ── */}
-                {interviewFocus[0] === "Salary Negotiation" && (
-                  <div className="ob-card fade-up-3" style={{ borderRadius: 16, padding: "24px 28px" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 18 }}>
-                      <div style={{ width: 28, height: 28, borderRadius: 7, background: "rgba(212,179,127,0.06)", border: "1px solid rgba(212,179,127,0.12)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5" strokeLinecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-                      </div>
-                      <span style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: c.ivory }}>Hiring Manager Style</span>
-                    </div>
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
-                      {([
-                        { value: "cooperative", label: "Friendly", desc: "Collaborative, transparent, solution-oriented" },
-                        { value: "aggressive", label: "Tough", desc: "Budget-conscious, pushes back hard, creates pressure" },
-                        { value: "defensive", label: "Evasive", desc: "Deflects, avoids committing, cites policy" },
-                      ] as const).map(opt => {
-                        const sel = negotiationStyle === opt.value;
-                        return (
-                          <button key={opt.value} onClick={() => setNegotiationStyle(opt.value)}
-                            style={{
-                              padding: "14px 12px", borderRadius: 12, cursor: "pointer", textAlign: "center",
-                              background: sel ? "rgba(212,179,127,0.08)" : "transparent",
-                              border: `1.5px solid ${sel ? c.gilt : c.border}`,
-                              transition: "all 0.2s",
-                            }}>
-                            <span style={{ fontFamily: font.ui, fontSize: 14, fontWeight: 600, color: sel ? c.gilt : c.ivory, display: "block", marginBottom: 4 }}>{opt.label}</span>
-                            <span style={{ fontFamily: font.ui, fontSize: 10, color: c.stone, display: "block", lineHeight: 1.3 }}>{opt.desc}</span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
+                {/* Negotiation style is now randomly assigned per session in useInterviewEngine */}
 
                 {/* ── Section 4: Interview Language — hidden for now ── */}
               </div>
