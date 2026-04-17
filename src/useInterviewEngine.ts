@@ -256,8 +256,6 @@ export function useInterviewEngine() {
   );
   const interviewScriptRef = useRef(interviewScript);
   useEffect(() => { interviewScriptRef.current = interviewScript; }, [interviewScript]);
-  // Version counter: incremented when script content changes (not just length) to re-trigger the speaking effect
-  const [scriptVersion, setScriptVersion] = useState(0);
   const [llmLoading, setLlmLoading] = useState(!draftRef.current && !isMiniMode);
 
   // Interview state
@@ -348,12 +346,16 @@ export function useInterviewEngine() {
         negotiationBandRef.current = result.negotiationBand;
       }
       const step = currentStepRef.current;
-      if (questions && questions.length > 0 && step <= 1) {
-        // Accept LLM questions if user is on intro (step 0) or first question (step 1)
+      if (questions && questions.length > 0 && step === 0) {
+        // Step 0 (intro) is already speaking — keep current intro, replace only steps 1+
+        // This prevents the jarring mid-sentence cut when LLM questions arrive
+        console.warn(`[interview] LLM generated ${questions.length} custom questions (merging from step 1, preserving intro)`);
+        setInterviewScript(prev => [prev[0], ...questions.slice(1)]);
+        setSaveWarning("");
+      } else if (questions && questions.length > 0 && step === 1) {
+        // User already moved past intro — safe to replace entire script
         console.warn(`[interview] LLM generated ${questions.length} custom questions (replacing at step ${step})`);
-        setInterviewScript(questions);
-        // Bump version so the speaking effect re-runs even if array length didn't change
-        setScriptVersion(v => v + 1);
+        setInterviewScript(prev => [prev[0], ...questions.slice(1)]);
         setSaveWarning("");
       } else if (questions && questions.length > 0 && step >= 2) {
         // Late arrival: merge remaining LLM questions into the script from the current position onward
@@ -1010,7 +1012,7 @@ export function useInterviewEngine() {
     };
   // interviewScript.length: re-run when follow-up steps are inserted at currentStep
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentStep, aiVoiceEnabled, interviewScript.length, scriptVersion]);
+  }, [currentStep, aiVoiceEnabled, interviewScript.length]);
 
   // Handle user "finishing" their answer
   const advancingRef = useRef(false);
@@ -1072,10 +1074,11 @@ export function useInterviewEngine() {
     // For salary-negotiation: always fire follow-up to make conversation contextual.
     // The resolution handler decides whether to REPLACE the next question or INSERT a probe.
     // Hard cap on total inserted follow-ups prevents infinite growth (max 2-3 extra turns).
+    const hasRealAnswer = answerText.length > 10 && !answerText.startsWith("[Answer recorded");
     const canFollowUp = isSalaryNegType
-      ? ((currentStepObj?.type === "question" || currentStepObj?.type === "follow-up") && !isLastStep)
+      ? ((currentStepObj?.type === "question" || currentStepObj?.type === "follow-up") && !isLastStep && hasRealAnswer)
       : ((currentStepObj?.type === "question" || currentStepObj?.type === "follow-up")
-        && !isLastStep && answerText.length > 10 && !answerText.startsWith("[Answer recorded"));
+        && !isLastStep && hasRealAnswer);
 
     if (canFollowUp) {
       // Cross-question memory: build conversation history for context
