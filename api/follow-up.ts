@@ -367,8 +367,13 @@ Respond JSON only:
     if (typeof parsed.followUpText !== "string") parsed.followUpText = "";
     if (typeof parsed.needsFollowUp !== "boolean") parsed.needsFollowUp = false;
 
-    // Salary-negotiation: always continue the conversation. Other types: depths 1-2 always follow up.
-    const needsFollowUp = isSalaryNeg ? true : (safeDepth >= 1 ? true : !!parsed.needsFollowUp);
+    // Salary-negotiation: continue the conversation, but allow early close if candidate accepted
+    // and we're past the initial offer phase (don't force 5 more turns after "I accept")
+    const candidateAcceptedEarly = isSalaryNeg && negotiationFacts?.acceptedImmediately
+      && (questionIndex ?? 0) >= 2; // past the first question
+    const needsFollowUp = isSalaryNeg
+      ? (candidateAcceptedEarly ? !!parsed.needsFollowUp : true)
+      : (safeDepth >= 1 ? true : !!parsed.needsFollowUp);
 
     return new Response(JSON.stringify({
       needsFollowUp,

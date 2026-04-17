@@ -721,9 +721,13 @@ export const DealSummaryCard = memo(function DealSummaryCard({ transcript, negot
   // Final offer: scan AI messages backwards to find the last one with salary numbers
   // e.g. "₹32 LPA total CTC with ₹25 LPA base, ₹4 LPA variable, ₹3 LPA ESOPs" → 32
   // Floor: final offer should never be below the initial offer (hiring manager can't go lower)
+  // Filter: strip sentences where AI quotes the candidate's number ("you asked/mentioned/wanted ₹X")
+  const candidateQuoteRe = /(?:you\s+(?:asked|mentioned|wanted|said|expect|were\s+looking|requested)[^.]*)/gi;
   let finalOffer = initialOffer;
   for (let i = aiTexts.length - 1; i >= 0; i--) {
-    const nums = aiTexts[i].match(salaryRe) || [];
+    // Remove parts where AI references candidate's numbers before extracting
+    const cleanedText = aiTexts[i].replace(candidateQuoteRe, "");
+    const nums = cleanedText.match(salaryRe) || [];
     if (nums.length > 0) {
       const maxInMessage = Math.max(...nums.map(parseNum));
       finalOffer = Math.max(maxInMessage, initialOffer);

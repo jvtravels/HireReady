@@ -173,8 +173,14 @@ export function extractNegotiationFacts(transcript: TranscriptEntry[]): Negotiat
   );
 
   // Extract salary numbers from user answers (₹25 LPA, 25 lakh, 30L, etc.)
-  const salaryMatch = allText.match(/₹?\s*(\d+(?:\.\d+)?)\s*(?:lpa|lakh|lakhs|l\b)/i);
-  const candidateCounter = salaryMatch ? `₹${salaryMatch[1]} LPA` : null;
+  // Use the LAST match (most recent counter/ask), not the first (which might be current CTC)
+  const salaryRe = /₹?\s*(\d+(?:\.\d+)?)\s*(?:lpa|lakh|lakhs|l\b)/gi;
+  const allSalaryMatches: string[] = [];
+  let salaryMatch: RegExpExecArray | null;
+  while ((salaryMatch = salaryRe.exec(allText)) !== null) {
+    allSalaryMatches.push(salaryMatch[1]);
+  }
+  const candidateCounter = allSalaryMatches.length > 0 ? `₹${allSalaryMatches[allSalaryMatches.length - 1]} LPA` : null;
 
   // Look for "current CTC" / "currently earning" patterns
   const ctcMatch = allText.match(/(?:current(?:ly)?|earning|getting|drawing|my ctc|i.?m at)\s*(?:is\s*)?₹?\s*(\d+(?:\.\d+)?)\s*(?:lpa|lakh|lakhs|l\b)/i);
@@ -195,7 +201,7 @@ export function extractNegotiationFacts(transcript: TranscriptEntry[]): Negotiat
 
   const deflectedNumbers = userAnswers.some(a =>
     /(?:don'?t want to|prefer not|rather not|you first|your offer|what.*you.*offer|tell me.*offer)/i.test(a) &&
-    !salaryMatch,
+    allSalaryMatches.length === 0,
   );
 
   return {
