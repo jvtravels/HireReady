@@ -717,7 +717,8 @@ export function useInterviewEngine() {
   // Last answer quality for contextual reactions
   const lastAnswerQualityRef = useRef<"strong" | "decent" | "weak" | "short">("decent");
   const lastAnswerTextRef = useRef("");
-  const introStartedRef = useRef(false);
+  const introStartedRef = useRef<string | false>(false);
+  const lastEffectStepRef = useRef(-1);
 
   useEffect(() => {
     if (phase === "done") return;
@@ -725,14 +726,19 @@ export function useInterviewEngine() {
     const step = interviewScript[currentStep];
     if (!step) return;
 
-    // Guard: if step 0 (intro) is already playing and only the script length changed
-    // (e.g., LLM questions arrived and changed script length), don't restart the intro
-    if (currentStep === 0 && introStartedRef.current) {
+    // Guard: if step is already playing and only the script length changed (not currentStep),
+    // don't restart. This prevents follow-up insertions from interrupting active TTS or recording.
+    if (currentStep === 0 && introStartedRef.current && step.aiText === introStartedRef.current) {
       return;
     }
+    if (currentStep > 0 && currentStep === lastEffectStepRef.current && (phase === "speaking" || phase === "listening")) {
+      // Script length changed but currentStep didn't — skip re-trigger
+      return;
+    }
+    lastEffectStepRef.current = currentStep;
 
     if (currentStep === 0) {
-      introStartedRef.current = true;
+      introStartedRef.current = step.aiText;
       track("interview_started", { type: interviewType, mode: isMiniMode ? "mini" : "full", isPanel: isPanelInterview });
     }
 
@@ -1146,17 +1152,20 @@ export function useInterviewEngine() {
 
     if (canFollowUp) {
       // Cross-question memory: build conversation history for context
+      // Salary-neg needs longer excerpts to preserve salary numbers and competing offer details
+      const qLimit = isSalaryNegType ? 250 : 150;
+      const aLimit = isSalaryNegType ? 200 : 120;
       const earlierTopics: string[] = [];
       for (const t of transcript) {
         if (t.speaker === "ai" && !t.text.startsWith("[")) {
-          earlierTopics.push(`Q: ${t.text.slice(0, 150)}`);
+          earlierTopics.push(`Q: ${t.text.slice(0, qLimit)}`);
         } else if (t.speaker === "user" && !t.text.startsWith("[")) {
-          earlierTopics.push(`A: ${t.text.slice(0, 120)}`);
+          earlierTopics.push(`A: ${t.text.slice(0, aLimit)}`);
         }
       }
       // Add current exchange
-      earlierTopics.push(`Q: ${currentStepObj!.aiText.slice(0, 150)}`);
-      earlierTopics.push(`A: ${answerText.slice(0, 120)}`);
+      earlierTopics.push(`Q: ${currentStepObj!.aiText.slice(0, qLimit)}`);
+      earlierTopics.push(`A: ${answerText.slice(0, aLimit)}`);
       const conversationHistory = earlierTopics.slice(-20).join("\n");
 
       // Collect recent follow-up Q&A pairs
@@ -1323,6 +1332,7 @@ export function useInterviewEngine() {
     setPhase("done");
     ttsCancelRef.current?.();
     ttsCancelRef.current = null;
+    pendingFollowUpRef.current = null; // Release orphaned follow-up promises
     recognitionRef.current?.stop();
     recognitionRef.current = null;
     setAiVoiceEnabled(false);

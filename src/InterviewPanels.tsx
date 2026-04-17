@@ -725,6 +725,7 @@ export const DealSummaryCard = memo(function DealSummaryCard({ transcript, negot
   // Use [^.!?,]* to stop at sentence/clause boundaries, not eat the whole sentence
   const candidateQuoteRe = /(?:you\s+(?:asked|mentioned|wanted|said|expect|were\s+looking|requested)[^.!?,]*)/gi;
   let finalOffer = initialOffer;
+  let foundFinal = false;
   for (let i = aiTexts.length - 1; i >= 0; i--) {
     // Remove parts where AI references candidate's numbers before extracting
     const cleanedText = aiTexts[i].replace(candidateQuoteRe, "");
@@ -732,7 +733,18 @@ export const DealSummaryCard = memo(function DealSummaryCard({ transcript, negot
     if (nums.length > 0) {
       const maxInMessage = Math.max(...nums.map(parseNum));
       finalOffer = Math.max(maxInMessage, initialOffer);
+      foundFinal = true;
       break;
+    }
+  }
+  // Fallback: if quote-stripping removed all numbers, try unfiltered as last resort
+  if (!foundFinal && finalOffer === 0) {
+    for (let i = aiTexts.length - 1; i >= 0; i--) {
+      const nums = aiTexts[i].match(salaryRe) || [];
+      if (nums.length > 0) {
+        finalOffer = Math.max(...nums.map(parseNum));
+        break;
+      }
     }
   }
 
