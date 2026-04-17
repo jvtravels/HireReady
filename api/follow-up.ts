@@ -227,9 +227,13 @@ YOUR GOAL: Summarize the deal and move to next steps.
         : "";
 
       // Detect candidate intent from the answer to make it prominent in the prompt
-      const acceptWords = /\b(i accept|accept|sounds good|that works|deal|i.?m happy|fine with me|yes|agreed|okay|ok|sure)\b/i;
-      const rejectWords = /\b(no|nope|not acceptable|too low|reject|decline|not enough|can.?t accept|walk away|not interested|absolutely not)\b/i;
-      const candidateAccepted = acceptWords.test(answer) && !rejectWords.test(answer);
+      // Tighter patterns to avoid false positives: "okay but I want more" shouldn't count as acceptance
+      const negationWords = /\b(no|not|don.?t|can.?t|won.?t|wouldn.?t|never|reject|decline|but)\b/i;
+      const acceptWords = /\b(i accept|i.?ll accept|accept the offer|sounds good|that works for me|it.?s a deal|i.?m happy with|fine with me|i agree|agreed|let.?s go ahead)\b/i;
+      const rejectWords = /\b(not acceptable|too low|can.?t accept|absolutely not|not enough|walk away|not interested|i reject|no deal|way too low|that.?s insulting)\b/i;
+      // Short affirmative-only answers (< 8 words) like "yes", "okay", "sure" count as acceptance
+      const isShortAffirmative = answer.trim().split(/\s+/).length < 8 && /^(yes|yeah|okay|ok|sure|deal|agreed|accept|sounds good|that works|fine)\b/i.test(answer.trim());
+      const candidateAccepted = (acceptWords.test(answer) || isShortAffirmative) && !negationWords.test(answer);
       const candidateRejected = rejectWords.test(answer) && !acceptWords.test(answer);
 
       // Build intent banner — placed at the VERY TOP of the prompt so the LLM can't miss it
@@ -361,7 +365,8 @@ Respond JSON only:
     const result = await callLLM({ prompt, temperature: 0.3, maxTokens: 500, jsonMode: true, fast: true }, 8000);
     const parsed = extractJSON<{ needsFollowUp?: boolean; followUpText?: string; followUpType?: string }>(result.text);
     if (!parsed || typeof parsed !== "object") {
-      return new Response(JSON.stringify({ needsFollowUp: false }), { status: 200, headers });
+      // Return 502 so client can distinguish "LLM failed" from "no follow-up needed"
+      return new Response(JSON.stringify({ needsFollowUp: false, error: "LLM response parsing failed" }), { status: 502, headers });
     }
     // Sanitize LLM response fields
     if (typeof parsed.followUpText !== "string") parsed.followUpText = "";

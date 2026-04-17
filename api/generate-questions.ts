@@ -426,6 +426,11 @@ Requirements:
       return new Response(JSON.stringify({ error: "Failed to generate valid questions" }), { status: 500, headers });
     }
 
+    // Salary negotiation requires enough turns for a complete conversation arc
+    if (isSalaryType && questions.length < 4) {
+      return new Response(JSON.stringify({ error: "Salary negotiation requires at least 4 turns" }), { status: 502, headers });
+    }
+
     // Validate each question has required fields
     for (const q of questions) {
       const qObj = q as Record<string, unknown>;

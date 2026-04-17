@@ -944,9 +944,13 @@ export function useInterviewEngine() {
     const applySalaryNegFallback = () => {
       if (!isSalaryNegConversation) return;
       const lastAnswer = lastAnswerTextRef.current;
-      const userAccepted = /\b(i accept|accept|sounds good|that works|deal|i.?m happy|fine with me|yes.*offer|agreed)\b/i.test(lastAnswer)
-        && !/\b(no|nope|not|reject|decline|can.?t)\b/i.test(lastAnswer);
-      const userRejected = /\b(no|nope|not acceptable|too low|reject|decline|not enough|can.?t accept|walk away)\b/i.test(lastAnswer)
+      if (!lastAnswer) return;
+      // Tighter patterns: "okay but I want more" shouldn't count as acceptance
+      const negationWords = /\b(no|not|don.?t|can.?t|won.?t|wouldn.?t|never|reject|decline|but)\b/i;
+      const isShortAffirmative = lastAnswer.trim().split(/\s+/).length < 8 && /^(yes|yeah|okay|ok|sure|deal|agreed|accept|sounds good|that works|fine)\b/i.test(lastAnswer.trim());
+      const userAccepted = (/\b(i accept|i.?ll accept|accept the offer|sounds good|that works for me|it.?s a deal|i.?m happy with|fine with me|i agree|agreed|let.?s go ahead)\b/i.test(lastAnswer) || isShortAffirmative)
+        && !negationWords.test(lastAnswer);
+      const userRejected = /\b(not acceptable|too low|can.?t accept|absolutely not|not enough|walk away|not interested|i reject|no deal|way too low)\b/i.test(lastAnswer)
         && !/\b(i accept|sounds good|deal)\b/i.test(lastAnswer);
       if (!userAccepted && !userRejected) return;
       const fallbackText = userAccepted
@@ -1074,10 +1078,13 @@ export function useInterviewEngine() {
   const handleNextQuestion = useCallback(() => {
     if (phase !== "listening" || advancingRef.current) return;
     advancingRef.current = true;
-    setTimeout(() => { advancingRef.current = false; }, 500);
+    // Safety: always release advancing lock after 500ms regardless of code path
+    const advancingSafetyTimer = setTimeout(() => { advancingRef.current = false; }, 500);
 
+    try {
     ttsCancelRef.current?.();
     recognitionRef.current?.stop();
+    } catch { /* ignore TTS/STT cleanup errors */ }
 
     const rawTranscript = currentTranscript.trim();
     const answerText = rawTranscript || (answerTimer > 2 ? `[Answer recorded — ${answerTimer}s]` : "");
@@ -1086,6 +1093,7 @@ export function useInterviewEngine() {
     if (!answerText) {
       toast("Please speak or type your response before continuing.", "info");
       advancingRef.current = false;
+      clearTimeout(advancingSafetyTimer);
       return;
     }
 
@@ -1099,6 +1107,7 @@ export function useInterviewEngine() {
     if (!answerText.startsWith("[Answer recorded") && answerText.length < minLength) {
       toast(interviewType === "salary-negotiation" ? "Please type your response." : "Please provide a longer answer (at least a few words).", "info");
       advancingRef.current = false;
+      clearTimeout(advancingSafetyTimer);
       return;
     }
 

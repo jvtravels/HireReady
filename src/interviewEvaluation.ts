@@ -172,19 +172,29 @@ export function extractNegotiationFacts(transcript: TranscriptEntry[]): Negotiat
     /(?:way too low|not interested|can'?t accept|absolutely not|that'?s insulting|no way)/i.test(a),
   );
 
-  // Extract salary numbers from user answers (₹25 LPA, 25 lakh, 30L, etc.)
-  // Use the LAST match (most recent counter/ask), not the first (which might be current CTC)
+  // Extract salary numbers: distinguish "current CTC" from "expected/counter" numbers
+  // Strategy: first extract current CTC with context patterns, then treat remaining numbers as counter
+  const ctcPatterns = /(?:current(?:ly)?|earning|getting|drawing|my ctc|i.?m at|making|take home)\s*(?:is\s*)?₹?\s*(\d+(?:\.\d+)?)\s*(?:lpa|lakh|lakhs|l\b)/gi;
+  const ctcNumbers = new Set<string>();
+  let ctcExec: RegExpExecArray | null;
+  while ((ctcExec = ctcPatterns.exec(allText)) !== null) {
+    ctcNumbers.add(ctcExec[1]);
+  }
+  const candidateCurrentCTC = ctcNumbers.size > 0 ? `₹${[...ctcNumbers][ctcNumbers.size - 1]} LPA` : null;
+
+  // Extract ALL salary numbers, then pick the highest non-CTC number as the counter
+  // (candidate's expectation/ask is typically the highest number they mention, excluding current CTC)
   const salaryRe = /₹?\s*(\d+(?:\.\d+)?)\s*(?:lpa|lakh|lakhs|l\b)/gi;
   const allSalaryMatches: string[] = [];
   let salaryMatch: RegExpExecArray | null;
   while ((salaryMatch = salaryRe.exec(allText)) !== null) {
     allSalaryMatches.push(salaryMatch[1]);
   }
-  const candidateCounter = allSalaryMatches.length > 0 ? `₹${allSalaryMatches[allSalaryMatches.length - 1]} LPA` : null;
-
-  // Look for "current CTC" / "currently earning" patterns
-  const ctcMatch = allText.match(/(?:current(?:ly)?|earning|getting|drawing|my ctc|i.?m at)\s*(?:is\s*)?₹?\s*(\d+(?:\.\d+)?)\s*(?:lpa|lakh|lakhs|l\b)/i);
-  const candidateCurrentCTC = ctcMatch ? `₹${ctcMatch[1]} LPA` : null;
+  // Filter out numbers that matched as current CTC, then take the MAX as counter
+  const counterNumbers = allSalaryMatches.filter(n => !ctcNumbers.has(n));
+  const candidateCounter = counterNumbers.length > 0
+    ? `₹${counterNumbers.reduce((max, n) => parseFloat(n) > parseFloat(max) ? n : max)} LPA`
+    : (allSalaryMatches.length > 0 ? `₹${allSalaryMatches[allSalaryMatches.length - 1]} LPA` : null);
 
   const hasCompetingOffers = /(?:other offer|competing|another company|counter.?offer|multiple offers)/i.test(allText);
 
