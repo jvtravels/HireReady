@@ -209,6 +209,9 @@ export function useInterviewEngine() {
     const styles = ["cooperative", "aggressive", "defensive"] as const;
     return styles[Math.floor(Math.random() * styles.length)];
   });
+  // Negotiation pushback tracker: counts how many times the candidate has pushed back/rejected
+  // Used for tone shifts and strategic pause decisions
+  const negPushbackCountRef = useRef(0);
   // Time pressure spoken flag
   const timePressureSpokenRef = useRef(false);
   const lastQuestionSpokenRef = useRef(false);
@@ -790,18 +793,33 @@ export function useInterviewEngine() {
       const isIDontKnow = isIDontKnowAnswer(lastAnswer);
 
       if (interviewType === "salary-negotiation") {
-        // Salary-negotiation: hiring manager reactions (no topic transitions or time pressure)
+        // Track pushback for tone shifts
+        const rejectPat = /\b(not acceptable|too low|can.?t accept|not enough|walk away|no deal|way too low|not interested|that.?s insulting)\b/i;
+        const acceptPat = /\b(i accept|sounds good|deal|that works|i agree|agreed)\b/i;
+        if (rejectPat.test(lastAnswer) && !acceptPat.test(lastAnswer)) {
+          negPushbackCountRef.current++;
+        }
+        const pushbacks = negPushbackCountRef.current;
+
+        // Salary-negotiation: hiring manager reactions — tone shifts based on pushback count
         if (isIDontKnow) {
           thinkingPhrase = pickRandom([
             "I need you to share your expectations so we can work this out.",
             "Help me understand what you're looking for — I can't make this work without your input.",
             "Let me rephrase that.",
           ]);
-        } else if (quality === "strong") {
+        } else if (pushbacks >= 3) {
+          // Exhaustion/firmness — after 3+ pushbacks, manager gets serious
           thinkingPhrase = pickRandom([
-            "That's fair.", "I hear you.", "Okay, let me think about that.",
-            "That's a reasonable ask.", "I appreciate the clarity.",
+            "Hmm, let me think about this seriously.",
+            "Okay... I hear you. Let me see what I can do.",
+            "Look, I want to make this work.",
+            "Alright, let me be straight with you.",
           ]);
+        } else if (quality === "strong") {
+          thinkingPhrase = pushbacks >= 1
+            ? pickRandom(["Hmm, that's a fair point.", "I hear you. Let me think about that.", "Okay, you make a good case."])
+            : pickRandom(["That's fair.", "I hear you.", "Okay, let me think about that.", "That's a reasonable ask.", "I appreciate the clarity."]);
         } else if (quality === "weak") {
           thinkingPhrase = pickRandom([
             "Hmm, okay.", "I see.", "Let me address that.",
@@ -988,7 +1006,12 @@ export function useInterviewEngine() {
       const userWalkAway = walkAwayPat.test(lastAnswer) && !acceptPat.test(lastAnswer);
       const userRejected = /\b(not acceptable|too low|can.?t accept|absolutely not|not enough|way too low)\b/i.test(lastAnswer)
         && !/\b(i accept|sounds good|deal)\b/i.test(lastAnswer);
-      if (!userAccepted && !userRejected && !userWalkAway) return;
+      // Also detect "need time to think" and competing offers
+      const thinkPat = /\b(need time|think about|sleep on|let me think|consider|talk to.*(?:family|partner|wife|husband)|get back to you|not ready)\b/i;
+      const competingPat = /\b(other offer|competing|another company|counter.?offer|multiple offers|also talking|got an offer)\b/i;
+      const userNeedsTime = thinkPat.test(lastAnswer);
+      const userMentionedCompeting = competingPat.test(lastAnswer);
+      if (!userAccepted && !userRejected && !userWalkAway && !userNeedsTime && !userMentionedCompeting) return;
 
       // Reference actual ₹ numbers from negotiationBand when available
       const band = negotiationBandRef.current;
@@ -999,21 +1022,33 @@ export function useInterviewEngine() {
       let scoreNote: string;
       let waitForUser = true;
       if (userWalkAway) {
-        // Distinct walk-away: hiring manager tries to retain
+        // Distinct walk-away: hiring manager tries to retain with strategic pause
         fallbackText = band
           ? `I understand, and I respect that. But before you make a final decision — I genuinely believe you'd be a great fit here. Let me go back to my leadership. I may be able to push this closer to ${stretchStr}, which is the absolute ceiling for this band. Would that change things?`
           : "I understand, and I respect that. But before you make a final decision — I genuinely believe you'd be a great fit here. Let me go back to my leadership and see if there's any room to move. Would you be open to hearing a revised number before walking away?";
         scoreNote = "Candidate walked away — evaluate: did they walk away too early? Did they leave room for counter? Did they stay professional?";
+      } else if (userNeedsTime) {
+        // "Need time to think" — respect but create soft urgency
+        fallbackText = band
+          ? `Of course — it's an important decision, take the time you need. But I should mention, we're looking to close this position soon. Can we reconnect in 48 hours? The ${offerStr} package stands until then. Is there anything specific you'd like me to clarify in the meantime?`
+          : "Of course — it's an important decision. Can we reconnect in 48 hours? I want to make sure you have everything you need to decide. Is there anything specific giving you pause that we could talk through now?";
+        scoreNote = "Candidate asked for time — evaluate: did they use this tactically or were they genuinely undecided?";
+      } else if (userMentionedCompeting) {
+        // Competing offers — engage directly
+        fallbackText = band
+          ? `That's helpful to know — competition keeps everyone honest. Can you share what they're offering? Not to match blindly, but to understand where we need to be. What matters most to you beyond the number — the role, the team, or the growth path? Because our ${offerStr} package with equity and benefits might tell a different story.`
+          : "That's helpful to know. Can you share what they're offering? More importantly, what would make you choose us over them? Is it purely about the number, or are there other factors at play?";
+        scoreNote = "Candidate mentioned competing offers — evaluate: did they use BATNA effectively? Did they share details or keep leverage?";
       } else if (userAccepted) {
         fallbackText = band
-          ? `That's wonderful to hear! I'm glad ${offerStr} works for you. Before we finalize, let me walk you through the complete package — the benefits, growth path, and everything that comes with this role. I want to make sure you have the full picture.`
+          ? `That's wonderful to hear! I'm really glad ${offerStr} works for you. Before we finalize, let me walk you through the complete package — the benefits, growth path, and everything that comes with this role. I want you to feel confident about the full picture.`
           : "That's wonderful to hear! I'm glad the offer works for you. Before we finalize, let me walk you through the complete package — the benefits, growth path, and everything else that comes with this role. I want to make sure you have the full picture.";
         scoreNote = "Candidate accepted — exploring full package";
         // Early close: if we're past Q2 (step >= 3), skip remaining questions and go to closing
         if (currentStepRef.current >= 3) {
           const closingText = band
-            ? `Great, so we're agreed on ${offerStr} plus the benefits we discussed. I'll have HR send you the formal offer letter by tomorrow. Take a day to review and let us know. Welcome aboard!`
-            : "Great, so we're agreed on the package we discussed. I'll have HR send you the formal offer letter by tomorrow. Take a day to review and let us know. Welcome aboard!";
+            ? `Great, so just to confirm — we're agreed on ${offerStr} total CTC, plus the benefits we discussed. I'll have HR send you the formal offer letter by tomorrow. Take a day to review and let us know. I'm really glad we worked this out — the team is excited to have you!`
+            : "Great, so we're agreed on the package we discussed. I'll have HR send you the formal offer letter by tomorrow. Take a day to review and let us know. I'm really glad we worked this out — welcome aboard!";
           const closingWords = closingText.split(/\s+/).length;
           const closingMs = Math.max(3000, Math.round((closingWords / 150) * 60 * 1000) + 1500);
           const closingStep: InterviewStep = {
@@ -1022,15 +1057,15 @@ export function useInterviewEngine() {
             scoreNote: "Early close — candidate accepted. Evaluate overall negotiation strategy.",
           };
           setInterviewScript(prev => {
-            // Replace everything after current step with the closing
             return [...prev.slice(0, currentStep + 1), closingStep];
           });
           return;
         }
       } else {
+        // Rejection — make specific counter with ₹ numbers
         fallbackText = band
-          ? `I understand your concern — ${offerStr} may not be where you need it. Let me see what flexibility I have. I might be able to stretch toward ${stretchStr} with some creative structuring. What would need to change for this to feel right?`
-          : "I understand your concern, and I appreciate your honesty. Let me see what flexibility I have — I want to make sure we find something that works for both of us. What would need to change for this to feel right?";
+          ? `I hear you — ${offerStr} may not be where you need it. Let me see what I can do. I might be able to stretch to ${stretchStr} if we restructure the variable component. What's the minimum that makes this a clear yes for you?`
+          : "I understand your concern, and I appreciate your honesty. Let me see what flexibility I have — I want to make sure we find something that works for both of us. What's the minimum package that makes this a clear yes?";
         scoreNote = "Candidate rejected — exploring alternatives";
       }
 
@@ -1096,9 +1131,13 @@ export function useInterviewEngine() {
               // Hard cap reached or no closing found — proceed naturally
               return prev;
             });
-            // Start speaking the current step — script replacement doesn't change length,
-            // so the effect won't re-run; we must explicitly kick off the thinking phase.
-            const microDelay = shouldUseThinkingPhrase ? randomDelay(800, 1500) : step.thinkingDuration;
+            // Start speaking — strategic pause based on negotiation intensity
+            // Walk-away or 3+ pushbacks → longer "let me check" pause (simulates consulting leadership)
+            const isHeavyPushback = negPushbackCountRef.current >= 3;
+            const walkAwayPat = /\b(walk away|walking away|i.?m out|not interested|i.?ll pass|no deal|withdraw|decline)\b/i;
+            const isWalkAway = walkAwayPat.test(lastAnswerTextRef.current);
+            const strategicPause = (isWalkAway || isHeavyPushback) ? randomDelay(2500, 4000) : undefined;
+            const microDelay = strategicPause ?? (shouldUseThinkingPhrase ? randomDelay(800, 1500) : step.thinkingDuration);
             setTimeout(() => { if (!isStale() && !interviewEndedRef.current) startWithThinkingPhrase(); }, microDelay);
           } else {
             setInterviewScript(prev => [

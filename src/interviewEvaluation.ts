@@ -157,6 +157,8 @@ export interface NegotiationFacts {
   topicsRaised: string[];
   /** Whether the candidate deflected/refused to share numbers */
   deflectedNumbers: boolean;
+  /** Whether the candidate asked for time to think */
+  askedForTime: boolean;
 }
 
 export function extractNegotiationFacts(transcript: TranscriptEntry[]): NegotiationFacts {
@@ -203,7 +205,7 @@ export function extractNegotiationFacts(transcript: TranscriptEntry[]): Negotiat
     ? `₹${counterNumbers.reduce((max, n) => parseFloat(n) > parseFloat(max) ? n : max)} LPA`
     : (allSalaryMatches.length > 0 ? `₹${allSalaryMatches[allSalaryMatches.length - 1]} LPA` : null);
 
-  const hasCompetingOffers = /(?:other offer|competing|another company|counter.?offer|multiple offers)/i.test(allText);
+  const hasCompetingOffers = /(?:other offer|competing|another company|counter.?offer|multiple offers|also talking|got an offer)/i.test(allText);
 
   // Detect specific topics the candidate raised
   const topicsRaised: string[] = [];
@@ -215,10 +217,18 @@ export function extractNegotiationFacts(transcript: TranscriptEntry[]): Negotiat
   if (/(?:relocation|relocat|moving|shift)/i.test(allText)) topicsRaised.push("relocation");
   if (/(?:bonus|joining bonus|sign.?on)/i.test(allText)) topicsRaised.push("joining bonus");
   if (/(?:growth|promotion|career|path)/i.test(allText)) topicsRaised.push("career growth");
+  if (/(?:market.*data|market.*rate|benchmark|glassdoor|levels\.fyi|ambition\s*box)/i.test(allText)) topicsRaised.push("market data/benchmarks");
+  if (/(?:variable|bonus.*structure|performance.*bonus)/i.test(allText)) topicsRaised.push("variable pay structure");
+  if (/(?:title|designation|level)/i.test(allText)) topicsRaised.push("title/level");
 
   const deflectedNumbers = userAnswers.some(a =>
-    /(?:don'?t want to|prefer not|rather not|you first|your offer|what.*you.*offer|tell me.*offer)/i.test(a) &&
+    /(?:don'?t want to|prefer not|rather not|you first|your offer|what.*you.*offer|tell me.*offer|you tell me)/i.test(a) &&
     allSalaryMatches.length === 0,
+  );
+
+  // Detect if candidate asked for time to think (a valid negotiation tactic)
+  const askedForTime = userAnswers.some(a =>
+    /(?:need time|think about|sleep on|let me think|consider|talk to|get back to you|not ready)/i.test(a),
   );
 
   return {
@@ -229,5 +239,6 @@ export function extractNegotiationFacts(transcript: TranscriptEntry[]): Negotiat
     hasCompetingOffers,
     topicsRaised,
     deflectedNumbers,
+    askedForTime,
   };
 }

@@ -132,11 +132,11 @@ export default async function handler(req: Request): Promise<Response> {
     let scoringRubric: string;
     if (isSalaryNeg) {
       scoringRubric = `Scoring rubric (SALARY NEGOTIATION — evaluate negotiation skill, NOT behavioral answers):
-- 90-100: Candidate anchored with market data, negotiated beyond base salary (equity, benefits, flexibility, joining bonus), maintained composure under pressure, asked clarifying questions about package structure, closed with clear next steps.
-- 75-89: Good negotiation instincts — stated expectations with reasoning, explored multiple compensation components, but missed one key lever (equity, relocation, notice buyout) or accepted too quickly.
-- 60-74: Basic negotiation — stated a number but without market justification, didn't explore beyond base salary, or revealed current salary too early without leverage.
-- Below 60: No negotiation attempted — accepted first offer, gave no counter, or couldn't articulate salary expectations.
-NOTE: Do NOT penalize for lack of STAR structure. This is a negotiation, not a behavioral interview. Score based on: anchoring strategy, market awareness, composure, package breadth, and closing skill.`;
+- 90-100: Candidate anchored with market data/benchmarks, negotiated beyond base salary (equity, benefits, flexibility, joining bonus), maintained composure under pressure, used competing offers or BATNA strategically, explored creative trade-offs (notice buyout, joining bonus, equity), closed with explicit confirmation of agreed terms. Bonus: used tactical silence, asked for time to think, or deflected revealing current CTC.
+- 75-89: Good negotiation instincts — stated expectations with reasoning, explored multiple compensation components, handled pushback professionally. But missed one key lever (equity, relocation, notice buyout, asking for time) or accepted too quickly without exploring the full package.
+- 60-74: Basic negotiation — stated a number but without market justification, didn't explore beyond base salary, revealed current salary too early without leverage, or folded under pressure. Didn't mention competing offers even when relevant.
+- Below 60: No negotiation attempted — accepted first offer without pushback, gave no counter, couldn't articulate salary expectations, or was adversarial/unprofessional.
+NOTE: Do NOT penalize for lack of STAR structure. This is a negotiation, not a behavioral interview. Score based on: anchoring strategy, market awareness, composure, package breadth, trade-off thinking, competing offer leverage, closing skill, and professional tone.`;
     } else if (isCampusPlacement) {
       // Campus placement ALWAYS uses a fresher-appropriate rubric regardless of difficulty
       scoringRubric = `Scoring rubric (CAMPUS PLACEMENT — calibrate for freshers/entry-level with 0-2 years experience):
