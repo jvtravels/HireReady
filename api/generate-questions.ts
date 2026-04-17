@@ -366,7 +366,14 @@ ${isSalaryType
 
 MANDATORY CONVERSATION ARC — generate questions in this EXACT sequence:
 1. INTRO: Welcome the candidate, set context (rounds completed, team impressed)
-2. INITIAL OFFER: Present a specific CTC with breakdown (base, variable, benefits). Ask how it sounds. Use exact ₹ amounts from the salary data above.
+2. INITIAL OFFER: Present a specific CTC offer. Use exact ₹ amounts from the salary data above. IMPORTANT: Vary the offer structure — do NOT always use "base + performance bonus + benefits". Pick ONE of these structures randomly:
+   - Structure A (Component Split): "₹X LPA total CTC — ₹Y base, ₹Z variable, plus family health insurance and gratuity."
+   - Structure B (Headline + Perks): "₹X LPA CTC with 15 days joining bonus, relocation support, and our standard benefits package. Want me to break it down?"
+   - Structure C (Range Anchor): "Based on our band for this level, we're looking at ₹X to ₹Y LPA depending on the final structure. I was thinking ₹Z as a starting point."
+   - Structure D (Total Comp Story): "The cash component is ₹X LPA. On top of that, there's ₹Y in ESOPs vesting over 4 years, plus a ₹Z joining bonus. Total first-year value is around ₹W."
+   - Structure E (Benchmark Framing): "For this level, our comp band is ₹X–₹Y LPA. We'd like to bring you in at ₹Z — that's above the midpoint. How does that land?"
+   - Structure F (Minimal + Probe): "We'd like to offer ₹X LPA for this role. Before I get into the breakdown, I'd love to hear your thoughts on the number."
+   Each structure creates a different negotiation dynamic. Pick whichever fits the role and company best — just don't always default to "base + bonus + benefits".
 3. PROBE EXPECTATIONS: React to their response. If they shared a number, negotiate around it — compare to your offer, make a counter. If they were vague, ask for their target range. Do NOT ask for current CTC — focus on what they WANT, not what they currently earn.
 4. COUNTER-OFFER: Acknowledge their ask is above the band. Offer a specific counter with a trade (e.g., higher base but lower variable, or joining bonus, or ESOPs). Give them a choice between two options.
 ${questionCount >= 5 ? `5. PACKAGE DISCUSSION: Present the full package (base + bonus + equity + benefits + flexibility). Ask what would make it a clear yes.` : ""}
@@ -380,7 +387,10 @@ RULES:
 - The closing summarizes the deal and sets next steps — no coaching tips
 - Use ₹ and LPA for all amounts
 
-Example good question: "We'd like to offer you ₹18 LPA — ₹14.5 LPA base with 10% performance bonus and standard benefits. How does that align with your expectations?"
+Example good questions (notice variety in structure):
+- "We'd like to offer you ₹18 LPA — that's at the 75th percentile for this level. I can walk you through the split if you'd like. How does the number feel?"
+- "The package is ₹22 LPA CTC. That includes ₹16 LPA fixed, ₹3.5 LPA variable tied to quarterly OKRs, and ₹2.5 LPA in RSUs vesting over 4 years. Plus standard benefits. Thoughts?"
+- "For this role we're looking at ₹15-18 LPA range. Given your profile, I'd like to start at ₹16.5 LPA. What were you expecting?"
 Example bad question: "Tell me about a time you led a cross-functional project." (behavioral, NOT salary negotiation)
 Example bad question: "What salary range are you expecting?" (too generic — should follow from previous turn)`
 : `IMPORTANT closing rules:

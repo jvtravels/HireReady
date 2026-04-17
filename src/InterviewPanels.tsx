@@ -698,38 +698,55 @@ export const DealSummaryCard = memo(function DealSummaryCard({ transcript, negot
   const allText = [...aiTexts, ...userTexts].join(" ");
 
   // Extract salary numbers from conversation
-  const salaryRe = /₹?\s*(\d+(?:\.\d+)?)\s*(?:lpa|lakh|lakhs|l\b)/gi;
+  // Matches: ₹25 LPA, 25 lakhs, 25L, 25l, 25 lakh, ₹25.5 lpa, 12,00,000, 1200000
+  const salaryRe = /₹?\s*(\d+(?:[,.]\d+)*)\s*(?:lpa|lakh|lakhs|l\b|crore|crores|cr\b)/gi;
   const aiNumbers = aiTexts.join(" ").match(salaryRe) || [];
   const userNumbers = userTexts.join(" ").match(salaryRe) || [];
 
   const parseNum = (s: string) => {
-    const m = s.match(/(\d+(?:\.\d+)?)/);
-    return m ? parseFloat(m[1]) : 0;
+    const m = s.match(/(\d+(?:[,.]\d+)*)/);
+    if (!m) return 0;
+    const cleaned = m[1].replace(/,/g, "");
+    const num = parseFloat(cleaned);
+    if (isNaN(num)) return 0;
+    // Convert crores to LPA (1 crore = 100 lakhs)
+    if (/crore|cr\b/i.test(s)) return num * 100;
+    // Large raw numbers — likely annual salary in rupees, convert to LPA
+    if (num >= 100000) return Math.round(num / 100000 * 10) / 10;
+    return num;
   };
 
   const initialOffer = negotiationBand?.initialOffer || (aiNumbers.length > 0 ? parseNum(aiNumbers[0] ?? "") : 0);
 
-  // Final offer: use the MAX number from the last AI message (total CTC > component breakdowns)
+  // Final offer: scan AI messages backwards to find the last one with salary numbers
   // e.g. "₹32 LPA total CTC with ₹25 LPA base, ₹4 LPA variable, ₹3 LPA ESOPs" → 32
-  const lastAiText = aiTexts.length > 0 ? aiTexts[aiTexts.length - 1] : "";
-  const lastAiNumbers = lastAiText.match(salaryRe) || [];
-  const finalOffer = lastAiNumbers.length > 0
-    ? Math.max(...lastAiNumbers.map(parseNum))
-    : (aiNumbers.length > 0 ? Math.max(...aiNumbers.map(parseNum)) : initialOffer);
+  let finalOffer = initialOffer;
+  for (let i = aiTexts.length - 1; i >= 0; i--) {
+    const nums = aiTexts[i].match(salaryRe) || [];
+    if (nums.length > 0) {
+      finalOffer = Math.max(...nums.map(parseNum));
+      break;
+    }
+  }
 
   const candidateAsk = userNumbers.length > 0 ? Math.max(...userNumbers.map(parseNum)) : 0;
 
   const improvement = initialOffer > 0 ? Math.round(((finalOffer - initialOffer) / initialOffer) * 100) : 0;
 
-  // Detect benefits negotiated
+  // Detect benefits negotiated — only count if discussed positively (not rejected/negated)
   const benefits: string[] = [];
-  if (/joining bonus|sign.?on/i.test(allText)) benefits.push("Joining Bonus");
-  if (/esop|equity|stock|rsu/i.test(allText)) benefits.push("Equity/ESOPs");
-  if (/flexible|remote|wfh|hybrid/i.test(allText)) benefits.push("Flexible Work");
-  if (/learning|training|budget|upskill/i.test(allText)) benefits.push("Learning Budget");
-  if (/health|medical|insurance/i.test(allText)) benefits.push("Health Insurance");
-  if (/relocation|relocat/i.test(allText)) benefits.push("Relocation Support");
-  if (/notice.*buyout|early.*joining/i.test(allText)) benefits.push("Notice Buyout");
+  const benefitTest = (pattern: RegExp, negPattern?: RegExp) => {
+    if (!pattern.test(allText)) return false;
+    if (negPattern && negPattern.test(allText)) return false;
+    return true;
+  };
+  if (benefitTest(/joining bonus|sign.?on bonus/i)) benefits.push("Joining Bonus");
+  if (benefitTest(/esop|equity|stock option|rsu/i)) benefits.push("Equity/ESOPs");
+  if (benefitTest(/work from home|remote work|wfh|hybrid work/i, /no (?:remote|wfh|work from home)/i)) benefits.push("Flexible Work");
+  if (benefitTest(/learning (?:budget|allowance)|training budget|upskilling/i)) benefits.push("Learning Budget");
+  if (benefitTest(/health (?:insurance|cover)|medical (?:insurance|cover)/i)) benefits.push("Health Insurance");
+  if (benefitTest(/relocation (?:bonus|support|allowance|package)/i)) benefits.push("Relocation Support");
+  if (benefitTest(/notice.*buyout|early.*joining/i)) benefits.push("Notice Buyout");
 
   // Grade
   const grade = improvement >= 15 ? "A" : improvement >= 10 ? "B+" : improvement >= 5 ? "B" : improvement > 0 ? "C+" : "C";

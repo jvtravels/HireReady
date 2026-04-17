@@ -134,15 +134,17 @@ export default async function handler(req: Request): Promise<Response> {
         "offer-reaction": `PHASE: Reacting to the candidate's response to your initial offer.
 
 YOUR GOAL: Understand where they stand and steer toward specifics.
+- If they ACCEPTED the offer (e.g. "I accept", "sounds good", "deal", "that works"): You MUST first acknowledge their acceptance warmly ("That's great to hear!"), THEN gently coach them by saying something like "Before we finalize, I want to make sure you've seen the full picture — have you thought about [benefits/equity/flexibility/growth path]?" Do NOT ignore their acceptance or pretend they said something else.
 - If they named a number or expectation: acknowledge it, compare to your offer, ask what's driving their number.
 - If they asked about breakdown: provide base/bonus/benefits split, then ask if that changes their view.
 - If they said it's too low: acknowledge their honesty, ask what range would work for them.
-- If they accepted too fast: probe whether they've considered the full picture (benefits, growth, flexibility).
-- If vague/empty: restate your offer clearly and ask for their target range.`,
+- If vague/empty: restate your offer clearly and ask for their target range.
+CRITICAL: Your response MUST directly reference what the candidate actually said. Do NOT hallucinate that they mentioned a range or counter if they simply accepted.`,
 
         "probe-expectations": `PHASE: Probing deeper into the candidate's expectations.
 
 YOUR GOAL: Negotiate around what the candidate already told you. Move FORWARD — do NOT gather more data.
+- If they ACCEPTED the offer: acknowledge warmly ("Wonderful! I'm glad the offer works for you."), then transition to full package details or closing. Do NOT keep negotiating or pretend they didn't accept.
 - If they shared a number/expectation (even just base or total): acknowledge that EXACT number, compare it to your offer, and make a counter or trade. Do NOT ask for current CTC, breakdown, or justification — that sounds interrogative, not collaborative.
 - If they mentioned competing offers: ask what matters most — base, total package, or the role itself.
 - If they deflected: put your full offer on the table with breakdown, then ask what would make it a yes.
@@ -152,6 +154,7 @@ IMPORTANT: Once the candidate states ANY salary expectation, you MUST negotiate 
         "counter-offer": `PHASE: Making a counter-offer based on everything you've heard.
 
 YOUR GOAL: Trade, don't just concede. Use non-salary levers.
+- If they ACCEPTED: acknowledge warmly, then present the full package breakdown and move toward closing.
 - If they want more base: offer to adjust variable/bonus components, or add a joining bonus — ask which they prefer.
 - If they focus only on salary: expand to total package (benefits, learning budget, flexibility, ESOPs).
 - If they seem reasonable: stretch to a specific CTC number and add one extra lever.
@@ -223,19 +226,50 @@ YOUR GOAL: Summarize the deal and move to next steps.
         ? `\n${INDUSTRY_PACKAGE_CONTEXT[industry.toLowerCase()]}`
         : "";
 
-      depthInstructions = `You are a HIRING MANAGER in a salary negotiation. You MUST stay in character. ALWAYS set needsFollowUp to true.
+      // Detect candidate intent from the answer to make it prominent in the prompt
+      const acceptWords = /\b(i accept|accept|sounds good|that works|deal|i.?m happy|fine with me|yes|agreed|okay|ok|sure)\b/i;
+      const rejectWords = /\b(no|nope|not acceptable|too low|reject|decline|not enough|can.?t accept|walk away|not interested|absolutely not)\b/i;
+      const candidateAccepted = acceptWords.test(answer) && !rejectWords.test(answer);
+      const candidateRejected = rejectWords.test(answer) && !acceptWords.test(answer);
 
-##ABSOLUTE RULE — READ THIS FIRST:
-NEVER ask for information the candidate has ALREADY provided OR that you don't need. If they stated a salary expectation, CTC, counter-offer, or any number — you ALREADY KNOW IT. Acknowledge it by repeating their exact number, then move the negotiation FORWARD. Do NOT ask for "current CTC", "expected salary", "your number", or any salary data if the candidate has ALREADY given you a number to work with. Use that number to negotiate — make a counter-offer, trade with benefits, or push back. Asking for data you already have sounds robotic and breaks immersion.
+      // Build intent banner — placed at the VERY TOP of the prompt so the LLM can't miss it
+      let intentBanner = "";
+      if (candidateAccepted) {
+        intentBanner = `
+⚠️⚠️⚠️ THE CANDIDATE ACCEPTED THE OFFER. THEY SAID: "${sanitizeForLLM(answer, 200)}" ⚠️⚠️⚠️
+YOU MUST acknowledge their acceptance FIRST ("That's great!", "Wonderful!"). Then either:
+- Walk them through the full package details before finalizing, OR
+- Move directly to closing (summarize package, mention offer letter, set timeline).
+DO NOT counter-offer, negotiate, or act as if they rejected. They said YES.
+`;
+      } else if (candidateRejected) {
+        intentBanner = `
+⚠️⚠️⚠️ THE CANDIDATE REJECTED/PUSHED BACK. THEY SAID: "${sanitizeForLLM(answer, 200)}" ⚠️⚠️⚠️
+YOU MUST acknowledge their pushback FIRST ("I understand your concern", "I hear you"). Then:
+- Ask what would make it work for them, OR
+- Make a better counter-offer with specific numbers.
+DO NOT ignore their rejection. DO NOT close the deal as if they agreed. They said NO.
+`;
+      } else {
+        intentBanner = `
+THE CANDIDATE SAID: "${sanitizeForLLM(answer, 200)}"
+Your response MUST directly address what they said above. Start by acknowledging their words.
+`;
+      }
+
+      depthInstructions = `You are a HIRING MANAGER in a salary negotiation. You MUST stay in character. ALWAYS set needsFollowUp to true.
+${intentBanner}
 ${factsCtx}${offerCtx}${bandCtx}${styleCtx}${industryCtx}
 
 ${phaseInstructions[salaryPhase] || phaseInstructions["offer-reaction"]}
 
 RULES:
+- #1 RULE: Your response MUST match the candidate's intent. Re-read their answer above. If they accepted → acknowledge and close. If they rejected → acknowledge and counter. If they asked a question → answer it. NEVER respond as if they said something different.
 - Start by acknowledging what the candidate JUST said — quote their number or key point.
 - Then advance the negotiation: counter, probe motivation, expand to benefits, or close.
+- NEVER ask for info the candidate already provided (salary expectation, CTC, counter-offer). Use what you know.
 - Use EXACT numbers from the initial offer and candidate facts above. Do NOT invent figures.
-- MONOTONIC OFFERS: Your offers can ONLY go UP or stay the same as the negotiation progresses. You MUST NEVER offer LESS than what you offered in any previous turn. If you made an initial offer of ₹X, every subsequent offer must be >= ₹X. Check the conversation history.
+- MONOTONIC OFFERS: Your offers can ONLY go UP. Never offer less than a previous turn. Check conversation history.
 - If you have a negotiation band, NEVER exceed maxStretch without saying you need approval.
 - Sound like a real Indian hiring manager — professional, warm, direct. 2-3 sentences max.
 - Use ₹ and LPA. Indian context.
