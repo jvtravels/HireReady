@@ -720,11 +720,13 @@ export const DealSummaryCard = memo(function DealSummaryCard({ transcript, negot
 
   // Final offer: scan AI messages backwards to find the last one with salary numbers
   // e.g. "₹32 LPA total CTC with ₹25 LPA base, ₹4 LPA variable, ₹3 LPA ESOPs" → 32
+  // Floor: final offer should never be below the initial offer (hiring manager can't go lower)
   let finalOffer = initialOffer;
   for (let i = aiTexts.length - 1; i >= 0; i--) {
     const nums = aiTexts[i].match(salaryRe) || [];
     if (nums.length > 0) {
-      finalOffer = Math.max(...nums.map(parseNum));
+      const maxInMessage = Math.max(...nums.map(parseNum));
+      finalOffer = Math.max(maxInMessage, initialOffer);
       break;
     }
   }
