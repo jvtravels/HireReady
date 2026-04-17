@@ -997,6 +997,34 @@ export function useInterviewEngine() {
             ]);
           }
         } else if (!interviewEndedRef.current) {
+          // Follow-up timed out or returned needsFollowUp=false
+          // For salary-neg: if user accepted/rejected, replace next question with a canned intent-aware response
+          if (isSalaryNegConversation) {
+            const lastAnswer = lastAnswerTextRef.current;
+            const userAccepted = /\b(i accept|accept|sounds good|that works|deal|i.?m happy|fine with me|yes.*offer|agreed)\b/i.test(lastAnswer)
+              && !/\b(no|nope|not|reject|decline|can.?t)\b/i.test(lastAnswer);
+            const userRejected = /\b(no|nope|not acceptable|too low|reject|decline|not enough|can.?t accept|walk away)\b/i.test(lastAnswer)
+              && !/\b(i accept|sounds good|deal)\b/i.test(lastAnswer);
+            if (userAccepted || userRejected) {
+              const fallbackText = userAccepted
+                ? "That's wonderful to hear! I'm glad the offer works for you. Before we finalize, let me walk you through the complete package — the benefits, growth path, and everything else that comes with this role. I want to make sure you have the full picture."
+                : "I understand your concern, and I appreciate your honesty. Let me see what flexibility I have — I want to make sure we find something that works for both of us. What would need to change for this to feel right?";
+              const fallbackWords = fallbackText.split(/\s+/).length;
+              const fallbackMs = Math.max(3000, Math.round((fallbackWords / 150) * 60 * 1000) + 1500);
+              const fallbackStep: InterviewStep = {
+                type: "question", aiText: fallbackText,
+                thinkingDuration: 300, speakingDuration: fallbackMs, waitForUser: true,
+                scoreNote: userAccepted ? "Candidate accepted — exploring full package" : "Candidate rejected — exploring alternatives",
+              };
+              setInterviewScript(prev => {
+                const nextIdx = prev.findIndex((s, i) => i > currentStep && (s.type === "question" || s.type === "closing"));
+                if (nextIdx > currentStep) {
+                  return [...prev.slice(0, nextIdx), fallbackStep, ...prev.slice(nextIdx + 1)];
+                }
+                return prev;
+              });
+            }
+          }
           // Quality-aware pause: longer pause after strong answers (interviewer absorbing), shorter after weak
           const quality = lastAnswerQualityRef.current;
           const pauseRange = quality === "strong" ? [1200, 2000] : quality === "decent" ? [800, 1400] : [500, 900];
@@ -1005,6 +1033,33 @@ export function useInterviewEngine() {
         }
       }).catch(() => {
         if (!isStale() && !interviewEndedRef.current) {
+          // Same intent-aware fallback for catch path
+          if (isSalaryNegConversation) {
+            const lastAnswer = lastAnswerTextRef.current;
+            const userAccepted = /\b(i accept|accept|sounds good|that works|deal|i.?m happy|fine with me|yes.*offer|agreed)\b/i.test(lastAnswer)
+              && !/\b(no|nope|not|reject|decline|can.?t)\b/i.test(lastAnswer);
+            const userRejected = /\b(no|nope|not acceptable|too low|reject|decline|not enough|can.?t accept|walk away)\b/i.test(lastAnswer)
+              && !/\b(i accept|sounds good|deal)\b/i.test(lastAnswer);
+            if (userAccepted || userRejected) {
+              const fallbackText = userAccepted
+                ? "That's wonderful to hear! I'm glad the offer works for you. Before we finalize, let me walk you through the complete package — the benefits, growth path, and everything else that comes with this role. I want to make sure you have the full picture."
+                : "I understand your concern, and I appreciate your honesty. Let me see what flexibility I have — I want to make sure we find something that works for both of us. What would need to change for this to feel right?";
+              const fallbackWords = fallbackText.split(/\s+/).length;
+              const fallbackMs = Math.max(3000, Math.round((fallbackWords / 150) * 60 * 1000) + 1500);
+              const fallbackStep: InterviewStep = {
+                type: "question", aiText: fallbackText,
+                thinkingDuration: 300, speakingDuration: fallbackMs, waitForUser: true,
+                scoreNote: userAccepted ? "Candidate accepted — exploring full package" : "Candidate rejected — exploring alternatives",
+              };
+              setInterviewScript(prev => {
+                const nextIdx = prev.findIndex((s, i) => i > currentStep && (s.type === "question" || s.type === "closing"));
+                if (nextIdx > currentStep) {
+                  return [...prev.slice(0, nextIdx), fallbackStep, ...prev.slice(nextIdx + 1)];
+                }
+                return prev;
+              });
+            }
+          }
           const microDelay = shouldUseThinkingPhrase ? randomDelay(800, 1500) : step.thinkingDuration;
           setTimeout(() => { if (!isStale() && !interviewEndedRef.current) startWithThinkingPhrase(); }, microDelay);
         }
