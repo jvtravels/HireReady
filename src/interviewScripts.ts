@@ -257,7 +257,7 @@ export function getMiniScript(user: User | null, company?: string, interviewType
       : isPanel
       ? "Thank you for speaking with all of us today. We've covered some great ground. Any final thoughts before we calculate your score?"
       : "Great answers! That wraps up your quick practice round. Any final thoughts before I calculate your score?",
-      thinkingDuration: 1000, speakingDuration: 4000, waitForUser: true, ...(isPanel ? { persona: panelPersonas[4] } : {}) },
+      thinkingDuration: 1000, speakingDuration: 4000, waitForUser: isSalaryNeg ? false : true, ...(isPanel ? { persona: panelPersonas[4] } : {}) },
   ];
 }
 

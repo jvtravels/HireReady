@@ -117,7 +117,7 @@ export const InterviewHeader = memo(function InterviewHeader({ displayCompany, d
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
             <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: isCurrentFollowUp ? c.gilt : c.ivory }}>
               {isSalaryNegotiation
-                ? `${getNegPhaseLabel(currentQuestionNum)} · Step ${currentQuestionNum} of ${baseQuestionCount || totalQuestions}`
+                ? `${isCurrentFollowUp ? "Negotiating" : getNegPhaseLabel(currentQuestionNum)} · Step ${Math.min(currentQuestionNum, baseQuestionCount || totalQuestions)} of ${baseQuestionCount || totalQuestions}`
                 : isCurrentFollowUp
                 ? `Follow-up · Question ${Math.min(currentQuestionNum, baseQuestionCount || totalQuestions)} of ${baseQuestionCount || totalQuestions}`
                 : `Question ${currentQuestionNum} of ${baseQuestionCount || totalQuestions}`}

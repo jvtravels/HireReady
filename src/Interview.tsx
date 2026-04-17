@@ -47,6 +47,11 @@ export default function Interview() {
   // Coaching card state (salary negotiation only)
   const [showCoachingCard, setShowCoachingCard] = useState(isSalaryNegotiation && currentStep === 0);
 
+  // Auto-dismiss coaching card when user advances past intro
+  useEffect(() => {
+    if (currentStep > 0) setShowCoachingCard(false);
+  }, [currentStep]);
+
   // Stop video recording when interview ends
   useEffect(() => {
     if (engine.phase === "done" && video.isRecording) {
