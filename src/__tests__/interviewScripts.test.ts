@@ -27,10 +27,12 @@ describe("interviewScripts", () => {
       }
     });
 
-    it.each(Object.keys(scriptsByType))("%s closing step waits for user", (type) => {
+    it.each(Object.keys(scriptsByType))("%s closing step has correct waitForUser", (type) => {
       const script = scriptsByType[type];
       const closing = script.find(s => s.type === "closing");
-      expect(closing?.waitForUser).toBe(true);
+      // Salary-negotiation closing auto-advances (no user response needed for a summary statement)
+      const expected = type === "salary-negotiation" ? false : true;
+      expect(closing?.waitForUser).toBe(expected);
     });
 
     it.each(Object.keys(scriptsByType))("%s has 3–5 questions", (type) => {

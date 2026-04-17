@@ -227,13 +227,21 @@ YOUR GOAL: Summarize the deal and move to next steps.
         : "";
 
       // Detect candidate intent from the answer to make it prominent in the prompt
-      // Tighter patterns to avoid false positives: "okay but I want more" shouldn't count as acceptance
-      const negationWords = /\b(no|not|don.?t|can.?t|won.?t|wouldn.?t|never|reject|decline|but)\b/i;
+      // Position-aware: "but I accept" should count as acceptance, "I accept but want more equity" should not
       const acceptWords = /\b(i accept|i.?ll accept|accept the offer|sounds good|that works for me|it.?s a deal|i.?m happy with|fine with me|i agree|agreed|let.?s go ahead)\b/i;
       const rejectWords = /\b(not acceptable|too low|can.?t accept|absolutely not|not enough|walk away|not interested|i reject|no deal|way too low|that.?s insulting)\b/i;
+      const hedgeWords = /\b(but|however|only if|unless|provided|on condition|contingent|except|still|yet|though)\b/i;
       // Short affirmative-only answers (< 8 words) like "yes", "okay", "sure" count as acceptance
-      const isShortAffirmative = answer.trim().split(/\s+/).length < 8 && /^(yes|yeah|okay|ok|sure|deal|agreed|accept|sounds good|that works|fine)\b/i.test(answer.trim());
-      const candidateAccepted = (acceptWords.test(answer) || isShortAffirmative) && !negationWords.test(answer);
+      // BUT only if there's no hedge word anywhere in the answer
+      const isShortAffirmative = answer.trim().split(/\s+/).length < 8
+        && /^(yes|yeah|okay|ok|sure|deal|agreed|accept|sounds good|that works|fine)\b/i.test(answer.trim())
+        && !hedgeWords.test(answer);
+      // Position-aware intent: acceptance is valid only if no hedge/qualifier appears AFTER the acceptance phrase
+      const acceptIdx = answer.search(acceptWords);
+      const hedgeIdx = answer.search(hedgeWords);
+      const hasAcceptFirst = acceptIdx >= 0 && (hedgeIdx < 0 || hedgeIdx < acceptIdx); // "but I accept" → accept wins
+      const hasHedgeAfterAccept = acceptIdx >= 0 && hedgeIdx > acceptIdx; // "I accept but want more" → hedge wins
+      const candidateAccepted = (hasAcceptFirst || isShortAffirmative) && !hasHedgeAfterAccept;
       const candidateRejected = rejectWords.test(answer) && !acceptWords.test(answer);
 
       // Build intent banner — placed at the VERY TOP of the prompt so the LLM can't miss it
@@ -371,6 +379,26 @@ Respond JSON only:
     // Sanitize LLM response fields
     if (typeof parsed.followUpText !== "string") parsed.followUpText = "";
     if (typeof parsed.needsFollowUp !== "boolean") parsed.needsFollowUp = false;
+
+    // Salary hallucination guard: clamp any salary numbers in LLM response to negotiation band limits
+    if (isSalaryNeg && negotiationBand && parsed.followUpText) {
+      const offerNumRe = /₹\s*(\d+(?:\.\d+)?)\s*(?:LPA|lpa|lakh|lakhs)/g;
+      let match: RegExpExecArray | null;
+      let clamped = parsed.followUpText;
+      while ((match = offerNumRe.exec(parsed.followUpText)) !== null) {
+        const num = parseFloat(match[1]);
+        if (num > negotiationBand.maxStretch * 1.05) {
+          // LLM hallucinated above max stretch — clamp to maxStretch
+          console.warn(`[follow-up] LLM offered ₹${num} LPA, above maxStretch ₹${negotiationBand.maxStretch} — clamping`);
+          clamped = clamped.replace(match[0], `₹${negotiationBand.maxStretch} LPA`);
+        } else if (num < negotiationBand.walkAway) {
+          // LLM offered below walk-away — clamp to initial offer
+          console.warn(`[follow-up] LLM offered ₹${num} LPA, below walkAway ₹${negotiationBand.walkAway} — clamping`);
+          clamped = clamped.replace(match[0], `₹${negotiationBand.initialOffer} LPA`);
+        }
+      }
+      parsed.followUpText = clamped;
+    }
 
     // Salary-negotiation: continue the conversation, but allow early close if candidate accepted
     // and we're past the initial offer phase (don't force 5 more turns after "I accept")

@@ -1,10 +1,10 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { c, font } from "./tokens";
 import {
   StatusToasts, InterviewHeader, AvatarStage, PanelAvatarStage, QuestionCard,
   UserAnswerArea, CompletionCard, MicroFeedbackPanel,
   ControlsBar, TranscriptPanel, EndModal, EvaluatingOverlay,
-  DealSummaryCard,
+  DealSummaryCard, NegotiationCoachingCard,
 } from "./InterviewPanels";
 import { useInterviewEngine } from "./useInterviewEngine";
 import { useVideoRecorder } from "./useVideoRecorder";
@@ -32,7 +32,7 @@ export default function Interview() {
     isPanelInterview, panelMembers, activePersona,
     ttsDurationMs, speechEnded,
     interviewScript, saveWarning, liveMetrics,
-    isSalaryNegotiation, negotiationBand,
+    isSalaryNegotiation, negotiationBand, negotiationStyle,
 
     setCurrentTranscript, setSpeechUnavailable, setIsMuted,
     setShowTranscript, setShowEndModal, setAiVoiceEnabled,
@@ -45,6 +45,7 @@ export default function Interview() {
   } = engine;
 
   // Coaching card state (salary negotiation only)
+  const [showCoachingCard, setShowCoachingCard] = useState(isSalaryNegotiation && currentStep === 0);
 
   // Stop video recording when interview ends
   useEffect(() => {
@@ -89,6 +90,7 @@ export default function Interview() {
         currentQuestionNum={currentQuestionNum} totalQuestions={totalQuestions}
         baseQuestionCount={baseQuestionCount} isCurrentFollowUp={isCurrentFollowUp}
         saveWarning={saveWarning} onRetry={retryQuestions}
+        isSalaryNegotiation={isSalaryNegotiation}
       />
 
       {/* ─── Center Stage ─── */}
@@ -129,6 +131,13 @@ export default function Interview() {
 
         <div style={{ width: "100%", maxWidth: 560, display: "flex", flexDirection: "column", alignItems: "center", gap: 20 }}>
 
+          {showCoachingCard && isSalaryNegotiation && (
+            <NegotiationCoachingCard
+              onDismiss={() => setShowCoachingCard(false)}
+              negotiationStyle={negotiationStyle}
+            />
+          )}
+
           {isPanelInterview && panelMembers ? (
             <PanelAvatarStage phase={phase} panelMembers={panelMembers} activePersona={activePersona} isMuted={isMuted} speechUnavailable={speechUnavailable} skipSpeaking={skipSpeaking} />
           ) : (
@@ -158,6 +167,7 @@ export default function Interview() {
                 <DealSummaryCard
                   transcript={transcript}
                   negotiationBand={negotiationBand}
+                  negotiationStyle={negotiationStyle}
                   onReplay={(style) => {
                     // Replay the negotiation with a different hiring manager style
                     const params = new URLSearchParams(window.location.search);

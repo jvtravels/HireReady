@@ -21,11 +21,16 @@ vi.mock("../supabase", () => ({
 // Mock TTS
 vi.mock("../tts", () => ({
   speak: vi.fn(() => Promise.resolve({ cancel: vi.fn() })),
+  speakAs: vi.fn(() => Promise.resolve({ cancel: vi.fn() })),
   prefetchTTS: vi.fn(() => Promise.resolve()),
+  cleanupTTS: vi.fn(),
   getCachedVoices: vi.fn(() => []),
   fetchCartesiaVoices: vi.fn(() => Promise.resolve([])),
   loadTTSSettings: () => ({ provider: "browser", voiceId: "", voiceName: "" }),
   saveTTSSettings: vi.fn(),
+  unlockAudio: vi.fn(),
+  retryUnlockAudio: vi.fn(),
+  isAutoplayBlocked: vi.fn(() => false),
 }));
 
 // Mock fetch (for LLM endpoints)

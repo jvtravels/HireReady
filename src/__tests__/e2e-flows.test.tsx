@@ -43,11 +43,16 @@ vi.mock("../supabase", () => ({
 
 vi.mock("../tts", () => ({
   speak: vi.fn(() => Promise.resolve({ cancel: vi.fn() })),
+  speakAs: vi.fn(() => Promise.resolve({ cancel: vi.fn() })),
   prefetchTTS: vi.fn(() => Promise.resolve()),
+  cleanupTTS: vi.fn(),
   getCachedVoices: vi.fn(() => []),
   fetchCartesiaVoices: vi.fn(() => Promise.resolve([])),
   loadTTSSettings: () => ({ provider: "browser", voiceId: "", voiceName: "" }),
   saveTTSSettings: vi.fn(),
+  unlockAudio: vi.fn(),
+  retryUnlockAudio: vi.fn(),
+  isAutoplayBlocked: vi.fn(() => false),
   GOOGLE_VOICES: [
     { id: "en-US-Neural2-D", name: "James", desc: "Clear, neutral male", gender: "male" },
   ],

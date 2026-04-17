@@ -271,12 +271,16 @@ export function useInterviewEngine() {
   useEffect(() => { interviewScriptRef.current = interviewScript; }, [interviewScript]);
   const [llmLoading, setLlmLoading] = useState(!draftRef.current && !isMiniMode);
 
-  // Interview state
-  const [currentStep, setCurrentStep] = useState(draftRef.current?.currentStep || 0);
-  const currentStepRef = useRef(0);
-  useEffect(() => {
-    currentStepRef.current = currentStep;
-  }, [currentStep]);
+  // Interview state — ref updated synchronously to avoid race conditions in follow-up callbacks
+  const [currentStep, _setCurrentStep] = useState(draftRef.current?.currentStep || 0);
+  const currentStepRef = useRef(draftRef.current?.currentStep || 0);
+  const setCurrentStep = useCallback((v: number | ((prev: number) => number)) => {
+    _setCurrentStep(prev => {
+      const next = typeof v === "function" ? v(prev) : v;
+      currentStepRef.current = next;
+      return next;
+    });
+  }, []);
 
   // Async IndexedDB fallback — try IDB on refresh or explicit resume (skip on new session)
   useEffect(() => {
@@ -354,8 +358,8 @@ export function useInterviewEngine() {
     Promise.race([llmPromise, timeoutPromise]).then(result => {
       if (llmFetchCancelRef.current) return;
       const questions = result?.questions ?? null;
-      // Store negotiation band for follow-up API calls
-      if (result?.negotiationBand) {
+      // Store negotiation band for follow-up API calls (validate shape to prevent malformed data)
+      if (result?.negotiationBand && typeof result.negotiationBand.initialOffer === "number" && typeof result.negotiationBand.maxStretch === "number") {
         negotiationBandRef.current = result.negotiationBand;
       }
       const step = currentStepRef.current;
@@ -377,10 +381,18 @@ export function useInterviewEngine() {
         setInterviewScript(prev => {
           // Keep everything up to and including the current step from the old script
           const keepPrefix = prev.slice(0, step + 1);
-          // Take future questions from the LLM script (skip intro + already-passed questions)
-          const llmFutureSteps = questions.filter(
-            (q: { type: string }, i: number) => i > step && (q.type === "question" || q.type === "closing"),
-          );
+          // Count how many questions the user has already answered (excluding intro)
+          const answeredCount = prev.slice(0, step + 1).filter((s: { type: string }) => s.type === "question" || s.type === "follow-up").length;
+          // Take remaining LLM questions — skip intro and already-answered count of question steps
+          let skipped = 0;
+          const llmFutureSteps = questions.filter((q: { type: string }) => {
+            if (q.type === "intro") return false;
+            if (q.type === "question" || q.type === "follow-up") {
+              skipped++;
+              return skipped > answeredCount; // Only take questions after the ones already answered
+            }
+            return q.type === "closing"; // Always include closing
+          });
           if (llmFutureSteps.length === 0) return prev; // Nothing useful to merge
           return [...keepPrefix, ...llmFutureSteps];
         });
@@ -640,21 +652,29 @@ export function useInterviewEngine() {
   });
 
   // Feature 3: Silence nudge — if user is silent for 15s during listening, speak a gentle prompt
+  // Tracks actual silence: resets timer each time currentTranscript changes (user is actively speaking)
+  const lastTranscriptChangeRef = useRef(0);
   useEffect(() => {
     if (phase !== "listening" || !aiVoiceEnabled) {
       if (silenceNudgeTimerRef.current) { clearTimeout(silenceNudgeTimerRef.current); silenceNudgeTimerRef.current = null; }
       return;
     }
     silenceNudgeFiredRef.current = false;
+    lastTranscriptChangeRef.current = Date.now();
     const startNudgeTimer = () => {
       if (silenceNudgeTimerRef.current) clearTimeout(silenceNudgeTimerRef.current);
       silenceNudgeTimerRef.current = setTimeout(() => {
         if (silenceNudgeFiredRef.current || interviewEndedRef.current) return;
+        // Only nudge if user has been actually silent (no transcript change) for 15s
+        const silenceDuration = Date.now() - lastTranscriptChangeRef.current;
+        if (silenceDuration < 14_000) {
+          // User spoke recently — restart timer for the remaining silence gap
+          startNudgeTimer();
+          return;
+        }
         silenceNudgeFiredRef.current = true;
         const nudge = pickRandom(SILENCE_NUDGES);
-        // Add nudge to transcript so user sees it
         setTranscript(prev => [...prev, { speaker: "ai", text: `[${nudge}]`, time: formatTime(elapsed) }]);
-        // Speak the nudge — don't block; user can start talking anytime
         speak(nudge, () => {}, () => {}, interviewerGender).catch(() => {});
       }, 15_000);
     };
@@ -667,7 +687,8 @@ export function useInterviewEngine() {
   // Reset silence nudge timer when user starts speaking (transcript changes)
   useEffect(() => {
     if (phase !== "listening" || !aiVoiceEnabled || !currentTranscript) return;
-    // User is speaking — cancel any pending nudge
+    // User is speaking — mark timestamp and cancel pending nudge
+    lastTranscriptChangeRef.current = Date.now();
     if (silenceNudgeTimerRef.current) { clearTimeout(silenceNudgeTimerRef.current); silenceNudgeTimerRef.current = null; }
     silenceNudgeFiredRef.current = true; // Don't nudge once they've started
   }, [currentTranscript, phase, aiVoiceEnabled]);
@@ -696,7 +717,7 @@ export function useInterviewEngine() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, aiVoiceEnabled, currentStep]);
 
-  const step = interviewScript[currentStep] ?? interviewScript[interviewScript.length - 1];
+  const step = interviewScript[currentStep] ?? (interviewScript.length > 0 ? interviewScript[interviewScript.length - 1] : null);
   const rawPersona = step?.persona || (panelMembers ? panelMembers[0].title : "");
   const activePersona = normalizePersona(rawPersona);
   const activeInterviewerName = isPanelInterview && panelMembers
@@ -711,7 +732,8 @@ export function useInterviewEngine() {
   const flowGenerationRef = useRef(0);
   const pendingFollowUpRef = useRef<Promise<{ needsFollowUp: boolean; followUpText: string; followUpType?: string } | null> | null>(null);
   const followUpDepthRef = useRef(0);
-  // (Follow-up cap for salary-negotiation is counted from the script itself inside setInterviewScript)
+  // Atomic follow-up insertion counter — prevents race when two follow-ups resolve simultaneously
+  const followUpInsertCountRef = useRef(0);
   // Dynamic difficulty: track answer quality mid-interview for escalation/de-escalation
   const answerQualityRef = useRef<number[]>([]);
   // Last answer quality for contextual reactions
@@ -951,23 +973,73 @@ export function useInterviewEngine() {
       if (!isSalaryNegConversation) return;
       const lastAnswer = lastAnswerTextRef.current;
       if (!lastAnswer) return;
-      // Tighter patterns: "okay but I want more" shouldn't count as acceptance
-      const negationWords = /\b(no|not|don.?t|can.?t|won.?t|wouldn.?t|never|reject|decline|but)\b/i;
-      const isShortAffirmative = lastAnswer.trim().split(/\s+/).length < 8 && /^(yes|yeah|okay|ok|sure|deal|agreed|accept|sounds good|that works|fine)\b/i.test(lastAnswer.trim());
-      const userAccepted = (/\b(i accept|i.?ll accept|accept the offer|sounds good|that works for me|it.?s a deal|i.?m happy with|fine with me|i agree|agreed|let.?s go ahead)\b/i.test(lastAnswer) || isShortAffirmative)
-        && !negationWords.test(lastAnswer);
-      const userRejected = /\b(not acceptable|too low|can.?t accept|absolutely not|not enough|walk away|not interested|i reject|no deal|way too low)\b/i.test(lastAnswer)
+      // Position-aware intent: "but I accept" → accept wins, "I accept but want more" → hedge wins
+      const acceptPat = /\b(i accept|i.?ll accept|accept the offer|sounds good|that works for me|it.?s a deal|i.?m happy with|fine with me|i agree|agreed|let.?s go ahead)\b/i;
+      const hedgePat = /\b(but|however|only if|unless|provided|on condition|contingent|except|still|yet|though)\b/i;
+      const walkAwayPat = /\b(walk away|walking away|i.?m out|not interested|i.?ll pass|no deal|withdraw|decline the offer|i decline|pull out|not worth)\b/i;
+      const isShortAffirmative = lastAnswer.trim().split(/\s+/).length < 8
+        && /^(yes|yeah|okay|ok|sure|deal|agreed|accept|sounds good|that works|fine)\b/i.test(lastAnswer.trim())
+        && !hedgePat.test(lastAnswer);
+      const acceptIdx = lastAnswer.search(acceptPat);
+      const hedgeIdx = lastAnswer.search(hedgePat);
+      const hasAcceptFirst = acceptIdx >= 0 && (hedgeIdx < 0 || hedgeIdx < acceptIdx);
+      const hasHedgeAfterAccept = acceptIdx >= 0 && hedgeIdx > acceptIdx;
+      const userAccepted = (hasAcceptFirst || isShortAffirmative) && !hasHedgeAfterAccept;
+      const userWalkAway = walkAwayPat.test(lastAnswer) && !acceptPat.test(lastAnswer);
+      const userRejected = /\b(not acceptable|too low|can.?t accept|absolutely not|not enough|way too low)\b/i.test(lastAnswer)
         && !/\b(i accept|sounds good|deal)\b/i.test(lastAnswer);
-      if (!userAccepted && !userRejected) return;
-      const fallbackText = userAccepted
-        ? "That's wonderful to hear! I'm glad the offer works for you. Before we finalize, let me walk you through the complete package — the benefits, growth path, and everything else that comes with this role. I want to make sure you have the full picture."
-        : "I understand your concern, and I appreciate your honesty. Let me see what flexibility I have — I want to make sure we find something that works for both of us. What would need to change for this to feel right?";
+      if (!userAccepted && !userRejected && !userWalkAway) return;
+
+      // Reference actual ₹ numbers from negotiationBand when available
+      const band = negotiationBandRef.current;
+      const offerStr = band ? `₹${band.initialOffer} LPA` : "the offer";
+      const stretchStr = band ? `₹${band.maxStretch} LPA` : "the top of our band";
+
+      let fallbackText: string;
+      let scoreNote: string;
+      let waitForUser = true;
+      if (userWalkAway) {
+        // Distinct walk-away: hiring manager tries to retain
+        fallbackText = band
+          ? `I understand, and I respect that. But before you make a final decision — I genuinely believe you'd be a great fit here. Let me go back to my leadership. I may be able to push this closer to ${stretchStr}, which is the absolute ceiling for this band. Would that change things?`
+          : "I understand, and I respect that. But before you make a final decision — I genuinely believe you'd be a great fit here. Let me go back to my leadership and see if there's any room to move. Would you be open to hearing a revised number before walking away?";
+        scoreNote = "Candidate walked away — evaluate: did they walk away too early? Did they leave room for counter? Did they stay professional?";
+      } else if (userAccepted) {
+        fallbackText = band
+          ? `That's wonderful to hear! I'm glad ${offerStr} works for you. Before we finalize, let me walk you through the complete package — the benefits, growth path, and everything that comes with this role. I want to make sure you have the full picture.`
+          : "That's wonderful to hear! I'm glad the offer works for you. Before we finalize, let me walk you through the complete package — the benefits, growth path, and everything else that comes with this role. I want to make sure you have the full picture.";
+        scoreNote = "Candidate accepted — exploring full package";
+        // Early close: if we're past Q2 (step >= 3), skip remaining questions and go to closing
+        if (currentStepRef.current >= 3) {
+          const closingText = band
+            ? `Great, so we're agreed on ${offerStr} plus the benefits we discussed. I'll have HR send you the formal offer letter by tomorrow. Take a day to review and let us know. Welcome aboard!`
+            : "Great, so we're agreed on the package we discussed. I'll have HR send you the formal offer letter by tomorrow. Take a day to review and let us know. Welcome aboard!";
+          const closingWords = closingText.split(/\s+/).length;
+          const closingMs = Math.max(3000, Math.round((closingWords / 150) * 60 * 1000) + 1500);
+          const closingStep: InterviewStep = {
+            type: "closing", aiText: closingText,
+            thinkingDuration: 300, speakingDuration: closingMs, waitForUser: false,
+            scoreNote: "Early close — candidate accepted. Evaluate overall negotiation strategy.",
+          };
+          setInterviewScript(prev => {
+            // Replace everything after current step with the closing
+            return [...prev.slice(0, currentStep + 1), closingStep];
+          });
+          return;
+        }
+      } else {
+        fallbackText = band
+          ? `I understand your concern — ${offerStr} may not be where you need it. Let me see what flexibility I have. I might be able to stretch toward ${stretchStr} with some creative structuring. What would need to change for this to feel right?`
+          : "I understand your concern, and I appreciate your honesty. Let me see what flexibility I have — I want to make sure we find something that works for both of us. What would need to change for this to feel right?";
+        scoreNote = "Candidate rejected — exploring alternatives";
+      }
+
       const fallbackWords = fallbackText.split(/\s+/).length;
       const fallbackMs = Math.max(3000, Math.round((fallbackWords / 150) * 60 * 1000) + 1500);
       const fallbackStep: InterviewStep = {
         type: "question", aiText: fallbackText,
-        thinkingDuration: 300, speakingDuration: fallbackMs, waitForUser: true,
-        scoreNote: userAccepted ? "Candidate accepted — exploring full package" : "Candidate rejected — exploring alternatives",
+        thinkingDuration: 300, speakingDuration: fallbackMs, waitForUser,
+        scoreNote,
       };
       setInterviewScript(prev => {
         const nextIdx = prev.findIndex((s, i) => i > currentStep && (s.type === "question" || s.type === "closing"));
@@ -980,7 +1052,7 @@ export function useInterviewEngine() {
 
     if (pendingFollowUp) {
       pendingFollowUpRef.current = null;
-      const timeout = new Promise<null>(r => setTimeout(() => r(null), isSalaryNegConversation ? 9000 : 4000));
+      const timeout = new Promise<null>(r => setTimeout(() => r(null), isSalaryNegConversation ? 6000 : 4000));
       Promise.race([pendingFollowUp, timeout]).then(result => {
         if (isStale() || interviewEndedRef.current) return;
         if (result?.needsFollowUp && result.followUpText && currentStepRef.current === currentStep) {
@@ -1011,12 +1083,12 @@ export function useInterviewEngine() {
               }
               // No more questions to replace — check if we can insert a follow-up probe
               // (e.g., last question before closing, or vague answer needs probing)
-              // Cap check inside setInterviewScript to prevent race condition
+              // Atomic cap check using ref counter (prevents race when two follow-ups resolve simultaneously)
               const maxInserts = isMiniMode ? 2 : 3;
-              const alreadyInserted = prev.filter(s => s.type === "follow-up").length;
-              if (alreadyInserted < maxInserts) {
+              if (followUpInsertCountRef.current < maxInserts) {
                 const closingIdx = prev.findIndex((s, i) => i > currentStep && s.type === "closing");
                 if (closingIdx > currentStep) {
+                  followUpInsertCountRef.current++;
                   const insertStep = { ...followUpStep, type: "follow-up" as const };
                   return [...prev.slice(0, closingIdx), insertStep, ...prev.slice(closingIdx)];
                 }
@@ -1087,10 +1159,8 @@ export function useInterviewEngine() {
     // Safety: always release advancing lock after 500ms regardless of code path
     const advancingSafetyTimer = setTimeout(() => { advancingRef.current = false; }, 500);
 
-    try {
-    ttsCancelRef.current?.();
-    recognitionRef.current?.stop();
-    } catch { /* ignore TTS/STT cleanup errors */ }
+    try { ttsCancelRef.current?.(); } catch { /* ignore TTS cleanup errors */ }
+    try { recognitionRef.current?.stop(); } catch { /* ignore STT cleanup errors */ }
 
     const rawTranscript = currentTranscript.trim();
     const answerText = rawTranscript || (answerTimer > 2 ? `[Answer recorded — ${answerTimer}s]` : "");
@@ -1196,8 +1266,9 @@ export function useInterviewEngine() {
       let salaryPhase: string | undefined;
       if (isSalaryNegType) {
         // Map position ratio to phase: first Q → offer-reaction, last Q → closing
-        const ratio = totalQs > 1 ? (currentQuestionIdx - 1) / (totalQs - 1) : 0;
-        const phaseIdx = Math.min(Math.round(ratio * (negotiationPhases.length - 1)), negotiationPhases.length - 1);
+        // Edge case: single question → jump to closing; otherwise use ratio
+        const ratio = totalQs > 1 ? (currentQuestionIdx - 1) / (totalQs - 1) : 1;
+        const phaseIdx = Math.min(Math.floor(ratio * (negotiationPhases.length - 1)), negotiationPhases.length - 1);
         salaryPhase = negotiationPhases[phaseIdx] || "offer-reaction";
       }
 

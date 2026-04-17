@@ -186,13 +186,16 @@ export function extractNegotiationFacts(transcript: TranscriptEntry[]): Negotiat
   }
   const candidateCurrentCTC = ctcNumbers.size > 0 ? `₹${[...ctcNumbers][ctcNumbers.size - 1]} LPA` : null;
 
-  // Extract ALL salary numbers, then pick the highest non-CTC number as the counter
+  // Extract ALL salary numbers in INR context, then pick the highest non-CTC number as the counter
   // (candidate's expectation/ask is typically the highest number they mention, excluding current CTC)
-  const salaryRe = /₹?\s*(\d+(?:\.\d+)?)\s*(?:lpa|lakh|lakhs|l\b)/gi;
+  // Require ₹ prefix OR INR-specific suffix (lpa/lakh) — reject $ amounts to avoid USD/INR confusion
+  const salaryRe = /(?:₹\s*(\d+(?:\.\d+)?)\s*(?:lpa|lakh|lakhs|l\b)?|(\d+(?:\.\d+)?)\s*(?:lpa|lakh|lakhs))/gi;
   const allSalaryMatches: string[] = [];
   let salaryMatch: RegExpExecArray | null;
   while ((salaryMatch = salaryRe.exec(allText)) !== null) {
-    allSalaryMatches.push(salaryMatch[1]);
+    // Group 1: ₹-prefixed number, Group 2: suffix-only number (lpa/lakh without ₹)
+    const num = salaryMatch[1] || salaryMatch[2];
+    if (num) allSalaryMatches.push(num);
   }
   // Filter out numbers that matched as current CTC, then take the MAX as counter
   const counterNumbers = allSalaryMatches.filter(n => !ctcNumbers.has(n));

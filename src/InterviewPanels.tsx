@@ -42,13 +42,22 @@ export const StatusToasts = memo(function StatusToasts({ tabConflict, isOffline,
 
 /* ─── Interview Header (top info bar) ─── */
 
-export const InterviewHeader = memo(function InterviewHeader({ displayCompany, displayRole, displayFocus, llmLoading, currentStep, phase, elapsed, currentQuestionNum, totalQuestions, baseQuestionCount, isCurrentFollowUp, saveWarning, onRetry }: {
+// Negotiation phase labels mapped to question indices (excluding intro at 0)
+const NEG_PHASES = ["Offer", "Expectations", "Counter", "Benefits", "Closing Pressure", "Close"];
+function getNegPhaseLabel(questionNum: number): string {
+  if (questionNum <= 0) return "Intro";
+  const idx = questionNum - 1;
+  return idx < NEG_PHASES.length ? NEG_PHASES[idx] : `Round ${questionNum}`;
+}
+
+export const InterviewHeader = memo(function InterviewHeader({ displayCompany, displayRole, displayFocus, llmLoading, currentStep, phase, elapsed, currentQuestionNum, totalQuestions, baseQuestionCount, isCurrentFollowUp, saveWarning, onRetry, isSalaryNegotiation }: {
   displayCompany: string; displayRole: string; displayFocus: string;
   llmLoading: boolean; currentStep: number;
   phase: string; elapsed: number;
   currentQuestionNum: number; totalQuestions: number;
   baseQuestionCount?: number; isCurrentFollowUp?: boolean;
   saveWarning?: string; onRetry?: () => void;
+  isSalaryNegotiation?: boolean;
 }) {
   return (
     <header className="iv-info-bar" style={{
@@ -107,7 +116,9 @@ export const InterviewHeader = memo(function InterviewHeader({ displayCompany, d
         <div style={{ padding: "0 24px 10px" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
             <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: isCurrentFollowUp ? c.gilt : c.ivory }}>
-              {isCurrentFollowUp
+              {isSalaryNegotiation
+                ? `${getNegPhaseLabel(currentQuestionNum)} · Step ${currentQuestionNum} of ${baseQuestionCount || totalQuestions}`
+                : isCurrentFollowUp
                 ? `Follow-up · Question ${Math.min(currentQuestionNum, baseQuestionCount || totalQuestions)} of ${baseQuestionCount || totalQuestions}`
                 : `Question ${currentQuestionNum} of ${baseQuestionCount || totalQuestions}`}
             </span>
@@ -687,10 +698,11 @@ export const NegotiationCoachingCard = memo(function NegotiationCoachingCard({ o
 
 /* ─── Post-Interview Deal Summary (shown after salary negotiation) ─── */
 
-export const DealSummaryCard = memo(function DealSummaryCard({ transcript, negotiationBand, onReplay }: {
+export const DealSummaryCard = memo(function DealSummaryCard({ transcript, negotiationBand, onReplay, negotiationStyle }: {
   transcript: { speaker: string; text: string; time: string }[];
   negotiationBand?: { initialOffer: number; maxStretch: number; walkAway: number } | null;
   onReplay?: (style: string) => void;
+  negotiationStyle?: string;
 }) {
   // Extract key numbers from the conversation
   const aiTexts = transcript.filter(t => t.speaker === "ai").map(t => t.text);
@@ -698,9 +710,8 @@ export const DealSummaryCard = memo(function DealSummaryCard({ transcript, negot
   const allText = [...aiTexts, ...userTexts].join(" ");
 
   // Extract salary numbers from conversation
-  // Matches: ₹25 LPA, 25 lakhs, 25L, 25l, 25 lakh, ₹25.5 lpa, 12,00,000, 1200000
-  const salaryRe = /₹?\s*(\d+(?:[,.]\d+)*)\s*(?:lpa|lakh|lakhs|l\b|crore|crores|cr\b)/gi;
-  const aiNumbers = aiTexts.join(" ").match(salaryRe) || [];
+  // Matches: ₹25 LPA, 25 lakhs, 25L, 25l, 25 lakh, ₹25.5 lpa, 12,00,000, 1200000, ₹25 per annum
+  const salaryRe = /₹?\s*(\d+(?:[,.]\d+)*)\s*(?:l?pa|lakh|lakhs|[lL]\b|crore|crores|cr\b|per\s*annum)/gi;
   const userNumbers = userTexts.join(" ").match(salaryRe) || [];
 
   const parseNum = (s: string) => {
@@ -711,28 +722,69 @@ export const DealSummaryCard = memo(function DealSummaryCard({ transcript, negot
     if (isNaN(num)) return 0;
     // Convert crores to LPA (1 crore = 100 lakhs)
     if (/crore|cr\b/i.test(s)) return num * 100;
-    // Large raw numbers — likely annual salary in rupees, convert to LPA
+    // If suffix is explicitly lpa/lakh/L, the number IS in lakhs — return as-is
+    if (/l?pa|lakh|lakhs|[lL]\b/i.test(s) && num < 1000) return num;
+    // Large raw numbers (e.g. Indian format 12,50,000 or 1250000) — convert rupees to LPA
     if (num >= 100000) return Math.round(num / 100000 * 10) / 10;
     return num;
   };
 
-  const initialOffer = negotiationBand?.initialOffer || (aiNumbers.length > 0 ? parseNum(aiNumbers[0] ?? "") : 0);
+  // Remove non-offer contexts from AI text before extracting salary numbers:
+  // 1. Clauses where AI quotes the candidate ("you asked", "you mentioned", "your expectation", "you're expecting")
+  // 2. Gap/difference/hike references ("₹34 LPA gap", "₹10 LPA difference", "₹15 LPA hike")
+  // Strip candidate-reference clauses: stop at "and/but/," boundaries to avoid eating the whole sentence
+  const candidateQuoteRe = /(?:(?:you(?:'re)?|your)\s+(?:asked?|mentioned?|wanted?|said|expect\w*|were\s+looking|requested|looking\s+for|targeting|counter\w*)[^.!?,;\-]*?)(?=[.,;!?\-]|\s+(?:and|but|however|we|I|let|our)\b|$)/gi;
+  const gapContextRe = /₹?\s*\d+(?:[,.]\d+)*\s*(?:l?pa|lakh|lakhs|[lL]\b)[^.!?,;]*?(?:gap|difference|hike|increase|raise|jump|more\s+than)/gi;
+  // Strip numbers that appear BEFORE a candidate-reference pattern (e.g. "₹50 LPA that you mentioned")
+  const numBeforeQuoteRe = /₹?\s*\d+(?:[,.]\d+)*\s*(?:l?pa|lakh|lakhs|[lL]\b)\s*(?:that\s+|which\s+)?(?:you(?:'re)?|your)\s+(?:asked?|mentioned?|wanted?|expect\w*|were\s+looking|requested|targeting|said|looking)/gi;
 
-  // Final offer: scan AI messages backwards to find the last one with salary numbers
-  // e.g. "₹32 LPA total CTC with ₹25 LPA base, ₹4 LPA variable, ₹3 LPA ESOPs" → 32
-  // Floor: final offer should never be below the initial offer (hiring manager can't go lower)
-  // Filter: strip clauses where AI quotes the candidate's number ("you asked/mentioned/wanted ₹X")
-  // Use [^.!?,]* to stop at sentence/clause boundaries, not eat the whole sentence
-  const candidateQuoteRe = /(?:you\s+(?:asked|mentioned|wanted|said|expect|were\s+looking|requested)[^.!?,]*)/gi;
+  // Order matters: strip "₹X that you mentioned" FIRST, then "you wanted ₹X", then gap contexts
+  const cleanAiText = (text: string) =>
+    text.replace(numBeforeQuoteRe, "").replace(candidateQuoteRe, "").replace(gapContextRe, "");
+
+  // Extract initial offer: prefer negotiationBand, else find the first AI "offer" context
+  // Look for patterns like "offer of ₹X", "total of ₹X", "we can offer ₹X", "package of ₹X"
+  let extractedInitialOffer = 0;
+  if (!negotiationBand?.initialOffer) {
+    const offerContextRe = /(?:offer(?:ing)?|total|package|ctc|compensation)\s+(?:of\s+|is\s+|at\s+|worth\s+)?₹?\s*(\d+(?:[,.]\d+)*)\s*(?:l?pa|lakh|lakhs|[lL]\b)/gi;
+    for (const aiText of aiTexts) {
+      const cleaned = cleanAiText(aiText);
+      let m: RegExpExecArray | null;
+      offerContextRe.lastIndex = 0;
+      while ((m = offerContextRe.exec(cleaned)) !== null) {
+        const num = parseNum(m[0]);
+        if (num > 0 && extractedInitialOffer === 0) {
+          extractedInitialOffer = num; // Take the FIRST offer-context number from AI
+          break;
+        }
+      }
+      if (extractedInitialOffer > 0) break;
+    }
+    // Fallback: if no offer-context found, take the first clean AI number
+    if (extractedInitialOffer === 0) {
+      for (const aiText of aiTexts) {
+        const cleaned = cleanAiText(aiText);
+        const nums = cleaned.match(salaryRe) || [];
+        if (nums.length > 0) {
+          extractedInitialOffer = parseNum(nums[0] ?? "");
+          break;
+        }
+      }
+    }
+  }
+  const initialOffer = negotiationBand?.initialOffer ?? extractedInitialOffer;
+
+  // Final offer: scan AI messages backwards for the last offer (with non-offer contexts stripped)
+  // Do NOT use an initialOffer floor — if the initial offer extraction was wrong, the floor propagates the error
   let finalOffer = initialOffer;
   let foundFinal = false;
   for (let i = aiTexts.length - 1; i >= 0; i--) {
-    // Remove parts where AI references candidate's numbers before extracting
-    const cleanedText = aiTexts[i].replace(candidateQuoteRe, "");
-    const nums = cleanedText.match(salaryRe) || [];
+    const cleaned = cleanAiText(aiTexts[i]);
+    const nums = cleaned.match(salaryRe) || [];
     if (nums.length > 0) {
       const maxInMessage = Math.max(...nums.map(parseNum));
-      finalOffer = Math.max(maxInMessage, initialOffer);
+      // Only apply initialOffer floor when negotiationBand is available (trustworthy)
+      finalOffer = negotiationBand ? Math.max(maxInMessage, initialOffer) : maxInMessage;
       foundFinal = true;
       break;
     }
@@ -747,6 +799,8 @@ export const DealSummaryCard = memo(function DealSummaryCard({ transcript, negot
       }
     }
   }
+  // Safety: final offer should be at least as high as initial when negotiationBand confirms the initial
+  if (negotiationBand && finalOffer < initialOffer) finalOffer = initialOffer;
 
   const candidateAsk = userNumbers.length > 0 ? Math.max(...userNumbers.map(parseNum)) : 0;
 
@@ -820,6 +874,40 @@ export const DealSummaryCard = memo(function DealSummaryCard({ transcript, negot
             {benefits.map(b => (
               <span key={b} style={{ fontFamily: font.ui, fontSize: 11, color: c.gilt, padding: "3px 8px", borderRadius: 6, background: "rgba(212,179,127,0.08)", border: "1px solid rgba(212,179,127,0.12)" }}>{b}</span>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* Negotiation Insights — band capture, style faced, coaching */}
+      {negotiationBand && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <p style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, margin: 0, textTransform: "uppercase", letterSpacing: "0.05em" }}>Negotiation Insights</p>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            {/* Band capture: how much of the available range did they get? */}
+            {(() => {
+              const bandRange = negotiationBand.maxStretch - negotiationBand.initialOffer;
+              const captured = bandRange > 0 ? Math.round(((finalOffer - negotiationBand.initialOffer) / bandRange) * 100) : 0;
+              const captureColor = captured >= 70 ? c.sage : captured >= 40 ? c.gilt : c.ember;
+              return (
+                <div style={{ flex: 1, minWidth: 100, padding: "8px 10px", borderRadius: 8, background: "rgba(245,242,237,0.03)", border: "1px solid rgba(245,242,237,0.06)" }}>
+                  <p style={{ fontFamily: font.ui, fontSize: 10, color: c.stone, margin: 0, textTransform: "uppercase", letterSpacing: "0.04em" }}>Band Captured</p>
+                  <p style={{ fontFamily: font.ui, fontSize: 16, fontWeight: 700, color: captureColor, margin: "2px 0 0" }}>{Math.max(0, captured)}%</p>
+                  <p style={{ fontFamily: font.ui, fontSize: 10, color: c.stone, margin: "2px 0 0" }}>of ₹{negotiationBand.initialOffer}–₹{negotiationBand.maxStretch} range</p>
+                </div>
+              );
+            })()}
+            {/* Manager style faced */}
+            {negotiationStyle && (
+              <div style={{ flex: 1, minWidth: 100, padding: "8px 10px", borderRadius: 8, background: "rgba(245,242,237,0.03)", border: "1px solid rgba(245,242,237,0.06)" }}>
+                <p style={{ fontFamily: font.ui, fontSize: 10, color: c.stone, margin: 0, textTransform: "uppercase", letterSpacing: "0.04em" }}>Manager Style</p>
+                <p style={{ fontFamily: font.ui, fontSize: 14, fontWeight: 600, color: c.ivory, margin: "2px 0 0" }}>
+                  {negotiationStyle === "aggressive" ? "Tough" : negotiationStyle === "defensive" ? "Evasive" : "Collaborative"}
+                </p>
+                <p style={{ fontFamily: font.ui, fontSize: 10, color: c.stone, margin: "2px 0 0" }}>
+                  {negotiationStyle === "aggressive" ? "Budget-conscious pushback" : negotiationStyle === "defensive" ? "Deflects & delays" : "Open to trade-offs"}
+                </p>
+              </div>
+            )}
           </div>
         </div>
       )}

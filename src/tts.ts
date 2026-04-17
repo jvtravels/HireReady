@@ -224,10 +224,12 @@ function consumePrefetch(text: string, gender?: "male" | "female"): Promise<Blob
   const entry = _prefetchCache.get(cacheKey);
   if (!entry) {
     // Fall back to non-gendered key (e.g. prefetched from SessionSetup without gender)
+    // Only consume (delete) the fallback if no gender was requested — otherwise just read it
+    // so other panel members can still use the non-gendered entry
     const fallback = _prefetchCache.get(text);
     if (!fallback) return undefined;
-    _prefetchCache.delete(text);
-    if (Date.now() - fallback.createdAt >= PREFETCH_TTL) return undefined;
+    if (Date.now() - fallback.createdAt >= PREFETCH_TTL) { _prefetchCache.delete(text); return undefined; }
+    if (!gender) _prefetchCache.delete(text); // Only delete if non-gendered request
     return fallback.promise;
   }
   _prefetchCache.delete(cacheKey);
@@ -334,9 +336,9 @@ async function _speakWithWebSocketInner(
   onDurationKnown?: (ms: number) => void,
 ): Promise<{ cancel: () => void }> {
   let settled = false;
-  const settle = (cb: () => void) => { if (!settled) { settled = true; cb(); } };
-  let audioCtx: AudioContext | null = null;
   let cancelled = false;
+  const settle = (cb: () => void) => { if (!settled && !cancelled) { settled = true; cb(); } };
+  let audioCtx: AudioContext | null = null;
   const closeCtx = () => { try { audioCtx?.close(); } catch { /* expected: AudioContext cleanup errors are non-critical */ } audioCtx = null; };
 
   let nextStartTime = 0;
@@ -518,6 +520,7 @@ async function _speakWithWebSocketInner(
   const capturedCtx = audioCtx;
   return {
     cancel: () => {
+      if (cancelled) return; // Prevent double-cancel race
       cancelled = true;
       settled = true;
       markDone(); // Release utterance queue so next utterance can proceed
@@ -775,24 +778,22 @@ function speakWithBrowser(
       (v.lang === "en-US" && v.localService),
   );
   if (preferred) utter.voice = preferred;
-  utter.onend = onEnd;
+  let fired = false;
+  let speechStarted = false;
+  utter.onstart = () => { speechStarted = true; };
+  utter.onend = () => { if (!fired) { fired = true; clearTimeout(safetyTimer); onEnd(); } };
   utter.onerror = (e) => {
-    console.warn("Browser TTS error:", e);
-    onError();
+    if (!fired) { fired = true; clearTimeout(safetyTimer); console.warn("Browser TTS error:", e); onError(); }
   };
 
-  let fired = false;
+  // Safety timer: only fire if speech never started (some browsers report speaking=false immediately)
   const safetyTimer = setTimeout(() => {
-    if (!fired && window.speechSynthesis.speaking === false) {
+    if (!fired && !speechStarted) {
       fired = true;
-      console.warn("Browser TTS silent failure — no speech detected after 2s");
+      console.warn("Browser TTS silent failure — speech never started after 2s");
       onError();
     }
   }, 2000);
-  const origOnEnd = utter.onend;
-  utter.onend = (ev) => { fired = true; clearTimeout(safetyTimer); origOnEnd?.call(utter, ev); };
-  const origOnErr = utter.onerror;
-  utter.onerror = (ev) => { fired = true; clearTimeout(safetyTimer); origOnErr?.call(utter, ev); };
 
   window.speechSynthesis.speak(utter);
 
@@ -803,6 +804,8 @@ function speakWithBrowser(
 
 /* ─── Cleanup for page unload ─── */
 let _activeCancel: (() => void) | null = null;
+/** Version counter — prevents stale fallback chains from overwriting the current cancel handle */
+let _ttsGeneration = 0;
 
 // Auto-cleanup on page unload to prevent WebSocket/AudioContext leaks
 if (typeof window !== "undefined") {
@@ -841,6 +844,11 @@ export async function speakAs(
     return speak(text, onEnd, onError);
   }
 
+  // Versioned cancel: each new speakAs/speak call gets a generation ID.
+  // Stale fallback chains won't overwrite the current cancel handle.
+  const gen = ++_ttsGeneration;
+  const setCancel = (fn: () => void) => { if (gen === _ttsGeneration) _activeCancel = fn; };
+
   let handle: { cancel: () => void };
 
   const cartesiaFallback = async () => {
@@ -851,11 +859,11 @@ export async function speakAs(
         console.warn("Cartesia REST also failed (speakAs), falling back to browser TTS");
         const browserHandle = speakWithBrowser(text, onEnd, onError);
         handle = browserHandle;
-        _activeCancel = browserHandle.cancel;
+        setCancel(browserHandle.cancel);
       }, gender, onDurationKnown);
-      _activeCancel = handle.cancel;
+      setCancel(handle.cancel);
     }, gender, onDurationKnown);
-    _activeCancel = handle.cancel;
+    setCancel(handle.cancel);
   };
 
   // Azure primary → Cartesia fallback → Browser fallback
@@ -864,7 +872,7 @@ export async function speakAs(
     await cartesiaFallback();
   }, gender, voiceId, onDurationKnown);
 
-  _activeCancel = handle.cancel;
+  setCancel(handle.cancel);
   return handle;
 }
 
@@ -879,6 +887,10 @@ export async function speak(
   const settings = loadTTSSettings();
   let handle: { cancel: () => void };
 
+  // Versioned cancel to prevent stale fallback chains from overwriting current handle
+  const gen = ++_ttsGeneration;
+  const setCancel = (fn: () => void) => { if (gen === _ttsGeneration) _activeCancel = fn; };
+
   // Cartesia fallback chain (before browser TTS)
   const cartesiaFallback = async () => {
     console.warn("Trying Cartesia TTS fallback");
@@ -890,7 +902,7 @@ export async function speak(
         console.warn("Cartesia REST also failed, falling back to browser TTS");
         const browserHandle = speakWithBrowser(text, onEnd, onError);
         handle = browserHandle;
-        _activeCancel = browserHandle.cancel;
+        setCancel(browserHandle.cancel);
       }, undefined, onDurationKnown);
     } else {
       handle = await speakWithWebSocket(text, cartesiaVoice, onEnd, async () => {
@@ -899,12 +911,12 @@ export async function speak(
           console.warn("Cartesia REST also failed, falling back to browser TTS");
           const browserHandle = speakWithBrowser(text, onEnd, onError);
           handle = browserHandle;
-          _activeCancel = browserHandle.cancel;
+          setCancel(browserHandle.cancel);
         }, undefined, onDurationKnown);
-        _activeCancel = handle.cancel;
+        setCancel(handle.cancel);
       }, undefined, onDurationKnown);
     }
-    _activeCancel = handle.cancel;
+    setCancel(handle.cancel);
   };
 
   if (settings.provider === "browser") {
@@ -917,6 +929,6 @@ export async function speak(
     }, gender, undefined, onDurationKnown);
   }
 
-  _activeCancel = handle.cancel;
+  setCancel(handle.cancel);
   return handle;
 }
