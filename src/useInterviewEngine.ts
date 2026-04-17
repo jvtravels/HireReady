@@ -803,6 +803,7 @@ export function useInterviewEngine() {
 
     const startSpeaking = () => {
       if (isStale()) return;
+      clearTimeout(thinkingSafetyTimer); // Clear thinking safety — we're proceeding
       setPhase("speaking");
       setIsRecording(true);
       // Reset TTS-caption sync state for this question
@@ -905,6 +906,14 @@ export function useInterviewEngine() {
       }
     };
 
+    // Thinking-phase safety: if stuck in "thinking" for >12s, force-start speaking
+    const thinkingSafetyTimer = setTimeout(() => {
+      if (!isStale()) {
+        console.warn("[interview] thinking-phase safety timeout — forcing startSpeaking");
+        startSpeaking();
+      }
+    }, 12000);
+
     const pendingFollowUp = pendingFollowUpRef.current;
     const isSalaryNegConversation = interviewType === "salary-negotiation";
     if (pendingFollowUp) {
@@ -987,6 +996,7 @@ export function useInterviewEngine() {
       return () => {
         cancelled = true;
         clearTimeout(thinkTimer);
+        clearTimeout(thinkingSafetyTimer);
         if (safetyTimer) clearTimeout(safetyTimer);
         ttsCancelRef.current?.();
       };
@@ -994,6 +1004,7 @@ export function useInterviewEngine() {
 
     return () => {
       cancelled = true;
+      clearTimeout(thinkingSafetyTimer);
       if (safetyTimer) clearTimeout(safetyTimer);
       ttsCancelRef.current?.();
     };
