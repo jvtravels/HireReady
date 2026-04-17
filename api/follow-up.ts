@@ -65,6 +65,9 @@ export default async function handler(req: Request): Promise<Response> {
         topicsRaised?: string[];
         deflectedNumbers?: boolean;
         askedForTime?: boolean;
+        usedTacticalSilence?: boolean;
+        mentionedBATNA?: boolean;
+        expressedSurprise?: boolean;
       };
       negotiationStyle?: NegotiationStyle;
       negotiationBand?: {
@@ -212,6 +215,9 @@ YOUR GOAL: Summarize the SPECIFIC deal and set concrete next steps. Rebuild warm
         if (negotiationFacts.hasCompetingOffers) factsLines.push("- Candidate mentioned COMPETING OFFERS — you MUST address this: ask what they're offering, what matters beyond the number, and where you can differentiate.");
         if (negotiationFacts.deflectedNumbers) factsLines.push("- Candidate DEFLECTED sharing their numbers — recognize this tactic. Stay warm but firm: you need their input to negotiate.");
         if (negotiationFacts.askedForTime) factsLines.push("- Candidate asked for TIME TO THINK — respect this, but set a 48-hour window with a reason. Ask what's giving them pause.");
+        if (negotiationFacts.usedTacticalSilence) factsLines.push("- Candidate used TACTICAL SILENCE (short/minimal responses) — they may be creating pressure. Don't rush to fill the silence. Acknowledge it calmly.");
+        if (negotiationFacts.mentionedBATNA) factsLines.push("- Candidate mentioned their BATNA/walk-away alternative — take this seriously. Ask what would make them choose you over their alternative.");
+        if (negotiationFacts.expressedSurprise) factsLines.push("- Candidate EXPRESSED SURPRISE at the offer — this may be a flinch tactic. Stay composed, reaffirm value, and ask what they were expecting.");
         if (negotiationFacts.topicsRaised && negotiationFacts.topicsRaised.length > 0) {
           factsLines.push(`- Topics the candidate raised: ${negotiationFacts.topicsRaised.join(", ")} — reference these when suggesting trade-offs.`);
         }
@@ -239,10 +245,11 @@ YOUR GOAL: Summarize the SPECIFIC deal and set concrete next steps. Rebuild warm
       // Position-aware: "but I accept" should count as acceptance, "I accept but want more equity" should not
       const acceptWords = /\b(i accept|i.?ll accept|accept the offer|sounds good|that works for me|it.?s a deal|i.?m happy with|fine with me|i agree|agreed|let.?s go ahead)\b/i;
       const rejectWords = /\b(not acceptable|too low|can.?t accept|absolutely not|not enough|walk away|not interested|i reject|no deal|way too low|that.?s insulting)\b/i;
-      const hedgeWords = /\b(but|however|only if|unless|provided|on condition|contingent|except|still|yet|though)\b/i;
+      const hedgeWords = /\b(but|however|only if|unless|provided|on condition|contingent|except|though)\b/i;
       const deflectWords = /\b(you first|your offer|what.*you.*offer|tell me.*first|don.?t want to share|prefer not|rather not|you tell me)\b/i;
       const thinkWords = /\b(need time|think about|sleep on|let me think|consider|talk to.*(?:family|partner|wife|husband)|get back to you|not ready)\b/i;
       const competingWords = /\b(other offer|competing|another company|counter.?offer|multiple offers|also talking|interviewing at|got an offer)\b/i;
+      const walkAwayWords = /\b(walk away|walking away|i.?m out|not interested|i.?ll pass|no deal|withdraw|decline the offer|i decline|pull out|not worth|won.?t work|isn.?t going to work|move on|take the other|thanks but no|not for me|have to pass)\b/i;
       // Short affirmative-only answers (< 8 words) like "yes", "okay", "sure" count as acceptance
       // BUT only if there's no hedge word anywhere in the answer
       const isShortAffirmative = answer.trim().split(/\s+/).length < 8
@@ -256,26 +263,38 @@ YOUR GOAL: Summarize the SPECIFIC deal and set concrete next steps. Rebuild warm
       const candidateAccepted = (hasAcceptFirst || isShortAffirmative) && !hasHedgeAfterAccept;
       const candidateRejected = rejectWords.test(answer) && !acceptWords.test(answer);
       const candidateDeflected = deflectWords.test(answer);
-      const candidateNeedsTime = thinkWords.test(answer);
-      const candidateMentionedCompeting = competingWords.test(answer);
+      const candidateWalkAway = walkAwayWords.test(answer) && !acceptWords.test(answer);
 
       // Extract candidate's specific number if they mentioned one
       const candidateNumMatch = answer.match(/₹?\s*(\d+(?:\.\d+)?)\s*(?:lpa|lakh|lakhs|l\b)/i);
       const candidateNum = candidateNumMatch ? candidateNumMatch[1] : null;
+      // "consider" co-occurring with a number is a counter, not a time request
+      const candidateNeedsTime = thinkWords.test(answer) && !candidateNumMatch;
+      const candidateMentionedCompeting = competingWords.test(answer);
 
       // Build intent banner — placed at the VERY TOP of the prompt so the LLM can't miss it
       let intentBanner = "";
       if (candidateAccepted) {
         intentBanner = `
-⚠️⚠️⚠️ THE CANDIDATE ACCEPTED THE OFFER. THEY SAID: "${sanitizeForLLM(answer, 200)}" ⚠️⚠️⚠️
+⚠️⚠️⚠️ THE CANDIDATE ACCEPTED THE OFFER. THEY SAID: "${sanitizeForLLM(answer, 350)}" ⚠️⚠️⚠️
 YOU MUST acknowledge their acceptance warmly FIRST. Then either:
 - If they accepted too quickly (within first 2 questions): gently probe — "That's great! But before we lock this in, have you considered [equity/flexibility/growth path]? I want you to feel confident."
 - If later in the negotiation: move to closing — recap the EXACT agreed package with ₹ numbers, mention offer letter timeline, ask about notice period. Rebuild warmth: "I'm really glad we worked this out."
 DO NOT counter-offer or act as if they rejected. They said YES.
 `;
+      } else if (candidateWalkAway) {
+        intentBanner = `
+⚠️⚠️⚠️ THE CANDIDATE IS WALKING AWAY. THEY SAID: "${sanitizeForLLM(answer, 350)}" ⚠️⚠️⚠️
+This is a CRITICAL moment. You MUST attempt retention:
+- First, acknowledge: "I understand, and I respect that."
+- Then, pause and pivot: "But before you make a final decision — I genuinely believe you'd be a great fit here."
+- Offer to escalate: "Let me go back to my leadership. I may be able to push this higher." Give a specific stretch number if available.
+- Create soft urgency: "Can you give me 24 hours before you decide?"
+DO NOT let them walk without an attempt to retain. DO NOT beg or over-promise. Stay professional.
+`;
       } else if (candidateRejected) {
         intentBanner = `
-⚠️⚠️⚠️ THE CANDIDATE REJECTED/PUSHED BACK. THEY SAID: "${sanitizeForLLM(answer, 200)}" ⚠️⚠️⚠️
+⚠️⚠️⚠️ THE CANDIDATE REJECTED/PUSHED BACK. THEY SAID: "${sanitizeForLLM(answer, 350)}" ⚠️⚠️⚠️
 YOU MUST acknowledge their pushback FIRST ("I hear you", "I understand"). Then:
 - Make a SPECIFIC better counter-offer with exact ₹ numbers (not vague "flexibility").
 - If they named a number, mirror it: "You're looking at ₹X — let me see how close I can get."
@@ -284,7 +303,7 @@ DO NOT ignore their rejection. DO NOT close the deal as if they agreed.
 `;
       } else if (candidateNeedsTime) {
         intentBanner = `
-THE CANDIDATE WANTS TIME TO THINK. THEY SAID: "${sanitizeForLLM(answer, 200)}"
+THE CANDIDATE WANTS TIME TO THINK. THEY SAID: "${sanitizeForLLM(answer, 350)}"
 RESPECT their request, but create soft urgency:
 - "Of course — take the time you need. Can we reconnect by [specific day]? I should be transparent: the headcount approval has a window, and I'd hate for timing to be an issue."
 - Ask what's giving them pause: "Can I ask what's on your mind? Sometimes talking it through helps."
@@ -292,7 +311,7 @@ RESPECT their request, but create soft urgency:
 `;
       } else if (candidateDeflected) {
         intentBanner = `
-THE CANDIDATE DEFLECTED. THEY SAID: "${sanitizeForLLM(answer, 200)}"
+THE CANDIDATE DEFLECTED. THEY SAID: "${sanitizeForLLM(answer, 350)}"
 They're trying to avoid committing to a number. Recognize the tactic:
 - "I appreciate the approach, but I've already shared our offer of ₹X. To make this work, I need to understand your side. What range are you targeting?"
 - If they asked "what's your best offer?" — "I've shared our opening number. This is a conversation, not an auction — help me understand what you need and I'll see what I can do."
@@ -300,7 +319,7 @@ They're trying to avoid committing to a number. Recognize the tactic:
 `;
       } else if (candidateMentionedCompeting) {
         intentBanner = `
-THE CANDIDATE MENTIONED COMPETING OFFERS. THEY SAID: "${sanitizeForLLM(answer, 200)}"
+THE CANDIDATE MENTIONED COMPETING OFFERS. THEY SAID: "${sanitizeForLLM(answer, 350)}"
 ENGAGE with this directly:
 - "That's helpful to know. Can you share what they're offering? Not to match blindly, but to understand where we need to be competitive."
 - "What makes you lean toward us vs them? Is it purely the number, or are there other factors?"
@@ -308,7 +327,7 @@ ENGAGE with this directly:
 `;
       } else {
         intentBanner = `
-THE CANDIDATE SAID: "${sanitizeForLLM(answer, 200)}"${candidateNum ? `\nTHEY MENTIONED A SPECIFIC NUMBER: ₹${candidateNum} LPA. You MUST mirror this back — "I heard ₹${candidateNum} from you..." — before responding.` : ""}
+THE CANDIDATE SAID: "${sanitizeForLLM(answer, 350)}"${candidateNum ? `\nTHEY MENTIONED A SPECIFIC NUMBER: ₹${candidateNum} LPA. You MUST mirror this back — "I heard ₹${candidateNum} from you..." — before responding.` : ""}
 Your response MUST directly address what they said above. Start by acknowledging their words.
 `;
       }
@@ -428,12 +447,15 @@ Respond JSON only:
 
     // Salary hallucination guard: clamp any salary numbers in LLM response to negotiation band limits
     if (isSalaryNeg && negotiationBand && parsed.followUpText) {
-      const offerNumRe = /₹\s*(\d+(?:\.\d+)?)\s*(?:LPA|lpa|lakh|lakhs)/g;
+      const offerNumRe = /₹\s*(\d+(?:\.\d+)?)\s*(?:LPA|lpa|lakh|lakhs|Cr|cr|crore)/g;
       let match: RegExpExecArray | null;
       let clamped = parsed.followUpText;
       const approvalRe = /\b(approval|leadership|sign.?off|check with|go back to)\b/i;
       while ((match = offerNumRe.exec(parsed.followUpText)) !== null) {
-        const num = parseFloat(match[1]);
+        const rawNum = parseFloat(match[1]);
+        // Convert Crore to LPA (1 Cr = 100 LPA)
+        const isCrore = /cr|crore/i.test(match[0]);
+        const num = isCrore ? rawNum * 100 : rawNum;
         if (num > negotiationBand.maxStretch * 1.05) {
           // LLM hallucinated well above max stretch — clamp to maxStretch
           // If LLM already included approval language, just fix the number.

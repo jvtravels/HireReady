@@ -326,6 +326,9 @@ export async function fetchFollowUp(params: {
     topicsRaised: string[];
     deflectedNumbers: boolean;
     askedForTime: boolean;
+    usedTacticalSilence: boolean;
+    mentionedBATNA: boolean;
+    expressedSurprise: boolean;
   };
   negotiationStyle?: string;
   negotiationBand?: NegotiationBandData;

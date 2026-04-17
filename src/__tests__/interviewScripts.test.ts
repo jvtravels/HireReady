@@ -30,9 +30,8 @@ describe("interviewScripts", () => {
     it.each(Object.keys(scriptsByType))("%s closing step has correct waitForUser", (type) => {
       const script = scriptsByType[type];
       const closing = script.find(s => s.type === "closing");
-      // Salary-negotiation closing auto-advances (no user response needed for a summary statement)
-      const expected = type === "salary-negotiation" ? false : true;
-      expect(closing?.waitForUser).toBe(expected);
+      // All interview types including salary-negotiation allow user to respond at closing
+      expect(closing?.waitForUser).toBe(true);
     });
 
     it.each(Object.keys(scriptsByType))("%s has 3–5 questions", (type) => {

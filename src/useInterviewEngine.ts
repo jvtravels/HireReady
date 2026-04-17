@@ -989,14 +989,15 @@ export function useInterviewEngine() {
     const isSalaryNegConversation = interviewType === "salary-negotiation";
 
     // Intent-aware fallback for salary-neg when follow-up times out / fails
-    const applySalaryNegFallback = () => {
-      if (!isSalaryNegConversation) return;
+    // Returns true if early-close was triggered (caller should NOT call startSpeaking)
+    const applySalaryNegFallback = (): boolean => {
+      if (!isSalaryNegConversation) return false;
       const lastAnswer = lastAnswerTextRef.current;
-      if (!lastAnswer) return;
+      if (!lastAnswer) return false;
       // Position-aware intent: "but I accept" → accept wins, "I accept but want more" → hedge wins
       const acceptPat = /\b(i accept|i.?ll accept|accept the offer|sounds good|that works for me|it.?s a deal|i.?m happy with|fine with me|i agree|agreed|let.?s go ahead)\b/i;
-      const hedgePat = /\b(but|however|only if|unless|provided|on condition|contingent|except|still|yet|though)\b/i;
-      const walkAwayPat = /\b(walk away|walking away|i.?m out|not interested|i.?ll pass|no deal|withdraw|decline the offer|i decline|pull out|not worth)\b/i;
+      const hedgePat = /\b(but|however|only if|unless|provided|on condition|contingent|except|though)\b/i;
+      const walkAwayPat = /\b(walk away|walking away|i.?m out|not interested|i.?ll pass|no deal|withdraw|decline the offer|i decline|pull out|not worth|won.?t work|isn.?t going to work|move on|other option|take the other|thanks but no|not for me|have to pass)\b/i;
       const isShortAffirmative = lastAnswer.trim().split(/\s+/).length < 8
         && /^(yes|yeah|okay|ok|sure|deal|agreed|accept|sounds good|that works|fine)\b/i.test(lastAnswer.trim())
         && !hedgePat.test(lastAnswer);
@@ -1004,7 +1005,10 @@ export function useInterviewEngine() {
       const hedgeIdx = lastAnswer.search(hedgePat);
       const hasAcceptFirst = acceptIdx >= 0 && (hedgeIdx < 0 || hedgeIdx < acceptIdx);
       const hasHedgeAfterAccept = acceptIdx >= 0 && hedgeIdx > acceptIdx;
-      const userAccepted = (hasAcceptFirst || isShortAffirmative) && !hasHedgeAfterAccept;
+      // Guard: "I'm happy with the base" is partial acceptance of one component, not the full offer
+      const componentOnlyPat = /\b(?:i.?m happy with|fine with|accept)\s+(?:the\s+)?(?:base|variable|bonus|equity|benefits?|joining)\b/i;
+      const isComponentOnly = componentOnlyPat.test(lastAnswer) && !/\b(offer|package|deal|overall|total|ctc)\b/i.test(lastAnswer);
+      const userAccepted = (hasAcceptFirst || isShortAffirmative) && !hasHedgeAfterAccept && !isComponentOnly;
       const userWalkAway = walkAwayPat.test(lastAnswer) && !acceptPat.test(lastAnswer);
       const userRejected = /\b(not acceptable|too low|can.?t accept|absolutely not|not enough|way too low|that.?s insulting)\b/i.test(lastAnswer)
         && !/\b(i accept|sounds good|deal)\b/i.test(lastAnswer);
@@ -1046,6 +1050,7 @@ export function useInterviewEngine() {
         scoreNote = "Candidate accepted — exploring full package";
         // Early close: if we're past Q2 (step >= 3), skip remaining questions and go to closing
         if (currentStepRef.current >= 3) {
+          const curStep = currentStepRef.current;
           const closingText = band
             ? `Great, so just to confirm — we're agreed on ${offerStr} total CTC, plus the benefits we discussed. I'll have HR send you the formal offer letter by tomorrow. Take a day to review and let us know. I'm really glad we worked this out — the team is excited to have you!`
             : "Great, so we're agreed on the package we discussed. I'll have HR send you the formal offer letter by tomorrow. Take a day to review and let us know. I'm really glad we worked this out — welcome aboard!";
@@ -1053,13 +1058,15 @@ export function useInterviewEngine() {
           const closingMs = Math.max(3000, Math.round((closingWords / 150) * 60 * 1000) + 1500);
           const closingStep: InterviewStep = {
             type: "closing", aiText: closingText,
-            thinkingDuration: 300, speakingDuration: closingMs, waitForUser: false,
+            thinkingDuration: 300, speakingDuration: closingMs, waitForUser: true,
             scoreNote: "Early close — candidate accepted. Evaluate overall negotiation strategy.",
           };
           setInterviewScript(prev => {
-            return [...prev.slice(0, currentStep + 1), closingStep];
+            return [...prev.slice(0, curStep + 1), closingStep];
           });
-          return;
+          // Advance to the closing step so the effect re-fires on the new step
+          setCurrentStep(curStep + 1);
+          return true;
         }
       } else if (userRejected) {
         // Explicit rejection — make specific counter with ₹ numbers
@@ -1075,6 +1082,7 @@ export function useInterviewEngine() {
         scoreNote = "Candidate gave vague/indirect answer — evaluate: are they being strategic or genuinely unsure?";
       }
 
+      const curStep = currentStepRef.current;
       const fallbackWords = fallbackText.split(/\s+/).length;
       const fallbackMs = Math.max(3000, Math.round((fallbackWords / 150) * 60 * 1000) + 1500);
       const fallbackStep: InterviewStep = {
@@ -1083,12 +1091,13 @@ export function useInterviewEngine() {
         scoreNote,
       };
       setInterviewScript(prev => {
-        const nextIdx = prev.findIndex((s, i) => i > currentStep && (s.type === "question" || s.type === "closing"));
-        if (nextIdx > currentStep) {
+        const nextIdx = prev.findIndex((s, i) => i > curStep && (s.type === "question" || s.type === "closing"));
+        if (nextIdx > curStep) {
           return [...prev.slice(0, nextIdx), fallbackStep, ...prev.slice(nextIdx + 1)];
         }
         return prev;
       });
+      return false;
     };
 
     if (pendingFollowUp) {
@@ -1100,14 +1109,15 @@ export function useInterviewEngine() {
       // "Hmm, let me think about that..." within 0.5s instead of 6s silence.
       if (isSalaryNegConversation && shouldUseThinkingPhrase && thinkingPhrase && aiVoiceEnabled) {
         const isHeavyPushback = negPushbackCountRef.current >= 3;
-        const walkAwayPatCheck = /\b(walk away|walking away|i.?m out|not interested|i.?ll pass|no deal|withdraw|decline)\b/i;
+        const walkAwayPatCheck = /\b(walk away|walking away|i.?m out|not interested|i.?ll pass|no deal|withdraw|decline|won.?t work|isn.?t going to work|move on|take the other|have to pass)\b/i;
         const isWalkAway = walkAwayPatCheck.test(lastAnswerTextRef.current);
         const strategicPause = (isWalkAway || isHeavyPushback) ? randomDelay(2500, 4000) : undefined;
         const phraseDelay = strategicPause ?? randomDelay(300, 700);
 
-        // Speak thinking phrase immediately
+        // Speak thinking phrase immediately and add to transcript so eval LLM can see it
         setTimeout(() => {
           if (isStale() || interviewEndedRef.current) return;
+          setTranscript(prev => [...prev, { speaker: "ai", text: thinkingPhrase!, time: formatTime(elapsed) }]);
           const phraseInstanceId = ++ttsInstanceIdRef.current;
           speak(thinkingPhrase!, () => {}, () => {}, interviewerGender).then(handle => {
             if (ttsInstanceIdRef.current === phraseInstanceId) {
@@ -1174,7 +1184,8 @@ export function useInterviewEngine() {
         } else if (!interviewEndedRef.current) {
           // Follow-up timed out or returned needsFollowUp=false
           // For salary-neg: if user accepted/rejected, replace next question with an intent-aware response
-          applySalaryNegFallback();
+          const earlyClose = applySalaryNegFallback();
+          if (earlyClose) return; // Early close advances step — effect will re-fire
           if (isSalaryNegConversation) {
             // Thinking phrase already spoken — go directly to main response
             const microDelay = randomDelay(400, 800);
@@ -1188,7 +1199,8 @@ export function useInterviewEngine() {
         }
       }).catch(() => {
         if (!isStale() && !interviewEndedRef.current) {
-          applySalaryNegFallback();
+          const earlyClose = applySalaryNegFallback();
+          if (earlyClose) return; // Early close advances step — effect will re-fire
           if (isSalaryNegConversation) {
             const microDelay = randomDelay(400, 800);
             setTimeout(() => { if (!isStale() && !interviewEndedRef.current) startSpeaking(); }, microDelay);
@@ -1342,7 +1354,7 @@ export function useInterviewEngine() {
         // Map position ratio to phase: first Q → offer-reaction, last Q → closing
         // Edge case: single question → jump to closing; otherwise use ratio
         const ratio = totalQs > 1 ? (currentQuestionIdx - 1) / (totalQs - 1) : 1;
-        const phaseIdx = Math.min(Math.floor(ratio * (negotiationPhases.length - 1)), negotiationPhases.length - 1);
+        const phaseIdx = Math.min(Math.round(ratio * (negotiationPhases.length - 1)), negotiationPhases.length - 1);
         salaryPhase = negotiationPhases[phaseIdx] || "offer-reaction";
       }
 
@@ -1510,7 +1522,7 @@ export function useInterviewEngine() {
     try {
     const fallback = computeFallbackScores({
       transcript: evalTranscript, currentStep, scriptLength: interviewScript.length,
-      difficulty: interviewDifficulty, elapsed,
+      difficulty: interviewDifficulty, elapsed, interviewType,
     });
     score = fallback.score;
     const fallbackSkillScores = fallback.skillScores;

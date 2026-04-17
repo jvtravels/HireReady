@@ -187,6 +187,7 @@ export default function Interview() {
                 usedFallbackScore={usedFallbackScore} evalTimedOut={evalTimedOut}
                 evaluating={evaluating} handleEnd={handleEnd}
                 videoURL={video.videoURL}
+                isSalaryNegotiation={isSalaryNegotiation}
               />
             </>
           )}

@@ -117,7 +117,7 @@ export const InterviewHeader = memo(function InterviewHeader({ displayCompany, d
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
             <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: isCurrentFollowUp ? c.gilt : c.ivory }}>
               {isSalaryNegotiation
-                ? `${isCurrentFollowUp ? "Negotiating" : getNegPhaseLabel(currentQuestionNum)} · Step ${Math.min(currentQuestionNum, baseQuestionCount || totalQuestions)} of ${baseQuestionCount || totalQuestions}`
+                ? `${getNegPhaseLabel(currentQuestionNum)} · Round ${Math.min(currentQuestionNum, baseQuestionCount || totalQuestions)} of ${baseQuestionCount || totalQuestions}`
                 : isCurrentFollowUp
                 ? `Follow-up · Question ${Math.min(currentQuestionNum, baseQuestionCount || totalQuestions)} of ${baseQuestionCount || totalQuestions}`
                 : `Question ${currentQuestionNum} of ${baseQuestionCount || totalQuestions}`}
@@ -821,8 +821,9 @@ export const DealSummaryCard = memo(function DealSummaryCard({ transcript, negot
   if (benefitTest(/relocation (?:bonus|support|allowance|package)/i)) benefits.push("Relocation Support");
   if (benefitTest(/notice.*buyout|early.*joining/i)) benefits.push("Notice Buyout");
 
-  // Grade
-  const grade = improvement >= 15 ? "A" : improvement >= 10 ? "B+" : improvement >= 5 ? "B" : improvement > 0 ? "C+" : "C";
+  // Grade: price improvement + benefits breadth (each benefit adds ~2.5% equivalent)
+  const effectiveImprovement = improvement + benefits.length * 2.5;
+  const grade = effectiveImprovement >= 15 ? "A" : effectiveImprovement >= 10 ? "B+" : effectiveImprovement >= 5 ? "B" : effectiveImprovement > 0 ? "C+" : "C";
   const gradeColor = grade.startsWith("A") ? c.sage : grade.startsWith("B") ? c.gilt : c.ember;
 
   // If no salary numbers could be extracted, show a simplified card with benefits + replay
@@ -982,11 +983,12 @@ export const DealSummaryCard = memo(function DealSummaryCard({ transcript, negot
 
 /* ─── Completion Card (done state) ─── */
 
-export const CompletionCard = memo(function CompletionCard({ currentQuestionNum, elapsed, usedFallbackScore, evalTimedOut, evaluating, handleEnd, videoURL }: {
+export const CompletionCard = memo(function CompletionCard({ currentQuestionNum, elapsed, usedFallbackScore, evalTimedOut, evaluating, handleEnd, videoURL, isSalaryNegotiation }: {
   currentQuestionNum: number; elapsed: number;
   usedFallbackScore: boolean; evalTimedOut: boolean;
   evaluating: boolean; handleEnd: () => void;
   videoURL?: string | null;
+  isSalaryNegotiation?: boolean;
 }) {
   return (
     <div style={{
@@ -1001,7 +1003,7 @@ export const CompletionCard = memo(function CompletionCard({ currentQuestionNum,
         <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
       </svg>
       <p style={{ fontFamily: font.ui, fontSize: 16, fontWeight: 600, color: c.ivory, margin: 0 }}>Session complete</p>
-      <p style={{ fontFamily: font.ui, fontSize: 13, color: c.stone, margin: 0 }}>{currentQuestionNum} questions answered · {formatTime(elapsed)}</p>
+      <p style={{ fontFamily: font.ui, fontSize: 13, color: c.stone, margin: 0 }}>{currentQuestionNum} {isSalaryNegotiation ? "negotiation rounds" : "questions answered"} · {formatTime(elapsed)}</p>
       {(usedFallbackScore || evalTimedOut) && (
         <p style={{ fontFamily: font.ui, fontSize: 11, color: c.gilt, margin: 0, padding: "6px 12px", borderRadius: 10, background: "rgba(212,179,127,0.06)", border: "1px solid rgba(212,179,127,0.1)" }}>
           {evalTimedOut ? "AI evaluation timed out" : "AI evaluation unavailable"} — score is estimated from session metrics

@@ -20,11 +20,12 @@ export interface EvalParams {
   scriptLength: number;
   difficulty: string;
   elapsed: number;
+  interviewType?: string;
 }
 
 /** Compute heuristic fallback scores when LLM evaluation is unavailable */
 export function computeFallbackScores(params: EvalParams): FallbackResult {
-  const { transcript, currentStep, scriptLength, difficulty, elapsed } = params;
+  const { transcript, currentStep, scriptLength, difficulty, elapsed, interviewType } = params;
   const completionRatio = currentStep / Math.max(1, scriptLength);
   const baseScore = 65 + Math.round(completionRatio * 20);
   const difficultyBonus = difficulty === "intense" ? 5 : difficulty === "warmup" ? -3 : 0;
@@ -40,16 +41,36 @@ export function computeFallbackScores(params: EvalParams): FallbackResult {
   const userAnswers = transcript.filter(t => t.speaker === "user");
   const avgAnswerLen = userAnswers.length > 0
     ? userAnswers.reduce((s, t) => s + t.text.length, 0) / userAnswers.length : 0;
+  const fillerCount = userAnswers.reduce((s, t) =>
+    s + (t.text.match(/\b(um|uh|like|basically|actually|you know)\b/gi) || []).length, 0);
+
+  const clamp = (v: number) => Math.max(40, Math.min(95, v));
+
+  if (interviewType === "salary-negotiation") {
+    // Negotiation-specific skill dimensions
+    const facts = extractNegotiationFacts(transcript);
+    const mentionedNumbers = userAnswers.some(t => /₹?\s*\d+(?:\.\d+)?\s*(?:lpa|lakh)/i.test(t.text));
+    const topicCount = facts.topicsRaised.length;
+
+    const skillScores: Record<string, number> = {
+      anchoring: clamp(fallbackScore + (mentionedNumbers ? 8 : -8) + (facts.candidateCounter ? 5 : -5)),
+      packageThinking: clamp(fallbackScore + Math.min(15, topicCount * 4) - (topicCount === 0 ? 10 : 0)),
+      leverageUse: clamp(fallbackScore + (facts.hasCompetingOffers ? 10 : 0) + (facts.mentionedBATNA ? 8 : 0) + (facts.deflectedNumbers ? -5 : 0)),
+      concessionStrategy: clamp(fallbackScore + (facts.acceptedImmediately ? -15 : 5) + (facts.rejectedOutright ? -5 : 0)),
+      closingTechnique: clamp(fallbackScore + (facts.askedForTime ? 5 : 0) + (completionRatio > 0.8 ? 5 : -5)),
+      composure: clamp(fallbackScore + (fillerCount < 2 ? 5 : -8) + (facts.expressedSurprise ? 3 : 0)),
+      professionalTone: clamp(fallbackScore + (fillerCount < 3 ? 5 : -5) + (avgAnswerLen > 30 ? 3 : -5)),
+    };
+    return { score, skillScores, hasAnyAnswers };
+  }
+
   const hasMetrics = userAnswers.some(t =>
     /\d+%|\d+x|\$[\d,]+|\d+ (users|customers|months|days|hours|team|people)/.test(t.text));
   const usesI = userAnswers.some(t => /\bI\b/.test(t.text));
-  const fillerCount = userAnswers.reduce((s, t) =>
-    s + (t.text.match(/\b(um|uh|like|basically|actually|you know)\b/gi) || []).length, 0);
 
   const structureScore = Math.min(100, fallbackScore + (avgAnswerLen > 200 ? 5 : -5) + (hasMetrics ? 8 : -3));
   const commScore = Math.min(100, fallbackScore + (fillerCount < 3 ? 5 : -5) + (avgAnswerLen > 100 ? 3 : -5));
 
-  const clamp = (v: number) => Math.max(40, Math.min(95, v));
   const skillScores: Record<string, number> = {
     communication: clamp(commScore),
     structure: clamp(structureScore),
@@ -159,6 +180,12 @@ export interface NegotiationFacts {
   deflectedNumbers: boolean;
   /** Whether the candidate asked for time to think */
   askedForTime: boolean;
+  /** Whether the candidate used tactical silence (very short responses at key moments) */
+  usedTacticalSilence: boolean;
+  /** Whether the candidate mentioned BATNA / walk-away alternative */
+  mentionedBATNA: boolean;
+  /** Whether the candidate expressed surprise/flinch at the offer */
+  expressedSurprise: boolean;
 }
 
 export function extractNegotiationFacts(transcript: TranscriptEntry[]): NegotiationFacts {
@@ -231,6 +258,16 @@ export function extractNegotiationFacts(transcript: TranscriptEntry[]): Negotiat
     /(?:need time|think about|sleep on|let me think|consider|talk to|get back to you|not ready)/i.test(a),
   );
 
+  // Tactical silence: very short responses (< 10 words) after the first exchange suggest strategic pausing
+  const usedTacticalSilence = userAnswers.length > 1 &&
+    userAnswers.slice(1).some(a => a.trim().split(/\s+/).length < 10 && !/^(yes|no|okay|sure|fine)\b/i.test(a.trim()));
+
+  // BATNA: candidate explicitly mentions walk-away alternative or backup plan
+  const mentionedBATNA = /(?:walk away|backup|alternative|plan b|best alternative|other option|if we can.?t agree|fall back)/i.test(allText);
+
+  // Flinch/surprise: expressing surprise at the offer level as a tactic
+  const expressedSurprise = /(?:lower than.*expect|surprised|was hoping for more|bit of a shock|wasn.?t expecting|quite a gap|far from|disappointing)/i.test(allText);
+
   return {
     acceptedImmediately,
     rejectedOutright,
@@ -240,5 +277,8 @@ export function extractNegotiationFacts(transcript: TranscriptEntry[]): Negotiat
     topicsRaised,
     deflectedNumbers,
     askedForTime,
+    usedTacticalSilence,
+    mentionedBATNA,
+    expressedSurprise,
   };
 }

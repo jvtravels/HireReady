@@ -106,7 +106,7 @@ export const scriptsByType: Record<string, InterviewStep[]> = {
     { type: "question", aiText: "I hear you. That's a bit above our initial band for this level. Let me see what I can do — there's some flexibility on the base, and I could also look at a joining bonus or ESOPs to bridge the gap. What matters more to you — a higher fixed component or equity upside?", thinkingDuration: 700, speakingDuration: 5500, waitForUser: true, scoreNote: "Phase: counter-offer. Evaluate: Did they negotiate beyond just base? Did they explore multiple levers? Did they maintain leverage without being adversarial?" },
     { type: "question", aiText: "Let me lay out the full picture then. Beyond the base and variable, there's a learning budget, flexible work options, and comprehensive benefits. I think the total package is quite competitive when you factor everything in. What would make this a clear yes for you?", thinkingDuration: 700, speakingDuration: 5500, waitForUser: true, scoreNote: "Phase: benefits-discussion. Evaluate: Did they think about total compensation? Did they prioritize clearly? Did they explore non-salary items?" },
     { type: "question", aiText: "I appreciate the thorough discussion. I should mention — this is genuinely at the top of our approved band for this level. I've got one other strong candidate at final stage. I'd love to close this today. What's your notice period, and when could you realistically join us?", thinkingDuration: 700, speakingDuration: 5000, waitForUser: true, scoreNote: "Phase: closing-pressure. Evaluate: Did they handle pressure well? Did they negotiate pressure tactics? Did they set a clear timeline without caving?" },
-    { type: "closing", aiText: "Alright, I think we've reached a good place. So to confirm — we're looking at the revised package we discussed, and I'll have HR send you the formal offer letter by tomorrow. Take a day or two to review it, and let us know. We'd really love to have you on the team.", thinkingDuration: 800, speakingDuration: 6000, waitForUser: false },
+    { type: "closing", aiText: "Alright, I think we've reached a good place. So to confirm — we're looking at the revised package we discussed, and I'll have HR send you the formal offer letter by tomorrow. Take a day or two to review it, and let us know. We'd really love to have you on the team. Any final questions before we wrap up?", thinkingDuration: 800, speakingDuration: 6500, waitForUser: true },
   ],
 };
 
@@ -253,11 +253,11 @@ export function getMiniScript(user: User | null, company?: string, interviewType
       thinkingDuration: 800, speakingDuration: 5000, waitForUser: true, ...(isPanel ? { persona: panelPersonas[0] } : {}) },
     ...questionSteps,
     { type: "closing" as const, aiText: isSalaryNeg
-      ? `I think we've covered the key points. Let me summarize what we've discussed and I'll have HR send the formal offer letter. Take a couple of days to think it over${name ? `, ${name}` : ""} — we'd love to have you on board.`
+      ? `I think we've covered the key points. Let me summarize what we've discussed and I'll have HR send the formal offer letter. Take a couple of days to think it over${name ? `, ${name}` : ""} — we'd love to have you on board. Any final questions or concerns before we wrap up?`
       : isPanel
       ? "Thank you for speaking with all of us today. We've covered some great ground. Any final thoughts before we calculate your score?"
       : "Great answers! That wraps up your quick practice round. Any final thoughts before I calculate your score?",
-      thinkingDuration: 1000, speakingDuration: 4000, waitForUser: isSalaryNeg ? false : true, ...(isPanel ? { persona: panelPersonas[4] } : {}) },
+      thinkingDuration: 1000, speakingDuration: 4000, waitForUser: true, ...(isPanel ? { persona: panelPersonas[4] } : {}) },
   ];
 }
 

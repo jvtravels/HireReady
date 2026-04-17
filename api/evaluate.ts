@@ -81,8 +81,9 @@ export default async function handler(req: Request): Promise<Response> {
       return new Response(JSON.stringify({ error: "Transcript total size too large" }), { status: 400, headers });
     }
 
-    // Cap each entry to 800 chars and keep max 20 turns to limit prompt size
-    const trimmedTranscript = transcript.slice(0, 20);
+    // Cap each entry to 800 chars; salary negotiations get 30 turns (more back-and-forth), others 20
+    const maxTurns = type === "salary-negotiation" ? 30 : 20;
+    const trimmedTranscript = transcript.slice(0, maxTurns);
     const formattedTranscript = trimmedTranscript
       .map((t: { speaker: string; text: string }) => `${t.speaker === "ai" ? "Q" : "A"}: ${sanitizeForLLM(t.text, 800)}`)
       .join("\n");
