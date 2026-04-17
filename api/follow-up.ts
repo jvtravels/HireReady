@@ -431,12 +431,26 @@ Respond JSON only:
       const offerNumRe = /₹\s*(\d+(?:\.\d+)?)\s*(?:LPA|lpa|lakh|lakhs)/g;
       let match: RegExpExecArray | null;
       let clamped = parsed.followUpText;
+      const approvalRe = /\b(approval|leadership|sign.?off|check with|go back to)\b/i;
       while ((match = offerNumRe.exec(parsed.followUpText)) !== null) {
         const num = parseFloat(match[1]);
         if (num > negotiationBand.maxStretch * 1.05) {
-          // LLM hallucinated above max stretch — clamp to maxStretch
+          // LLM hallucinated well above max stretch — clamp to maxStretch
+          // If LLM already included approval language, just fix the number.
+          // If not, the text may sound inconsistent after clamping — add approval framing.
           console.warn(`[follow-up] LLM offered ₹${num} LPA, above maxStretch ₹${negotiationBand.maxStretch} — clamping`);
           clamped = clamped.replace(match[0], `₹${negotiationBand.maxStretch} LPA`);
+          if (!approvalRe.test(clamped)) {
+            // Inject approval framing since the clamped number IS the ceiling
+            clamped = clamped.replace(
+              `₹${negotiationBand.maxStretch} LPA`,
+              `₹${negotiationBand.maxStretch} LPA — that's the absolute top of what I can approve`,
+            );
+          }
+        } else if (num > negotiationBand.maxStretch && !approvalRe.test(clamped)) {
+          // Between maxStretch and 1.05x — within tolerance but add approval framing
+          console.warn(`[follow-up] LLM offered ₹${num} LPA near maxStretch ₹${negotiationBand.maxStretch} — adding approval context`);
+          clamped = clamped.replace(match[0], `${match[0]}, which I'd need leadership sign-off for,`);
         } else if (num < negotiationBand.walkAway) {
           // LLM offered below walk-away — clamp to initial offer
           console.warn(`[follow-up] LLM offered ₹${num} LPA, below walkAway ₹${negotiationBand.walkAway} — clamping`);

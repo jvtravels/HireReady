@@ -325,6 +325,7 @@ export async function fetchFollowUp(params: {
     hasCompetingOffers: boolean;
     topicsRaised: string[];
     deflectedNumbers: boolean;
+    askedForTime: boolean;
   };
   negotiationStyle?: string;
   negotiationBand?: NegotiationBandData;

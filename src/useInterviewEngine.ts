@@ -1004,7 +1004,7 @@ export function useInterviewEngine() {
       const hasHedgeAfterAccept = acceptIdx >= 0 && hedgeIdx > acceptIdx;
       const userAccepted = (hasAcceptFirst || isShortAffirmative) && !hasHedgeAfterAccept;
       const userWalkAway = walkAwayPat.test(lastAnswer) && !acceptPat.test(lastAnswer);
-      const userRejected = /\b(not acceptable|too low|can.?t accept|absolutely not|not enough|way too low)\b/i.test(lastAnswer)
+      const userRejected = /\b(not acceptable|too low|can.?t accept|absolutely not|not enough|way too low|that.?s insulting)\b/i.test(lastAnswer)
         && !/\b(i accept|sounds good|deal)\b/i.test(lastAnswer);
       // Also detect "need time to think" and competing offers
       const thinkPat = /\b(need time|think about|sleep on|let me think|consider|talk to.*(?:family|partner|wife|husband)|get back to you|not ready)\b/i;
