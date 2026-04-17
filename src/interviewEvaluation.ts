@@ -163,13 +163,17 @@ export function extractNegotiationFacts(transcript: TranscriptEntry[]): Negotiat
   const userAnswers = transcript.filter(t => t.speaker === "user").map(t => t.text);
   const allText = userAnswers.join(" ");
 
-  const acceptedImmediately = userAnswers.some(a =>
-    /(?:i accept|sounds good|that works|deal|i.?m happy|fine with me|yes.*accept)/i.test(a) &&
-    a.trim().split(/\s+/).length < 25,
-  );
+  // Detect unconditional acceptance — must NOT contain conditionals like "only if", "unless", "but"
+  const acceptedImmediately = userAnswers.some(a => {
+    const hasAcceptPattern = /(?:i accept|sounds good|that works|it.?s a deal|i.?m happy|fine with me|yes.*accept|i agree|let.?s go ahead)/i.test(a);
+    const hasConditional = /\b(if|unless|only|but|however|provided|on condition|contingent)\b/i.test(a);
+    const hasNegation = /\b(no|not|don.?t|can.?t|won.?t|never)\b/i.test(a);
+    return hasAcceptPattern && !hasConditional && !hasNegation && a.trim().split(/\s+/).length < 15;
+  });
 
   const rejectedOutright = userAnswers.some(a =>
-    /(?:way too low|not interested|can'?t accept|absolutely not|that'?s insulting|no way)/i.test(a),
+    /(?:way too low|not interested|can'?t accept|absolutely not|that'?s insulting|no way|i reject|no deal|not acceptable)\b/i.test(a) &&
+    !/\b(i accept|sounds good|it.?s a deal)\b/i.test(a),
   );
 
   // Extract salary numbers: distinguish "current CTC" from "expected/counter" numbers

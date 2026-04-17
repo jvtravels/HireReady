@@ -556,8 +556,8 @@ async function speakWithProxy(
   try {
     let blob: Blob | null = null;
 
-    // Check pre-fetch cache first
-    const cached = consumePrefetch(text);
+    // Check pre-fetch cache first (pass gender for gender-keyed cache lookups)
+    const cached = consumePrefetch(text, gender);
     if (cached) {
       blob = await cached;
     }
