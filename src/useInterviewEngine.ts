@@ -739,6 +739,8 @@ export function useInterviewEngine() {
   const followUpInsertCountRef = useRef(0);
   // Dynamic difficulty: track answer quality mid-interview for escalation/de-escalation
   const answerQualityRef = useRef<number[]>([]);
+  // Mid-session coaching: track which phases already showed a hint (avoid repeats)
+  const negCoachingShownRef = useRef<Set<string>>(new Set());
   // Last answer quality for contextual reactions
   const lastAnswerQualityRef = useRef<"strong" | "decent" | "weak" | "short">("decent");
   const lastAnswerTextRef = useRef("");
@@ -1102,7 +1104,7 @@ export function useInterviewEngine() {
 
     if (pendingFollowUp) {
       pendingFollowUpRef.current = null;
-      const timeout = new Promise<null>(r => setTimeout(() => r(null), isSalaryNegConversation ? 6000 : 4000));
+      const timeout = new Promise<null>(r => setTimeout(() => r(null), isSalaryNegConversation ? 9000 : 4000));
 
       // For salary-neg: speak thinking phrase IMMEDIATELY to eliminate dead air,
       // then wait for follow-up API in background. This means the user hears
@@ -1370,6 +1372,26 @@ export function useInterviewEngine() {
         const negotiationFacts = isSalaryNegType
           ? extractNegotiationFacts([...transcript, { speaker: "user", text: answerText, time: "" }])
           : undefined;
+
+        // Mid-session coaching: show a non-intrusive hint after key phases
+        // Only show once per phase transition to avoid spam
+        if (isSalaryNegType && negotiationFacts && salaryPhase && !negCoachingShownRef.current.has(salaryPhase)) {
+          let hint: string | null = null;
+          if (salaryPhase === "counter-offer" && !negotiationFacts.candidateCounter && !negotiationFacts.deflectedNumbers) {
+            hint = "💡 Tip: Name a specific number — candidates who anchor first tend to get better outcomes.";
+          } else if (salaryPhase === "benefits-discussion" && negotiationFacts.topicsRaised.length === 0) {
+            hint = "💡 Tip: Ask about equity, joining bonus, or flexibility — total package often matters more than base.";
+          } else if (salaryPhase === "closing-pressure" && !negotiationFacts.hasCompetingOffers && !negotiationFacts.mentionedBATNA) {
+            hint = "💡 Tip: Mentioning competing offers or alternatives gives you stronger leverage at closing.";
+          } else if (salaryPhase === "probe-expectations" && negotiationFacts.acceptedImmediately) {
+            hint = "💡 Tip: Accepting too quickly leaves value on the table. Try countering or exploring the full package first.";
+          }
+          if (hint) {
+            negCoachingShownRef.current.add(salaryPhase);
+            // Delay hint so it doesn't overlap with the micro-feedback
+            setTimeout(() => toast(hint!, "info"), 2500);
+          }
+        }
 
         pendingFollowUpRef.current = fetchFollowUp({
           question: currentStepObj!.aiText,

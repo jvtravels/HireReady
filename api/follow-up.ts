@@ -482,6 +482,25 @@ Respond JSON only:
       parsed.followUpText = clamped;
     }
 
+    // Intent-mismatch validator: catch cases where LLM ignores the detected intent
+    if (isSalaryNeg && parsed.followUpText) {
+      const text = parsed.followUpText.toLowerCase();
+      const counterOfferPat = /how about|what if I offer|counter.*with|we could do|let me offer/i;
+      if (candidateAccepted && counterOfferPat.test(parsed.followUpText)) {
+        // LLM is counter-offering when candidate already accepted — reject and signal fallback
+        console.warn("[follow-up] Intent mismatch: candidate accepted but LLM counter-offered — rejecting");
+        parsed.needsFollowUp = false;
+      } else if (candidateWalkAway && /congratulations|glad you accepted|welcome aboard/i.test(text)) {
+        // LLM is congratulating when candidate is walking away — reject
+        console.warn("[follow-up] Intent mismatch: candidate walking away but LLM congratulated — rejecting");
+        parsed.needsFollowUp = false;
+      } else if (parsed.followUpText.length < 30) {
+        // Response too short to be meaningful — reject
+        console.warn("[follow-up] Response too short (<30 chars) — rejecting");
+        parsed.needsFollowUp = false;
+      }
+    }
+
     // Salary-negotiation: continue the conversation, but allow early close if candidate accepted
     // and we're past the initial offer phase (don't force 5 more turns after "I accept")
     const candidateAcceptedEarly = isSalaryNeg && negotiationFacts?.acceptedImmediately
