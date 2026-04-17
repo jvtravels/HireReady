@@ -717,6 +717,7 @@ export function useInterviewEngine() {
   // Last answer quality for contextual reactions
   const lastAnswerQualityRef = useRef<"strong" | "decent" | "weak" | "short">("decent");
   const lastAnswerTextRef = useRef("");
+  const introStartedRef = useRef(false);
 
   useEffect(() => {
     if (phase === "done") return;
@@ -724,7 +725,14 @@ export function useInterviewEngine() {
     const step = interviewScript[currentStep];
     if (!step) return;
 
+    // Guard: if step 0 (intro) is already playing and only the script length changed
+    // (e.g., LLM questions arrived and changed script length), don't restart the intro
+    if (currentStep === 0 && introStartedRef.current) {
+      return;
+    }
+
     if (currentStep === 0) {
+      introStartedRef.current = true;
       track("interview_started", { type: interviewType, mode: isMiniMode ? "mini" : "full", isPanel: isPanelInterview });
     }
 

@@ -347,7 +347,7 @@ Panelist roles and what they should ask:
 The intro persona should be "Hiring Manager". Distribute questions across all three panelists. The closing should be from "Hiring Manager".`
       : "";
 
-    const questionCount = isMini ? 3 : 5;
+    const questionCount = isMini ? (isSalaryType ? 5 : 3) : 5;
     const stepCount = questionCount + 2; // intro + questions + closing
 
     const safeCandidateName = candidateName ? sanitizeForLLM(candidateName, 60) : "";
