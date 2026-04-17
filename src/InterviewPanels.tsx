@@ -825,7 +825,43 @@ export const DealSummaryCard = memo(function DealSummaryCard({ transcript, negot
   const grade = improvement >= 15 ? "A" : improvement >= 10 ? "B+" : improvement >= 5 ? "B" : improvement > 0 ? "C+" : "C";
   const gradeColor = grade.startsWith("A") ? c.sage : grade.startsWith("B") ? c.gilt : c.ember;
 
-  if (initialOffer === 0) return null;
+  // If no salary numbers could be extracted, show a simplified card with benefits + replay
+  if (initialOffer === 0) {
+    return (
+      <div style={{
+        width: "100%", borderRadius: 16,
+        background: "rgba(212,179,127,0.03)",
+        border: "1px solid rgba(212,179,127,0.12)",
+        padding: "20px", display: "flex", flexDirection: "column", gap: 14,
+        animation: "slideUp 0.5s ease",
+      }}>
+        <span style={{ fontFamily: font.display, fontSize: 14, fontWeight: 600, color: c.ivory }}>Negotiation Complete</span>
+        <p style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, margin: 0, lineHeight: 1.5 }}>
+          We couldn't extract specific offer numbers from this session. This can happen when the conversation focused on non-salary aspects or when using fallback questions.
+        </p>
+        {benefits.length > 0 && (
+          <div>
+            <p style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, margin: "0 0 6px", textTransform: "uppercase", letterSpacing: "0.05em" }}>Topics Discussed</p>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              {benefits.map(b => (
+                <span key={b} style={{ fontFamily: font.ui, fontSize: 11, color: c.gilt, padding: "3px 8px", borderRadius: 6, background: "rgba(212,179,127,0.08)", border: "1px solid rgba(212,179,127,0.12)" }}>{b}</span>
+              ))}
+            </div>
+          </div>
+        )}
+        {onReplay && (
+          <div>
+            <p style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, margin: "0 0 6px", textTransform: "uppercase", letterSpacing: "0.05em" }}>Try again with a different style</p>
+            <div style={{ display: "flex", gap: 8 }}>
+              {([{ style: "cooperative", label: "Friendly" }, { style: "aggressive", label: "Tough" }, { style: "defensive", label: "Evasive" }] as const).map(s => (
+                <button key={s.style} onClick={() => onReplay(s.style)} style={{ flex: 1, fontFamily: font.ui, fontSize: 11, fontWeight: 500, padding: "8px 10px", borderRadius: 8, background: "rgba(245,242,237,0.04)", border: "1px solid rgba(245,242,237,0.08)", color: c.chalk, cursor: "pointer" }}>{s.label}</button>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div style={{

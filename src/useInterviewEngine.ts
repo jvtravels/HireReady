@@ -903,7 +903,9 @@ export function useInterviewEngine() {
             prefetchTTS(nextStep.aiText, interviewerGender);
           }
         } else {
-          setTimeout(() => setPhase("done"), 1000);
+          // Auto-advance to done (closing with waitForUser: false)
+          // Brief pause for natural conclusion feel
+          setTimeout(() => setPhase("done"), 500);
         }
       };
 
@@ -1011,8 +1013,6 @@ export function useInterviewEngine() {
       const competingPat = /\b(other offer|competing|another company|counter.?offer|multiple offers|also talking|got an offer)\b/i;
       const userNeedsTime = thinkPat.test(lastAnswer);
       const userMentionedCompeting = competingPat.test(lastAnswer);
-      if (!userAccepted && !userRejected && !userWalkAway && !userNeedsTime && !userMentionedCompeting) return;
-
       // Reference actual ₹ numbers from negotiationBand when available
       const band = negotiationBandRef.current;
       const offerStr = band ? `₹${band.initialOffer} LPA` : "the offer";
@@ -1061,12 +1061,18 @@ export function useInterviewEngine() {
           });
           return;
         }
-      } else {
-        // Rejection — make specific counter with ₹ numbers
+      } else if (userRejected) {
+        // Explicit rejection — make specific counter with ₹ numbers
         fallbackText = band
           ? `I hear you — ${offerStr} may not be where you need it. Let me see what I can do. I might be able to stretch to ${stretchStr} if we restructure the variable component. What's the minimum that makes this a clear yes for you?`
           : "I understand your concern, and I appreciate your honesty. Let me see what flexibility I have — I want to make sure we find something that works for both of us. What's the minimum package that makes this a clear yes?";
         scoreNote = "Candidate rejected — exploring alternatives";
+      } else {
+        // Vague or indirect answer — probe gently without assuming rejection
+        fallbackText = band
+          ? `I want to make sure we're on the same page. The ${offerStr} package — does that feel like the right ballpark for you, or is there a specific area where you'd like to see more? I'm happy to talk through the breakdown.`
+          : "I want to make sure we're aligned. How are you feeling about the overall package? Is there a specific part you'd like to dig into — whether that's base, variable, benefits, or something else entirely?";
+        scoreNote = "Candidate gave vague/indirect answer — evaluate: are they being strategic or genuinely unsure?";
       }
 
       const fallbackWords = fallbackText.split(/\s+/).length;
@@ -1088,6 +1094,31 @@ export function useInterviewEngine() {
     if (pendingFollowUp) {
       pendingFollowUpRef.current = null;
       const timeout = new Promise<null>(r => setTimeout(() => r(null), isSalaryNegConversation ? 6000 : 4000));
+
+      // For salary-neg: speak thinking phrase IMMEDIATELY to eliminate dead air,
+      // then wait for follow-up API in background. This means the user hears
+      // "Hmm, let me think about that..." within 0.5s instead of 6s silence.
+      if (isSalaryNegConversation && shouldUseThinkingPhrase && thinkingPhrase && aiVoiceEnabled) {
+        const isHeavyPushback = negPushbackCountRef.current >= 3;
+        const walkAwayPatCheck = /\b(walk away|walking away|i.?m out|not interested|i.?ll pass|no deal|withdraw|decline)\b/i;
+        const isWalkAway = walkAwayPatCheck.test(lastAnswerTextRef.current);
+        const strategicPause = (isWalkAway || isHeavyPushback) ? randomDelay(2500, 4000) : undefined;
+        const phraseDelay = strategicPause ?? randomDelay(300, 700);
+
+        // Speak thinking phrase immediately
+        setTimeout(() => {
+          if (isStale() || interviewEndedRef.current) return;
+          const phraseInstanceId = ++ttsInstanceIdRef.current;
+          speak(thinkingPhrase!, () => {}, () => {}, interviewerGender).then(handle => {
+            if (ttsInstanceIdRef.current === phraseInstanceId) {
+              ttsCancelRef.current = handle.cancel;
+            } else {
+              handle.cancel();
+            }
+          }).catch(() => {});
+        }, phraseDelay);
+      }
+
       Promise.race([pendingFollowUp, timeout]).then(result => {
         if (isStale() || interviewEndedRef.current) return;
         if (result?.needsFollowUp && result.followUpText && currentStepRef.current === currentStep) {
@@ -1117,8 +1148,7 @@ export function useInterviewEngine() {
                 return [...prev.slice(0, nextQuestionIdx), followUpStep, ...prev.slice(nextQuestionIdx + 1)];
               }
               // No more questions to replace — check if we can insert a follow-up probe
-              // (e.g., last question before closing, or vague answer needs probing)
-              // Atomic cap check using ref counter (prevents race when two follow-ups resolve simultaneously)
+              // Atomic cap check using ref counter
               const maxInserts = isMiniMode ? 2 : 3;
               if (followUpInsertCountRef.current < maxInserts) {
                 const closingIdx = prev.findIndex((s, i) => i > currentStep && s.type === "closing");
@@ -1128,17 +1158,12 @@ export function useInterviewEngine() {
                   return [...prev.slice(0, closingIdx), insertStep, ...prev.slice(closingIdx)];
                 }
               }
-              // Hard cap reached or no closing found — proceed naturally
               return prev;
             });
-            // Start speaking — strategic pause based on negotiation intensity
-            // Walk-away or 3+ pushbacks → longer "let me check" pause (simulates consulting leadership)
-            const isHeavyPushback = negPushbackCountRef.current >= 3;
-            const walkAwayPat = /\b(walk away|walking away|i.?m out|not interested|i.?ll pass|no deal|withdraw|decline)\b/i;
-            const isWalkAway = walkAwayPat.test(lastAnswerTextRef.current);
-            const strategicPause = (isWalkAway || isHeavyPushback) ? randomDelay(2500, 4000) : undefined;
-            const microDelay = strategicPause ?? (shouldUseThinkingPhrase ? randomDelay(800, 1500) : step.thinkingDuration);
-            setTimeout(() => { if (!isStale() && !interviewEndedRef.current) startWithThinkingPhrase(); }, microDelay);
+            // Thinking phrase already spoken — go directly to main response
+            // Brief pause for natural transition from thinking phrase to main speech
+            const microDelay = randomDelay(400, 800);
+            setTimeout(() => { if (!isStale() && !interviewEndedRef.current) startSpeaking(); }, microDelay);
           } else {
             setInterviewScript(prev => [
               ...prev.slice(0, currentStep),
@@ -1150,17 +1175,27 @@ export function useInterviewEngine() {
           // Follow-up timed out or returned needsFollowUp=false
           // For salary-neg: if user accepted/rejected, replace next question with an intent-aware response
           applySalaryNegFallback();
-          // Quality-aware pause: longer pause after strong answers (interviewer absorbing), shorter after weak
-          const quality = lastAnswerQualityRef.current;
-          const pauseRange = quality === "strong" ? [1200, 2000] : quality === "decent" ? [800, 1400] : [500, 900];
-          const microDelay = shouldUseThinkingPhrase ? randomDelay(pauseRange[0], pauseRange[1]) : step.thinkingDuration;
-          setTimeout(() => { if (!isStale() && !interviewEndedRef.current) startWithThinkingPhrase(); }, microDelay);
+          if (isSalaryNegConversation) {
+            // Thinking phrase already spoken — go directly to main response
+            const microDelay = randomDelay(400, 800);
+            setTimeout(() => { if (!isStale() && !interviewEndedRef.current) startSpeaking(); }, microDelay);
+          } else {
+            const quality = lastAnswerQualityRef.current;
+            const pauseRange = quality === "strong" ? [1200, 2000] : quality === "decent" ? [800, 1400] : [500, 900];
+            const microDelay = shouldUseThinkingPhrase ? randomDelay(pauseRange[0], pauseRange[1]) : step.thinkingDuration;
+            setTimeout(() => { if (!isStale() && !interviewEndedRef.current) startWithThinkingPhrase(); }, microDelay);
+          }
         }
       }).catch(() => {
         if (!isStale() && !interviewEndedRef.current) {
           applySalaryNegFallback();
-          const microDelay = shouldUseThinkingPhrase ? randomDelay(800, 1500) : step.thinkingDuration;
-          setTimeout(() => { if (!isStale() && !interviewEndedRef.current) startWithThinkingPhrase(); }, microDelay);
+          if (isSalaryNegConversation) {
+            const microDelay = randomDelay(400, 800);
+            setTimeout(() => { if (!isStale() && !interviewEndedRef.current) startSpeaking(); }, microDelay);
+          } else {
+            const microDelay = shouldUseThinkingPhrase ? randomDelay(800, 1500) : step.thinkingDuration;
+            setTimeout(() => { if (!isStale() && !interviewEndedRef.current) startWithThinkingPhrase(); }, microDelay);
+          }
         }
       });
     } else {
