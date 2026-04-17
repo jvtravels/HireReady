@@ -252,6 +252,15 @@ export function useInterviewEngine() {
     }
   }
 
+  // Strip &new=1 from URL so a page refresh doesn't re-trigger "new session" draft clear
+  useEffect(() => {
+    if (isNewSession) {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("new");
+      window.history.replaceState({}, "", url.toString());
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Override user's profile role/company with URL params (SessionSetup passes these)
   const effectiveUser = (targetRole || targetCompany) ? { ...user, ...(targetRole ? { targetRole } : {}), ...(targetCompany ? { targetCompany } : {}) } as typeof user : user;
   const fallbackScript = isMiniMode ? getMiniScript(effectiveUser, targetCompany, interviewType) : getScript(interviewType, interviewDifficulty, effectiveUser);
@@ -947,9 +956,10 @@ export function useInterviewEngine() {
             // Strategy: REPLACE the next pre-generated question with a contextual one,
             // OR INSERT a follow-up probe if the answer was vague (with a hard cap).
             setInterviewScript(prev => {
-              const nextQuestionIdx = prev.findIndex((s, i) => i > currentStep && s.type === "question");
-              if (nextQuestionIdx > currentStep && nextQuestionIdx < prev.length - 1) {
-                // Replace the next pre-generated question with the dynamic contextual response
+              // Find next question OR closing to replace with contextual response
+              const nextQuestionIdx = prev.findIndex((s, i) => i > currentStep && (s.type === "question" || s.type === "closing"));
+              if (nextQuestionIdx > currentStep) {
+                // Replace the next pre-generated question/closing with the dynamic contextual response
                 return [...prev.slice(0, nextQuestionIdx), followUpStep, ...prev.slice(nextQuestionIdx + 1)];
               }
               // No more questions to replace — check if we can insert a follow-up probe
