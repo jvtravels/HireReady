@@ -217,19 +217,21 @@ export function useInterviewEngine() {
     return null;
   });
 
-  // Restore draft ONLY when explicitly resuming (resume=true in URL)
+  // Draft restore: clear on new session (new=1 from SessionSetup), restore on refresh/resume
   const draftKey = `hirestepx_interview_draft_${user?.id || "anon"}`;
+  const isNewSession = searchParams.get("new") === "1";
   const isResuming = searchParams.get("resume") === "true";
   const draftRef = useRef<InterviewDraft | null>(null);
   if (!draftRef.current) {
     try {
       const raw = localStorage.getItem(draftKey);
       if (raw) {
-        if (!isResuming) {
-          // New session — clear any existing draft so we start fresh
+        if (isNewSession && !isResuming) {
+          // Explicit new session from SessionSetup — clear old draft
           localStorage.removeItem(draftKey);
           deleteFromIDB(draftKey);
         } else {
+          // Page refresh or explicit resume — try to restore
           const parsed = JSON.parse(raw);
           const DRAFT_TTL = 24 * 60 * 60 * 1000; // 24 hours
           const isExpired = parsed?.savedAt && Date.now() - parsed.savedAt > DRAFT_TTL;
@@ -254,6 +256,8 @@ export function useInterviewEngine() {
   );
   const interviewScriptRef = useRef(interviewScript);
   useEffect(() => { interviewScriptRef.current = interviewScript; }, [interviewScript]);
+  // Version counter: incremented when script content changes (not just length) to re-trigger the speaking effect
+  const [scriptVersion, setScriptVersion] = useState(0);
   const [llmLoading, setLlmLoading] = useState(!draftRef.current && !isMiniMode);
 
   // Interview state
@@ -263,9 +267,9 @@ export function useInterviewEngine() {
     currentStepRef.current = currentStep;
   }, [currentStep]);
 
-  // Async IndexedDB fallback — try IDB only when explicitly resuming
+  // Async IndexedDB fallback — try IDB on refresh or explicit resume (skip on new session)
   useEffect(() => {
-    if (draftRef.current || !isResuming) return;
+    if (draftRef.current || (isNewSession && !isResuming)) return;
     let cancelled = false;
     loadFromIDB(draftKey).then(data => {
       if (cancelled) return;
@@ -348,6 +352,8 @@ export function useInterviewEngine() {
         // Accept LLM questions if user is on intro (step 0) or first question (step 1)
         console.warn(`[interview] LLM generated ${questions.length} custom questions (replacing at step ${step})`);
         setInterviewScript(questions);
+        // Bump version so the speaking effect re-runs even if array length didn't change
+        setScriptVersion(v => v + 1);
         setSaveWarning("");
       } else if (questions && questions.length > 0 && step >= 2) {
         // Late arrival: merge remaining LLM questions into the script from the current position onward
@@ -719,7 +725,7 @@ export function useInterviewEngine() {
     setPhase("thinking");
 
     if (aiVoiceEnabled && step.aiText) {
-      prefetchTTS(step.aiText);
+      prefetchTTS(step.aiText, interviewerGender);
     }
 
     // Whether this step should get a reaction phrase (question/follow-up, not first step)
@@ -824,18 +830,18 @@ export function useInterviewEngine() {
           silenceNudgeFiredRef.current = false;
           const nextStep = interviewScript[currentStep + 1];
           if (nextStep && aiVoiceEnabled) {
-            prefetchTTS(nextStep.aiText);
+            prefetchTTS(nextStep.aiText, interviewerGender);
           }
         } else {
           setTimeout(() => setPhase("done"), 1000);
         }
       };
 
-      // Safety timer: allow speakingDuration + 8s buffer for TTS latency/network jitter
+      // Safety timer: allow speakingDuration + buffer for TTS latency/network jitter
       // If autoplay is blocked, use a short 3s timeout since no audio will play
       const safetyMs = isAutoplayBlocked()
         ? 3000
-        : Math.max(step.speakingDuration + 8000, 18000);
+        : Math.max(step.speakingDuration + 8000, 12000);
       safetyTimer = setTimeout(() => {
         if (!localSpeechEnded) {
           console.warn("[interview] TTS safety timeout — forcing phase transition");
@@ -993,7 +999,7 @@ export function useInterviewEngine() {
     };
   // interviewScript.length: re-run when follow-up steps are inserted at currentStep
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentStep, aiVoiceEnabled, interviewScript.length]);
+  }, [currentStep, aiVoiceEnabled, interviewScript.length, scriptVersion]);
 
   // Handle user "finishing" their answer
   const advancingRef = useRef(false);
@@ -1170,7 +1176,7 @@ export function useInterviewEngine() {
       setPhase("listening");
       const nextStep = interviewScript[currentStep + 1];
       if (nextStep && aiVoiceEnabled) {
-        prefetchTTS(nextStep.aiText);
+        prefetchTTS(nextStep.aiText, interviewerGender);
       }
     } else {
       setTimeout(() => setPhase("done"), 1000);

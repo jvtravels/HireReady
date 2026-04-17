@@ -173,10 +173,13 @@ export function clearPrefetchCache(): void {
   _prefetchCache.clear();
 }
 
-/* Pre-fetch TTS audio for a text so it's ready when needed */
-export async function prefetchTTS(text: string): Promise<void> {
+/* Pre-fetch TTS audio for a text so it's ready when needed.
+   Pass gender so the correct voice (male/female) is cached. */
+export async function prefetchTTS(text: string, gender?: "male" | "female"): Promise<void> {
   if (!text) return;
-  const existing = _prefetchCache.get(text);
+  // Cache key includes gender so male/female prefetches don't clash
+  const cacheKey = gender ? `${gender}::${text}` : text;
+  const existing = _prefetchCache.get(cacheKey);
   if (existing && Date.now() - existing.createdAt < PREFETCH_TTL) return;
   const settings = loadTTSSettings();
   if (settings.provider === "browser") return;
@@ -201,7 +204,7 @@ export async function prefetchTTS(text: string): Promise<void> {
       const res = await fetch(endpoint, {
         method: "POST",
         headers,
-        body: JSON.stringify({ text, voiceId: settings.voiceId }),
+        body: JSON.stringify({ text, voiceId: settings.voiceId, ...(gender ? { gender } : {}) }),
       });
       if (!res.ok) return null;
       const blob = await res.blob();
@@ -213,13 +216,21 @@ export async function prefetchTTS(text: string): Promise<void> {
     }
   })();
 
-  _prefetchCache.set(text, { promise, createdAt: Date.now() });
+  _prefetchCache.set(cacheKey, { promise, createdAt: Date.now() });
 }
 
-function consumePrefetch(text: string): Promise<Blob | null> | undefined {
-  const entry = _prefetchCache.get(text);
-  if (!entry) return undefined;
-  _prefetchCache.delete(text);
+function consumePrefetch(text: string, gender?: "male" | "female"): Promise<Blob | null> | undefined {
+  const cacheKey = gender ? `${gender}::${text}` : text;
+  const entry = _prefetchCache.get(cacheKey);
+  if (!entry) {
+    // Fall back to non-gendered key (e.g. prefetched from SessionSetup without gender)
+    const fallback = _prefetchCache.get(text);
+    if (!fallback) return undefined;
+    _prefetchCache.delete(text);
+    if (Date.now() - fallback.createdAt >= PREFETCH_TTL) return undefined;
+    return fallback.promise;
+  }
+  _prefetchCache.delete(cacheKey);
   if (Date.now() - entry.createdAt >= PREFETCH_TTL) return undefined; // expired
   return entry.promise;
 }
@@ -648,7 +659,7 @@ async function speakWithAzure(
     let blob: Blob | null = null;
 
     // Check prefetch cache first — avoids duplicate request on cold start (Q1)
-    const cached = consumePrefetch(text);
+    const cached = consumePrefetch(text, gender);
     if (cached) {
       blob = await cached;
     }
