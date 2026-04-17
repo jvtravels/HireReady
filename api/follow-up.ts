@@ -142,11 +142,12 @@ YOUR GOAL: Understand where they stand and steer toward specifics.
 
         "probe-expectations": `PHASE: Probing deeper into the candidate's expectations.
 
-YOUR GOAL: Understand their constraints and position your offer.
-- If they already shared a number/expectation: acknowledge that EXACT number, compare it to your offer, and negotiate around it. Do NOT re-ask for what they already told you.
+YOUR GOAL: Negotiate around what the candidate already told you. Move FORWARD — do NOT gather more data.
+- If they shared a number/expectation (even just base or total): acknowledge that EXACT number, compare it to your offer, and make a counter or trade. Do NOT ask for current CTC, breakdown, or justification — that sounds interrogative, not collaborative.
 - If they mentioned competing offers: ask what matters most — base, total package, or the role itself.
 - If they deflected: put your full offer on the table with breakdown, then ask what would make it a yes.
-- If vague/empty: ask directly for their target CTC range.`,
+- If vague/empty: ask directly for their target CTC range.
+IMPORTANT: Once the candidate states ANY salary expectation, you MUST negotiate around that number. Never ask "what's your current CTC" or "can you share your expectations" — you already know.`,
 
         "counter-offer": `PHASE: Making a counter-offer based on everything you've heard.
 
@@ -195,8 +196,8 @@ YOUR GOAL: Summarize the deal and move to next steps.
       if (negotiationFacts) {
         if (negotiationFacts.acceptedImmediately) factsLines.push("- Candidate ACCEPTED the offer immediately (probe if they've considered the full package)");
         if (negotiationFacts.rejectedOutright) factsLines.push("- Candidate REJECTED the offer outright (stay professional, ask what would work)");
-        if (negotiationFacts.candidateCounter) factsLines.push(`- Candidate's counter/target: ${sanitizeForLLM(negotiationFacts.candidateCounter, 30)}`);
-        if (negotiationFacts.candidateCurrentCTC) factsLines.push(`- Candidate's current CTC: ${sanitizeForLLM(negotiationFacts.candidateCurrentCTC, 30)}`);
+        if (negotiationFacts.candidateCounter) factsLines.push(`- Candidate's counter/target: ${sanitizeForLLM(negotiationFacts.candidateCounter, 30)} — YOU KNOW THIS. Negotiate around it, do NOT re-ask.`);
+        if (negotiationFacts.candidateCurrentCTC) factsLines.push(`- Candidate's current CTC: ${sanitizeForLLM(negotiationFacts.candidateCurrentCTC, 30)} — YOU KNOW THIS. Do NOT ask again.`);
         if (negotiationFacts.hasCompetingOffers) factsLines.push("- Candidate mentioned competing offers");
         if (negotiationFacts.deflectedNumbers) factsLines.push("- Candidate deflected/refused to share their numbers");
         if (negotiationFacts.topicsRaised && negotiationFacts.topicsRaised.length > 0) {
@@ -225,7 +226,7 @@ YOUR GOAL: Summarize the deal and move to next steps.
       depthInstructions = `You are a HIRING MANAGER in a salary negotiation. You MUST stay in character. ALWAYS set needsFollowUp to true.
 
 ##ABSOLUTE RULE — READ THIS FIRST:
-NEVER ask for information the candidate has ALREADY provided. If they stated a salary expectation, CTC, counter-offer, or any other fact — you ALREADY KNOW IT. Acknowledge it by repeating their exact number, then move the negotiation FORWARD. Asking for something they already told you sounds robotic and breaks immersion.
+NEVER ask for information the candidate has ALREADY provided OR that you don't need. If they stated a salary expectation, CTC, counter-offer, or any number — you ALREADY KNOW IT. Acknowledge it by repeating their exact number, then move the negotiation FORWARD. Do NOT ask for "current CTC", "expected salary", "your number", or any salary data if the candidate has ALREADY given you a number to work with. Use that number to negotiate — make a counter-offer, trade with benefits, or push back. Asking for data you already have sounds robotic and breaks immersion.
 ${factsCtx}${offerCtx}${bandCtx}${styleCtx}${industryCtx}
 
 ${phaseInstructions[salaryPhase] || phaseInstructions["offer-reaction"]}

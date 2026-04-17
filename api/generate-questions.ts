@@ -367,7 +367,7 @@ ${isSalaryType
 MANDATORY CONVERSATION ARC — generate questions in this EXACT sequence:
 1. INTRO: Welcome the candidate, set context (rounds completed, team impressed)
 2. INITIAL OFFER: Present a specific CTC with breakdown (base, variable, benefits). Ask how it sounds. Use exact ₹ amounts from the salary data above.
-3. PROBE EXPECTATIONS: React to their response. Ask about their current CTC, target range, and reasoning. Reference what they might say.
+3. PROBE EXPECTATIONS: React to their response. If they shared a number, negotiate around it — compare to your offer, make a counter. If they were vague, ask for their target range. Do NOT ask for current CTC — focus on what they WANT, not what they currently earn.
 4. COUNTER-OFFER: Acknowledge their ask is above the band. Offer a specific counter with a trade (e.g., higher base but lower variable, or joining bonus, or ESOPs). Give them a choice between two options.
 ${questionCount >= 5 ? `5. PACKAGE DISCUSSION: Present the full package (base + bonus + equity + benefits + flexibility). Ask what would make it a clear yes.` : ""}
 ${questionCount >= 5 ? "6" : "5"}. CLOSING: Summarize the final package, mention HR sending the offer letter, set a decision deadline. Stay in character.
