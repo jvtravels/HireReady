@@ -486,7 +486,7 @@ export function useInterviewEngine() {
   const {
     elapsed, setElapsed, answerTimer, timeRemaining, timePercent,
     handleNextRef,
-  } = useInterviewTimers(phase, currentStep, draftRef.current?.elapsed || 0, toast);
+  } = useInterviewTimers(phase, currentStep, draftRef.current?.elapsed || 0, toast, interviewType === "salary-negotiation");
 
   // TTS-caption sync: actual audio duration (from TTS provider) and speech-ended flag
   const [ttsDurationMs, setTtsDurationMs] = useState<number | undefined>(undefined);
@@ -1382,7 +1382,17 @@ export function useInterviewEngine() {
     // Generate micro-feedback with dynamic difficulty awareness
     setMicroFeedback(null);
     if (answerText.length > 10 && !answerText.startsWith("[Answer recorded")) {
-      const { feedback, score: answerScore } = computeMicroFeedback(answerText, interviewType, answerQualityRef.current);
+      // Compute current negotiation phase for phase-aware feedback
+      let negPhase: string | undefined;
+      if (interviewType === "salary-negotiation") {
+        const negotiationPhases = ["offer-reaction", "probe-expectations", "counter-offer", "benefits-discussion", "closing-pressure", "closing"];
+        const questionSteps = interviewScript.filter(s => s.type === "question" || s.type === "follow-up");
+        const currentQIdx = interviewScript.slice(0, currentStep + 1).filter(s => s.type === "question" || s.type === "follow-up").length;
+        const ratio = questionSteps.length > 1 ? (currentQIdx - 1) / (questionSteps.length - 1) : 0;
+        const phaseIdx = Math.min(Math.round(ratio * (negotiationPhases.length - 1)), negotiationPhases.length - 1);
+        negPhase = negotiationPhases[phaseIdx];
+      }
+      const { feedback, score: answerScore } = computeMicroFeedback(answerText, interviewType, answerQualityRef.current, negPhase);
       answerQualityRef.current.push(answerScore);
       if (feedback) setMicroFeedback(feedback);
     }

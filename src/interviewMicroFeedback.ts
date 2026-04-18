@@ -11,11 +11,12 @@ export function computeMicroFeedback(
   answerText: string,
   interviewType: string,
   runningScores: number[],
+  negotiationPhase?: string,
 ): MicroFeedbackResult {
   const wordCount = answerText.trim().split(/\s+/).length;
 
   if (interviewType === "salary-negotiation") {
-    return salaryNegFeedback(answerText, wordCount);
+    return salaryNegFeedback(answerText, wordCount, negotiationPhase);
   }
   if (interviewType === "government-psu") {
     return govPsuFeedback(answerText, wordCount);
@@ -38,27 +39,84 @@ export function computeMicroFeedback(
   return standardFeedback(answerText, wordCount, runningScores);
 }
 
-/* ─── Salary Negotiation ─── */
-function salaryNegFeedback(text: string, wordCount: number): MicroFeedbackResult {
+/* ─── Salary Negotiation (phase-aware) ─── */
+function salaryNegFeedback(text: string, wordCount: number, phase?: string): MicroFeedbackResult {
   const mentionsNumber = /₹|lakh|lpa|lakhs|\d+\s*l(?:pa|akh)/i.test(text);
   const mentionsBenefits = /benefit|esop|equity|bonus|flexible|remote|insurance|learning|budget/i.test(text);
   const mentionsEquityVague = /esop|equity|stock|option|vest/i.test(text) && !/₹|\d+\s*(?:lakh|lpa|%)/i.test(text);
   const mentionsCompeting = /other offer|competing|another company|counter/i.test(text);
+  const mentionsResearch = /market|glassdoor|research|benchmark|industry|average|range|data/i.test(text);
   const acceptsImmediately = /(?:sounds good|i accept|that works|deal|perfect|okay sure|fine with me|yes.*accept)/i.test(text) && wordCount < 25;
   const rejectsOutright = /(?:way too low|not interested|can'?t accept|wouldn'?t consider|absolutely not|that'?s insulting|no way)/i.test(text);
 
   let feedback: string | null = null;
+
+  // Universal checks first (override phase-specific)
   if (rejectsOutright && wordCount < 30) {
     feedback = "Tip: Stay open and professional — counter with data, don't reject outright.";
   } else if (acceptsImmediately) {
-    feedback = "Tip: Don't accept too quickly — explore the full package first.";
+    feedback = phase === "closing"
+      ? "Tip: Before accepting, confirm all terms — base, bonus, equity, start date."
+      : "Tip: Don't accept too quickly — explore the full package first.";
   } else if (wordCount > 100) {
     feedback = "Tip: Keep negotiation points concise — 2-3 sentences per response works best.";
-  } else if (wordCount < 15 && mentionsNumber) {
-    feedback = "Tip: Elaborate on your reasoning — why that number? What's your basis?";
   } else if (wordCount < 15) {
-    feedback = "Tip: Share more detail — what are your expectations and reasoning?";
-  } else if (mentionsEquityVague) {
+    feedback = mentionsNumber
+      ? "Tip: Elaborate on your reasoning — why that number? What's your basis?"
+      : "Tip: Share more detail — what are your expectations and reasoning?";
+  }
+  // Phase-specific feedback
+  else if (phase === "offer-reaction") {
+    if (mentionsNumber) {
+      feedback = "Tip: In the offer phase, listen first — don't counter yet. Ask about the full package.";
+    } else if (mentionsBenefits) {
+      feedback = "Smart — asking about the full package before reacting to numbers.";
+    } else {
+      feedback = "Good — stay curious. Ask about equity, bonuses, and growth before countering.";
+    }
+  } else if (phase === "probe-expectations") {
+    if (mentionsResearch) {
+      feedback = "Strong — backing your expectations with market research builds credibility.";
+    } else if (mentionsNumber && !mentionsResearch) {
+      feedback = "Good anchor! Strengthen with market data — 'based on Glassdoor/industry benchmarks...'";
+    } else {
+      feedback = "Tip: Share a specific number backed by research — vague expectations are weaker.";
+    }
+  } else if (phase === "counter-offer") {
+    if (mentionsNumber && mentionsCompeting) {
+      feedback = "Strong counter — specific number plus leverage from competing offers.";
+    } else if (mentionsNumber) {
+      feedback = "Good counter! Mention why — market data, competing offers, or unique value you bring.";
+    } else if (mentionsCompeting) {
+      feedback = "Good leverage. Now state your specific number to anchor the negotiation.";
+    } else {
+      feedback = "Tip: State a specific counter-offer — 'Based on X, I'd need ₹Y LPA.'";
+    }
+  } else if (phase === "benefits-discussion") {
+    if (mentionsBenefits && mentionsNumber) {
+      feedback = "Excellent — negotiating total comp with specific numbers on benefits.";
+    } else if (mentionsBenefits) {
+      feedback = "Good topic! Push for specifics — 'What's the equity vesting schedule?' or 'How much is the joining bonus?'";
+    } else if (mentionsEquityVague) {
+      feedback = "Good interest in equity! Ask for the vesting schedule and annual value in ₹.";
+    } else {
+      feedback = "Tip: This is the time for total comp — equity, bonus, flexibility, learning budget.";
+    }
+  } else if (phase === "closing-pressure") {
+    if (mentionsCompeting) {
+      feedback = "Using leverage well under pressure. Stay firm but professional.";
+    } else {
+      feedback = "Tip: Don't fold under deadline pressure — use BATNA or competing offers to hold your ground.";
+    }
+  } else if (phase === "closing") {
+    if (mentionsBenefits && mentionsNumber) {
+      feedback = "Strong close — confirming both comp and benefits. Get everything in writing.";
+    } else {
+      feedback = "Tip: Confirm all terms explicitly — base, bonus, equity, start date, notice period.";
+    }
+  }
+  // Fallback (no phase info)
+  else if (mentionsEquityVague) {
     feedback = "Good interest in equity! Ask for the vesting schedule and annual value in ₹.";
   } else if (mentionsNumber && !mentionsBenefits) {
     feedback = "Good anchor! Consider discussing beyond base — benefits, equity, flexibility.";
@@ -73,6 +131,7 @@ function salaryNegFeedback(text: string, wordCount: number): MicroFeedbackResult
   let score = 50;
   if (mentionsNumber) score += 15;
   if (mentionsBenefits) score += 15;
+  if (mentionsResearch) score += 10;
   if (wordCount >= 30) score += 10;
   if (!acceptsImmediately && !rejectsOutright) score += 10;
   if (rejectsOutright) score -= 10;

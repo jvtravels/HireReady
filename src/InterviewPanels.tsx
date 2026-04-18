@@ -115,7 +115,7 @@ export const InterviewHeader = memo(function InterviewHeader({ displayCompany, d
       {phase !== "done" && (
         <div style={{ padding: "0 24px 10px" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
-            <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: isCurrentFollowUp ? c.gilt : c.ivory }}>
+            <span style={{ fontFamily: font.ui, fontSize: isSalaryNegotiation ? 13 : 11, fontWeight: 600, color: isCurrentFollowUp ? c.gilt : c.ivory }}>
               {isSalaryNegotiation
                 ? `${getNegPhaseLabel(currentQuestionNum)} · Round ${Math.min(currentQuestionNum, baseQuestionCount || totalQuestions)} of ${baseQuestionCount || totalQuestions}`
                 : isCurrentFollowUp
@@ -338,7 +338,7 @@ export const PanelAvatarStage = memo(function PanelAvatarStage({ phase, panelMem
 
 /* ─── Question Card with timer ─── */
 
-export const QuestionCard = memo(function QuestionCard({ step, phase, showCaptions, timeRemaining, timePercent, panelPersona, actualDuration, speechEnded }: {
+export const QuestionCard = memo(function QuestionCard({ step, phase, showCaptions, timeRemaining, timePercent, panelPersona, actualDuration, speechEnded, isSalaryNegotiation }: {
   step: { aiText: string; scoreNote?: string; speakingDuration: number } | undefined;
   phase: string; showCaptions: boolean;
   timeRemaining: number; timePercent: number;
@@ -347,6 +347,7 @@ export const QuestionCard = memo(function QuestionCard({ step, phase, showCaptio
   actualDuration?: number;
   /** True when TTS voice playback has finished */
   speechEnded?: boolean;
+  isSalaryNegotiation?: boolean;
 }) {
   return (
     <div aria-live="polite" aria-atomic="true" style={{
@@ -382,11 +383,13 @@ export const QuestionCard = memo(function QuestionCard({ step, phase, showCaptio
       ) : step?.aiText ? (
         <p style={{ fontFamily: font.ui, fontSize: 14, color: c.chalk, lineHeight: 1.75, margin: 0, opacity: phase === "listening" && !showCaptions ? 0.55 : 1 }}>{step.aiText}</p>
       ) : null}
-      {phase !== "done" && (
-        <div role="timer" aria-label={`${formatTime(timeRemaining)} remaining for this question`} style={{ marginTop: 16 }}>
+      {phase !== "done" && !(isSalaryNegotiation && timeRemaining > 30) && (
+        <div role="timer" aria-label={`${formatTime(timeRemaining)} remaining for this question`} style={{ marginTop: 16, opacity: isSalaryNegotiation ? 0.7 : 1, transition: "opacity 0.3s ease" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
             <span style={{ fontFamily: font.ui, fontSize: 10, color: timeRemaining <= 15 ? c.ember : timeRemaining <= 30 ? c.gilt : c.stone }}>
-              {timeRemaining <= 15 ? "Wrapping up..." : timeRemaining <= 30 ? "30s remaining" : "Time remaining"}
+              {isSalaryNegotiation
+                ? timeRemaining <= 15 ? "Wrapping up..." : "Take your time"
+                : timeRemaining <= 15 ? "Wrapping up..." : timeRemaining <= 30 ? "30s remaining" : "Time remaining"}
             </span>
             <span style={{
               fontFamily: font.mono, fontSize: 11, fontWeight: 600,
@@ -1070,7 +1073,7 @@ export const DealSummaryCard = memo(function DealSummaryCard({ transcript, negot
 
 /* ─── Live Negotiation Dashboard (shown during salary negotiation) ─── */
 
-export const NegotiationLiveDashboard = memo(function NegotiationLiveDashboard({ liveState, negotiationBand, highestOffer, targetSalary, voiceConfidence }: {
+export const NegotiationLiveDashboard = memo(function NegotiationLiveDashboard({ liveState, negotiationBand, highestOffer, targetSalary, voiceConfidence, negotiationStyle }: {
   liveState: {
     facts: { candidateCounter: string | null; hasCompetingOffers: boolean; topicsRaised: string[]; acceptedImmediately: boolean; mentionedBATNA: boolean };
     phase: string;
@@ -1083,7 +1086,14 @@ export const NegotiationLiveDashboard = memo(function NegotiationLiveDashboard({
   highestOffer: number;
   targetSalary: number | null;
   voiceConfidence?: { score: number; volume: number; variability: number } | null;
+  negotiationStyle?: string;
 }) {
+  const styleMap: Record<string, { label: string; color: string; icon: string }> = {
+    cooperative: { label: "Friendly", color: c.sage, icon: "🤝" },
+    aggressive: { label: "Tough", color: c.ember, icon: "💪" },
+    defensive: { label: "Evasive", color: c.gilt, icon: "🛡" },
+  };
+  const styleInfo = negotiationStyle ? styleMap[negotiationStyle] || { label: negotiationStyle, color: c.stone, icon: "👤" } : null;
   const phaseLabels: Record<string, string> = {
     "offer-reaction": "React to Offer",
     "probe-expectations": "Share Expectations",
@@ -1113,7 +1123,7 @@ export const NegotiationLiveDashboard = memo(function NegotiationLiveDashboard({
     }}>
       {/* Phase Progress */}
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <span style={{ fontFamily: font.ui, fontSize: 10, color: c.stone, textTransform: "uppercase", letterSpacing: "0.06em", flexShrink: 0 }}>Phase</span>
+        <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, textTransform: "uppercase", letterSpacing: "0.06em", flexShrink: 0 }}>Phase</span>
         <div style={{ flex: 1, display: "flex", gap: 3 }}>
           {Array.from({ length: liveState.totalPhases }).map((_, i) => (
             <div key={i} style={{
@@ -1123,13 +1133,21 @@ export const NegotiationLiveDashboard = memo(function NegotiationLiveDashboard({
             }} />
           ))}
         </div>
-        <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.gilt, flexShrink: 0 }}>
+        <span style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: c.gilt, flexShrink: 0 }}>
           {phaseLabels[liveState.phase] || liveState.phase}
         </span>
       </div>
 
-      {/* Phase Guidance */}
+      {/* Manager Style + Phase Guidance */}
       <div style={{ padding: "8px 10px", borderRadius: 8, background: "rgba(212,179,127,0.06)", border: "1px solid rgba(212,179,127,0.08)" }}>
+        {styleInfo && (
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+            <span style={{ fontSize: 11 }}>{styleInfo.icon}</span>
+            <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, color: styleInfo.color }}>
+              {styleInfo.label} Manager
+            </span>
+          </div>
+        )}
         <p style={{ fontFamily: font.ui, fontSize: 11, color: c.chalk, margin: 0, lineHeight: 1.4 }}>
           {phaseGuidance[liveState.phase] || "Stay composed and negotiate professionally."}
         </p>

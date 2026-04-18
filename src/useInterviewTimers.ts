@@ -6,13 +6,16 @@ import { useState, useEffect, useRef } from "react";
 import type { ToastType } from "./Toast";
 
 const QUESTION_TIME_LIMIT = 120;
+const SALARY_NEG_TIME_LIMIT = 180;
 
 export function useInterviewTimers(
   phase: string,
   currentStep: number,
   initialElapsed: number,
   toast: (msg: string, type?: ToastType) => void,
+  isSalaryNegotiation = false,
 ) {
+  const timeLimit = isSalaryNegotiation ? SALARY_NEG_TIME_LIMIT : QUESTION_TIME_LIMIT;
   const [elapsed, setElapsed] = useState(initialElapsed);
   const [answerTimer, setAnswerTimer] = useState(0);
   const handleNextRef = useRef<() => void>(() => {});
@@ -46,10 +49,10 @@ export function useInterviewTimers(
     const timer = setInterval(() => setAnswerTimer(t => {
       if (!tabVisibleRef.current) return t;
       const next = t + 1;
-      if (next === 100 && phase === "listening" && !autoAdvancedRef.current) {
+      if (next === (timeLimit - 20) && phase === "listening" && !autoAdvancedRef.current) {
         toast("20 seconds remaining for this answer.", "info");
       }
-      if (next >= 120 && phase === "listening" && !autoAdvancedRef.current) {
+      if (next >= timeLimit && phase === "listening" && !autoAdvancedRef.current) {
         autoAdvancedRef.current = true;
         toast("Time's up — moving to the next question.", "info");
         handleNextRef.current();
@@ -58,10 +61,10 @@ export function useInterviewTimers(
       return next;
     }), 1000);
     return () => clearInterval(timer);
-  }, [phase, toast]);
+  }, [phase, toast, timeLimit]);
 
-  const timeRemaining = QUESTION_TIME_LIMIT - answerTimer;
-  const timePercent = (answerTimer / QUESTION_TIME_LIMIT) * 100;
+  const timeRemaining = timeLimit - answerTimer;
+  const timePercent = (answerTimer / timeLimit) * 100;
 
   return {
     elapsed,

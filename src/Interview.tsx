@@ -4,7 +4,7 @@ import {
   StatusToasts, InterviewHeader, AvatarStage, PanelAvatarStage, QuestionCard,
   UserAnswerArea, CompletionCard, MicroFeedbackPanel,
   ControlsBar, TranscriptPanel, EndModal, EvaluatingOverlay,
-  DealSummaryCard, AnnotatedReplayPanel,
+  DealSummaryCard, AnnotatedReplayPanel, NegotiationLiveDashboard,
 } from "./InterviewPanels";
 import { useInterviewEngine } from "./useInterviewEngine";
 import { useVideoRecorder } from "./useVideoRecorder";
@@ -33,6 +33,7 @@ export default function Interview() {
     ttsDurationMs, speechEnded,
     interviewScript, saveWarning, liveMetrics,
     isSalaryNegotiation, negotiationBand, negotiationStyle,
+    targetSalary, highestOffer, liveNegotiationState, voiceConfidence,
 
     setCurrentTranscript, setSpeechUnavailable, setIsMuted,
     setShowTranscript, setShowEndModal, setAiVoiceEnabled,
@@ -138,9 +139,21 @@ export default function Interview() {
           <QuestionCard step={step} phase={phase} showCaptions={showCaptions} timeRemaining={timeRemaining} timePercent={timePercent}
             panelPersona={isPanelInterview && panelMembers ? panelMembers.find(m => m.title === activePersona) || null : null}
             actualDuration={ttsDurationMs} speechEnded={speechEnded}
+            isSalaryNegotiation={isSalaryNegotiation}
           />
 
-{phase === "listening" && (
+{isSalaryNegotiation && liveNegotiationState && phase !== "done" && (
+            <NegotiationLiveDashboard
+              liveState={liveNegotiationState}
+              negotiationBand={negotiationBand}
+              highestOffer={highestOffer}
+              targetSalary={targetSalary}
+              voiceConfidence={voiceConfidence}
+              negotiationStyle={negotiationStyle}
+            />
+          )}
+
+          {phase === "listening" && (
             <UserAnswerArea
               currentTranscript={currentTranscript} setCurrentTranscript={setCurrentTranscript}
               speechUnavailable={speechUnavailable} setSpeechUnavailable={setSpeechUnavailable}
