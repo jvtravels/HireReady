@@ -171,6 +171,73 @@ export async function upsertProfile(profile: Partial<Profile> & { id: string }) 
   return result;
 }
 
+/* ─── Live Interview Turn Persistence ─── */
+
+export interface InterviewTurn {
+  id: string;
+  session_id: string;
+  user_id: string;
+  turn_index: number;
+  turn_type: "session_start" | "question" | "answer" | "follow_up";
+  speaker: "ai" | "user" | "system";
+  content: string;
+  metadata: Record<string, unknown> | null;
+  created_at?: string;
+}
+
+/** Create the live session row and save all initial questions as turns */
+export async function initLiveSession(params: {
+  sessionId: string;
+  userId: string;
+  type: string;
+  difficulty: string;
+  focus: string;
+  role: string;
+  company: string;
+  questions: { type: string; aiText: string; persona?: string }[];
+}): Promise<void> {
+  if (!supabaseConfigured) return;
+  try {
+    const client = await getSupabase();
+    const turns: Omit<InterviewTurn, "created_at">[] = [
+      {
+        id: safeUUID(),
+        session_id: params.sessionId,
+        user_id: params.userId,
+        turn_index: 0,
+        turn_type: "session_start",
+        speaker: "system",
+        content: `Interview started: ${params.type} / ${params.difficulty}`,
+        metadata: { type: params.type, difficulty: params.difficulty, focus: params.focus, role: params.role, company: params.company },
+      },
+      ...params.questions.map((q, i) => ({
+        id: safeUUID(),
+        session_id: params.sessionId,
+        user_id: params.userId,
+        turn_index: i + 1,
+        turn_type: "question" as const,
+        speaker: "ai" as const,
+        content: q.aiText,
+        metadata: { questionType: q.type, ...(q.persona ? { persona: q.persona } : {}) },
+      })),
+    ];
+    await client.from("interview_turns").insert(turns);
+  } catch (err) {
+    console.warn("[supabase] initLiveSession failed:", err);
+  }
+}
+
+/** Save a single turn (answer or follow-up) in real-time */
+export async function saveInterviewTurn(turn: Omit<InterviewTurn, "created_at">): Promise<void> {
+  if (!supabaseConfigured) return;
+  try {
+    const client = await getSupabase();
+    await client.from("interview_turns").insert(turn);
+  } catch (err) {
+    console.warn("[supabase] saveInterviewTurn failed:", err);
+  }
+}
+
 /* ─── Session helpers ─── */
 
 export async function saveSession(session: Omit<SessionRecord, "created_at">) {

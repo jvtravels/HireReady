@@ -9,6 +9,7 @@ import { saveToIDB, loadFromIDB, deleteFromIDB } from "./interviewIDB";
 import type { InterviewStep } from "./interviewScripts";
 import { getMiniScript, getScript } from "./interviewScripts";
 import { saveSessionResult, fetchLLMQuestions, fetchLLMEvaluation, fetchFollowUp, retryQueuedEvals, getAdaptiveHints } from "./interviewAPI";
+import { initLiveSession, saveInterviewTurn } from "./supabase";
 import type { NegotiationBandData } from "./interviewAPI";
 import type { DeepgramSTTHandle } from "./deepgramSTT";
 import type { SarvamSTTHandle } from "./sarvamSTT";
@@ -201,6 +202,10 @@ export function useInterviewEngine() {
   const ramblingFiredRef = useRef(false);
   // "I don't know" count for evaluation context
   const dontKnowCountRef = useRef(0);
+  // Live session ID — created early so turns can be saved in real-time
+  const liveSessionIdRef = useRef<string>(safeUUID());
+  // Turn counter for real-time persistence ordering
+  const turnIndexRef = useRef(0);
   // Negotiation band (populated by LLM question generation for salary-neg)
   const negotiationBandRef = useRef<NegotiationBandData | null>(null);
   // Candidate's target salary (set via warm-up calibration card)
@@ -425,6 +430,21 @@ export function useInterviewEngine() {
         console.warn("[interview] LLM returned null — using fallback questions");
         setSaveWarning("Using practice questions. Tap retry for personalized ones.");
         if (!isMiniMode) toast("Using practice questions — tap retry for personalized ones.", "info");
+      }
+      // Persist questions to DB in real-time (best-effort, non-blocking)
+      if (questions && questions.length > 0 && user?.id) {
+        const qList = questions.map((q: { type: string; aiText: string; persona?: string }) => ({ type: q.type, aiText: q.aiText, persona: q.persona }));
+        turnIndexRef.current = qList.length + 1; // session_start(0) + N questions
+        initLiveSession({
+          sessionId: liveSessionIdRef.current,
+          userId: user.id,
+          type: interviewType,
+          difficulty: interviewDifficulty,
+          focus: interviewFocus,
+          role: targetRole || user.targetRole || "",
+          company: targetCompany || user.targetCompany || "",
+          questions: qList,
+        }).catch(() => {});
       }
       setLlmLoading(false);
     }).catch(err => {
@@ -1178,6 +1198,20 @@ export function useInterviewEngine() {
             scoreNote: isSalaryNegConversation ? "Salary negotiation response — evaluate negotiation strategy" : "Dynamic follow-up based on candidate's answer",
             persona: followUpPersona,
           };
+          // Persist follow-up to DB in real-time
+          if (user?.id) {
+            const idx = turnIndexRef.current++;
+            saveInterviewTurn({
+              id: safeUUID(),
+              session_id: liveSessionIdRef.current,
+              user_id: user.id,
+              turn_index: idx,
+              turn_type: "follow_up",
+              speaker: "ai",
+              content: result.followUpText,
+              metadata: { persona: followUpPersona || null, isSalaryNeg: isSalaryNegConversation },
+            }).catch(() => {});
+          }
           if (isSalaryNegConversation) {
             // Salary negotiation: make the conversation contextual
             // Strategy: REPLACE the next pre-generated question with a contextual one,
@@ -1315,6 +1349,21 @@ export function useInterviewEngine() {
       time: formatTime(elapsed),
     }]);
     setCurrentTranscript("");
+
+    // Persist user answer to DB in real-time
+    if (user?.id) {
+      const idx = turnIndexRef.current++;
+      saveInterviewTurn({
+        id: safeUUID(),
+        session_id: liveSessionIdRef.current,
+        user_id: user.id,
+        turn_index: idx,
+        turn_type: "answer",
+        speaker: "user",
+        content: answerText,
+        metadata: { time: formatTime(elapsed), questionStep: currentStep },
+      }).catch(() => {});
+    }
 
     const currentStepObj = interviewScript[currentStep];
     const isLastStep = currentStep >= interviewScript.length - 1;
@@ -1551,7 +1600,7 @@ export function useInterviewEngine() {
     setIsMuted(true);
     setEvaluating(true);
 
-    const sessionId = safeUUID();
+    const sessionId = liveSessionIdRef.current;
     setLastSessionId(sessionId);
     let score = 0;
     let aiFeedback = "";

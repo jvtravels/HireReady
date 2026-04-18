@@ -1,11 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { c, font } from "./tokens";
 import {
   StatusToasts, InterviewHeader, AvatarStage, PanelAvatarStage, QuestionCard,
   UserAnswerArea, CompletionCard, MicroFeedbackPanel,
   ControlsBar, TranscriptPanel, EndModal, EvaluatingOverlay,
-  DealSummaryCard, NegotiationCoachingCard,
-  NegotiationLiveDashboard, AnnotatedReplayPanel,
+  DealSummaryCard, AnnotatedReplayPanel,
 } from "./InterviewPanels";
 import { useInterviewEngine } from "./useInterviewEngine";
 import { useVideoRecorder } from "./useVideoRecorder";
@@ -34,9 +33,6 @@ export default function Interview() {
     ttsDurationMs, speechEnded,
     interviewScript, saveWarning, liveMetrics,
     isSalaryNegotiation, negotiationBand, negotiationStyle,
-    targetSalary, setTargetSalary, highestOffer,
-    liveNegotiationState, voiceConfidence,
-    negotiationScenario: _negotiationScenario, setNegotiationScenario, negotiationRound,
 
     setCurrentTranscript, setSpeechUnavailable, setIsMuted,
     setShowTranscript, setShowEndModal, setAiVoiceEnabled,
@@ -48,13 +44,6 @@ export default function Interview() {
     micStreamRef, noSpeechCountRef, ttsCancelRef, interviewEndedRef,
   } = engine;
 
-  // Coaching card state (salary negotiation only)
-  const [showCoachingCard, setShowCoachingCard] = useState(isSalaryNegotiation && currentStep === 0);
-
-  // Auto-dismiss coaching card when user advances past intro
-  useEffect(() => {
-    if (currentStep > 0) setShowCoachingCard(false);
-  }, [currentStep]);
 
   // Stop video recording when interview ends
   useEffect(() => {
@@ -140,19 +129,7 @@ export default function Interview() {
 
         <div style={{ width: "100%", maxWidth: 560, display: "flex", flexDirection: "column", alignItems: "center", gap: 20 }}>
 
-          {showCoachingCard && isSalaryNegotiation && (
-            <NegotiationCoachingCard
-              onDismiss={() => setShowCoachingCard(false)}
-              negotiationStyle={negotiationStyle}
-              onSetTarget={setTargetSalary}
-              targetRole={displayRole}
-              industry={undefined}
-              scenarioRound={negotiationRound}
-              onSelectScenario={setNegotiationScenario}
-            />
-          )}
-
-          {isPanelInterview && panelMembers ? (
+{isPanelInterview && panelMembers ? (
             <PanelAvatarStage phase={phase} panelMembers={panelMembers} activePersona={activePersona} isMuted={isMuted} speechUnavailable={speechUnavailable} skipSpeaking={skipSpeaking} />
           ) : (
             <AvatarStage phase={phase} interviewerName={interviewerName} isMuted={isMuted} speechUnavailable={speechUnavailable} skipSpeaking={skipSpeaking} />
@@ -163,17 +140,7 @@ export default function Interview() {
             actualDuration={ttsDurationMs} speechEnded={speechEnded}
           />
 
-          {isSalaryNegotiation && liveNegotiationState && phase !== "done" && currentStep > 0 && (
-            <NegotiationLiveDashboard
-              liveState={liveNegotiationState}
-              negotiationBand={negotiationBand}
-              highestOffer={highestOffer}
-              targetSalary={targetSalary}
-              voiceConfidence={phase === "listening" ? voiceConfidence : null}
-            />
-          )}
-
-          {phase === "listening" && (
+{phase === "listening" && (
             <UserAnswerArea
               currentTranscript={currentTranscript} setCurrentTranscript={setCurrentTranscript}
               speechUnavailable={speechUnavailable} setSpeechUnavailable={setSpeechUnavailable}

@@ -76,6 +76,7 @@ export default async function handler(req: Request): Promise<Response> {
         maxStretch: number;
         walkAway: number;
         bandContext: string;
+        hasEquity?: boolean;
       };
       industry?: string;
       highestOfferMade?: number;
@@ -166,7 +167,7 @@ IMPORTANT: Once the candidate states ANY number, negotiate around it. Never re-a
 YOUR GOAL: Trade, don't just concede. Make a SPECIFIC counter with exact ₹ numbers.
 - ALWAYS make a concrete counter: "Here's what I can do — ₹X base, ₹Y variable, and I'll add a ₹Z joining bonus. That brings your total to ₹W LPA." Never say vague things like "some flexibility."
 - If they want more base: "I can move base to ₹X if we adjust variable to Y%. Or I could add a ₹Z joining bonus to bridge the gap. Which works better for you?"
-- If they focus only on salary: expand — "Beyond the ₹X CTC, let me throw in: ₹Y joining bonus, Z ESOPs vesting over 4 years, plus a ₹W learning budget. The total package value is actually ₹V."
+- If they focus only on salary: expand — ${negotiationBand?.hasEquity ? `"Beyond the ₹X CTC, let me throw in: ₹Y joining bonus, Z ESOPs vesting over 4 years, plus a ₹W learning budget. The total package value is actually ₹V."` : `"Beyond the ₹X CTC, let me throw in: ₹Y joining bonus, a ₹W learning budget, and upgraded health insurance. The total package value is actually ₹V." Do NOT mention ESOPs or equity — this role does not include them.`}
 - If they pushed hard: be transparent — "₹X is genuinely my ceiling for this band. Beyond that, I'd need to go back to leadership. But here's what I CAN add: [2-3 specific levers with numbers]."
 - If their ask is reasonable (within your band): stretch and close — "You know what, let me make this work. ₹X LPA total, plus [one bonus lever]. Can we shake on this?"
 - Notice period as a lever: "What's your notice period? If you can join within 30 days, I'll add a ₹X notice buyout."
@@ -176,7 +177,7 @@ YOUR GOAL: Trade, don't just concede. Make a SPECIFIC counter with exact ₹ num
 
 YOUR GOAL: PROACTIVELY suggest creative trade-offs, don't just describe benefits.
 - If they only discussed base: "Let me paint the full picture. Beyond ₹X CTC, there's: [list specific benefits with values]. When you add it all up, the real value is closer to ₹Y."
-- If they asked about equity/ESOPs: go DEEP — "Great question. We offer X% vesting over 4 years with a 1-year cliff. At our current valuation, that's worth roughly ₹Y annually. What matters more to you — the vesting schedule or the total allocation?"
+- ${negotiationBand?.hasEquity ? `If they asked about equity/ESOPs: go DEEP — "Great question. We offer X% vesting over 4 years with a 1-year cliff. At our current valuation, that's worth roughly ₹Y annually. What matters more to you — the vesting schedule or the total allocation?"` : `If they asked about equity/ESOPs: be honest — "We don't offer ESOPs at this level/company type. But let me tell you what we DO offer that's valuable: [joining bonus, learning budget, flexible work, health coverage, performance-linked bonuses]. What matters most to you?"`}
 - If they asked about flexibility: be concrete — "We do [X days WFH/week]. Team standups are at [time]. As long as you hit your deliverables, we're flexible on hours."
 - If they seem stuck on base: brainstorm together — "What if we keep base at ₹X but add a performance-linked ₹Y bonus after 6 months? Plus a ₹Z joining bonus upfront? Would that change the math for you?"
 - If they asked about growth: "Typical promotion cycle is [X months]. Our last 3 hires at this level moved to [next level] within [timeline] with a [X-Y%] raise. I can build that trajectory into your offer letter."
@@ -352,8 +353,13 @@ Your response MUST directly address what they said above. Start by acknowledging
 `;
       }
 
+      // Equity availability guard for all salary negotiation phases
+      const equityGuard = negotiationBand?.hasEquity === false
+        ? "\nEQUITY GUARD: This role does NOT include ESOPs, RSUs, or stock options. Do NOT mention equity in any offer, counter-offer, or benefits discussion. Focus on base, joining bonus, variable pay (if applicable), learning budget, health insurance, and flexibility."
+        : "";
+
       depthInstructions = `You are a HIRING MANAGER in a salary negotiation. You MUST stay in character. ALWAYS set needsFollowUp to true.
-${intentBanner}
+${intentBanner}${equityGuard}
 ${factsCtx}${offerCtx}${bandCtx}${offerTrackingCtx}${targetCtx}${styleCtx}${industryCtx}${scenarioCtx}
 
 ${phaseInstructions[salaryPhase] || phaseInstructions["offer-reaction"]}

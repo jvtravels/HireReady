@@ -344,13 +344,45 @@ export function buildSalaryNegotiationGuidance(params: SalaryLookupParams): stri
   const companyTier = getCompanyTier(params.company);
   const relocating = isRelocation(params.currentCity, params.jobCity);
 
-  const equityRule = exp === "entry"
-    ? "EQUITY RULE: Do NOT mention equity, stock options, or ESOPs. Freshers don't get equity. Negotiate only base salary + joining bonus + benefits."
-    : exp === "mid"
-    ? "EQUITY RULE: Do NOT offer equity percentages. May mention ESOPs at startups by annual value only (e.g., 'ESOPs worth ₹3-5 LPA/yr vesting over 4 years'). NEVER as percentage of company."
-    : exp === "senior" || exp === "lead"
-    ? "EQUITY RULE: May discuss RSUs/ESOPs. Quote by annual value (₹10-60 LPA/yr). At startups: 0.05-0.5% max. NEVER more than 1%."
-    : "EQUITY RULE: Equity at startups: 0.5-2% max. Public companies: RSUs by annual value. NEVER offer 5%+ — that's co-founder territory.";
+  // Look up entry for dynamic rules (in-hand ratio, equity, variable availability)
+  const roleKey = matchRoleKey(params.role);
+  const safeTier = companyTier ?? "indian-unicorn";
+  const entry = findSalaryEntry(roleKey, safeTier, exp);
+  const hasEquity = entry ? entry.equity_type !== "none" : false;
+  const hasVariable = entry ? entry.variable_min > 0 : false;
+  const inHandPct = entry ? `${Math.round(entry.in_hand_ratio * 100)}%` : "65-75%";
+  const isGovt = companyTier === "government-psu";
+  const isStartup = companyTier === "startup-early" || companyTier === "startup-growth";
+
+  // Equity rule: gated by company type AND salary data, not just experience level
+  let equityRule: string;
+  if (isGovt) {
+    equityRule = "EQUITY RULE: Government/PSU roles have NO equity, ESOPs, or stock options. Do NOT mention equity at all. Focus on grade level, HRA, DA, pension, and allowances.";
+  } else if (!hasEquity) {
+    equityRule = `EQUITY RULE: This role/company does NOT offer equity at this level. Do NOT mention ESOPs, RSUs, or stock options in the offer or counter-offers. Negotiate only base salary${hasVariable ? " + variable/bonus" : ""} + joining bonus + benefits.`;
+  } else if (exp === "entry") {
+    equityRule = "EQUITY RULE: Do NOT mention equity, stock options, or ESOPs. Freshers don't get equity. Negotiate only base salary + joining bonus + benefits.";
+  } else if (exp === "mid") {
+    equityRule = `EQUITY RULE: ${isStartup ? "ESOPs may be offered" : "RSUs/ESOPs are available"} — quote by annual value only (e.g., 'ESOPs worth ₹3-5 LPA/yr vesting over 4 years'). NEVER as percentage of company.`;
+  } else if (exp === "senior" || exp === "lead") {
+    equityRule = `EQUITY RULE: May discuss ${entry?.equity_type === "rsu" ? "RSUs" : "ESOPs"}. Quote by annual value (₹10-60 LPA/yr). ${isStartup ? "At startups: 0.05-0.5% max. NEVER more than 1%." : "Quote only annual value, not percentage."}`;
+  } else {
+    equityRule = `EQUITY RULE: ${isStartup ? "Equity at startups: 0.5-2% max." : "RSUs/equity by annual value."} ${entry?.equity_type === "rsu" ? "RSUs" : "ESOPs"} available. NEVER offer 5%+ — that's co-founder territory.`;
+  }
+
+  // CTC structure guidance based on what this role/company actually offers
+  let ctcStructureNote: string;
+  if (isGovt) {
+    ctcStructureNote = ""; // handled by govNote below
+  } else if (hasEquity && hasVariable) {
+    ctcStructureNote = "\nCTC STRUCTURE: Present as Base + Variable/Bonus + Equity + Benefits. All components are available for this role.";
+  } else if (hasVariable && !hasEquity) {
+    ctcStructureNote = "\nCTC STRUCTURE: Present as Base + Variable/Bonus + Benefits. Do NOT mention equity/ESOPs — this role does not include them.";
+  } else if (hasEquity && !hasVariable) {
+    ctcStructureNote = "\nCTC STRUCTURE: Present as Base + Equity + Benefits. Variable/bonus is not standard at this level.";
+  } else {
+    ctcStructureNote = "\nCTC STRUCTURE: Present as Fixed CTC (Base + Allowances) + Benefits. Do NOT mention equity/ESOPs or variable pay — this role does not include them.";
+  }
 
   // Government/PSU has very different negotiation dynamics
   const govNote = companyTier === "government-psu"
@@ -391,7 +423,7 @@ Do NOT present this as a normal corporate salary negotiation. Frame it as: "Let 
 
   return `CRITICAL: This is a SALARY NEGOTIATION simulation, NOT a behavioral interview. You ARE the hiring manager — stay in character throughout.
 - Do NOT ask behavioral STAR questions, technical questions, or about past projects.
-- Use Indian Rupees (₹) and LPA (Lakhs Per Annum). CTC = Cost to Company. In-hand = 65-75% of CTC.
+- Use Indian Rupees (₹) and LPA (Lakhs Per Annum). CTC = Cost to Company. In-hand ≈ ${inHandPct} of CTC (after PF, gratuity, professional tax deductions).${ctcStructureNote}
 
 VOICE: Sound like a real Indian hiring manager — warm but businesslike. Use phrases like "We've been impressed with your profile", "Let me walk you through the offer", "I'll be transparent about our bands", "Let me see what I can do". Avoid robotic or overly formal language.
 

@@ -41,7 +41,11 @@ export type RoleKey =
   | "qa-engineer" | "hr" | "finance"
   | "content-writer" | "cybersecurity" | "blockchain"
   | "legal" | "operations" | "customer-success"
-  | "teacher" | "mobile-developer" | "frontend-developer" | "backend-developer";
+  | "teacher" | "mobile-developer" | "frontend-developer" | "backend-developer"
+  | "scrum-master" | "solutions-architect" | "tech-lead"
+  | "embedded-engineer" | "database-administrator" | "network-engineer"
+  | "mechanical-engineer" | "electrical-engineer" | "civil-engineer"
+  | "chartered-accountant" | "doctor" | "pharmacist";
 
 /** Helper to create a salary entry with defaults */
 function s(
@@ -186,6 +190,11 @@ export const SALARY_DATA: Partial<Record<RoleKey, SalaryTable>> = {
       senior: s([22, 35], [2, 5], NO_EQ, [25, 40], { negotiation_leverage: "medium" }),
       lead: s([30, 50], [3, 8], NO_EQ, [35, 60], { negotiation_leverage: "medium" }),
     },
+    "startup-growth": {
+      mid: s([20, 32], [2, 4], ESOP(3, 6), [24, 40], { notice_period_days: 30 }),
+      senior: s([32, 48], [4, 8], ESOP(6, 12), [38, 62], { notice_period_days: 30, negotiation_leverage: "high" }),
+      lead: s([42, 60], [6, 10], ESOP(8, 18), [55, 85], { notice_period_days: 30 }),
+    },
   },
 
   // ─── DATA SCIENTIST ───────────────────────────────────────────
@@ -235,6 +244,11 @@ export const SALARY_DATA: Partial<Record<RoleKey, SalaryTable>> = {
       mid: s([5, 9], [0.3, 0.8], NO_EQ, [5, 10], { negotiation_leverage: "low" }),
       senior: s([9, 16], [0.8, 1.5], NO_EQ, [10, 18], { negotiation_leverage: "medium" }),
     },
+    "startup-growth": {
+      entry: s([4, 7], [0.3, 0.5], ESOP(0.5, 1), [5, 9], {}),
+      mid: s([8, 14], [0.5, 1.5], ESOP(1, 3), [10, 18], {}),
+      senior: s([14, 22], [1.5, 3], ESOP(2, 5), [16, 28], {}),
+    },
   },
 
   // ─── ML ENGINEER / AI ENGINEER ────────────────────────────────
@@ -278,6 +292,11 @@ export const SALARY_DATA: Partial<Record<RoleKey, SalaryTable>> = {
       entry: s([4, 7], [0.2, 0.5], NO_EQ, [4, 8], { negotiation_leverage: "low" }),
       mid: s([7, 14], [0.5, 1.5], NO_EQ, [8, 15], {}),
       senior: s([14, 24], [1, 3], NO_EQ, [15, 28], {}),
+    },
+    "startup-growth": {
+      entry: s([6, 10], [0.5, 1], ESOP(1, 2), [7, 13], { hot_skills: ["Spark", "Kafka", "dbt", "Airflow"] }),
+      mid: s([12, 20], [1, 3], ESOP(2, 5), [14, 26], {}),
+      senior: s([20, 35], [3, 5], ESOP(5, 10), [26, 48], { negotiation_leverage: "high" }),
     },
   },
 
@@ -325,6 +344,11 @@ export const SALARY_DATA: Partial<Record<RoleKey, SalaryTable>> = {
       mid: s([5, 10], [0.3, 0.8], NO_EQ, [5, 11], {}),
       senior: s([10, 18], [0.8, 1.5], NO_EQ, [11, 20], {}),
     },
+    "startup-growth": {
+      entry: s([4, 7], [0.2, 0.5], ESOP(0.5, 1.5), [5, 9], {}),
+      mid: s([8, 16], [0.5, 2], ESOP(1, 3), [10, 20], {}),
+      senior: s([16, 28], [2, 4], ESOP(3, 6), [20, 36], {}),
+    },
   },
 
   // ─── QA ENGINEER / SDET ───────────────────────────────────────
@@ -343,6 +367,11 @@ export const SALARY_DATA: Partial<Record<RoleKey, SalaryTable>> = {
       entry: s([3, 5], [0.1, 0.3], NO_EQ, [3, 5], { notes: "SDET/automation: 50-100% more than manual QA", negotiation_leverage: "low" }),
       mid: s([5, 8], [0.3, 0.5], NO_EQ, [5, 9], {}),
       senior: s([8, 14], [0.5, 1.5], NO_EQ, [9, 16], {}),
+    },
+    "startup-growth": {
+      entry: s([4, 7], [0.3, 0.5], ESOP(0.5, 1.5), [5, 9], {}),
+      mid: s([8, 14], [0.5, 1.5], ESOP(1, 3), [10, 18], {}),
+      senior: s([14, 22], [1.5, 3], ESOP(2, 5), [16, 28], { negotiation_leverage: "medium" }),
     },
   },
 
@@ -364,6 +393,11 @@ export const SALARY_DATA: Partial<Record<RoleKey, SalaryTable>> = {
       mid: s([5, 9], [0.3, 0.8], NO_EQ, [5, 10], {}),
       senior: s([10, 18], [0.8, 2], NO_EQ, [11, 20], {}),
       executive: s([25, 45], [3, 8], NO_EQ, [28, 55], { notes: "CHRO: ₹50-120 LPA at top companies" }),
+    },
+    "startup-growth": {
+      entry: s([3, 5], [0.2, 0.4], ESOP(0.3, 0.8), [3.5, 6.5], {}),
+      mid: s([6, 10], [0.5, 1], ESOP(0.5, 2), [7, 13], {}),
+      senior: s([10, 18], [1, 2], ESOP(2, 4), [12, 22], {}),
     },
   },
 
@@ -413,6 +447,11 @@ export const SALARY_DATA: Partial<Record<RoleKey, SalaryTable>> = {
       entry: s([2.5, 4], [1, 2], NO_EQ, [3.5, 6], { negotiation_leverage: "low" }),
       mid: s([4, 8], [2, 4], NO_EQ, [6, 12], {}),
       senior: s([8, 15], [4, 8], NO_EQ, [12, 22], {}),
+    },
+    "startup-growth": {
+      entry: s([3, 5], [1.5, 3], ESOP(0.5, 1), [5, 9], { notes: "SaaS sales: higher variable" }),
+      mid: s([6, 10], [4, 8], ESOP(1, 3), [11, 20], {}),
+      senior: s([10, 18], [8, 14], ESOP(2, 5), [18, 35], { negotiation_leverage: "high" }),
     },
   },
 
@@ -520,6 +559,11 @@ export const SALARY_DATA: Partial<Record<RoleKey, SalaryTable>> = {
       mid: s([4, 6], [0.2, 0.5], NO_EQ, [4, 7], {}),
       senior: s([6, 10], [0.5, 1], NO_EQ, [7, 12], {}),
     },
+    "startup-growth": {
+      entry: s([3, 5], [0.1, 0.3], ESOP(0.3, 0.8), [3.5, 6], {}),
+      mid: s([5, 9], [0.3, 0.8], ESOP(0.5, 1.5), [6, 11], {}),
+      senior: s([9, 15], [0.8, 1.5], ESOP(1, 3), [10, 18], {}),
+    },
   },
 
   // ─── CYBERSECURITY ────────────────────────────────────────────
@@ -554,6 +598,11 @@ export const SALARY_DATA: Partial<Record<RoleKey, SalaryTable>> = {
 
   // ─── BLOCKCHAIN / WEB3 ────────────────────────────────────────
   "blockchain": {
+    faang: {
+      entry: s([22, 32], [2, 4], RSU(6, 12), [28, 45], { hot_skills: ["Solidity", "Rust", "ZK proofs", "L2"] }),
+      mid: s([35, 48], [4, 8], RSU(12, 25), [48, 78], {}),
+      senior: s([48, 65], [8, 15], RSU(20, 40), [72, 115], {}),
+    },
     "indian-unicorn": {
       entry: s([5, 8], [0.3, 0.5], ESOP(1, 3), [6, 12], { hot_skills: ["Solidity", "Smart Contracts", "DApp", "Rust"] }),
       mid: s([10, 18], [1, 2], ESOP(2, 5), [12, 24], {}),
@@ -658,6 +707,225 @@ export const SALARY_DATA: Partial<Record<RoleKey, SalaryTable>> = {
 
   // ─── MOBILE DEVELOPER ─────────────────────────────────────────
   "mobile-developer": { /* alias — falls back to software-engineer with mobile premium note */ },
+
+  // ─── SCRUM MASTER / AGILE COACH ───────────────────────────────
+  "scrum-master": {
+    faang: {
+      entry: s([12, 18], [1, 2], RSU(2, 5), [15, 24], {}),
+      mid: s([20, 30], [2, 4], RSU(5, 10), [26, 42], {}),
+      senior: s([30, 42], [4, 8], RSU(8, 15), [40, 62], {}),
+    },
+    "indian-unicorn": {
+      entry: s([6, 10], [0.5, 1], ESOP(0.5, 1.5), [7, 12], {}),
+      mid: s([12, 18], [1, 2], ESOP(1, 3), [14, 22], {}),
+      senior: s([18, 28], [2, 4], ESOP(3, 6), [22, 36], {}),
+    },
+    "it-services": {
+      entry: s([4, 7], [0.2, 0.5], NO_EQ, [4, 8], { notice_period_days: 90, negotiation_leverage: "low", notes: "CSM/PSM certified: +15-20%" }),
+      mid: s([8, 14], [0.5, 1], NO_EQ, [8, 15], { notice_period_days: 90 }),
+      senior: s([14, 22], [1, 2], NO_EQ, [15, 25], { notice_period_days: 90 }),
+    },
+  },
+
+  // ─── SOLUTIONS ARCHITECT ──────────────────────────────────────
+  "solutions-architect": {
+    faang: {
+      mid: s([45, 60], [5, 10], RSU(20, 40), [65, 105], { hot_skills: ["Cloud Architecture", "System Design", "Enterprise"] }),
+      senior: s([60, 80], [8, 15], RSU(35, 65), [100, 155], { negotiation_leverage: "high" }),
+      lead: s([75, 95], [12, 25], RSU(50, 100), [135, 210], {}),
+    },
+    "indian-unicorn": {
+      mid: s([22, 35], [2, 4], ESOP(3, 6), [26, 42], {}),
+      senior: s([35, 50], [4, 8], ESOP(6, 12), [42, 65], {}),
+      lead: s([48, 65], [6, 12], ESOP(10, 20), [60, 90], {}),
+    },
+    "it-services": {
+      mid: s([12, 20], [1, 2], NO_EQ, [12, 22], { notice_period_days: 90 }),
+      senior: s([20, 32], [2, 4], NO_EQ, [22, 36], {}),
+      lead: s([28, 45], [3, 6], NO_EQ, [32, 52], {}),
+    },
+    "consulting-big4": {
+      mid: s([16, 24], [2, 4], NO_EQ, [18, 28], {}),
+      senior: s([24, 38], [4, 8], NO_EQ, [28, 46], {}),
+    },
+  },
+
+  // ─── TECH LEAD ────────────────────────────────────────────────
+  "tech-lead": {
+    faang: {
+      mid: s([42, 55], [4, 8], RSU(18, 35), [60, 95], { hot_skills: ["Architecture", "Mentoring", "Technical Strategy"] }),
+      senior: s([55, 72], [6, 12], RSU(30, 55), [85, 135], { negotiation_leverage: "high" }),
+      lead: s([68, 88], [10, 20], RSU(45, 90), [120, 190], {}),
+    },
+    "indian-unicorn": {
+      mid: s([20, 30], [2, 4], ESOP(3, 6), [24, 38], {}),
+      senior: s([30, 45], [4, 8], ESOP(6, 12), [38, 60], {}),
+      lead: s([42, 58], [6, 10], ESOP(8, 18), [55, 82], {}),
+    },
+    "it-services": {
+      mid: s([10, 18], [0.5, 1.5], NO_EQ, [10, 20], { notice_period_days: 90 }),
+      senior: s([16, 28], [1, 3], NO_EQ, [18, 32], {}),
+      lead: s([25, 40], [2, 5], NO_EQ, [28, 45], {}),
+    },
+    "startup-growth": {
+      mid: s([14, 22], [1, 3], ESOP(2, 5), [16, 28], {}),
+      senior: s([22, 38], [3, 5], ESOP(5, 10), [28, 50], { negotiation_leverage: "high" }),
+    },
+  },
+
+  // ─── EMBEDDED ENGINEER ────────────────────────────────────────
+  "embedded-engineer": {
+    faang: {
+      entry: s([18, 25], [1, 3], RSU(3, 6), [22, 32], { hot_skills: ["RTOS", "C/C++", "Firmware", "IoT"] }),
+      mid: s([30, 42], [3, 5], RSU(8, 15), [38, 58], {}),
+      senior: s([42, 58], [5, 10], RSU(12, 25), [55, 88], {}),
+    },
+    "indian-unicorn": {
+      entry: s([5, 8], [0.3, 0.5], ESOP(0.5, 1.5), [6, 10], {}),
+      mid: s([10, 16], [0.8, 1.5], ESOP(1, 3), [12, 20], {}),
+      senior: s([16, 28], [1.5, 3], ESOP(3, 6), [20, 35], {}),
+    },
+    "it-services": {
+      entry: s([3, 5.5], [0.1, 0.3], NO_EQ, [3, 6], { notice_period_days: 90, negotiation_leverage: "low" }),
+      mid: s([6, 12], [0.3, 0.8], NO_EQ, [6, 13], {}),
+      senior: s([12, 20], [0.8, 1.5], NO_EQ, [13, 22], {}),
+    },
+    "government-psu": {
+      entry: s([5, 8], [0, 0.5], NO_EQ, [5, 9], { in_hand_ratio: 0.78, notice_period_days: 90, negotiation_leverage: "low", notes: "ISRO/DRDO/BEL/HAL. 7th CPC Level 7-8" }),
+      mid: s([8, 14], [0.5, 1], NO_EQ, [9, 15], {}),
+      senior: s([14, 22], [1, 2], NO_EQ, [15, 24], { notes: "Scientist E/F grade" }),
+    },
+  },
+
+  // ─── DATABASE ADMINISTRATOR ───────────────────────────────────
+  "database-administrator": {
+    faang: {
+      entry: s([18, 24], [1, 2], RSU(4, 8), [22, 32], { hot_skills: ["PostgreSQL", "MongoDB", "Redis", "Cloud DBs"] }),
+      mid: s([28, 38], [3, 5], RSU(8, 15), [36, 55], {}),
+      senior: s([38, 52], [5, 10], RSU(12, 22), [52, 80], {}),
+    },
+    "indian-unicorn": {
+      entry: s([5, 8], [0.3, 0.5], ESOP(0.5, 1.5), [6, 10], {}),
+      mid: s([10, 16], [0.8, 1.5], ESOP(1, 3), [12, 20], {}),
+      senior: s([16, 25], [1.5, 3], ESOP(3, 5), [20, 32], {}),
+    },
+    "it-services": {
+      entry: s([3, 5], [0.1, 0.3], NO_EQ, [3, 5.5], { notice_period_days: 90, negotiation_leverage: "low", notes: "Oracle DBA: +20-30% premium" }),
+      mid: s([6, 10], [0.3, 0.8], NO_EQ, [6, 11], {}),
+      senior: s([10, 18], [0.8, 1.5], NO_EQ, [11, 20], {}),
+    },
+  },
+
+  // ─── NETWORK ENGINEER ─────────────────────────────────────────
+  "network-engineer": {
+    faang: {
+      entry: s([15, 22], [1, 2], RSU(3, 6), [18, 28], { hot_skills: ["CCNP/CCIE", "SD-WAN", "Cloud Networking"] }),
+      mid: s([25, 35], [2, 4], RSU(6, 12), [32, 48], {}),
+      senior: s([35, 48], [4, 8], RSU(10, 20), [46, 72], {}),
+    },
+    "indian-unicorn": {
+      entry: s([4, 7], [0.2, 0.5], NO_EQ, [4, 8], {}),
+      mid: s([8, 14], [0.5, 1.5], ESOP(0.5, 2), [9, 17], {}),
+      senior: s([14, 22], [1, 2], ESOP(2, 4), [16, 28], {}),
+    },
+    "it-services": {
+      entry: s([3, 5], [0.1, 0.3], NO_EQ, [3, 5.5], { notice_period_days: 90, negotiation_leverage: "low" }),
+      mid: s([5, 10], [0.3, 0.5], NO_EQ, [5, 11], {}),
+      senior: s([10, 18], [0.5, 1.5], NO_EQ, [10, 20], { notes: "CCIE certified: +40-60% premium" }),
+    },
+    "government-psu": {
+      entry: s([4, 7], [0, 0.3], NO_EQ, [4, 8], { in_hand_ratio: 0.78, notice_period_days: 90, negotiation_leverage: "low" }),
+      mid: s([7, 12], [0.3, 0.5], NO_EQ, [7, 13], {}),
+      senior: s([12, 20], [0.5, 1], NO_EQ, [13, 21], {}),
+    },
+  },
+
+  // ─── MECHANICAL ENGINEER ──────────────────────────────────────
+  "mechanical-engineer": {
+    "fmcg-mnc": {
+      entry: s([4, 7], [0.3, 0.5], NO_EQ, [4, 8], { hot_skills: ["AutoCAD", "SolidWorks", "Six Sigma"] }),
+      mid: s([8, 14], [0.5, 1.5], NO_EQ, [9, 16], {}),
+      senior: s([14, 25], [1.5, 3], NO_EQ, [16, 28], {}),
+      executive: s([25, 45], [3, 8], NO_EQ, [28, 55], {}),
+    },
+    "indian-unicorn": {
+      entry: s([4, 6], [0.2, 0.4], NO_EQ, [4, 7], {}),
+      mid: s([7, 12], [0.5, 1], ESOP(0.5, 1.5), [8, 14], {}),
+      senior: s([12, 20], [1, 2], ESOP(1, 3), [14, 24], {}),
+    },
+    "government-psu": {
+      entry: s([4, 8], [0, 0.5], NO_EQ, [4, 9], { in_hand_ratio: 0.78, notice_period_days: 90, negotiation_leverage: "low", notes: "7th CPC Level 7-10. BHEL/NTPC/ONGC/Railways" }),
+      mid: s([8, 14], [0.5, 1], NO_EQ, [9, 15], {}),
+      senior: s([14, 25], [1, 2], NO_EQ, [15, 28], { notes: "Chief Engineer / AGM level" }),
+    },
+    "it-services": {
+      entry: s([3, 5], [0.1, 0.3], NO_EQ, [3, 5.5], { notice_period_days: 60, negotiation_leverage: "low" }),
+      mid: s([5, 10], [0.3, 0.8], NO_EQ, [5, 11], {}),
+      senior: s([10, 18], [0.8, 1.5], NO_EQ, [11, 20], {}),
+    },
+  },
+
+  // ─── ELECTRICAL ENGINEER (alias to mechanical-engineer) ───────
+  "electrical-engineer": { /* alias — falls back to mechanical-engineer */ },
+
+  // ─── CIVIL ENGINEER (alias to mechanical-engineer) ────────────
+  "civil-engineer": { /* alias — falls back to mechanical-engineer */ },
+
+  // ─── CHARTERED ACCOUNTANT ─────────────────────────────────────
+  "chartered-accountant": {
+    "consulting-big4": {
+      entry: s([7, 10], [0.5, 1], NO_EQ, [8, 11], { hot_skills: ["Audit", "Tax", "IFRS", "IndAS"], notes: "Articleship + newly qualified CA" }),
+      mid: s([12, 20], [1, 3], NO_EQ, [14, 24], {}),
+      senior: s([22, 38], [3, 6], NO_EQ, [25, 45], { notes: "Manager/Senior Manager level" }),
+      lead: s([38, 55], [6, 10], NO_EQ, [45, 68], { notes: "Director level" }),
+      executive: s([55, 80], [10, 20], NO_EQ, [70, 110], { notes: "Partner level" }),
+    },
+    "bfsi-global": {
+      entry: s([10, 16], [1, 3], RSU(1, 3), [12, 22], {}),
+      mid: s([18, 28], [3, 6], RSU(4, 8), [24, 40], {}),
+      senior: s([28, 45], [6, 12], RSU(6, 15), [38, 68], {}),
+    },
+    "bfsi-domestic": {
+      entry: s([4, 7], [0.3, 0.8], NO_EQ, [4, 8], { negotiation_leverage: "low" }),
+      mid: s([8, 14], [0.8, 2], NO_EQ, [9, 17], {}),
+      senior: s([14, 28], [2, 4], NO_EQ, [16, 32], {}),
+    },
+    "indian-unicorn": {
+      entry: s([6, 10], [0.5, 1], ESOP(0.5, 1.5), [7, 12], {}),
+      mid: s([12, 20], [1, 2], ESOP(1, 3), [14, 24], {}),
+      senior: s([20, 35], [2, 5], ESOP(3, 6), [24, 44], {}),
+    },
+  },
+
+  // ─── DOCTOR ───────────────────────────────────────────────────
+  "doctor": {
+    "government-psu": {
+      entry: s([6, 10], [0, 0.5], NO_EQ, [6, 11], { in_hand_ratio: 0.80, notice_period_days: 90, negotiation_leverage: "low", notes: "7th CPC Level 10-11. MBBS entry. Additional: NPA (Non-Practising Allowance) 20% of basic" }),
+      mid: s([10, 18], [0.5, 1], NO_EQ, [11, 19], { notes: "MD/MS specialist. NPA 20%" }),
+      senior: s([18, 32], [1, 2], NO_EQ, [19, 35], { notes: "Associate Professor / Senior Specialist" }),
+      executive: s([25, 50], [2, 4], NO_EQ, [28, 55], { notes: "Professor / HOD / Director level" }),
+    },
+    "indian-unicorn": {
+      entry: s([8, 14], [0.5, 1], NO_EQ, [9, 15], { notes: "Private hospital / healthtech" }),
+      mid: s([15, 28], [1, 3], ESOP(0.5, 2), [16, 32], {}),
+      senior: s([28, 50], [3, 6], ESOP(2, 5), [32, 58], {}),
+    },
+  },
+
+  // ─── PHARMACIST ───────────────────────────────────────────────
+  "pharmacist": {
+    "fmcg-mnc": {
+      entry: s([3, 5], [0.2, 0.4], NO_EQ, [3, 5.5], { hot_skills: ["Pharma R&D", "Drug Regulatory", "Clinical Trials"], notes: "Pharma companies: Sun Pharma, Dr Reddy's, Cipla" }),
+      mid: s([6, 10], [0.5, 1], NO_EQ, [6, 11], {}),
+      senior: s([10, 18], [1, 2], NO_EQ, [11, 20], {}),
+      executive: s([18, 35], [2, 5], NO_EQ, [20, 42], { notes: "VP R&D / Medical Director" }),
+    },
+    "government-psu": {
+      entry: s([4, 7], [0, 0.3], NO_EQ, [4, 8], { in_hand_ratio: 0.78, notice_period_days: 90, negotiation_leverage: "low", notes: "Hospital pharmacist / drug inspector" }),
+      mid: s([7, 12], [0.3, 0.5], NO_EQ, [7, 13], {}),
+      senior: s([12, 20], [0.5, 1], NO_EQ, [13, 21], {}),
+    },
+  },
 };
 
 /** Role key aliases — when a role key has no data, fall back to this key */
@@ -668,6 +936,8 @@ export const ROLE_ALIASES: Partial<Record<RoleKey, RoleKey>> = {
   "frontend-developer": "software-engineer",
   "backend-developer": "software-engineer",
   "mobile-developer": "software-engineer",
+  "electrical-engineer": "mechanical-engineer",
+  "civil-engineer": "mechanical-engineer",
 };
 
 /**
@@ -697,7 +967,19 @@ export function matchRoleKey(role: string): RoleKey {
     [["cybersecurity", "security engineer", "infosec", "penetration", "security architect", "security analyst"], "cybersecurity"],
     [["blockchain", "web3", "solidity", "smart contract"], "blockchain"],
     [["program manager", "technical program manager"], "program-manager"],
-    [["project manager", "scrum master"], "project-manager"],
+    [["project manager"], "project-manager"],
+    [["scrum master", "agile coach", "agile lead"], "scrum-master"],
+    [["solutions architect", "solution architect", "enterprise architect", "cloud architect"], "solutions-architect"],
+    [["tech lead", "technical lead", "lead engineer", "staff engineer", "principal engineer"], "tech-lead"],
+    [["embedded", "firmware", "rtos", "iot engineer", "hardware engineer"], "embedded-engineer"],
+    [["dba", "database admin", "database engineer", "database architect"], "database-administrator"],
+    [["network engineer", "network admin", "ccna", "ccnp", "ccie", "network architect"], "network-engineer"],
+    [["mechanical engineer", "mechanical", "automobile engineer", "automotive engineer", "manufacturing engineer"], "mechanical-engineer"],
+    [["electrical engineer", "electrical", "power engineer", "electronics engineer", "vlsi"], "electrical-engineer"],
+    [["civil engineer", "civil", "structural engineer", "construction engineer", "site engineer"], "civil-engineer"],
+    [["chartered accountant", "ca articleship", "ca inter", "ca final", "icai"], "chartered-accountant"],
+    [["doctor", "mbbs", "physician", "surgeon", "medical officer", "specialist doctor"], "doctor"],
+    [["pharmacist", "pharmacy", "pharma", "drug regulatory", "clinical research", "medical representative"], "pharmacist"],
     [["business analyst"], "business-analyst"],
     [["content writer", "technical writer", "ux writer", "copywriter"], "content-writer"],
     [["customer success", "account manager", "csm"], "customer-success"],
@@ -707,12 +989,12 @@ export function matchRoleKey(role: string): RoleKey {
     [["marketing", "growth manager", "digital marketing", "content strategist"], "marketing"],
     [["sales", "business development", "account executive", "bde"], "sales"],
     [["consultant", "management consultant", "strategy consultant"], "consultant"],
-    [["finance", "financial analyst", "ca", "chartered accountant", "investment banking", "bank po", "wealth manager"], "finance"],
+    [["finance", "financial analyst", "investment banking", "bank po", "wealth manager"], "finance"],
     [["teacher", "lecturer", "professor", "assistant professor"], "teacher"],
     [["cto"], "engineering-manager"],
     [["ceo", "co-founder", "managing director", "general manager"], "engineering-manager"],
     // Catch-all for generic engineering roles
-    [["software", "developer", "engineer", "full stack", "mern", "mean", "embedded", "firmware", "rust", "c++"], "software-engineer"],
+    [["software", "developer", "engineer", "full stack", "mern", "mean", "rust", "c++"], "software-engineer"],
   ];
 
   for (const [keywords, key] of patterns) {
