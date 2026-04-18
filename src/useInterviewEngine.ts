@@ -172,6 +172,7 @@ interface InterviewDraft {
   currentStep: number;
   elapsed: number;
   script?: InterviewStep[];
+  interviewType?: string;
 }
 
 /* ═══════════════════════════════════════════════
@@ -272,7 +273,13 @@ export function useInterviewEngine() {
             localStorage.removeItem(draftKey);
             deleteFromIDB(draftKey);
           } else if (parsed && Array.isArray(parsed.transcript) && typeof parsed.currentStep === "number" && parsed.currentStep > 0) {
-            draftRef.current = parsed;
+            // Reject draft if interview type doesn't match current session
+            if (parsed.interviewType && parsed.interviewType !== interviewType) {
+              localStorage.removeItem(draftKey);
+              deleteFromIDB(draftKey);
+            } else {
+              draftRef.current = parsed;
+            }
           }
         }
       }
@@ -325,6 +332,11 @@ export function useInterviewEngine() {
           return;
         }
         if (!d.currentStep || d.currentStep === 0) return;
+        // Reject draft if interview type doesn't match current session
+        if ((d as { interviewType?: string }).interviewType && (d as { interviewType?: string }).interviewType !== interviewType) {
+          deleteFromIDB(draftKey);
+          return;
+        }
         draftRef.current = d;
         setCurrentStep(d.currentStep || 0);
         setTranscript(d.transcript || []);

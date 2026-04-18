@@ -197,5 +197,6 @@ export function buildInterviewUrl(config: CurriculumSessionConfig): string {
   if (config.focus) params.set("focus", config.focus);
   if (config.company) params.set("company", config.company);
   params.set("curriculum", String(config.sessionNumber));
+  params.set("new", "1");
   return `/interview?${params.toString()}`;
 }
