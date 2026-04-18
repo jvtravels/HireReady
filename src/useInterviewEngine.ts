@@ -1016,7 +1016,7 @@ export function useInterviewEngine() {
         }).catch(() => { if (!isStale()) startSpeaking(); });
       } else {
         // Without voice, just add a slightly longer delay to simulate thinking
-        setTimeout(startSpeaking, randomDelay(400, 800));
+        setTimeout(startSpeaking, randomDelay(200, 500));
       }
     };
 
@@ -1154,8 +1154,9 @@ export function useInterviewEngine() {
         const isHeavyPushback = negPushbackCountRef.current >= 3;
         const walkAwayPatCheck = /\b(walk away|walking away|i.?m out|not interested|i.?ll pass|no deal|withdraw|decline|won.?t work|isn.?t going to work|move on|take the other|have to pass)\b/i;
         const isWalkAway = walkAwayPatCheck.test(lastAnswerTextRef.current);
-        const strategicPause = (isWalkAway || isHeavyPushback) ? randomDelay(2500, 4000) : undefined;
-        const phraseDelay = strategicPause ?? randomDelay(300, 700);
+        // Reduced pauses: strategic pause for walk-away/pushback (1.5-2.5s), normal (150-400ms)
+        const strategicPause = (isWalkAway || isHeavyPushback) ? randomDelay(1500, 2500) : undefined;
+        const phraseDelay = strategicPause ?? randomDelay(150, 400);
 
         // Speak thinking phrase immediately and add to transcript so eval LLM can see it
         setTimeout(() => {
@@ -1213,18 +1214,28 @@ export function useInterviewEngine() {
             }).catch(() => {});
           }
           if (isSalaryNegConversation) {
-            // Salary negotiation: make the conversation contextual
-            // Strategy: REPLACE the next pre-generated question with a contextual one,
-            // OR INSERT a follow-up probe if the answer was vague (with a hard cap).
+            // Salary negotiation: replace the next pre-generated question with the dynamic response.
+            // Also mark ALL subsequent pre-generated questions as "stale" by clearing their aiText
+            // so they'll be replaced by future follow-ups rather than playing stale scripts.
             setInterviewScript(prev => {
               // Find next question OR closing to replace with contextual response
               const nextQuestionIdx = prev.findIndex((s, i) => i > currentStep && (s.type === "question" || s.type === "closing"));
               if (nextQuestionIdx > currentStep) {
-                // Replace the next pre-generated question/closing with the dynamic contextual response
-                return [...prev.slice(0, nextQuestionIdx), followUpStep, ...prev.slice(nextQuestionIdx + 1)];
+                // Replace the next question with the dynamic response
+                const updated = [...prev.slice(0, nextQuestionIdx), followUpStep, ...prev.slice(nextQuestionIdx + 1)];
+                // Mark remaining pre-generated questions (after the replaced one) with adaptive placeholders
+                // so they don't play stale content if follow-up fails for a later turn
+                for (let i = nextQuestionIdx + 1; i < updated.length; i++) {
+                  const s = updated[i];
+                  if (s.type === "question" && !s.scoreNote?.includes("Dynamic follow-up")) {
+                    updated[i] = { ...s, aiText: "Based on our discussion so far, let me think about what makes sense here. What are your thoughts on the overall package — is there a specific area you'd like to focus on?" };
+                  } else if (s.type === "closing" && !s.scoreNote?.includes("Dynamic follow-up")) {
+                    updated[i] = { ...s, aiText: "I think we've had a really productive conversation. Let me put together the final numbers based on everything we've discussed and have HR send you the formal offer letter. What's your notice period situation?" };
+                  }
+                }
+                return updated;
               }
               // No more questions to replace — check if we can insert a follow-up probe
-              // Atomic cap check using ref counter
               const maxInserts = isMiniMode ? 2 : 3;
               if (followUpInsertCountRef.current < maxInserts) {
                 const closingIdx = prev.findIndex((s, i) => i > currentStep && s.type === "closing");
@@ -1238,7 +1249,7 @@ export function useInterviewEngine() {
             });
             // Thinking phrase already spoken — go directly to main response
             // Brief pause for natural transition from thinking phrase to main speech
-            const microDelay = randomDelay(400, 800);
+            const microDelay = randomDelay(200, 500);
             setTimeout(() => { if (!isStale() && !interviewEndedRef.current) startSpeaking(); }, microDelay);
           } else {
             setInterviewScript(prev => [
@@ -1254,7 +1265,7 @@ export function useInterviewEngine() {
           if (earlyClose) return; // Early close advances step — effect will re-fire
           if (isSalaryNegConversation) {
             // Thinking phrase already spoken — go directly to main response
-            const microDelay = randomDelay(400, 800);
+            const microDelay = randomDelay(200, 500);
             setTimeout(() => { if (!isStale() && !interviewEndedRef.current) startSpeaking(); }, microDelay);
           } else {
             const quality = lastAnswerQualityRef.current;
@@ -1268,7 +1279,7 @@ export function useInterviewEngine() {
           const earlyClose = applySalaryNegFallback();
           if (earlyClose) return; // Early close advances step — effect will re-fire
           if (isSalaryNegConversation) {
-            const microDelay = randomDelay(400, 800);
+            const microDelay = randomDelay(200, 500);
             setTimeout(() => { if (!isStale() && !interviewEndedRef.current) startSpeaking(); }, microDelay);
           } else {
             const microDelay = shouldUseThinkingPhrase ? randomDelay(800, 1500) : step.thinkingDuration;
@@ -1393,8 +1404,12 @@ export function useInterviewEngine() {
       const qLimit = isSalaryNegType ? 250 : 150;
       const aLimit = isSalaryNegType ? 200 : 120;
       const earlierTopics: string[] = [];
+      // Filter: skip thinking phrases, system notes, and "[Answer recorded]" entries
+      const thinkingPhraseRe = /^(Hmm|Let me|Okay|Alright|Interesting|I see|Good|That's|Right|So,|Well,|Mm)/;
       for (const t of transcript) {
         if (t.speaker === "ai" && !t.text.startsWith("[")) {
+          // Skip short thinking phrases (< 40 chars and starts with common fillers)
+          if (t.text.length < 40 && thinkingPhraseRe.test(t.text)) continue;
           earlierTopics.push(`Q: ${t.text.slice(0, qLimit)}`);
         } else if (t.speaker === "user" && !t.text.startsWith("[")) {
           earlierTopics.push(`A: ${t.text.slice(0, aLimit)}`);
@@ -1403,7 +1418,9 @@ export function useInterviewEngine() {
       // Add current exchange
       earlierTopics.push(`Q: ${currentStepObj!.aiText.slice(0, qLimit)}`);
       earlierTopics.push(`A: ${answerText.slice(0, aLimit)}`);
-      const conversationHistory = earlierTopics.slice(-20).join("\n");
+      // Salary-neg: keep ALL turns (typically 12-16 total) — every number and promise matters
+      // Regular interviews: keep last 20 turns to save prompt space
+      const conversationHistory = (isSalaryNegType ? earlierTopics : earlierTopics.slice(-20)).join("\n");
 
       // Collect recent follow-up Q&A pairs
       const recentFollowUps: string[] = [];
@@ -1657,6 +1674,13 @@ export function useInterviewEngine() {
             resumeText: shouldUseResume ? user?.resumeText : undefined,
             jobDescription: jobDescription || undefined,
             previousScores,
+            negotiationContext: interviewType === "salary-negotiation" ? {
+              initialOffer: negotiationBandRef.current?.initialOffer,
+              maxStretch: negotiationBandRef.current?.maxStretch,
+              candidateTarget: targetSalary || undefined,
+              highestOfferMade: highestOfferRef.current > 0 ? highestOfferRef.current : undefined,
+              negotiationStyle: negotiationStyle || undefined,
+            } : undefined,
           }),
           new Promise<null>((_, reject) => {
             if (evalAbort.signal.aborted) {

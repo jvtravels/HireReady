@@ -314,7 +314,7 @@ YOUR GOAL: Summarize the SPECIFIC deal and set concrete next steps. Rebuild warm
         : "";
 
       // Detect candidate intent from the answer to make it prominent in the prompt
-      // Position-aware: "but I accept" should count as acceptance, "I accept but want more equity" should not
+      // Intent detection: acceptance, rejection, conditional acceptance
       const acceptWords = /\b(i accept|i.?ll accept|accept the offer|sounds good|that works for me|it.?s a deal|i.?m happy with|fine with me|i agree|agreed|let.?s go ahead)\b/i;
       const rejectWords = /\b(not acceptable|too low|can.?t accept|absolutely not|not enough|walk away|not interested|i reject|no deal|way too low|that.?s insulting)\b/i;
       const hedgeWords = /\b(but|however|only if|unless|provided|on condition|contingent|except|though)\b/i;
@@ -323,36 +323,74 @@ YOUR GOAL: Summarize the SPECIFIC deal and set concrete next steps. Rebuild warm
       const competingWords = /\b(other offer|competing|another company|counter.?offer|multiple offers|also talking|interviewing at|got an offer)\b/i;
       const walkAwayWords = /\b(walk away|walking away|i.?m out|not interested|i.?ll pass|no deal|withdraw|decline the offer|i decline|pull out|not worth|won.?t work|isn.?t going to work|move on|take the other|thanks but no|not for me|have to pass)\b/i;
       // Short affirmative-only answers (< 8 words) like "yes", "okay", "sure" count as acceptance
-      // BUT only if there's no hedge word anywhere in the answer
       const isShortAffirmative = answer.trim().split(/\s+/).length < 8
         && /^(yes|yeah|okay|ok|sure|deal|agreed|accept|sounds good|that works|fine)\b/i.test(answer.trim())
         && !hedgeWords.test(answer);
-      // Position-aware intent: acceptance is valid only if no hedge/qualifier appears AFTER the acceptance phrase
+      // Acceptance detection: "I accept but what about equity?" = CONDITIONAL acceptance (still acceptance)
+      // Only NOT acceptance if the hedge introduces a REJECTION ("I accept but it's too low" = contradiction → rejection wins)
       const acceptIdx = answer.search(acceptWords);
       const hedgeIdx = answer.search(hedgeWords);
-      const hasAcceptFirst = acceptIdx >= 0 && (hedgeIdx < 0 || hedgeIdx < acceptIdx);
-      const hasHedgeAfterAccept = acceptIdx >= 0 && hedgeIdx > acceptIdx;
-      const candidateAccepted = (hasAcceptFirst || isShortAffirmative) && !hasHedgeAfterAccept;
-      const candidateRejected = rejectWords.test(answer) && !acceptWords.test(answer);
+      const hasAccept = acceptIdx >= 0;
+      const hasHedgeAfterAccept = hasAccept && hedgeIdx > acceptIdx;
+      // Check what comes AFTER the hedge — if it's a rejection, the whole thing is a rejection
+      const postHedgeText = hasHedgeAfterAccept ? answer.slice(hedgeIdx) : "";
+      const hedgeIsRejection = rejectWords.test(postHedgeText);
+      // "I accept, but what about equity?" → conditional acceptance (not rejection after hedge)
+      // "I accept, but it's too low" → contradiction, treat as rejection
+      const candidateAccepted = (hasAccept || isShortAffirmative) && !hedgeIsRejection;
+      const isConditionalAccept = candidateAccepted && hasHedgeAfterAccept && !hedgeIsRejection;
+      const candidateRejected = rejectWords.test(answer) && !candidateAccepted;
       const candidateDeflected = deflectWords.test(answer);
       const candidateWalkAway = walkAwayWords.test(answer) && !acceptWords.test(answer);
 
-      // Extract candidate's specific number if they mentioned one
-      const candidateNumMatch = answer.match(/₹?\s*(\d+(?:\.\d+)?)\s*(?:lpa|lakh|lakhs|l\b)/i);
-      const candidateNum = candidateNumMatch ? candidateNumMatch[1] : null;
+      // Extract candidate's TARGET salary number (not current CTC)
+      // Strategy: find ALL salary numbers, then pick the one most likely to be the target/ask
+      const salaryNumRe = /₹?\s*(\d+(?:\.\d+)?)\s*(?:lpa|lakh|lakhs|l\b)/gi;
+      const currentCtcRe = /(?:currently|current(?:ly)?|earning|getting|drawing|my ctc|i'm at|making|take home|i get|i earn)\s.*?(\d+(?:\.\d+)?)/i;
+      const targetRe = /(?:expecting|looking for|want|need|asking|target|hoping|would like|i'd like|i want|i need|looking at|aiming)\s.*?(\d+(?:\.\d+)?)/i;
+      const allNums: string[] = [];
+      let m: RegExpExecArray | null;
+      while ((m = salaryNumRe.exec(answer)) !== null) allNums.push(m[1]);
+      // Also capture bare numbers in negotiation context (e.g., "I need 30" without LPA suffix)
+      if (allNums.length === 0) {
+        const bareNumMatch = answer.match(/(?:expecting|want|need|asking|target|hoping|looking for|around|about|at least|minimum)\s+(?:₹?\s*)?(\d+(?:\.\d+)?)\b/i);
+        if (bareNumMatch && parseFloat(bareNumMatch[1]) >= 3 && parseFloat(bareNumMatch[1]) <= 200) {
+          allNums.push(bareNumMatch[1]);
+        }
+      }
+      // Prefer target/ask number over current CTC
+      const targetMatch = targetRe.exec(answer);
+      const currentMatch = currentCtcRe.exec(answer);
+      let candidateNum: string | null = null;
+      if (targetMatch && allNums.includes(targetMatch[1])) {
+        candidateNum = targetMatch[1]; // explicit target
+      } else if (allNums.length > 0 && currentMatch && allNums[0] === currentMatch[1] && allNums.length > 1) {
+        candidateNum = allNums[allNums.length - 1]; // first num is CTC, use last as target
+      } else if (allNums.length > 0) {
+        candidateNum = allNums[allNums.length - 1]; // default: use last number mentioned (most likely the ask)
+      }
       // "consider" co-occurring with a number is a counter, not a time request
       const candidateNeedsTime = thinkWords.test(answer) && !candidateNumMatch;
       const candidateMentionedCompeting = competingWords.test(answer);
 
       // Build intent banner — placed at the VERY TOP of the prompt so the LLM can't miss it
       let intentBanner = "";
-      if (candidateAccepted) {
+      if (candidateAccepted && !isConditionalAccept) {
         intentBanner = `
 ⚠️⚠️⚠️ THE CANDIDATE ACCEPTED THE OFFER. THEY SAID: "${sanitizeForLLM(answer, 350)}" ⚠️⚠️⚠️
 YOU MUST acknowledge their acceptance warmly FIRST. Then either:
 - If they accepted too quickly (within first 2 questions): gently probe — "That's great! But before we lock this in, have you considered [equity/flexibility/growth path]? I want you to feel confident."
 - If later in the negotiation: move to closing — recap the EXACT agreed package with ₹ numbers, mention offer letter timeline, ask about notice period. Rebuild warmth: "I'm really glad we worked this out."
 DO NOT counter-offer or act as if they rejected. They said YES.
+`;
+      } else if (isConditionalAccept) {
+        intentBanner = `
+THE CANDIDATE CONDITIONALLY ACCEPTED. THEY SAID: "${sanitizeForLLM(answer, 350)}"
+They accepted the core offer but have a condition or want to discuss something else (equity, benefits, flexibility, etc.).
+YOU MUST:
+1. Acknowledge the acceptance warmly FIRST: "Great, I'm glad the base works for you!"
+2. Then address their specific condition/question directly with concrete answers and ₹ numbers.
+3. Do NOT re-negotiate the base salary — they already accepted that. Focus on what they asked about.
 `;
       } else if (candidateWalkAway) {
         intentBanner = `
@@ -417,19 +455,14 @@ CURRENT PHASE: ${salaryPhase.toUpperCase()}
 ${phaseInstructions[salaryPhase] || phaseInstructions["offer-reaction"]}
 
 RULES:
-- #1 RULE: Your response MUST match the candidate's intent. Re-read their answer above. If they accepted → acknowledge and close. If they rejected → acknowledge and counter. If they asked a question → answer it. NEVER respond as if they said something different.
-- MIRROR-BACK (CRITICAL): ALWAYS start by paraphrasing what the candidate said. If they named a number: "I heard ₹X from you..." If they raised a concern: "So your main concern is..." This makes it feel like a real conversation, not a script.
-- Make SPECIFIC counter-offers with exact ₹ numbers. NEVER say vague things like "some flexibility" or "we can look at it." Say "I can stretch to ₹X if we structure it as..."
-- NEVER ask for info the candidate already provided. Use what you know from CANDIDATE FACTS.
-- Use EXACT numbers from the initial offer and candidate facts above. Do NOT invent figures.
-- MONOTONIC OFFERS: Your offers can ONLY go UP from YOUR initial offer. If you started at ₹X LPA, every subsequent offer MUST be >= ₹X. BUT: never offer MORE than what the candidate asked for. If candidate asked for ₹30 and you started at ₹25, counter at ₹27-28, NOT ₹35.
-- COST-SAVING (CRITICAL): You represent the company. Your goal is to close at the LOWEST CTC the candidate will accept. NEVER volunteer a higher number than necessary. NEVER offer above the candidate's stated ask — that wastes company money and is unrealistic.
-- If near maxStretch: frame it as needing approval — "That's at the top of my authority. Let me see if I can get leadership to sign off on ₹X." NEVER silently hit a ceiling.
-- Use MARKET BENCHMARKS to anchor LOW: "For [role] in [city], the market range is ₹X-Y. Our offer of ₹Z is competitive within that range."
-- Notice period is a LEVER: proactively ask about it and offer buyout as a trade — "If you can join in 30 days, I'll add ₹X notice buyout."
-- Sound like a real Indian hiring manager — professional, warm, direct. 2-4 sentences.
-- Use ₹ and LPA. Indian context.
-- NEVER break character. NEVER give coaching tips. You ARE the hiring manager.`;
+- MATCH INTENT: Re-read the candidate's answer above. Accepted → acknowledge and close. Rejected → acknowledge and counter. Question → answer it. NEVER ignore what they said.
+- MIRROR FIRST: Start by paraphrasing what the candidate said. "I heard ₹X from you..." or "So your concern is..."
+- BE SPECIFIC: Use exact ₹ numbers in any counter-offer. Never say "some flexibility" — say "I can stretch to ₹X."
+- DON'T RE-ASK: Never ask for info already in CANDIDATE FACTS above.
+- OFFERS GO UP ONLY: Every offer >= your initial offer. But never offer MORE than the candidate asked for.
+- Near maxStretch: "That's at the top of my authority. Let me check with leadership on ₹X."
+- Tone: Real Indian hiring manager — professional, warm, direct. 2-4 sentences. Use ₹ and LPA.
+- Stay in character. Never give coaching tips.`;
     } else if (safeDepth === 0) {
       depthInstructions = `Analysis of candidate's answer:
 - Word count: ${wordCount} ${isShort ? "(SHORT — likely needs follow-up)" : "(adequate length)"}

@@ -58,7 +58,7 @@ export default async function handler(req: Request): Promise<Response> {
   }
 
   try {
-    const { transcript, type, difficulty, role, company, questions, resumeText, language, jobDescription, previousScores } = await req.json();
+    const { transcript, type, difficulty, role, company, questions, resumeText, language, jobDescription, previousScores, negotiationContext } = await req.json();
 
     const validSpeakers = new Set(["ai", "user"]);
     if (!transcript || !Array.isArray(transcript) || transcript.length === 0 ||
@@ -229,7 +229,14 @@ Evaluate the candidate's performance. For each skill score, you MUST cite a spec
 ${scoringRubric}
 If a job description is provided, evaluate how well the candidate's answers demonstrate the specific skills and requirements mentioned in the JD.
 
-${isSalaryNeg ? `Negotiation Skill Analysis: For each answer, evaluate these FIVE core negotiation competencies:
+${isSalaryNeg ? `${negotiationContext ? `NEGOTIATION CONTEXT (use these numbers to evaluate deal quality):
+- Hiring manager's initial offer: ₹${negotiationContext.initialOffer || "unknown"} LPA
+- Manager's max stretch: ₹${negotiationContext.maxStretch || "unknown"} LPA
+- Candidate's stated target: ₹${negotiationContext.candidateTarget || "unknown"} LPA
+- Highest offer made during negotiation: ₹${negotiationContext.highestOfferMade || "unknown"} LPA
+- Negotiation style faced: ${negotiationContext.negotiationStyle || "cooperative"}
+NOTE: The candidate faced an AI hiring manager. Evaluate their STRATEGY and TECHNIQUE, not the outcome (which depends on the AI). A candidate who negotiated well but didn't get the max number should still score high if their approach was sound.
+` : ""}Negotiation Skill Analysis: For each answer, evaluate these FIVE core negotiation competencies:
 1. ANCHORING: Did they state a number with market justification (levels.fyi, Glassdoor, AmbitionBox)? Or just throw out a number? Or reveal current salary without leverage? Did they anchor high enough relative to the role?
 2. PACKAGE THINKING: Did they negotiate beyond base (equity, bonus, relocation, flexibility, learning budget)? Did they think in total comp? Did they explore depth on topics (not just mention them)?
 3. LEVERAGE USE: Did they mention competing offers, market data, unique skills, or notice period as leverage? Did they use BATNA? Did they deflect revealing current CTC (positive signal)?

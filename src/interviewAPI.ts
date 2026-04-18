@@ -272,6 +272,13 @@ export async function fetchLLMEvaluation(params: {
   resumeText?: string;
   jobDescription?: string;
   previousScores?: { overall: number; skills: Record<string, number> } | null;
+  negotiationContext?: {
+    initialOffer?: number;
+    maxStretch?: number;
+    candidateTarget?: number;
+    highestOfferMade?: number;
+    negotiationStyle?: string;
+  };
 }, timeoutMs = 35000): Promise<EvaluationResult | null> {
   // Client-side rate limit: max 5 evaluations per 60s
   if (!checkRateLimit("evaluate", 5, 60_000)) {

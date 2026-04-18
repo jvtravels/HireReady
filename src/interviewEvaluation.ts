@@ -27,7 +27,11 @@ export interface EvalParams {
 export function computeFallbackScores(params: EvalParams): FallbackResult {
   const { transcript, currentStep, scriptLength, difficulty, elapsed, interviewType } = params;
   const completionRatio = currentStep / Math.max(1, scriptLength);
-  const baseScore = 65 + Math.round(completionRatio * 20);
+  // Salary-neg: early close (acceptance) is a GOOD outcome, not a penalty
+  // Use a higher base and don't penalize for fewer turns
+  const baseScore = interviewType === "salary-negotiation"
+    ? 70 + Math.round(Math.min(1, completionRatio * 1.5) * 15) // reaches max at ~67% completion
+    : 65 + Math.round(completionRatio * 20);
   const difficultyBonus = difficulty === "intense" ? 5 : difficulty === "warmup" ? -3 : 0;
   const timeBonus = elapsed > 300 ? 5 : elapsed > 120 ? 3 : 0;
   const questionBonus = Math.min(5, Math.floor(transcript.filter(t => t.speaker === "user").length * 1.5));
@@ -241,23 +245,38 @@ export function extractNegotiationFacts(transcript: TranscriptEntry[]): Negotiat
   const candidateCurrentCTC = ctcNumbers.size > 0 ? `₹${[...ctcNumbers][ctcNumbers.size - 1]} LPA` : null;
 
   // Extract ALL salary numbers in INR context, then pick the highest non-CTC number as the counter
-  // (candidate's expectation/ask is typically the highest number they mention, excluding current CTC)
   // Require ₹ prefix OR INR-specific suffix (lpa/lakh/cr/crore) — reject $ amounts to avoid USD/INR confusion
   const salaryRe = /(?:₹\s*(\d+(?:\.\d+)?)\s*(?:lpa|lakh|lakhs|l\b|cr|crore)?|(\d+(?:\.\d+)?)\s*(?:lpa|lakh|lakhs|cr|crore))/gi;
   const allSalaryMatches: string[] = [];
   let salaryMatch: RegExpExecArray | null;
   while ((salaryMatch = salaryRe.exec(allText)) !== null) {
-    // Group 1: ₹-prefixed number, Group 2: suffix-only number (lpa/lakh/cr without ₹)
     const rawNum = salaryMatch[1] || salaryMatch[2];
     if (!rawNum) continue;
-    // Convert Crore to LPA (1 Cr = 100 LPA) for consistent comparison
     const isCrore = /cr|crore/i.test(salaryMatch[0]);
     const normalizedNum = isCrore ? String(parseFloat(rawNum) * 100) : rawNum;
     allSalaryMatches.push(normalizedNum);
   }
+  // Also capture bare numbers in target/ask context (e.g., "I need 30" without LPA suffix)
+  if (allSalaryMatches.length === 0) {
+    const bareTargetRe = /(?:expecting|want|need|asking|target|hoping|looking for|around|about|at least|minimum)\s+(?:₹?\s*)?(\d+(?:\.\d+)?)\b/gi;
+    let bareMatch: RegExpExecArray | null;
+    while ((bareMatch = bareTargetRe.exec(allText)) !== null) {
+      const num = parseFloat(bareMatch[1]);
+      if (num >= 3 && num <= 200) allSalaryMatches.push(bareMatch[1]);
+    }
+  }
   // Filter out numbers that matched as current CTC, then take the MAX as counter
+  // Also prefer numbers that appear in target/ask context over generic mentions
+  const targetContextRe = /(?:expecting|want|need|asking|target|hoping|looking for|would like|i'd like)\s*(?:₹?\s*)?(\d+(?:\.\d+)?)/gi;
+  const targetNums = new Set<string>();
+  let tMatch: RegExpExecArray | null;
+  while ((tMatch = targetContextRe.exec(allText)) !== null) targetNums.add(tMatch[1]);
   const counterNumbers = allSalaryMatches.filter(n => !ctcNumbers.has(n));
-  const candidateCounter = counterNumbers.length > 0
+  // Prefer target-context numbers, fall back to highest non-CTC number
+  const targetCounters = counterNumbers.filter(n => targetNums.has(n));
+  const candidateCounter = targetCounters.length > 0
+    ? `₹${targetCounters.reduce((max, n) => parseFloat(n) > parseFloat(max) ? n : max)} LPA`
+    : counterNumbers.length > 0
     ? `₹${counterNumbers.reduce((max, n) => parseFloat(n) > parseFloat(max) ? n : max)} LPA`
     : (allSalaryMatches.length > 0 ? `₹${allSalaryMatches[allSalaryMatches.length - 1]} LPA` : null);
 
