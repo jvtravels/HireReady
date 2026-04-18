@@ -113,11 +113,39 @@ export default async function handler(req: Request): Promise<Response> {
 
     const isSalaryNeg = type === "salary-negotiation";
 
-    // For salary negotiation: determine conversation phase from questionIndex
+    // For salary negotiation: determine conversation phase from content + index
+    // Content-based detection: analyze what's happened so far to pick the right phase
+    function detectSalaryPhase(): string {
+      if (negotiationPhase) return negotiationPhase; // explicit override from client
+      const idx = questionIndex ?? 0;
+      const total = totalQuestions ?? 6;
+      const progressRatio = idx / Math.max(1, total);
+      const facts = negotiationFacts;
+
+      // Early acceptance → skip to closing
+      if (facts?.acceptedImmediately && idx >= 2) return "closing";
+      // Walk-away detected → closing-pressure (retention attempt)
+      const walkAwayPat = /\b(walk away|walking away|i.?m out|not interested|decline|pull out|no deal|have to pass)\b/i;
+      if (walkAwayPat.test(answer)) return "closing-pressure";
+      // Candidate mentioned competing offers → probe-expectations with compete angle
+      if (facts?.hasCompetingOffers && idx <= 3) return "probe-expectations";
+      // Has a counter number + past initial reaction → counter-offer phase
+      if (facts?.candidateCounter && idx >= 2) return "counter-offer";
+      // Late in conversation → closing phases
+      if (progressRatio >= 0.85) return "closing";
+      if (progressRatio >= 0.7) return "closing-pressure";
+      // Topics raised beyond base → benefits-discussion
+      if (facts?.topicsRaised && facts.topicsRaised.length >= 2 && idx >= 3) return "benefits-discussion";
+      // Index-based fallback for earlier phases
+      if (idx <= 1) return "offer-reaction";
+      if (idx === 2) return "probe-expectations";
+      if (idx === 3) return "counter-offer";
+      if (idx === 4) return "benefits-discussion";
+      if (idx === 5) return "closing-pressure";
+      return "closing";
+    }
     const salaryPhase = isSalaryNeg
-      ? (negotiationPhase || (questionIndex !== undefined && totalQuestions
-        ? questionIndex <= 1 ? "offer-reaction" : questionIndex === 2 ? "probe-expectations" : questionIndex === 3 ? "counter-offer" : "closing"
-        : "offer-reaction"))
+      ? detectSalaryPhase()
       : "";
 
     // Depth 0: probe for detail (existing behavior)
@@ -224,6 +252,16 @@ YOUR GOAL: Summarize the SPECIFIC deal and set concrete next steps. Rebuild warm
         if (negotiationFacts.expressedSurprise) factsLines.push("- Candidate EXPRESSED SURPRISE at the offer — this may be a flinch tactic. Stay composed, reaffirm value, and ask what they were expecting.");
         if (negotiationFacts.topicsRaised && negotiationFacts.topicsRaised.length > 0) {
           factsLines.push(`- Topics the candidate raised: ${negotiationFacts.topicsRaised.join(", ")} — reference these when suggesting trade-offs.`);
+          // Proactively suggest levers based on topics NOT yet raised
+          const unreasedLevers = ["joining bonus", "notice period/joining", "remote/flexibility", "learning budget", "career growth", "health insurance"]
+            .filter(l => !negotiationFacts.topicsRaised!.includes(l));
+          if (unreasedLevers.length > 0 && negotiationFacts.topicsRaised!.length >= 1) {
+            factsLines.push(`- PROACTIVE LEVER TIP: The candidate hasn't asked about ${unreasedLevers.slice(0, 3).join(", ")} — consider offering one of these to sweeten the deal or create a trade-off.`);
+          }
+        }
+        // Notice period as a proactive lever (even if candidate didn't raise it)
+        if (!negotiationFacts.topicsRaised?.includes("notice period/joining")) {
+          factsLines.push("- NOTICE PERIOD: You haven't discussed notice period yet. Proactively ask: 'What's your notice period?' and offer buyout as a lever: 'If you can join within 30 days, I'll add ₹X for notice buyout.'");
         }
       }
       const factsCtx = factsLines.length > 0
@@ -359,9 +397,10 @@ Your response MUST directly address what they said above. Start by acknowledging
         : "";
 
       depthInstructions = `You are a HIRING MANAGER in a salary negotiation. You MUST stay in character. ALWAYS set needsFollowUp to true.
-${intentBanner}${equityGuard}
+${intentBanner}${equityGuard}${historyContext}
 ${factsCtx}${offerCtx}${bandCtx}${offerTrackingCtx}${targetCtx}${styleCtx}${industryCtx}${scenarioCtx}
 
+CURRENT PHASE: ${salaryPhase.toUpperCase()}
 ${phaseInstructions[salaryPhase] || phaseInstructions["offer-reaction"]}
 
 RULES:
@@ -442,8 +481,13 @@ CRITICAL: You are the HIRING MANAGER making a salary offer. Stay in character �
       : "";
 
     // Cross-question memory: earlier conversation for thematic connections
+    // For salary-negotiation: higher cap and placed prominently — the LLM MUST remember what's been said
+    const historyCharLimit = isSalaryNeg ? 4000 : 2500;
+    const historyLabel = isSalaryNeg
+      ? "FULL NEGOTIATION HISTORY (you MUST reference previous offers, numbers, and promises — never contradict what you said earlier)"
+      : "EARLIER IN THIS INTERVIEW (use for thematic connections — reference earlier answers when relevant)";
     const historyContext = conversationHistory
-      ? `\nEARLIER IN THIS INTERVIEW (use for thematic connections — reference earlier answers when relevant):\n${sanitizeForLLM(conversationHistory, 2500)}`
+      ? `\n${historyLabel}:\n${sanitizeForLLM(conversationHistory, historyCharLimit)}`
       : "";
 
     const prompt = `You are an expert interviewer. Given a candidate's answer to an interview question, decide if a follow-up question is needed.${panelContext}
@@ -506,12 +550,29 @@ Respond JSON only:
         }
       }
       // Monotonic enforcement: no offer can go below the highest previous offer
+      // Fixed: removed the `>= walkAway` condition that created a loophole allowing regressions
+      // between highestOfferMade and walkAway. Now ALL numbers below highestOffer get clamped.
       if (highestOfferMade && highestOfferMade > 0) {
         const monoRe = /₹\s*(\d+(?:\.\d+)?)\s*(?:LPA|lpa|lakh|lakhs)/g;
         let monoMatch: RegExpExecArray | null;
+        // Collect all offer numbers to check total CTC monotonicity
+        const allOfferNums: number[] = [];
+        const tempStr = clamped;
+        let tempMatch: RegExpExecArray | null;
+        const tempRe = /₹\s*(\d+(?:\.\d+)?)\s*(?:LPA|lpa|lakh|lakhs)/g;
+        while ((tempMatch = tempRe.exec(tempStr)) !== null) {
+          allOfferNums.push(parseFloat(tempMatch[1]));
+        }
+        // If the MAX number in the response (proxy for total CTC) is still >= highestOfferMade,
+        // only clamp individual components that look like the "main" offer (the largest number).
+        // Otherwise, clamp all sub-highestOffer numbers unconditionally.
+        const maxOfferedInResponse = allOfferNums.length > 0 ? Math.max(...allOfferNums) : 0;
+        const totalCTCMaintained = maxOfferedInResponse >= highestOfferMade;
         while ((monoMatch = monoRe.exec(clamped)) !== null) {
           const monoNum = parseFloat(monoMatch[1]);
-          if (monoNum < highestOfferMade && monoNum >= negotiationBand.walkAway) {
+          // Skip numbers that are clearly not offer amounts (e.g., "₹2 LPA learning budget")
+          const isSmallComponent = monoNum < highestOfferMade * 0.3;
+          if (monoNum < highestOfferMade && !isSmallComponent && !totalCTCMaintained) {
             console.warn(`[follow-up] Monotonic violation: ₹${monoNum} < previous highest ₹${highestOfferMade} — clamping`);
             clamped = clamped.replace(monoMatch[0], `₹${highestOfferMade} LPA`);
           }

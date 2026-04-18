@@ -49,16 +49,41 @@ export function computeFallbackScores(params: EvalParams): FallbackResult {
   if (interviewType === "salary-negotiation") {
     // Negotiation-specific skill dimensions
     const facts = extractNegotiationFacts(transcript);
-    const mentionedNumbers = userAnswers.some(t => /₹?\s*\d+(?:\.\d+)?\s*(?:lpa|lakh)/i.test(t.text));
+    // Detect numbers: include Crore amounts (1 Cr = 100 LPA)
+    const mentionedNumbers = userAnswers.some(t => /₹?\s*\d+(?:\.\d+)?\s*(?:lpa|lakh|lakhs|cr|crore)/i.test(t.text));
     const topicCount = facts.topicsRaised.length;
 
+    // Quality-aware anchoring: market data reference is stronger than just naming a number
+    const usedMarketData = userAnswers.some(t => /(?:market.*data|glassdoor|levels\.fyi|ambition\s*box|benchmark|market.*rate|industry.*standard|percentile)/i.test(t.text));
+    const anchoringBonus = (mentionedNumbers ? 5 : -8) + (facts.candidateCounter ? 5 : -5) + (usedMarketData ? 8 : 0);
+
+    // Package thinking: reward depth over breadth
+    // Depth = exploring a topic with specifics, not just mentioning it
+    const topicDepthSignals = userAnswers.filter(t =>
+      /(?:how much|what's the|can we discuss|break.*down|structure|what does.*look like|tell me about the)/i.test(t.text),
+    ).length;
+    const packageBonus = Math.min(15, topicCount * 3) + Math.min(8, topicDepthSignals * 4) - (topicCount === 0 ? 10 : 0);
+
+    // Concession: distinguish trading vs caving. Trading = conditional language
+    const usedTradeLanguage = userAnswers.some(t =>
+      /(?:if you.*then|in exchange|only if|provided|on condition|i can accept.*if|i.?d be open to.*if|how about.*instead)/i.test(t.text),
+    );
+    const concessionBonus = (facts.acceptedImmediately ? -15 : 3)
+      + (facts.rejectedOutright ? -3 : 0)
+      + (usedTradeLanguage ? 10 : 0);
+
+    // Closing: asking for time is good, confirming full package is better
+    const confirmedPackage = userAnswers.some(t =>
+      /(?:just to confirm|so the total|let me summarize|offer letter|in writing|full package|all.*included)/i.test(t.text),
+    );
+
     const skillScores: Record<string, number> = {
-      anchoring: clamp(fallbackScore + (mentionedNumbers ? 8 : -8) + (facts.candidateCounter ? 5 : -5)),
-      packageThinking: clamp(fallbackScore + Math.min(15, topicCount * 4) - (topicCount === 0 ? 10 : 0)),
-      leverageUse: clamp(fallbackScore + (facts.hasCompetingOffers ? 10 : 0) + (facts.mentionedBATNA ? 8 : 0) + (facts.deflectedNumbers ? -5 : 0)),
-      concessionStrategy: clamp(fallbackScore + (facts.acceptedImmediately ? -15 : 5) + (facts.rejectedOutright ? -5 : 0)),
-      closingTechnique: clamp(fallbackScore + (facts.askedForTime ? 5 : 0) + (completionRatio > 0.8 ? 5 : -5)),
-      composure: clamp(fallbackScore + (fillerCount < 2 ? 5 : -8) + (facts.expressedSurprise ? 3 : 0)),
+      anchoring: clamp(fallbackScore + anchoringBonus),
+      packageThinking: clamp(fallbackScore + packageBonus),
+      leverageUse: clamp(fallbackScore + (facts.hasCompetingOffers ? 10 : 0) + (facts.mentionedBATNA ? 8 : 0) + (facts.deflectedNumbers ? 3 : 0) + (usedMarketData ? 5 : -3)),
+      concessionStrategy: clamp(fallbackScore + concessionBonus),
+      closingTechnique: clamp(fallbackScore + (facts.askedForTime ? 5 : 0) + (confirmedPackage ? 8 : 0) + (completionRatio > 0.8 ? 5 : -5)),
+      composure: clamp(fallbackScore + (fillerCount < 2 ? 5 : -8) + (facts.expressedSurprise ? 3 : 0) + (facts.usedTacticalSilence ? 5 : 0)),
       professionalTone: clamp(fallbackScore + (fillerCount < 3 ? 5 : -5) + (avgAnswerLen > 30 ? 3 : -5)),
     };
     return { score, skillScores, hasAnyAnswers };
@@ -217,14 +242,18 @@ export function extractNegotiationFacts(transcript: TranscriptEntry[]): Negotiat
 
   // Extract ALL salary numbers in INR context, then pick the highest non-CTC number as the counter
   // (candidate's expectation/ask is typically the highest number they mention, excluding current CTC)
-  // Require ₹ prefix OR INR-specific suffix (lpa/lakh) — reject $ amounts to avoid USD/INR confusion
-  const salaryRe = /(?:₹\s*(\d+(?:\.\d+)?)\s*(?:lpa|lakh|lakhs|l\b)?|(\d+(?:\.\d+)?)\s*(?:lpa|lakh|lakhs))/gi;
+  // Require ₹ prefix OR INR-specific suffix (lpa/lakh/cr/crore) — reject $ amounts to avoid USD/INR confusion
+  const salaryRe = /(?:₹\s*(\d+(?:\.\d+)?)\s*(?:lpa|lakh|lakhs|l\b|cr|crore)?|(\d+(?:\.\d+)?)\s*(?:lpa|lakh|lakhs|cr|crore))/gi;
   const allSalaryMatches: string[] = [];
   let salaryMatch: RegExpExecArray | null;
   while ((salaryMatch = salaryRe.exec(allText)) !== null) {
-    // Group 1: ₹-prefixed number, Group 2: suffix-only number (lpa/lakh without ₹)
-    const num = salaryMatch[1] || salaryMatch[2];
-    if (num) allSalaryMatches.push(num);
+    // Group 1: ₹-prefixed number, Group 2: suffix-only number (lpa/lakh/cr without ₹)
+    const rawNum = salaryMatch[1] || salaryMatch[2];
+    if (!rawNum) continue;
+    // Convert Crore to LPA (1 Cr = 100 LPA) for consistent comparison
+    const isCrore = /cr|crore/i.test(salaryMatch[0]);
+    const normalizedNum = isCrore ? String(parseFloat(rawNum) * 100) : rawNum;
+    allSalaryMatches.push(normalizedNum);
   }
   // Filter out numbers that matched as current CTC, then take the MAX as counter
   const counterNumbers = allSalaryMatches.filter(n => !ctcNumbers.has(n));
@@ -259,8 +288,11 @@ export function extractNegotiationFacts(transcript: TranscriptEntry[]): Negotiat
   );
 
   // Tactical silence: very short responses (< 10 words) after the first exchange suggest strategic pausing
-  const usedTacticalSilence = userAnswers.length > 1 &&
-    userAnswers.slice(1).some(a => a.trim().split(/\s+/).length < 10 && !/^(yes|no|okay|sure|fine)\b/i.test(a.trim()));
+  // Require at least 2 short responses to distinguish tactical silence from a single laconic answer
+  const shortResponseCount = userAnswers.slice(1).filter(a =>
+    a.trim().split(/\s+/).length < 10 && !/^(yes|no|okay|sure|fine)\b/i.test(a.trim()),
+  ).length;
+  const usedTacticalSilence = userAnswers.length > 2 && shortResponseCount >= 2;
 
   // BATNA: candidate explicitly mentions walk-away alternative or backup plan
   const mentionedBATNA = /(?:walk away|backup|alternative|plan b|best alternative|other option|if we can.?t agree|fall back)/i.test(allText);
