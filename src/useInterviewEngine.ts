@@ -203,9 +203,30 @@ export function useInterviewEngine() {
   const dontKnowCountRef = useRef(0);
   // Negotiation band (populated by LLM question generation for salary-neg)
   const negotiationBandRef = useRef<NegotiationBandData | null>(null);
-  // Negotiation style: randomly assigned per session for variety
+  // Candidate's target salary (set via warm-up calibration card)
+  const [targetSalary, setTargetSalary] = useState<number | null>(null);
+  // Multi-round scenario mode
+  const [negotiationScenario, setNegotiationScenario] = useState<string>(() => searchParams.get("scenario") || "standard");
+  const negotiationRound = parseInt(searchParams.get("round") || "1", 10);
+  // Highest offer the AI has made so far (for monotonic enforcement)
+  const highestOfferRef = useRef<number>(0);
+  // Negotiation style: adaptive based on previous session scores, else random
   const [negotiationStyle] = useState(() => {
     if (interviewType !== "salary-negotiation") return undefined;
+    try {
+      const raw = localStorage.getItem("hirestepx_sessions");
+      if (raw) {
+        const sessions = JSON.parse(raw) as { type?: string; score?: number }[];
+        const negSessions = sessions.filter(s => s.type === "salary-negotiation" && typeof s.score === "number");
+        if (negSessions.length > 0) {
+          const avgScore = negSessions.slice(0, 3).reduce((sum, s) => sum + (s.score || 0), 0) / Math.min(negSessions.length, 3);
+          // Low scores → cooperative (easier), mid → defensive, high → aggressive (hardest)
+          if (avgScore >= 78) return "aggressive" as const;
+          if (avgScore >= 65) return "defensive" as const;
+          return "cooperative" as const;
+        }
+      }
+    } catch { /* localStorage access failed — use random */ }
     const styles = ["cooperative", "aggressive", "defensive"] as const;
     return styles[Math.floor(Math.random() * styles.length)];
   });
@@ -1133,6 +1154,15 @@ export function useInterviewEngine() {
 
       Promise.race([pendingFollowUp, timeout]).then(result => {
         if (isStale() || interviewEndedRef.current) return;
+        // Track highest AI offer for monotonic enforcement
+        if (isSalaryNegConversation && result?.followUpText) {
+          const offerRe = /₹\s*(\d+(?:\.\d+)?)\s*(?:LPA|lpa|lakh|lakhs)/g;
+          let m: RegExpExecArray | null;
+          while ((m = offerRe.exec(result.followUpText)) !== null) {
+            const num = parseFloat(m[1]);
+            if (num > highestOfferRef.current) highestOfferRef.current = num;
+          }
+        }
         if (result?.needsFollowUp && result.followUpText && currentStepRef.current === currentStep) {
           // Preserve persona from the original question (or from API response) for panel interviews
           const followUpPersona = isPanelInterview ? ((result as { persona?: string }).persona || step.persona) : undefined;
@@ -1415,6 +1445,9 @@ export function useInterviewEngine() {
           negotiationStyle: negotiationStyle || undefined,
           negotiationBand: negotiationBandRef.current || undefined,
           industry: user?.industry || undefined,
+          highestOfferMade: highestOfferRef.current > 0 ? highestOfferRef.current : undefined,
+          candidateTarget: targetSalary || undefined,
+          negotiationScenario: negotiationScenario !== "standard" ? negotiationScenario : undefined,
         });
       } else {
         pendingFollowUpRef.current = null;
@@ -1739,6 +1772,90 @@ export function useInterviewEngine() {
     }
   }, [navigate, elapsed, interviewType, interviewDifficulty, interviewFocus, totalQuestions, user, updateUser, currentStep, interviewScript.length, transcript, currentTranscript]);
 
+  // ─── Live negotiation state (derived from transcript for dashboard) ───
+  const liveNegotiationState = useMemo(() => {
+    if (interviewType !== "salary-negotiation") return null;
+    const facts = extractNegotiationFacts(transcript as { speaker: "ai" | "user"; text: string; time: string }[]);
+    const questionSteps = interviewScript.filter(s => s.type === "question" || s.type === "follow-up");
+    const currentQuestionIdx = interviewScript.slice(0, currentStep + 1).filter(s => s.type === "question" || s.type === "follow-up").length;
+    const totalQs = questionSteps.length;
+    const negotiationPhases = ["offer-reaction", "probe-expectations", "counter-offer", "benefits-discussion", "closing-pressure", "closing"];
+    const ratio = totalQs > 1 ? (currentQuestionIdx - 1) / (totalQs - 1) : 0;
+    const phaseIdx = Math.min(Math.round(ratio * (negotiationPhases.length - 1)), negotiationPhases.length - 1);
+    const phase = negotiationPhases[phaseIdx] || "offer-reaction";
+    // Leverage score: 0-100 based on tactics used
+    let leverage = 30; // baseline
+    if (facts.hasCompetingOffers) leverage += 20;
+    if (facts.mentionedBATNA) leverage += 15;
+    if (facts.candidateCounter) leverage += 15;
+    if (facts.usedTacticalSilence) leverage += 10;
+    if (facts.expressedSurprise) leverage += 5;
+    if (facts.deflectedNumbers) leverage += 5;
+    if (facts.acceptedImmediately) leverage -= 25;
+    if (facts.rejectedOutright) leverage -= 10;
+    leverage = Math.max(0, Math.min(100, leverage));
+    // Topics checklist
+    const allPossibleTopics = ["equity/ESOPs", "joining bonus", "remote/flexibility", "health insurance", "learning budget", "career growth", "notice period/joining", "relocation", "market data/benchmarks", "variable pay structure", "title/level"];
+    const topicsCovered = allPossibleTopics.map(t => ({ topic: t, covered: facts.topicsRaised.includes(t) }));
+    return { facts, phase, leverage, topicsCovered, phaseIdx, totalPhases: negotiationPhases.length };
+  }, [interviewType, transcript, currentStep, interviewScript]);
+
+  // ─── Voice confidence analysis via Web Audio API ───
+  const voiceConfidenceRef = useRef<{ score: number; volume: number; variability: number } | null>(null);
+  const audioAnalyserRef = useRef<{ analyser: AnalyserNode; ctx: AudioContext; source: MediaStreamAudioSourceNode } | null>(null);
+  const volumeSamplesRef = useRef<number[]>([]);
+
+  // Set up audio analyser when mic stream is available and we're in listening phase
+  useEffect(() => {
+    if (phase !== "listening" || !micStreamRef.current || interviewType !== "salary-negotiation") {
+      return;
+    }
+    // Don't create duplicate analysers
+    if (audioAnalyserRef.current) return;
+    try {
+      const ctx = new AudioContext();
+      const source = ctx.createMediaStreamSource(micStreamRef.current);
+      const analyser = ctx.createAnalyser();
+      analyser.fftSize = 256;
+      analyser.smoothingTimeConstant = 0.8;
+      source.connect(analyser);
+      audioAnalyserRef.current = { analyser, ctx, source };
+      volumeSamplesRef.current = [];
+
+      // Sample volume at 10Hz
+      const dataArray = new Uint8Array(analyser.frequencyBinCount);
+      const interval = setInterval(() => {
+        if (!audioAnalyserRef.current) { clearInterval(interval); return; }
+        analyser.getByteFrequencyData(dataArray);
+        const avg = dataArray.reduce((s, v) => s + v, 0) / dataArray.length;
+        volumeSamplesRef.current.push(avg);
+        // Keep last 100 samples (10 seconds)
+        if (volumeSamplesRef.current.length > 100) volumeSamplesRef.current.shift();
+        // Compute confidence
+        const samples = volumeSamplesRef.current;
+        if (samples.length >= 5) {
+          const mean = samples.reduce((s, v) => s + v, 0) / samples.length;
+          const variance = samples.reduce((s, v) => s + (v - mean) ** 2, 0) / samples.length;
+          const stdDev = Math.sqrt(variance);
+          // Volume score: louder = more confident (normalize 0-100)
+          const volumeScore = Math.min(100, Math.round((mean / 128) * 100));
+          // Variability: lower stdDev relative to mean = more steady = more confident
+          const coefVar = mean > 0 ? stdDev / mean : 1;
+          const steadinessScore = Math.max(0, Math.min(100, Math.round((1 - coefVar) * 100)));
+          // Combined confidence
+          const confidence = Math.round(volumeScore * 0.6 + steadinessScore * 0.4);
+          voiceConfidenceRef.current = { score: Math.max(0, Math.min(100, confidence)), volume: volumeScore, variability: steadinessScore };
+        }
+      }, 100);
+
+      return () => {
+        clearInterval(interval);
+        try { source.disconnect(); ctx.close(); } catch { /* cleanup */ }
+        audioAnalyserRef.current = null;
+      };
+    } catch { /* Web Audio API not available */ return undefined; }
+  }, [phase, interviewType]);
+
   // Live speech metrics (computed from current transcript)
   const liveMetrics = useMemo(() => {
     if (!currentTranscript || currentTranscript.length < 10) return null;
@@ -1822,6 +1939,14 @@ export function useInterviewEngine() {
     isSalaryNegotiation: interviewType === "salary-negotiation",
     negotiationStyle: negotiationStyle || undefined,
     negotiationBand: negotiationBandRef.current,
+    targetSalary,
+    setTargetSalary,
+    highestOffer: highestOfferRef.current,
+    liveNegotiationState,
+    voiceConfidence: voiceConfidenceRef.current,
+    negotiationScenario,
+    setNegotiationScenario,
+    negotiationRound,
 
     // Setters the UI needs
     setCurrentTranscript,

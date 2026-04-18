@@ -625,16 +625,50 @@ export const UserAnswerArea = memo(function UserAnswerArea({ currentTranscript, 
 
 /* ─── Salary Negotiation Coaching Card (shown before session starts) ─── */
 
-export const NegotiationCoachingCard = memo(function NegotiationCoachingCard({ onDismiss, negotiationStyle }: {
+export const NegotiationCoachingCard = memo(function NegotiationCoachingCard({ onDismiss, negotiationStyle, onSetTarget, targetRole, industry, scenarioRound, onSelectScenario }: {
   onDismiss: () => void;
   negotiationStyle?: string;
+  onSetTarget?: (salary: number) => void;
+  targetRole?: string;
+  industry?: string;
+  scenarioRound?: number;
+  onSelectScenario?: (scenario: string) => void;
 }) {
+  const [targetInput, setTargetInput] = useState("");
   const styleLabel = negotiationStyle === "aggressive" ? "Aggressive" : negotiationStyle === "defensive" ? "Defensive" : "Cooperative";
   const styleDesc = negotiationStyle === "aggressive"
     ? "The hiring manager will be budget-conscious and push back hard. Practice holding your ground."
     : negotiationStyle === "defensive"
     ? "The hiring manager will deflect and avoid committing. Practice being persistent."
     : "The hiring manager will be collaborative. Practice maximizing value through creative trade-offs.";
+
+  // Dynamic playbook: role/industry-aware tips
+  const isEngineering = /engineer|developer|sde|swe|tech|software|backend|frontend|fullstack/i.test(targetRole || "");
+  const isStartup = /startup|early.?stage|seed|series/i.test(industry || "");
+  const isFintech = /fintech|payments|banking|financial/i.test(industry || "");
+  const isConsulting = /consult|advisory|strategy|management/i.test(industry || "");
+
+  const tips = [
+    { icon: "1", title: "Don't accept immediately", desc: "Thank them, express interest, then ask for details before responding." },
+    { icon: "2", title: "Anchor high with reasoning", desc: isEngineering
+      ? "Reference levels.fyi or Glassdoor data for your level. Anchor to the market, not your current CTC."
+      : "State your target range backed by market data, not your current salary." },
+    { icon: "3", title: "Think total comp", desc: isStartup
+      ? "Equity is key in startups — ask about ESOP pool %, vesting schedule, cliff period, and strike price."
+      : isFintech
+      ? "Fintech often has strong variable pay — ask about performance bonus structure, RSUs, and retention bonuses."
+      : "Negotiate equity, joining bonus, flexibility, and learning budget — not just base." },
+    { icon: "4", title: "Trade, don't just ask", desc: isConsulting
+      ? "Trade flexibility for base: 'I'll commit to weekend travel if we can agree on ₹X base + quarterly bonuses.'"
+      : "\"I can accept ₹X base if you add a ₹Y joining bonus\" — give something to get something." },
+    { icon: "5", title: "Close with next steps", desc: "Ask about timeline, offer letter, and start date. Don't leave it open-ended." },
+  ];
+
+  const handleStart = () => {
+    const num = parseFloat(targetInput);
+    if (onSetTarget && num > 0) onSetTarget(num);
+    onDismiss();
+  };
 
   return (
     <div style={{
@@ -648,7 +682,7 @@ export const NegotiationCoachingCard = memo(function NegotiationCoachingCard({ o
         <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="2" strokeLinecap="round">
           <circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>
         </svg>
-        <span style={{ fontFamily: font.display, fontSize: 15, fontWeight: 600, color: c.ivory }}>Negotiation Tips</span>
+        <span style={{ fontFamily: font.display, fontSize: 15, fontWeight: 600, color: c.ivory }}>Negotiation Playbook</span>
         {negotiationStyle && (
           <span style={{ fontFamily: font.ui, fontSize: 11, color: c.gilt, padding: "2px 8px", borderRadius: 6, background: "rgba(212,179,127,0.1)", marginLeft: "auto" }}>
             {styleLabel} Manager
@@ -662,14 +696,34 @@ export const NegotiationCoachingCard = memo(function NegotiationCoachingCard({ o
         </p>
       )}
 
+      {/* Warm-up calibration: target salary input */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        <label style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+          Your target salary (optional)
+        </label>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <span style={{ fontFamily: font.ui, fontSize: 13, color: c.stone }}>₹</span>
+          <input
+            type="number"
+            placeholder="e.g. 25"
+            value={targetInput}
+            onChange={e => setTargetInput(e.target.value)}
+            style={{
+              flex: 1, fontFamily: font.ui, fontSize: 13, padding: "8px 12px",
+              borderRadius: 8, background: "rgba(245,242,237,0.04)",
+              border: "1px solid rgba(245,242,237,0.1)", color: c.ivory,
+              outline: "none",
+            }}
+          />
+          <span style={{ fontFamily: font.ui, fontSize: 13, color: c.stone }}>LPA</span>
+        </div>
+        <p style={{ fontFamily: font.ui, fontSize: 10, color: c.stone, margin: 0 }}>
+          Setting a target helps us coach you on whether you anchored high enough.
+        </p>
+      </div>
+
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        {[
-          { icon: "1", title: "Don't accept immediately", desc: "Thank them, express interest, then ask for details before responding." },
-          { icon: "2", title: "Anchor high with reasoning", desc: "State your target range backed by market data, not your current salary." },
-          { icon: "3", title: "Think total comp", desc: "Negotiate equity, joining bonus, flexibility, and learning budget — not just base." },
-          { icon: "4", title: "Trade, don't just ask", desc: "\"I can accept ₹X base if you add a ₹Y joining bonus\" — give something to get something." },
-          { icon: "5", title: "Close with next steps", desc: "Ask about timeline, offer letter, and start date. Don't leave it open-ended." },
-        ].map(tip => (
+        {tips.map(tip => (
           <div key={tip.icon} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
             <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 700, color: c.gilt, minWidth: 20, height: 20, borderRadius: "50%", background: "rgba(212,179,127,0.12)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{tip.icon}</span>
             <div>
@@ -680,8 +734,41 @@ export const NegotiationCoachingCard = memo(function NegotiationCoachingCard({ o
         ))}
       </div>
 
+      {/* Multi-round scenario selection */}
+      {onSelectScenario && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          <label style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+            Scenario {scenarioRound ? `(Round ${scenarioRound})` : ""}
+          </label>
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+            {([
+              { id: "standard", label: "Standard Offer", desc: "Typical negotiation from initial offer" },
+              { id: "lowball", label: "Lowball Recovery", desc: "Offer 20-30% below market — fight back" },
+              { id: "exploding", label: "Exploding Offer", desc: "24-hour deadline — handle pressure" },
+              { id: "competing", label: "Competing Offers", desc: "Use multiple offers as leverage" },
+            ]).map(s => (
+              <button
+                key={s.id}
+                onClick={() => onSelectScenario(s.id)}
+                title={s.desc}
+                style={{
+                  flex: 1, minWidth: 100, fontFamily: font.ui, fontSize: 10, fontWeight: 500,
+                  padding: "6px 8px", borderRadius: 8,
+                  background: "rgba(245,242,237,0.04)",
+                  border: "1px solid rgba(245,242,237,0.08)",
+                  color: c.chalk, cursor: "pointer",
+                  transition: "all 0.15s ease",
+                }}
+              >
+                {s.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       <button
-        onClick={onDismiss}
+        onClick={handleStart}
         style={{
           fontFamily: font.ui, fontSize: 13, fontWeight: 600,
           padding: "10px 20px", borderRadius: 10, marginTop: 4,
@@ -977,6 +1064,323 @@ export const DealSummaryCard = memo(function DealSummaryCard({ transcript, negot
           </div>
         </div>
       )}
+    </div>
+  );
+});
+
+/* ─── Live Negotiation Dashboard (shown during salary negotiation) ─── */
+
+export const NegotiationLiveDashboard = memo(function NegotiationLiveDashboard({ liveState, negotiationBand, highestOffer, targetSalary, voiceConfidence }: {
+  liveState: {
+    facts: { candidateCounter: string | null; hasCompetingOffers: boolean; topicsRaised: string[]; acceptedImmediately: boolean; mentionedBATNA: boolean };
+    phase: string;
+    leverage: number;
+    topicsCovered: { topic: string; covered: boolean }[];
+    phaseIdx: number;
+    totalPhases: number;
+  };
+  negotiationBand?: { initialOffer: number; maxStretch: number; walkAway: number } | null;
+  highestOffer: number;
+  targetSalary: number | null;
+  voiceConfidence?: { score: number; volume: number; variability: number } | null;
+}) {
+  const phaseLabels: Record<string, string> = {
+    "offer-reaction": "React to Offer",
+    "probe-expectations": "Share Expectations",
+    "counter-offer": "Counter-Offer",
+    "benefits-discussion": "Negotiate Benefits",
+    "closing-pressure": "Handle Pressure",
+    "closing": "Close the Deal",
+  };
+  const phaseGuidance: Record<string, string> = {
+    "offer-reaction": "Don't accept yet. Thank them, show interest, and ask for details.",
+    "probe-expectations": "Share your research-backed expectations. Anchor high with reasoning.",
+    "counter-offer": "State your specific number. Trade concessions — don't just ask.",
+    "benefits-discussion": "Think total comp: equity, bonus, flexibility, learning budget.",
+    "closing-pressure": "Use competing offers or BATNA. Don't fold under deadline pressure.",
+    "closing": "Confirm all terms explicitly. Set clear next steps and timelines.",
+  };
+  const leverageColor = liveState.leverage >= 70 ? c.sage : liveState.leverage >= 40 ? c.gilt : c.ember;
+  const coveredCount = liveState.topicsCovered.filter(t => t.covered).length;
+
+  return (
+    <div style={{
+      width: "100%", borderRadius: 14,
+      background: "rgba(212,179,127,0.03)",
+      border: "1px solid rgba(212,179,127,0.1)",
+      padding: "16px", display: "flex", flexDirection: "column", gap: 12,
+      animation: "fadeUp 0.3s ease",
+    }}>
+      {/* Phase Progress */}
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <span style={{ fontFamily: font.ui, fontSize: 10, color: c.stone, textTransform: "uppercase", letterSpacing: "0.06em", flexShrink: 0 }}>Phase</span>
+        <div style={{ flex: 1, display: "flex", gap: 3 }}>
+          {Array.from({ length: liveState.totalPhases }).map((_, i) => (
+            <div key={i} style={{
+              flex: 1, height: 4, borderRadius: 2,
+              background: i <= liveState.phaseIdx ? c.gilt : "rgba(245,242,237,0.08)",
+              transition: "background 0.3s ease",
+            }} />
+          ))}
+        </div>
+        <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.gilt, flexShrink: 0 }}>
+          {phaseLabels[liveState.phase] || liveState.phase}
+        </span>
+      </div>
+
+      {/* Phase Guidance */}
+      <div style={{ padding: "8px 10px", borderRadius: 8, background: "rgba(212,179,127,0.06)", border: "1px solid rgba(212,179,127,0.08)" }}>
+        <p style={{ fontFamily: font.ui, fontSize: 11, color: c.chalk, margin: 0, lineHeight: 1.4 }}>
+          {phaseGuidance[liveState.phase] || "Stay composed and negotiate professionally."}
+        </p>
+      </div>
+
+      {/* Position vs Band */}
+      {negotiationBand && negotiationBand.initialOffer > 0 && (
+        <div>
+          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+            <span style={{ fontFamily: font.ui, fontSize: 10, color: c.stone }}>Walk-away ₹{negotiationBand.walkAway}</span>
+            <span style={{ fontFamily: font.ui, fontSize: 10, color: c.stone }}>Max ₹{negotiationBand.maxStretch}</span>
+          </div>
+          <div style={{ position: "relative", height: 20, borderRadius: 10, background: "rgba(245,242,237,0.06)", overflow: "hidden" }}>
+            {/* Band range */}
+            <div style={{
+              position: "absolute", left: 0, top: 0, bottom: 0,
+              width: "100%", borderRadius: 10,
+              background: "linear-gradient(90deg, rgba(196,112,90,0.2), rgba(212,179,127,0.2), rgba(122,158,126,0.2))",
+            }} />
+            {/* Highest offer marker */}
+            {highestOffer > 0 && (() => {
+              const range = negotiationBand.maxStretch - negotiationBand.walkAway;
+              const pos = range > 0 ? Math.max(0, Math.min(100, ((highestOffer - negotiationBand.walkAway) / range) * 100)) : 50;
+              return (
+                <div style={{
+                  position: "absolute", left: `${pos}%`, top: 0, bottom: 0,
+                  width: 3, background: c.gilt, borderRadius: 2,
+                  transform: "translateX(-50%)", zIndex: 2,
+                }}>
+                  <div style={{
+                    position: "absolute", top: -16, left: "50%", transform: "translateX(-50%)", whiteSpace: "nowrap",
+                    fontFamily: font.ui, fontSize: 9, fontWeight: 700, color: c.gilt,
+                  }}>₹{highestOffer}</div>
+                </div>
+              );
+            })()}
+            {/* Target marker */}
+            {targetSalary && (() => {
+              const range = negotiationBand.maxStretch - negotiationBand.walkAway;
+              const pos = range > 0 ? Math.max(0, Math.min(100, ((targetSalary - negotiationBand.walkAway) / range) * 100)) : 50;
+              return (
+                <div style={{
+                  position: "absolute", left: `${pos}%`, top: 0, bottom: 0,
+                  width: 2, background: c.sage, borderRadius: 1,
+                  transform: "translateX(-50%)", zIndex: 1,
+                  borderLeft: `1px dashed ${c.sage}`,
+                }}>
+                  <div style={{
+                    position: "absolute", bottom: -14, left: "50%", transform: "translateX(-50%)", whiteSpace: "nowrap",
+                    fontFamily: font.ui, fontSize: 9, fontWeight: 600, color: c.sage,
+                  }}>Target</div>
+                </div>
+              );
+            })()}
+          </div>
+        </div>
+      )}
+
+      {/* Leverage Meter + Voice Confidence (side by side) */}
+      <div style={{ display: "flex", gap: 10 }}>
+        <div style={{ flex: 1 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
+            <span style={{ fontFamily: font.ui, fontSize: 10, color: c.stone, textTransform: "uppercase", letterSpacing: "0.04em" }}>Leverage</span>
+            <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 700, color: leverageColor }}>{liveState.leverage}%</span>
+          </div>
+          <div style={{ height: 6, borderRadius: 3, background: "rgba(245,242,237,0.06)", overflow: "hidden" }}>
+            <div style={{ height: "100%", borderRadius: 3, width: `${liveState.leverage}%`, background: leverageColor, transition: "width 0.5s ease, background 0.3s ease" }} />
+          </div>
+        </div>
+        {voiceConfidence && (
+          <div style={{ flex: 1 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
+              <span style={{ fontFamily: font.ui, fontSize: 10, color: c.stone, textTransform: "uppercase", letterSpacing: "0.04em" }}>Voice</span>
+              <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 700, color: voiceConfidence.score >= 60 ? c.sage : voiceConfidence.score >= 35 ? c.gilt : c.ember }}>{voiceConfidence.score}%</span>
+            </div>
+            <div style={{ height: 6, borderRadius: 3, background: "rgba(245,242,237,0.06)", overflow: "hidden" }}>
+              <div style={{
+                height: "100%", borderRadius: 3, width: `${voiceConfidence.score}%`,
+                background: voiceConfidence.score >= 60 ? c.sage : voiceConfidence.score >= 35 ? c.gilt : c.ember,
+                transition: "width 0.3s ease",
+              }} />
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Topics Checklist (compact) */}
+      <div>
+        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+          <span style={{ fontFamily: font.ui, fontSize: 10, color: c.stone, textTransform: "uppercase", letterSpacing: "0.04em" }}>Topics Discussed</span>
+          <span style={{ fontFamily: font.ui, fontSize: 10, color: c.stone }}>{coveredCount}/{liveState.topicsCovered.length}</span>
+        </div>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+          {liveState.topicsCovered.map(t => (
+            <span key={t.topic} style={{
+              fontFamily: font.ui, fontSize: 9, padding: "2px 6px", borderRadius: 4,
+              background: t.covered ? "rgba(122,158,126,0.12)" : "rgba(245,242,237,0.04)",
+              color: t.covered ? c.sage : c.stone,
+              border: `1px solid ${t.covered ? "rgba(122,158,126,0.2)" : "rgba(245,242,237,0.06)"}`,
+              textDecoration: t.covered ? "none" : "none",
+              opacity: t.covered ? 1 : 0.6,
+            }}>
+              {t.covered ? "\u2713 " : ""}{t.topic}
+            </span>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+});
+
+/* ─── Annotated Replay Panel (post-session negotiation transcript with turn-by-turn annotations) ─── */
+
+export const AnnotatedReplayPanel = memo(function AnnotatedReplayPanel({ transcript, negotiationBand }: {
+  transcript: { speaker: string; text: string; time?: string }[];
+  negotiationBand?: { initialOffer: number; maxStretch: number; walkAway: number } | null;
+}) {
+  const [expandedTurn, setExpandedTurn] = useState<number | null>(null);
+
+  // Generate per-turn annotations
+  const annotatedTurns = React.useMemo(() => {
+    return transcript.map((turn, idx) => {
+      const annotations: { type: "positive" | "negative" | "neutral"; text: string }[] = [];
+      const text = turn.text;
+      if (turn.speaker === "user") {
+        // Check for salary numbers
+        if (/₹?\s*\d+(?:\.\d+)?\s*(?:lpa|lakh)/i.test(text)) {
+          annotations.push({ type: "positive", text: "Named a specific number — anchoring." });
+        }
+        if (/(?:equity|esop|stock|rsu)/i.test(text)) {
+          annotations.push({ type: "positive", text: "Explored equity/ESOPs — thinking total comp." });
+        }
+        if (/(?:other offer|competing|another company)/i.test(text)) {
+          annotations.push({ type: "positive", text: "Mentioned competing offers — building leverage." });
+        }
+        if (/(?:joining bonus|sign.?on|bonus)/i.test(text)) {
+          annotations.push({ type: "positive", text: "Asked about joining bonus." });
+        }
+        if (/(?:remote|wfh|flexible|hybrid)/i.test(text)) {
+          annotations.push({ type: "positive", text: "Negotiated flexibility — total package thinking." });
+        }
+        if (/(?:i accept|sounds good|that works|it.?s a deal|fine with me)/i.test(text) && idx < transcript.length - 2) {
+          annotations.push({ type: "negative", text: "Accepted early — may have left value on the table." });
+        }
+        if (/(?:current(?:ly)?\s+(?:earning|getting|making|drawing)|my ctc)/i.test(text)) {
+          annotations.push({ type: "negative", text: "Revealed current salary — weaker bargaining position." });
+        }
+        if (text.trim().split(/\s+/).length < 8 && idx > 0) {
+          annotations.push({ type: "neutral", text: "Short response — could be tactical silence or missed opportunity." });
+        }
+        if (/(?:market.*data|glassdoor|levels\.fyi|benchmark|ambition\s*box)/i.test(text)) {
+          annotations.push({ type: "positive", text: "Referenced market data — strong justification." });
+        }
+        if (/(?:walk away|alternative|plan b|other option)/i.test(text)) {
+          annotations.push({ type: "positive", text: "Mentioned BATNA — strong leverage signal." });
+        }
+        if (/(?:need time|think about|sleep on|let me think|get back to you)/i.test(text)) {
+          annotations.push({ type: "positive", text: "Asked for time — prevents pressure-driven decisions." });
+        }
+        if (annotations.length === 0 && text.length > 20) {
+          annotations.push({ type: "neutral", text: "General response — consider adding specific numbers or trade-offs." });
+        }
+      } else {
+        // AI turn annotations
+        const offerMatch = text.match(/₹\s*(\d+(?:\.\d+)?)\s*(?:LPA|lpa|lakh)/);
+        if (offerMatch) {
+          const offer = parseFloat(offerMatch[1]);
+          if (negotiationBand) {
+            const bandPos = ((offer - negotiationBand.walkAway) / (negotiationBand.maxStretch - negotiationBand.walkAway)) * 100;
+            annotations.push({ type: "neutral", text: `Offered ₹${offer} LPA (${Math.round(bandPos)}% of their range).` });
+          }
+        }
+        if (/(?:can'?t|unable|not possible|budget|constraint|limit)/i.test(text)) {
+          annotations.push({ type: "neutral", text: "Pushback — test your composure. Counter with reasoning." });
+        }
+        if (/(?:final|last|best|take it or leave)/i.test(text)) {
+          annotations.push({ type: "neutral", text: "Closing pressure — don't cave. Explore other components." });
+        }
+      }
+      return { ...turn, annotations };
+    });
+  }, [transcript, negotiationBand]);
+
+  return (
+    <div style={{
+      width: "100%", borderRadius: 14,
+      background: "rgba(245,242,237,0.02)",
+      border: `1px solid ${c.border}`,
+      padding: "16px", display: "flex", flexDirection: "column", gap: 8,
+    }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+        <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="2" strokeLinecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+        <span style={{ fontFamily: font.display, fontSize: 13, fontWeight: 600, color: c.ivory }}>Negotiation Replay</span>
+        <span style={{ fontFamily: font.ui, fontSize: 10, color: c.stone, marginLeft: "auto" }}>Click any turn for annotations</span>
+      </div>
+
+      {annotatedTurns.map((turn, idx) => {
+        const isUser = turn.speaker === "user";
+        const isExpanded = expandedTurn === idx;
+        const hasAnnotations = turn.annotations.length > 0;
+        return (
+          <div
+            key={idx}
+            role={hasAnnotations ? "button" : undefined}
+            tabIndex={hasAnnotations ? 0 : undefined}
+            onClick={() => hasAnnotations && setExpandedTurn(isExpanded ? null : idx)}
+            onKeyDown={(e) => { if (hasAnnotations && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); setExpandedTurn(isExpanded ? null : idx); } }}
+            style={{
+              padding: "8px 12px", borderRadius: 10,
+              background: isUser ? "rgba(212,179,127,0.04)" : "rgba(245,242,237,0.02)",
+              border: `1px solid ${isExpanded ? "rgba(212,179,127,0.2)" : "rgba(245,242,237,0.05)"}`,
+              cursor: hasAnnotations ? "pointer" : "default",
+              transition: "border-color 0.2s ease",
+            }}
+          >
+            <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+              <span style={{
+                fontFamily: font.ui, fontSize: 9, fontWeight: 700, color: isUser ? c.gilt : c.stone,
+                textTransform: "uppercase", letterSpacing: "0.06em", flexShrink: 0, marginTop: 2,
+              }}>
+                {isUser ? "You" : "HR"}
+              </span>
+              <p style={{ fontFamily: font.ui, fontSize: 12, color: c.chalk, margin: 0, lineHeight: 1.5, flex: 1 }}>
+                {turn.text.length > 200 ? turn.text.slice(0, 200) + "..." : turn.text}
+              </p>
+              {hasAnnotations && (
+                <span style={{ fontFamily: font.ui, fontSize: 9, color: c.stone, flexShrink: 0, marginTop: 2 }}>
+                  {turn.annotations.length}
+                </span>
+              )}
+            </div>
+            {isExpanded && turn.annotations.length > 0 && (
+              <div style={{ marginTop: 8, paddingTop: 8, borderTop: "1px solid rgba(245,242,237,0.06)", display: "flex", flexDirection: "column", gap: 4 }}>
+                {turn.annotations.map((a, ai) => (
+                  <div key={ai} style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                    <span style={{
+                      width: 6, height: 6, borderRadius: "50%", flexShrink: 0,
+                      background: a.type === "positive" ? c.sage : a.type === "negative" ? c.ember : c.stone,
+                    }} />
+                    <span style={{
+                      fontFamily: font.ui, fontSize: 11,
+                      color: a.type === "positive" ? c.sage : a.type === "negative" ? c.ember : c.stone,
+                      lineHeight: 1.4,
+                    }}>{a.text}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 });

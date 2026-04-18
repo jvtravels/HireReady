@@ -47,7 +47,7 @@ export default async function handler(req: Request): Promise<Response> {
   }
 
   try {
-    const { question, answer, type, role, jobDescription, company, currentCity, jobCity, followUpDepth = 0, previousFollowUps, persona, conversationHistory, negotiationPhase, questionIndex, totalQuestions, resumeTopSkills, initialOfferText, negotiationFacts, negotiationStyle, negotiationBand, industry } = await req.json() as {
+    const { question, answer, type, role, jobDescription, company, currentCity, jobCity, followUpDepth = 0, previousFollowUps, persona, conversationHistory, negotiationPhase, questionIndex, totalQuestions, resumeTopSkills, initialOfferText, negotiationFacts, negotiationStyle, negotiationBand, industry, highestOfferMade, candidateTarget, negotiationScenario } = await req.json() as {
       question: string; answer: string; type: string; role: string;
       jobDescription?: string; company?: string;
       currentCity?: string; jobCity?: string;
@@ -78,6 +78,9 @@ export default async function handler(req: Request): Promise<Response> {
         bandContext: string;
       };
       industry?: string;
+      highestOfferMade?: number;
+      candidateTarget?: number;
+      negotiationScenario?: string;
     };
 
     if (!question || typeof question !== "string" || !answer || typeof answer !== "string") {
@@ -231,9 +234,26 @@ YOUR GOAL: Summarize the SPECIFIC deal and set concrete next steps. Rebuild warm
         ? `\n${sanitizeForLLM(negotiationBand.bandContext, 600)}`
         : "";
 
+      // Monotonic offer rule + candidate target context
+      const offerTrackingCtx = highestOfferMade
+        ? `\nIMPORTANT: Your highest previous offer was ₹${highestOfferMade} LPA. Your next offer MUST be >= ₹${highestOfferMade} LPA. Never go backwards.`
+        : "";
+      const targetCtx = candidateTarget
+        ? `\nThe candidate's stated target is ₹${candidateTarget} LPA. Use this to calibrate your offers — if their target is within your band, work toward it. If above, reality-check it.`
+        : "";
+
       // Negotiation style context
       const styleCtx = negotiationStyle
         ? `\n${getNegotiationStyleContext(negotiationStyle)}`
+        : "";
+
+      // Scenario-specific context
+      const scenarioCtx = negotiationScenario === "lowball"
+        ? "\nSCENARIO: LOWBALL OFFER. Your initial offer is deliberately 20-30% below market rate. Be prepared for strong pushback. If the candidate negotiates well, gradually move toward market rate but make them earn every increment."
+        : negotiationScenario === "exploding"
+        ? "\nSCENARIO: EXPLODING OFFER. You have a 24-hour deadline for the candidate to accept. Create time pressure. If they ask for more time, emphasize the urgency but consider a brief extension if they make a strong case."
+        : negotiationScenario === "competing"
+        ? "\nSCENARIO: COMPETING OFFERS. The candidate claims to have multiple offers. Probe for specifics — ask which companies, what terms. If credible, be more flexible. If vague, call the bluff professionally."
         : "";
 
       // Industry-specific package flavor
@@ -334,7 +354,7 @@ Your response MUST directly address what they said above. Start by acknowledging
 
       depthInstructions = `You are a HIRING MANAGER in a salary negotiation. You MUST stay in character. ALWAYS set needsFollowUp to true.
 ${intentBanner}
-${factsCtx}${offerCtx}${bandCtx}${styleCtx}${industryCtx}
+${factsCtx}${offerCtx}${bandCtx}${offerTrackingCtx}${targetCtx}${styleCtx}${industryCtx}${scenarioCtx}
 
 ${phaseInstructions[salaryPhase] || phaseInstructions["offer-reaction"]}
 
@@ -477,6 +497,18 @@ Respond JSON only:
           // LLM offered below walk-away — clamp to initial offer
           console.warn(`[follow-up] LLM offered ₹${num} LPA, below walkAway ₹${negotiationBand.walkAway} — clamping`);
           clamped = clamped.replace(match[0], `₹${negotiationBand.initialOffer} LPA`);
+        }
+      }
+      // Monotonic enforcement: no offer can go below the highest previous offer
+      if (highestOfferMade && highestOfferMade > 0) {
+        const monoRe = /₹\s*(\d+(?:\.\d+)?)\s*(?:LPA|lpa|lakh|lakhs)/g;
+        let monoMatch: RegExpExecArray | null;
+        while ((monoMatch = monoRe.exec(clamped)) !== null) {
+          const monoNum = parseFloat(monoMatch[1]);
+          if (monoNum < highestOfferMade && monoNum >= negotiationBand.walkAway) {
+            console.warn(`[follow-up] Monotonic violation: ₹${monoNum} < previous highest ₹${highestOfferMade} — clamping`);
+            clamped = clamped.replace(monoMatch[0], `₹${highestOfferMade} LPA`);
+          }
         }
       }
       parsed.followUpText = clamped;

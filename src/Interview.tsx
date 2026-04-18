@@ -5,6 +5,7 @@ import {
   UserAnswerArea, CompletionCard, MicroFeedbackPanel,
   ControlsBar, TranscriptPanel, EndModal, EvaluatingOverlay,
   DealSummaryCard, NegotiationCoachingCard,
+  NegotiationLiveDashboard, AnnotatedReplayPanel,
 } from "./InterviewPanels";
 import { useInterviewEngine } from "./useInterviewEngine";
 import { useVideoRecorder } from "./useVideoRecorder";
@@ -33,6 +34,9 @@ export default function Interview() {
     ttsDurationMs, speechEnded,
     interviewScript, saveWarning, liveMetrics,
     isSalaryNegotiation, negotiationBand, negotiationStyle,
+    targetSalary, setTargetSalary, highestOffer,
+    liveNegotiationState, voiceConfidence,
+    negotiationScenario: _negotiationScenario, setNegotiationScenario, negotiationRound,
 
     setCurrentTranscript, setSpeechUnavailable, setIsMuted,
     setShowTranscript, setShowEndModal, setAiVoiceEnabled,
@@ -140,6 +144,11 @@ export default function Interview() {
             <NegotiationCoachingCard
               onDismiss={() => setShowCoachingCard(false)}
               negotiationStyle={negotiationStyle}
+              onSetTarget={setTargetSalary}
+              targetRole={displayRole}
+              industry={undefined}
+              scenarioRound={negotiationRound}
+              onSelectScenario={setNegotiationScenario}
             />
           )}
 
@@ -153,6 +162,16 @@ export default function Interview() {
             panelPersona={isPanelInterview && panelMembers ? panelMembers.find(m => m.title === activePersona) || null : null}
             actualDuration={ttsDurationMs} speechEnded={speechEnded}
           />
+
+          {isSalaryNegotiation && liveNegotiationState && phase !== "done" && currentStep > 0 && (
+            <NegotiationLiveDashboard
+              liveState={liveNegotiationState}
+              negotiationBand={negotiationBand}
+              highestOffer={highestOffer}
+              targetSalary={targetSalary}
+              voiceConfidence={phase === "listening" ? voiceConfidence : null}
+            />
+          )}
 
           {phase === "listening" && (
             <UserAnswerArea
@@ -180,6 +199,12 @@ export default function Interview() {
                     navigate(`/interview?${params.toString()}`);
                     window.location.reload();
                   }}
+                />
+              )}
+              {isSalaryNegotiation && transcript.length > 2 && (
+                <AnnotatedReplayPanel
+                  transcript={transcript}
+                  negotiationBand={negotiationBand}
                 />
               )}
               <CompletionCard

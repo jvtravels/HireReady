@@ -1386,16 +1386,20 @@ export default function SessionDetail() {
                             )}
                           </div>
                         )}
-                        {/* STAR component badges per answer */}
+                        {/* Component badges per answer — salary neg uses negotiation components, others use STAR */}
                         {item.starBreakdown && (
                           <div style={{ display: "flex", gap: 6, marginTop: 10, flexWrap: "wrap" }}>
-                            {(["situation", "task", "action", "result"] as const).map(comp => {
+                            {(session.type === "salary-negotiation"
+                              ? (["anchoring", "reasoning", "packageBreadth", "closing"] as const)
+                              : (["situation", "task", "action", "result"] as const)
+                            ).map(comp => {
                               const status = item.starBreakdown![comp];
-                              const colors = { present: { bg: "rgba(122,158,126,0.12)", text: c.sage, icon: "\u2713" }, partial: { bg: "rgba(212,179,127,0.12)", text: c.gilt, icon: "\u25CB" }, missing: { bg: "rgba(196,112,90,0.12)", text: c.ember, icon: "\u2717" } };
+                              const colors = { present: { bg: "rgba(122,158,126,0.12)", text: c.sage, icon: "\u2713" }, strong: { bg: "rgba(122,158,126,0.12)", text: c.sage, icon: "\u2713" }, partial: { bg: "rgba(212,179,127,0.12)", text: c.gilt, icon: "\u25CB" }, missing: { bg: "rgba(196,112,90,0.12)", text: c.ember, icon: "\u2717" } };
                               const style = colors[status as keyof typeof colors] || colors.missing;
+                              const labels: Record<string, string> = { anchoring: "Anchoring", reasoning: "Reasoning", packageBreadth: "Package Breadth", closing: "Closing" };
                               return (
                                 <span key={comp} style={{ fontSize: 10, fontWeight: 600, padding: "2px 8px", borderRadius: 4, background: style.bg, color: style.text }}>
-                                  {style.icon} {comp.charAt(0).toUpperCase() + comp.slice(1)}
+                                  {style.icon} {labels[comp] || comp.charAt(0).toUpperCase() + comp.slice(1)}
                                 </span>
                               );
                             })}
@@ -1403,14 +1407,20 @@ export default function SessionDetail() {
                         )}
                       </div>
 
-                      {/* Restructured STAR Answer */}
+                      {/* Expert Response (salary-neg) or Restructured STAR Answer */}
                       <div style={{ padding: "16px 20px", background: "rgba(122,158,126,0.02)" }}>
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-                          <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: c.sage }}>Restructured Answer</span>
-                          <span style={{ fontSize: 10, fontWeight: 600, color: c.sage, background: "rgba(122,158,126,0.1)", padding: "2px 8px", borderRadius: 4 }}>STAR Format</span>
+                          <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: c.sage }}>
+                            {session.type === "salary-negotiation" ? "Expert Negotiator Response" : "Restructured Answer"}
+                          </span>
+                          <span style={{ fontSize: 10, fontWeight: 600, color: c.sage, background: "rgba(122,158,126,0.1)", padding: "2px 8px", borderRadius: 4 }}>
+                            {session.type === "salary-negotiation" ? "What an Expert Would Say" : "STAR Format"}
+                          </span>
                         </div>
                         <div style={{ borderLeft: `2px solid ${c.sage}40`, paddingLeft: 14 }}>
-                          <p style={{ fontSize: 13, color: c.chalk, lineHeight: 1.7, margin: 0 }}>{item.ideal}</p>
+                          <p style={{ fontSize: 13, color: c.chalk, lineHeight: 1.7, margin: 0, fontStyle: session.type === "salary-negotiation" ? "italic" : "normal" }}>
+                            {session.type === "salary-negotiation" ? `"${item.ideal}"` : item.ideal}
+                          </p>
                         </div>
                       </div>
                     </div>
