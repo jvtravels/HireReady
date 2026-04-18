@@ -162,6 +162,16 @@ export default async function handler(req: Request): Promise<Response> {
     const qualitySignals = [!isShort, hasMetrics, !hasPassiveVoice, !lacksFirstPerson, hasSpecifics, hasStructure].filter(Boolean).length;
     const answerStrength = qualitySignals >= 5 ? "strong" : qualitySignals >= 3 ? "decent" : qualitySignals >= 1 ? "weak" : "very_weak";
 
+    // Cross-question memory: earlier conversation for thematic connections
+    // For salary-negotiation: higher cap and placed prominently — the LLM MUST remember what's been said
+    const historyCharLimit = isSalaryNeg ? 4000 : 2500;
+    const historyLabel = isSalaryNeg
+      ? "FULL NEGOTIATION HISTORY (you MUST reference previous offers, numbers, and promises — never contradict what you said earlier)"
+      : "EARLIER IN THIS INTERVIEW (use for thematic connections — reference earlier answers when relevant)";
+    const historyContext = conversationHistory
+      ? `\n${historyLabel}:\n${sanitizeForLLM(conversationHistory, historyCharLimit)}`
+      : "";
+
     let depthInstructions: string;
     if (isSalaryNeg) {
       // Salary-negotiation: each follow-up is the hiring manager's NEXT conversational turn.
@@ -478,16 +488,6 @@ Be genuinely curious, not interrogative. 2-3 sentences max.`;
     const salaryFollowUpCtx = (type === "salary-negotiation" || type === "hr-round")
       ? `\n${lookupSalaryContext({ role, company, currentCity, jobCity })}\nUse ₹ and LPA. Follow-up offers/counters MUST stay within these ranges.
 CRITICAL: You are the HIRING MANAGER making a salary offer. Stay in character — do NOT switch to behavioral interview questions. Your follow-ups must be about compensation, benefits, joining timeline, notice buyout, or counter-offers.`
-      : "";
-
-    // Cross-question memory: earlier conversation for thematic connections
-    // For salary-negotiation: higher cap and placed prominently — the LLM MUST remember what's been said
-    const historyCharLimit = isSalaryNeg ? 4000 : 2500;
-    const historyLabel = isSalaryNeg
-      ? "FULL NEGOTIATION HISTORY (you MUST reference previous offers, numbers, and promises — never contradict what you said earlier)"
-      : "EARLIER IN THIS INTERVIEW (use for thematic connections — reference earlier answers when relevant)";
-    const historyContext = conversationHistory
-      ? `\n${historyLabel}:\n${sanitizeForLLM(conversationHistory, historyCharLimit)}`
       : "";
 
     const prompt = `You are an expert interviewer. Given a candidate's answer to an interview question, decide if a follow-up question is needed.${panelContext}
