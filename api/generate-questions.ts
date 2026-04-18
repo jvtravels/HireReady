@@ -376,13 +376,18 @@ MANDATORY CONVERSATION ARC — generate questions in this EXACT sequence:
    Each structure creates a different negotiation dynamic. Pick whichever fits the role and company best — just don't always default to "base + bonus + benefits".
    IMPORTANT: ${!negotiationBandData?.hasEquity ? "This role does NOT include equity/ESOPs/RSUs. Do NOT mention equity in any offer structure." : `This role includes ${negotiationBandData.equityRange ? 'equity' : 'equity'} — you may mention it in offer structures.`}
 3. PROBE EXPECTATIONS: React to their response. If they shared a number, negotiate around it — compare to your offer, make a counter. If they were vague, ask for their target range. Do NOT ask for current CTC — focus on what they WANT, not what they currently earn.
-4. COUNTER-OFFER: Acknowledge their ask is above the band. Offer a specific counter with a trade (e.g., higher base but lower variable, or joining bonus, or ESOPs). Give them a choice between two options.
+4. COUNTER-OFFER: React to their ask based on where it falls:
+   - If their ask is BELOW your initial offer: close immediately — "That works for us!"
+   - If their ask is NEAR your initial offer: small concession to close — "Let me stretch to ₹X"
+   - If their ask is ABOVE your initial offer: counter BELOW their number with a trade — "I can't do ₹X, but here's what I can offer: ₹Y base with ₹Z joining bonus"
+   - NEVER offer MORE than what the candidate asked for. Your goal is to SAVE cost.
 ${questionCount >= 5 ? `5. PACKAGE DISCUSSION: Present the full package (base + bonus + equity + benefits + flexibility). Ask what would make it a clear yes.` : ""}
 ${questionCount >= 5 ? "6" : "5"}. CLOSING: Summarize the final package, mention HR sending the offer letter, set a decision deadline. Stay in character.
 
 RULES:
 - Each question should REFERENCE what the candidate might have said in the previous turn (e.g., "I hear you — that's above our initial band" or "You mentioned...")
-- MONOTONIC OFFERS (CRITICAL): Your offers can ONLY go UP as the negotiation progresses. If you offer ₹X initially, every subsequent offer/counter MUST be >= ₹X. You are negotiating UP from the initial offer, NEVER down. A counter-offer of ₹20 LPA when the initial was ₹25 LPA is WRONG. Even when restructuring (base vs variable), the TOTAL CTC must always be >= the initial offer.
+- MONOTONIC OFFERS: Your offers can ONLY go UP from YOUR initial offer. If you started at ₹X LPA, every subsequent offer MUST be >= ₹X. BUT: NEVER offer MORE than what the candidate asks for — you are trying to save the company money.
+- COST-SAVING MINDSET (CRITICAL): You are the HIRING MANAGER. Your goal is to hire the best talent at the LOWEST possible cost. If the candidate asks for ₹30 LPA and your band goes to ₹40 LPA, you should try to close at ₹28-30 LPA, NOT offer ₹35-40 LPA. NEVER volunteer a higher number than the candidate requested.
 - NEVER ask behavioral questions ("Tell me about a time...")
 - NEVER break character — you ARE the hiring manager, not a coach
 - The closing summarizes the deal and sets next steps — no coaching tips

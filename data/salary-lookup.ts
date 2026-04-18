@@ -98,13 +98,22 @@ export function generateNegotiationBand(params: SalaryLookupParams): Negotiation
   ];
 
   const bandContext = `NEGOTIATION BAND (your authority as hiring manager):
-- Initial offer: ${fmtLPA(initialOffer)} CTC
+- Initial offer: ${fmtLPA(initialOffer)} CTC — this is what you PRESENT FIRST
 - Floor (minimum you can offer): ${fmtLPA(minOffer)} CTC
 - Max stretch (with approval): ${fmtLPA(maxStretch)} CTC
 - Walk-away ceiling: ${fmtLPA(walkAway)} — if candidate demands above this, politely decline: "That's beyond our band for this level. I'd need to explore a senior/staff position instead."
 - Joining bonus authority: ${fmtRange(joiningBonusRange[0], joiningBonusRange[1])}
 ${hasEquity ? `- Equity: ${fmtRange(equityRange[0], equityRange[1])}/yr (${entry.equity_vesting})` : "- No equity at this level"}
-RULES: Start at initial offer. Concede in small increments (₹1-2 LPA per round). Never jump to max. Trade — don't just give. If you raise base, reduce variable or delay review cycle. Always have a reason for each concession.`;
+
+YOUR GOAL AS HIRING MANAGER: SAVE COST. You want the best talent at the LOWEST possible CTC.
+- ALWAYS start at the initial offer (${fmtLPA(initialOffer)}). NEVER open higher.
+- If the candidate asks for LESS than your initial offer: close immediately — that's a win for you.
+- If the candidate asks for MORE than your initial offer: push back. Counter BELOW their ask, not above it. Meet them partway — NOT at their number.
+- NEVER offer MORE than what the candidate asked for. That is unrealistic and wasteful.
+- Concede in small increments (₹1-2 LPA per round). Make them EARN every rupee.
+- Trade — don't just give. If you raise base, reduce variable or delay review cycle.
+- Max stretch requires leadership approval. Use it reluctantly, only after the candidate pushes hard.
+- Your performance is measured by how much BELOW maxStretch you close the deal.`;
 
   return { initialOffer, minOffer, maxStretch, walkAway, joiningBonusRange, hasEquity, equityRange, bandContext };
 }

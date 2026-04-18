@@ -191,23 +191,26 @@ CRITICAL: ALWAYS mirror back what the candidate said before responding. Start wi
 
         "probe-expectations": `PHASE: Probing deeper into the candidate's expectations.
 
-YOUR GOAL: Negotiate around what the candidate already told you. Move FORWARD — do NOT re-gather data.
-- If they ACCEPTED: acknowledge warmly, transition to package details or closing.
-- If they shared a number: MIRROR IT — "₹X is what you're targeting." Then probe the WHY: "Is that based on market research, a competing offer, or your current package progression?" Understanding their reasoning helps you counter smarter.
-- If their number is way above your band (>1.5x maxStretch): REALITY CHECK with empathy — "I appreciate the ambition. ₹X is significantly above our band for this level in [city]. For context, [role] at companies like ours typically falls in the ₹Y-Z range. Help me understand how we bridge this gap — is there flexibility on your end, or should we explore a more senior position?"
-- If they mentioned competing offers: probe — "What are they offering? More importantly, what matters most to you — the number, the role, or the team? Because those are very different conversations."
+YOUR GOAL: Understand their number so you can counter BELOW it. You want to close as LOW as possible.
+- If they ACCEPTED: acknowledge warmly, transition to package details or closing. That's a win — close quickly.
+- If they shared a number BELOW your initial offer: "That works for us — let me finalize this." Close immediately — you're saving money.
+- If they shared a number NEAR your initial offer: small stretch — "I can do ₹X" (slightly above your initial). Don't overshoot.
+- If they shared a number ABOVE your initial offer: DON'T match it. Probe WHY: "₹X is what you're targeting. Is that based on market research, a competing offer, or your current package progression?" — understanding their reasoning helps you counter LOWER.
+- If their number is way above your band (>1.5x maxStretch): REALITY CHECK with empathy — "I appreciate the ambition. ₹X is significantly above our band for this level in [city]. For context, [role] at companies like ours typically falls in the ₹Y-Z range."
+- If they mentioned competing offers: probe specifics — "What are they offering? More importantly, what matters most to you — the number, the role, or the team?"
 - If they deflected: put your full offer on the table with breakdown, then ask what would make it a yes.
-- If they want to think about it: "Absolutely. Take the time you need — but can I ask what's giving you pause? Sometimes talking it through helps."
-IMPORTANT: Once the candidate states ANY number, negotiate around it. Never re-ask what you already know.`,
+CRITICAL: NEVER offer more than what the candidate asked for. If they said ₹30 LPA, your counter should be ₹25-28 LPA, not ₹35 LPA.`,
 
         "counter-offer": `PHASE: Making a counter-offer based on everything you've heard.
 
-YOUR GOAL: Trade, don't just concede. Make a SPECIFIC counter with exact ₹ numbers.
+YOUR GOAL: Close the deal as LOW as possible while keeping the candidate interested. You are the HIRING MANAGER — your job is to save the company money while making a fair offer.
+- CRITICAL: Your counter-offer MUST be BELOW the candidate's ask. NEVER offer MORE than what they asked for. If they said ₹30 LPA and your band goes to ₹40 LPA, counter at ₹25-28 LPA — NOT ₹35-40 LPA. You want to save cost.
 - ALWAYS make a concrete counter: "Here's what I can do — ₹X base, ₹Y variable, and I'll add a ₹Z joining bonus. That brings your total to ₹W LPA." Never say vague things like "some flexibility."
-- If they want more base: "I can move base to ₹X if we adjust variable to Y%. Or I could add a ₹Z joining bonus to bridge the gap. Which works better for you?"
-- If they focus only on salary: expand — ${negotiationBand?.hasEquity ? `"Beyond the ₹X CTC, let me throw in: ₹Y joining bonus, Z ESOPs vesting over 4 years, plus a ₹W learning budget. The total package value is actually ₹V."` : `"Beyond the ₹X CTC, let me throw in: ₹Y joining bonus, a ₹W learning budget, and upgraded health insurance. The total package value is actually ₹V." Do NOT mention ESOPs or equity — this role does not include them.`}
+- If their ask is AT or BELOW your initial offer: "That's within our range — I can work with that." Close quickly — that's a win for you.
+- If their ask is ABOVE your initial offer but within your band: counter PARTWAY — split the difference. "You asked for ₹X, I started at ₹Y. Let me see if I can stretch to ₹Z" (where Z is between Y and X, closer to Y).
+- If they want more base: "I can move base to ₹X if we adjust variable to Y%. Or I could add a ₹Z joining bonus to bridge the gap. Which works better for you?" — restructure to SEEM higher without actually raising total CTC much.
+- If they focus only on salary: redirect to non-cash — ${negotiationBand?.hasEquity ? `"I may not be able to match ₹X on base, but let me show you the full picture: joining bonus, ESOPs vesting over 4 years, plus learning budget. The total package value is actually ₹V."` : `"I may not be able to match ₹X on base, but let me show you the full picture: joining bonus, learning budget, and upgraded health insurance. The total package value is actually ₹V." Do NOT mention ESOPs or equity — this role does not include them.`}
 - If they pushed hard: be transparent — "₹X is genuinely my ceiling for this band. Beyond that, I'd need to go back to leadership. But here's what I CAN add: [2-3 specific levers with numbers]."
-- If their ask is reasonable (within your band): stretch and close — "You know what, let me make this work. ₹X LPA total, plus [one bonus lever]. Can we shake on this?"
 - Notice period as a lever: "What's your notice period? If you can join within 30 days, I'll add a ₹X notice buyout."
 - If vague: "What's the minimum package that makes this a clear yes for you? Give me a number and I'll tell you what I can do."`,
 
@@ -223,9 +226,9 @@ YOUR GOAL: PROACTIVELY suggest creative trade-offs, don't just describe benefits
 
         "closing-pressure": `PHASE: Creating urgency and moving toward a decision.
 
-YOUR GOAL: Close professionally. Create genuine but gentle urgency.
+YOUR GOAL: Close the deal NOW at the current offer level. Do NOT raise the offer further unless absolutely necessary.
 - If they seem close: "I genuinely want to close this today. I have one other strong candidate at final stage, and the headcount approval expires end of month. What do I need to do to get a yes?"
-- If still pushing: present FINAL offer — "Here's my absolute best: ₹X base, ₹Y variable, ₹Z joining bonus, [equity]. Total: ₹W LPA. This is genuinely the top of what I can approve."
+- If still pushing: present FINAL offer — but keep it at or slightly above your last offer, NOT at maxStretch. "Here's my absolute best: ₹X base, ₹Y variable, ₹Z joining bonus. Total: ₹W LPA. This is genuinely the top of what I can do."
 - If they mention notice period: "What's your notice? If it's 60+ days, I'll add a ₹X buyout bonus for joining within 30. Can you negotiate with your current employer?"
 - If they want time to think: don't panic — "Of course. I respect that. Can we touch base by [specific day]? I'll hold the offer till then, but I should be transparent — I can't guarantee the same terms after [date] because budget cycles."
 - If they're asking questions (good sign): answer warmly, then close — "Great questions. So now that you have the full picture — are we ready to move forward?"
@@ -419,9 +422,10 @@ RULES:
 - Make SPECIFIC counter-offers with exact ₹ numbers. NEVER say vague things like "some flexibility" or "we can look at it." Say "I can stretch to ₹X if we structure it as..."
 - NEVER ask for info the candidate already provided. Use what you know from CANDIDATE FACTS.
 - Use EXACT numbers from the initial offer and candidate facts above. Do NOT invent figures.
-- MONOTONIC OFFERS (CRITICAL): Your offers can ONLY go UP. If initial offer was ₹X LPA, every subsequent number MUST be >= ₹X. Even when restructuring components, TOTAL CTC must stay >= initial.
+- MONOTONIC OFFERS: Your offers can ONLY go UP from YOUR initial offer. If you started at ₹X LPA, every subsequent offer MUST be >= ₹X. BUT: never offer MORE than what the candidate asked for. If candidate asked for ₹30 and you started at ₹25, counter at ₹27-28, NOT ₹35.
+- COST-SAVING (CRITICAL): You represent the company. Your goal is to close at the LOWEST CTC the candidate will accept. NEVER volunteer a higher number than necessary. NEVER offer above the candidate's stated ask — that wastes company money and is unrealistic.
 - If near maxStretch: frame it as needing approval — "That's at the top of my authority. Let me see if I can get leadership to sign off on ₹X." NEVER silently hit a ceiling.
-- Use MARKET BENCHMARKS to anchor: "For [role] in [city], the market range is ₹X-Y. Our offer of ₹Z puts you at the Nth percentile."
+- Use MARKET BENCHMARKS to anchor LOW: "For [role] in [city], the market range is ₹X-Y. Our offer of ₹Z is competitive within that range."
 - Notice period is a LEVER: proactively ask about it and offer buyout as a trade — "If you can join in 30 days, I'll add ₹X notice buyout."
 - Sound like a real Indian hiring manager — professional, warm, direct. 2-4 sentences.
 - Use ₹ and LPA. Indian context.
@@ -578,6 +582,26 @@ Respond JSON only:
           }
         }
       }
+      // Cost-saving guard: if candidate stated a target, clamp offers that exceed it
+      // A real hiring manager would NEVER offer more than what the candidate asked for
+      if (candidateTarget && candidateTarget > 0) {
+        const costRe = /₹\s*(\d+(?:\.\d+)?)\s*(?:LPA|lpa|lakh|lakhs)/g;
+        let costMatch: RegExpExecArray | null;
+        while ((costMatch = costRe.exec(clamped)) !== null) {
+          const costNum = parseFloat(costMatch[1]);
+          // If this is clearly the "main" offer number (not a small component like bonus)
+          const isMainOffer = costNum > candidateTarget * 0.5;
+          if (costNum > candidateTarget && isMainOffer) {
+            // Calculate a realistic counter: partway between initial offer and candidate's target
+            const realisticCounter = Math.round(
+              (negotiationBand.initialOffer + candidateTarget) / 2 * 10,
+            ) / 10;
+            const clampedVal = Math.max(realisticCounter, highestOfferMade || negotiationBand.initialOffer);
+            console.warn(`[follow-up] Cost guard: ₹${costNum} exceeds candidate target ₹${candidateTarget} — clamping to ₹${clampedVal}`);
+            clamped = clamped.replace(costMatch[0], `₹${clampedVal} LPA`);
+          }
+        }
+      }
       parsed.followUpText = clamped;
     }
 
@@ -585,11 +609,17 @@ Respond JSON only:
     if (isSalaryNeg && parsed.followUpText) {
       const text = parsed.followUpText.toLowerCase();
       const counterOfferPat = /how about|what if I offer|counter.*with|we could do|let me offer/i;
-      if (candidateAccepted && counterOfferPat.test(parsed.followUpText)) {
+      // Re-detect intent here since the original detection is block-scoped
+      const acceptRe = /\b(i accept|i.?ll accept|accept the offer|sounds good|that works for me|it.?s a deal|i.?m happy with|fine with me|i agree|agreed|let.?s go ahead)\b/i;
+      const walkRe = /\b(walk away|walking away|i.?m out|not interested|i.?ll pass|no deal|withdraw|decline the offer|i decline|pull out|not worth|won.?t work|move on|have to pass)\b/i;
+      const hedgeRe = /\b(but|however|only if|unless|provided|on condition|contingent|except|though)\b/i;
+      const didAccept = acceptRe.test(answer) && !hedgeRe.test(answer.slice(answer.search(acceptRe)));
+      const didWalkAway = walkRe.test(answer) && !acceptRe.test(answer);
+      if (didAccept && counterOfferPat.test(parsed.followUpText)) {
         // LLM is counter-offering when candidate already accepted — reject and signal fallback
         console.warn("[follow-up] Intent mismatch: candidate accepted but LLM counter-offered — rejecting");
         parsed.needsFollowUp = false;
-      } else if (candidateWalkAway && /congratulations|glad you accepted|welcome aboard/i.test(text)) {
+      } else if (didWalkAway && /congratulations|glad you accepted|welcome aboard/i.test(text)) {
         // LLM is congratulating when candidate is walking away — reject
         console.warn("[follow-up] Intent mismatch: candidate walking away but LLM congratulated — rejecting");
         parsed.needsFollowUp = false;
