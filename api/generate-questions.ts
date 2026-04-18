@@ -375,23 +375,19 @@ MANDATORY CONVERSATION ARC — generate questions in this EXACT sequence:
    - Structure F (Minimal + Probe): "We'd like to offer ₹X LPA for this role. Before I get into the breakdown, I'd love to hear your thoughts on the number."
    Each structure creates a different negotiation dynamic. Pick whichever fits the role and company best — just don't always default to "base + bonus + benefits".
    IMPORTANT: ${!negotiationBandData?.hasEquity ? "This role does NOT include equity/ESOPs/RSUs. Do NOT mention equity in any offer structure." : `This role includes ${negotiationBandData.equityRange ? 'equity' : 'equity'} — you may mention it in offer structures.`}
-3. PROBE EXPECTATIONS: React to their response. If they shared a number, negotiate around it — compare to your offer, make a counter. If they were vague, ask for their target range. Do NOT ask for current CTC — focus on what they WANT, not what they currently earn.
-4. COUNTER-OFFER: React to their ask based on where it falls:
-   - If their ask is BELOW your initial offer: close immediately — "That works for us!"
-   - If their ask is NEAR your initial offer: small concession to close — "Let me stretch to ₹X"
-   - If their ask is ABOVE your initial offer: counter BELOW their number with a trade — "I can't do ₹X, but here's what I can offer: ₹Y base with ₹Z joining bonus"
-   - NEVER offer MORE than what the candidate asked for. Your goal is to SAVE cost.
-${questionCount >= 5 ? `5. PACKAGE DISCUSSION: Present the full package (base + bonus + equity + benefits + flexibility). Ask what would make it a clear yes.` : ""}
-${questionCount >= 5 ? "6" : "5"}. CLOSING: Summarize the final package, mention HR sending the offer letter, set a decision deadline. Stay in character.
+3. PROBE EXPECTATIONS: DO NOT include specific ₹ numbers in this step — you don't know what the candidate said yet. Instead, write a response that reacts generically: "I appreciate you sharing that. Help me understand — what range are you targeting? Are you benchmarking against other offers or market data?" If they were vague, ask for their target range. Do NOT ask for current CTC.
+4. COUNTER-OFFER: DO NOT include specific ₹ counter-offer numbers — you don't know the candidate's ask yet. Write an adaptive response like: "Based on what you've shared, let me see what I can do. I want to find something that works for both of us." or "I hear you. Let me look at what flexibility I have in the package structure." The follow-up system will replace this with a real counter-offer with exact numbers based on the actual conversation.
+${questionCount >= 5 ? `5. PACKAGE DISCUSSION: DO NOT repeat or invent new ₹ numbers. Instead, discuss the STRUCTURE of the package: "Beyond the base number, let me walk you through the full picture — there's variable pay, benefits, and some flexibility I can offer." Ask what matters most to them.` : ""}
+${questionCount >= 5 ? "6" : "5"}. CLOSING: DO NOT invent a final package number. Instead, write a wrap-up that references the conversation: "I think we've had a productive discussion. Let me put together the final numbers based on what we've agreed and have HR send you the formal offer letter. What's your notice period situation?" Stay in character.
 
 RULES:
-- Each question should REFERENCE what the candidate might have said in the previous turn (e.g., "I hear you — that's above our initial band" or "You mentioned...")
-- MONOTONIC OFFERS: Your offers can ONLY go UP from YOUR initial offer. If you started at ₹X LPA, every subsequent offer MUST be >= ₹X. BUT: NEVER offer MORE than what the candidate asks for — you are trying to save the company money.
-- COST-SAVING MINDSET (CRITICAL): You are the HIRING MANAGER. Your goal is to hire the best talent at the LOWEST possible cost. If the candidate asks for ₹30 LPA and your band goes to ₹40 LPA, you should try to close at ₹28-30 LPA, NOT offer ₹35-40 LPA. NEVER volunteer a higher number than the candidate requested.
+- CRITICAL: ONLY step 2 (initial offer) should contain specific ₹ numbers. Steps 3-6 MUST NOT contain specific counter-offer numbers because you don't know what the candidate will say. The follow-up system will dynamically generate responses with real numbers based on the actual conversation. If steps 3-6 contain made-up numbers, they will be WRONG and confuse the candidate.
+- Each question after step 2 should use adaptive language that works regardless of what the candidate says (e.g., "I hear what you're saying...", "Let me see what I can do...", "Based on what you've shared...")
+- COST-SAVING MINDSET: You are the HIRING MANAGER. Your goal is to hire at the LOWEST possible cost.
 - NEVER ask behavioral questions ("Tell me about a time...")
 - NEVER break character — you ARE the hiring manager, not a coach
 - The closing summarizes the deal and sets next steps — no coaching tips
-- Use ₹ and LPA for all amounts
+- Use ₹ and LPA for all amounts (but ONLY in step 2 for the initial offer)
 
 Example good questions (notice variety in structure):
 - "We'd like to offer you ₹18 LPA — that's at the 75th percentile for this level. I can walk you through the split if you'd like. How does the number feel?"

@@ -343,7 +343,7 @@ export async function fetchFollowUp(params: {
     const { authHeaders: getAuthHeaders } = await import("./supabase");
     const headers = await getAuthHeaders();
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 10_000);
+    const timer = setTimeout(() => controller.abort(), 14_000);
     const res = await fetch("/api/follow-up", {
       method: "POST",
       headers,

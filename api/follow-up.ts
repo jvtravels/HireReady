@@ -509,10 +509,34 @@ CROSS-QUESTION MEMORY: If the candidate mentioned something interesting in an ea
 Respond JSON only:
 {"needsFollowUp":true/false,"followUpText":"The follow-up question (2-3 sentences, conversational). Only include if needsFollowUp is true.","followUpType":"${followUpTypeLabel}","reason":"Brief reason"}`;
 
-    const result = await callLLM({ prompt, temperature: 0.3, maxTokens: 500, jsonMode: true, fast: true }, 8000);
+    // Salary-neg fallback: generate a context-aware response when LLM fails
+    // This prevents the static pre-generated script (with wrong numbers) from playing
+    const salaryNegFallback = (): Response => {
+      const numMatch = answer.match(/₹?\s*(\d+(?:\.\d+)?)\s*(?:lpa|lakh|lakhs|l\b)/i);
+      let fallbackText: string;
+      if (numMatch) {
+        fallbackText = `I hear you — ₹${numMatch[1]} LPA is what you're looking at. Let me see what flexibility I have in the package structure. Can you help me understand what's driving that number — is it based on market data, a competing offer, or your current package progression?`;
+      } else if (/\b(accept|sounds good|that works|deal|agreed|fine with me|okay|ok|sure|yes)\b/i.test(answer) && !/\b(but|however|only if|unless)\b/i.test(answer)) {
+        fallbackText = `That's great to hear! I'm glad we could find something that works. Let me put together the final numbers and have HR send you the formal offer letter. What's your notice period situation?`;
+      } else if (/\b(too low|not enough|can.?t accept|not acceptable|walk away|not interested)\b/i.test(answer)) {
+        fallbackText = `I hear your concern, and I appreciate you being direct. Help me understand — what range would work for you? I want to see if there's a way to bridge the gap.`;
+      } else {
+        fallbackText = `I appreciate you sharing that. What's most important to you in this package — is it the base number, the overall CTC, or are there specific benefits that would move the needle for you?`;
+      }
+      return new Response(JSON.stringify({ needsFollowUp: true, followUpText: fallbackText, followUpType: "negotiation_response" }), { status: 200, headers });
+    };
+
+    let result: { text: string };
+    try {
+      result = await callLLM({ prompt, temperature: 0.3, maxTokens: 500, jsonMode: true, fast: true }, 12000);
+    } catch (llmErr) {
+      console.error("Follow-up LLM call failed:", llmErr);
+      if (isSalaryNeg) return salaryNegFallback();
+      return new Response(JSON.stringify({ needsFollowUp: false, error: "LLM call failed" }), { status: 502, headers });
+    }
     const parsed = extractJSON<{ needsFollowUp?: boolean; followUpText?: string; followUpType?: string }>(result.text);
     if (!parsed || typeof parsed !== "object") {
-      // Return 502 so client can distinguish "LLM failed" from "no follow-up needed"
+      if (isSalaryNeg) return salaryNegFallback();
       return new Response(JSON.stringify({ needsFollowUp: false, error: "LLM response parsing failed" }), { status: 502, headers });
     }
     // Sanitize LLM response fields

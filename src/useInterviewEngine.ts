@@ -1145,7 +1145,7 @@ export function useInterviewEngine() {
 
     if (pendingFollowUp) {
       pendingFollowUpRef.current = null;
-      const timeout = new Promise<null>(r => setTimeout(() => r(null), isSalaryNegConversation ? 9000 : 4000));
+      const timeout = new Promise<null>(r => setTimeout(() => r(null), isSalaryNegConversation ? 13000 : 4000));
 
       // For salary-neg: speak thinking phrase IMMEDIATELY to eliminate dead air,
       // then wait for follow-up API in background. This means the user hears
