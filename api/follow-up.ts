@@ -528,7 +528,7 @@ Respond JSON only:
 
     let result: { text: string };
     try {
-      result = await callLLM({ prompt, temperature: 0.3, maxTokens: 500, jsonMode: true, fast: true }, 12000);
+      result = await callLLM({ prompt, temperature: 0.3, maxTokens: 500, jsonMode: true, fast: true }, 12000, { userId: auth.userId, endpoint: "follow-up" });
     } catch (llmErr) {
       console.error("Follow-up LLM call failed:", llmErr);
       if (isSalaryNeg) return salaryNegFallback();

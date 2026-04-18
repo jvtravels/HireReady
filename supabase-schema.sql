@@ -137,6 +137,26 @@ create table if not exists promo_codes (
 
 create index if not exists idx_promo_codes_code on promo_codes(code);
 
+-- 8. LLM usage tracking
+create table if not exists llm_usage (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references profiles(id) on delete set null,
+  endpoint text not null,          -- 'generate' | 'follow-up' | 'evaluate' | 'analyze-resume'
+  model text not null,             -- 'llama-3.3-70b-versatile' | 'gemini-2.0-flash' etc.
+  is_fallback boolean default false,
+  prompt_tokens integer default 0,
+  completion_tokens integer default 0,
+  total_tokens integer default 0,
+  latency_ms integer default 0,
+  status text default 'success' check (status in ('success', 'error', 'timeout')),
+  error_message text,
+  created_at timestamptz default now()
+);
+
+create index if not exists idx_llm_usage_user_created on llm_usage(user_id, created_at);
+create index if not exists idx_llm_usage_endpoint on llm_usage(endpoint, created_at);
+create index if not exists idx_llm_usage_created on llm_usage(created_at);
+
 -- ═══════════════════════════════════════════════════════
 -- Row Level Security (RLS)
 -- Users can only access their own data
@@ -199,6 +219,11 @@ create policy "Users can insert own referrals" on referrals
 alter table promo_codes enable row level security;
 create policy "Anyone can view promo codes" on promo_codes
   for select using (true);
+
+-- LLM usage: users can view their own usage (insert via service role only)
+alter table llm_usage enable row level security;
+create policy "Users can view own llm usage" on llm_usage
+  for select using (auth.uid() = user_id);
 
 -- ═══════════════════════════════════════════════════════
 -- Auto-create profile on signup
