@@ -485,10 +485,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const resetPassword = useCallback(async (email: string): Promise<{ success: boolean; error?: string }> => {
     try {
-      const res = await fetch("/api/send-reset", {
+      const res = await fetch("/api/send-welcome", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.toLowerCase().trim() }),
+        body: JSON.stringify({ email: email.toLowerCase().trim(), action: "reset" }),
       });
       if (res.status === 429) return { success: false, error: "Too many reset requests. Please try again later." };
       if (!res.ok) return { success: false, error: "Failed to send reset email. Try again or contact support@hirestepx.com" };

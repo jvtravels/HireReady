@@ -1,5 +1,6 @@
-/* Vercel Serverless Function — Send Verification + Welcome Email via Resend API */
+/* Vercel Serverless Function — Send Verification + Welcome + Password Reset Email via Resend API */
 /* Self-contained: no _shared import to avoid module resolution issues */
+/* Supports two actions: "verify" (default) and "reset" */
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { createHmac } from "crypto";
@@ -22,45 +23,151 @@ export function generateVerifyToken(email: string, expiresAt?: number): string {
   return createHmac("sha256", EMAIL_SECRET).update(`${email.toLowerCase().trim()}:${expiry}`).digest("hex") + "." + expiry;
 }
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // CORS
-  const origin = req.headers.origin || "";
-  if (origin) {
-    res.setHeader("Access-Control-Allow-Origin", origin);
-    res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
-  }
-  if (req.method === "OPTIONS") { res.status(204).end(); return; }
-  if (req.method !== "POST") { res.status(405).json({ error: "Method not allowed" }); return; }
-
-  const { email, name, userId } = req.body || {};
-  if (!email || typeof email !== "string") {
-    return res.status(400).json({ error: "Email is required" });
-  }
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email) || email.length > 256) {
-    return res.status(400).json({ error: "Invalid email format" });
-  }
-
-  // Rate limit: max 3 welcome emails per IP per hour
+// ─── Rate limiting helper ───────────────────────────────────────────────────
+async function checkRateLimit(req: VercelRequest, prefix: string, max: number): Promise<boolean> {
   const UPSTASH_URL = process.env.UPSTASH_REDIS_REST_URL || "";
   const UPSTASH_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN || "";
-  if (UPSTASH_URL && UPSTASH_TOKEN) {
-    try {
-      const ip = (req.headers["x-forwarded-for"] as string || "127.0.0.1").split(",")[0].trim();
-      const rlKey = `rl:email:${ip}`;
-      const rlRes = await fetch(`${UPSTASH_URL}/pipeline`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${UPSTASH_TOKEN}`, "Content-Type": "application/json" },
-        body: JSON.stringify([["INCR", rlKey], ["EXPIRE", rlKey, 3600]]),
-      });
-      if (rlRes.ok) {
-        const results = await rlRes.json();
-        const count = results[0]?.result || 0;
-        if (count > 3) {
-          return res.status(429).json({ error: "Too many email requests. Try again later." });
-        }
-      }
-    } catch { /* rate limit check failed, allow through */ }
+  if (!UPSTASH_URL || !UPSTASH_TOKEN) return false;
+  try {
+    const ip = (req.headers["x-forwarded-for"] as string || "127.0.0.1").split(",")[0].trim();
+    const rlKey = `rl:${prefix}:${ip}`;
+    const rlRes = await fetch(`${UPSTASH_URL}/pipeline`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${UPSTASH_TOKEN}`, "Content-Type": "application/json" },
+      body: JSON.stringify([["INCR", rlKey], ["EXPIRE", rlKey, 3600]]),
+    });
+    if (rlRes.ok) {
+      const results = await rlRes.json();
+      const count = results[0]?.result || 0;
+      if (count > max) return true; // rate limited
+    }
+  } catch { /* rate limit check failed, allow through */ }
+  return false;
+}
+
+// ─── Password Reset Email Handler ───────────────────────────────────────────
+async function handleReset(req: VercelRequest, res: VercelResponse, normalizedEmail: string) {
+  // Rate limit: max 3 reset emails per IP per hour
+  if (await checkRateLimit(req, "reset", 3)) {
+    return res.status(429).json({ error: "Too many reset requests. Try again later." });
+  }
+
+  if (!RESEND_API_KEY || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+    console.error("Missing required config for password reset");
+    return res.status(500).json({ error: "Password reset is not configured" });
+  }
+
+  try {
+    // Generate a Supabase recovery link via admin API
+    const linkRes = await fetch(`${SUPABASE_URL}/auth/v1/admin/generate_link`, {
+      method: "POST",
+      headers: {
+        apikey: SUPABASE_SERVICE_ROLE_KEY,
+        Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        type: "recovery",
+        email: normalizedEmail,
+        options: { redirectTo: `${APP_URL}/reset-password` },
+      }),
+    });
+
+    if (!linkRes.ok) {
+      const errText = await linkRes.text().catch(() => "");
+      console.error("generate_link failed:", linkRes.status, errText);
+      // Don't reveal whether user exists — always return success
+      return res.status(200).json({ ok: true });
+    }
+
+    const linkData = await linkRes.json();
+    const actionLink = linkData.action_link || linkData.properties?.action_link;
+
+    if (!actionLink || typeof actionLink !== "string") {
+      console.error("No action_link in generate_link response:", JSON.stringify(linkData).slice(0, 300));
+      return res.status(200).json({ ok: true });
+    }
+
+    // Rewrite the redirect_to in the action link
+    const linkUrl = new URL(actionLink);
+    linkUrl.searchParams.set("redirect_to", `${APP_URL}/reset-password`);
+    const resetUrl = linkUrl.toString();
+    const safeEmail = escapeHtml(normalizedEmail);
+
+    // Send reset email via Resend
+    const ac = new AbortController();
+    const timer = setTimeout(() => ac.abort(), 10_000);
+    const emailRes = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${RESEND_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      signal: ac.signal,
+      body: JSON.stringify({
+        from: FROM_EMAIL,
+        to: [normalizedEmail],
+        subject: "Reset your password — HireStepX",
+        html: `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background:#0A0A0B;font-family:'Helvetica Neue',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#0A0A0B;padding:40px 20px;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#141416;border-radius:16px;border:1px solid #2A2A2C;overflow:hidden;">
+        <tr><td style="padding:32px 40px 24px;border-bottom:1px solid #2A2A2C;">
+          <span style="font-size:18px;font-weight:600;color:#F0EDE8;letter-spacing:0.06em;">HireStepX</span>
+        </td></tr>
+        <tr><td style="padding:32px 40px;">
+          <h1 style="margin:0 0 8px;font-size:22px;font-weight:600;color:#F0EDE8;">Reset Your Password</h1>
+          <p style="margin:0 0 24px;font-size:14px;color:#9A9590;line-height:1.6;">
+            We received a request to reset the password for <strong style="color:#F0EDE8;">${safeEmail}</strong>. Click the button below to choose a new password.
+          </p>
+          <table width="100%" cellpadding="0" cellspacing="0">
+            <tr><td align="center" style="padding:8px 0 24px;">
+              <a href="${resetUrl}" style="display:inline-block;padding:14px 32px;background:#C9A96E;color:#0A0A0B;font-size:14px;font-weight:600;text-decoration:none;border-radius:8px;">
+                Reset Password
+              </a>
+            </td></tr>
+          </table>
+          <p style="margin:0 0 16px;font-size:13px;color:#9A9590;line-height:1.5;">
+            This link expires in 24 hours. If you didn't request a password reset, you can safely ignore this email.
+          </p>
+          <p style="margin:0;font-size:11px;color:#4A4540;line-height:1.5;text-align:center;">
+            If the button doesn't work, copy this link:<br>
+            <a href="${resetUrl}" style="color:#C9A96E;word-break:break-all;font-size:10px;">${resetUrl}</a>
+          </p>
+        </td></tr>
+        <tr><td style="padding:20px 40px;border-top:1px solid #2A2A2C;text-align:center;">
+          <p style="margin:0;font-size:11px;color:#6A6560;">HireStepX by Silva Vitalis LLC</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`,
+      }),
+    });
+    clearTimeout(timer);
+
+    if (!emailRes.ok) {
+      const errBody = await emailRes.text();
+      console.error("Resend API error for reset:", emailRes.status, errBody);
+    }
+
+    // Always return success to not reveal whether the email exists
+    return res.status(200).json({ ok: true });
+  } catch (err) {
+    console.error("Password reset email error:", err);
+    return res.status(200).json({ ok: true });
+  }
+}
+
+// ─── Verification / Welcome Email Handler ───────────────────────────────────
+async function handleVerify(req: VercelRequest, res: VercelResponse, email: string, name?: string, userId?: string) {
+  // Rate limit: max 3 welcome emails per IP per hour
+  if (await checkRateLimit(req, "email", 3)) {
+    return res.status(429).json({ error: "Too many email requests. Try again later." });
   }
 
   if (!RESEND_API_KEY) {
@@ -69,8 +176,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   // Clear email_confirmed_at so user must verify (Supabase auto-sets it when "Confirm email" is OFF)
-  // We use a raw SQL call via Supabase's rpc or direct update since the admin API's
-  // email_confirm:false may not actually nullify email_confirmed_at
   if (userId && SUPABASE_SERVICE_ROLE_KEY && SUPABASE_URL) {
     try {
       // Method 1: Admin API with email_confirm: false
@@ -88,7 +193,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
 
       // Method 2: Also store our own verification flag in user_metadata
-      // This is the authoritative check — independent of Supabase's email_confirmed_at
       await fetch(`${SUPABASE_URL}/auth/v1/admin/users/${userId}`, {
         method: "PUT",
         headers: {
@@ -183,4 +287,33 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     console.error("Verification email error:", err);
     return res.status(200).json({ ok: true, emailSent: false, reason: "Email send failed" });
   }
+}
+
+// ─── Main Handler (routes to verify or reset) ──────────────────────────────
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  // CORS
+  const origin = req.headers.origin || "";
+  if (origin) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+    res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  }
+  if (req.method === "OPTIONS") { res.status(204).end(); return; }
+  if (req.method !== "POST") { res.status(405).json({ error: "Method not allowed" }); return; }
+
+  const { email, name, userId, action } = req.body || {};
+  if (!email || typeof email !== "string") {
+    return res.status(400).json({ error: "Email is required" });
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email) || email.length > 256) {
+    return res.status(400).json({ error: "Invalid email format" });
+  }
+
+  const normalizedEmail = email.toLowerCase().trim();
+
+  // Route to the appropriate handler
+  if (action === "reset") {
+    return handleReset(req, res, normalizedEmail);
+  }
+  return handleVerify(req, res, normalizedEmail, name, userId);
 }
