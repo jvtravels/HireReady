@@ -239,6 +239,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         const { data: { session } } = await client.auth.getSession();
         if (session) {
+          // Block unverified email users — sign them out immediately
+          // (Google OAuth users are always verified, so this only affects email/password signups)
+          const isGoogleUser = session.user.app_metadata?.provider === "google" || session.user.app_metadata?.providers?.includes("google");
+          if (!session.user.email_confirmed_at && !isGoogleUser) {
+            console.warn("[auth] unverified email session found — signing out");
+            setUser(null);
+            await client.auth.signOut().catch(() => {});
+            clearTimeout(safetyTimer);
+            setLoading(false);
+            return;
+          }
           // Capture Google provider token if present (after OAuth redirect)
           if (session.provider_token) {
             try { sessionStorage.setItem("hirestepx_google_token", session.provider_token); } catch { /* expected: sessionStorage may be unavailable */ }
@@ -283,6 +294,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // During signup, suppress SIGNED_IN to prevent premature redirect
         if (signingUpRef.current && event === "SIGNED_IN") return;
         if ((event === "SIGNED_IN" || event === "TOKEN_REFRESHED") && session) {
+          // Block unverified email users from establishing a session
+          const isGoogleProvider = session.user.app_metadata?.provider === "google" || session.user.app_metadata?.providers?.includes("google");
+          if (!session.user.email_confirmed_at && !isGoogleProvider) {
+            console.warn("[auth] onAuthStateChange: unverified email — signing out");
+            setUser(null);
+            await client.auth.signOut().catch(() => {});
+            setLoading(false);
+            return;
+          }
           // Persist Google provider token for Calendar API access
           if (session.provider_token) {
             try { sessionStorage.setItem("hirestepx_google_token", session.provider_token); } catch { /* expected: sessionStorage may be unavailable */ }
