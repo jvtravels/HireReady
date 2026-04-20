@@ -73,36 +73,84 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    // Find user by email using Supabase Admin API
-    const searchRes = await fetch(
-      `${SUPABASE_URL}/auth/v1/admin/users?filter=${encodeURIComponent(email)}`,
+    // Find user by email using Supabase Admin API generate_link (most reliable method)
+    // This generates a magic link for the email, which implicitly finds the user
+    // If user doesn't exist, it returns an error
+    let user: { id: string; email?: string; email_confirmed_at?: string; user_metadata?: Record<string, unknown> } | null = null;
+
+    // Method 1: Use admin generate_link to find user (always works if user exists)
+    const genRes = await fetch(
+      `${SUPABASE_URL}/auth/v1/admin/generate_link`,
       {
-        method: "GET",
+        method: "POST",
         headers: {
           apikey: SUPABASE_SERVICE_ROLE_KEY,
           Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+          "Content-Type": "application/json",
         },
+        body: JSON.stringify({
+          type: "magiclink",
+          email: email.toLowerCase().trim(),
+        }),
       }
     );
-
-    if (!searchRes.ok) {
-      console.error("Failed to search user:", searchRes.status);
-      return res.redirect(302, `${APP_URL}/login?error=verification-failed`);
+    if (genRes.ok) {
+      const genData = await genRes.json();
+      // generate_link returns user data alongside the link
+      if (genData.id) {
+        user = genData;
+      }
     }
 
-    const searchData = await searchRes.json();
-    const users = searchData.users || searchData;
-    const user = Array.isArray(users)
-      ? users.find((u: { email?: string }) => u.email?.toLowerCase() === email.toLowerCase())
-      : null;
+    // Method 2: Fallback to filter search
+    if (!user) {
+      const searchRes = await fetch(
+        `${SUPABASE_URL}/auth/v1/admin/users?filter=${encodeURIComponent(email)}`,
+        {
+          method: "GET",
+          headers: {
+            apikey: SUPABASE_SERVICE_ROLE_KEY,
+            Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+          },
+        }
+      );
+      if (searchRes.ok) {
+        const searchData = await searchRes.json();
+        const users = searchData.users || searchData;
+        if (Array.isArray(users)) {
+          user = users.find((u: { email?: string }) => u.email?.toLowerCase() === email.toLowerCase()) || null;
+        }
+      }
+    }
+
+    // Method 3: Paginated list search as last resort
+    if (!user) {
+      const listRes = await fetch(
+        `${SUPABASE_URL}/auth/v1/admin/users?page=1&per_page=1000`,
+        {
+          method: "GET",
+          headers: {
+            apikey: SUPABASE_SERVICE_ROLE_KEY,
+            Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+          },
+        }
+      );
+      if (listRes.ok) {
+        const listData = await listRes.json();
+        const allUsers = listData.users || listData;
+        if (Array.isArray(allUsers)) {
+          user = allUsers.find((u: { email?: string }) => u.email?.toLowerCase() === email.toLowerCase()) || null;
+        }
+      }
+    }
 
     if (!user) {
-      console.error("User not found for email:", email);
+      console.error("User not found for email:", email, "— tried all 3 lookup methods");
       return res.redirect(302, `${APP_URL}/login?error=user-not-found`);
     }
 
-    // If already verified, redirect with success (idempotent)
-    if (user.email_confirmed_at) {
+    // If already verified via our custom flow, redirect with success (idempotent)
+    if (user.user_metadata?.custom_email_verified === true) {
       return res.redirect(302, `${APP_URL}/login?verified=already`);
     }
 
