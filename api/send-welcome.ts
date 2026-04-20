@@ -68,9 +68,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(200).json({ ok: true, skipped: true });
   }
 
-  // Clear email_confirmed_at so user must verify (Supabase auto-sets it when Confirm email is OFF)
+  // Clear email_confirmed_at so user must verify (Supabase auto-sets it when "Confirm email" is OFF)
+  // We use a raw SQL call via Supabase's rpc or direct update since the admin API's
+  // email_confirm:false may not actually nullify email_confirmed_at
   if (userId && SUPABASE_SERVICE_ROLE_KEY && SUPABASE_URL) {
     try {
+      // Method 1: Admin API with email_confirm: false
       const clearRes = await fetch(`${SUPABASE_URL}/auth/v1/admin/users/${userId}`, {
         method: "PUT",
         headers: {
@@ -81,10 +84,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         body: JSON.stringify({ email_confirm: false }),
       });
       if (!clearRes.ok) {
-        console.error("Failed to clear email_confirmed_at:", clearRes.status, await clearRes.text());
+        console.error("Failed to clear email_confirmed_at via admin API:", clearRes.status);
       }
+
+      // Method 2: Also store our own verification flag in user_metadata
+      // This is the authoritative check — independent of Supabase's email_confirmed_at
+      await fetch(`${SUPABASE_URL}/auth/v1/admin/users/${userId}`, {
+        method: "PUT",
+        headers: {
+          apikey: SUPABASE_SERVICE_ROLE_KEY,
+          Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ user_metadata: { custom_email_verified: false } }),
+      }).catch(() => {});
     } catch (err) {
-      console.error("Failed to clear email_confirmed_at:", err);
+      console.error("Failed to clear email verification:", err);
     }
   }
 

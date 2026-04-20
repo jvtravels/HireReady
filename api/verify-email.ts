@@ -106,7 +106,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.redirect(302, `${APP_URL}/login?verified=already`);
     }
 
-    // Set email_confirmed_at via admin API
+    // Set email_confirmed_at via admin API AND our custom flag
     const updateRes = await fetch(
       `${SUPABASE_URL}/auth/v1/admin/users/${user.id}`,
       {
@@ -118,6 +118,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         },
         body: JSON.stringify({
           email_confirm: true,
+          user_metadata: { ...user.user_metadata, custom_email_verified: true },
         }),
       }
     );

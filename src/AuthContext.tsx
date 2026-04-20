@@ -135,7 +135,7 @@ function profileToUser(profile: Profile, session: Session): User {
     cancelAtPeriodEnd: profile.cancel_at_period_end || false,
     subscriptionPaused: !!profile.subscription_paused,
     referralCode: profile.referral_code || undefined,
-    emailVerified: !!session.user.email_confirmed_at,
+    emailVerified: session.user.user_metadata?.custom_email_verified === true || !!session.user.email_confirmed_at,
   };
 }
 
@@ -220,7 +220,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         targetRole: "",
         resumeFileName: null,
         hasCompletedOnboarding: false,
-        emailVerified: !!session.user.email_confirmed_at,
+        emailVerified: session.user.user_metadata?.custom_email_verified === true || !!session.user.email_confirmed_at,
       };
       setUser(newUser);
     }
@@ -240,9 +240,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const { data: { session } } = await client.auth.getSession();
         if (session) {
           // Block unverified email users — sign them out immediately
-          // (Google OAuth users are always verified, so this only affects email/password signups)
+          // Google OAuth users are always verified; email/password users must pass our custom verification
           const isGoogleUser = session.user.app_metadata?.provider === "google" || session.user.app_metadata?.providers?.includes("google");
-          if (!session.user.email_confirmed_at && !isGoogleUser) {
+          const customVerified = session.user.user_metadata?.custom_email_verified === true;
+          if (!isGoogleUser && !customVerified) {
             console.warn("[auth] unverified email session found — signing out");
             setUser(null);
             await client.auth.signOut().catch(() => {});
@@ -296,7 +297,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if ((event === "SIGNED_IN" || event === "TOKEN_REFRESHED") && session) {
           // Block unverified email users from establishing a session
           const isGoogleProvider = session.user.app_metadata?.provider === "google" || session.user.app_metadata?.providers?.includes("google");
-          if (!session.user.email_confirmed_at && !isGoogleProvider) {
+          const customVerifiedEvent = session.user.user_metadata?.custom_email_verified === true;
+          if (!isGoogleProvider && !customVerifiedEvent) {
             console.warn("[auth] onAuthStateChange: unverified email — signing out");
             setUser(null);
             await client.auth.signOut().catch(() => {});
@@ -402,8 +404,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { success: false, error: error.message };
     }
 
-    // Block login if email is not verified (Supabase may allow sign-in even without confirmation)
-    if (data?.user && !data.user.email_confirmed_at) {
+    // Block login if email is not verified via our custom verification flow
+    const isGoogle = data?.user?.app_metadata?.provider === "google" || data?.user?.app_metadata?.providers?.includes("google");
+    const customVerifiedLogin = data?.user?.user_metadata?.custom_email_verified === true;
+    if (data?.user && !isGoogle && !customVerifiedLogin) {
       // Sign out immediately — user should not have a session
       await client.auth.signOut();
       setUser(null);
