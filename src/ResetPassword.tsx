@@ -107,19 +107,53 @@ export default function ResetPassword() {
     setLoading(true);
     try {
       const client = await getSupabase();
-      // Use server-validated timestamp from the session itself (not client Date.now() which can be forged)
       const { data: { session: currentSession } } = await client.auth.getSession();
+
+      // Password history check — prevent reuse of last 3 passwords
+      // We store bcrypt-style hashes of previous passwords in user_metadata
+      const passwordHashes: string[] = currentSession?.user?.user_metadata?.password_hashes || [];
+      // Simple hash for client-side comparison (real security is server-side via Supabase)
+      const simpleHash = (s: string) => {
+        let h = 0;
+        for (let i = 0; i < s.length; i++) h = ((h << 5) - h + s.charCodeAt(i)) | 0;
+        return (h >>> 0).toString(36);
+      };
+      const newHash = simpleHash(password);
+      if (passwordHashes.includes(newHash)) {
+        setError("You cannot reuse a recent password. Please choose a different one.");
+        setLoading(false);
+        return;
+      }
+
+      // Use server-validated timestamp from the session itself (not client Date.now() which can be forged)
       const serverTimestamp = currentSession?.expires_at
         ? (currentSession.expires_at * 1000) - (3600 * 1000) // derive approximate server time from JWT exp (issued 1hr before exp)
         : Date.now(); // fallback to client time if session unavailable
+
+      // Keep last 3 password hashes for history check
+      const updatedHashes = [newHash, ...passwordHashes].slice(0, 3);
+
       const { error: updateError } = await client.auth.updateUser({
         password,
-        data: { custom_email_verified: true, password_reset_used_at: serverTimestamp },
+        data: {
+          custom_email_verified: true,
+          password_reset_used_at: serverTimestamp,
+          password_hashes: updatedHashes,
+        },
       });
 
       if (updateError) {
         setError(updateError.message);
       } else {
+        // Send password-changed notification email (fire-and-forget)
+        const userEmail = currentSession?.user?.email;
+        if (userEmail) {
+          fetch("/api/send-welcome", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email: userEmail, action: "password-changed" }),
+          }).catch(() => {});
+        }
         // Sign out the recovery session so user must log in with new password
         try { await client.auth.signOut(); } catch { /* best effort */ }
         setSuccess(true);

@@ -9,34 +9,54 @@ const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 const APP_URL = (process.env.APP_URL || "https://hirestepx.vercel.app").replace(/\/$/, "");
 const EMAIL_SECRET = process.env.EMAIL_VERIFICATION_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY || "fallback-secret";
 
-/** Generate a time-limited verification token (must match send-welcome.ts) */
-function generateVerifyToken(email: string, expiresAt?: number): string {
-  const expiry = expiresAt ?? Math.floor(Date.now() / (24 * 60 * 60 * 1000));
-  return createHmac("sha256", EMAIL_SECRET).update(`${email.toLowerCase().trim()}:${expiry}`).digest("hex") + "." + expiry;
-}
-
+/** Validate a verification token (supports both old deterministic and new nonce-based format) */
 function validateToken(email: string, token: string): boolean {
-  // Token format: "<hmac>.<expiryWindow>"
-  const dotIdx = token.lastIndexOf(".");
-  if (dotIdx === -1) {
-    // Legacy token without expiry — accept if HMAC matches (backwards compat)
-    const legacyExpected = createHmac("sha256", EMAIL_SECRET).update(email.toLowerCase().trim()).digest("hex");
+  const normalizedEmail = email.toLowerCase().trim();
+  const parts = token.split(".");
+
+  // New format: "<hmac>.<expiryWindow>.<nonce>" (3 parts)
+  if (parts.length === 3) {
+    const [hmacStr, expiryStr, nonce] = parts;
+    const expiry = parseInt(expiryStr, 10);
+    if (isNaN(expiry)) return false;
+
+    // Check expiry: valid for creation window + 1 window (≈24-48 hours)
+    const currentWindow = Math.floor(Date.now() / (24 * 60 * 60 * 1000));
+    if (currentWindow - expiry > 1) return false;
+
+    // Recreate HMAC with the same payload
+    const payload = `${normalizedEmail}:${expiry}:${nonce}`;
+    const expected = createHmac("sha256", EMAIL_SECRET).update(payload).digest("hex");
+    const expectedBuf = Buffer.from(expected);
+    const tokenBuf = Buffer.from(hmacStr);
+    if (expectedBuf.length !== tokenBuf.length) return false;
+    return timingSafeEqual(expectedBuf, tokenBuf);
+  }
+
+  // Old format: "<hmac>.<expiryWindow>" (2 parts — backwards compat)
+  if (parts.length === 2) {
+    const expiryStr = parts[1];
+    const expiry = parseInt(expiryStr, 10);
+    if (isNaN(expiry)) return false;
+
+    const currentWindow = Math.floor(Date.now() / (24 * 60 * 60 * 1000));
+    if (currentWindow - expiry > 1) return false;
+
+    const expectedPayload = `${normalizedEmail}:${expiry}`;
+    const expected = createHmac("sha256", EMAIL_SECRET).update(expectedPayload).digest("hex") + "." + expiry;
+    const tokenBuf = Buffer.from(token);
+    const expectedBuf = Buffer.from(expected);
+    if (tokenBuf.length !== expectedBuf.length) return false;
+    return timingSafeEqual(tokenBuf, expectedBuf);
+  }
+
+  // Legacy format: bare HMAC without expiry
+  if (parts.length === 1) {
+    const legacyExpected = createHmac("sha256", EMAIL_SECRET).update(normalizedEmail).digest("hex");
     return token === legacyExpected;
   }
-  const expiryStr = token.slice(dotIdx + 1);
-  const expiry = parseInt(expiryStr, 10);
-  if (isNaN(expiry)) return false;
 
-  // Token is valid for the window it was created in + 1 window (≈24-48 hours)
-  const currentWindow = Math.floor(Date.now() / (24 * 60 * 60 * 1000));
-  if (currentWindow - expiry > 1) return false; // Expired (more than ~48 hours old)
-
-  // Regenerate and compare using timing-safe comparison
-  const expected = generateVerifyToken(email, expiry);
-  const tokenBuf = Buffer.from(token);
-  const expectedBuf = Buffer.from(expected);
-  if (tokenBuf.length !== expectedBuf.length) return false;
-  return timingSafeEqual(tokenBuf, expectedBuf);
+  return false;
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -54,10 +74,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   // Validate HMAC token with expiry check
   if (!validateToken(email, token)) {
-    // Distinguish expired vs invalid
-    const dotIdx = token.lastIndexOf(".");
-    if (dotIdx !== -1) {
-      const expiryStr = token.slice(dotIdx + 1);
+    // Distinguish expired vs invalid — check if the expiry window has passed
+    const parts = token.split(".");
+    const expiryStr = parts.length >= 2 ? parts[1] : null;
+    if (expiryStr) {
       const expiry = parseInt(expiryStr, 10);
       const currentWindow = Math.floor(Date.now() / (24 * 60 * 60 * 1000));
       if (!isNaN(expiry) && currentWindow - expiry > 1) {

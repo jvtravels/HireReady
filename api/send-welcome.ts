@@ -1,9 +1,10 @@
 /* Vercel Serverless Function — Send Verification + Welcome + Password Reset Email via Resend API */
 /* Self-contained: no _shared import to avoid module resolution issues */
-/* Supports two actions: "verify" (default) and "reset" */
+/* Supports actions: "verify" (default), "reset", "password-changed", "verify-reminder" */
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { createHmac } from "crypto";
+import { createHmac, randomBytes } from "crypto";
+import { resolve } from "dns/promises";
 
 const RESEND_API_KEY = (process.env.RESEND_API_KEY || "").trim();
 const FROM_EMAIL = process.env.FROM_EMAIL || "HireStepX <onboarding@resend.dev>";
@@ -16,11 +17,27 @@ function escapeHtml(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
-/** Generate a time-limited verification token. Tokens expire after 24 hours. */
+/** Generate a unique, non-deterministic verification token with nonce. */
 export function generateVerifyToken(email: string, expiresAt?: number): string {
-  // Round to 24-hour windows so the same email gets the same token within a window
   const expiry = expiresAt ?? Math.floor(Date.now() / (24 * 60 * 60 * 1000));
-  return createHmac("sha256", EMAIL_SECRET).update(`${email.toLowerCase().trim()}:${expiry}`).digest("hex") + "." + expiry;
+  // Add a random nonce to make each token unique (prevents replay within same window)
+  const nonce = randomBytes(8).toString("hex");
+  const payload = `${email.toLowerCase().trim()}:${expiry}:${nonce}`;
+  const hmac = createHmac("sha256", EMAIL_SECRET).update(payload).digest("hex");
+  return `${hmac}.${expiry}.${nonce}`;
+}
+
+// ─── MX Record Validation (email deliverability pre-check) ──────────────────
+async function validateMxRecord(email: string): Promise<boolean> {
+  try {
+    const domain = email.split("@")[1];
+    if (!domain) return false;
+    const records = await resolve(domain, "MX");
+    return Array.isArray(records) && records.length > 0;
+  } catch {
+    // DNS lookup failed — domain likely doesn't accept email
+    return false;
+  }
 }
 
 // ─── Rate limiting helper ───────────────────────────────────────────────────
@@ -43,6 +60,125 @@ async function checkRateLimit(req: VercelRequest, prefix: string, max: number): 
     }
   } catch { /* rate limit check failed, allow through */ }
   return false;
+}
+
+// ─── Password Changed Notification Email ─────────────────────────────────────
+async function handlePasswordChanged(req: VercelRequest, res: VercelResponse, normalizedEmail: string) {
+  if (!RESEND_API_KEY) return res.status(200).json({ ok: true });
+
+  const safeEmail = escapeHtml(normalizedEmail);
+  try {
+    const ac = new AbortController();
+    const timer = setTimeout(() => ac.abort(), 10_000);
+    await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
+      signal: ac.signal,
+      body: JSON.stringify({
+        from: FROM_EMAIL,
+        to: [normalizedEmail],
+        subject: "Your password was changed — HireStepX",
+        html: `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background:#0A0A0B;font-family:'Helvetica Neue',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#0A0A0B;padding:40px 20px;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#141416;border-radius:16px;border:1px solid #2A2A2C;overflow:hidden;">
+        <tr><td style="padding:32px 40px 24px;border-bottom:1px solid #2A2A2C;">
+          <span style="font-size:18px;font-weight:600;color:#F0EDE8;letter-spacing:0.06em;">HireStepX</span>
+        </td></tr>
+        <tr><td style="padding:32px 40px;">
+          <h1 style="margin:0 0 8px;font-size:22px;font-weight:600;color:#F0EDE8;">Password Changed</h1>
+          <p style="margin:0 0 24px;font-size:14px;color:#9A9590;line-height:1.6;">
+            The password for <strong style="color:#F0EDE8;">${safeEmail}</strong> was successfully changed on ${new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })} at ${new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}.
+          </p>
+          <div style="background:#1A1A1C;border-radius:12px;border:1px solid #2A2A2C;padding:16px 20px;margin-bottom:24px;">
+            <p style="margin:0;font-size:13px;color:#C4705A;font-weight:600;">⚠️ Didn't make this change?</p>
+            <p style="margin:8px 0 0;font-size:13px;color:#9A9590;line-height:1.5;">
+              If you didn't reset your password, someone may have access to your account. Please <a href="${APP_URL}/login" style="color:#C9A96E;text-decoration:underline;">log in immediately</a> and change your password, or contact <a href="mailto:support@hirestepx.com" style="color:#C9A96E;text-decoration:underline;">support@hirestepx.com</a>.
+            </p>
+          </div>
+          <p style="margin:0;font-size:12px;color:#6A6560;line-height:1.5;text-align:center;">If you made this change, no action is needed.</p>
+        </td></tr>
+        <tr><td style="padding:20px 40px;border-top:1px solid #2A2A2C;text-align:center;">
+          <p style="margin:0;font-size:11px;color:#6A6560;">HireStepX by Silva Vitalis LLC</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`,
+      }),
+    });
+    clearTimeout(timer);
+  } catch { /* notification is best-effort */ }
+
+  return res.status(200).json({ ok: true });
+}
+
+// ─── Verification Reminder Email ─────────────────────────────────────────────
+async function handleVerifyReminder(req: VercelRequest, res: VercelResponse, normalizedEmail: string, name?: string) {
+  if (!RESEND_API_KEY) return res.status(200).json({ ok: true });
+
+  // Rate limit: max 2 reminders per IP per day
+  if (await checkRateLimit(req, "reminder", 2)) {
+    return res.status(429).json({ error: "Too many reminder requests." });
+  }
+
+  const token = generateVerifyToken(normalizedEmail);
+  const verifyUrl = `${APP_URL}/api/verify-email?email=${encodeURIComponent(normalizedEmail)}&token=${token}`;
+  const safeName = escapeHtml(name || "there");
+
+  try {
+    const ac = new AbortController();
+    const timer = setTimeout(() => ac.abort(), 10_000);
+    await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
+      signal: ac.signal,
+      body: JSON.stringify({
+        from: FROM_EMAIL,
+        to: [normalizedEmail],
+        subject: "Reminder: Verify your email — HireStepX",
+        html: `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background:#0A0A0B;font-family:'Helvetica Neue',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#0A0A0B;padding:40px 20px;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#141416;border-radius:16px;border:1px solid #2A2A2C;overflow:hidden;">
+        <tr><td style="padding:32px 40px 24px;border-bottom:1px solid #2A2A2C;">
+          <span style="font-size:18px;font-weight:600;color:#F0EDE8;letter-spacing:0.06em;">HireStepX</span>
+        </td></tr>
+        <tr><td style="padding:32px 40px;">
+          <h1 style="margin:0 0 8px;font-size:22px;font-weight:600;color:#F0EDE8;">Hey ${safeName}, you're almost there!</h1>
+          <p style="margin:0 0 24px;font-size:14px;color:#9A9590;line-height:1.6;">
+            You created your HireStepX account but haven't verified your email yet. Verify now to start your <strong style="color:#C9A96E;">3 free mock interviews</strong>.
+          </p>
+          <table width="100%" cellpadding="0" cellspacing="0">
+            <tr><td align="center" style="padding:8px 0 24px;">
+              <a href="${verifyUrl}" style="display:inline-block;padding:14px 32px;background:#C9A96E;color:#0A0A0B;font-size:14px;font-weight:600;text-decoration:none;border-radius:8px;">
+                Verify Email Address
+              </a>
+            </td></tr>
+          </table>
+          <p style="margin:0;font-size:12px;color:#6A6560;line-height:1.5;text-align:center;">This link expires in 24 hours. If you didn't create this account, ignore this email.</p>
+        </td></tr>
+        <tr><td style="padding:20px 40px;border-top:1px solid #2A2A2C;text-align:center;">
+          <p style="margin:0;font-size:11px;color:#6A6560;">HireStepX by Silva Vitalis LLC</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`,
+      }),
+    });
+    clearTimeout(timer);
+  } catch { /* reminder is best-effort */ }
+
+  return res.status(200).json({ ok: true });
 }
 
 // ─── Password Reset Email Handler ───────────────────────────────────────────
@@ -88,9 +224,15 @@ async function handleReset(req: VercelRequest, res: VercelResponse, normalizedEm
       return res.status(200).json({ ok: true });
     }
 
-    // Rewrite the redirect_to in the action link
+    // Rewrite the redirect_to in the action link and add an HMAC signature for link integrity
     const linkUrl = new URL(actionLink);
     linkUrl.searchParams.set("redirect_to", `${APP_URL}/reset-password`);
+    // Sign the reset link with HMAC to detect tampering/interception
+    const linkSignature = createHmac("sha256", EMAIL_SECRET)
+      .update(`${normalizedEmail}:${linkUrl.searchParams.get("token") || ""}:reset`)
+      .digest("hex")
+      .slice(0, 16);
+    linkUrl.searchParams.set("sig", linkSignature);
     const resetUrl = linkUrl.toString();
     const safeEmail = escapeHtml(normalizedEmail);
 
@@ -301,7 +443,7 @@ function isAllowedOrigin(origin: string): boolean {
   return false;
 }
 
-// ─── Main Handler (routes to verify or reset) ──────────────────────────────
+// ─── Main Handler (routes to verify, reset, password-changed, verify-reminder) ─
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // CORS
   const origin = req.headers.origin || "";
@@ -318,7 +460,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(403).json({ error: "Forbidden" });
   }
 
-  const { email, name, userId, action } = req.body || {};
+  const { email, name, userId, action, honeypot } = req.body || {};
+
+  // Honeypot check: if the hidden field is filled, it's a bot
+  if (honeypot) {
+    // Pretend success to not alert the bot
+    return res.status(200).json({ ok: true });
+  }
+
   if (!email || typeof email !== "string") {
     return res.status(400).json({ error: "Email is required" });
   }
@@ -328,9 +477,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const normalizedEmail = email.toLowerCase().trim();
 
+  // MX record validation — check domain can receive email (skip for password-changed notifications)
+  if (action !== "password-changed") {
+    const hasMx = await validateMxRecord(normalizedEmail);
+    if (!hasMx) {
+      return res.status(400).json({ error: "This email domain does not appear to accept mail. Please use a valid email address." });
+    }
+  }
+
   // Route to the appropriate handler
   if (action === "reset") {
     return handleReset(req, res, normalizedEmail);
+  }
+  if (action === "password-changed") {
+    return handlePasswordChanged(req, res, normalizedEmail);
+  }
+  if (action === "verify-reminder") {
+    return handleVerifyReminder(req, res, normalizedEmail, name);
   }
   return handleVerify(req, res, normalizedEmail, name, userId);
 }

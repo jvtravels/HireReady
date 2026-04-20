@@ -93,6 +93,8 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
   const [rememberMe, setRememberMe] = useState(() => getRememberMe());
   const [emailSuggestion, setEmailSuggestion] = useState("");
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
+  const [honeypot, setHoneypot] = useState(""); // Hidden bot-trap field
+  const [resendCooldown, setResendCooldown] = useState(0); // Cooldown timer for resend button
 
   // Track online/offline status
   useEffect(() => {
@@ -102,6 +104,13 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
     window.addEventListener("online", goOnline);
     return () => { window.removeEventListener("offline", goOffline); window.removeEventListener("online", goOnline); };
   }, []);
+
+  // Resend button cooldown timer (60 seconds)
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const timer = setInterval(() => setResendCooldown(prev => prev - 1), 1000);
+    return () => clearInterval(timer);
+  }, [resendCooldown]);
   const verifiedParam = new URLSearchParams(location.search).get("verified");
   const errorParam = new URLSearchParams(location.search).get("error");
   const firstInputRef = useRef<HTMLInputElement>(null);
@@ -148,6 +157,13 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+
+    // Honeypot check — if filled, silently reject (it's a bot)
+    if (honeypot) {
+      // Fake success to not alert bot
+      setSignupSent(true);
+      return;
+    }
 
     // Client-side validation
     const trimmedEmail = email.trim();
@@ -366,20 +382,33 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
             </button>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
               {supabaseConfigured && (
-                <button onClick={async () => {
-                  try {
-                    await fetch("/api/send-welcome", {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ email, name }),
-                    });
-                    setError("");
-                    setResendMsg("Verification email resent!");
-                    setTimeout(() => setResendMsg(""), 3000);
-                  } catch { setError("Could not resend email. Try again later."); }
-                }}
-                  style={{ background: "none", border: "none", fontFamily: font.ui, fontSize: 13, color: c.stone, cursor: "pointer", textDecoration: "underline" }}>
-                  Didn't receive it? Resend verification email
+                <button
+                  onClick={async () => {
+                    if (resendCooldown > 0) return;
+                    try {
+                      await fetch("/api/send-welcome", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ email, name }),
+                      });
+                      setError("");
+                      setResendMsg("Verification email resent!");
+                      setResendCooldown(60); // 60 second cooldown
+                      setTimeout(() => setResendMsg(""), 3000);
+                    } catch { setError("Could not resend email. Try again later."); }
+                  }}
+                  disabled={resendCooldown > 0}
+                  style={{
+                    background: "none", border: "none", fontFamily: font.ui, fontSize: 13,
+                    color: resendCooldown > 0 ? c.border : c.stone,
+                    cursor: resendCooldown > 0 ? "not-allowed" : "pointer",
+                    textDecoration: resendCooldown > 0 ? "none" : "underline",
+                    opacity: resendCooldown > 0 ? 0.6 : 1,
+                  }}>
+                  {resendCooldown > 0
+                    ? `Resend available in ${resendCooldown}s`
+                    : "Didn't receive it? Resend verification email"
+                  }
                 </button>
               )}
               {resendMsg && <span style={{ fontFamily: font.ui, fontSize: 12, color: c.sage }}>{resendMsg}</span>}
@@ -475,6 +504,19 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
 
             {/* Email/password form */}
             <form onSubmit={handleSubmit} autoComplete="off" style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+              {/* Honeypot field — invisible to users, bots will fill it */}
+              <div aria-hidden="true" style={{ position: "absolute", left: "-9999px", opacity: 0, height: 0, overflow: "hidden" }}>
+                <label htmlFor="website-url">Website</label>
+                <input
+                  id="website-url"
+                  type="text"
+                  name="website"
+                  value={honeypot}
+                  onChange={(e) => setHoneypot(e.target.value)}
+                  tabIndex={-1}
+                  autoComplete="off"
+                />
+              </div>
               {!isLogin && (
                 <div>
                   <label htmlFor="signup-name" style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: c.chalk, display: "block", marginBottom: 6, letterSpacing: "0.02em" }}>Full name</label>
