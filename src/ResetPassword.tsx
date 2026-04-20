@@ -76,6 +76,8 @@ export default function ResetPassword() {
     if (updateError) {
       setError(updateError.message);
     } else {
+      // Sign out the recovery session so user must log in with new password
+      await client.auth.signOut().catch(() => {});
       setSuccess(true);
       setTimeout(() => navigate("/login"), 2000);
     }
