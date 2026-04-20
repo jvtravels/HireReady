@@ -76,6 +76,25 @@ function validateSessionFingerprint(): boolean {
   } catch { return true; }
 }
 
+/* ─── Audit Logging (sends auth events to Vercel function logs) ─── */
+function logAuditEvent(event: string, details?: Record<string, unknown>) {
+  try {
+    const payload = {
+      message: `[audit] ${event}`,
+      timestamp: new Date().toISOString(),
+      url: window.location.pathname,
+      userAgent: navigator.userAgent,
+      ...details,
+    };
+    // Fire-and-forget — don't block auth flow
+    fetch("/api/log-error", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    }).catch(() => {});
+  } catch { /* audit is best-effort */ }
+}
+
 /** Local fallback for hasCompletedOnboarding (survives refresh even if Supabase column missing) */
 const ONBOARDING_DONE_KEY = "hirestepx_onboarding_done";
 function getLocalOnboardingDone(userId: string): boolean {
@@ -298,6 +317,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           // Session fingerprint check — detect possible hijacking
           if (!validateSessionFingerprint()) {
             console.warn("[auth] session fingerprint mismatch — possible hijack, signing out");
+            logAuditEvent("session_hijack_detected", { userId: session.user.id, email: session.user.email });
             setUser(null);
             await client.auth.signOut().catch(() => {});
             clearTimeout(safetyTimer);
@@ -477,8 +497,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Track failed attempt
       const attempts = getLoginAttempts() + 1;
       setLoginAttempts(attempts);
+      logAuditEvent("login_failed", { email, reason: error.message, attempt: attempts });
       if (attempts >= MAX_LOGIN_ATTEMPTS) {
         setLockout();
+        logAuditEvent("login_locked", { email, attempts });
         track("login_locked", { attempts });
         return { success: false, error: "Too many failed attempts. Please try again in 5 minutes." };
       }
@@ -505,6 +527,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Successful login — clear lockout counter and store session fingerprint
     clearLoginLockout();
     storeSessionFingerprint();
+    logAuditEvent("login_success", { email, method: "email" });
     track("login_success");
     return { success: true };
   }, []);
@@ -524,11 +547,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const logout = useCallback(async () => {
+    logAuditEvent("logout", { userId: user?.id });
     if (supabaseConfigured) { const client = await getSupabase(); await client.auth.signOut(); }
     track("logout");
     setUser(null);
     clearLastRoute();
-  }, []);
+  }, [user?.id]);
 
   const updateUser = useCallback(async (updates: Partial<User>) => {
     let currentId: string | null = null;
@@ -568,6 +592,50 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await upsertProfile(profileUpdates);
   }, []);
 
+  // Session expiry warning — check JWT exp every 60s, warn 5min before expiry
+  const [sessionExpiryWarning, setSessionExpiryWarning] = useState<string | null>(null);
+  useEffect(() => {
+    if (!user || !supabaseConfigured) return;
+    const SESSION_WARN_MS = 5 * 60 * 1000; // Warn 5 min before expiry
+
+    const checkExpiry = async () => {
+      try {
+        const client = await getSupabase();
+        const { data: { session } } = await client.auth.getSession();
+        if (!session) return;
+        const exp = session.expires_at; // Unix timestamp in seconds
+        if (!exp) return;
+        const expiresMs = exp * 1000;
+        const remaining = expiresMs - Date.now();
+
+        if (remaining <= 0) {
+          // Session expired — force logout
+          logAuditEvent("session_expired", { userId: user.id });
+          setSessionExpiryWarning(null);
+          setUser(null);
+          await client.auth.signOut().catch(() => {});
+        } else if (remaining <= SESSION_WARN_MS) {
+          // Approaching expiry — try to refresh
+          const mins = Math.ceil(remaining / 60000);
+          setSessionExpiryWarning(`Session expires in ${mins} min. Refreshing...`);
+          const { error } = await client.auth.refreshSession();
+          if (error) {
+            setSessionExpiryWarning(`Session expires in ${mins} min. Save your work.`);
+          } else {
+            setSessionExpiryWarning(null); // Refresh succeeded
+          }
+        } else {
+          setSessionExpiryWarning(null);
+        }
+      } catch { /* best effort */ }
+    };
+
+    // Check immediately, then every 60s
+    checkExpiry();
+    const interval = setInterval(checkExpiry, 60_000);
+    return () => clearInterval(interval);
+  }, [user]);
+
   const resetPassword = useCallback(async (email: string): Promise<{ success: boolean; error?: string }> => {
     try {
       const res = await fetch("/api/send-welcome", {
@@ -585,6 +653,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider value={{ user, isLoggedIn: !!user, loading, login, signup, loginWithGoogle, logout, updateUser, resetPassword }}>
+      {sessionExpiryWarning && (
+        <div role="alert" style={{
+          position: "fixed", top: 16, left: "50%", transform: "translateX(-50%)", zIndex: 10000,
+          padding: "10px 20px", borderRadius: 10, maxWidth: 400,
+          background: "rgba(212,179,127,0.15)", border: "1px solid rgba(212,179,127,0.3)",
+          backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)",
+          fontFamily: "'Inter', system-ui, sans-serif", fontSize: 13, color: "#C9A96E",
+          display: "flex", alignItems: "center", gap: 8,
+        }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          {sessionExpiryWarning}
+        </div>
+      )}
       {children}
     </AuthContext.Provider>
   );

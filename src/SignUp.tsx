@@ -40,24 +40,38 @@ function levenshtein(a: string, b: string): number {
 }
 
 // Map raw Supabase errors to user-friendly messages with suggestions
-function friendlyError(raw: string, _isLogin: boolean): { message: string; suggestion?: string } {
+function friendlyError(raw: string, isLogin: boolean): { message: string; suggestion?: string } {
   const lower = raw.toLowerCase();
+  // Login-specific
   if (lower.includes("invalid login credentials"))
     return { message: "Incorrect email or password.", suggestion: "Double-check your credentials or reset your password below." };
+  // Email verification
   if (lower.includes("email not confirmed"))
     return { message: "Your email hasn't been verified yet.", suggestion: "Check your inbox (and spam folder) for the verification link. If it expired, sign up again with the same email to get a new link." };
+  // Signup-specific
   if (lower.includes("user already registered") || lower.includes("already been registered"))
-    return { message: "An account with this email already exists.", suggestion: "Try logging in instead, or reset your password if you forgot it." };
+    return { message: "An account with this email already exists.", suggestion: isLogin ? "Try resetting your password if you forgot it." : "Try logging in instead, or reset your password if you forgot it." };
   if (lower.includes("signup is not allowed") || lower.includes("signups not allowed"))
-    return { message: "Sign-ups are currently disabled.", suggestion: "Please try again later or contact support." };
+    return { message: "Sign-ups are currently disabled.", suggestion: "Please try again later or contact support@hirestepx.com." };
+  // Rate limiting / lockout
+  if (lower.includes("too many failed") || lower.includes("login_locked"))
+    return { message: "Account temporarily locked.", suggestion: "Too many failed attempts. Please wait 5 minutes and try again." };
   if (lower.includes("rate limit") || lower.includes("too many requests"))
     return { message: "Too many attempts.", suggestion: "Please wait a minute before trying again." };
-  if (lower.includes("network") || lower.includes("fetch"))
+  // Network
+  if (lower.includes("network") || lower.includes("fetch") || lower.includes("connection error"))
     return { message: "Connection error.", suggestion: "Check your internet connection and try again." };
+  if (lower.includes("timeout") || lower.includes("timed out"))
+    return { message: "Request timed out.", suggestion: "The server is slow. Please try again in a moment." };
+  // Password
   if (lower.includes("weak password") || lower.includes("password should"))
     return { message: "Password is too weak.", suggestion: "Use at least 8 characters with a mix of letters, numbers, and symbols." };
+  // Email format
   if (lower.includes("invalid email") && !lower.includes("password") && !lower.includes("credentials"))
     return { message: "That doesn't look like a valid email address.", suggestion: "Please check for typos." };
+  // Signup failed (generic)
+  if (!isLogin && lower.includes("signup failed"))
+    return { message: "Could not create your account.", suggestion: "Please try again. If the problem persists, contact support@hirestepx.com." };
   return { message: raw };
 }
 
