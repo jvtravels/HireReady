@@ -368,7 +368,7 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
               <>
                 <div>
                   <label htmlFor="reset-email" style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: c.chalk, display: "block", marginBottom: 6, letterSpacing: "0.02em" }}>Email</label>
-                  <input id="reset-email" ref={showReset ? firstInputRef : undefined} type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@company.com" required
+                  <input id="reset-email" ref={showReset ? firstInputRef : undefined} type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@company.com" required autoComplete="off"
                     aria-describedby={error ? "reset-error" : undefined}
                     style={{ width: "100%", padding: "12px 16px", borderRadius: 8, background: c.graphite, border: `1px solid ${c.border}`, color: c.ivory, fontFamily: font.ui, fontSize: 14, outline: "none", transition: "border-color 0.2s ease", boxSizing: "border-box" }}
                     onFocus={(e) => e.currentTarget.style.borderColor = c.gilt}
@@ -442,11 +442,11 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
             </div>
 
             {/* Email/password form */}
-            <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+            <form onSubmit={handleSubmit} autoComplete="off" style={{ display: "flex", flexDirection: "column", gap: 18 }}>
               {!isLogin && (
                 <div>
                   <label htmlFor="signup-name" style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: c.chalk, display: "block", marginBottom: 6, letterSpacing: "0.02em" }}>Full name</label>
-                  <input id="signup-name" ref={!isLogin ? firstInputRef : undefined} type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Your full name" required maxLength={50}
+                  <input id="signup-name" ref={!isLogin ? firstInputRef : undefined} type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Your full name" required maxLength={50} autoComplete="off"
                     style={{ width: "100%", padding: "12px 16px", borderRadius: 8, background: c.graphite, border: `1px solid ${c.border}`, color: c.ivory, fontFamily: font.ui, fontSize: 14, outline: "none", transition: "border-color 0.2s ease", boxSizing: "border-box" }}
                     onFocus={(e) => e.currentTarget.style.borderColor = c.gilt}
                     onBlur={(e) => e.currentTarget.style.borderColor = c.border}
@@ -459,7 +459,7 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
                 <input id="signup-email" ref={isLogin ? firstInputRef : undefined} type="email" value={email}
                   onChange={(e) => { setEmail(e.target.value); checkEmailTypo(e.target.value); }}
                   onBlur={(e) => { e.currentTarget.style.borderColor = c.border; checkEmailTypo(email); }}
-                  placeholder="you@company.com" required
+                  placeholder="you@company.com" required autoComplete="new-password"
                   aria-describedby={error ? "form-error" : undefined}
                   style={{ width: "100%", padding: "12px 16px", borderRadius: 8, background: c.graphite, border: `1px solid ${c.border}`, color: c.ivory, fontFamily: font.ui, fontSize: 14, outline: "none", transition: "border-color 0.2s ease", boxSizing: "border-box" }}
                   onFocus={(e) => e.currentTarget.style.borderColor = c.gilt}
@@ -478,7 +478,7 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
                 <label htmlFor="signup-password" style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: c.chalk, display: "block", marginBottom: 6, letterSpacing: "0.02em" }}>Password</label>
                 <div style={{ position: "relative" }}>
                   <input id="signup-password" type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)}
-                    placeholder={isLogin ? "Enter your password" : "Create a password (8+ chars)"} required minLength={8}
+                    placeholder={isLogin ? "Enter your password" : "Create a password (8+ chars)"} required minLength={8} autoComplete="new-password"
                     aria-describedby={error ? "form-error" : undefined}
                     style={{ width: "100%", padding: "12px 44px 12px 16px", borderRadius: 8, background: c.graphite, border: `1px solid ${c.border}`, color: c.ivory, fontFamily: font.ui, fontSize: 14, outline: "none", transition: "border-color 0.2s ease", boxSizing: "border-box" }}
                     onFocus={(e) => e.currentTarget.style.borderColor = c.gilt}
