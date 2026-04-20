@@ -220,6 +220,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(supabaseConfigured);
   // Suppress auth state listener during signup flow to prevent premature redirect
   const signingUpRef = useRef(false);
+  // Prevent race condition: onAuthStateChange should not override getSession result during init
+  const initialSessionRestoredRef = useRef(false);
 
   // Clean up legacy localStorage cache from previous versions
   useEffect(() => {
@@ -227,8 +229,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // "Remember me" — clear session on tab/browser close if ephemeral
+  // Uses both pagehide (reliable on mobile) and beforeunload (desktop fallback)
   useEffect(() => {
-    const handleUnload = () => {
+    const clearEphemeralSession = () => {
       try {
         if (sessionStorage.getItem("hirestepx_ephemeral") === "1") {
           // Clear auth data so session doesn't persist
@@ -243,8 +246,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       } catch { /* expected: localStorage cleanup errors are non-critical */ }
     };
-    window.addEventListener("beforeunload", handleUnload);
-    return () => window.removeEventListener("beforeunload", handleUnload);
+    // pagehide is more reliable than beforeunload on mobile (Safari, Chrome on iOS)
+    const handlePageHide = (e: PageTransitionEvent) => {
+      // persisted=false means the page is being discarded (tab/browser close)
+      if (!e.persisted) clearEphemeralSession();
+    };
+    window.addEventListener("pagehide", handlePageHide);
+    window.addEventListener("beforeunload", clearEphemeralSession);
+    return () => {
+      window.removeEventListener("pagehide", handlePageHide);
+      window.removeEventListener("beforeunload", clearEphemeralSession);
+    };
   }, []);
 
   // Listen for auth state changes (Supabase mode)
@@ -376,6 +388,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setLoading(false);
       }
 
+      // Mark initial session as restored — prevents race condition with onAuthStateChange
+      initialSessionRestoredRef.current = true;
+
       // Listen for auth state changes
       const { data: { subscription } } = client.auth.onAuthStateChange(async (event, session) => {
         if (event === "INITIAL_SESSION") return;
@@ -383,6 +398,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (event === "PASSWORD_RECOVERY") return;
         // During signup, suppress SIGNED_IN to prevent premature redirect
         if (signingUpRef.current && event === "SIGNED_IN") return;
+        // During initial load, skip SIGNED_IN/TOKEN_REFRESHED if getSession already handled it
+        // This prevents a race where onAuthStateChange fires before getSession finishes profile loading
+        if (!initialSessionRestoredRef.current && (event === "SIGNED_IN" || event === "TOKEN_REFRESHED")) return;
         // On the reset-password page, allow unverified users to maintain their session
         const isOnResetPage = window.location.pathname === "/reset-password";
         if ((event === "SIGNED_IN" || event === "TOKEN_REFRESHED") && session) {
@@ -435,6 +453,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(newUser);
       return { success: true };
     }
+
+    // Server-side signup rate limiting (prevents spam signups from same IP)
+    try {
+      const rlCheck = await fetch("/api/auth-check", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "check", email: email.toLowerCase().trim() }),
+      });
+      if (rlCheck.status === 429) {
+        return { success: false, error: "Too many signup attempts. Please try again in a few minutes." };
+      }
+    } catch { /* rate limit check failed, proceed */ }
+
     const client = await getSupabase();
     const metadata: Record<string, string> = { name };
 
@@ -458,6 +489,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { success: false, error: "User already registered" };
       }
 
+      // Record signup attempt server-side (fire-and-forget)
+      fetch("/api/auth-check", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "signup", email: email.toLowerCase().trim() }),
+      }).catch(() => {});
+
       // Send verification email via Resend API (don't block signup on failure)
       const userId = data?.user?.id;
       try {
@@ -467,6 +505,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           body: JSON.stringify({ email, name, userId }),
         });
       } catch { /* verification email is best-effort */ }
+
+      // Store fingerprint now so it's ready for first login after email verification
+      storeSessionFingerprint();
 
       // Sign out so user must verify email before using the app
       await client.auth.signOut();
@@ -479,7 +520,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = useCallback(async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
-    // Check client-side rate limit
+    // Check client-side rate limit (fast path — also backed by server-side check below)
     const lockStatus = isLoginLocked();
     if (lockStatus.locked) {
       const mins = Math.ceil(lockStatus.remainingSeconds / 60);
@@ -491,13 +532,49 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(newUser);
       return { success: true };
     }
+
+    // Server-side rate limit check (cannot be bypassed by clearing localStorage)
+    try {
+      const rlCheck = await fetch("/api/auth-check", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "check", email: email.toLowerCase().trim() }),
+      });
+      if (rlCheck.status === 429) {
+        const rlData = await rlCheck.json();
+        setLockout(); // sync client-side lockout
+        return { success: false, error: rlData.message || "Too many failed attempts. Please try again in 5 minutes." };
+      }
+    } catch { /* server rate limit check failed, proceed with login */ }
+
     const client = await getSupabase();
     const { data, error } = await client.auth.signInWithPassword({ email, password });
     if (error) {
-      // Track failed attempt
+      // Track failed attempt (client + server)
       const attempts = getLoginAttempts() + 1;
       setLoginAttempts(attempts);
       logAuditEvent("login_failed", { email, reason: error.message, attempt: attempts });
+
+      // Report failure to server-side rate limiter
+      try {
+        const failRes = await fetch("/api/auth-check", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "fail", email: email.toLowerCase().trim() }),
+        });
+        if (failRes.status === 429) {
+          setLockout();
+          logAuditEvent("login_locked", { email, attempts });
+          track("login_locked", { attempts });
+          return { success: false, error: "Too many failed attempts. Please try again in 5 minutes." };
+        }
+        const failData = await failRes.json().catch(() => ({}));
+        if (failData.locked) {
+          setLockout();
+          return { success: false, error: "Too many failed attempts. Please try again in 5 minutes." };
+        }
+      } catch { /* server report failed, fall through to client-side logic */ }
+
       if (attempts >= MAX_LOGIN_ATTEMPTS) {
         setLockout();
         logAuditEvent("login_locked", { email, attempts });
@@ -509,7 +586,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { success: false, error: "Email not confirmed" };
       }
       if (error.message === "Invalid login credentials") {
-        return { success: false, error: `Invalid email or password. Check your credentials or reset your password. (${MAX_LOGIN_ATTEMPTS - attempts} attempt${MAX_LOGIN_ATTEMPTS - attempts !== 1 ? "s" : ""} remaining)` };
+        const remaining = MAX_LOGIN_ATTEMPTS - attempts;
+        return { success: false, error: `Invalid email or password. Check your credentials or reset your password. (${remaining} attempt${remaining !== 1 ? "s" : ""} remaining)` };
       }
       return { success: false, error: error.message };
     }
@@ -524,9 +602,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { success: false, error: "Email not confirmed" };
     }
 
-    // Successful login — clear lockout counter and store session fingerprint
+    // Successful login — clear lockout counter (client + server) and store session fingerprint
     clearLoginLockout();
     storeSessionFingerprint();
+    // Clear server-side rate limit (fire-and-forget)
+    fetch("/api/auth-check", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "success", email: email.toLowerCase().trim() }),
+    }).catch(() => {});
     logAuditEvent("login_success", { email, method: "email" });
     track("login_success");
     return { success: true };
@@ -546,13 +630,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { success: true };
   }, []);
 
+  // Broadcast helpers — defined before logout so they can be referenced
+  const broadcastLogout = useCallback(() => {
+    try {
+      if (typeof BroadcastChannel !== "undefined") {
+        const channel = new BroadcastChannel("hirestepx_auth");
+        channel.postMessage({ type: "logout" });
+        channel.close();
+      }
+    } catch { /* BroadcastChannel unavailable */ }
+  }, []);
+
+  const broadcastSessionRefreshed = useCallback(() => {
+    try {
+      if (typeof BroadcastChannel !== "undefined") {
+        const channel = new BroadcastChannel("hirestepx_auth");
+        channel.postMessage({ type: "session_refreshed" });
+        channel.close();
+      }
+    } catch { /* BroadcastChannel unavailable */ }
+  }, []);
+
   const logout = useCallback(async () => {
     logAuditEvent("logout", { userId: user?.id });
     if (supabaseConfigured) { const client = await getSupabase(); await client.auth.signOut(); }
     track("logout");
     setUser(null);
     clearLastRoute();
-  }, [user?.id]);
+    broadcastLogout(); // Sync logout across all open tabs
+  }, [user?.id, broadcastLogout]);
 
   const updateUser = useCallback(async (updates: Partial<User>) => {
     let currentId: string | null = null;
@@ -592,6 +698,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await upsertProfile(profileUpdates);
   }, []);
 
+  // Multi-tab session coordination via BroadcastChannel
+  // Prevents multiple tabs from refreshing simultaneously and syncs logout across tabs
+  useEffect(() => {
+    if (!supabaseConfigured || typeof BroadcastChannel === "undefined") return;
+    const channel = new BroadcastChannel("hirestepx_auth");
+
+    const handleMessage = async (event: MessageEvent) => {
+      const { type } = event.data || {};
+      if (type === "logout") {
+        // Another tab logged out — sync this tab
+        setUser(null);
+        setSessionExpiryWarning(null);
+      } else if (type === "session_refreshed") {
+        // Another tab refreshed the session — clear any expiry warning here
+        setSessionExpiryWarning(null);
+      }
+    };
+
+    channel.addEventListener("message", handleMessage);
+    return () => { channel.removeEventListener("message", handleMessage); channel.close(); };
+  }, []);
+
   // Session expiry warning — check JWT exp every 60s, warn 5min before expiry
   const [sessionExpiryWarning, setSessionExpiryWarning] = useState<string | null>(null);
   useEffect(() => {
@@ -614,6 +742,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setSessionExpiryWarning(null);
           setUser(null);
           await client.auth.signOut().catch(() => {});
+          broadcastLogout();
         } else if (remaining <= SESSION_WARN_MS) {
           // Approaching expiry — try to refresh
           const mins = Math.ceil(remaining / 60000);
@@ -623,6 +752,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setSessionExpiryWarning(`Session expires in ${mins} min. Save your work.`);
           } else {
             setSessionExpiryWarning(null); // Refresh succeeded
+            broadcastSessionRefreshed(); // Notify other tabs
           }
         } else {
           setSessionExpiryWarning(null);
@@ -634,7 +764,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     checkExpiry();
     const interval = setInterval(checkExpiry, 60_000);
     return () => clearInterval(interval);
-  }, [user]);
+  }, [user, broadcastLogout, broadcastSessionRefreshed]);
 
   const resetPassword = useCallback(async (email: string): Promise<{ success: boolean; error?: string }> => {
     try {

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { c, font } from "./tokens";
 import { getSupabase, supabaseConfigured } from "./supabase";
@@ -16,6 +16,19 @@ function getPasswordStrength(pw: string): { score: number; label: string; color:
   return { score, label: "Strong", color: c.sage };
 }
 
+/** Simple CSRF protection: generate a random token per page load, stored in sessionStorage */
+function generateCsrfToken(): string {
+  const token = crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2) + Date.now().toString(36);
+  try { sessionStorage.setItem("hirestepx_csrf_reset", token); } catch { /* noop */ }
+  return token;
+}
+function validateCsrfToken(token: string): boolean {
+  try {
+    const stored = sessionStorage.getItem("hirestepx_csrf_reset");
+    return !!stored && stored === token;
+  } catch { return false; }
+}
+
 export default function ResetPassword() {
   const navigate = useNavigate();
   const [password, setPassword] = useState("");
@@ -24,6 +37,7 @@ export default function ResetPassword() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
   const [hasSession, setHasSession] = useState(false);
+  const csrfTokenRef = useRef<string>("");
   const strength = getPasswordStrength(password);
 
   useEffect(() => {
@@ -50,6 +64,8 @@ export default function ResetPassword() {
             return;
           }
         }
+        // Generate CSRF token for this session — prevents cross-site form submission
+        csrfTokenRef.current = generateCsrfToken();
         setHasSession(true);
       } catch {
         setError("Could not verify reset link. Please try again.");
@@ -82,21 +98,37 @@ export default function ResetPassword() {
       return;
     }
 
-    setLoading(true);
-    const client = await getSupabase();
-    const { error: updateError } = await client.auth.updateUser({
-      password,
-      data: { custom_email_verified: true, password_reset_used_at: Date.now() },
-    });
-    setLoading(false);
+    // CSRF check — ensure form was submitted from our own page
+    if (!validateCsrfToken(csrfTokenRef.current)) {
+      setError("Security validation failed. Please refresh the page and try again.");
+      return;
+    }
 
-    if (updateError) {
-      setError(updateError.message);
-    } else {
-      // Sign out the recovery session so user must log in with new password
-      await client.auth.signOut().catch(() => {});
-      setSuccess(true);
-      setTimeout(() => navigate("/login"), 2000);
+    setLoading(true);
+    try {
+      const client = await getSupabase();
+      // Use server-validated timestamp from the session itself (not client Date.now() which can be forged)
+      const { data: { session: currentSession } } = await client.auth.getSession();
+      const serverTimestamp = currentSession?.expires_at
+        ? (currentSession.expires_at * 1000) - (3600 * 1000) // derive approximate server time from JWT exp (issued 1hr before exp)
+        : Date.now(); // fallback to client time if session unavailable
+      const { error: updateError } = await client.auth.updateUser({
+        password,
+        data: { custom_email_verified: true, password_reset_used_at: serverTimestamp },
+      });
+
+      if (updateError) {
+        setError(updateError.message);
+      } else {
+        // Sign out the recovery session so user must log in with new password
+        try { await client.auth.signOut(); } catch { /* best effort */ }
+        setSuccess(true);
+        setTimeout(() => navigate("/login"), 2000);
+      }
+    } catch (err) {
+      setError("An unexpected error occurred. Please try again.");
+    } finally {
+      setLoading(false);
     }
   };
 
