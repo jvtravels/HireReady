@@ -28,15 +28,23 @@ export function generateVerifyToken(email: string, expiresAt?: number): string {
 }
 
 // ─── MX Record Validation (email deliverability pre-check) ──────────────────
+const KNOWN_GOOD_DOMAINS = new Set([
+  "gmail.com", "yahoo.com", "outlook.com", "hotmail.com", "icloud.com",
+  "protonmail.com", "mail.com", "aol.com", "zoho.com", "yandex.com",
+  "live.com", "msn.com", "proton.me", "pm.me", "hey.com",
+]);
+
 async function validateMxRecord(email: string): Promise<boolean> {
   try {
-    const domain = email.split("@")[1];
+    const domain = email.split("@")[1]?.toLowerCase();
     if (!domain) return false;
+    // Skip DNS lookup for well-known providers
+    if (KNOWN_GOOD_DOMAINS.has(domain)) return true;
     const records = await resolve(domain, "MX");
     return Array.isArray(records) && records.length > 0;
   } catch {
-    // DNS lookup failed — domain likely doesn't accept email
-    return false;
+    // Fail OPEN: if DNS lookup fails (e.g., restricted serverless env), allow the email through
+    return true;
   }
 }
 
@@ -578,8 +586,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const normalizedEmail = email.toLowerCase().trim();
 
-  // MX record validation — check domain can receive email (skip for password-changed notifications)
-  if (action !== "password-changed") {
+  // MX record validation — check domain can receive email
+  // Skip for: reset (don't reveal if email exists), password-changed (notification only), verify-reminder
+  if (!["reset", "password-changed", "verify-reminder"].includes(action)) {
     const hasMx = await validateMxRecord(normalizedEmail);
     if (!hasMx) {
       return res.status(400).json({ error: "This email domain does not appear to accept mail. Please use a valid email address." });
