@@ -478,13 +478,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const resetPassword = useCallback(async (email: string): Promise<{ success: boolean; error?: string }> => {
-    if (!supabaseConfigured) return { success: false, error: "Password reset requires Supabase configuration" };
-    const client = await getSupabase();
-    const { error } = await client.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reset-password`,
-    });
-    if (error) return { success: false, error: error.message };
-    return { success: true };
+    try {
+      const res = await fetch("/api/send-reset", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.toLowerCase().trim() }),
+      });
+      if (res.status === 429) return { success: false, error: "Too many reset requests. Please try again later." };
+      if (!res.ok) return { success: false, error: "Failed to send reset email. Try again or contact support@hirestepx.com" };
+      return { success: true };
+    } catch {
+      return { success: false, error: "Connection error. Check your internet and try again." };
+    }
   }, []);
 
   return (
