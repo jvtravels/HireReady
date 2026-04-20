@@ -241,9 +241,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (session) {
           // Block unverified email users — sign them out immediately
           // Google OAuth users are always verified; email/password users must pass our custom verification
+          // Exception: allow sessions on /reset-password so users can complete password reset
           const isGoogleUser = session.user.app_metadata?.provider === "google" || session.user.app_metadata?.providers?.includes("google");
           const customVerified = session.user.user_metadata?.custom_email_verified === true;
-          if (!isGoogleUser && !customVerified) {
+          const isOnResetPage = window.location.pathname === "/reset-password";
+          if (!isGoogleUser && !customVerified && !isOnResetPage) {
             console.warn("[auth] unverified email session found — signing out");
             setUser(null);
             await client.auth.signOut().catch(() => {});
@@ -292,13 +294,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Listen for auth state changes
       const { data: { subscription } } = client.auth.onAuthStateChange(async (event, session) => {
         if (event === "INITIAL_SESSION") return;
+        // Allow PASSWORD_RECOVERY events — user is resetting their password
+        if (event === "PASSWORD_RECOVERY") return;
         // During signup, suppress SIGNED_IN to prevent premature redirect
         if (signingUpRef.current && event === "SIGNED_IN") return;
+        // On the reset-password page, allow unverified users to maintain their session
+        const isOnResetPage = window.location.pathname === "/reset-password";
         if ((event === "SIGNED_IN" || event === "TOKEN_REFRESHED") && session) {
-          // Block unverified email users from establishing a session
+          // Block unverified email users from establishing a session (except on reset-password page)
           const isGoogleProvider = session.user.app_metadata?.provider === "google" || session.user.app_metadata?.providers?.includes("google");
           const customVerifiedEvent = session.user.user_metadata?.custom_email_verified === true;
-          if (!isGoogleProvider && !customVerifiedEvent) {
+          if (!isGoogleProvider && !customVerifiedEvent && !isOnResetPage) {
             console.warn("[auth] onAuthStateChange: unverified email — signing out");
             setUser(null);
             await client.auth.signOut().catch(() => {});

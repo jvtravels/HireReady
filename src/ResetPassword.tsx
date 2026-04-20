@@ -48,6 +48,18 @@ export default function ResetPassword() {
       setError("Password must be at least 8 characters.");
       return;
     }
+    if (!/[A-Z]/.test(password)) {
+      setError("Password must contain at least one uppercase letter.");
+      return;
+    }
+    if (!/[0-9]/.test(password)) {
+      setError("Password must contain at least one number.");
+      return;
+    }
+    if (!/[^A-Za-z0-9]/.test(password)) {
+      setError("Password must contain at least one special character.");
+      return;
+    }
     if (password !== confirm) {
       setError("Passwords do not match.");
       return;
@@ -55,14 +67,17 @@ export default function ResetPassword() {
 
     setLoading(true);
     const client = await getSupabase();
-    const { error: updateError } = await client.auth.updateUser({ password });
+    const { error: updateError } = await client.auth.updateUser({
+      password,
+      data: { custom_email_verified: true },
+    });
     setLoading(false);
 
     if (updateError) {
       setError(updateError.message);
     } else {
       setSuccess(true);
-      setTimeout(() => navigate("/dashboard"), 2000);
+      setTimeout(() => navigate("/login"), 2000);
     }
   };
 
@@ -94,7 +109,7 @@ export default function ResetPassword() {
             textAlign: "center",
           }}>
             <p style={{ color: c.sage, fontSize: 14, fontWeight: 500 }}>Password updated successfully!</p>
-            <p style={{ color: c.stone, fontSize: 12, marginTop: 4 }}>Redirecting to dashboard...</p>
+            <p style={{ color: c.stone, fontSize: 12, marginTop: 4 }}>Redirecting to login...</p>
           </div>
         ) : (
           <form onSubmit={handleSubmit}>
