@@ -370,7 +370,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { success: true };
     }
     const client = await getSupabase();
-    const { error } = await client.auth.signInWithPassword({ email, password });
+    const { data, error } = await client.auth.signInWithPassword({ email, password });
     if (error) {
       track("login_error", { reason: error.message });
       if (error.message === "Email not confirmed") {
@@ -381,6 +381,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       return { success: false, error: error.message };
     }
+
+    // Block login if email is not verified (Supabase may allow sign-in even without confirmation)
+    if (data?.user && !data.user.email_confirmed_at) {
+      // Sign out immediately — user should not have a session
+      await client.auth.signOut();
+      setUser(null);
+      return { success: false, error: "Email not confirmed" };
+    }
+
     track("login_success");
     return { success: true };
   }, []);
