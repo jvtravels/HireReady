@@ -20,6 +20,62 @@ export function hasStoredSession(): boolean {
   return false;
 }
 
+/* ─── Login Rate Limiting (client-side) ─── */
+const LOGIN_ATTEMPTS_KEY = "hirestepx_login_attempts";
+const LOGIN_LOCKOUT_KEY = "hirestepx_login_lockout";
+const MAX_LOGIN_ATTEMPTS = 5;
+const LOCKOUT_DURATION_MS = 5 * 60 * 1000; // 5 minutes
+
+function getLoginAttempts(): number {
+  try { return parseInt(localStorage.getItem(LOGIN_ATTEMPTS_KEY) || "0", 10); } catch { return 0; }
+}
+function setLoginAttempts(n: number) {
+  try { localStorage.setItem(LOGIN_ATTEMPTS_KEY, String(n)); } catch { /* expected */ }
+}
+function getLockoutUntil(): number {
+  try { return parseInt(localStorage.getItem(LOGIN_LOCKOUT_KEY) || "0", 10); } catch { return 0; }
+}
+function setLockout() {
+  try { localStorage.setItem(LOGIN_LOCKOUT_KEY, String(Date.now() + LOCKOUT_DURATION_MS)); } catch { /* expected */ }
+}
+function clearLoginLockout() {
+  try { localStorage.removeItem(LOGIN_ATTEMPTS_KEY); localStorage.removeItem(LOGIN_LOCKOUT_KEY); } catch { /* expected */ }
+}
+function isLoginLocked(): { locked: boolean; remainingSeconds: number } {
+  const until = getLockoutUntil();
+  if (until && Date.now() < until) return { locked: true, remainingSeconds: Math.ceil((until - Date.now()) / 1000) };
+  if (until && Date.now() >= until) clearLoginLockout(); // expired lockout
+  return { locked: false, remainingSeconds: 0 };
+}
+
+/* ─── Session Fingerprint (detect session hijacking) ─── */
+const SESSION_FP_KEY = "hirestepx_session_fp";
+
+function computeSessionFingerprint(): string {
+  // Simple fingerprint from User-Agent + screen dimensions + timezone
+  const raw = [
+    navigator.userAgent,
+    `${screen.width}x${screen.height}`,
+    Intl.DateTimeFormat().resolvedOptions().timeZone,
+  ].join("|");
+  // Simple hash (djb2)
+  let hash = 5381;
+  for (let i = 0; i < raw.length; i++) hash = ((hash << 5) + hash) + raw.charCodeAt(i);
+  return (hash >>> 0).toString(36);
+}
+
+function storeSessionFingerprint() {
+  try { localStorage.setItem(SESSION_FP_KEY, computeSessionFingerprint()); } catch { /* expected */ }
+}
+
+function validateSessionFingerprint(): boolean {
+  try {
+    const stored = localStorage.getItem(SESSION_FP_KEY);
+    if (!stored) return true; // first time — no fingerprint yet
+    return stored === computeSessionFingerprint();
+  } catch { return true; }
+}
+
 /** Local fallback for hasCompletedOnboarding (survives refresh even if Supabase column missing) */
 const ONBOARDING_DONE_KEY = "hirestepx_onboarding_done";
 function getLocalOnboardingDone(userId: string): boolean {
@@ -239,6 +295,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         const { data: { session } } = await client.auth.getSession();
         if (session) {
+          // Session fingerprint check — detect possible hijacking
+          if (!validateSessionFingerprint()) {
+            console.warn("[auth] session fingerprint mismatch — possible hijack, signing out");
+            setUser(null);
+            await client.auth.signOut().catch(() => {});
+            clearTimeout(safetyTimer);
+            setLoading(false);
+            return;
+          }
           // Block unverified email users — sign them out immediately
           // Google OAuth users are always verified; email/password users must pass our custom verification
           // Exception: allow sessions on /reset-password so users can complete password reset
@@ -311,6 +376,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setLoading(false);
             return;
           }
+          // Store session fingerprint for hijack detection
+          storeSessionFingerprint();
           // Persist Google provider token for Calendar API access
           if (session.provider_token) {
             try { sessionStorage.setItem("hirestepx_google_token", session.provider_token); } catch { /* expected: sessionStorage may be unavailable */ }
@@ -392,6 +459,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = useCallback(async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
+    // Check client-side rate limit
+    const lockStatus = isLoginLocked();
+    if (lockStatus.locked) {
+      const mins = Math.ceil(lockStatus.remainingSeconds / 60);
+      return { success: false, error: `Too many failed attempts. Please try again in ${mins} minute${mins > 1 ? "s" : ""}.` };
+    }
+
     if (!supabaseConfigured) {
       const newUser: User = { id: Date.now().toString(36), name: email.split("@")[0], email, targetRole: "", resumeFileName: null, hasCompletedOnboarding: false, emailVerified: false };
       setUser(newUser);
@@ -400,12 +474,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const client = await getSupabase();
     const { data, error } = await client.auth.signInWithPassword({ email, password });
     if (error) {
-      track("login_error", { reason: error.message });
+      // Track failed attempt
+      const attempts = getLoginAttempts() + 1;
+      setLoginAttempts(attempts);
+      if (attempts >= MAX_LOGIN_ATTEMPTS) {
+        setLockout();
+        track("login_locked", { attempts });
+        return { success: false, error: "Too many failed attempts. Please try again in 5 minutes." };
+      }
+      track("login_error", { reason: error.message, attempt: attempts });
       if (error.message === "Email not confirmed") {
         return { success: false, error: "Email not confirmed" };
       }
       if (error.message === "Invalid login credentials") {
-        return { success: false, error: "Invalid email or password. Check your credentials or reset your password." };
+        return { success: false, error: `Invalid email or password. Check your credentials or reset your password. (${MAX_LOGIN_ATTEMPTS - attempts} attempt${MAX_LOGIN_ATTEMPTS - attempts !== 1 ? "s" : ""} remaining)` };
       }
       return { success: false, error: error.message };
     }
@@ -420,6 +502,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { success: false, error: "Email not confirmed" };
     }
 
+    // Successful login — clear lockout counter and store session fingerprint
+    clearLoginLockout();
+    storeSessionFingerprint();
     track("login_success");
     return { success: true };
   }, []);

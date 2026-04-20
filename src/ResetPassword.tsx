@@ -32,27 +32,29 @@ export default function ResetPassword() {
       return;
     }
     // Supabase automatically picks up the recovery token from the URL hash
-    getSupabase().then(c => c.auth.getSession()).then(({ data: { session } }) => {
-      if (!session) {
-        setError("Invalid or expired reset link. Please request a new one.");
-        return;
-      }
-      // Check if this reset link was already used
-      const usedAt = session.user.user_metadata?.password_reset_used_at;
-      if (usedAt && typeof usedAt === "number") {
-        // If password was reset within the last 24 hours, block reuse
-        const elapsed = Date.now() - usedAt;
-        if (elapsed < 24 * 60 * 60 * 1000) {
-          setError("This reset link has already been used. Please request a new one if needed.");
-          // Sign out the stale recovery session
-          c.auth.signOut().catch(() => {});
+    (async () => {
+      try {
+        const client = await getSupabase();
+        const { data: { session } } = await client.auth.getSession();
+        if (!session) {
+          setError("Invalid or expired reset link. Please request a new one.");
           return;
         }
+        // Check if this reset link was already used
+        const usedAt = session.user.user_metadata?.password_reset_used_at;
+        if (usedAt && typeof usedAt === "number") {
+          const elapsed = Date.now() - usedAt;
+          if (elapsed < 24 * 60 * 60 * 1000) {
+            setError("This reset link has already been used. Please request a new one if needed.");
+            await client.auth.signOut().catch(() => {});
+            return;
+          }
+        }
+        setHasSession(true);
+      } catch {
+        setError("Could not verify reset link. Please try again.");
       }
-      setHasSession(true);
-    }).catch(() => {
-      setError("Could not verify reset link. Please try again.");
-    });
+    })();
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {

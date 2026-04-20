@@ -289,6 +289,18 @@ async function handleVerify(req: VercelRequest, res: VercelResponse, email: stri
   }
 }
 
+// ─── Origin validation ──────────────────────────────────────────────────────
+function isAllowedOrigin(origin: string): boolean {
+  if (!origin) return false;
+  try {
+    const hostname = new URL(origin).hostname;
+    if (hostname === "localhost" || hostname === "127.0.0.1") return true;
+    if (hostname === "hirestepx.com" || hostname.endsWith(".hirestepx.com")) return true;
+    if (hostname.endsWith(".vercel.app")) return true;
+  } catch { /* invalid URL */ }
+  return false;
+}
+
 // ─── Main Handler (routes to verify or reset) ──────────────────────────────
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // CORS
@@ -300,6 +312,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
   if (req.method === "OPTIONS") { res.status(204).end(); return; }
   if (req.method !== "POST") { res.status(405).json({ error: "Method not allowed" }); return; }
+
+  // Block requests from unknown origins (prevents external abuse)
+  if (origin && !isAllowedOrigin(origin)) {
+    return res.status(403).json({ error: "Forbidden" });
+  }
 
   const { email, name, userId, action } = req.body || {};
   if (!email || typeof email !== "string") {
