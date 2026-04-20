@@ -1,8 +1,5 @@
 import { useEffect, useState, lazy, Suspense, useRef } from "react";
-import { useNavigate } from "react-router-dom";
-
 import { c } from "./tokens";
-import { useAuth } from "./AuthContext";
 import { useSEO, webAppJsonLd, faqJsonLd } from "./useSEO";
 import { LANDING_FAQS } from "./landingData";
 import {
@@ -27,15 +24,7 @@ const LazyPricing = lazy(() => import("./landing/PricingSection").then(m => ({ d
 const LazyFooter = lazy(() => import("./landing/BottomSections").then(m => ({ default: m.Footer })));
 
 export default function App() {
-  const { isLoggedIn, user, loading } = useAuth();
-  const navigate = useNavigate();
-  // Redirect logged-in users who haven't completed onboarding
-  useEffect(() => {
-    if (loading || !isLoggedIn) return;
-    if (user && !user.hasCompletedOnboarding) {
-      navigate("/onboarding", { replace: true });
-    }
-  }, [isLoggedIn, loading, user, navigate]);
+
 
   useSEO({
     title: "HireStepX — AI Mock Interviews & Career Coaching for India",
