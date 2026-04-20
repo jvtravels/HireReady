@@ -1079,7 +1079,7 @@ export function useInterviewEngine() {
 
       let fallbackText: string;
       let scoreNote: string;
-      let waitForUser = true;
+      const waitForUser = true;
       if (userWalkAway) {
         // Distinct walk-away: hiring manager tries to retain with strategic pause
         fallbackText = band

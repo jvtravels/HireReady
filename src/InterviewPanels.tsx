@@ -701,12 +701,13 @@ export const NegotiationCoachingCard = memo(function NegotiationCoachingCard({ o
 
       {/* Warm-up calibration: target salary input */}
       <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-        <label style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+        <label htmlFor="target-salary-input" style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, textTransform: "uppercase", letterSpacing: "0.05em" }}>
           Your target salary (optional)
         </label>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
           <span style={{ fontFamily: font.ui, fontSize: 13, color: c.stone }}>₹</span>
           <input
+            id="target-salary-input"
             type="number"
             placeholder="e.g. 25"
             value={targetInput}
@@ -823,7 +824,7 @@ export const DealSummaryCard = memo(function DealSummaryCard({ transcript, negot
   // 1. Clauses where AI quotes the candidate ("you asked", "you mentioned", "your expectation", "you're expecting")
   // 2. Gap/difference/hike references ("₹34 LPA gap", "₹10 LPA difference", "₹15 LPA hike")
   // Strip candidate-reference clauses: stop at "and/but/," boundaries to avoid eating the whole sentence
-  const candidateQuoteRe = /(?:(?:you(?:'re)?|your)\s+(?:asked?|mentioned?|wanted?|said|expect\w*|were\s+looking|requested|looking\s+for|targeting|counter\w*)[^.!?,;\-]*?)(?=[.,;!?\-]|\s+(?:and|but|however|we|I|let|our)\b|$)/gi;
+  const candidateQuoteRe = /(?:(?:you(?:'re)?|your)\s+(?:asked?|mentioned?|wanted?|said|expect\w*|were\s+looking|requested|looking\s+for|targeting|counter\w*)[^.!?,;-]*?)(?=[.,;!?-]|\s+(?:and|but|however|we|I|let|our)\b|$)/gi;
   const gapContextRe = /₹?\s*\d+(?:[,.]\d+)*\s*(?:l?pa|lakh|lakhs|[lL]\b)[^.!?,;]*?(?:gap|difference|hike|increase|raise|jump|more\s+than)/gi;
   // Strip numbers that appear BEFORE a candidate-reference pattern (e.g. "₹50 LPA that you mentioned")
   const numBeforeQuoteRe = /₹?\s*\d+(?:[,.]\d+)*\s*(?:l?pa|lakh|lakhs|[lL]\b)\s*(?:that\s+|which\s+)?(?:you(?:'re)?|your)\s+(?:asked?|mentioned?|wanted?|expect\w*|were\s+looking|requested|targeting|said|looking)/gi;
