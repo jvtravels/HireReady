@@ -2,7 +2,7 @@ import { useEffect, useState, lazy, Suspense, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { c } from "./tokens";
-import { useAuth, hasStoredSession, getLastRoute } from "./AuthContext";
+import { useAuth } from "./AuthContext";
 import { useSEO, webAppJsonLd, faqJsonLd } from "./useSEO";
 import { LANDING_FAQS } from "./landingData";
 import {
@@ -29,18 +29,11 @@ const LazyFooter = lazy(() => import("./landing/BottomSections").then(m => ({ de
 export default function App() {
   const { isLoggedIn, user, loading } = useAuth();
   const navigate = useNavigate();
-  const [hadStoredSession] = useState(() => hasStoredSession());
-
-  // Redirect logged-in users to their last route, or dashboard/onboarding
+  // Redirect logged-in users who haven't completed onboarding
   useEffect(() => {
     if (loading || !isLoggedIn) return;
-    let lastRoute = getLastRoute();
-    // Never restore transient routes — send to dashboard instead
-    if (lastRoute?.startsWith("/interview")) lastRoute = null;
     if (user && !user.hasCompletedOnboarding) {
-      navigate(lastRoute?.startsWith("/onboarding") ? lastRoute : "/onboarding", { replace: true });
-    } else {
-      navigate(lastRoute && lastRoute !== "/" ? lastRoute : "/dashboard", { replace: true });
+      navigate("/onboarding", { replace: true });
     }
   }, [isLoggedIn, loading, user, navigate]);
 
@@ -64,12 +57,6 @@ export default function App() {
     observer.observe(el);
     return () => observer.disconnect();
   }, []);
-
-  // While auth restores for returning users, show a blank screen matching the
-  // app background instead of flashing the landing page.
-  if (loading && hadStoredSession) {
-    return <div style={{ minHeight: "100vh", background: c.obsidian }} />;
-  }
 
   return (
     <div style={{ minHeight: "100vh", background: c.obsidian, color: c.ivory, position: "relative", overflow: "hidden" }}>

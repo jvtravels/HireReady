@@ -7,7 +7,7 @@ export function Nav() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
-  const { isLoggedIn, logout } = useAuth();
+  const { isLoggedIn, loading, logout } = useAuth();
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 40);
     window.addEventListener("scroll", onScroll, { passive: true });
@@ -66,7 +66,9 @@ export function Nav() {
             {item}
           </a>
         ))}
-        {isLoggedIn ? (
+        {loading ? (
+          <div style={{ width: 140, height: 36 }} />
+        ) : isLoggedIn ? (
           <>
             <Link to="/dashboard" className="premium-btn" style={{
               fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: c.obsidian,
@@ -140,7 +142,7 @@ export function Nav() {
             </a>
           ))}
           <div style={{ width: 40, height: 1, background: c.border, margin: "4px 0" }} />
-          {isLoggedIn ? (
+          {loading ? null : isLoggedIn ? (
             <>
               <Link to="/dashboard" style={{ fontFamily: font.ui, fontSize: 18, fontWeight: 600, color: c.gilt, textDecoration: "none" }}>Dashboard</Link>
               <button onClick={() => { logout(); setMobileOpen(false); }} style={{ fontFamily: font.ui, fontSize: 16, color: c.stone, background: "none", border: "none", cursor: "pointer" }}>Log out</button>
