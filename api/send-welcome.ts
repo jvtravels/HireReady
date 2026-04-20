@@ -431,6 +431,102 @@ async function handleVerify(req: VercelRequest, res: VercelResponse, email: stri
   }
 }
 
+// ─── Auth Rate Limiting (merged from auth-check.ts to stay within Vercel Hobby limit) ─
+const AUTH_MAX_ATTEMPTS = 5;
+const AUTH_MAX_SIGNUP = 5;
+const AUTH_LOCKOUT_SECONDS = 300;
+const AUTH_SIGNUP_WINDOW = 3600;
+
+async function getRedisValue(key: string): Promise<number> {
+  const UPSTASH_URL = process.env.UPSTASH_REDIS_REST_URL || "";
+  const UPSTASH_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN || "";
+  if (!UPSTASH_URL || !UPSTASH_TOKEN) return 0;
+  try {
+    const r = await fetch(`${UPSTASH_URL}/get/${encodeURIComponent(key)}`, {
+      headers: { Authorization: `Bearer ${UPSTASH_TOKEN}` },
+    });
+    if (!r.ok) return 0;
+    const d = await r.json();
+    return parseInt(d.result || "0", 10);
+  } catch { return 0; }
+}
+
+async function incrRedisKey(key: string, ttl: number): Promise<number> {
+  const UPSTASH_URL = process.env.UPSTASH_REDIS_REST_URL || "";
+  const UPSTASH_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN || "";
+  if (!UPSTASH_URL || !UPSTASH_TOKEN) return 0;
+  try {
+    const r = await fetch(`${UPSTASH_URL}/pipeline`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${UPSTASH_TOKEN}`, "Content-Type": "application/json" },
+      body: JSON.stringify([["INCR", key], ["EXPIRE", key, ttl]]),
+    });
+    if (!r.ok) return 0;
+    const results = await r.json();
+    return results[0]?.result || 0;
+  } catch { return 0; }
+}
+
+async function delRedisKey(key: string): Promise<void> {
+  const UPSTASH_URL = process.env.UPSTASH_REDIS_REST_URL || "";
+  const UPSTASH_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN || "";
+  if (!UPSTASH_URL || !UPSTASH_TOKEN) return;
+  try {
+    await fetch(`${UPSTASH_URL}/del/${encodeURIComponent(key)}`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${UPSTASH_TOKEN}` },
+    });
+  } catch { /* best effort */ }
+}
+
+async function handleAuthCheck(req: VercelRequest, res: VercelResponse, action: string, email?: string) {
+  const ip = (req.headers["x-forwarded-for"] as string || "127.0.0.1").split(",")[0].trim();
+  const normalizedEmail = (email || "").toLowerCase().trim();
+  const ipKey = `rl:login:ip:${ip}`;
+  const emailKey = normalizedEmail ? `rl:login:email:${normalizedEmail}` : "";
+
+  if (action === "check") {
+    const ipAttempts = await getRedisValue(ipKey);
+    const emailAttempts = emailKey ? await getRedisValue(emailKey) : 0;
+    if (ipAttempts >= AUTH_MAX_ATTEMPTS || emailAttempts >= AUTH_MAX_ATTEMPTS) {
+      return res.status(429).json({ locked: true, message: "Too many failed login attempts. Please try again in 5 minutes.", remainingSeconds: AUTH_LOCKOUT_SECONDS });
+    }
+    const signupKey = `rl:signup:ip:${ip}`;
+    const signupAttempts = await getRedisValue(signupKey);
+    if (signupAttempts >= AUTH_MAX_SIGNUP) {
+      return res.status(429).json({ locked: true, message: "Too many signup attempts. Please try again later.", remainingSeconds: AUTH_SIGNUP_WINDOW });
+    }
+    return res.status(200).json({ locked: false, attempts: Math.max(ipAttempts, emailAttempts) });
+  }
+
+  if (action === "signup") {
+    const signupKey = `rl:signup:ip:${ip}`;
+    const count = await incrRedisKey(signupKey, AUTH_SIGNUP_WINDOW);
+    if (count > AUTH_MAX_SIGNUP) {
+      return res.status(429).json({ locked: true, message: "Too many signup attempts. Please try again later." });
+    }
+    return res.status(200).json({ ok: true });
+  }
+
+  if (action === "fail") {
+    const ipCount = await incrRedisKey(ipKey, AUTH_LOCKOUT_SECONDS);
+    const emailCount = emailKey ? await incrRedisKey(emailKey, AUTH_LOCKOUT_SECONDS) : 0;
+    const maxCount = Math.max(ipCount, emailCount);
+    if (maxCount >= AUTH_MAX_ATTEMPTS) {
+      return res.status(429).json({ locked: true, message: "Too many failed login attempts. Please try again in 5 minutes.", remainingSeconds: AUTH_LOCKOUT_SECONDS });
+    }
+    return res.status(200).json({ locked: false, attempts: maxCount, remaining: AUTH_MAX_ATTEMPTS - maxCount });
+  }
+
+  if (action === "success") {
+    await delRedisKey(ipKey);
+    if (emailKey) await delRedisKey(emailKey);
+    return res.status(200).json({ ok: true });
+  }
+
+  return res.status(400).json({ error: "Invalid auth-check action" });
+}
+
 // ─── Origin validation ──────────────────────────────────────────────────────
 function isAllowedOrigin(origin: string): boolean {
   if (!origin) return false;
@@ -466,6 +562,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (honeypot) {
     // Pretend success to not alert the bot
     return res.status(200).json({ ok: true });
+  }
+
+  // Auth rate limiting actions (don't require email validation)
+  if (["check", "fail", "success", "signup"].includes(action)) {
+    return handleAuthCheck(req, res, action, email);
   }
 
   if (!email || typeof email !== "string") {

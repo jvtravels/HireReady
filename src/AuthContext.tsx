@@ -456,7 +456,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // Server-side signup rate limiting (prevents spam signups from same IP)
     try {
-      const rlCheck = await fetch("/api/auth-check", {
+      const rlCheck = await fetch("/api/send-welcome", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "check", email: email.toLowerCase().trim() }),
@@ -490,7 +490,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       // Record signup attempt server-side (fire-and-forget)
-      fetch("/api/auth-check", {
+      fetch("/api/send-welcome", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "signup", email: email.toLowerCase().trim() }),
@@ -535,7 +535,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // Server-side rate limit check (cannot be bypassed by clearing localStorage)
     try {
-      const rlCheck = await fetch("/api/auth-check", {
+      const rlCheck = await fetch("/api/send-welcome", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "check", email: email.toLowerCase().trim() }),
@@ -557,7 +557,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       // Report failure to server-side rate limiter
       try {
-        const failRes = await fetch("/api/auth-check", {
+        const failRes = await fetch("/api/send-welcome", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ action: "fail", email: email.toLowerCase().trim() }),
@@ -606,7 +606,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     clearLoginLockout();
     storeSessionFingerprint();
     // Clear server-side rate limit (fire-and-forget)
-    fetch("/api/auth-check", {
+    fetch("/api/send-welcome", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action: "success", email: email.toLowerCase().trim() }),
