@@ -131,7 +131,7 @@ async function handleReset(req: VercelRequest, res: VercelResponse, normalizedEm
             </td></tr>
           </table>
           <p style="margin:0 0 16px;font-size:13px;color:#9A9590;line-height:1.5;">
-            This link expires in 24 hours. If you didn't request a password reset, you can safely ignore this email.
+            This link expires in 1 hour and can only be used once. If you didn't request a password reset, you can safely ignore this email.
           </p>
           <p style="margin:0;font-size:11px;color:#4A4540;line-height:1.5;text-align:center;">
             If the button doesn't work, copy this link:<br>
