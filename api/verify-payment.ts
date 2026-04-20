@@ -28,7 +28,7 @@ const RESEND_API_KEY = (process.env.RESEND_API_KEY || "").trim();
 const FROM_EMAIL = process.env.FROM_EMAIL || "HireStepX <onboarding@resend.dev>";
 const APP_URL = (process.env.APP_URL || "https://hirestepx.vercel.app").replace(/\/$/, "");
 
-const PLAN_DURATION: Record<string, number> = { single: 0, weekly: 7, monthly: 0, "yearly-starter": 365, "yearly-pro": 365 }; // monthly uses setMonth() below; single adds credits
+// PLAN_DURATION used for reference: single=0, weekly=7, monthly=setMonth(), yearly=365
 const PLAN_TIER: Record<string, string> = { single: "free", weekly: "starter", monthly: "pro", "yearly-starter": "starter", "yearly-pro": "pro" }; // single stays on free tier, just adds credits
 const PLAN_AMOUNT: Record<string, number> = { single: 1000, weekly: 4900, monthly: 14900, "yearly-starter": 203900, "yearly-pro": 143000 };
 const PLAN_LABEL: Record<string, string> = { single: "Single Session (₹10)", weekly: "Starter (₹49/week)", monthly: "Pro (₹149/month)", "yearly-starter": "Starter Annual (₹2,039/year)", "yearly-pro": "Pro Annual (₹1,430/year)" };
@@ -308,7 +308,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // 3. Atomic duplicate check — INSERT with ON CONFLICT to prevent race conditions
     // Try inserting a dedup record first; if it already exists, payment was already processed
-    const dedupId = `dedup_${razorpay_payment_id}`;
     const dedupRes = await fetchWithTimeout(`${SUPABASE_URL}/rest/v1/payment_dedup`, {
       method: "POST",
       headers: {

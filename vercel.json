@@ -58,6 +58,7 @@
     { "source": "/api/public-profile", "destination": "/api/public-profile" },
     { "source": "/api/create-subscription", "destination": "/api/create-subscription" },
     { "source": "/api/generate-insights", "destination": "/api/generate-insights" },
+    { "source": "/api/send-reset", "destination": "/api/send-reset" },
     { "source": "/(.*)", "destination": "/index.html" }
   ],
   "crons": [

@@ -37,7 +37,7 @@ export default async function handler(req: Request): Promise<Response> {
   }
 
   try {
-    const { text, voiceId, language, gender } = await req.json() as {
+    const { text, voiceId, language } = await req.json() as {
       text: string; voiceId?: string; language?: string; gender?: "male" | "female";
     };
 
