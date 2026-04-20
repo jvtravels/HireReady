@@ -618,16 +618,54 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const loginWithGoogle = useCallback(async (returnTo?: string): Promise<{ success: boolean; error?: string }> => {
     if (!supabaseConfigured) return { success: false, error: "Google login requires Supabase configuration" };
-    const client = await getSupabase();
-    const redirectPath = returnTo || "/dashboard";
-    const { error } = await client.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: `${window.location.origin}${redirectPath}`,
-      },
-    });
-    if (error) return { success: false, error: error.message };
-    return { success: true };
+
+    const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+
+    // If no Google Client ID is set, fall back to Supabase OAuth (shows supabase.co domain)
+    if (!googleClientId) {
+      const client = await getSupabase();
+      const redirectPath = returnTo || "/dashboard";
+      const { error } = await client.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${window.location.origin}${redirectPath}`,
+        },
+      });
+      if (error) return { success: false, error: error.message };
+      return { success: true };
+    }
+
+    // Direct Google OAuth — shows YOUR domain on account chooser instead of supabase.co
+    try {
+      // Generate CSRF state and nonce
+      const state = crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2) + Date.now().toString(36);
+      const nonce = crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2) + Date.now().toString(36);
+
+      // Store for validation in the callback
+      sessionStorage.setItem("hirestepx_oauth_state", state);
+      sessionStorage.setItem("hirestepx_oauth_nonce", nonce);
+      sessionStorage.setItem("hirestepx_oauth_return", returnTo || "/dashboard");
+
+      const redirectUri = `${window.location.origin}/auth/callback`;
+      const scope = "openid email profile";
+
+      // Redirect to Google's OAuth endpoint
+      const authUrl = new URL("https://accounts.google.com/o/oauth2/v2/auth");
+      authUrl.searchParams.set("client_id", googleClientId);
+      authUrl.searchParams.set("redirect_uri", redirectUri);
+      authUrl.searchParams.set("response_type", "code");
+      authUrl.searchParams.set("scope", scope);
+      authUrl.searchParams.set("state", state);
+      authUrl.searchParams.set("nonce", nonce);
+      authUrl.searchParams.set("access_type", "offline");
+      authUrl.searchParams.set("prompt", "select_account");
+
+      window.location.href = authUrl.toString();
+      return { success: true };
+    } catch (err) {
+      console.error("[auth] Direct Google OAuth failed:", err);
+      return { success: false, error: "Failed to start Google sign-in." };
+    }
   }, []);
 
   // Broadcast helpers — defined before logout so they can be referenced

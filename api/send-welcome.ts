@@ -535,6 +535,54 @@ async function handleAuthCheck(req: VercelRequest, res: VercelResponse, action: 
   return res.status(400).json({ error: "Invalid auth-check action" });
 }
 
+// ─── Google OAuth Token Exchange (direct OAuth flow) ────────────────────────
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || process.env.VITE_GOOGLE_CLIENT_ID || "";
+const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || "";
+
+async function handleGoogleTokenExchange(req: VercelRequest, res: VercelResponse) {
+  const { code, redirectUri } = req.body || {};
+
+  if (!code || !redirectUri) {
+    return res.status(400).json({ error: "Missing authorization code or redirect URI" });
+  }
+
+  if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
+    console.error("Google OAuth not configured: missing GOOGLE_CLIENT_ID or GOOGLE_CLIENT_SECRET");
+    return res.status(500).json({ error: "Google sign-in is not configured" });
+  }
+
+  try {
+    // Exchange authorization code for tokens at Google's token endpoint
+    const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        code,
+        client_id: GOOGLE_CLIENT_ID,
+        client_secret: GOOGLE_CLIENT_SECRET,
+        redirect_uri: redirectUri,
+        grant_type: "authorization_code",
+      }).toString(),
+    });
+
+    if (!tokenRes.ok) {
+      const errBody = await tokenRes.text();
+      console.error("Google token exchange failed:", tokenRes.status, errBody);
+      return res.status(400).json({ error: "Failed to exchange authorization code" });
+    }
+
+    const tokenData = await tokenRes.json();
+
+    return res.status(200).json({
+      id_token: tokenData.id_token,
+      access_token: tokenData.access_token,
+    });
+  } catch (err) {
+    console.error("Google token exchange error:", err);
+    return res.status(500).json({ error: "Token exchange failed" });
+  }
+}
+
 // ─── Origin validation ──────────────────────────────────────────────────────
 function isAllowedOrigin(origin: string): boolean {
   if (!origin) return false;
@@ -575,6 +623,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Auth rate limiting actions (don't require email validation)
   if (["check", "fail", "success", "signup"].includes(action)) {
     return handleAuthCheck(req, res, action, email);
+  }
+
+  // Google OAuth token exchange (doesn't require email)
+  if (action === "google-token-exchange") {
+    return handleGoogleTokenExchange(req, res);
   }
 
   if (!email || typeof email !== "string") {

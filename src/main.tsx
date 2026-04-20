@@ -83,6 +83,7 @@ const DashboardSettings = lazy(() => import("./DashboardSettings"));
 const Interview = lazy(() => import("./Interview"));
 const SessionSetup = lazy(() => import("./SessionSetup"));
 const ResetPassword = lazy(() => import("./ResetPassword"));
+const AuthCallback = lazy(() => import("./AuthCallback"));
 const SessionDetail = lazy(() => import("./SessionDetail"));
 const PlaceholderPage = lazy(() => import("./PlaceholderPage"));
 const BlogPage = lazy(() => import("./BlogPage"));
@@ -152,6 +153,7 @@ const ROUTE_TITLES: Record<string, string> = {
   "/settings": "Settings — HireStepX",
   "/session/new": "New Session — HireStepX",
   "/interview": "Interview — HireStepX",
+  "/auth/callback": "Signing In — HireStepX",
   "/reset-password": "Reset Password — HireStepX",
   "/terms": "Terms of Service — HireStepX",
   "/privacy": "Privacy Policy — HireStepX",
@@ -255,6 +257,7 @@ createRoot(document.getElementById("root")!).render(
               </Route>
               <Route path="/session/new" element={<RequireAuth><div className="page-enter"><SessionSetup /></div></RequireAuth>} />
               <Route path="/interview" element={<RequireAuth><RouteErrorBoundary><Interview /></RouteErrorBoundary></RequireAuth>} />
+              <Route path="/auth/callback" element={<div className="page-enter"><AuthCallback /></div>} />
               <Route path="/reset-password" element={<div className="page-enter"><ResetPassword /></div>} />
               <Route path="/terms" element={<div className="page-enter"><TermsOfService /></div>} />
               <Route path="/privacy" element={<div className="page-enter"><PrivacyPolicy /></div>} />
