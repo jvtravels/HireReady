@@ -56,7 +56,7 @@ function friendlyError(raw: string, _isLogin: boolean): { message: string; sugge
     return { message: "Connection error.", suggestion: "Check your internet connection and try again." };
   if (lower.includes("weak password") || lower.includes("password should"))
     return { message: "Password is too weak.", suggestion: "Use at least 8 characters with a mix of letters, numbers, and symbols." };
-  if (lower.includes("invalid email"))
+  if (lower.includes("invalid email") && !lower.includes("password") && !lower.includes("credentials"))
     return { message: "That doesn't look like a valid email address.", suggestion: "Please check for typos." };
   return { message: raw };
 }

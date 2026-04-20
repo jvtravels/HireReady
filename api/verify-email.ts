@@ -177,48 +177,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.redirect(302, `${APP_URL}/login?error=verification-failed`);
     }
 
-    // Generate a magic link so the user is auto-logged-in after verification.
-    // Supabase admin generate_link returns an action_link that goes through the
-    // Supabase auth server → sets session cookies → redirects to our app.
-    try {
-      const magicRes = await fetch(
-        `${SUPABASE_URL}/auth/v1/admin/generate_link`,
-        {
-          method: "POST",
-          headers: {
-            apikey: SUPABASE_SERVICE_ROLE_KEY,
-            Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            type: "magiclink",
-            email: email.toLowerCase().trim(),
-            options: { redirectTo: `${APP_URL}/onboarding` },
-          }),
-        }
-      );
-      if (magicRes.ok) {
-        const magicData = await magicRes.json();
-        // Supabase returns action_link — a URL through the Supabase auth server
-        const actionLink = magicData.action_link
-          || magicData.properties?.action_link;
-        if (actionLink && typeof actionLink === "string" && actionLink.startsWith("http")) {
-          // Rewrite the redirect_to in the action link to point to our app
-          // (in case Supabase used its own default redirect)
-          const linkUrl = new URL(actionLink);
-          linkUrl.searchParams.set("redirect_to", `${APP_URL}/onboarding`);
-          return res.redirect(302, linkUrl.toString());
-        }
-        console.warn("generate_link returned no action_link:", JSON.stringify(magicData).slice(0, 200));
-      } else {
-        const errText = await magicRes.text().catch(() => "");
-        console.warn("generate_link failed:", magicRes.status, errText.slice(0, 200));
-      }
-    } catch (magicErr) {
-      console.error("Magic link generation failed, falling back to manual login:", magicErr);
-    }
-
-    // Fallback — redirect to login with success banner
+    // Redirect to login page — user must log in manually after verification
     return res.redirect(302, `${APP_URL}/login?verified=true`);
   } catch (err) {
     console.error("Email verification error:", err);
