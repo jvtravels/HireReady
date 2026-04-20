@@ -373,13 +373,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { error } = await client.auth.signInWithPassword({ email, password });
     if (error) {
       track("login_error", { reason: error.message });
-      // If credentials failed, check if user might have signed up with Google
+      if (error.message === "Email not confirmed") {
+        return { success: false, error: "Email not confirmed" };
+      }
       if (error.message === "Invalid login credentials") {
-        const lastMethod = (() => { try { return localStorage.getItem("hirestepx_login_method"); } catch { return null; } })();
-        if (lastMethod === "google") {
-          return { success: false, error: "It looks like you signed up with Google. Please use \"Sign in with Google\" instead." };
-        }
-        return { success: false, error: "Invalid email or password. If you signed up with Google, use \"Sign in with Google\" below." };
+        return { success: false, error: "Invalid email or password. Check your credentials or reset your password." };
       }
       return { success: false, error: error.message };
     }

@@ -54,6 +54,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   // Validate HMAC token with expiry check
   if (!validateToken(email, token)) {
+    // Distinguish expired vs invalid
+    const dotIdx = token.lastIndexOf(".");
+    if (dotIdx !== -1) {
+      const expiryStr = token.slice(dotIdx + 1);
+      const expiry = parseInt(expiryStr, 10);
+      const currentWindow = Math.floor(Date.now() / (24 * 60 * 60 * 1000));
+      if (!isNaN(expiry) && currentWindow - expiry > 1) {
+        return res.redirect(302, `${APP_URL}/login?error=link-expired`);
+      }
+    }
     return res.redirect(302, `${APP_URL}/login?error=invalid-token`);
   }
 
@@ -89,6 +99,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!user) {
       console.error("User not found for email:", email);
       return res.redirect(302, `${APP_URL}/login?error=user-not-found`);
+    }
+
+    // If already verified, redirect with success (idempotent)
+    if (user.email_confirmed_at) {
+      return res.redirect(302, `${APP_URL}/login?verified=already`);
     }
 
     // Set email_confirmed_at via admin API

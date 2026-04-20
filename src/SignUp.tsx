@@ -45,7 +45,7 @@ function friendlyError(raw: string, _isLogin: boolean): { message: string; sugge
   if (lower.includes("invalid login credentials"))
     return { message: "Incorrect email or password.", suggestion: "Double-check your credentials or reset your password below." };
   if (lower.includes("email not confirmed"))
-    return { message: "Your email hasn't been verified yet.", suggestion: "Check your inbox for the verification link we sent when you signed up. Check spam too." };
+    return { message: "Your email hasn't been verified yet.", suggestion: "Check your inbox (and spam folder) for the verification link. If it expired, sign up again with the same email to get a new link." };
   if (lower.includes("user already registered") || lower.includes("already been registered"))
     return { message: "An account with this email already exists.", suggestion: "Try logging in instead, or reset your password if you forgot it." };
   if (lower.includes("signup is not allowed") || lower.includes("signups not allowed"))
@@ -79,8 +79,9 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
   const [rememberMe, setRememberMe] = useState(() => getRememberMe());
   const [emailSuggestion, setEmailSuggestion] = useState("");
   const verifiedParam = new URLSearchParams(location.search).get("verified");
+  const errorParam = new URLSearchParams(location.search).get("error");
   const firstInputRef = useRef<HTMLInputElement>(null);
-  const verifiedBanner = verifiedParam === "true";
+  const verifiedBanner = verifiedParam === "true" || verifiedParam === "already";
 
   // Common email domain typo detection
   const COMMON_DOMAINS = ["gmail.com", "yahoo.com", "outlook.com", "hotmail.com", "icloud.com", "protonmail.com", "mail.com", "aol.com", "zoho.com", "yandex.com"];
@@ -137,6 +138,19 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
     if (!isLogin && !name.trim()) {
       setError("Please enter your name.");
       return;
+    }
+    if (!isLogin && name.trim().length > 50) {
+      setError("Name must be 50 characters or fewer.");
+      return;
+    }
+    if (!isLogin) {
+      const hasUpper = /[A-Z]/.test(password);
+      const hasNumber = /[0-9]/.test(password);
+      const hasSpecial = /[^A-Za-z0-9]/.test(password);
+      if (!hasUpper || !hasNumber || !hasSpecial) {
+        setError("Password must include an uppercase letter, a number, and a special character.");
+        return;
+      }
     }
     // Warn on likely email typo before submitting
     if (emailSuggestion) {
@@ -260,7 +274,44 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
           <div style={{ padding: "16px 20px", borderRadius: 12, background: "rgba(122,158,126,0.08)", border: "1px solid rgba(122,158,126,0.2)", marginBottom: 24 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="2" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
-              <span style={{ fontFamily: font.ui, fontSize: 14, fontWeight: 600, color: c.sage }}>Email verified! You can now log in.</span>
+              <span style={{ fontFamily: font.ui, fontSize: 14, fontWeight: 600, color: c.sage }}>
+                {verifiedParam === "already" ? "Your email is already verified. You can log in." : "Email verified! You can now log in."}
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* Verification error banners */}
+        {errorParam === "link-expired" && (
+          <div style={{ padding: "16px 20px", borderRadius: 12, background: "rgba(196,112,90,0.06)", border: "1px solid rgba(196,112,90,0.15)", marginBottom: 24 }}>
+            <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+              <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={c.ember} strokeWidth="2" strokeLinecap="round" style={{ flexShrink: 0, marginTop: 1 }}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              <div>
+                <p style={{ fontFamily: font.ui, fontSize: 14, fontWeight: 600, color: c.ember, margin: 0 }}>Verification link has expired</p>
+                <p style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, margin: "4px 0 0", lineHeight: 1.5 }}>Please sign up again to receive a new verification link.</p>
+              </div>
+            </div>
+          </div>
+        )}
+        {errorParam === "invalid-token" && (
+          <div style={{ padding: "16px 20px", borderRadius: 12, background: "rgba(196,112,90,0.06)", border: "1px solid rgba(196,112,90,0.15)", marginBottom: 24 }}>
+            <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+              <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={c.ember} strokeWidth="2" strokeLinecap="round" style={{ flexShrink: 0, marginTop: 1 }}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              <div>
+                <p style={{ fontFamily: font.ui, fontSize: 14, fontWeight: 600, color: c.ember, margin: 0 }}>Invalid verification link</p>
+                <p style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, margin: "4px 0 0", lineHeight: 1.5 }}>This link may have been corrupted. Please sign up again to get a new one.</p>
+              </div>
+            </div>
+          </div>
+        )}
+        {errorParam === "user-not-found" && (
+          <div style={{ padding: "16px 20px", borderRadius: 12, background: "rgba(196,112,90,0.06)", border: "1px solid rgba(196,112,90,0.15)", marginBottom: 24 }}>
+            <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+              <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={c.ember} strokeWidth="2" strokeLinecap="round" style={{ flexShrink: 0, marginTop: 1 }}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              <div>
+                <p style={{ fontFamily: font.ui, fontSize: 14, fontWeight: 600, color: c.ember, margin: 0 }}>Account not found</p>
+                <p style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, margin: "4px 0 0", lineHeight: 1.5 }}>No account exists for this email. Please sign up first.</p>
+              </div>
             </div>
           </div>
         )}
@@ -395,7 +446,7 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
               {!isLogin && (
                 <div>
                   <label htmlFor="signup-name" style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: c.chalk, display: "block", marginBottom: 6, letterSpacing: "0.02em" }}>Full name</label>
-                  <input id="signup-name" ref={!isLogin ? firstInputRef : undefined} type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Your full name" required
+                  <input id="signup-name" ref={!isLogin ? firstInputRef : undefined} type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Your full name" required maxLength={50}
                     style={{ width: "100%", padding: "12px 16px", borderRadius: 8, background: c.graphite, border: `1px solid ${c.border}`, color: c.ivory, fontFamily: font.ui, fontSize: 14, outline: "none", transition: "border-color 0.2s ease", boxSizing: "border-box" }}
                     onFocus={(e) => e.currentTarget.style.borderColor = c.gilt}
                     onBlur={(e) => e.currentTarget.style.borderColor = c.border}
@@ -571,22 +622,32 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
                 );
               })()}
 
-              <button type="submit" disabled={loading} className="shimmer-btn"
+              {(() => {
+                const signupDisabled = !isLogin && (
+                  !name.trim() || name.trim().length > 50 ||
+                  !email.trim() || password.length < 8 ||
+                  !/[A-Z]/.test(password) || !/[0-9]/.test(password) || !/[^A-Za-z0-9]/.test(password)
+                );
+                const btnDisabled = loading || signupDisabled;
+                return (
+              <button type="submit" disabled={btnDisabled} className="shimmer-btn"
                 style={{
                   width: "100%", padding: "14px 24px", borderRadius: 8,
-                  background: c.ivory, color: c.obsidian, border: "none",
+                  background: btnDisabled ? "rgba(245,242,237,0.3)" : c.ivory, color: c.obsidian, border: "none",
                   fontFamily: font.ui, fontSize: 15, fontWeight: 500,
-                  cursor: loading ? "wait" : "pointer", marginTop: 4, letterSpacing: "0.01em",
-                  opacity: loading ? 0.7 : 1,
+                  cursor: btnDisabled ? "not-allowed" : "pointer", marginTop: 4, letterSpacing: "0.01em",
+                  opacity: btnDisabled ? 0.5 : 1, transition: "all 0.2s ease",
                 }}
-                onMouseEnter={(e) => { if (!loading) { e.currentTarget.style.background = c.gilt; e.currentTarget.style.boxShadow = "0 8px 32px rgba(212,179,127,0.2)"; } }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = c.ivory; e.currentTarget.style.boxShadow = "none"; }}
+                onMouseEnter={(e) => { if (!btnDisabled) { e.currentTarget.style.background = c.gilt; e.currentTarget.style.boxShadow = "0 8px 32px rgba(212,179,127,0.2)"; } }}
+                onMouseLeave={(e) => { if (!btnDisabled) { e.currentTarget.style.background = c.ivory; e.currentTarget.style.boxShadow = "none"; } }}
               >
                 {loading ? "Please wait..." : isLogin ? "Log in" : "Create account"}
                 {isLogin && getLastLoginMethod() === "email" && !loading && (
                   <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, color: c.sage, background: `${c.sage}12`, border: `1px solid ${c.sage}25`, borderRadius: 4, padding: "2px 6px", marginLeft: 6 }}>Last used</span>
                 )}
               </button>
+                );
+              })()}
             </form>
 
             {/* Toggle */}
