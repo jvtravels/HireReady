@@ -637,13 +637,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // Direct Google OAuth — shows YOUR domain on account chooser instead of supabase.co
     try {
-      // Generate CSRF state and nonce
+      // Generate CSRF state
       const state = crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2) + Date.now().toString(36);
-      const nonce = crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2) + Date.now().toString(36);
 
       // Store for validation in the callback
       sessionStorage.setItem("hirestepx_oauth_state", state);
-      sessionStorage.setItem("hirestepx_oauth_nonce", nonce);
       sessionStorage.setItem("hirestepx_oauth_return", returnTo || "/dashboard");
 
       const redirectUri = `${window.location.origin}/auth/callback`;
@@ -656,7 +654,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       authUrl.searchParams.set("response_type", "code");
       authUrl.searchParams.set("scope", scope);
       authUrl.searchParams.set("state", state);
-      authUrl.searchParams.set("nonce", nonce);
       authUrl.searchParams.set("access_type", "offline");
       authUrl.searchParams.set("prompt", "select_account");
 

@@ -50,7 +50,6 @@ export default function AuthCallback() {
         }
 
         // Exchange the authorization code for tokens via our serverless function
-        const nonce = sessionStorage.getItem("hirestepx_oauth_nonce") || "";
         sessionStorage.removeItem("hirestepx_oauth_nonce");
 
         const tokenRes = await fetch("/api/send-welcome", {
@@ -83,7 +82,6 @@ export default function AuthCallback() {
         const { error: signInError } = await client.auth.signInWithIdToken({
           provider: "google",
           token: id_token,
-          nonce: nonce || undefined,
           access_token: access_token || undefined,
         });
 
