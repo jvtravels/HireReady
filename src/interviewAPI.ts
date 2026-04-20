@@ -8,6 +8,28 @@ import { checkRateLimit } from "./rateLimit";
 const RESULTS_KEY = "hirestepx_sessions";
 const IDB_STORE = "drafts";
 
+/** Retry a function with exponential backoff. Returns null after all retries fail. */
+async function withRetry<T>(
+  fn: () => Promise<T>,
+  { retries = 2, baseDelayMs = 1000, shouldRetry = (_err: unknown) => true }: {
+    retries?: number; baseDelayMs?: number; shouldRetry?: (err: unknown) => boolean;
+  } = {},
+): Promise<T> {
+  let lastErr: unknown;
+  for (let i = 0; i <= retries; i++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastErr = err;
+      if (i === retries || !shouldRetry(err)) throw err;
+      // Exponential backoff: 1s, 2s, 4s...
+      const delay = baseDelayMs * Math.pow(2, i) + Math.random() * 500;
+      await new Promise(r => setTimeout(r, delay));
+    }
+  }
+  throw lastErr;
+}
+
 export interface SessionResult {
   id: string;
   date: string;
@@ -248,17 +270,19 @@ export async function fetchLLMQuestions(params: {
       .map((q: InterviewStep) => q.type === "closing" ? { ...q, waitForUser: true } : q);
     return { questions, negotiationBand: data.negotiationBand || undefined };
   };
-  for (let i = 0; i < 2; i++) {
+  for (let i = 0; i < 3; i++) {
     try {
       return await attempt();
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      console.warn(`[questions] attempt ${i + 1} failed:`, msg);
+      console.warn(`[questions] attempt ${i + 1}/3 failed:`, msg);
       // Propagate actionable errors (auth, limit, rate limit) so user sees specific message
       if (err instanceof Error && (msg.includes("Too many requests") || msg.includes("Question generation failed"))) throw err;
-      // Only retry network errors (TypeError), not server errors
-      if (i === 1 || !(err instanceof TypeError)) throw new Error(msg || "Could not generate questions");
-      await new Promise(r => setTimeout(r, 1500));
+      // Only retry network errors (TypeError) and server errors, not client errors
+      const isRetryable = err instanceof TypeError || (err instanceof Error && msg.includes("500"));
+      if (i === 2 || !isRetryable) throw new Error(msg || "Could not generate questions");
+      // Exponential backoff: 1.5s, 3s
+      await new Promise(r => setTimeout(r, 1500 * Math.pow(2, i)));
     }
   }
   return null;
@@ -285,30 +309,41 @@ export async function fetchLLMEvaluation(params: {
     throw new Error("Too many requests. Please wait a moment and try again.");
   }
   try {
-    const { authHeaders: getAuthHeaders } = await import("./supabase");
-    const headers = await getAuthHeaders();
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeoutMs);
-    const res = await fetch("/api/evaluate", {
-      method: "POST",
-      headers,
-      body: JSON.stringify(params),
-      signal: controller.signal,
+    return await withRetry(async () => {
+      const { authHeaders: getAuthHeaders } = await import("./supabase");
+      const headers = await getAuthHeaders();
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), timeoutMs);
+      const res = await fetch("/api/evaluate", {
+        method: "POST",
+        headers,
+        body: JSON.stringify(params),
+        signal: controller.signal,
+      });
+      clearTimeout(timer);
+      if (res.status === 429) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.retryAfter ? `Too many requests. Please wait ${data.retryAfter} seconds and try again.` : "Too many requests. Please wait a moment and try again.");
+      }
+      if (res.status >= 500) throw new Error(`Evaluation server error: ${res.status}`);
+      if (!res.ok) return null;
+      const body = await res.json();
+      if (!body || typeof body.overallScore !== "number" || typeof body.feedback !== "string") return null;
+      return body;
+    }, {
+      retries: 1,
+      baseDelayMs: 2000,
+      shouldRetry: (err) => {
+        if (err instanceof TypeError) return true; // Network error
+        if (err instanceof Error && err.message.startsWith("Evaluation server error")) return true;
+        return false; // Don't retry rate limits, timeouts, or client errors
+      },
     });
-    clearTimeout(timer);
-    if (res.status === 429) {
-      const data = await res.json().catch(() => ({}));
-      throw new Error(data.retryAfter ? `Too many requests. Please wait ${data.retryAfter} seconds and try again.` : "Too many requests. Please wait a moment and try again.");
-    }
-    if (!res.ok) return null;
-    const body = await res.json();
-    if (!body || typeof body.overallScore !== "number" || typeof body.feedback !== "string") return null;
-    return body;
   } catch (err) {
     if (err instanceof DOMException && err.name === "AbortError") {
       throw new Error("Evaluation timed out. Using estimated score.");
     }
-    return null;
+    throw err;
   }
 }
 
@@ -347,19 +382,28 @@ export async function fetchFollowUp(params: {
   // Client-side rate limit: max 10 follow-ups per 60s
   if (!checkRateLimit("follow-up", 10, 60_000)) return null;
   try {
-    const { authHeaders: getAuthHeaders } = await import("./supabase");
-    const headers = await getAuthHeaders();
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 14_000);
-    const res = await fetch("/api/follow-up", {
-      method: "POST",
-      headers,
-      body: JSON.stringify(params),
-      signal: controller.signal,
+    return await withRetry(async () => {
+      const { authHeaders: getAuthHeaders } = await import("./supabase");
+      const headers = await getAuthHeaders();
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 14_000);
+      const res = await fetch("/api/follow-up", {
+        method: "POST",
+        headers,
+        body: JSON.stringify(params),
+        signal: controller.signal,
+      });
+      clearTimeout(timer);
+      if (!res.ok) {
+        if (res.status >= 500) throw new Error(`Server error: ${res.status}`);
+        return null as unknown as { needsFollowUp: boolean; followUpText: string; followUpType?: string };
+      }
+      return await res.json();
+    }, {
+      retries: 2,
+      baseDelayMs: 1000,
+      shouldRetry: (err) => err instanceof TypeError || (err instanceof Error && err.message.startsWith("Server error")),
     });
-    clearTimeout(timer);
-    if (!res.ok) return null;
-    return await res.json();
   } catch {
     return null;
   }

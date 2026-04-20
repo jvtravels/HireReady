@@ -78,6 +78,16 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(() => getRememberMe());
   const [emailSuggestion, setEmailSuggestion] = useState("");
+  const [isOffline, setIsOffline] = useState(!navigator.onLine);
+
+  // Track online/offline status
+  useEffect(() => {
+    const goOffline = () => setIsOffline(true);
+    const goOnline = () => { setIsOffline(false); setError(""); };
+    window.addEventListener("offline", goOffline);
+    window.addEventListener("online", goOnline);
+    return () => { window.removeEventListener("offline", goOffline); window.removeEventListener("online", goOnline); };
+  }, []);
   const verifiedParam = new URLSearchParams(location.search).get("verified");
   const errorParam = new URLSearchParams(location.search).get("error");
   const firstInputRef = useRef<HTMLInputElement>(null);
@@ -268,6 +278,14 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
               : "Your first AI mock interview is free. No credit card needed."
           }
         </p>
+
+        {/* Offline banner */}
+        {isOffline && (
+          <div role="alert" style={{ padding: "12px 16px", borderRadius: 10, background: "rgba(196,112,90,0.1)", border: "1px solid rgba(196,112,90,0.25)", marginBottom: 16, display: "flex", alignItems: "center", gap: 10 }}>
+            <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={c.ember} strokeWidth="2"><line x1="1" y1="1" x2="23" y2="23"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>
+            <span style={{ fontFamily: font.ui, fontSize: 13, color: c.ember }}>You're offline. Check your connection to continue.</span>
+          </div>
+        )}
 
         {/* Email verified success banner */}
         {verifiedBanner && (
@@ -603,6 +621,7 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
 
               {error && (() => {
                 const { message, suggestion } = friendlyError(error, isLogin);
+                const isNetworkError = error.toLowerCase().includes("network") || error.toLowerCase().includes("fetch") || error.toLowerCase().includes("connection");
                 return (
                   <div id="form-error" role="alert" style={{ padding: "12px 14px", borderRadius: 10, background: "rgba(196,112,90,0.06)", border: "1px solid rgba(196,112,90,0.15)", marginBottom: 4 }}>
                     <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
@@ -615,6 +634,12 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
                         <p style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.ember, margin: 0 }}>{message}</p>
                         {suggestion && (
                           <p style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, margin: "4px 0 0", lineHeight: 1.5 }}>{suggestion}</p>
+                        )}
+                        {isNetworkError && (
+                          <button type="button" onClick={() => { setError(""); const form = document.querySelector("form"); form?.requestSubmit(); }}
+                            style={{ marginTop: 8, fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: c.gilt, background: "none", border: `1px solid rgba(212,179,127,0.3)`, borderRadius: 8, padding: "6px 14px", cursor: "pointer" }}>
+                            Retry
+                          </button>
                         )}
                       </div>
                     </div>

@@ -635,7 +635,12 @@ export function useInterviewEngine() {
     const goOffline = () => setIsOffline(true);
     const goOnline = () => {
       setIsOffline(false);
+      // Auto-retry queued evaluations
       retryQueuedEvals().catch(() => {});
+      // Auto-retry question generation if still using fallback questions
+      if (saveWarning.includes("practice questions") || saveWarning.includes("retry")) {
+        fetchPersonalizedQuestions();
+      }
     };
     window.addEventListener("offline", goOffline);
     window.addEventListener("online", goOnline);
