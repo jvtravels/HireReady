@@ -264,11 +264,16 @@ export default function SessionSetup() {
     }
     return [getRecommendedFocus(user?.targetRole)];
   });
-  const [sessionLength, setSessionLength] = useState("10m");
+  const sessionCountForDefault = user?.practiceTimestamps?.length ?? 0;
+  const [sessionLength, setSessionLength] = useState(
+    (!user?.subscriptionTier || user.subscriptionTier === "free") && sessionCountForDefault === 1 ? "15m" : "10m"
+  );
   // negotiationStyle is now randomly assigned per session in useInterviewEngine
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const isFreeUser = !user?.subscriptionTier || user.subscriptionTier === "free";
   const isFirstTimer = !user?.practiceTimestamps || user.practiceTimestamps.length === 0;
+  const freeSessionCount = user?.practiceTimestamps?.length ?? 0;
+  const has15minTaste = isFreeUser && freeSessionCount === 1;
   const [showAllFocus, setShowAllFocus] = useState(false);
   const { toast } = useToast();
 
@@ -658,7 +663,7 @@ export default function SessionSetup() {
                       { value: "15m", label: "15 min", desc: "Standard interview", sub: "4–5 questions with follow-ups", detail: "Closest to a real interview round", recommended: true, paidOnly: true },
                       { value: "25m", label: "25 min", desc: "Full simulation", sub: "6–8 questions, deep follow-ups", detail: "End-to-end mock with detailed scoring", paidOnly: true },
                     ].map(opt => {
-                      const locked = opt.paidOnly && isFreeUser;
+                      const locked = opt.paidOnly && isFreeUser && !(has15minTaste && opt.value === "15m");
                       const sel = sessionLength === opt.value;
                       return (
                         <button key={opt.value} onClick={() => { if (locked) setShowUpgradeModal(true); else setSessionLength(opt.value); }}
@@ -669,7 +674,9 @@ export default function SessionSetup() {
                             boxShadow: sel ? "0 0 16px rgba(212,179,127,0.06)" : "none",
                             transition: "all 0.2s", opacity: locked ? 0.5 : 1,
                           }}>
-                          {"recommended" in opt && opt.recommended && !locked && (
+                          {has15minTaste && opt.value === "15m" ? (
+                            <span style={{ position: "absolute", top: -8, left: "50%", transform: "translateX(-50%)", fontFamily: font.ui, fontSize: 10, fontWeight: 700, color: c.obsidian, background: c.sage, padding: "2px 8px", borderRadius: 4, letterSpacing: "0.04em", textTransform: "uppercase" }}>Free taste!</span>
+                          ) : "recommended" in opt && opt.recommended && !locked && (
                             <span style={{ position: "absolute", top: -8, left: "50%", transform: "translateX(-50%)", fontFamily: font.ui, fontSize: 10, fontWeight: 700, color: c.obsidian, background: c.gilt, padding: "2px 8px", borderRadius: 4, letterSpacing: "0.04em", textTransform: "uppercase" }}>Recommended</span>
                           )}
                           {locked && (

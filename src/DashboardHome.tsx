@@ -383,16 +383,24 @@ export default function DashboardHome() {
     persisted, updatePersisted,
     recentSessions, scoreTrend, skills, overallStats, hasData,
     weekActivity, currentStreak, readinessScore, daysLeft, calendarEvents,
-    isFree: _isFree, atSessionLimit: _atSessionLimit, sessionsRemaining: _sessionsRemaining,
+    isFree, atSessionLimit, sessionsRemaining,
     notifications, aiInsights, upcomingGoals, returnContext, smartSchedule, prepPlan,
     companyReadiness, curriculumState, skillVelocity,
     badges, dailyChallenge, practiceReminder,
     handleStartSession, handleExport, handleDownload, handleExportPDF,
-    setShowUpgradeModal: _setShowUpgradeModal,
+    setShowUpgradeModal,
     showToast,
   } = useDashboard();
 
   useDocTitle("Dashboard");
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("upgrade") === "1") {
+      setShowUpgradeModal(true);
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, [setShowUpgradeModal]);
+
   const [expandedSession, setExpandedSession] = useState<string | null>(null);
   const [feedbackSession, setFeedbackSession] = useState<string | null>(null);
   const [viewingSession, setViewingSession] = useState<string | null>(null);
@@ -628,6 +636,16 @@ export default function DashboardHome() {
           })()}
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          {isFree && !isNewUser && (
+            <span style={{
+              fontFamily: font.mono, fontSize: 11, fontWeight: 600, padding: "5px 12px", borderRadius: radius.md,
+              background: sessionsRemaining <= 1 ? "rgba(196,112,90,0.1)" : "rgba(212,179,127,0.08)",
+              border: `1px solid ${sessionsRemaining <= 1 ? "rgba(196,112,90,0.25)" : "rgba(212,179,127,0.15)"}`,
+              color: sessionsRemaining <= 1 ? c.ember : c.gilt, whiteSpace: "nowrap",
+            }}>
+              {sessionsRemaining === 0 ? "No free sessions left" : sessionsRemaining === 1 ? "Last free session!" : `${sessionsRemaining} of 3 free left`}
+            </span>
+          )}
           <button className="shimmer-btn dash-focus" onClick={handleStartSession} title="New Session (N)" style={{
             fontFamily: font.ui, fontSize: 13, fontWeight: 600, padding: "9px 20px", borderRadius: radius.md,
             border: "none", background: `linear-gradient(135deg, ${c.gilt}, ${c.giltDark})`,
@@ -677,6 +695,49 @@ export default function DashboardHome() {
           </div>
         </div>
       </div>
+
+      {/* ─── Streak/momentum nudge for exhausted free users ─── */}
+      {isFree && atSessionLimit && hasData && (
+        <div style={{
+          display: "flex", alignItems: "center", gap: 16, padding: "18px 24px", borderRadius: radius.lg,
+          background: `linear-gradient(135deg, rgba(196,112,90,0.06) 0%, rgba(212,179,127,0.06) 100%)`,
+          border: "1px solid rgba(212,179,127,0.15)", marginBottom: sp.xl, flexWrap: "wrap",
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 200 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+              <span style={{ fontFamily: font.ui, fontSize: 14, fontWeight: 600, color: c.ivory }}>
+                {currentStreak > 0 ? `${currentStreak}-day streak!` : "Your progress is fading"}
+              </span>
+              <span style={{ fontFamily: font.ui, fontSize: 12, color: c.stone }}>
+                {currentStreak > 0
+                  ? "Don't lose your momentum — upgrade to keep practicing daily."
+                  : `You completed ${recentSessions.length} sessions and scored ${overallStats.avgScore ?? "—"} avg. Upgrade to continue improving.`}
+              </span>
+            </div>
+          </div>
+          {recentSessions.length > 0 && (
+            <div style={{ display: "flex", gap: 3, alignItems: "center" }}>
+              {recentSessions.slice(0, 5).map((s, i) => (
+                <div key={i} style={{
+                  width: 8, height: 8, borderRadius: "50%",
+                  background: scoreLabelColor(s.score),
+                  opacity: 0.3 + (0.7 * (i + 1) / Math.min(5, recentSessions.length)),
+                }} title={`Session ${i + 1}: ${s.score}`} />
+              ))}
+            </div>
+          )}
+          <button onClick={() => setShowUpgradeModal(true)} style={{
+            fontFamily: font.ui, fontSize: 13, fontWeight: 600, padding: "9px 20px", borderRadius: radius.md,
+            border: "none", background: `linear-gradient(135deg, ${c.gilt}, ${c.giltDark})`, color: c.obsidian,
+            cursor: "pointer", whiteSpace: "nowrap", transition: "all 0.2s",
+          }}
+            onMouseEnter={(e) => e.currentTarget.style.filter = "brightness(1.1)"}
+            onMouseLeave={(e) => e.currentTarget.style.filter = "brightness(1)"}
+          >
+            Upgrade Now
+          </button>
+        </div>
+      )}
 
       {/* ─── Resume Draft Banner ─── */}
       {hasDraft && (
@@ -1225,6 +1286,45 @@ export default function DashboardHome() {
         </div>
       </div>
       </SectionErrorBoundary>
+
+      {/* ─── Analytics teaser for free users ─── */}
+      {isFree && hasData && skills.length > 0 && (
+        <div style={{ position: "relative", marginBottom: sp["2xl"], borderRadius: radius.lg, overflow: "hidden" }}>
+          <div aria-hidden="true" style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr 1fr", gap: 12, padding: 24, opacity: 0.12, filter: "blur(3px)", pointerEvents: "none" }}>
+            {skills.slice(0, 3).map(sk => (
+              <div key={sk.name} style={{ background: c.graphite, borderRadius: 10, padding: "16px", border: `1px solid ${c.border}` }}>
+                <span style={{ fontFamily: font.ui, fontSize: 12, color: c.chalk }}>{sk.name}</span>
+                <div style={{ fontFamily: font.mono, fontSize: 24, color: c.ivory, marginTop: 4 }}>{sk.score}</div>
+                <div style={{ width: "100%", height: 3, background: c.border, borderRadius: 2, marginTop: 8 }}>
+                  <div style={{ height: "100%", width: `${sk.score}%`, background: sk.color, borderRadius: 2 }} />
+                </div>
+              </div>
+            ))}
+          </div>
+          <div style={{
+            position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+            background: "rgba(17,17,19,0.7)", backdropFilter: "blur(6px)", borderRadius: radius.lg, textAlign: "center", padding: 24,
+          }}>
+            <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5" strokeLinecap="round" style={{ marginBottom: 12 }}>
+              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+            </svg>
+            <p style={{ fontFamily: font.ui, fontSize: 15, fontWeight: 600, color: c.ivory, marginBottom: 4 }}>Detailed Analytics</p>
+            <p style={{ fontFamily: font.ui, fontSize: 13, color: c.stone, marginBottom: 16, maxWidth: 320 }}>
+              Track velocity, trends, and AI coaching insights across all your sessions.
+            </p>
+            <button onClick={() => setShowUpgradeModal(true)} style={{
+              fontFamily: font.ui, fontSize: 13, fontWeight: 600, padding: "10px 24px", borderRadius: radius.md,
+              border: "none", background: `linear-gradient(135deg, ${c.gilt}, ${c.giltDark})`, color: c.obsidian,
+              cursor: "pointer", transition: "all 0.2s",
+            }}
+              onMouseEnter={(e) => e.currentTarget.style.filter = "brightness(1.1)"}
+              onMouseLeave={(e) => e.currentTarget.style.filter = "brightness(1)"}
+            >
+              Unlock Analytics — from ₹149/mo
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ─── Row 2: Recent Sessions | AI Insights (side by side) ─── */}
       <SectionErrorBoundary label="sessions">

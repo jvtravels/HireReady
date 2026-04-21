@@ -427,7 +427,27 @@ export const UpgradeModal = memo(function UpgradeModal({ onClose, sessionsUsed, 
           })}
         </div>
 
-        <p style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, textAlign: "center", marginTop: 16, opacity: 0.7 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 16, marginTop: 20, padding: "14px 0", borderTop: `1px solid ${c.border}` }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <div style={{ display: "flex" }}>
+              {[c.gilt, c.sage, c.ember].map((col, i) => (
+                <div key={i} style={{ width: 22, height: 22, borderRadius: "50%", background: col, border: `2px solid ${c.graphite}`, marginLeft: i > 0 ? -6 : 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill={c.obsidian} stroke="none"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                </div>
+              ))}
+            </div>
+            <span style={{ fontFamily: font.ui, fontSize: 11, color: c.chalk }}>500+ interviews practiced</span>
+          </div>
+          <div style={{ width: 1, height: 16, background: c.border }} />
+          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+            {[1, 2, 3, 4, 5].map(i => (
+              <svg key={i} width="12" height="12" viewBox="0 0 24 24" fill={c.gilt} stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            ))}
+            <span style={{ fontFamily: font.ui, fontSize: 11, color: c.chalk, marginLeft: 2 }}>4.8 avg rating</span>
+          </div>
+        </div>
+
+        <p style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, textAlign: "center", marginTop: 8, opacity: 0.7 }}>
           Secure checkout powered by Razorpay · UPI, Cards, Netbanking · Cancel anytime
         </p>
       </div>

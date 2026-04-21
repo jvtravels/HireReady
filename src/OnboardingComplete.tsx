@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { c, font } from "./tokens";
 import { useAuth } from "./AuthContext";
 import { getUserSessions } from "./supabase";
+import { FREE_SESSION_LIMIT } from "./dashboardData";
 
 function scoreLabelColor(score: number) {
   if (score >= 85) return c.sage;
@@ -29,10 +30,12 @@ export default function OnboardingComplete() {
     return {};
   });
   const [loading, setLoading] = useState(!stateData.score);
+  const [sessionCount, setSessionCount] = useState(1);
 
   useEffect(() => {
     if (stateData.score || !user?.id) { setLoading(false); return; }
     getUserSessions(user.id).then(sessions => {
+      setSessionCount(sessions.length || 1);
       if (sessions.length > 0) {
         const latest = sessions[0];
         setStateData({
@@ -177,45 +180,127 @@ export default function OnboardingComplete() {
             </button>
           </div>
 
-          {/* What's next — retention-focused */}
-          <div style={{
-            background: c.graphite, borderRadius: 14, border: `1px solid ${c.border}`,
-            padding: "28px", marginBottom: 32,
-            animation: "obcFadeIn 0.5s ease 0.6s both",
-          }}>
-            <div style={{ textAlign: "center", marginBottom: 20 }}>
-              <span style={{ fontFamily: font.ui, fontSize: 14, fontWeight: 600, color: c.ivory }}>Great first session{user?.name ? `, ${user.name.split(" ")[0]}` : ""}!</span>
-              <p style={{ fontFamily: font.ui, fontSize: 13, color: c.stone, marginTop: 8, lineHeight: 1.6 }}>
-                {weakestSkill
-                  ? `Session 2 will target your biggest growth area: ${weakestSkill}. Most users improve 15+ points after focused practice.`
-                  : "Session 2 will dig deeper into targeted practice. Most users improve 15+ points after focused sessions."}
+          {/* Contextual upgrade nudge based on score & session count */}
+          {(!user?.subscriptionTier || user.subscriptionTier === "free") && sessionCount >= 2 && (
+            <div style={{
+              background: score >= 70 ? "rgba(122,158,126,0.06)" : "rgba(212,179,127,0.06)",
+              borderRadius: 14, border: `1px solid ${score >= 70 ? "rgba(122,158,126,0.15)" : "rgba(212,179,127,0.15)"}`,
+              padding: "20px 24px", marginBottom: 24, textAlign: "center",
+              animation: "obcFadeIn 0.5s ease 0.55s both",
+            }}>
+              <p style={{ fontFamily: font.ui, fontSize: 13, color: c.ivory, fontWeight: 500, marginBottom: 4 }}>
+                {score >= 85
+                  ? "You're already interview-ready — longer sessions will sharpen your edge."
+                  : score >= 70
+                    ? "Great progress! 15-min sessions unlock deeper practice to push past 85."
+                    : `${FREE_SESSION_LIMIT - sessionCount <= 0 ? "You've used all" : `Only ${FREE_SESSION_LIMIT - sessionCount}`} free session${FREE_SESSION_LIMIT - sessionCount === 1 ? "" : "s"} left — upgrade to keep improving.`}
               </p>
+              <p style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, marginBottom: 12 }}>
+                {score >= 70 ? "Pro users improve 2× faster with extended sessions and analytics." : "Most users see 15+ point improvement with focused practice."}
+              </p>
+              <button
+                onClick={() => router.push("/dashboard?upgrade=1")}
+                style={{
+                  fontFamily: font.ui, fontSize: 12, fontWeight: 600, padding: "8px 20px", borderRadius: 8,
+                  border: "none", background: "rgba(212,179,127,0.15)", color: c.gilt, cursor: "pointer",
+                  transition: "all 0.2s",
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(212,179,127,0.25)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(212,179,127,0.15)"; }}
+              >
+                View Plans — from ₹10/session
+              </button>
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginTop: 16 }}>
-              {[
-                { num: "1", label: "Warmup", done: true },
-                { num: "2", label: weakestSkill ? `Focus: ${weakestSkill}` : "Focus Session", done: false },
-                { num: "3", label: "Full Simulation", done: false },
-              ].map(s => (
-                <div key={s.num} style={{
-                  padding: "12px", borderRadius: 10, textAlign: "center",
-                  background: s.done ? "rgba(122,158,126,0.06)" : "rgba(245,242,237,0.02)",
-                  border: `1px solid ${s.done ? "rgba(122,158,126,0.2)" : c.border}`,
-                  opacity: s.done ? 1 : 0.6,
-                }}>
-                  <span style={{ fontFamily: font.mono, fontSize: 10, fontWeight: 600, color: s.done ? c.sage : c.stone, letterSpacing: "0.06em" }}>
-                    {s.done ? "DONE" : `SESSION ${s.num}`}
-                  </span>
-                  <span style={{ fontFamily: font.ui, fontSize: 11, color: c.chalk, display: "block", marginTop: 4 }}>{s.label}</span>
-                </div>
-              ))}
+          )}
+
+          {/* What's next — retention or graduation */}
+          {sessionCount >= FREE_SESSION_LIMIT ? (
+            <div style={{
+              background: `linear-gradient(135deg, rgba(212,179,127,0.08) 0%, ${c.graphite} 100%)`,
+              borderRadius: 14, border: `1px solid rgba(212,179,127,0.2)`,
+              padding: "32px 28px", marginBottom: 32, textAlign: "center",
+              animation: "obcFadeIn 0.5s ease 0.6s both",
+            }}>
+              <div style={{ fontSize: 32, marginBottom: 12 }}>🎓</div>
+              <span style={{ fontFamily: font.ui, fontSize: 18, fontWeight: 600, color: c.ivory }}>
+                Curriculum Complete{user?.name ? `, ${user.name.split(" ")[0]}` : ""}!
+              </span>
+              <p style={{ fontFamily: font.ui, fontSize: 13, color: c.stone, marginTop: 8, lineHeight: 1.6, maxWidth: 380, margin: "8px auto 0" }}>
+                You've finished all {FREE_SESSION_LIMIT} free sessions. Your score went from your first session to {score} — that's real progress.
+              </p>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginTop: 20, marginBottom: 20 }}>
+                {[
+                  { num: "1", label: "Warmup", done: true },
+                  { num: "2", label: weakestSkill ? `Focus: ${weakestSkill}` : "Focus", done: true },
+                  { num: "3", label: "Challenge", done: true },
+                ].map(s => (
+                  <div key={s.num} style={{
+                    padding: "12px", borderRadius: 10, textAlign: "center",
+                    background: "rgba(122,158,126,0.06)", border: "1px solid rgba(122,158,126,0.2)",
+                  }}>
+                    <span style={{ fontFamily: font.mono, fontSize: 10, fontWeight: 600, color: c.sage, letterSpacing: "0.06em" }}>DONE</span>
+                    <span style={{ fontFamily: font.ui, fontSize: 11, color: c.chalk, display: "block", marginTop: 4 }}>{s.label}</span>
+                  </div>
+                ))}
+              </div>
+              <p style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.gilt, marginBottom: 16 }}>
+                Keep your momentum — upgrade to continue practicing with longer sessions, analytics, and AI coaching.
+              </p>
+              <button
+                onClick={() => router.push("/dashboard?upgrade=1")}
+                style={{
+                  fontFamily: font.ui, fontSize: 14, fontWeight: 600, padding: "12px 32px", borderRadius: 10, border: "none",
+                  background: `linear-gradient(135deg, ${c.gilt}, ${c.giltDark})`, color: c.obsidian, cursor: "pointer",
+                  boxShadow: "0 8px 32px rgba(212,179,127,0.25)", transition: "all 0.2s",
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 12px 40px rgba(212,179,127,0.35)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 8px 32px rgba(212,179,127,0.25)"; }}
+              >
+                Upgrade — from ₹10/session
+              </button>
             </div>
-          </div>
+          ) : (
+            <div style={{
+              background: c.graphite, borderRadius: 14, border: `1px solid ${c.border}`,
+              padding: "28px", marginBottom: 32,
+              animation: "obcFadeIn 0.5s ease 0.6s both",
+            }}>
+              <div style={{ textAlign: "center", marginBottom: 20 }}>
+                <span style={{ fontFamily: font.ui, fontSize: 14, fontWeight: 600, color: c.ivory }}>
+                  {sessionCount === 1 ? "Great first session" : `Session ${sessionCount} complete`}{user?.name ? `, ${user.name.split(" ")[0]}` : ""}!
+                </span>
+                <p style={{ fontFamily: font.ui, fontSize: 13, color: c.stone, marginTop: 8, lineHeight: 1.6 }}>
+                  {weakestSkill
+                    ? `Session ${sessionCount + 1} will target your biggest growth area: ${weakestSkill}. Most users improve 15+ points after focused practice.`
+                    : `Session ${sessionCount + 1} will dig deeper into targeted practice. Most users improve 15+ points after focused sessions.`}
+                </p>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginTop: 16 }}>
+                {[
+                  { num: "1", label: "Warmup", done: sessionCount >= 1 },
+                  { num: "2", label: weakestSkill ? `Focus: ${weakestSkill}` : "Focus Session", done: sessionCount >= 2 },
+                  { num: "3", label: "Full Simulation", done: sessionCount >= 3 },
+                ].map(s => (
+                  <div key={s.num} style={{
+                    padding: "12px", borderRadius: 10, textAlign: "center",
+                    background: s.done ? "rgba(122,158,126,0.06)" : "rgba(245,242,237,0.02)",
+                    border: `1px solid ${s.done ? "rgba(122,158,126,0.2)" : c.border}`,
+                    opacity: s.done ? 1 : 0.6,
+                  }}>
+                    <span style={{ fontFamily: font.mono, fontSize: 10, fontWeight: 600, color: s.done ? c.sage : c.stone, letterSpacing: "0.06em" }}>
+                      {s.done ? "DONE" : `SESSION ${s.num}`}
+                    </span>
+                    <span style={{ fontFamily: font.ui, fontSize: 11, color: c.chalk, display: "block", marginTop: 4 }}>{s.label}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* CTAs */}
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12, animation: "obcFadeIn 0.5s ease 0.8s both" }}>
             <button
-              onClick={() => router.push("/session/new")}
+              onClick={() => sessionCount >= FREE_SESSION_LIMIT ? router.push("/dashboard?upgrade=1") : router.push("/session/new")}
               className="shimmer-btn"
               style={{
                 fontFamily: font.ui, fontSize: 15, fontWeight: 600,
@@ -230,7 +315,7 @@ export default function OnboardingComplete() {
               onMouseLeave={(e) => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 8px 32px rgba(212,179,127,0.25)"; }}
             >
               <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polygon points="5,3 19,12 5,21"/></svg>
-              Continue to Session 2
+              {sessionCount >= FREE_SESSION_LIMIT ? "Upgrade to Keep Practicing" : `Continue to Session ${sessionCount + 1}`}
             </button>
             <button
               onClick={() => router.push("/dashboard")}
