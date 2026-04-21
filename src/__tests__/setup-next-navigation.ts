@@ -1,4 +1,5 @@
 import { vi } from "vitest";
+import React from "react";
 
 export const mockRouter = {
   push: vi.fn(),
@@ -25,15 +26,12 @@ vi.mock("next/navigation", () => ({
 
 vi.mock("next/link", () => ({
   default: ({ children, href, ...props }: { children: React.ReactNode; href: string; [key: string]: unknown }) => {
-    const React = require("react");
     return React.createElement("a", { href, ...props }, children);
   },
 }));
 
 vi.mock("next/image", () => ({
   default: (props: Record<string, unknown>) => {
-    const React = require("react");
-    // eslint-disable-next-line @next/next/no-img-element
     return React.createElement("img", props);
   },
 }));
