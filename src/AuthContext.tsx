@@ -109,7 +109,6 @@ function computeSessionFingerprint(): string {
     String((navigator as unknown as Record<string, unknown>).deviceMemory || ""),
     navigator.platform || "",
     String(new Date().getTimezoneOffset()),
-    getHeavySignals(),
   ].join("|");
   let hash = 5381;
   for (let i = 0; i < signals.length; i++) hash = ((hash << 5) + hash) + signals.charCodeAt(i);
