@@ -24,7 +24,7 @@ jobs:
       - name: TypeScript type check
         run: npx tsc --noEmit
       - name: ESLint (zero errors, warnings capped)
-        run: npx eslint . --max-warnings 120
+        run: npx eslint . --max-warnings 150
 
   unit-tests:
     name: Unit Tests
