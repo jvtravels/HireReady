@@ -417,13 +417,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 storeDeviceToken(session.user.user_metadata.active_device_token);
               }
             } else {
-              setUser(null);
-              await client.auth.signOut().catch(() => {});
+              // No profile found — create one rather than signing out
+              await ensureProfile(session);
             }
-          } catch {
-            console.error("[auth] getProfile threw");
-            setUser(null);
-            await client.auth.signOut().catch(() => {});
+          } catch (profileErr) {
+            console.error("[auth] getProfile threw:", profileErr);
+            // Network error loading profile — keep the session alive with basic user info
+            const meta = session.user.user_metadata || {};
+            setUser({
+              id: session.user.id,
+              name: meta.name || meta.full_name || "",
+              email: session.user.email || "",
+              targetRole: "",
+              resumeFileName: null,
+              hasCompletedOnboarding: meta.has_completed_onboarding || false,
+              emailVerified: meta.custom_email_verified === true || !!session.user.email_confirmed_at,
+            });
           }
         } else {
           setUser(null);
@@ -432,24 +441,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setLoading(false);
 
         // Background validations (deferred — don't block session restore)
-        // 1. Server-side session check
-        client.auth.getUser().then(async ({ data: { user: authUser }, error: userError }) => {
-          if (session && (userError || !authUser)) {
-            console.warn("[auth] background validation failed — signing out");
-            setUser(null);
-            await client.auth.signOut().catch(() => {});
-          }
-        }).catch(() => {});
-        // 2. Session fingerprint check (canvas/WebGL can be slow — run after UI is responsive)
+        // 1. Server-side session check — try refreshing the token first
         if (session) {
-          setTimeout(() => {
-            if (!validateSessionFingerprint()) {
-              console.warn("[auth] session fingerprint mismatch — possible hijack, signing out");
-              logAuditEvent("session_hijack_detected", { userId: session.user.id, email: session.user.email });
-              setUser(null);
-              client.auth.signOut().catch(() => {});
+          client.auth.refreshSession().then(({ data: refreshData, error: refreshError }) => {
+            if (refreshError || !refreshData.session) {
+              // Only sign out if the refresh token is truly invalid (not a transient network error)
+              if (refreshError?.message?.includes("Invalid Refresh Token") ||
+                  refreshError?.message?.includes("Refresh Token Not Found") ||
+                  refreshError?.status === 401) {
+                console.warn("[auth] refresh token invalid — signing out");
+                setUser(null);
+                client.auth.signOut().catch(() => {});
+              }
             }
-          }, 100);
+          }).catch(() => {});
         }
       } catch (err) {
         console.error("[auth] getSession failed:", err);
@@ -914,7 +919,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const remaining = expiresMs - Date.now();
 
         if (remaining <= 0) {
-          // Session expired — force logout
+          // Session JWT expired — try to refresh before logging out
+          const { data: refreshed, error: refreshErr } = await client.auth.refreshSession();
+          if (refreshed?.session) {
+            setSessionExpiryWarning(null);
+            return;
+          }
           logAuditEvent("session_expired", { userId: user.id });
           setSessionExpiryWarning(null);
           setUser(null);
@@ -937,10 +947,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } catch { /* best effort */ }
     };
 
-    // Check immediately, then every 60s
-    checkExpiry();
+    // Delay first check to let Supabase auto-refresh the token on page load
+    const initialTimer = setTimeout(checkExpiry, 10_000);
     const interval = setInterval(checkExpiry, 60_000);
-    return () => clearInterval(interval);
+    return () => { clearTimeout(initialTimer); clearInterval(interval); };
   }, [user, broadcastLogout, broadcastSessionRefreshed]);
 
   const resetPassword = useCallback(async (email: string): Promise<{ success: boolean; error?: string }> => {
