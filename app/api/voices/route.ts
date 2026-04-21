@@ -1,5 +1,5 @@
 export const runtime = 'edge';
-import handler from "../../../api/voices";
+import handler from "../../../server-handlers/voices";
 
 export async function POST(req: Request) { return handler(req); }
 export async function GET(req: Request) { return handler(req); }

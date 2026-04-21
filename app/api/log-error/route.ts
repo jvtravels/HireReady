@@ -1,5 +1,5 @@
 export const runtime = 'edge';
-import handler from "../../../api/log-error";
+import handler from "../../../server-handlers/log-error";
 
 export async function POST(req: Request) { return handler(req); }
 export async function GET(req: Request) { return handler(req); }

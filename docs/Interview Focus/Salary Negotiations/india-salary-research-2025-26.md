@@ -1,21 +1,22 @@
 # India Salary Research: 2025-2026 Market Data
+
 ## For AI Mock Interview Platform — Salary Negotiation Feature
 
-**Research Date:** April 2026
-**Data Sources:** Levels.fyi, AmbitionBox, Glassdoor India, PayScale India, 6figr.com, WhatIsTheSalary.com, CaseBasix, HelloPM, various industry reports
+**Research Date:** April 2026 **Data Sources:** Levels.fyi, AmbitionBox, Glassdoor India, PayScale India, 6figr.com, WhatIsTheSalary.com, CaseBasix, HelloPM, various industry reports
 
 ---
 
 ## TABLE OF CONTENTS
-1. [Software Engineer / SDE](#1-software-engineer--sde)
-2. [Product Manager](#2-product-manager)
-3. [Engineering Manager / Director of Engineering](#3-engineering-manager--director-of-engineering)
-4. [Data Scientist / ML Engineer / AI Engineer](#4-data-scientist--ml-engineer--ai-engineer)
-5. [Data Analyst / Analytics Manager](#5-data-analyst--analytics-manager)
-6. [Product Designer / UI-UX Designer](#6-product-designer--ui-ux-designer)
-7. [Marketing Manager / Growth / Performance Marketing](#7-marketing-manager)
-8. [Sales / Business Development](#8-sales--business-development)
-9. [Management Consultant](#9-management-consultant)
+
+ 1. [Software Engineer / SDE](#1-software-engineer--sde)
+ 2. [Product Manager](#2-product-manager)
+ 3. [Engineering Manager / Director of Engineering](#3-engineering-manager--director-of-engineering)
+ 4. [Data Scientist / ML Engineer / AI Engineer](#4-data-scientist--ml-engineer--ai-engineer)
+ 5. [Data Analyst / Analytics Manager](#5-data-analyst--analytics-manager)
+ 6. [Product Designer / UI-UX Designer](#6-product-designer--ui-ux-designer)
+ 7. [Marketing Manager / Growth / Performance Marketing](#7-marketing-manager)
+ 8. [Sales / Business Development](#8-sales--business-development)
+ 9. [Management Consultant](#9-management-consultant)
 10. [DevOps / SRE / Cloud Engineer](#10-devops--sre--cloud-engineer)
 11. [Business Analyst / Program Manager](#11-business-analyst--program-manager)
 12. [QA / SDET / Test Engineer](#12-qa--sdet--test-engineer)
@@ -37,60 +38,69 @@
 ### FAANG — Company & Level Specific (Levels.fyi verified)
 
 #### Google India
+
 | Level | Title | Base (LPA) | RSU/yr (LPA) | Bonus (LPA) | Total Comp (LPA) | Monthly In-Hand |
-|-------|-------|-----------|--------------|-------------|------------------|----------------|
-| L3 | SWE II (Entry) | 20-28 | 14-17 | ~2 | 32-50 | ₹1.8-2.5L |
-| L4 | SWE III | 40-50 | 20-30 | ~4 | 70-80 | ₹3-4L |
-| L5 | Senior SWE | 55-70 | 35-70 | ~7 | 90-150 | ₹5-7L |
-| L6 | Staff SWE | 70-90 | 70-150 | ~20 | 150-250+ | ₹7L+ |
+| --- | --- | --- | --- | --- | --- | --- |
+| L3 | SWE II (Entry) | 20-28 | 14-17 | \~2 | 32-50 | ₹1.8-2.5L |
+| L4 | SWE III | 40-50 | 20-30 | \~4 | 70-80 | ₹3-4L |
+| L5 | Senior SWE | 55-70 | 35-70 | \~7 | 90-150 | ₹5-7L |
+| L6 | Staff SWE | 70-90 | 70-150 | \~20 | 150-250+ | ₹7L+ |
 | L7 | Sr Staff/EM | 80-100+ | 150+ | 25+ | 280-380 | ₹10L+ |
+
 - Median L3: ₹41.9 LPA | L4: ₹75.4 LPA | L5: ₹118.9 LPA
 - Google vests RSUs quarterly after initial cliff
 - Joining bonus: ₹5-15 LPA for L4+
 
 #### Amazon India
+
 | Level | Title | Base (LPA) | RSU/yr (LPA) | Sign-on Bonus | Total Comp (LPA) |
-|-------|-------|-----------|--------------|--------------|------------------|
-| L4 | SDE I | 20-24 | ~4.3 | 6-10 LPA (Y1-2) | 26-32 |
-| L5 | SDE II | 45-50 | ~12.7 | — | 57-70 |
-| L6 | SDE III | 60-90 | ~37 | — | 100-130 |
-| L7 | Principal | 100+ | ~75 | — | 186-200+ |
+| --- | --- | --- | --- | --- | --- |
+| L4 | SDE I | 20-24 | \~4.3 | 6-10 LPA (Y1-2) | 26-32 |
+| L5 | SDE II | 45-50 | \~12.7 | — | 57-70 |
+| L6 | SDE III | 60-90 | \~37 | — | 100-130 |
+| L7 | Principal | 100+ | \~75 | — | 186-200+ |
+
 - **CRITICAL: Back-loaded RSU vesting: 5% / 15% / 40% / 40% over 4 years**
 - Sign-on bonuses in Y1-Y2 compensate for low early RSU vesting
 - L4-L7: quarterly vesting (May/Aug/Nov/Feb)
 - Median SDE I: ₹26.3 LPA | SDE II: ₹62.2 LPA | SDE III: ₹122.9 LPA
 
 #### Microsoft India
+
 | Level | Title | Total Comp (LPA) |
-|-------|-------|------------------|
+| --- | --- | --- |
 | 59-60 | SDE | 21-35 (median 27.3) |
 | 61-62 | SDE II | 32-53 (median 42.3) |
 | 63-64 | Senior SDE | 58-88 (median 75.7) |
 | 65-66 | Principal SDE | 107-150 (median 128.9) |
 
 #### Meta/Facebook India
+
 | Level | Title | Total Comp (LPA) |
-|-------|-------|------------------|
-| E4 | SWE | ~80 |
-| E5 | Senior SWE | 82-125 (median ~100) |
+| --- | --- | --- |
+| E4 | SWE | \~80 |
+| E5 | Senior SWE | 82-125 (median \~100) |
+
 - Limited India presence; most roles are remote-eligible from India
 
 #### Apple India
+
 | Level | Title | Total Comp (LPA) |
-|-------|-------|------------------|
-| ICT2 | Junior | ~34 |
+| --- | --- | --- |
+| ICT2 | Junior | \~34 |
 | ICT3 | SWE | 47-83 (median 62.8) |
 | ICT4 | Senior SWE | 66-150 (median 112.8) |
-| ICT5 | Staff | ~177 |
+| ICT5 | Staff | \~177 |
 
 #### Netflix India
+
 - Very limited India hiring; estimated ₹100 LPA for senior roles
 - Netflix pays top-of-market cash with no separate RSU/bonus structure
 
 ### Indian Unicorns
 
 | Company | SDE-1 / Entry (LPA) | SDE-2 / Mid (LPA) | Senior/Lead (LPA) |
-|---------|---------------------|-------------------|-------------------|
+| --- | --- | --- | --- |
 | Flipkart | 16-24 (median 19.6) | 30-44 (median 34.4) | 45-70 |
 | Razorpay | 20-30 (median 24.6) | 34-50 (median 33.7) | 50-68 |
 | CRED | 16-20 base + 4 ESOPs | 25-35 | 40-60 |
@@ -106,7 +116,7 @@
 ### Big Tech (Non-FAANG) India
 
 | Company | Entry (LPA) | Mid (LPA) | Senior (LPA) | Principal/Staff (LPA) |
-|---------|------------|----------|-------------|---------------------|
+| --- | --- | --- | --- | --- |
 | Atlassian | 40-52 (P30) | 59-85 (P40) | 79-118 (P50) | 130-184 (P60) |
 | Adobe | 18-25 | 26-42 (median 32.3) | 40-65 | 70-100 |
 | Salesforce | 27-37 (MTS, median 45.8) | 50-74 | 80-130 | 150-255 |
@@ -117,7 +127,7 @@
 ### IT Services
 
 | Company | Fresher (LPA) | 3-5 yrs (LPA) | 8-12 yrs (LPA) | Tech Lead 12+ yrs (LPA) |
-|---------|--------------|---------------|----------------|------------------------|
+| --- | --- | --- | --- | --- |
 | TCS Ninja | 3.6 | 5-8 | 10-16 | 18-28 |
 | TCS Digital | 7.0 | 9-14 | 14-22 | 22-35 |
 | TCS Prime | 9.0 | 12-16 | — | — |
@@ -136,26 +146,27 @@
 ### Other Notable Companies
 
 | Company | Entry (LPA) | Mid (LPA) | Senior (LPA) |
-|---------|------------|----------|-------------|
+| --- | --- | --- | --- |
 | Zoho | 4.5-7 (L1) | 12-18 (L2) | 18-28 (L3) |
 | Freshworks | 10-18 | 20-35 | 40-60 |
 | BrowserStack | 15-19 (L1) | 25-38 (L3-L5) | 40-55 |
 | Postman | 15-22 | 25-40 | 45-65 |
 | PhysicsWallah | 5.8 (entry) | 12-20 | 25-43 |
-| Byju's* | 10-19 (L1, median 19) | 25-40 | 50-127 |
+| Byju's\* | 10-19 (L1, median 19) | 25-40 | 50-127 |
 | Nykaa | 8-14 | 16-25 | 28-45 |
 | Lenskart | 8-14 | 16-25 | 28-40 |
 | boAt | 6-10 | 12-20 | 22-35 |
 
-*Byju's under insolvency as of 2025
+\*Byju's under insolvency as of 2025
 
 ---
 
 ## 2. PRODUCT MANAGER
 
 ### By Experience Level
+
 | Level | Startups (LPA) | Unicorns (LPA) | FAANG India (LPA) | IT Services (LPA) |
-|-------|---------------|---------------|-------------------|-------------------|
+| --- | --- | --- | --- | --- |
 | APM (0-2y) | 8-15 | 10-18 | 25-40 | 5-9 |
 | PM (3-5y) | 15-28 | 20-35 | 40-65 | 10-18 |
 | Senior PM (6-10y) | 30-50 | 40-70 | 60-120 | 18-30 |
@@ -163,12 +174,14 @@
 | VP/CPO | 80-150 | 100-200 | 150-300 | 40-70 |
 
 ### Specialized PM Roles
+
 - Growth PM: ₹12-23.5 LPA
 - Technical PM: ₹15-30 LPA
 - Data PM: ₹16-22 LPA
 - AI PM: ₹18-35 LPA (premium in 2025-26)
 
 ### Industry-Specific PM Ranges
+
 - Fintech: ₹16-30 LPA
 - E-commerce: ₹14-28 LPA
 - Healthcare/Pharma: ₹14-32 LPA
@@ -176,8 +189,9 @@
 - Media/Entertainment: ₹16-32 LPA
 
 ### Company-Specific (from Levels.fyi)
+
 | Company | APM (LPA) | PM (LPA) | Senior PM (LPA) | Director (LPA) |
-|---------|----------|---------|----------------|----------------|
+| --- | --- | --- | --- | --- |
 | Google | 35-50 | 60-80 | 90-130 | 150-250 |
 | Amazon | 25-35 | 45-65 | 70-100 | 120-180 |
 | Flipkart | 12-20 | 25-45 | 50-80 (median 68) | 100-162 |
@@ -188,16 +202,18 @@
 ## 3. ENGINEERING MANAGER / DIRECTOR OF ENGINEERING
 
 ### By Level (from Levels.fyi + community data)
+
 | Level | IT Services (LPA) | Unicorns (LPA) | FAANG India (LPA) |
-|-------|-------------------|---------------|-------------------|
+| --- | --- | --- | --- |
 | EM (manage 5-10) | 18-30 | 35-55 | 60-120 |
 | Sr EM | 25-40 | 50-80 | 100-200 |
 | Director | 35-60 | 70-120 | 160-250 |
 | VP Engineering | 50-80 | 100-200 | 200-400+ |
 
 ### Company-Specific
+
 | Company | EM (LPA) | Director (LPA) | VP (LPA) |
-|---------|---------|---------------|---------|
+| --- | --- | --- | --- |
 | Google L6 EM | 160-235 (median 202.6) | — | — |
 | Google L7 Sr EM | 284-379 (median 325.7) | — | — |
 | Flipkart | 39-69 (median 53.6) | 45-56 fixed + variable | 80-120 |
@@ -210,14 +226,16 @@
 ## 4. DATA SCIENTIST / ML ENGINEER / AI ENGINEER
 
 ### By Experience
+
 | Level | General (LPA) | FAANG India (LPA) | Unicorns (LPA) | IT Services (LPA) |
-|-------|-------------|-------------------|---------------|-------------------|
+| --- | --- | --- | --- | --- |
 | Fresher (0-2y) | 5-9 | 25-40 | 8-14 | 4-8 |
 | Mid (3-6y) | 10-20 | 40-65 | 15-25 | 8-15 |
 | Senior (7+y) | 20-45 | 60-100+ | 25-45 | 15-25 |
 | Lead/Principal | 40-60 | 100+ (₹1 Cr+) | 45-80 | 25-40 |
 
 ### AI/ML Premium (2025-26 surge)
+
 - Generative AI / LLM specialists: ₹30-50 LPA at senior level
 - MLOps: ₹20-35 LPA mid-level
 - Computer Vision: ₹25-45 LPA senior
@@ -229,7 +247,7 @@
 ## 5. DATA ANALYST / ANALYTICS MANAGER
 
 | Level | IT Services (LPA) | Startups (LPA) | Unicorns (LPA) | FAANG India (LPA) |
-|-------|-------------------|---------------|---------------|-------------------|
+| --- | --- | --- | --- | --- |
 | Fresher | 3-5 | 4-8 | 6-12 | 12-20 |
 | Mid (3-5y) | 5-10 | 8-15 | 12-20 | 20-35 |
 | Senior (6-10y) | 10-18 | 15-25 | 20-35 | 30-50 |
@@ -240,14 +258,16 @@
 ## 6. PRODUCT DESIGNER / UI-UX DESIGNER
 
 ### By Experience
+
 | Level | General (LPA) | Premium Companies (LPA) | FAANG (LPA) |
-|-------|-------------|------------------------|-------------|
+| --- | --- | --- | --- |
 | Fresher | 2.5-6 | 5-10 | 15-25 |
 | Mid (3-5y) | 10-18 | 12-22 (CRED, Flipkart, Swiggy: 22-27) | 25-40 |
 | Senior (6-10y) | 20-35 | 20-35 | 35-60 |
 | Lead/Principal | 30-55 | 30-50 | 50-80 |
 
 ### Role Premium
+
 - Product Designers earn 15-20% more than pure visual/UX designers
 - UX Writers: average ₹17.1 LPA (significantly above content writers at ₹3.8 LPA)
 - Interaction Designers: similar to Product Designers
@@ -257,7 +277,7 @@
 ## 7. MARKETING MANAGER
 
 | Level | General (LPA) | Tech/Unicorns (LPA) | FMCG (LPA) |
-|-------|-------------|---------------------|------------|
+| --- | --- | --- | --- |
 | Fresher | 3-5 | 5-9 | 4-7 |
 | Mid (3-5y) | 7.5-12 | 10-18 | 8-15 |
 | Senior (6-10y) | 15-25 | 18-33 | 15-25 |
@@ -273,7 +293,7 @@
 ## 8. SALES / BUSINESS DEVELOPMENT
 
 | Level | Base (LPA) | Variable (LPA) | Total OTE (LPA) |
-|-------|-----------|---------------|----------------|
+| --- | --- | --- | --- |
 | BDE Fresher | 2.2-3.5 | 1-2 | 3-5 |
 | Mid-level Sales | 3.6-5.4 | 2-4 | 6-10 |
 | Senior Sales | 8-12 | 4-8 | 12-20 |
@@ -289,8 +309,9 @@
 ## 9. MANAGEMENT CONSULTANT
 
 ### MBB Firms (McKinsey, BCG, Bain) — India
+
 | Level | Total Comp (LPA) |
-|-------|-----------------|
+| --- | --- |
 | Associate (Entry) | 16 |
 | Consultant | 24 |
 | Senior Consultant | 37 |
@@ -299,8 +320,9 @@
 | Partner | 210 (₹2.1 Cr) |
 
 ### Big 4 (Deloitte, PwC, EY, KPMG) — India
+
 | Level | Total Comp (LPA) |
-|-------|-----------------|
+| --- | --- |
 | Associate | 13 |
 | Consultant | 16 |
 | Senior Consultant | 24 |
@@ -309,6 +331,7 @@
 | Partner | 92 |
 
 ### Other Consulting (Kearney, Accenture Strategy)
+
 - Entry: ₹12-18 LPA
 - Mid: ₹25-40 LPA
 - Senior: ₹45-70 LPA
@@ -319,13 +342,14 @@
 ## 10. DEVOPS / SRE / CLOUD ENGINEER
 
 | Level | IT Services (LPA) | Startups (LPA) | Unicorns (LPA) | FAANG (LPA) |
-|-------|-------------------|---------------|---------------|-------------|
+| --- | --- | --- | --- | --- |
 | Fresher | 3.5-6 | 5-8 | 8-14 | 25-40 |
 | Mid (3-6y) | 8-15 | 10-18 | 15-25 | 40-60 |
 | Senior (7+y) | 15-28 | 18-30 | 25-40 | 55-90 |
 | Lead/Principal | 25-35 | 28-45 | 35-55 | 80-120 |
 
 ### Platform Premium
+
 - AWS skills: highest demand, ₹6-30 LPA range
 - GCP: ₹7-16 LPA mid-level (AI/data companies prefer)
 - Azure: Strong in enterprise/BFSI
@@ -334,6 +358,7 @@
 - DevSecOps specialization: +25-50% base
 
 ### City-wise (Fresher)
+
 - Bangalore: ₹5.5-8 LPA | Hyderabad: ₹5-7.5 LPA | Pune: ₹4.5-7 LPA | Chennai: ₹4.5-6.5 LPA | Gurgaon: ₹5-7 LPA
 
 ---
@@ -341,21 +366,24 @@
 ## 11. BUSINESS ANALYST / PROGRAM MANAGER
 
 ### Business Analyst
+
 | Level | Range (LPA) |
-|-------|------------|
+| --- | --- |
 | Fresher | 4-7 |
 | MBA Graduate (entry) | 8-12 |
 | Mid (3-5y) | 15-25 |
 | Senior (8+y) | 20-35 |
 
 ### Program Manager
+
 | Level | Range (LPA) |
-|-------|------------|
+| --- | --- |
 | Entry | 8-15 |
 | Mid | 15-25 |
 | Senior | 25-40 |
 
 ### Company-Specific
+
 - Google PM (Program Manager): ₹21 LPA average, Sr PM ₹70-90 LPA
 - Amazon Sr PM (L6): ₹30-40 LPA fixed
 - Mumbai average: ₹20 LPA, top earners ₹35 LPA
@@ -365,7 +393,7 @@
 ## 12. QA / SDET / TEST ENGINEER
 
 | Level | Manual QA (LPA) | Automation/SDET (LPA) |
-|-------|----------------|---------------------|
+| --- | --- | --- |
 | Fresher | 3-5 | 5-7 |
 | Mid (3-5y) | 5-8 | 8-15 |
 | Senior (7+y) | 8-12 | 15-25 |
@@ -382,7 +410,7 @@
 ## 13. HR / TALENT ACQUISITION / HRBP
 
 | Level | General (LPA) | Tech Companies (LPA) |
-|-------|-------------|---------------------|
+| --- | --- | --- |
 | HR Executive (fresher) | 2.5-5 | 4-7 |
 | HR Manager (mid) | 5-10 | 8-15 |
 | HRBP | 12-22 | 12-30 |
@@ -400,8 +428,9 @@
 ## 14. FINANCE / CA / INVESTMENT BANKING
 
 ### Investment Banking (India)
+
 | Level | Indian Banks (LPA) | Bulge Bracket (GS/JPM/MS) (LPA) |
-|-------|-------------------|--------------------------------|
+| --- | --- | --- |
 | Analyst (fresher) | 10-14 + 2-5 bonus | 18-30 |
 | Associate (3-5y) | 15-25 | 28-50 |
 | VP (5-10y) | 25-45 | 45-80 |
@@ -409,14 +438,16 @@
 | MD | 60-100 | 150-300 (₹1.5-3 Cr) |
 
 ### Chartered Accountant (CA)
+
 | Employer Type | Fresher (LPA) | Mid (LPA) | Senior (LPA) |
-|--------------|-------------|----------|-------------|
+| --- | --- | --- | --- |
 | Big 4 (Deloitte/EY/PwC/KPMG) | 9-14 | 18-30 | 40-60 |
 | Top advisory (boutique IB) | 12-18 | 25-40 | 50-80 |
 | Industry (corporate finance) | 8-12 | 15-25 | 30-50 |
 | HDFC/ICICI Bank | 4-10 | 12-22 | 30-50 |
 
 ### FP&A / Corporate Finance
+
 - Fresher: ₹5-10 LPA
 - Mid: ₹12-25 LPA
 - Senior FP&A Manager: ₹25-45 LPA
@@ -427,7 +458,7 @@
 ## 15. CONTENT WRITER / TECHNICAL WRITER
 
 | Role | Fresher (LPA) | Mid (LPA) | Senior (LPA) |
-|------|-------------|----------|-------------|
+| --- | --- | --- | --- |
 | Content Writer | 3.5-4 | 4.5-5.5 | 8-12 |
 | Technical Writer | 3-5 | 6-10 | 12-18 |
 | Copywriter | 1.8-4 | 6-10.8 | 10-15 |
@@ -442,7 +473,7 @@
 ## 16. LEGAL / COMPLIANCE
 
 | Level | Law Firms (LPA) | In-house MNC (LPA) | In-house Startup (LPA) |
-|-------|----------------|-------------------|----------------------|
+| --- | --- | --- | --- |
 | Fresher (0 PQE) | 1.5-18 | 5-10 | 4-8 |
 | Associate (3-5 PQE) | 10-25 | 12-22 | 8-18 |
 | Senior (6+ PQE) | 20-40 | 20-40+ | 15-30 |
@@ -458,7 +489,7 @@
 ## 17. OPERATIONS MANAGER / SUPPLY CHAIN
 
 | Level | General (LPA) | E-commerce/Logistics (LPA) |
-|-------|-------------|--------------------------|
+| --- | --- | --- |
 | Entry | 4-8 | 6-12 |
 | Mid (3-5y) | 12-21 | 15-25 |
 | Senior (8+y) | 15-28 | 25-35 |
@@ -474,7 +505,7 @@
 ## 18. CUSTOMER SUCCESS / ACCOUNT MANAGER
 
 | Level | Range (LPA) |
-|-------|------------|
+| --- | --- |
 | CSM (entry) | 5-8 |
 | CSM (mid) | 10-15 |
 | Senior CSM | 14-30 |
@@ -490,7 +521,7 @@
 ## 19. CYBERSECURITY / INFOSEC
 
 | Level | Range (LPA) |
-|-------|------------|
+| --- | --- |
 | Fresher | 4-8 |
 | Mid (3-5y) | 10-15 |
 | Senior Analyst | 12-28 |
@@ -508,13 +539,14 @@
 ## 20. BLOCKCHAIN / WEB3 DEVELOPER
 
 | Level | Range (LPA) |
-|-------|------------|
+| --- | --- |
 | Fresher | 3-6 |
 | Mid (2-5y) | 6-15 |
 | Senior (5+y) | 15-45 |
 | Architect | 22-35 |
 
 ### Specialization Premiums
+
 - Solidity Developers: ₹16-27 LPA
 - Smart Contract Developer: ₹8-12 LPA
 - DApp Developer: ₹15-24 LPA
@@ -526,15 +558,17 @@
 ## 21. STRUCTURAL COMPENSATION DATA
 
 ### CTC to In-Hand Salary Ratio
+
 - **Typical ratio: In-hand = 60-75% of CTC** (after all deductions)
-- Mandatory deductions reduce take-home to ~71-82% of gross salary
+- Mandatory deductions reduce take-home to \~71-82% of gross salary
 - Key deductions: EPF (12% of basic, capped at ₹1,800/mo), Professional Tax, Income Tax
 - Gratuity: 4.81% of basic (payable after 5 years)
-- New Wage Code 2025: Basic must be >= 50% of CTC
+- New Wage Code 2025: Basic must be &gt;= 50% of CTC
 
 **Example Calculations:**
+
 | CTC (LPA) | Monthly In-Hand (approx) | Ratio |
-|-----------|------------------------|-------|
+| --- | --- | --- |
 | 5 | ₹36,000-38,000 | 72-76% |
 | 10 | ₹70,000-77,000 | 70-77% |
 | 12 | ₹82,000-90,400 | 68-75% |
@@ -546,8 +580,9 @@
 - Surcharge: 10% above ₹50L, 15% above ₹1 Cr, 25% above ₹2 Cr
 
 ### Variable Pay / Performance Bonus by Company Type
+
 | Company Type | Variable % of CTC |
-|-------------|-------------------|
+| --- | --- |
 | IT Services (TCS, Infosys) | 5-15% |
 | FAANG India | 15-20% |
 | Indian Unicorns | 10-20% |
@@ -557,8 +592,9 @@
 | Startups (early-stage) | 5-10% + ESOPs |
 
 ### RSU Vesting Schedules
+
 | Company | Vesting Schedule | Notes |
-|---------|-----------------|-------|
+| --- | --- | --- |
 | Google | Quarterly after initial cliff | Equal quarterly vesting |
 | Amazon | 5/15/40/40 over 4 years | Back-loaded; sign-on bonus compensates Y1-Y2 |
 | Microsoft | 25/25/25/25 over 4 years | Equal annual vesting |
@@ -568,6 +604,7 @@
 | SEBI minimum vesting | 1 year minimum | Per government regulation |
 
 ### ESOP at Indian Startups
+
 - Typical ESOP pool: 10-15% of company equity
 - Individual grants: 0.01-0.5% for employees (0.5-2% max for C-suite)
 - Strike price: Usually at or near par value (₹1-10 per share) for early employees
@@ -575,8 +612,9 @@
 - SEBI reform (June 2025): Founders can retain pre-IPO ESOPs
 
 ### Notice Period by Company Type
+
 | Company Type | Notice Period | Buyout? |
-|-------------|--------------|---------|
+| --- | --- | --- |
 | IT Services (TCS, Infosys, Wipro) | 60-90 days | Usually allowed with salary deduction |
 | FAANG India | 30-60 days | Generally negotiable |
 | Indian Unicorns | 30-60 days | Often flexible |
@@ -585,6 +623,7 @@
 | Consulting (MBB/Big 4) | 30-60 days | Project-dependent |
 
 ### Notice Period Buyout Practices
+
 - New employer often reimburses buyout via joining bonus
 - Joining bonus typically 2x the notice buyout amount
 - Buyout amount = (monthly salary) x (unserved notice months)
@@ -592,12 +631,14 @@
 - Companies pay 10-15% extra for candidates joining within 30 days vs 90 days
 
 ### Garden Leave
+
 - Used to prevent departing employees from accessing sensitive info
 - Employee receives full salary during garden leave
 - Common at: senior roles in banking, consulting, and tech leadership
 - Duration: typically the notice period itself
 
 ### Moonlighting Policies (2025)
+
 - **No legal restriction** on dual employment in India
 - Company-specific policies vary widely
 - TCS, Wipro, Infosys: explicitly prohibited moonlighting
@@ -607,8 +648,9 @@
 ### Salary Negotiation Benchmarks
 
 **Hike When Switching Companies:**
+
 | Scenario | Typical Hike % |
-|----------|---------------|
+| --- | --- |
 | Within same tier (services to services) | 15-25% |
 | Within same tier (product to product) | 20-30% |
 | IT Services to Product Company | 40-100% |
@@ -618,8 +660,9 @@
 | Annual increment (internal) | 6-15% (average 9.2-9.5% in 2025) |
 
 **Joining Bonus Ranges:**
+
 | Company Type | Joining Bonus |
-|-------------|--------------|
+| --- | --- |
 | IT Services | ₹0 |
 | Startups | ₹0-2 LPA |
 | Indian Unicorns | ₹1-5 LPA |
@@ -628,6 +671,7 @@
 | Investment Banking | ₹5-15 LPA |
 
 **Negotiation Room (from initial offer):**
+
 - Entry-level: 5-10% negotiation room
 - Mid-level: 10-20% negotiation room
 - Senior-level: 15-25% above initial offer
@@ -635,8 +679,9 @@
 - Counter 15-25% above the initial offer as a baseline strategy
 
 ### City-wise Salary Multipliers (Bangalore = 1.0x)
+
 | City | Multiplier | Cost of Living vs BLR |
-|------|-----------|---------------------|
+| --- | --- | --- |
 | Bangalore | 1.0x | Baseline |
 | Mumbai | 0.95-1.05x (5-10% higher nominal, but 40-60% higher CoL) | 1.4-1.6x |
 | Delhi NCR (Gurgaon) | 0.95-1.0x | 0.9-1.1x |
@@ -644,11 +689,12 @@
 | Pune | 0.85-0.92x | 0.7-0.8x |
 | Chennai | 0.85-0.90x | 0.7-0.8x |
 | Kolkata | 0.75-0.85x | 0.6-0.7x |
-| ₹15L in Bangalore ≈ ₹10L in Hyderabad (after rent/expenses) |
+| ₹15L in Bangalore ≈ ₹10L in Hyderabad (after rent/expenses) |  |  |
 
 ### Freelance / Contract Rates (India 2025)
+
 | Role | Hourly Rate (INR) | Monthly Rate (INR) |
-|------|------------------|-------------------|
+| --- | --- | --- |
 | Junior Developer | ₹800-1,500 | ₹60K-1.2L |
 | Mid Developer | ₹1,500-3,000 | ₹1.2-2.5L |
 | Senior Developer | ₹2,500-5,000+ | ₹2-4L |
@@ -658,11 +704,13 @@
 | Data Scientist | ₹2,000-5,000 | ₹1.5-4L |
 
 **USD equivalent for global clients:**
+
 - Junior: $10-15/hr | Mid: $15-30/hr | Senior: $30-50+/hr
 - Median Indian developer on Upwork: $27/hr (range $18-39)
 - 60% cost savings vs North America/Western Europe
 
 ### Relocation Packages
+
 - Typical range: ₹50,000-3,00,000 one-time
 - Moving expenses: up to 2 months basic salary (cross-state), 1 month (within state)
 - Economy airfare for family included
@@ -675,6 +723,7 @@
 ## 22. SOURCES
 
 ### Primary Data Sources (with URLs)
+
 - [Google SWE India Salaries - Levels.fyi](https://www.levels.fyi/companies/google/salaries/software-engineer/locations/india)
 - [Google L3 India - Levels.fyi](https://www.levels.fyi/companies/google/salaries/software-engineer/levels/l3/locations/india)
 - [Google L4 India - Levels.fyi](https://www.levels.fyi/companies/google/salaries/software-engineer/levels/l4/locations/india)
