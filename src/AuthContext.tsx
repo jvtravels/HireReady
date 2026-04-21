@@ -372,8 +372,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     let unsubscribe: (() => void) | null = null;
 
+    // On the OAuth callback page, AuthCallback.tsx handles signInWithIdToken.
+    // We must NOT call getSession() concurrently — it fights for the same Supabase
+    // navigator lock and causes a 5s timeout. Let onAuthStateChange handle it instead.
+    const isCallbackPage = typeof window !== "undefined" && window.location.pathname.startsWith("/auth/callback");
+
     // Initialize auth asynchronously — Supabase SDK loads in background
     getSupabase().then(async (client) => {
+      if (isCallbackPage) {
+        // On callback page, skip getSession — let signInWithIdToken + onAuthStateChange handle auth
+        clearTimeout(safetyTimer);
+        initialSessionRestoredRef.current = true;
+        // Still register the listener below, but don't do getSession
+        setLoading(true); // stays loading until onAuthStateChange fires SIGNED_IN
+      } else {
       // Restore session from local JWT
       try {
         const { data: { session } } = await client.auth.getSession();
@@ -440,21 +452,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         clearTimeout(safetyTimer);
         setLoading(false);
 
-        // Background validations (deferred — don't block session restore)
-        // 1. Server-side session check — try refreshing the token first
-        if (session) {
-          client.auth.refreshSession().then(({ data: refreshData, error: refreshError }) => {
-            if (refreshError || !refreshData.session) {
-              // Only sign out if the refresh token is truly invalid (not a transient network error)
-              if (refreshError?.message?.includes("Invalid Refresh Token") ||
-                  refreshError?.message?.includes("Refresh Token Not Found") ||
-                  refreshError?.status === 401) {
-                console.warn("[auth] refresh token invalid — signing out");
-                setUser(null);
-                client.auth.signOut().catch(() => {});
+        // Background validation (deferred — don't block session restore or fight for auth lock)
+        // Skip on /auth/callback — signInWithIdToken is still holding the lock there
+        if (session && !window.location.pathname.startsWith("/auth/callback")) {
+          // Wait for onAuthStateChange listener to be fully registered and any pending
+          // auth operations (e.g. token refresh) to complete before we touch the lock
+          setTimeout(() => {
+            client.auth.refreshSession().then(({ data: refreshData, error: refreshError }) => {
+              if (refreshError || !refreshData.session) {
+                // Only sign out if the refresh token is truly invalid (not a transient network error)
+                if (refreshError?.message?.includes("Invalid Refresh Token") ||
+                    refreshError?.message?.includes("Refresh Token Not Found") ||
+                    refreshError?.status === 401) {
+                  console.warn("[auth] refresh token invalid — signing out");
+                  setUser(null);
+                  client.auth.signOut().catch(() => {});
+                }
               }
-            }
-          }).catch(() => {});
+            }).catch(() => {});
+          }, 5000);
         }
       } catch (err) {
         console.error("[auth] getSession failed:", err);
@@ -465,6 +481,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       // Mark initial session as restored — prevents race condition with onAuthStateChange
       initialSessionRestoredRef.current = true;
+      } // end else (non-callback page)
 
       // Listen for auth state changes
       const { data: { subscription } } = client.auth.onAuthStateChange(async (event, session) => {
