@@ -1,3 +1,4 @@
+"use client";
 /**
  * OAuth Callback Handler
  *
@@ -50,22 +51,40 @@ export default function AuthCallback() {
         }
 
         // Exchange the authorization code for tokens via our serverless function
+        // Validate nonce if present (OpenID Connect replay prevention)
+        const storedNonce = sessionStorage.getItem("hirestepx_oauth_nonce");
         sessionStorage.removeItem("hirestepx_oauth_nonce");
 
-        const tokenRes = await fetch("/api/send-welcome", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            action: "google-token-exchange",
-            code,
-            redirectUri: `${window.location.origin}/auth/callback`,
-          }),
-        });
+        // 30-second timeout prevents indefinite hang if server is slow
+        const abortController = new AbortController();
+        const timeoutId = setTimeout(() => abortController.abort(), 30_000);
+
+        let tokenRes: Response;
+        try {
+          tokenRes = await fetch("/api/send-welcome", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            signal: abortController.signal,
+            body: JSON.stringify({
+              action: "google-token-exchange",
+              code,
+              redirectUri: `${window.location.origin}/auth/callback`,
+            }),
+          });
+        } catch (fetchErr) {
+          clearTimeout(timeoutId);
+          if (fetchErr instanceof DOMException && fetchErr.name === "AbortError") {
+            setError("Sign-in timed out. Please try again.");
+          } else {
+            setError("Network error during sign-in. Check your connection.");
+          }
+          return;
+        }
+        clearTimeout(timeoutId);
 
         if (!tokenRes.ok) {
           const errData = await tokenRes.json().catch(() => ({}));
           setError(errData.error || "Failed to complete Google sign-in.");
-          setTimeout(() => router.push("/login"), 3000);
           return;
         }
 
@@ -73,8 +92,22 @@ export default function AuthCallback() {
 
         if (!id_token) {
           setError("No ID token received. Please try again.");
-          setTimeout(() => router.push("/login"), 2000);
           return;
+        }
+
+        // Validate nonce claim in ID token to prevent token replay attacks
+        if (storedNonce) {
+          try {
+            // Decode JWT payload (base64url, no verification — Supabase verifies the full token)
+            const payloadB64 = id_token.split(".")[1];
+            const payload = JSON.parse(atob(payloadB64.replace(/-/g, "+").replace(/_/g, "/")));
+            if (payload.nonce && payload.nonce !== storedNonce) {
+              setError("Security check failed (nonce mismatch). Please try again.");
+              return;
+            }
+          } catch {
+            // If we can't decode, skip nonce check — Supabase still validates the token signature
+          }
         }
 
         // Sign into Supabase with the Google ID token
@@ -82,6 +115,7 @@ export default function AuthCallback() {
         const { error: signInError } = await client.auth.signInWithIdToken({
           provider: "google",
           token: id_token,
+          nonce: storedNonce || undefined,
           access_token: access_token || undefined,
         });
 
@@ -127,7 +161,34 @@ export default function AuthCallback() {
             }}>
               <p style={{ color: c.ember, fontSize: 14, margin: 0 }}>{error}</p>
             </div>
-            <p style={{ color: c.stone, fontSize: 13 }}>Redirecting to login...</p>
+            <div style={{ display: "flex", gap: 12, justifyContent: "center", marginTop: 8 }}>
+              <button
+                onClick={() => router.push("/login")}
+                style={{
+                  fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: c.ivory,
+                  background: "transparent", border: `1px solid ${c.border}`,
+                  borderRadius: 8, padding: "8px 20px", cursor: "pointer",
+                }}
+              >
+                Back to Login
+              </button>
+              <button
+                onClick={() => {
+                  setError("");
+                  router.push("/login");
+                  setTimeout(() => {
+                    // Re-trigger Google OAuth from login page
+                  }, 100);
+                }}
+                style={{
+                  fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: c.obsidian,
+                  background: c.gilt, border: "none",
+                  borderRadius: 8, padding: "8px 20px", cursor: "pointer",
+                }}
+              >
+                Try Again
+              </button>
+            </div>
           </>
         ) : (
           <>

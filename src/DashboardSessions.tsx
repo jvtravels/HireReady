@@ -1,3 +1,4 @@
+"use client";
 import { useState, useMemo, memo } from "react";
 import { useRouter } from "next/navigation";
 import { c, font } from "./tokens";

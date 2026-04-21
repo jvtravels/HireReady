@@ -7,7 +7,7 @@ export function Nav() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
-  const { isLoggedIn, loading, logout } = useAuth();
+  const { isLoggedIn, loading, logout, user } = useAuth();
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 40);
     window.addEventListener("scroll", onScroll, { passive: true });
@@ -69,7 +69,7 @@ export function Nav() {
         {loading ? (
           <div style={{ width: 140, height: 36 }} />
         ) : isLoggedIn ? (
-          <>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <Link href="/dashboard" className="premium-btn" style={{
               fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: c.obsidian,
               borderRadius: 10, padding: "9px 22px",
@@ -77,16 +77,27 @@ export function Nav() {
             }}>
               Dashboard
             </Link>
-            <button onClick={logout} style={{
-              fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.stone,
-              background: "transparent", border: "none", padding: "8px 16px",
-              cursor: "pointer", transition: "color 0.2s ease",
-            }}
-              onMouseEnter={(e) => { e.currentTarget.style.color = c.ivory; }}
-              onMouseLeave={(e) => { e.currentTarget.style.color = c.stone; }}>
-              Log out
-            </button>
-          </>
+            <Link href="/dashboard" aria-label="Go to dashboard" style={{ textDecoration: "none", display: "flex", alignItems: "center" }}>
+              <div style={{
+                width: 34, height: 34, borderRadius: "50%",
+                background: `linear-gradient(135deg, ${c.gilt}, ${c.sage})`,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                border: `2px solid ${c.border}`,
+                transition: "border-color 0.2s ease, transform 0.2s ease",
+                cursor: "pointer",
+              }}
+                onMouseEnter={(e) => { e.currentTarget.style.borderColor = c.gilt; e.currentTarget.style.transform = "scale(1.08)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.borderColor = c.border; e.currentTarget.style.transform = "scale(1)"; }}
+              >
+                <span style={{
+                  fontFamily: font.ui, fontSize: 13, fontWeight: 700,
+                  color: c.obsidian, textTransform: "uppercase", lineHeight: 1,
+                }}>
+                  {user?.name ? user.name.charAt(0) : user?.email ? user.email.charAt(0) : "U"}
+                </span>
+              </div>
+            </Link>
+          </div>
         ) : (
           <>
             <Link href="/login" style={{
@@ -144,6 +155,18 @@ export function Nav() {
           <div style={{ width: 40, height: 1, background: c.border, margin: "4px 0" }} />
           {loading ? null : isLoggedIn ? (
             <>
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <div style={{
+                  width: 40, height: 40, borderRadius: "50%",
+                  background: `linear-gradient(135deg, ${c.gilt}, ${c.sage})`,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                }}>
+                  <span style={{ fontFamily: font.ui, fontSize: 16, fontWeight: 700, color: c.obsidian, textTransform: "uppercase" }}>
+                    {user?.name ? user.name.charAt(0) : user?.email ? user.email.charAt(0) : "U"}
+                  </span>
+                </div>
+                {user?.name && <span style={{ fontFamily: font.ui, fontSize: 14, color: c.ivory }}>{user.name}</span>}
+              </div>
               <Link href="/dashboard" style={{ fontFamily: font.ui, fontSize: 18, fontWeight: 600, color: c.gilt, textDecoration: "none" }}>Dashboard</Link>
               <button onClick={() => { logout(); setMobileOpen(false); }} style={{ fontFamily: font.ui, fontSize: 16, color: c.stone, background: "none", border: "none", cursor: "pointer" }}>Log out</button>
             </>

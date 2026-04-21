@@ -12,11 +12,13 @@ export const mockRouter = {
 export const mockPathname = "/dashboard";
 export const mockSearchParams = new URLSearchParams();
 
+const useParamsMock = vi.fn(() => ({}));
+
 vi.mock("next/navigation", () => ({
   useRouter: () => mockRouter,
   usePathname: () => mockPathname,
   useSearchParams: () => mockSearchParams,
-  useParams: () => ({}),
+  useParams: useParamsMock,
   redirect: vi.fn(),
   notFound: vi.fn(),
 }));
@@ -25,5 +27,13 @@ vi.mock("next/link", () => ({
   default: ({ children, href, ...props }: { children: React.ReactNode; href: string; [key: string]: unknown }) => {
     const React = require("react");
     return React.createElement("a", { href, ...props }, children);
+  },
+}));
+
+vi.mock("next/image", () => ({
+  default: (props: Record<string, unknown>) => {
+    const React = require("react");
+    // eslint-disable-next-line @next/next/no-img-element
+    return React.createElement("img", props);
   },
 }));

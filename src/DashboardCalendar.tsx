@@ -1,3 +1,4 @@
+"use client";
 import { useState, useEffect, useMemo } from "react";
 import { c, font } from "./tokens";
 import { useAuth } from "./AuthContext";

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import Image from "next/image";
 import { track } from "@vercel/analytics";
 import { c, font } from "./tokens";
 import { getSupabase, supabaseConfigured } from "./supabase";
@@ -418,7 +419,7 @@ export default function ComingSoon() {
                 "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=80&h=80&fit=crop&crop=face",
                 "https://images.unsplash.com/photo-1633332755192-727a05c4013d?w=80&h=80&fit=crop&crop=face",
               ].map((src, i) => (
-                <img key={i} src={src} alt="" aria-hidden="true" width={32} height={32} loading="lazy" decoding="async" style={{
+                <Image key={i} src={src} alt="" aria-hidden width={32} height={32} style={{
                   width: 32, height: 32, borderRadius: "50%",
                   border: `2px solid ${c.obsidian}`,
                   marginLeft: i > 0 ? -10 : 0,

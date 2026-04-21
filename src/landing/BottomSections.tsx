@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import Image from "next/image";
 import { track } from "@vercel/analytics";
 import { c, font } from "../tokens";
 import { getSupabase, supabaseConfigured } from "../supabase";
@@ -196,12 +197,12 @@ export function FinalCTA() {
         minHeight: 400, display: "flex", alignItems: "center",
       }}>
         {/* Background image — professional in confident pose */}
-        <img
+        <Image
           src="https://images.unsplash.com/photo-1521737711867-e3b97375f902?w=1400&h=600&fit=crop&crop=center&q=75"
           alt="Professional team collaborating, representing interview preparation"
-          loading="lazy" width={1400} height={600}
+          fill sizes="100vw"
           onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
-          style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", filter: "brightness(0.3)" }}
+          style={{ objectFit: "cover", filter: "brightness(0.3)" }}
         />
         {/* Dark overlay */}
         <div style={{ position: "absolute", inset: 0, background: `linear-gradient(90deg, ${c.obsidian}E6 0%, ${c.obsidian}99 50%, transparent 100%)` }} />
@@ -227,7 +228,7 @@ export function FinalCTA() {
                   "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=48&h=48&fit=crop&crop=face",
                   "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=48&h=48&fit=crop&crop=face",
                 ].map((src, i) => (
-                  <img key={i} src={`${src}&q=75`} alt={["User testimonial photo 1", "User testimonial photo 2", "User testimonial photo 3"][i]} loading="lazy" width={28} height={28} onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} style={{
+                  <Image key={i} src={`${src}&q=75`} alt={["User testimonial photo 1", "User testimonial photo 2", "User testimonial photo 3"][i]} width={28} height={28} onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} style={{
                     width: 28, height: 28, borderRadius: "50%", objectFit: "cover",
                     border: `2px solid ${c.obsidian}`, marginLeft: i > 0 ? -8 : 0,
                   }} />

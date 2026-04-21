@@ -1,3 +1,4 @@
+"use client";
 import { useEffect, useState, lazy, Suspense, useRef } from "react";
 import { c } from "./tokens";
 import { useSEO, webAppJsonLd, faqJsonLd } from "./useSEO";

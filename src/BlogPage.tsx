@@ -1,4 +1,6 @@
+"use client";
 import { useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { c, font } from "./tokens";
@@ -572,10 +574,12 @@ function BlogIndex({ router }: { router: { push: (path: string) => void } }) {
             onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = c.border; }}
           >
             <div style={{ position: "relative", minHeight: 320 }}>
-              <img
+              <Image
                 src={featured.heroImage} alt={featured.heroAlt} loading="eager"
+                fill sizes="50vw"
+                unoptimized
                 onError={e => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
-                style={{ width: "100%", height: "100%", objectFit: "cover", position: "absolute", inset: 0 }}
+                style={{ objectFit: "cover" }}
               />
             </div>
             <div style={{ padding: "40px 36px", display: "flex", flexDirection: "column", justifyContent: "center" }}>
@@ -614,10 +618,12 @@ function BlogIndex({ router }: { router: { push: (path: string) => void } }) {
               onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = c.border; }}
             >
               <div style={{ position: "relative", height: 160 }}>
-                <img
-                  src={post.heroImage} alt={post.heroAlt} loading="lazy"
+                <Image
+                  src={post.heroImage} alt={post.heroAlt}
+                  fill sizes="(max-width: 768px) 100vw, 33vw"
+                  unoptimized
                   onError={e => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
-                  style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                  style={{ objectFit: "cover" }}
                 />
               </div>
               <div style={{ padding: "20px 22px", flex: 1, display: "flex", flexDirection: "column" }}>
@@ -711,10 +717,12 @@ function BlogPostPage({ post }: { post: BlogPost }) {
 
       {/* Hero */}
       <div className="blog-hero" style={{ position: "relative", height: 360, overflow: "hidden" }}>
-        <img
+        <Image
           src={post.heroImage} alt={post.heroAlt}
+          fill sizes="100vw"
+          unoptimized
           onError={e => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
-          style={{ width: "100%", height: "100%", objectFit: "cover", filter: "brightness(0.35)" }}
+          style={{ objectFit: "cover", filter: "brightness(0.35)" }}
         />
         <div style={{ position: "absolute", inset: 0, background: `linear-gradient(to top, ${c.obsidian} 0%, ${c.obsidian}80 40%, transparent 100%)` }} />
         <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, maxWidth: 720, margin: "0 auto", padding: "0 40px 40px" }}>
@@ -840,8 +848,10 @@ function BlogPostPage({ post }: { post: BlogPost }) {
                   onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = c.borderHover; }}
                   onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = c.border; }}
                 >
-                  <img src={r.heroImage} alt={r.heroAlt} loading="lazy" onError={e => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
-                    style={{ width: "100%", height: 100, objectFit: "cover" }} />
+                  <div style={{ position: "relative", width: "100%", height: 100 }}>
+                    <Image src={r.heroImage} alt={r.heroAlt} fill sizes="(max-width: 768px) 100vw, 33vw" unoptimized onError={e => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+                      style={{ objectFit: "cover" }} />
+                  </div>
                   <div style={{ padding: "14px 16px" }}>
                     <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: c.ivory, lineHeight: 1.35, display: "block", marginBottom: 6 }}>{r.title}</span>
                     <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>{r.readTime} read</span>

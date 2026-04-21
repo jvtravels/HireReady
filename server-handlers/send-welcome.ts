@@ -202,6 +202,25 @@ async function handleReset(req: VercelRequest, res: VercelResponse, normalizedEm
   }
 
   try {
+    // Check if user exists before sending reset email
+    const userListRes = await fetch(
+      `${SUPABASE_URL}/auth/v1/admin/users?filter=${encodeURIComponent(normalizedEmail)}&page=1&per_page=1`,
+      {
+        headers: {
+          apikey: SUPABASE_SERVICE_ROLE_KEY,
+          Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+        },
+      },
+    );
+    if (userListRes.ok) {
+      const userListData = await userListRes.json();
+      const users = userListData.users || userListData || [];
+      const found = Array.isArray(users) && users.some((u: { email?: string }) => u.email?.toLowerCase() === normalizedEmail);
+      if (!found) {
+        return res.status(404).json({ error: "No account found with this email address." });
+      }
+    }
+
     // Generate a Supabase recovery link via admin API
     const linkRes = await fetch(`${SUPABASE_URL}/auth/v1/admin/generate_link`, {
       method: "POST",
@@ -232,15 +251,9 @@ async function handleReset(req: VercelRequest, res: VercelResponse, normalizedEm
       return res.status(200).json({ ok: true });
     }
 
-    // Rewrite the redirect_to in the action link and add an HMAC signature for link integrity
+    // Rewrite the redirect_to in the action link so user lands on our reset page
     const linkUrl = new URL(actionLink);
     linkUrl.searchParams.set("redirect_to", `${APP_URL}/reset-password`);
-    // Sign the reset link with HMAC to detect tampering/interception
-    const linkSignature = createHmac("sha256", EMAIL_SECRET)
-      .update(`${normalizedEmail}:${linkUrl.searchParams.get("token") || ""}:reset`)
-      .digest("hex")
-      .slice(0, 16);
-    linkUrl.searchParams.set("sig", linkSignature);
     const resetUrl = linkUrl.toString();
     const safeEmail = escapeHtml(normalizedEmail);
 

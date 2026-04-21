@@ -1,4 +1,6 @@
+"use client";
 import { useState, useEffect, useRef } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter, usePathname, useSearchParams as useNextSearchParams } from "next/navigation";
 import { track } from "@vercel/analytics";
@@ -76,6 +78,15 @@ function friendlyError(raw: string, isLogin: boolean): { message: string; sugges
   return { message: raw };
 }
 
+// Check login lockout from localStorage
+function checkLoginLocked(): { locked: boolean; remainingSeconds: number } {
+  try {
+    const until = parseInt(localStorage.getItem("hirestepx_login_lockout") || "0", 10);
+    if (until && Date.now() < until) return { locked: true, remainingSeconds: Math.ceil((until - Date.now()) / 1000) };
+  } catch { /* expected: localStorage may be unavailable */ }
+  return { locked: false, remainingSeconds: 0 };
+}
+
 export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -96,7 +107,9 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
   const [emailSuggestion, setEmailSuggestion] = useState("");
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const [honeypot, setHoneypot] = useState(""); // Hidden bot-trap field
-  const [resendCooldown, setResendCooldown] = useState(0); // Cooldown timer for resend button
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const lastSignupUserId = useRef<string | null>(null);
+  const [lockoutRemaining, setLockoutRemaining] = useState(0);
 
   // Track online/offline status
   useEffect(() => {
@@ -113,10 +126,37 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
     const timer = setInterval(() => setResendCooldown(prev => prev - 1), 1000);
     return () => clearInterval(timer);
   }, [resendCooldown]);
+
+  // Login lockout countdown timer
+  useEffect(() => {
+    if (!isLogin) return;
+    const check = () => {
+      const { locked, remainingSeconds } = checkLoginLocked();
+      setLockoutRemaining(locked ? remainingSeconds : 0);
+    };
+    check();
+    const interval = setInterval(check, 1000);
+    return () => clearInterval(interval);
+  }, [isLogin]);
+
   const verifiedParam = nextSearchParams.get("verified");
   const errorParam = nextSearchParams.get("error");
+  const resetErrorParam = nextSearchParams.get("reset_error");
+  const expiredParam = nextSearchParams.get("expired");
   const firstInputRef = useRef<HTMLInputElement>(null);
   const verifiedBanner = verifiedParam === "true" || verifiedParam === "already";
+
+  // Auto-open reset form when redirected from expired/used reset link
+  useEffect(() => {
+    if (resetErrorParam && isLogin) {
+      setShowReset(true);
+      if (resetErrorParam === "link_expired") {
+        setError("Your reset link has expired. Please request a new one.");
+      } else if (resetErrorParam === "link_used") {
+        setError("This reset link has already been used. Request a new one below.");
+      }
+    }
+  }, [resetErrorParam, isLogin]);
 
   // Common email domain typo detection
   const COMMON_DOMAINS = ["gmail.com", "yahoo.com", "outlook.com", "hotmail.com", "icloud.com", "protonmail.com", "mail.com", "aol.com", "zoho.com", "yandex.com"];
@@ -175,12 +215,16 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
       setError(isLogin ? "Password is required." : "Password must be at least 8 characters.");
       return;
     }
+    if (!isLogin && password.length > 16) {
+      setError("Password must be 16 characters or fewer.");
+      return;
+    }
     if (!isLogin && !name.trim()) {
       setError("Please enter your name.");
       return;
     }
-    if (!isLogin && name.trim().length > 50) {
-      setError("Name must be 50 characters or fewer.");
+    if (!isLogin && name.trim().length > 48) {
+      setError("Name must be 48 characters or fewer.");
       return;
     }
     if (!isLogin) {
@@ -222,6 +266,7 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
           setError(result.error || "Signup failed");
           return;
         }
+        if (result.userId) lastSignupUserId.current = result.userId;
         track("signup_completed", { method: "email" });
         if (!supabaseConfigured) {
           // localStorage fallback — user is already logged in, useEffect handles redirect
@@ -329,6 +374,18 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
           </div>
         )}
 
+        {/* Session expired banner */}
+        {expiredParam === "true" && (
+          <div style={{ padding: "16px 20px", borderRadius: 12, background: "rgba(212,179,127,0.08)", border: "1px solid rgba(212,179,127,0.2)", marginBottom: 24 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              <span style={{ fontFamily: font.ui, fontSize: 14, fontWeight: 600, color: c.gilt }}>
+                Your session has expired. Please log in again.
+              </span>
+            </div>
+          </div>
+        )}
+
         {/* Verification error banners */}
         {errorParam === "link-expired" && (
           <div style={{ padding: "16px 20px", borderRadius: 12, background: "rgba(196,112,90,0.06)", border: "1px solid rgba(196,112,90,0.15)", marginBottom: 24 }}>
@@ -385,16 +442,20 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
                 <button
                   onClick={async () => {
                     if (resendCooldown > 0) return;
+                    setResendCooldown(60);
                     try {
-                      await fetch("/api/send-welcome", {
+                      const res = await fetch("/api/send-welcome", {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ email, name }),
+                        body: JSON.stringify({ email, name, userId: lastSignupUserId.current, action: "verify-reminder" }),
                       });
+                      if (res.status === 429) {
+                        setError("Too many resend attempts. Please try again later.");
+                        return;
+                      }
                       setError("");
-                      setResendMsg("Verification email resent!");
-                      setResendCooldown(60); // 60 second cooldown
-                      setTimeout(() => setResendMsg(""), 3000);
+                      setResendMsg("Verification email resent! Check your inbox and spam folder.");
+                      setTimeout(() => setResendMsg(""), 5000);
                     } catch { setError("Could not resend email. Try again later."); }
                   }}
                   disabled={resendCooldown > 0}
@@ -489,9 +550,6 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
                   <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
                 )}
                 {googleLoading ? "Redirecting to Google..." : "Continue with Google"}
-                {isLogin && getLastLoginMethod() === "google" && !googleLoading && (
-                  <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, color: c.sage, background: `${c.sage}12`, border: `1px solid ${c.sage}25`, borderRadius: 4, padding: "2px 6px", marginLeft: 4 }}>Last used</span>
-                )}
               </button>
             </div>
 
@@ -520,7 +578,7 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
               {!isLogin && (
                 <div>
                   <label htmlFor="signup-name" style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: c.chalk, display: "block", marginBottom: 6, letterSpacing: "0.02em" }}>Full name</label>
-                  <input id="signup-name" ref={!isLogin ? firstInputRef : undefined} type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Your full name" required maxLength={50} autoComplete="off"
+                  <input id="signup-name" ref={!isLogin ? firstInputRef : undefined} type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Your full name" required maxLength={48} autoComplete="off"
                     style={{ width: "100%", padding: "12px 16px", borderRadius: 8, background: c.graphite, border: `1px solid ${c.border}`, color: c.ivory, fontFamily: font.ui, fontSize: 14, outline: "none", transition: "border-color 0.2s ease", boxSizing: "border-box" }}
                     onFocus={(e) => e.currentTarget.style.borderColor = c.gilt}
                     onBlur={(e) => e.currentTarget.style.borderColor = c.border}
@@ -552,7 +610,7 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
                 <label htmlFor="signup-password" style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: c.chalk, display: "block", marginBottom: 6, letterSpacing: "0.02em" }}>Password</label>
                 <div style={{ position: "relative" }}>
                   <input id="signup-password" type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)}
-                    placeholder={isLogin ? "Enter your password" : "Create a password (8+ chars)"} required minLength={8} autoComplete="new-password"
+                    placeholder={isLogin ? "Enter your password" : "Create a password (8+ chars)"} required maxLength={16} autoComplete="new-password"
                     aria-describedby={error ? "form-error" : undefined}
                     style={{ width: "100%", padding: "12px 44px 12px 16px", borderRadius: 8, background: c.graphite, border: `1px solid ${c.border}`, color: c.ivory, fontFamily: font.ui, fontSize: 14, outline: "none", transition: "border-color 0.2s ease", boxSizing: "border-box" }}
                     onFocus={(e) => e.currentTarget.style.borderColor = c.gilt}
@@ -592,6 +650,7 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
                     // Show requirement hints before typing
                     const reqs = [
                       { label: "8+ characters", met: false },
+                      { label: "16 characters max", met: false },
                       { label: "Uppercase letter", met: false },
                       { label: "Number", met: false },
                       { label: "Special character", met: false },
@@ -609,12 +668,13 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
                   }
                   const reqs = [
                     { label: "8+ characters", met: password.length >= 8 },
+                    { label: "16 max", met: password.length <= 16 },
                     { label: "Uppercase", met: /[A-Z]/.test(password) },
                     { label: "Number", met: /[0-9]/.test(password) },
                     { label: "Special char", met: /[^A-Za-z0-9]/.test(password) },
                   ];
                   const metCount = reqs.filter(r => r.met).length;
-                  const strength = metCount === 4 && password.length >= 12 ? 4 : metCount >= 3 ? 3 : password.length >= 8 ? 2 : 1;
+                  const strength = metCount === 5 && password.length >= 12 ? 4 : metCount >= 4 ? 3 : password.length >= 8 ? 2 : 1;
                   const labels = ["", "Weak", "Fair", "Good", "Strong"];
                   const colors = ["", c.ember, c.gilt, c.sage, c.sage];
                   return (
@@ -629,11 +689,11 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
                       </div>
                       <div style={{ display: "flex", flexWrap: "wrap", gap: "3px 10px", marginTop: 6 }}>
                         {reqs.map(r => (
-                          <span key={r.label} style={{ fontFamily: font.ui, fontSize: 10, color: r.met ? c.sage : c.stone, display: "flex", alignItems: "center", gap: 3, transition: "color 0.2s" }}>
+                          <span key={r.label} style={{ fontFamily: font.ui, fontSize: 10, color: r.met ? c.sage : c.ember, display: "flex", alignItems: "center", gap: 3, transition: "color 0.2s" }}>
                             {r.met ? (
                               <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
                             ) : (
-                              <span style={{ width: 4, height: 4, borderRadius: "50%", background: c.border, display: "inline-block" }} />
+                              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={c.ember} strokeWidth="3" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                             )}
                             {r.label}
                           </span>
@@ -675,6 +735,22 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
                 </div>
               )}
 
+              {isLogin && lockoutRemaining > 0 && (
+                <div role="alert" style={{ padding: "12px 14px", borderRadius: 10, background: "rgba(196,112,90,0.06)", border: "1px solid rgba(196,112,90,0.15)", marginBottom: 4 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={c.ember} strokeWidth="2" strokeLinecap="round" style={{ flexShrink: 0 }}>
+                      <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                    </svg>
+                    <div>
+                      <p style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.ember, margin: 0 }}>Account temporarily locked</p>
+                      <p style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, margin: "4px 0 0" }}>
+                        Try again in {Math.floor(lockoutRemaining / 60)}:{String(lockoutRemaining % 60).padStart(2, "0")}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {error && (() => {
                 const { message, suggestion } = friendlyError(error, isLogin);
                 const isNetworkError = error.toLowerCase().includes("network") || error.toLowerCase().includes("fetch") || error.toLowerCase().includes("connection");
@@ -705,11 +781,11 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
 
               {(() => {
                 const signupDisabled = !isLogin && (
-                  !name.trim() || name.trim().length > 50 ||
-                  !email.trim() || password.length < 8 ||
+                  !name.trim() || name.trim().length > 48 ||
+                  !email.trim() || password.length < 8 || password.length > 16 ||
                   !/[A-Z]/.test(password) || !/[0-9]/.test(password) || !/[^A-Za-z0-9]/.test(password)
                 );
-                const btnDisabled = loading || signupDisabled;
+                const btnDisabled = loading || signupDisabled || (isLogin && lockoutRemaining > 0);
                 return (
               <button type="submit" disabled={btnDisabled} className="shimmer-btn"
                 style={{
@@ -722,10 +798,7 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
                 onMouseEnter={(e) => { if (!btnDisabled) { e.currentTarget.style.background = c.gilt; e.currentTarget.style.boxShadow = "0 8px 32px rgba(212,179,127,0.2)"; } }}
                 onMouseLeave={(e) => { if (!btnDisabled) { e.currentTarget.style.background = c.ivory; e.currentTarget.style.boxShadow = "none"; } }}
               >
-                {loading ? "Please wait..." : isLogin ? "Log in" : "Create account"}
-                {isLogin && getLastLoginMethod() === "email" && !loading && (
-                  <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, color: c.sage, background: `${c.sage}12`, border: `1px solid ${c.sage}25`, borderRadius: 4, padding: "2px 6px", marginLeft: 6 }}>Last used</span>
-                )}
+                {loading ? "Please wait..." : isLogin ? (lockoutRemaining > 0 ? `Locked (${Math.floor(lockoutRemaining / 60)}:${String(lockoutRemaining % 60).padStart(2, "0")})` : "Log in") : "Create account"}
               </button>
                 );
               })()}
@@ -756,8 +829,9 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
 
       {/* Right: Visual panel */}
       <div className="signup-visual" style={{ position: "relative", overflow: "hidden", background: c.graphite }}>
-        <img src="https://images.unsplash.com/photo-1551836022-d5d88e9218df?w=900&h=1200&fit=crop&crop=face" alt="Professional preparing for an interview"
-          style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", objectPosition: "center 20%" }} />
+        <Image src="https://images.unsplash.com/photo-1551836022-d5d88e9218df?w=900&h=1200&fit=crop&crop=face" alt="Professional preparing for an interview"
+          fill sizes="50vw"
+          style={{ objectFit: "cover", objectPosition: "center 20%" }} />
         <div style={{ position: "absolute", inset: 0, background: `linear-gradient(180deg, ${c.obsidian}40 0%, transparent 30%, transparent 50%, ${c.obsidian}E6 85%)` }} />
         <div style={{ position: "absolute", inset: 0, background: `linear-gradient(90deg, ${c.obsidian}80 0%, transparent 40%)` }} />
 

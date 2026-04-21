@@ -1,3 +1,4 @@
+"use client";
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { c, font } from "./tokens";
@@ -37,6 +38,8 @@ export default function ResetPassword() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
   const [hasSession, setHasSession] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const csrfTokenRef = useRef<string>("");
   const strength = getPasswordStrength(password);
 
@@ -51,7 +54,7 @@ export default function ResetPassword() {
         const client = await getSupabase();
         const { data: { session } } = await client.auth.getSession();
         if (!session) {
-          setError("Invalid or expired reset link. Please request a new one.");
+          router.replace("/login?reset_error=link_expired");
           return;
         }
         // Check if this reset link was already used
@@ -59,8 +62,8 @@ export default function ResetPassword() {
         if (usedAt && typeof usedAt === "number") {
           const elapsed = Date.now() - usedAt;
           if (elapsed < 24 * 60 * 60 * 1000) {
-            setError("This reset link has already been used. Please request a new one if needed.");
             await client.auth.signOut().catch(() => {});
+            router.replace("/login?reset_error=link_used");
             return;
           }
         }
@@ -79,6 +82,10 @@ export default function ResetPassword() {
 
     if (password.length < 8) {
       setError("Password must be at least 8 characters.");
+      return;
+    }
+    if (password.length > 16) {
+      setError("Password must be 16 characters or fewer.");
       return;
     }
     if (!/[A-Z]/.test(password)) {
@@ -110,15 +117,15 @@ export default function ResetPassword() {
       const { data: { session: currentSession } } = await client.auth.getSession();
 
       // Password history check — prevent reuse of last 3 passwords
-      // We store bcrypt-style hashes of previous passwords in user_metadata
+      // Uses SHA-256 via Web Crypto API for proper hashing (client-side only; Supabase handles actual password security)
       const passwordHashes: string[] = currentSession?.user?.user_metadata?.password_hashes || [];
-      // Simple hash for client-side comparison (real security is server-side via Supabase)
-      const simpleHash = (s: string) => {
-        let h = 0;
-        for (let i = 0; i < s.length; i++) h = ((h << 5) - h + s.charCodeAt(i)) | 0;
-        return (h >>> 0).toString(36);
+      const hashPassword = async (pw: string): Promise<string> => {
+        const encoder = new TextEncoder();
+        const data = encoder.encode(pw);
+        const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+        return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, "0")).join("");
       };
-      const newHash = simpleHash(password);
+      const newHash = await hashPassword(password);
       if (passwordHashes.includes(newHash)) {
         setError("You cannot reuse a recent password. Please choose a different one.");
         setLoading(false);
@@ -157,7 +164,7 @@ export default function ResetPassword() {
         // Sign out the recovery session so user must log in with new password
         try { await client.auth.signOut(); } catch { /* best effort */ }
         setSuccess(true);
-        setTimeout(() => router.push("/login"), 2000);
+        setTimeout(() => router.push("/login"), 4000);
       }
     } catch (err) {
       setError("An unexpected error occurred. Please try again.");
@@ -195,6 +202,16 @@ export default function ResetPassword() {
           }}>
             <p style={{ color: c.sage, fontSize: 14, fontWeight: 500 }}>Password updated successfully!</p>
             <p style={{ color: c.stone, fontSize: 12, marginTop: 4 }}>Redirecting to login...</p>
+            <button
+              onClick={() => router.push("/login")}
+              style={{
+                marginTop: 12, fontFamily: font.ui, fontSize: 13, fontWeight: 600,
+                color: c.obsidian, background: c.gilt, border: "none",
+                borderRadius: 8, padding: "8px 20px", cursor: "pointer",
+              }}
+            >
+              Continue to Login
+            </button>
           </div>
         ) : (
           <form onSubmit={handleSubmit}>
@@ -224,19 +241,46 @@ export default function ResetPassword() {
               <label htmlFor="reset-pw" style={{ fontSize: 12, fontWeight: 500, color: c.chalk, display: "block", marginBottom: 6 }}>
                 New Password
               </label>
-              <input
-                id="reset-pw"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="At least 8 characters"
-                disabled={!hasSession}
-                style={{
-                  width: "100%", padding: "10px 14px", borderRadius: 8,
-                  background: c.obsidian, border: `1px solid ${c.border}`,
-                  color: c.ivory, fontSize: 13, outline: "none", boxSizing: "border-box",
-                }}
-              />
+              <div style={{ position: "relative" }}>
+                <input
+                  id="reset-pw"
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="At least 8 characters"
+                  disabled={!hasSession}
+                  maxLength={16}
+                  style={{
+                    width: "100%", padding: "10px 44px 10px 14px", borderRadius: 8,
+                    background: c.obsidian, border: `1px solid ${c.border}`,
+                    color: c.ivory, fontSize: 13, outline: "none", boxSizing: "border-box",
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                  style={{
+                    position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)",
+                    background: "none", border: "none", cursor: "pointer", padding: 4,
+                    color: c.stone, display: "flex", alignItems: "center", justifyContent: "center",
+                  }}
+                >
+                  {showPassword ? (
+                    <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
+                      <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
+                      <path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"/>
+                      <line x1="1" y1="1" x2="23" y2="23"/>
+                    </svg>
+                  ) : (
+                    <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                      <circle cx="12" cy="12" r="3"/>
+                    </svg>
+                  )}
+                </button>
+              </div>
               {password.length > 0 && (
                 <div style={{ marginTop: 8 }}>
                   <div style={{ display: "flex", gap: 4, marginBottom: 4 }}>
@@ -257,19 +301,46 @@ export default function ResetPassword() {
               <label htmlFor="reset-pw-confirm" style={{ fontSize: 12, fontWeight: 500, color: c.chalk, display: "block", marginBottom: 6 }}>
                 Confirm Password
               </label>
-              <input
-                id="reset-pw-confirm"
-                type="password"
-                value={confirm}
-                onChange={(e) => setConfirm(e.target.value)}
-                placeholder="Re-enter your password"
-                disabled={!hasSession}
-                style={{
-                  width: "100%", padding: "10px 14px", borderRadius: 8,
-                  background: c.obsidian, border: `1px solid ${c.border}`,
-                  color: c.ivory, fontSize: 13, outline: "none", boxSizing: "border-box",
-                }}
-              />
+              <div style={{ position: "relative" }}>
+                <input
+                  id="reset-pw-confirm"
+                  type={showConfirm ? "text" : "password"}
+                  value={confirm}
+                  onChange={(e) => setConfirm(e.target.value)}
+                  placeholder="Re-enter your password"
+                  disabled={!hasSession}
+                  maxLength={16}
+                  style={{
+                    width: "100%", padding: "10px 44px 10px 14px", borderRadius: 8,
+                    background: c.obsidian, border: `1px solid ${c.border}`,
+                    color: c.ivory, fontSize: 13, outline: "none", boxSizing: "border-box",
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirm(!showConfirm)}
+                  aria-label={showConfirm ? "Hide password" : "Show password"}
+                  style={{
+                    position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)",
+                    background: "none", border: "none", cursor: "pointer", padding: 4,
+                    color: c.stone, display: "flex", alignItems: "center", justifyContent: "center",
+                  }}
+                >
+                  {showConfirm ? (
+                    <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
+                      <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
+                      <path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"/>
+                      <line x1="1" y1="1" x2="23" y2="23"/>
+                    </svg>
+                  ) : (
+                    <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                      <circle cx="12" cy="12" r="3"/>
+                    </svg>
+                  )}
+                </button>
+              </div>
             </div>
 
             <button

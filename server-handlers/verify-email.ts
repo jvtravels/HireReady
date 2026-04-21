@@ -143,29 +143,29 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
-    // Method 3: Paginated list search as last resort
+    // Method 3: Bounded paginated search as last resort (max 3 pages of 50)
     if (!user) {
-      const listRes = await fetch(
-        `${SUPABASE_URL}/auth/v1/admin/users?page=1&per_page=1000`,
-        {
-          method: "GET",
-          headers: {
-            apikey: SUPABASE_SERVICE_ROLE_KEY,
-            Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-          },
-        }
-      );
-      if (listRes.ok) {
+      for (let page = 1; page <= 3 && !user; page++) {
+        const listRes = await fetch(
+          `${SUPABASE_URL}/auth/v1/admin/users?page=${page}&per_page=50`,
+          {
+            method: "GET",
+            headers: {
+              apikey: SUPABASE_SERVICE_ROLE_KEY,
+              Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+            },
+          }
+        );
+        if (!listRes.ok) break;
         const listData = await listRes.json();
-        const allUsers = listData.users || listData;
-        if (Array.isArray(allUsers)) {
-          user = allUsers.find((u: { email?: string }) => u.email?.toLowerCase() === email.toLowerCase()) || null;
-        }
+        const pageUsers = listData.users || listData;
+        if (!Array.isArray(pageUsers) || pageUsers.length === 0) break;
+        user = pageUsers.find((u: { email?: string }) => u.email?.toLowerCase() === email.toLowerCase()) || null;
       }
     }
 
     if (!user) {
-      console.error("User not found for email:", email, "— tried all 3 lookup methods");
+      console.error("User not found for email:", email, "— tried all lookup methods");
       return res.redirect(302, `${APP_URL}/login?error=user-not-found`);
     }
 

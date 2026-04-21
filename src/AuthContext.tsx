@@ -48,19 +48,66 @@ function isLoginLocked(): { locked: boolean; remainingSeconds: number } {
   return { locked: false, remainingSeconds: 0 };
 }
 
+/* ─── Single-Device Session Enforcement ─── */
+const DEVICE_TOKEN_KEY = "hirestepx_device_token";
+
+function generateDeviceToken(): string {
+  if (typeof crypto !== "undefined" && crypto.randomUUID) return crypto.randomUUID();
+  return Math.random().toString(36).slice(2) + Date.now().toString(36) + Math.random().toString(36).slice(2);
+}
+
+function getStoredDeviceToken(): string | null {
+  try { return localStorage.getItem(DEVICE_TOKEN_KEY); } catch { return null; }
+}
+
+function storeDeviceToken(token: string) {
+  try { localStorage.setItem(DEVICE_TOKEN_KEY, token); } catch { /* expected */ }
+}
+
 /* ─── Session Fingerprint (detect session hijacking) ─── */
 const SESSION_FP_KEY = "hirestepx_session_fp";
 
 function computeSessionFingerprint(): string {
-  // Simple fingerprint from User-Agent + screen dimensions + timezone
-  const raw = [
+  // Fingerprint from multiple browser signals — harder to spoof collectively
+  const signals = [
     navigator.userAgent,
-    `${screen.width}x${screen.height}`,
+    `${screen.width}x${screen.height}x${screen.colorDepth}`,
     Intl.DateTimeFormat().resolvedOptions().timeZone,
+    navigator.language,
+    String(navigator.hardwareConcurrency || ""),
+    String((navigator as unknown as Record<string, unknown>).deviceMemory || ""),
+    navigator.platform || "",
+    String(new Date().getTimezoneOffset()),
+    // Canvas fingerprint — subtle rendering differences across GPUs/browsers
+    (() => {
+      try {
+        const canvas = document.createElement("canvas");
+        canvas.width = 64;
+        canvas.height = 16;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return "";
+        ctx.textBaseline = "top";
+        ctx.font = "14px Arial";
+        ctx.fillStyle = "#f60";
+        ctx.fillRect(0, 0, 64, 16);
+        ctx.fillStyle = "#069";
+        ctx.fillText("Hx", 2, 1);
+        return canvas.toDataURL().slice(-32);
+      } catch { return ""; }
+    })(),
+    // WebGL renderer — varies by GPU
+    (() => {
+      try {
+        const gl = document.createElement("canvas").getContext("webgl");
+        if (!gl) return "";
+        const ext = gl.getExtension("WEBGL_debug_renderer_info");
+        return ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : "";
+      } catch { return ""; }
+    })(),
   ].join("|");
-  // Simple hash (djb2)
+  // djb2 hash
   let hash = 5381;
-  for (let i = 0; i < raw.length; i++) hash = ((hash << 5) + hash) + raw.charCodeAt(i);
+  for (let i = 0; i < signals.length; i++) hash = ((hash << 5) + hash) + signals.charCodeAt(i);
   return (hash >>> 0).toString(36);
 }
 
@@ -157,7 +204,7 @@ interface AuthContextType {
   isLoggedIn: boolean;
   loading: boolean;
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
-  signup: (email: string, name: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  signup: (email: string, name: string, password: string) => Promise<{ success: boolean; error?: string; userId?: string }>;
   loginWithGoogle: (returnTo?: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   updateUser: (updates: Partial<User>) => Promise<void>;
@@ -215,6 +262,7 @@ function profileToUser(profile: Profile, session: Session): User {
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   // Always show loading when Supabase is configured — server validates session
   const [loading, setLoading] = useState(supabaseConfigured);
@@ -358,6 +406,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             const profile = await getProfile(session.user.id);
             if (profile) {
               setUser(profileToUser(profile, session));
+              // Single-device check on session restore
+              const localToken = getStoredDeviceToken();
+              const serverToken = session.user.user_metadata?.active_device_token;
+              if (localToken && serverToken && localToken !== serverToken) {
+                console.warn("[auth] session active on another device — signing out");
+                logAuditEvent("single_device_enforcement", { userId: session.user.id });
+                setUser(null);
+                await client.auth.signOut().catch(() => {});
+                clearTimeout(safetyTimer);
+                setLoading(false);
+                return;
+              }
+              // If no device token yet (first login after upgrade), set one
+              if (!localToken && session.user.user_metadata?.active_device_token) {
+                storeDeviceToken(session.user.user_metadata.active_device_token);
+              }
             } else {
               setUser(null);
               await client.auth.signOut().catch(() => {});
@@ -416,6 +480,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
           // Store session fingerprint for hijack detection
           storeSessionFingerprint();
+          // Single-device enforcement: set device token on new sign-in
+          if (event === "SIGNED_IN") {
+            const newDeviceToken = generateDeviceToken();
+            storeDeviceToken(newDeviceToken);
+            client.auth.updateUser({ data: { active_device_token: newDeviceToken } }).catch(() => {});
+          }
           // Persist Google provider token for Calendar API access
           if (session.provider_token) {
             try { sessionStorage.setItem("hirestepx_google_token", session.provider_token); } catch { /* expected: sessionStorage may be unavailable */ }
@@ -446,13 +516,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => { unsubscribe?.(); };
   }, []);
 
-  const signup = useCallback(async (email: string, name: string, password: string): Promise<{ success: boolean; error?: string }> => {
+  const signup = useCallback(async (email: string, name: string, password: string): Promise<{ success: boolean; error?: string; userId?: string }> => {
     if (!supabaseConfigured) {
       // localStorage fallback
       const newUser: User = { id: Date.now().toString(36), name, email, targetRole: "", resumeFileName: null, hasCompletedOnboarding: false, emailVerified: false };
       setUser(newUser);
       return { success: true };
     }
+
+    // Server-side password policy enforcement (cannot be bypassed via DevTools)
+    if (!password || password.length < 8) return { success: false, error: "Password must be at least 8 characters." };
+    if (password.length > 16) return { success: false, error: "Password must be 16 characters or fewer." };
+    if (!/[A-Z]/.test(password)) return { success: false, error: "Password must include an uppercase letter." };
+    if (!/[0-9]/.test(password)) return { success: false, error: "Password must include a number." };
+    if (!/[^A-Za-z0-9]/.test(password)) return { success: false, error: "Password must include a special character." };
+    if (!name.trim() || name.trim().length > 48) return { success: false, error: "Name is required (max 48 characters)." };
 
     // Server-side signup rate limiting (prevents spam signups from same IP)
     try {
@@ -513,7 +591,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await client.auth.signOut();
       setUser(null);
 
-      return { success: true };
+      return { success: true, userId };
     } finally {
       signingUpRef.current = false;
     }
@@ -605,6 +683,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Successful login — clear lockout counter (client + server) and store session fingerprint
     clearLoginLockout();
     storeSessionFingerprint();
+
+    // Single-device enforcement: generate a new device token and save to user_metadata
+    const deviceToken = generateDeviceToken();
+    storeDeviceToken(deviceToken);
+    client.auth.updateUser({ data: { active_device_token: deviceToken } }).catch(() => {});
+
     // Clear server-side rate limit (fire-and-forget)
     fetch("/api/send-welcome", {
       method: "POST",
@@ -640,8 +724,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Generate CSRF state
       const state = crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2) + Date.now().toString(36);
 
+      // Generate nonce for OpenID Connect token replay prevention
+      const nonce = crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2) + Date.now().toString(36);
+
       // Store for validation in the callback
       sessionStorage.setItem("hirestepx_oauth_state", state);
+      sessionStorage.setItem("hirestepx_oauth_nonce", nonce);
       sessionStorage.setItem("hirestepx_oauth_return", returnTo || "/dashboard");
 
       const redirectUri = `${window.location.origin}/auth/callback`;
@@ -654,6 +742,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       authUrl.searchParams.set("response_type", "code");
       authUrl.searchParams.set("scope", scope);
       authUrl.searchParams.set("state", state);
+      authUrl.searchParams.set("nonce", nonce);
       authUrl.searchParams.set("access_type", "offline");
       authUrl.searchParams.set("prompt", "select_account");
 
@@ -755,6 +844,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => { channel.removeEventListener("message", handleMessage); channel.close(); };
   }, []);
 
+  // Inactivity timeout — auto-logout after configurable period of no user activity
+  const INACTIVITY_TIMEOUT_MS = 4 * 60 * 60 * 1000; // 4 hours default (configurable: 4-8 hrs)
+  const lastActivityRef = useRef(Date.now());
+
+  useEffect(() => {
+    if (!user) return;
+
+    const updateActivity = () => { lastActivityRef.current = Date.now(); };
+
+    const events = ["mousedown", "keydown", "touchstart", "scroll"] as const;
+    for (const evt of events) window.addEventListener(evt, updateActivity, { passive: true });
+
+    const checkInactivity = async () => {
+      const elapsed = Date.now() - lastActivityRef.current;
+      if (elapsed >= INACTIVITY_TIMEOUT_MS) {
+        logAuditEvent("inactivity_timeout", { userId: user.id, inactiveMinutes: Math.round(elapsed / 60000) });
+        if (supabaseConfigured) {
+          const client = await getSupabase();
+          await client.auth.signOut().catch(() => {});
+        }
+        setUser(null);
+        clearLastRoute();
+        broadcastLogout();
+        router.replace("/login?expired=true");
+      }
+    };
+
+    const interval = setInterval(checkInactivity, 60_000);
+    return () => {
+      clearInterval(interval);
+      for (const evt of events) window.removeEventListener(evt, updateActivity);
+    };
+  }, [user, broadcastLogout, router]);
+
   // Session expiry warning — check JWT exp every 60s, warn 5min before expiry
   const [sessionExpiryWarning, setSessionExpiryWarning] = useState<string | null>(null);
   useEffect(() => {
@@ -766,6 +889,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const client = await getSupabase();
         const { data: { session } } = await client.auth.getSession();
         if (!session) return;
+
+        // Single-device enforcement: verify device token matches
+        const localDeviceToken = getStoredDeviceToken();
+        const serverDeviceToken = session.user.user_metadata?.active_device_token;
+        if (localDeviceToken && serverDeviceToken && localDeviceToken !== serverDeviceToken) {
+          logAuditEvent("single_device_kicked", { userId: user.id });
+          setSessionExpiryWarning(null);
+          setUser(null);
+          await client.auth.signOut().catch(() => {});
+          broadcastLogout();
+          try { localStorage.removeItem(DEVICE_TOKEN_KEY); } catch { /* expected */ }
+          return;
+        }
+
         const exp = session.expires_at; // Unix timestamp in seconds
         if (!exp) return;
         const expiresMs = exp * 1000;
@@ -809,6 +946,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         body: JSON.stringify({ email: email.toLowerCase().trim(), action: "reset" }),
       });
       if (res.status === 429) return { success: false, error: "Too many reset requests. Please try again later." };
+      if (res.status === 404) return { success: false, error: "No account found with this email address. Please check or sign up." };
       if (!res.ok) return { success: false, error: "Failed to send reset email. Try again or contact support@hirestepx.com" };
       return { success: true };
     } catch {

@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
+import Image from "next/image";
 import { c, font } from "../tokens";
 import { useReveal, useCountUp } from "../hooks";
 import { companyLogos, testimonials } from "../landingData";
@@ -101,11 +102,11 @@ export function ProblemSection() {
             borderRadius: 16, overflow: "hidden", position: "relative",
             aspectRatio: "4 / 5",
           }}>
-            <img
-              src="https://images.unsplash.com/photo-1551836022-d5d88e9218df?w=400&h=500&fit=crop&crop=face&q=60"
-              srcSet="https://images.unsplash.com/photo-1551836022-d5d88e9218df?w=800&h=1000&fit=crop&crop=face&q=60 2x"
+            <Image
+              src="https://images.unsplash.com/photo-1551836022-d5d88e9218df?w=800&h=1000&fit=crop&crop=face&q=60"
               alt="Professional preparing for interview"
-              loading="lazy" width={600} height={750}
+              width={600} height={750}
+              sizes="(max-width: 768px) 100vw, 50vw"
               style={{ width: "100%", height: "100%", objectFit: "cover", filter: "brightness(0.85)" }}
             />
             {/* Dark overlay gradient */}
@@ -126,10 +127,10 @@ export function ProblemSection() {
               "I knew the technical stuff but kept freezing in behavioral rounds. After 10 practice sessions, I finally felt ready."
             </p>
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 12 }}>
-              <img
+              <Image
                 src="https://images.unsplash.com/photo-1560250097-0b93528c311a?w=64&h=64&fit=crop&crop=face&q=75"
                 alt=""
-                loading="lazy" width={28} height={28}
+                width={28} height={28}
                 style={{ width: 28, height: 28, borderRadius: "50%", objectFit: "cover" }}
               />
               <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>Software Engineer, Career Changer</span>
@@ -362,7 +363,7 @@ export function TestimonialsSection() {
           {/* Photo column */}
           <div style={{ position: "relative", overflow: "hidden" }}>
             {testimonials.map((t, i) => (
-              <img key={t.name} src={t.image} alt={t.name} loading="lazy" width={400} height={500} style={{
+              <Image key={t.name} src={t.image} alt={t.name} fill sizes="280px" unoptimized style={{
                 position: i === 0 ? "relative" : "absolute",
                 inset: 0, width: "100%", height: "100%", objectFit: "cover",
                 opacity: active === i ? 1 : 0,
@@ -432,7 +433,7 @@ export function TestimonialsSection() {
                 boxShadow: active === i ? `0 0 20px ${c.gilt}20` : "none",
               }}
             >
-              <img src={t.image} alt={t.name} loading="lazy" width={64} height={64} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              <Image src={t.image} alt={t.name} width={64} height={64} unoptimized style={{ width: "100%", height: "100%", objectFit: "cover" }} />
             </button>
           ))}
         </div>
