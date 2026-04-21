@@ -118,9 +118,7 @@ async function readPdf(file: File): Promise<string> {
   const arrayBuffer = await file.arrayBuffer();
 
   const pdfjsLib = await import("pdfjs-dist");
-  // Next.js: use CDN worker to avoid bundling issues
-  const pdfjsVersion = (pdfjsLib as unknown as { version?: string }).version || "4.0.379";
-  pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsVersion}/pdf.worker.min.mjs`;
+  pdfjsLib.GlobalWorkerOptions.workerSrc = "";
 
   const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer) }).promise;
 
