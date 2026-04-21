@@ -27,9 +27,14 @@ export interface TopBarProps {
   onNavigateHome: () => void;
   onStepClick: (stepNum: number) => void;
   onLogout?: () => void;
+  userEmail?: string;
+  userAvatar?: string;
+  userName?: string;
 }
 
-export function TopBar({ step, emailUnverified, onNavigateHome, onStepClick, onLogout }: TopBarProps) {
+export function TopBar({ emailUnverified, onNavigateHome, onLogout, userEmail, userAvatar, userName }: TopBarProps) {
+  const displayName = userName || userEmail || "";
+  const initial = (userName?.[0] || userEmail?.[0] || "?").toUpperCase();
   return (
     <div style={{ padding: "18px 40px", display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", borderBottom: `1px solid rgba(245,242,237,0.04)`, background: "rgba(6,6,7,0.6)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)", zIndex: 10, marginTop: emailUnverified ? 44 : 0 }}>
       {/* Logo */}
@@ -37,48 +42,33 @@ export function TopBar({ step, emailUnverified, onNavigateHome, onStepClick, onL
         <div style={{ width: 6, height: 6, borderRadius: 2, background: `linear-gradient(135deg, ${c.gilt}, ${c.giltDark})`, boxShadow: "0 0 8px rgba(212,179,127,0.3)" }} />
         <span style={{ fontFamily: font.display, fontSize: 17, fontWeight: 400, color: c.ivory, letterSpacing: "0.02em" }}>HireStepX</span>
       </div>
-      {/* Stepper */}
+      {/* Center label */}
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        {["Resume", "Profile", "Ready"].map((label, i) => {
-          const stepNum = i + 1;
-          const isCompleted = step > stepNum;
-          const isCurrent = step === stepNum;
-          const canClick = isCompleted;
-          return (
-            <div key={i} style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <div
-                role={canClick ? "button" : undefined}
-                tabIndex={canClick ? 0 : undefined}
-                onClick={canClick ? () => onStepClick(stepNum) : undefined}
-                onKeyDown={canClick ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onStepClick(stepNum); } } : undefined}
-                style={{
-                  width: 26, height: 26, borderRadius: "50%",
-                  background: isCompleted ? `linear-gradient(135deg, ${c.gilt}, ${c.giltDark})` : isCurrent ? "rgba(212,179,127,0.1)" : "transparent",
-                  border: `1.5px solid ${step >= stepNum ? c.gilt : "rgba(245,242,237,0.08)"}`,
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  transition: "all 0.4s cubic-bezier(0.16, 1, 0.3, 1)",
-                  boxShadow: isCurrent ? "0 0 12px rgba(212,179,127,0.15)" : "none",
-                  cursor: canClick ? "pointer" : "default",
-                }}>
-                {isCompleted ? (
-                  <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={c.obsidian} strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
-                ) : (
-                  <span style={{ fontFamily: font.mono, fontSize: 10, fontWeight: 600, color: isCurrent ? c.gilt : c.stone }}>{stepNum}</span>
-                )}
-              </div>
-              <span
-                role={canClick ? "button" : undefined}
-                tabIndex={canClick ? 0 : undefined}
-                onClick={canClick ? () => onStepClick(stepNum) : undefined}
-                onKeyDown={canClick ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onStepClick(stepNum); } } : undefined}
-                style={{ fontFamily: font.ui, fontSize: 11, color: isCurrent ? c.ivory : c.stone, fontWeight: isCurrent ? 500 : 400, cursor: canClick ? "pointer" : "default" }}>{label}</span>
-              {i < 2 && <div style={{ width: 24, height: 1, background: isCompleted ? `linear-gradient(90deg, ${c.gilt}, rgba(212,179,127,0.2))` : "rgba(245,242,237,0.06)", transition: "background 0.4s", borderRadius: 1 }} />}
-            </div>
-          );
-        })}
+        <div style={{
+          width: 26, height: 26, borderRadius: "50%",
+          background: "rgba(212,179,127,0.1)",
+          border: `1.5px solid ${c.gilt}`,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          boxShadow: "0 0 12px rgba(212,179,127,0.15)",
+        }}>
+          <span style={{ fontFamily: font.mono, fontSize: 10, fontWeight: 600, color: c.gilt }}>1</span>
+        </div>
+        <span style={{ fontFamily: font.ui, fontSize: 11, color: c.ivory, fontWeight: 500 }}>Upload Resume</span>
       </div>
-      {/* Logout */}
-      <div style={{ display: "flex", justifyContent: "flex-end" }}>
+      {/* User badge + Logout */}
+      <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 10 }}>
+        {displayName && (
+          <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 10px 4px 4px", borderRadius: 20, background: "rgba(245,242,237,0.04)", border: "1px solid rgba(245,242,237,0.06)" }}>
+            {userAvatar ? (
+              <img src={userAvatar} alt="" style={{ width: 24, height: 24, borderRadius: "50%", objectFit: "cover" }} referrerPolicy="no-referrer" />
+            ) : (
+              <div style={{ width: 24, height: 24, borderRadius: "50%", background: "rgba(212,179,127,0.12)", border: "1px solid rgba(212,179,127,0.2)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.gilt }}>{initial}</span>
+              </div>
+            )}
+            <span style={{ fontFamily: font.ui, fontSize: 12, color: c.chalk, maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{displayName}</span>
+          </div>
+        )}
         {onLogout && (
           <button onClick={onLogout} style={{
             display: "flex", alignItems: "center", gap: 6, padding: "6px 14px",
@@ -111,19 +101,17 @@ export interface ResumeEmptyStateProps {
   onDrop: (e: React.DragEvent) => void;
   onFileChange: (file: File | undefined) => void;
   onUndo: () => void;
-  onSkip?: () => void;
 }
 
-export function ResumeEmptyState({ isDragging, dragFileName, resumeError, showUndo, fileInputRef, onDragOver, onDragLeave, onDrop, onFileChange, onUndo, onSkip }: ResumeEmptyStateProps) {
+export function ResumeEmptyState({ isDragging, dragFileName, resumeError, showUndo, fileInputRef, onDragOver, onDragLeave, onDrop, onFileChange, onUndo }: ResumeEmptyStateProps) {
   return (
     <>
       <p style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 700, color: c.gilt, textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 12 }}>Step 1 — Your Experience</p>
       <h2 style={{ fontFamily: font.display, fontSize: 32, fontWeight: 400, color: c.ivory, letterSpacing: "-0.025em", lineHeight: 1.2, marginBottom: 10 }}>
-        Upload your resume
+        Upload your resume <span style={{ color: c.ember }}>*</span>
       </h2>
       <p style={{ fontFamily: font.ui, fontSize: 15, color: c.stone, lineHeight: 1.7, marginBottom: 28 }}>
-        Upload your resume to get personalized interview questions tailored to your experience.{" "}
-        {onSkip && <button onClick={onSkip} style={{ fontFamily: font.ui, fontSize: 15, color: c.gilt, background: "none", border: "none", cursor: "pointer", padding: 0, textDecoration: "underline", textUnderlineOffset: 3 }}>Skip for now</button>}
+        Upload your resume to get personalized interview questions tailored to your experience.
       </p>
 
       {/* Drop zone */}
@@ -792,79 +780,33 @@ export function PermissionsStep({ micStatus, micLevel, userName, fileName, targe
 /* ─── Navigation Footer ─── */
 
 export interface NavigationFooterProps {
-  step: number;
-  totalSteps: number;
   isContinueDisabled: boolean;
   starting: boolean;
-  micStatus: string;
   saveStatus: "idle" | "saving" | "saved" | "error";
-  interviewFocus: string[];
-  onBack: () => void;
-  onNext: () => void;
   onStart: () => void;
 }
 
-export function NavigationFooter({ step, totalSteps, isContinueDisabled, starting, micStatus, saveStatus, interviewFocus: _interviewFocus, onBack, onNext, onStart }: NavigationFooterProps) {
+export function NavigationFooter({ isContinueDisabled, starting, saveStatus, onStart }: NavigationFooterProps) {
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12, marginTop: 40 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-        {step > 1 && (
-          <button onClick={onBack}
-            style={{
-              fontFamily: font.ui, fontSize: 14, fontWeight: 500, padding: "14px 20px", borderRadius: 10,
-              border: `1px solid ${c.border}`, background: "transparent", color: c.chalk,
-              cursor: "pointer", transition: "all 0.2s ease", display: "inline-flex", alignItems: "center", gap: 6,
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.borderColor = c.chalk; e.currentTarget.style.color = c.ivory; }}
-            onMouseLeave={(e) => { e.currentTarget.style.borderColor = c.border; e.currentTarget.style.color = c.chalk; }}>
-            <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>
-            Back
-          </button>
-        )}
-
-        {step < totalSteps ? (
-          <button onClick={onNext} disabled={isContinueDisabled}
-            style={{
-              fontFamily: font.ui, fontSize: 15, fontWeight: 600, padding: "14px 40px", borderRadius: 10, border: "none",
-              background: isContinueDisabled ? "rgba(212,179,127,0.15)" : `linear-gradient(135deg, ${c.gilt}, ${c.giltDark})`,
-              color: isContinueDisabled ? "rgba(212,179,127,0.4)" : c.obsidian,
-              cursor: isContinueDisabled ? "not-allowed" : "pointer",
-              transition: "all 0.25s ease", display: "inline-flex", alignItems: "center", gap: 8,
-              boxShadow: isContinueDisabled ? "none" : "0 8px 24px rgba(212,179,127,0.2)",
-            }}
-            onMouseEnter={(e) => { if (!isContinueDisabled) { e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 12px 32px rgba(212,179,127,0.3)"; } }}
-            onMouseLeave={(e) => { if (!isContinueDisabled) { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 8px 24px rgba(212,179,127,0.2)"; } }}>
-            Continue
-            <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
-          </button>
+      <button onClick={onStart} disabled={isContinueDisabled || starting}
+        style={{
+          fontFamily: font.ui, fontSize: 15, fontWeight: 600, padding: "14px 40px", borderRadius: 10, border: "none",
+          background: (isContinueDisabled || starting) ? "rgba(212,179,127,0.15)" : `linear-gradient(135deg, ${c.gilt}, ${c.giltDark})`,
+          color: (isContinueDisabled || starting) ? "rgba(212,179,127,0.4)" : c.obsidian,
+          cursor: (isContinueDisabled || starting) ? "not-allowed" : "pointer",
+          transition: "all 0.25s ease", display: "inline-flex", alignItems: "center", gap: 8,
+          boxShadow: (isContinueDisabled || starting) ? "none" : "0 8px 24px rgba(212,179,127,0.2)",
+        }}
+        onMouseEnter={(e) => { if (!isContinueDisabled && !starting) { e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 12px 32px rgba(212,179,127,0.3)"; } }}
+        onMouseLeave={(e) => { if (!isContinueDisabled && !starting) { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 8px 24px rgba(212,179,127,0.2)"; } }}>
+        {starting ? (
+          <div style={{ width: 16, height: 16, border: "2.5px solid rgba(212,179,127,0.3)", borderTopColor: c.gilt, borderRadius: "50%", animation: "spin 1s linear infinite" }} />
         ) : (
-          <>
-            <button onClick={onStart} disabled={starting}
-              style={{
-                fontFamily: font.ui, fontSize: 15, fontWeight: 600, padding: "14px 40px", borderRadius: 10, border: "none",
-                background: starting ? "rgba(212,179,127,0.15)" : `linear-gradient(135deg, ${c.gilt}, ${c.giltDark})`,
-                color: starting ? "rgba(212,179,127,0.4)" : c.obsidian,
-                cursor: starting ? "not-allowed" : "pointer",
-                transition: "all 0.25s ease", display: "inline-flex", alignItems: "center", gap: 8,
-                boxShadow: starting ? "none" : "0 8px 24px rgba(212,179,127,0.2)",
-              }}
-              onMouseEnter={(e) => { if (!starting) { e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 12px 32px rgba(212,179,127,0.3)"; } }}
-              onMouseLeave={(e) => { if (!starting) { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 8px 24px rgba(212,179,127,0.2)"; } }}>
-              {starting ? (
-                <div style={{ width: 16, height: 16, border: "2.5px solid rgba(212,179,127,0.3)", borderTopColor: c.gilt, borderRadius: "50%", animation: "spin 1s linear infinite" }} />
-              ) : (
-                <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polygon points="5,3 19,12 5,21"/></svg>
-              )}
-              {starting ? "Starting..." : micStatus === "granted" ? "Start Practice Interview" : "Start with Text Input"}
-            </button>
-            <p style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, textAlign: "center", marginTop: 8 }}>
-              {micStatus !== "granted"
-                ? "You can type your answers instead of speaking"
-                : "Your practice interview will start immediately"}
-            </p>
-          </>
+          <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M3 12h18m-6-6l6 6-6 6"/></svg>
         )}
-      </div>
+        {starting ? "Setting up..." : "Go to Dashboard"}
+      </button>
 
       {saveStatus !== "idle" && (
         <div aria-live="polite" style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4, animation: "fadeUp 0.25s ease-out" }}>
