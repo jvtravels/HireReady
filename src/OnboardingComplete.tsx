@@ -181,7 +181,7 @@ export default function OnboardingComplete() {
           </div>
 
           {/* Contextual upgrade nudge based on score & session count */}
-          {(!user?.subscriptionTier || user.subscriptionTier === "free") && sessionCount >= 2 && (
+          {(!user?.subscriptionTier || user.subscriptionTier === "free") && (
             <div style={{
               background: score >= 70 ? "rgba(122,158,126,0.06)" : "rgba(212,179,127,0.06)",
               borderRadius: 14, border: `1px solid ${score >= 70 ? "rgba(122,158,126,0.15)" : "rgba(212,179,127,0.15)"}`,
@@ -189,11 +189,13 @@ export default function OnboardingComplete() {
               animation: "obcFadeIn 0.5s ease 0.55s both",
             }}>
               <p style={{ fontFamily: font.ui, fontSize: 13, color: c.ivory, fontWeight: 500, marginBottom: 4 }}>
-                {score >= 85
-                  ? "You're already interview-ready — longer sessions will sharpen your edge."
-                  : score >= 70
-                    ? "Great progress! 15-min sessions unlock deeper practice to push past 85."
-                    : `${FREE_SESSION_LIMIT - sessionCount <= 0 ? "You've used all" : `Only ${FREE_SESSION_LIMIT - sessionCount}`} free session${FREE_SESSION_LIMIT - sessionCount === 1 ? "" : "s"} left — upgrade to keep improving.`}
+                {sessionCount === 1
+                  ? "Unlock 15-minute sessions for deeper, more realistic interview practice."
+                  : score >= 85
+                    ? "You're already interview-ready — longer sessions will sharpen your edge."
+                    : score >= 70
+                      ? "Great progress! 15-min sessions unlock deeper practice to push past 85."
+                      : `${FREE_SESSION_LIMIT - sessionCount <= 0 ? "You've used all" : `Only ${FREE_SESSION_LIMIT - sessionCount}`} free session${FREE_SESSION_LIMIT - sessionCount === 1 ? "" : "s"} left — upgrade to keep improving.`}
               </p>
               <p style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, marginBottom: 12 }}>
                 {score >= 70 ? "Pro users improve 2× faster with extended sessions and analytics." : "Most users see 15+ point improvement with focused practice."}

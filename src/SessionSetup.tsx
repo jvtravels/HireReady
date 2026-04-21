@@ -10,6 +10,7 @@ import { useToast } from "./Toast";
 import { getSupabase } from "./supabase";
 import { unlockAudio, prefetchTTS } from "./tts";
 import { UpgradeModal } from "./dashboardComponents";
+import { FREE_SESSION_LIMIT } from "./dashboardData";
 import { CITY_SUGGESTIONS } from "../data/city-tiers";
 
 /* ─── Suggestions ─── */
@@ -275,7 +276,13 @@ export default function SessionSetup() {
   const freeSessionCount = user?.practiceTimestamps?.length ?? 0;
   const has15minTaste = isFreeUser && freeSessionCount === 1;
   const [showAllFocus, setShowAllFocus] = useState(false);
+  const atSessionLimit = isFreeUser && freeSessionCount >= FREE_SESSION_LIMIT;
   const { toast } = useToast();
+
+  // Redirect free users who've exhausted sessions to the upgrade modal
+  useEffect(() => {
+    if (atSessionLimit) setShowUpgradeModal(true);
+  }, [atSessionLimit]);
 
   // Notify user if their subscription just expired and auto-downgraded
   useEffect(() => {
@@ -1100,8 +1107,8 @@ export default function SessionSetup() {
       {/* Upgrade Modal */}
       {showUpgradeModal && (
         <UpgradeModal
-          onClose={() => setShowUpgradeModal(false)}
-          sessionsUsed={0}
+          onClose={() => { setShowUpgradeModal(false); if (atSessionLimit) router.push("/dashboard"); }}
+          sessionsUsed={freeSessionCount}
           user={user}
           currentTier={user?.subscriptionTier || "free"}
           onPaymentSuccess={(_tier: string, _start: string, _end: string) => {

@@ -142,8 +142,14 @@ function realSessionsToDashboard(realSessions: RealSession[], targetRole: string
       score: rs.score,
       change: rs.score - prevScore,
       duration: `${durationMin} min`,
-      topStrength: pickByScore(strengthsByType[type] || strengthsByType["Behavioral"], rs.score),
-      topWeakness: pickByScore(weaknessesByType[type] || weaknessesByType["Behavioral"], rs.score + 3),
+      topStrength: rs.skill_scores
+        ? Object.entries(rs.skill_scores).sort(([, a], [, b]) => (b as number) - (a as number))[0]?.[0]
+          || pickByScore(strengthsByType[type] || strengthsByType["Behavioral"], rs.score)
+        : pickByScore(strengthsByType[type] || strengthsByType["Behavioral"], rs.score),
+      topWeakness: rs.skill_scores
+        ? Object.entries(rs.skill_scores).sort(([, a], [, b]) => (a as number) - (b as number))[0]?.[0]
+          || pickByScore(weaknessesByType[type] || weaknessesByType["Behavioral"], rs.score + 3)
+        : pickByScore(weaknessesByType[type] || weaknessesByType["Behavioral"], rs.score + 3),
       feedback: generateFeedback(type, rs.score),
       transcript: [] as { speaker: string; text: string; scoreNote?: string }[],
       questionScores: Array.from({ length: rs.questions || 3 }, (_, qi) => ({
