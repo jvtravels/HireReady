@@ -215,8 +215,8 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
       setError(isLogin ? "Password is required." : "Password must be at least 8 characters.");
       return;
     }
-    if (!isLogin && password.length > 16) {
-      setError("Password must be 16 characters or fewer.");
+    if (!isLogin && password.length > 128) {
+      setError("Password must be 128 characters or fewer.");
       return;
     }
     if (!isLogin && !name.trim()) {
@@ -610,7 +610,7 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
                 <label htmlFor="signup-password" style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: c.chalk, display: "block", marginBottom: 6, letterSpacing: "0.02em" }}>Password</label>
                 <div style={{ position: "relative" }}>
                   <input id="signup-password" type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)}
-                    placeholder={isLogin ? "Enter your password" : "Create a password (8+ chars)"} required maxLength={16} autoComplete="new-password"
+                    placeholder={isLogin ? "Enter your password" : "Create a password (8+ chars)"} required maxLength={128} autoComplete="new-password"
                     aria-describedby={error ? "form-error" : undefined}
                     style={{ width: "100%", padding: "12px 44px 12px 16px", borderRadius: 8, background: c.graphite, border: `1px solid ${c.border}`, color: c.ivory, fontFamily: font.ui, fontSize: 14, outline: "none", transition: "border-color 0.2s ease", boxSizing: "border-box" }}
                     onFocus={(e) => e.currentTarget.style.borderColor = c.gilt}
@@ -650,7 +650,6 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
                     // Show requirement hints before typing
                     const reqs = [
                       { label: "8+ characters", met: false },
-                      { label: "16 characters max", met: false },
                       { label: "Uppercase letter", met: false },
                       { label: "Number", met: false },
                       { label: "Special character", met: false },
@@ -668,13 +667,12 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
                   }
                   const reqs = [
                     { label: "8+ characters", met: password.length >= 8 },
-                    { label: "16 max", met: password.length <= 16 },
                     { label: "Uppercase", met: /[A-Z]/.test(password) },
                     { label: "Number", met: /[0-9]/.test(password) },
                     { label: "Special char", met: /[^A-Za-z0-9]/.test(password) },
                   ];
                   const metCount = reqs.filter(r => r.met).length;
-                  const strength = metCount === 5 && password.length >= 12 ? 4 : metCount >= 4 ? 3 : password.length >= 8 ? 2 : 1;
+                  const strength = metCount === 4 && password.length >= 12 ? 4 : metCount >= 3 ? 3 : password.length >= 8 ? 2 : 1;
                   const labels = ["", "Weak", "Fair", "Good", "Strong"];
                   const colors = ["", c.ember, c.gilt, c.sage, c.sage];
                   return (
@@ -782,7 +780,7 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
               {(() => {
                 const signupDisabled = !isLogin && (
                   !name.trim() || name.trim().length > 48 ||
-                  !email.trim() || password.length < 8 || password.length > 16 ||
+                  !email.trim() || password.length < 8 || password.length > 128 ||
                   !/[A-Z]/.test(password) || !/[0-9]/.test(password) || !/[^A-Za-z0-9]/.test(password)
                 );
                 const btnDisabled = loading || signupDisabled || (isLogin && lockoutRemaining > 0);

@@ -30,6 +30,9 @@ export default function OnboardingComplete() {
   const score: number = stateData.score || 72;
   const aiFeedback: string = stateData.aiFeedback || "";
   const skillScores: Record<string, number> | null = stateData.skillScores || null;
+  const weakestSkill = skillScores
+    ? Object.entries(skillScores).sort(([, a], [, b]) => (a as number) - (b as number))[0]?.[0] || null
+    : null;
 
   const [redirecting, _setRedirecting] = useState(false);
 
@@ -109,16 +112,39 @@ export default function OnboardingComplete() {
             )}
           </div>
 
-          {/* What's next */}
+          {/* What's next — retention-focused */}
           <div style={{
             background: c.graphite, borderRadius: 14, border: `1px solid ${c.border}`,
-            padding: "28px", marginBottom: 32, textAlign: "center",
+            padding: "28px", marginBottom: 32,
             animation: "obcFadeIn 0.5s ease 0.6s both",
           }}>
-            <span style={{ fontFamily: font.ui, fontSize: 14, fontWeight: 600, color: c.ivory }}>Great first session{user?.name ? `, ${user.name.split(" ")[0]}` : ""}!</span>
-            <p style={{ fontFamily: font.ui, fontSize: 13, color: c.stone, marginTop: 8, lineHeight: 1.6 }}>
-              Your profile is set up and ready. Start a full session to get deeper feedback, or explore your dashboard to track progress over time.
-            </p>
+            <div style={{ textAlign: "center", marginBottom: 20 }}>
+              <span style={{ fontFamily: font.ui, fontSize: 14, fontWeight: 600, color: c.ivory }}>Great first session{user?.name ? `, ${user.name.split(" ")[0]}` : ""}!</span>
+              <p style={{ fontFamily: font.ui, fontSize: 13, color: c.stone, marginTop: 8, lineHeight: 1.6 }}>
+                {weakestSkill
+                  ? `Session 2 will target your biggest growth area: ${weakestSkill}. Most users improve 15+ points after focused practice.`
+                  : "Session 2 will dig deeper into targeted practice. Most users improve 15+ points after focused sessions."}
+              </p>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginTop: 16 }}>
+              {[
+                { num: "1", label: "Warmup", done: true },
+                { num: "2", label: weakestSkill ? `Focus: ${weakestSkill}` : "Focus Session", done: false },
+                { num: "3", label: "Full Simulation", done: false },
+              ].map(s => (
+                <div key={s.num} style={{
+                  padding: "12px", borderRadius: 10, textAlign: "center",
+                  background: s.done ? "rgba(122,158,126,0.06)" : "rgba(245,242,237,0.02)",
+                  border: `1px solid ${s.done ? "rgba(122,158,126,0.2)" : c.border}`,
+                  opacity: s.done ? 1 : 0.6,
+                }}>
+                  <span style={{ fontFamily: font.mono, fontSize: 10, fontWeight: 600, color: s.done ? c.sage : c.stone, letterSpacing: "0.06em" }}>
+                    {s.done ? "DONE" : `SESSION ${s.num}`}
+                  </span>
+                  <span style={{ fontFamily: font.ui, fontSize: 11, color: c.chalk, display: "block", marginTop: 4 }}>{s.label}</span>
+                </div>
+              ))}
+            </div>
           </div>
 
           {/* CTAs */}
@@ -139,7 +165,7 @@ export default function OnboardingComplete() {
               onMouseLeave={(e) => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 8px 32px rgba(212,179,127,0.25)"; }}
             >
               <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polygon points="5,3 19,12 5,21"/></svg>
-              Start a Full Session
+              Continue to Session 2
             </button>
             <button
               onClick={() => router.push("/dashboard")}

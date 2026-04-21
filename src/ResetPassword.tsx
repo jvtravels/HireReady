@@ -84,8 +84,8 @@ export default function ResetPassword() {
       setError("Password must be at least 8 characters.");
       return;
     }
-    if (password.length > 16) {
-      setError("Password must be 16 characters or fewer.");
+    if (password.length > 128) {
+      setError("Password must be 128 characters or fewer.");
       return;
     }
     if (!/[A-Z]/.test(password)) {
@@ -249,7 +249,7 @@ export default function ResetPassword() {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="At least 8 characters"
                   disabled={!hasSession}
-                  maxLength={16}
+                  maxLength={128}
                   style={{
                     width: "100%", padding: "10px 44px 10px 14px", borderRadius: 8,
                     background: c.obsidian, border: `1px solid ${c.border}`,
@@ -309,7 +309,7 @@ export default function ResetPassword() {
                   onChange={(e) => setConfirm(e.target.value)}
                   placeholder="Re-enter your password"
                   disabled={!hasSession}
-                  maxLength={16}
+                  maxLength={128}
                   style={{
                     width: "100%", padding: "10px 44px 10px 14px", borderRadius: 8,
                     background: c.obsidian, border: `1px solid ${c.border}`,

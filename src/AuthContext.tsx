@@ -534,7 +534,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // Server-side password policy enforcement (cannot be bypassed via DevTools)
     if (!password || password.length < 8) return { success: false, error: "Password must be at least 8 characters." };
-    if (password.length > 16) return { success: false, error: "Password must be 16 characters or fewer." };
+    if (password.length > 128) return { success: false, error: "Password must be 128 characters or fewer." };
     if (!/[A-Z]/.test(password)) return { success: false, error: "Password must include an uppercase letter." };
     if (!/[0-9]/.test(password)) return { success: false, error: "Password must include a number." };
     if (!/[^A-Za-z0-9]/.test(password)) return { success: false, error: "Password must include a special character." };

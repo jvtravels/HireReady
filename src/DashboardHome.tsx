@@ -544,7 +544,15 @@ export default function DashboardHome() {
   if (isNewUser) {
     return (
       <EmptyState
-        onStart={() => { updatePersisted({ hasCompletedFirstSession: true }); handleStartSession(); }}
+        onStartWarmup={() => {
+          updatePersisted({ hasCompletedFirstSession: true });
+          const warmupUrl = buildInterviewUrl({
+            sessionNumber: 1, type: "behavioral", difficulty: "warmup",
+            mini: true, useResume: true,
+          });
+          router.push(warmupUrl);
+        }}
+        onStartCustom={() => { updatePersisted({ hasCompletedFirstSession: true }); handleStartSession(); }}
         userName={displayName}
         targetRole={user?.targetRole || persisted.targetRole}
         isMobile={isMobile}

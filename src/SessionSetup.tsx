@@ -220,6 +220,18 @@ const focusToType: Record<string, string> = {
   "Government / PSU": "government-psu",
 };
 
+function getRecommendedFocus(role?: string): string {
+  if (!role) return "Behavioral";
+  const r = role.toLowerCase();
+  if (/engineer|developer|sde|swe|programmer|coder/i.test(r)) return "Technical Leadership";
+  if (/product\s*manager|pm\b/i.test(r)) return "Strategic";
+  if (/analyst|data/i.test(r)) return "Technical Leadership";
+  if (/intern|fresher|graduate|campus|entry/i.test(r)) return "Campus Placement";
+  if (/consult/i.test(r)) return "Case Study";
+  if (/manager|director|vp|head of|cto|ceo/i.test(r)) return "Management";
+  return "Behavioral";
+}
+
 /* ═══════════════════════════════════════════════
    SESSION SETUP — 2-Step Flow (matches Onboarding)
    Step 1: Target Role + Company, Interview Focus, Session Length
@@ -242,12 +254,13 @@ export default function SessionSetup() {
   const [targetCompany, setTargetCompany] = useState(user?.targetCompany || "");
   const [currentCity, setCurrentCity] = useState(user?.city || "");
   const [jobCity, setJobCity] = useState("");
+  const recommendedFocus = getRecommendedFocus(user?.targetRole);
   const [interviewFocus, setInterviewFocus] = useState<string[]>(() => {
     if (preselectedFocus) {
       const match = Object.entries(focusToType).find(([, v]) => v === preselectedFocus);
       if (match) return [match[0]];
     }
-    return ["Behavioral"];
+    return [getRecommendedFocus(user?.targetRole)];
   });
   const [sessionLength, setSessionLength] = useState("10m");
   // negotiationStyle is now randomly assigned per session in useInterviewEngine
@@ -569,6 +582,7 @@ export default function SessionSetup() {
                       { value: "Government / PSU", icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 21h18M3 10h18M5 6l7-3 7 3M4 10v11M20 10v11M8 14v3M12 14v3M16 14v3"/></svg>, desc: "Public service motivation, ethics & current affairs" },
                     ].map(opt => {
                       const sel = interviewFocus[0] === opt.value;
+                      const isRecommended = opt.value === recommendedFocus && recommendedFocus !== "Behavioral";
                       return (
                         <button key={opt.value} className="ob-focus-card" onClick={() => setInterviewFocus([opt.value])}
                           style={{
@@ -577,7 +591,11 @@ export default function SessionSetup() {
                             border: `1.5px solid ${sel ? c.gilt : c.border}`,
                             boxShadow: sel ? "0 0 16px rgba(212,179,127,0.06)" : "none",
                             display: "flex", alignItems: "center", gap: 12, color: sel ? c.gilt : c.stone,
+                            position: "relative",
                           }}>
+                          {isRecommended && (
+                            <span style={{ position: "absolute", top: -8, right: 12, fontFamily: font.ui, fontSize: 9, fontWeight: 700, color: c.obsidian, background: c.gilt, padding: "2px 8px", borderRadius: 4, letterSpacing: "0.04em", textTransform: "uppercase" }}>For you</span>
+                          )}
                           <div style={{ width: 36, height: 36, borderRadius: 9, background: sel ? "rgba(212,179,127,0.1)" : "rgba(245,242,237,0.03)", border: `1px solid ${sel ? "rgba(212,179,127,0.2)" : "rgba(245,242,237,0.06)"}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                             {opt.icon}
                           </div>

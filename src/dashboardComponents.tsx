@@ -494,7 +494,7 @@ export const ProGate = memo(function ProGate({ feature, onUpgrade }: { feature: 
 });
 
 /* ─── Welcome Dashboard (no sessions) ─── */
-export const EmptyState = memo(function EmptyState({ onStart, userName, targetRole, isMobile }: { onStart: () => void; userName: string; targetRole: string; isMobile?: boolean }) {
+export const EmptyState = memo(function EmptyState({ onStartWarmup, onStartCustom, userName, targetRole, isMobile }: { onStartWarmup: () => void; onStartCustom: () => void; userName: string; targetRole: string; isMobile?: boolean }) {
   const hour = new Date().getHours();
   const timeGreeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
   const firstName = userName ? userName.split(" ")[0] : "there";
@@ -508,34 +508,46 @@ export const EmptyState = memo(function EmptyState({ onStart, userName, targetRo
         {targetRole ? `Let's get you ready for your ${targetRole} interview.` : "Let's get you interview-ready."}
       </p>
 
-      <div style={{ background: `linear-gradient(135deg, rgba(212,179,127,0.1) 0%, ${c.graphite} 100%)`, borderRadius: 16, border: `1px solid rgba(212,179,127,0.15)`, padding: isMobile ? "32px 24px" : "48px 40px", textAlign: "center", marginBottom: 28 }}>
-        <div style={{ width: 72, height: 72, borderRadius: 18, margin: "0 auto 24px", background: "rgba(212,179,127,0.08)", border: `1px solid rgba(212,179,127,0.2)`, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 0 60px rgba(212,179,127,0.08)" }}>
-          <svg aria-hidden="true" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5" strokeLinecap="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg>
+      <div style={{ background: `linear-gradient(135deg, rgba(212,179,127,0.12) 0%, ${c.graphite} 100%)`, borderRadius: 16, border: `1px solid rgba(212,179,127,0.15)`, padding: isMobile ? "32px 24px" : "48px 40px", textAlign: "center", marginBottom: 28 }}>
+        <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "6px 16px", borderRadius: 20, background: "rgba(212,179,127,0.08)", border: "1px solid rgba(212,179,127,0.15)", marginBottom: 24 }}>
+          <span style={{ fontFamily: font.mono, fontSize: 10, fontWeight: 600, color: c.gilt, letterSpacing: "0.08em" }}>SESSION 1 OF 3</span>
+          <span style={{ fontFamily: font.ui, fontSize: 10, color: c.stone }}>Guided Warmup</span>
         </div>
-        <h2 style={{ fontFamily: font.display, fontSize: isMobile ? 22 : 28, fontWeight: 400, color: c.ivory, marginBottom: 10, letterSpacing: "-0.02em" }}>Start your first mock interview</h2>
-        <p style={{ fontFamily: font.ui, fontSize: 14, color: c.stone, lineHeight: 1.6, marginBottom: 28, maxWidth: 420, margin: "0 auto 28px" }}>
-          Our AI interviewer will ask you real questions, listen to your answers, and give you detailed feedback — just like a real interview, but without the pressure.
+        <h2 style={{ fontFamily: font.display, fontSize: isMobile ? 22 : 28, fontWeight: 400, color: c.ivory, marginBottom: 10, letterSpacing: "-0.02em" }}>
+          {targetRole ? `Your ${targetRole} warmup is ready` : "Your warmup session is ready"}
+        </h2>
+        <p style={{ fontFamily: font.ui, fontSize: 14, color: c.stone, lineHeight: 1.6, marginBottom: 28, maxWidth: 440, margin: "0 auto 28px" }}>
+          3 friendly behavioral questions, ~5 minutes. We'll use your resume to personalize every question and set your baseline score.
         </p>
-        <button className="shimmer-btn" onClick={onStart}
-          style={{ fontFamily: font.ui, fontSize: 15, fontWeight: 500, padding: "14px 36px", borderRadius: 8, border: "none", background: c.gilt, color: c.obsidian, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 10, boxShadow: "0 8px 32px rgba(212,179,127,0.15)" }}
-          onMouseEnter={(e) => { e.currentTarget.style.filter = "brightness(1.15)"; }}
-          onMouseLeave={(e) => { e.currentTarget.style.filter = "brightness(1)"; }}
-        >
-          <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="5,3 19,12 5,21" /></svg>
-          Begin Practice Session
-        </button>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
+          <button className="shimmer-btn" onClick={onStartWarmup}
+            style={{ fontFamily: font.ui, fontSize: 15, fontWeight: 500, padding: "14px 36px", borderRadius: 8, border: "none", background: c.gilt, color: c.obsidian, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 10, boxShadow: "0 8px 32px rgba(212,179,127,0.15)" }}
+            onMouseEnter={(e) => { e.currentTarget.style.filter = "brightness(1.15)"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.filter = "brightness(1)"; }}
+          >
+            <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="5,3 19,12 5,21" /></svg>
+            Start Warmup
+          </button>
+          <button onClick={onStartCustom}
+            style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: c.stone, background: "none", border: "none", cursor: "pointer", padding: "6px 12px", textDecoration: "underline", textUnderlineOffset: 3 }}
+            onMouseEnter={(e) => { e.currentTarget.style.color = c.ivory; }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = c.stone; }}
+          >
+            or choose your own session
+          </button>
+        </div>
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(3, 1fr)", gap: 14, marginBottom: 28 }}>
         {[
-          { step: "1", title: "Choose your focus", desc: "Pick an interview type — behavioral, strategic, technical leadership, or case study.", icon: <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> },
-          { step: "2", title: "Practice with AI", desc: "Answer questions out loud. Our AI listens, adapts, and follows up — like a real interviewer.", icon: <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="1.5" strokeLinecap="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg> },
-          { step: "3", title: "Get scored & coached", desc: "Receive detailed scores, skill breakdowns, and AI coaching tips after every session.", icon: <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={c.ember} strokeWidth="1.5" strokeLinecap="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg> },
+          { step: "1", title: "Warmup", desc: "3 friendly behavioral questions to set your baseline. Personalized from your resume.", icon: <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5" strokeLinecap="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>, active: true },
+          { step: "2", title: "Focus", desc: "Targeted practice on your weakest skill from the warmup.", icon: <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="1.5" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>, active: false },
+          { step: "3", title: "Challenge", desc: "Full interview simulation tailored to your target role.", icon: <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={c.ember} strokeWidth="1.5" strokeLinecap="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>, active: false },
         ].map((item) => (
-          <div key={item.step} style={{ background: c.graphite, borderRadius: 12, border: `1px solid ${c.border}`, padding: "24px 20px" }}>
+          <div key={item.step} style={{ background: c.graphite, borderRadius: 12, border: `1px solid ${item.active ? "rgba(212,179,127,0.3)" : c.border}`, padding: "24px 20px", opacity: item.active ? 1 : 0.5 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
               {item.icon}
-              <span style={{ fontFamily: font.mono, fontSize: 10, fontWeight: 600, color: c.stone, letterSpacing: "0.08em" }}>STEP {item.step}</span>
+              <span style={{ fontFamily: font.mono, fontSize: 10, fontWeight: 600, color: item.active ? c.gilt : c.stone, letterSpacing: "0.08em" }}>SESSION {item.step}</span>
             </div>
             <h3 style={{ fontFamily: font.ui, fontSize: 14, fontWeight: 600, color: c.ivory, marginBottom: 6 }}>{item.title}</h3>
             <p style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, lineHeight: 1.5 }}>{item.desc}</p>
@@ -543,31 +555,12 @@ export const EmptyState = memo(function EmptyState({ onStart, userName, targetRo
         ))}
       </div>
 
-      {/* What you'll unlock preview */}
-      <div style={{ background: c.graphite, borderRadius: 12, border: `1px solid ${c.border}`, padding: "20px 24px", marginBottom: 28 }}>
-        <p style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.gilt, letterSpacing: "0.06em", textTransform: "uppercase" as const, marginBottom: 14 }}>What you'll unlock after your first session</p>
-        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(4, 1fr)", gap: 12 }}>
-          {[
-            { label: "Readiness Score", preview: "85", sub: "Overall readiness" },
-            { label: "Skill Breakdown", preview: "5 skills", sub: "Radar chart" },
-            { label: "Score Trend", preview: "📈", sub: "Track progress" },
-            { label: "AI Coaching", preview: "Tips", sub: "Personalized feedback" },
-          ].map(item => (
-            <div key={item.label} style={{ padding: "14px 12px", borderRadius: 8, background: c.obsidian, textAlign: "center", opacity: 0.6 }}>
-              <span style={{ fontFamily: font.mono, fontSize: 18, fontWeight: 600, color: c.ivory, display: "block", marginBottom: 2 }}>{item.preview}</span>
-              <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 500, color: c.chalk, display: "block" }}>{item.label}</span>
-              <span style={{ fontFamily: font.ui, fontSize: 10, color: c.stone }}>{item.sub}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-
       <div className="quick-stats-bar" style={{ display: "flex", justifyContent: "center", gap: isMobile ? 24 : 48, padding: "20px 0", borderTop: `1px solid ${c.border}`, borderBottom: `1px solid ${c.border}` }}>
         {[
-          { value: "~15 min", label: "Per session" },
-          { value: "5", label: "Skill dimensions" },
-          { value: "AI", label: "Personalized questions" },
-          { value: "Free", label: "To get started" },
+          { value: "~5 min", label: "Warmup length" },
+          { value: "3", label: "Questions" },
+          { value: "AI", label: "Resume-personalized" },
+          { value: "Free", label: "No card needed" },
         ].map((item) => (
           <div key={item.label} style={{ textAlign: "center" }}>
             <span style={{ fontFamily: font.mono, fontSize: 16, fontWeight: 600, color: c.gilt, display: "block", marginBottom: 2 }}>{item.value}</span>
