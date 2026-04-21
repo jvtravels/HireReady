@@ -3,8 +3,8 @@ import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { c, font } from "./tokens";
 import { useAuth } from "./AuthContext";
-import { extractResumeText, parseResumeData, type ParsedResume } from "./resumeParser";
-import { analyzeResumeWithAI, type ResumeProfile } from "./dashboardData";
+import type { ParsedResume } from "./resumeParser";
+import type { ResumeProfile } from "./dashboardData";
 import { track } from "@vercel/analytics";
 import {
   EmailVerificationBanner, TopBar,
@@ -58,30 +58,33 @@ export default function Onboarding() {
     resumeRestoredRef.current = true;
     setFileName(user.resumeFileName);
     setResumeText(user.resumeText);
-    const data = user.resumeData || parseResumeData(user.resumeText);
-    setResumeParsed(data);
-    const savedAiProfile = (data as ParsedResume & { aiProfile?: ResumeProfile })?.aiProfile;
-    if (data.name && !userName) setUserName(data.name);
-    if (savedAiProfile && savedAiProfile.headline) {
-      setAiProfile(savedAiProfile);
-      setAiPhase("done");
-      if (!data.name && !userName && savedAiProfile.headline !== "Analyzing...") {
-        setUserName(savedAiProfile.headline.split(/[—–|,]/)[0].trim().slice(0, 40));
+    import("./resumeParser").then(async ({ parseResumeData }) => {
+      const data = user.resumeData || parseResumeData(user.resumeText!);
+      setResumeParsed(data);
+      const savedAiProfile = (data as ParsedResume & { aiProfile?: ResumeProfile })?.aiProfile;
+      if (data.name && !userName) setUserName(data.name);
+      if (savedAiProfile && savedAiProfile.headline) {
+        setAiProfile(savedAiProfile);
+        setAiPhase("done");
+        if (!data.name && !userName && savedAiProfile.headline !== "Analyzing...") {
+          setUserName(savedAiProfile.headline.split(/[—–|,]/)[0].trim().slice(0, 40));
+        }
+      } else {
+        setAiPhase("analyzing");
+        const autoRole = data.experience?.[0]?.title || "";
+        const { analyzeResumeWithAI } = await import("./dashboardData");
+        analyzeResumeWithAI(user.resumeText!, targetRole || autoRole)
+          .then(result => { if (result && "profile" in result) setAiProfile(result.profile); })
+          .catch(() => {})
+          .finally(() => setAiPhase("done"));
       }
-    } else {
-      setAiPhase("analyzing");
-      const autoRole = data.experience?.[0]?.title || "";
-      analyzeResumeWithAI(user.resumeText, targetRole || autoRole)
-        .then(result => { if (result && "profile" in result) setAiProfile(result.profile); })
-        .catch(() => {})
-        .finally(() => setAiPhase("done"));
-    }
-    if (!targetRole) {
-      const aiRole = savedAiProfile?.headline && savedAiProfile.headline !== "Analyzing..." ? savedAiProfile.headline : "";
-      const parserRole = data.experience?.[0]?.title || "";
-      const autoRole = aiRole || parserRole;
-      if (autoRole) setTargetRole(autoRole);
-    }
+      if (!targetRole) {
+        const aiRole = savedAiProfile?.headline && savedAiProfile.headline !== "Analyzing..." ? savedAiProfile.headline : "";
+        const parserRole = data.experience?.[0]?.title || "";
+        const autoRole = aiRole || parserRole;
+        if (autoRole) setTargetRole(autoRole);
+      }
+    });
   }, [user?.resumeFileName, user?.resumeText]);
 
   // Progress stage timer for resume analysis
@@ -129,6 +132,8 @@ export default function Onboarding() {
     setResumeError("");
     setResumeParsing(true);
     try {
+      const { extractResumeText, parseResumeData } = await import("./resumeParser");
+      const { analyzeResumeWithAI } = await import("./dashboardData");
       const text = await extractResumeText(file);
       if (!text || text.trim().length < 30) {
         const fileExt = file.name.split(".").pop()?.toLowerCase();
@@ -263,9 +268,11 @@ export default function Onboarding() {
 
   const handleReanalyze = () => {
     setAiPhase("analyzing");
-    Promise.race([analyzeResumeWithAI(resumeText, targetRole), new Promise<null>((_, rej) => setTimeout(() => rej(new Error("timeout")), 30000))])
-      .then(r => { if (r && typeof r === "object" && "profile" in r) setAiProfile(r.profile); setAiPhase("done"); })
-      .catch(() => setAiPhase("done"));
+    import("./dashboardData").then(({ analyzeResumeWithAI }) => {
+      Promise.race([analyzeResumeWithAI(resumeText, targetRole), new Promise<null>((_, rej) => setTimeout(() => rej(new Error("timeout")), 30000))])
+        .then(r => { if (r && typeof r === "object" && "profile" in r) setAiProfile(r.profile); setAiPhase("done"); })
+        .catch(() => setAiPhase("done"));
+    });
   };
 
   const handleRemoveResume = () => {
