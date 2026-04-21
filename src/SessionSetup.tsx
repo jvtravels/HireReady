@@ -251,7 +251,9 @@ export default function SessionSetup() {
   const [step, setStep] = useState(1);
   const [targetRole, setTargetRole] = useState(user?.targetRole || "");
   const [roleTouched, setRoleTouched] = useState(false);
-  const [targetCompany, setTargetCompany] = useState(user?.targetCompany || "");
+  const [targetCompany, setTargetCompany] = useState(
+    user?.targetCompany || user?.resumeData?.experience?.[0]?.company || "",
+  );
   const [currentCity, setCurrentCity] = useState(user?.city || "");
   const [jobCity, setJobCity] = useState("");
   const recommendedFocus = getRecommendedFocus(user?.targetRole);

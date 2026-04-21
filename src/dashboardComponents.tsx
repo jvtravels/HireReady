@@ -497,6 +497,7 @@ export const ProGate = memo(function ProGate({ feature, onUpgrade }: { feature: 
 function ConfettiBurst() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
@@ -561,6 +562,7 @@ export const EmptyState = memo(function EmptyState({ onStartWarmup, onStartCusto
       {showConfetti && <ConfettiBurst />}
       <style>{`
         @keyframes warmupPulse { 0%, 100% { box-shadow: 0 8px 32px rgba(212,179,127,0.15); } 50% { box-shadow: 0 8px 40px rgba(212,179,127,0.4); } }
+        @media (prefers-reduced-motion: reduce) { .warmup-pulse-btn { animation: none !important; box-shadow: 0 8px 32px rgba(212,179,127,0.15) !important; } }
       `}</style>
       <h1 style={{ fontFamily: font.ui, fontSize: isMobile ? 20 : 26, fontWeight: 600, color: c.ivory, marginBottom: 6 }}>
         {timeGreeting}, {firstName}
@@ -581,7 +583,7 @@ export const EmptyState = memo(function EmptyState({ onStartWarmup, onStartCusto
           3 friendly behavioral questions, ~5 minutes. We'll use your resume to personalize every question and set your baseline score.
         </p>
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
-          <button className="shimmer-btn" onClick={onStartWarmup}
+          <button className="shimmer-btn warmup-pulse-btn" onClick={onStartWarmup}
             style={{ fontFamily: font.ui, fontSize: 15, fontWeight: 500, padding: "14px 36px", borderRadius: 8, border: "none", background: c.gilt, color: c.obsidian, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 10, animation: "warmupPulse 2s ease-in-out infinite" }}
             onMouseEnter={(e) => { e.currentTarget.style.filter = "brightness(1.15)"; e.currentTarget.style.animation = "none"; }}
             onMouseLeave={(e) => { e.currentTarget.style.filter = "brightness(1)"; e.currentTarget.style.animation = "warmupPulse 2s ease-in-out infinite"; }}
