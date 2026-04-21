@@ -2,6 +2,9 @@
 const nextConfig = {
   turbopack: {
     root: process.cwd(),
+    resolveAlias: {
+      canvas: "./lib/empty-canvas.js",
+    },
   },
 
   // Ignore the canvas module that pdfjs-dist tries to require in Node.js
