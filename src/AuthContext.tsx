@@ -67,8 +67,39 @@ function storeDeviceToken(token: string) {
 /* ─── Session Fingerprint (detect session hijacking) ─── */
 const SESSION_FP_KEY = "hirestepx_session_fp";
 
+// Cache expensive GPU/canvas signals so they don't block session restore
+let _cachedHeavySignals: string | null = null;
+function getHeavySignals(): string {
+  if (_cachedHeavySignals !== null) return _cachedHeavySignals;
+  let canvas = "";
+  let webgl = "";
+  try {
+    const c = document.createElement("canvas");
+    c.width = 64;
+    c.height = 16;
+    const ctx = c.getContext("2d");
+    if (ctx) {
+      ctx.textBaseline = "top";
+      ctx.font = "14px Arial";
+      ctx.fillStyle = "#f60";
+      ctx.fillRect(0, 0, 64, 16);
+      ctx.fillStyle = "#069";
+      ctx.fillText("Hx", 2, 1);
+      canvas = c.toDataURL().slice(-32);
+    }
+  } catch { /* noop */ }
+  try {
+    const gl = document.createElement("canvas").getContext("webgl");
+    if (gl) {
+      const ext = gl.getExtension("WEBGL_debug_renderer_info");
+      if (ext) webgl = gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) || "";
+    }
+  } catch { /* noop */ }
+  _cachedHeavySignals = `${canvas}|${webgl}`;
+  return _cachedHeavySignals;
+}
+
 function computeSessionFingerprint(): string {
-  // Fingerprint from multiple browser signals — harder to spoof collectively
   const signals = [
     navigator.userAgent,
     `${screen.width}x${screen.height}x${screen.colorDepth}`,
@@ -78,34 +109,8 @@ function computeSessionFingerprint(): string {
     String((navigator as unknown as Record<string, unknown>).deviceMemory || ""),
     navigator.platform || "",
     String(new Date().getTimezoneOffset()),
-    // Canvas fingerprint — subtle rendering differences across GPUs/browsers
-    (() => {
-      try {
-        const canvas = document.createElement("canvas");
-        canvas.width = 64;
-        canvas.height = 16;
-        const ctx = canvas.getContext("2d");
-        if (!ctx) return "";
-        ctx.textBaseline = "top";
-        ctx.font = "14px Arial";
-        ctx.fillStyle = "#f60";
-        ctx.fillRect(0, 0, 64, 16);
-        ctx.fillStyle = "#069";
-        ctx.fillText("Hx", 2, 1);
-        return canvas.toDataURL().slice(-32);
-      } catch { return ""; }
-    })(),
-    // WebGL renderer — varies by GPU
-    (() => {
-      try {
-        const gl = document.createElement("canvas").getContext("webgl");
-        if (!gl) return "";
-        const ext = gl.getExtension("WEBGL_debug_renderer_info");
-        return ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : "";
-      } catch { return ""; }
-    })(),
+    getHeavySignals(),
   ].join("|");
-  // djb2 hash
   let hash = 5381;
   for (let i = 0; i < signals.length; i++) hash = ((hash << 5) + hash) + signals.charCodeAt(i);
   return (hash >>> 0).toString(36);
@@ -360,11 +365,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(newUser);
     }
 
-    // Safety timeout: ensure loading never hangs
+    // Safety timeout: ensure loading never hangs (8s allows for slow SDK load + network)
     const safetyTimer = setTimeout(() => {
       console.warn("[auth] safety timeout: forcing loading=false");
       setLoading(false);
-    }, 5000);
+    }, 8000);
 
     let unsubscribe: (() => void) | null = null;
 
@@ -374,16 +379,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         const { data: { session } } = await client.auth.getSession();
         if (session) {
-          // Session fingerprint check — detect possible hijacking
-          if (!validateSessionFingerprint()) {
-            console.warn("[auth] session fingerprint mismatch — possible hijack, signing out");
-            logAuditEvent("session_hijack_detected", { userId: session.user.id, email: session.user.email });
-            setUser(null);
-            await client.auth.signOut().catch(() => {});
-            clearTimeout(safetyTimer);
-            setLoading(false);
-            return;
-          }
           // Block unverified email users — sign them out immediately
           // Google OAuth users are always verified; email/password users must pass our custom verification
           // Exception: allow sessions on /reset-password so users can complete password reset
@@ -437,7 +432,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         clearTimeout(safetyTimer);
         setLoading(false);
 
-        // Background server validation
+        // Background validations (deferred — don't block session restore)
+        // 1. Server-side session check
         client.auth.getUser().then(async ({ data: { user: authUser }, error: userError }) => {
           if (session && (userError || !authUser)) {
             console.warn("[auth] background validation failed — signing out");
@@ -445,6 +441,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             await client.auth.signOut().catch(() => {});
           }
         }).catch(() => {});
+        // 2. Session fingerprint check (canvas/WebGL can be slow — run after UI is responsive)
+        if (session) {
+          setTimeout(() => {
+            if (!validateSessionFingerprint()) {
+              console.warn("[auth] session fingerprint mismatch — possible hijack, signing out");
+              logAuditEvent("session_hijack_detected", { userId: session.user.id, email: session.user.email });
+              setUser(null);
+              client.auth.signOut().catch(() => {});
+            }
+          }, 100);
+        }
       } catch (err) {
         console.error("[auth] getSession failed:", err);
         setUser(null);
