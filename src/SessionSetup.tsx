@@ -266,6 +266,8 @@ export default function SessionSetup() {
   // negotiationStyle is now randomly assigned per session in useInterviewEngine
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const isFreeUser = !user?.subscriptionTier || user.subscriptionTier === "free";
+  const isFirstTimer = !user?.practiceTimestamps || user.practiceTimestamps.length === 0;
+  const [showAllFocus, setShowAllFocus] = useState(false);
   const { toast } = useToast();
 
   // Notify user if their subscription just expired and auto-downgraded
@@ -550,12 +552,16 @@ export default function SessionSetup() {
                     <div>
                       <AutocompleteInput id="setup-company" value={targetCompany} onChange={setTargetCompany} suggestions={COMPANY_SUGGESTIONS} placeholder="e.g. Google, Stripe..." label="Company (optional)" />
                     </div>
-                    <div>
-                      <AutocompleteInput id="setup-current-city" value={currentCity} onChange={setCurrentCity} suggestions={CITY_SUGGESTIONS} placeholder="e.g. Chennai, Pune..." label="Current City" />
-                    </div>
-                    <div>
-                      <AutocompleteInput id="setup-job-city" value={jobCity} onChange={setJobCity} suggestions={CITY_SUGGESTIONS} placeholder="e.g. Bangalore, Remote..." label="Job Location" />
-                    </div>
+                    {!isFirstTimer && (
+                      <div>
+                        <AutocompleteInput id="setup-current-city" value={currentCity} onChange={setCurrentCity} suggestions={CITY_SUGGESTIONS} placeholder="e.g. Chennai, Pune..." label="Current City" />
+                      </div>
+                    )}
+                    {!isFirstTimer && (
+                      <div>
+                        <AutocompleteInput id="setup-job-city" value={jobCity} onChange={setJobCity} suggestions={CITY_SUGGESTIONS} placeholder="e.g. Bangalore, Remote..." label="Job Location" />
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -567,49 +573,73 @@ export default function SessionSetup() {
                     </div>
                     <span style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: c.ivory }}>Interview Focus <span style={{ color: c.ember, fontWeight: 400 }}>*</span></span>
                   </div>
-                  <p style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, marginBottom: 16, paddingLeft: 36 }}>Choose what you want to practice. AI will prepare questions based on your selection.</p>
+                  <p style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, marginBottom: 16, paddingLeft: 36 }}>
+                    {isFirstTimer && !showAllFocus
+                      ? "We picked the best types for your role. Or explore all 10 interview types below."
+                      : "Choose what you want to practice. AI will prepare questions based on your selection."}
+                  </p>
                   <div className="ob-s2-focus-grid">
-                    {[
-                      { value: "Behavioral", icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>, desc: "STAR-format questions about past experiences" },
-                      { value: "Strategic", icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>, desc: "Vision-setting, roadmap & business alignment" },
-                      { value: "Technical Leadership", icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>, desc: "System design, architecture & tech decisions" },
-                      { value: "Case Study", icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>, desc: "Analyze real business scenarios & problems" },
-                      { value: "Campus Placement", icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 1.66 2.69 3 6 3s6-1.34 6-3v-5"/></svg>, desc: "College interview prep — projects, goals & teamwork" },
-                      { value: "HR Round", icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>, desc: "Personality, cultural fit & soft skills" },
-                      { value: "Management", icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>, desc: "Leadership style, team building & change management" },
-                      { value: "Panel Interview", icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>, desc: "Multi-interviewer format with varied perspectives" },
-                      { value: "Salary Negotiation", icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>, desc: "Practice negotiating compensation & benefits" },
-                      { value: "Government / PSU", icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 21h18M3 10h18M5 6l7-3 7 3M4 10v11M20 10v11M8 14v3M12 14v3M16 14v3"/></svg>, desc: "Public service motivation, ethics & current affairs" },
-                    ].map(opt => {
-                      const sel = interviewFocus[0] === opt.value;
-                      const isRecommended = opt.value === recommendedFocus && recommendedFocus !== "Behavioral";
-                      return (
-                        <button key={opt.value} className="ob-focus-card" onClick={() => setInterviewFocus([opt.value])}
-                          style={{
-                            padding: "14px 18px", borderRadius: 12, cursor: "pointer", transition: "all 0.2s ease", textAlign: "left",
-                            background: sel ? "rgba(212,179,127,0.08)" : "transparent",
-                            border: `1.5px solid ${sel ? c.gilt : c.border}`,
-                            boxShadow: sel ? "0 0 16px rgba(212,179,127,0.06)" : "none",
-                            display: "flex", alignItems: "center", gap: 12, color: sel ? c.gilt : c.stone,
-                            position: "relative",
-                          }}>
-                          {isRecommended && (
-                            <span style={{ position: "absolute", top: -8, right: 12, fontFamily: font.ui, fontSize: 9, fontWeight: 700, color: c.obsidian, background: c.gilt, padding: "2px 8px", borderRadius: 4, letterSpacing: "0.04em", textTransform: "uppercase" }}>For you</span>
-                          )}
-                          <div style={{ width: 36, height: 36, borderRadius: 9, background: sel ? "rgba(212,179,127,0.1)" : "rgba(245,242,237,0.03)", border: `1px solid ${sel ? "rgba(212,179,127,0.2)" : "rgba(245,242,237,0.06)"}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                            {opt.icon}
-                          </div>
-                          <div style={{ flex: 1 }}>
-                            <span style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: c.ivory, display: "block" }}>{opt.value}</span>
-                            <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, lineHeight: 1.4 }}>{opt.desc}</span>
-                          </div>
-                          <div style={{ width: 18, height: 18, borderRadius: "50%", border: `2px solid ${sel ? c.gilt : "rgba(245,242,237,0.12)"}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                            {sel && <div style={{ width: 8, height: 8, borderRadius: "50%", background: c.gilt }} />}
-                          </div>
-                        </button>
-                      );
-                    })}
+                    {(() => {
+                      const allOpts = [
+                        { value: "Behavioral", icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>, desc: "STAR-format questions about past experiences" },
+                        { value: "Strategic", icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>, desc: "Vision-setting, roadmap & business alignment" },
+                        { value: "Technical Leadership", icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>, desc: "System design, architecture & tech decisions" },
+                        { value: "Case Study", icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>, desc: "Analyze real business scenarios & problems" },
+                        { value: "Campus Placement", icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 1.66 2.69 3 6 3s6-1.34 6-3v-5"/></svg>, desc: "College interview prep — projects, goals & teamwork" },
+                        { value: "HR Round", icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>, desc: "Personality, cultural fit & soft skills" },
+                        { value: "Management", icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>, desc: "Leadership style, team building & change management" },
+                        { value: "Panel Interview", icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>, desc: "Multi-interviewer format with varied perspectives" },
+                        { value: "Salary Negotiation", icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>, desc: "Practice negotiating compensation & benefits" },
+                        { value: "Government / PSU", icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 21h18M3 10h18M5 6l7-3 7 3M4 10v11M20 10v11M8 14v3M12 14v3M16 14v3"/></svg>, desc: "Public service motivation, ethics & current affairs" },
+                      ];
+                      const visibleOpts = (isFirstTimer && !showAllFocus)
+                        ? (() => {
+                            const top3 = new Set([recommendedFocus, "Behavioral", "HR Round"]);
+                            if (recommendedFocus === "Behavioral") top3.add("Strategic");
+                            return allOpts.filter(o => top3.has(o.value));
+                          })()
+                        : allOpts;
+                      return visibleOpts.map(opt => {
+                        const sel = interviewFocus[0] === opt.value;
+                        const isRecommended = opt.value === recommendedFocus && recommendedFocus !== "Behavioral";
+                        return (
+                          <button key={opt.value} className="ob-focus-card" onClick={() => setInterviewFocus([opt.value])}
+                            style={{
+                              padding: "14px 18px", borderRadius: 12, cursor: "pointer", transition: "all 0.2s ease", textAlign: "left",
+                              background: sel ? "rgba(212,179,127,0.08)" : "transparent",
+                              border: `1.5px solid ${sel ? c.gilt : c.border}`,
+                              boxShadow: sel ? "0 0 16px rgba(212,179,127,0.06)" : "none",
+                              display: "flex", alignItems: "center", gap: 12, color: sel ? c.gilt : c.stone,
+                              position: "relative",
+                            }}>
+                            {isRecommended && (
+                              <span style={{ position: "absolute", top: -8, right: 12, fontFamily: font.ui, fontSize: 9, fontWeight: 700, color: c.obsidian, background: c.gilt, padding: "2px 8px", borderRadius: 4, letterSpacing: "0.04em", textTransform: "uppercase" }}>For you</span>
+                            )}
+                            <div style={{ width: 36, height: 36, borderRadius: 9, background: sel ? "rgba(212,179,127,0.1)" : "rgba(245,242,237,0.03)", border: `1px solid ${sel ? "rgba(212,179,127,0.2)" : "rgba(245,242,237,0.06)"}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                              {opt.icon}
+                            </div>
+                            <div style={{ flex: 1 }}>
+                              <span style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: c.ivory, display: "block" }}>{opt.value}</span>
+                              <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, lineHeight: 1.4 }}>{opt.desc}</span>
+                            </div>
+                            <div style={{ width: 18, height: 18, borderRadius: "50%", border: `2px solid ${sel ? c.gilt : "rgba(245,242,237,0.12)"}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                              {sel && <div style={{ width: 8, height: 8, borderRadius: "50%", background: c.gilt }} />}
+                            </div>
+                          </button>
+                        );
+                      });
+                    })()}
                   </div>
+                  {isFirstTimer && !showAllFocus && (
+                    <button onClick={() => setShowAllFocus(true)}
+                      style={{ display: "flex", alignItems: "center", gap: 6, margin: "14px auto 0", fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: c.gilt, background: "none", border: "none", cursor: "pointer", padding: "6px 12px" }}
+                      onMouseEnter={(e) => { e.currentTarget.style.textDecoration = "underline"; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.textDecoration = "none"; }}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+                      Show all 10 interview types
+                    </button>
+                  )}
                 </div>
 
                 {/* ── Section 3: Session Length ── */}

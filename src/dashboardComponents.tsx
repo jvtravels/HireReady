@@ -493,14 +493,75 @@ export const ProGate = memo(function ProGate({ feature, onUpgrade }: { feature: 
   );
 });
 
+/* ─── Confetti burst for first visit ─── */
+function ConfettiBurst() {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    const colors = ["#d4b37f", "#7a9e7e", "#e8a87c", "#f5f2ed", "#c97b4b"];
+    const pieces: { x: number; y: number; vx: number; vy: number; r: number; color: string; rot: number; rv: number; shape: number }[] = [];
+    for (let i = 0; i < 80; i++) {
+      pieces.push({
+        x: canvas.width * 0.5 + (Math.random() - 0.5) * 200,
+        y: canvas.height * 0.35,
+        vx: (Math.random() - 0.5) * 12,
+        vy: -Math.random() * 14 - 4,
+        r: Math.random() * 5 + 3,
+        color: colors[Math.floor(Math.random() * colors.length)],
+        rot: Math.random() * Math.PI * 2,
+        rv: (Math.random() - 0.5) * 0.3,
+        shape: Math.floor(Math.random() * 3),
+      });
+    }
+    let frame = 0;
+    const maxFrames = 120;
+    const animate = () => {
+      if (frame >= maxFrames) return;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const opacity = 1 - frame / maxFrames;
+      for (const p of pieces) {
+        p.x += p.vx;
+        p.y += p.vy;
+        p.vy += 0.25;
+        p.vx *= 0.99;
+        p.rot += p.rv;
+        ctx.save();
+        ctx.globalAlpha = opacity;
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.rot);
+        ctx.fillStyle = p.color;
+        if (p.shape === 0) { ctx.fillRect(-p.r / 2, -p.r / 2, p.r, p.r); }
+        else if (p.shape === 1) { ctx.beginPath(); ctx.arc(0, 0, p.r / 2, 0, Math.PI * 2); ctx.fill(); }
+        else { ctx.fillRect(-p.r / 2, -p.r / 4, p.r, p.r / 2); }
+        ctx.restore();
+      }
+      frame++;
+      requestAnimationFrame(animate);
+    };
+    animate();
+  }, []);
+  return <canvas ref={canvasRef} style={{ position: "fixed", inset: 0, zIndex: 50, pointerEvents: "none" }} />;
+}
+
 /* ─── Welcome Dashboard (no sessions) ─── */
 export const EmptyState = memo(function EmptyState({ onStartWarmup, onStartCustom, userName, targetRole, isMobile }: { onStartWarmup: () => void; onStartCustom: () => void; userName: string; targetRole: string; isMobile?: boolean }) {
   const hour = new Date().getHours();
   const timeGreeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
   const firstName = userName ? userName.split(" ")[0] : "there";
+  const [showConfetti, setShowConfetti] = useState(true);
+  useEffect(() => { const t = setTimeout(() => setShowConfetti(false), 3000); return () => clearTimeout(t); }, []);
 
   return (
     <div style={{ maxWidth: 800, margin: "0 auto" }}>
+      {showConfetti && <ConfettiBurst />}
+      <style>{`
+        @keyframes warmupPulse { 0%, 100% { box-shadow: 0 8px 32px rgba(212,179,127,0.15); } 50% { box-shadow: 0 8px 40px rgba(212,179,127,0.4); } }
+      `}</style>
       <h1 style={{ fontFamily: font.ui, fontSize: isMobile ? 20 : 26, fontWeight: 600, color: c.ivory, marginBottom: 6 }}>
         {timeGreeting}, {firstName}
       </h1>
@@ -521,9 +582,9 @@ export const EmptyState = memo(function EmptyState({ onStartWarmup, onStartCusto
         </p>
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
           <button className="shimmer-btn" onClick={onStartWarmup}
-            style={{ fontFamily: font.ui, fontSize: 15, fontWeight: 500, padding: "14px 36px", borderRadius: 8, border: "none", background: c.gilt, color: c.obsidian, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 10, boxShadow: "0 8px 32px rgba(212,179,127,0.15)" }}
-            onMouseEnter={(e) => { e.currentTarget.style.filter = "brightness(1.15)"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.filter = "brightness(1)"; }}
+            style={{ fontFamily: font.ui, fontSize: 15, fontWeight: 500, padding: "14px 36px", borderRadius: 8, border: "none", background: c.gilt, color: c.obsidian, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 10, animation: "warmupPulse 2s ease-in-out infinite" }}
+            onMouseEnter={(e) => { e.currentTarget.style.filter = "brightness(1.15)"; e.currentTarget.style.animation = "none"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.filter = "brightness(1)"; e.currentTarget.style.animation = "warmupPulse 2s ease-in-out infinite"; }}
           >
             <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="5,3 19,12 5,21" /></svg>
             Start Warmup

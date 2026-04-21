@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { c, font } from "./tokens";
 import { useAuth } from "./AuthContext";
+import { getUserSessions } from "./supabase";
 
 function scoreLabelColor(score: number) {
   if (score >= 85) return c.sage;
@@ -19,35 +20,49 @@ function scoreLabel(score: number) {
 export default function OnboardingComplete() {
   const router = useRouter();
   const { user } = useAuth();
-  // In Next.js, location.state is not available. Read from sessionStorage instead.
-  const [stateData] = useState(() => {
+
+  const [stateData, setStateData] = useState<Record<string, unknown>>(() => {
     try {
       const raw = sessionStorage.getItem("hirestepx_onboarding_result");
       if (raw) { sessionStorage.removeItem("hirestepx_onboarding_result"); return JSON.parse(raw); }
     } catch { /* expected */ }
     return {};
   });
-  const score: number = stateData.score || 72;
-  const aiFeedback: string = stateData.aiFeedback || "";
-  const skillScores: Record<string, number> | null = stateData.skillScores || null;
+  const [loading, setLoading] = useState(!stateData.score);
+
+  useEffect(() => {
+    if (stateData.score || !user?.id) { setLoading(false); return; }
+    getUserSessions(user.id).then(sessions => {
+      if (sessions.length > 0) {
+        const latest = sessions[0];
+        setStateData({
+          score: latest.score ?? 72,
+          aiFeedback: latest.ai_feedback ?? "",
+          skillScores: latest.skill_scores ?? null,
+        });
+      } else if (user.hasCompletedOnboarding) {
+        router.replace("/dashboard");
+      } else {
+        router.replace("/onboarding");
+      }
+      setLoading(false);
+    }).catch(() => {
+      router.replace(user.hasCompletedOnboarding ? "/dashboard" : "/onboarding");
+    });
+  }, [user?.id]);
+
+  const score: number = (stateData.score as number) || 72;
+  const aiFeedback: string = (stateData.aiFeedback as string) || "";
+  const skillScores: Record<string, number> | null = (stateData.skillScores as Record<string, number>) || null;
   const weakestSkill = skillScores
     ? Object.entries(skillScores).sort(([, a], [, b]) => (a as number) - (b as number))[0]?.[0] || null
     : null;
 
-  const [redirecting, _setRedirecting] = useState(false);
-
-  // Guard: if accessed directly without coming from onboarding, redirect immediately
-  useEffect(() => {
-    if (!stateData.score && !stateData.aiFeedback) {
-      router.replace(user?.hasCompletedOnboarding ? "/dashboard" : "/onboarding");
-    }
-  }, []);
-
-  if (redirecting) {
+  if (loading) {
     return (
       <div style={{ minHeight: "100vh", background: c.obsidian, display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 16 }}>
         <div style={{ width: 36, height: 36, border: `3px solid ${c.border}`, borderTopColor: c.gilt, borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
-        <p style={{ fontFamily: font.ui, fontSize: 14, color: c.stone }}>Redirecting to dashboard...</p>
+        <p style={{ fontFamily: font.ui, fontSize: 14, color: c.stone }}>Loading your results...</p>
         <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </div>
     );
