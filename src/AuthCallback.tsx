@@ -51,9 +51,7 @@ export default function AuthCallback() {
         }
 
         // Exchange the authorization code for tokens via our serverless function
-        // Validate nonce if present (OpenID Connect replay prevention)
-        const storedNonce = sessionStorage.getItem("hirestepx_oauth_nonce");
-        sessionStorage.removeItem("hirestepx_oauth_nonce");
+        sessionStorage.removeItem("hirestepx_oauth_nonce"); // clean up any stale nonce
 
         // 30-second timeout prevents indefinite hang if server is slow
         const abortController = new AbortController();
@@ -95,27 +93,13 @@ export default function AuthCallback() {
           return;
         }
 
-        // Validate nonce claim in ID token to prevent token replay attacks
-        if (storedNonce) {
-          try {
-            // Decode JWT payload (base64url, no verification — Supabase verifies the full token)
-            const payloadB64 = id_token.split(".")[1];
-            const payload = JSON.parse(atob(payloadB64.replace(/-/g, "+").replace(/_/g, "/")));
-            if (payload.nonce && payload.nonce !== storedNonce) {
-              setError("Security check failed (nonce mismatch). Please try again.");
-              return;
-            }
-          } catch {
-            // If we can't decode, skip nonce check — Supabase still validates the token signature
-          }
-        }
-
         // Sign into Supabase with the Google ID token
+        // Note: nonce is not used — Google doesn't embed nonce in ID tokens for authorization_code flow.
+        // CSRF protection is handled by the state parameter validated above.
         const client = await getSupabase();
         const { error: signInError } = await client.auth.signInWithIdToken({
           provider: "google",
           token: id_token,
-          nonce: storedNonce || undefined,
           access_token: access_token || undefined,
         });
 

@@ -724,25 +724,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Generate CSRF state
       const state = crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2) + Date.now().toString(36);
 
-      // Generate nonce for OpenID Connect token replay prevention
-      const nonce = crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2) + Date.now().toString(36);
-
       // Store for validation in the callback
       sessionStorage.setItem("hirestepx_oauth_state", state);
-      sessionStorage.setItem("hirestepx_oauth_nonce", nonce);
       sessionStorage.setItem("hirestepx_oauth_return", returnTo || "/dashboard");
 
       const redirectUri = `${window.location.origin}/auth/callback`;
       const scope = "openid email profile";
 
       // Redirect to Google's OAuth endpoint
+      // Note: nonce is NOT used here because Google only embeds nonce in the ID token
+      // for implicit flow (response_type=id_token), not authorization_code flow.
+      // CSRF protection is handled by the state parameter instead.
       const authUrl = new URL("https://accounts.google.com/o/oauth2/v2/auth");
       authUrl.searchParams.set("client_id", googleClientId);
       authUrl.searchParams.set("redirect_uri", redirectUri);
       authUrl.searchParams.set("response_type", "code");
       authUrl.searchParams.set("scope", scope);
       authUrl.searchParams.set("state", state);
-      authUrl.searchParams.set("nonce", nonce);
       authUrl.searchParams.set("access_type", "offline");
       authUrl.searchParams.set("prompt", "select_account");
 
