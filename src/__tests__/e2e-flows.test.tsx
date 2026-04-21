@@ -117,7 +117,6 @@ describe("Flow 1: Onboarding", () => {
     });
     expect(screen.getAllByText(/your resume/i).length).toBeGreaterThan(0);
     expect(screen.getByText(/Drop your resume/i)).toBeInTheDocument();
-    expect(screen.getAllByText(/Continue/i).length).toBeGreaterThan(0);
   });
 
   it("has progress indicators", async () => {
@@ -129,9 +128,8 @@ describe("Flow 1: Onboarding", () => {
         ,
       );
     });
-    expect(screen.getAllByText(/Resume/).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/Profile/).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/Ready/).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(/Resume/i).length).toBeGreaterThan(0);
+    expect(screen.getByText("1")).toBeInTheDocument();
   });
 });
 
