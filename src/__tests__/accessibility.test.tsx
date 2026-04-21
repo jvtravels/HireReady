@@ -4,15 +4,11 @@
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent, act, cleanup } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import { mockRouter } from "./setup-next-navigation";
 
 /* ─── Shared Mocks ─── */
 
-const mockNavigate = vi.fn();
-vi.mock("react-router-dom", async () => {
-  const actual = await vi.importActual("react-router-dom");
-  return { ...actual, useNavigate: () => mockNavigate, useLocation: () => ({ pathname: "/dashboard" }) };
-});
+const mockNavigate = mockRouter.push;
 
 const mockUpdateUser = vi.fn();
 const mockLogout = vi.fn();
@@ -96,11 +92,11 @@ describe("Accessibility: ARIA Landmarks", () => {
     const DashboardLayout = (await import("../DashboardLayout")).default;
     await act(async () => {
       render(
-        <MemoryRouter initialEntries={["/dashboard"]}>
+        
           <DashboardProvider>
             <DashboardLayout />
           </DashboardProvider>
-        </MemoryRouter>,
+        ,
       );
     });
 
@@ -124,11 +120,11 @@ describe("Accessibility: ARIA Landmarks", () => {
     const DashboardLayout = (await import("../DashboardLayout")).default;
     await act(async () => {
       render(
-        <MemoryRouter initialEntries={["/dashboard"]}>
+        
           <DashboardProvider>
             <DashboardLayout />
           </DashboardProvider>
-        </MemoryRouter>,
+        ,
       );
     });
 
@@ -142,11 +138,11 @@ describe("Accessibility: ARIA Landmarks", () => {
     const DashboardLayout = (await import("../DashboardLayout")).default;
     await act(async () => {
       render(
-        <MemoryRouter initialEntries={["/dashboard"]}>
+        
           <DashboardProvider>
             <DashboardLayout />
           </DashboardProvider>
-        </MemoryRouter>,
+        ,
       );
     });
 
@@ -168,11 +164,11 @@ describe("Accessibility: Focus Traps", () => {
     const DashboardLayout = (await import("../DashboardLayout")).default;
     await act(async () => {
       render(
-        <MemoryRouter initialEntries={["/dashboard"]}>
+        
           <DashboardProvider>
             <DashboardLayout />
           </DashboardProvider>
-        </MemoryRouter>,
+        ,
       );
     });
 
@@ -193,9 +189,9 @@ describe("Accessibility: Focus Traps", () => {
 
     await act(async () => {
       render(
-        <MemoryRouter>
+        
           <CommandPalette onStartSession={onStart} onExport={onExport} sessions={[]} />
-        </MemoryRouter>,
+        ,
       );
     });
 
@@ -216,9 +212,9 @@ describe("Accessibility: Focus Traps", () => {
 
     await act(async () => {
       render(
-        <MemoryRouter>
+        
           <CommandPalette onStartSession={onStart} onExport={onExport} sessions={[]} />
-        </MemoryRouter>,
+        ,
       );
     });
 
@@ -249,11 +245,11 @@ describe("Accessibility: Alert and Status roles", () => {
     const DashboardLayout = (await import("../DashboardLayout")).default;
     await act(async () => {
       render(
-        <MemoryRouter initialEntries={["/dashboard"]}>
+        
           <DashboardProvider>
             <DashboardLayout />
           </DashboardProvider>
-        </MemoryRouter>,
+        ,
       );
     });
 
@@ -275,11 +271,11 @@ describe("Accessibility: Decorative icons", () => {
     const DashboardLayout = (await import("../DashboardLayout")).default;
     await act(async () => {
       render(
-        <MemoryRouter initialEntries={["/dashboard"]}>
+        
           <DashboardProvider>
             <DashboardLayout />
           </DashboardProvider>
-        </MemoryRouter>,
+        ,
       );
     });
 
@@ -294,11 +290,11 @@ describe("Accessibility: Decorative icons", () => {
     const DashboardLayout = (await import("../DashboardLayout")).default;
     await act(async () => {
       render(
-        <MemoryRouter initialEntries={["/dashboard"]}>
+        
           <DashboardProvider>
             <DashboardLayout />
           </DashboardProvider>
-        </MemoryRouter>,
+        ,
       );
     });
 
@@ -325,11 +321,11 @@ describe("Accessibility: Mobile navigation", () => {
     const DashboardLayout = (await import("../DashboardLayout")).default;
     await act(async () => {
       render(
-        <MemoryRouter initialEntries={["/dashboard"]}>
+        
           <DashboardProvider>
             <DashboardLayout />
           </DashboardProvider>
-        </MemoryRouter>,
+        ,
       );
     });
 
@@ -353,9 +349,9 @@ describe("Accessibility: Onboarding", () => {
     const Onboarding = (await import("../Onboarding")).default;
     await act(async () => {
       render(
-        <MemoryRouter>
+        
           <Onboarding />
-        </MemoryRouter>,
+        ,
       );
     });
 

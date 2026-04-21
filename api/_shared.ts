@@ -71,8 +71,8 @@ export function handleCorsPreflightOrMethod(req: Request): Response | null {
 
 /* ─── Auth ─── */
 
-const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || "";
-const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || "";
+const SUPABASE_URL = process.env.SUPABASE_URL || "";
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || "";
 
 /** Verify the user's JWT token against Supabase Auth. Returns userId if valid. */
 export async function verifyAuth(req: Request): Promise<{ authenticated: boolean; userId?: string }> {

@@ -16,7 +16,7 @@ function checkRate(ip: string, max: number, windowMs: number): boolean {
   _rateLimit.set(ip, hits);
   return true;
 }
-const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || "";
+const SUPABASE_URL = process.env.SUPABASE_URL || "";
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 
 export default async function handler(req: Request): Promise<Response> {

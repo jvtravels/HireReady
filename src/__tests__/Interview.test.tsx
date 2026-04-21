@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, act } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import "./setup-next-navigation";
 import Interview from "../Interview";
 
 // Mock auth
@@ -57,9 +57,9 @@ describe("Interview", () => {
   it("renders interview UI with timer and progress", async () => {
     await act(async () => {
       render(
-        <MemoryRouter initialEntries={["/interview?type=behavioral&difficulty=standard"]}>
+        
           <Interview />
-        </MemoryRouter>,
+        ,
       );
     });
 
@@ -72,9 +72,9 @@ describe("Interview", () => {
   it("renders end interview button", async () => {
     await act(async () => {
       render(
-        <MemoryRouter initialEntries={["/interview?type=behavioral"]}>
+        
           <Interview />
-        </MemoryRouter>,
+        ,
       );
     });
 
@@ -85,9 +85,9 @@ describe("Interview", () => {
   it("shows confirmation modal when End is clicked", async () => {
     await act(async () => {
       render(
-        <MemoryRouter initialEntries={["/interview?type=behavioral"]}>
+        
           <Interview />
-        </MemoryRouter>,
+        ,
       );
     });
 
@@ -100,9 +100,9 @@ describe("Interview", () => {
   it("has control button for mute", async () => {
     await act(async () => {
       render(
-        <MemoryRouter initialEntries={["/interview?type=behavioral"]}>
+        
           <Interview />
-        </MemoryRouter>,
+        ,
       );
     });
 

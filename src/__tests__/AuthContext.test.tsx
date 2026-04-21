@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, act } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import "./setup-next-navigation";
 import { AuthProvider, useAuth, RequireAuth } from "../AuthContext";
 
 // Mock supabase
@@ -37,9 +37,9 @@ describe("AuthContext", () => {
 
   it("provides initial unauthenticated state when supabase not configured", () => {
     render(
-      <MemoryRouter>
+      
         <AuthProvider><TestConsumer /></AuthProvider>
-      </MemoryRouter>,
+      ,
     );
     expect(screen.getByTestId("loading").textContent).toBe("false");
   });
@@ -52,11 +52,11 @@ describe("AuthContext", () => {
 
   it("RequireAuth redirects to login when not authenticated", () => {
     render(
-      <MemoryRouter initialEntries={["/dashboard"]}>
+      
         <AuthProvider>
           <RequireAuth><div data-testid="protected">Protected</div></RequireAuth>
         </AuthProvider>
-      </MemoryRouter>,
+      ,
     );
     // Should not render protected content
     expect(screen.queryByTestId("protected")).not.toBeInTheDocument();
@@ -72,9 +72,9 @@ describe("AuthContext", () => {
     }
 
     render(
-      <MemoryRouter>
+      
         <AuthProvider><LoginConsumer /></AuthProvider>
-      </MemoryRouter>,
+      ,
     );
 
     expect(screen.getByTestId("loggedIn").textContent).toBe("false");
@@ -95,9 +95,9 @@ describe("AuthContext", () => {
     }
 
     render(
-      <MemoryRouter>
+      
         <AuthProvider><SignupConsumer /></AuthProvider>
-      </MemoryRouter>,
+      ,
     );
 
     await act(async () => {
@@ -118,9 +118,9 @@ describe("AuthContext", () => {
     }
 
     render(
-      <MemoryRouter>
+      
         <AuthProvider><Consumer /></AuthProvider>
-      </MemoryRouter>,
+      ,
     );
 
     await act(async () => { await loginFn("test@example.com", "pass"); });
@@ -146,9 +146,9 @@ describe("AuthContext", () => {
     }
 
     render(
-      <MemoryRouter>
+      
         <AuthProvider><Consumer /></AuthProvider>
-      </MemoryRouter>,
+      ,
     );
 
     await act(async () => { await loginFn("test@example.com", "pass"); });

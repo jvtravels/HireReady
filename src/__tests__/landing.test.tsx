@@ -4,13 +4,7 @@
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
-
-// Mock dependencies
-vi.mock("react-router-dom", async () => {
-  const actual = await vi.importActual("react-router-dom");
-  return { ...actual, useNavigate: () => vi.fn() };
-});
+import "./setup-next-navigation";
 vi.mock("../AuthContext", () => ({
   useAuth: () => ({ user: null, isLoggedIn: false, updateUser: vi.fn() }),
 }));
@@ -88,9 +82,9 @@ describe("PricingSection", () => {
   it("renders all plan names", async () => {
     const { PricingSection } = await import("../landing/PricingSection");
     render(
-      <MemoryRouter>
+      
         <PricingSection />
-      </MemoryRouter>
+      
     );
     expect(screen.getByText("Less than a cup of chai per session.")).toBeInTheDocument();
     expect(screen.getByText("Start Free")).toBeInTheDocument();
@@ -101,9 +95,9 @@ describe("PricingSection", () => {
   it("has accessible slider for single session", async () => {
     const { PricingSection } = await import("../landing/PricingSection");
     render(
-      <MemoryRouter>
+      
         <PricingSection />
-      </MemoryRouter>
+      
     );
     const slider = screen.getByLabelText("Number of sessions");
     expect(slider).toBeInTheDocument();
@@ -114,9 +108,9 @@ describe("PricingSection", () => {
   it("has aria-labels on quantity buttons", async () => {
     const { PricingSection } = await import("../landing/PricingSection");
     render(
-      <MemoryRouter>
+      
         <PricingSection />
-      </MemoryRouter>
+      
     );
     expect(screen.getByLabelText("Decrease session count")).toBeInTheDocument();
     expect(screen.getByLabelText("Increase session count")).toBeInTheDocument();
@@ -125,9 +119,9 @@ describe("PricingSection", () => {
   it("updates price when quantity changes", async () => {
     const { PricingSection } = await import("../landing/PricingSection");
     render(
-      <MemoryRouter>
+      
         <PricingSection />
-      </MemoryRouter>
+      
     );
     const plusBtn = screen.getByLabelText("Increase session count");
     fireEvent.click(plusBtn);

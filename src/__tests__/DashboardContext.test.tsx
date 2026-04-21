@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, act } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import "./setup-next-navigation";
 import { DashboardProvider, useDashboard } from "../DashboardContext";
 
 // Mock auth
@@ -53,9 +53,9 @@ function TestConsumer() {
 
 function renderWithProviders() {
   return render(
-    <MemoryRouter initialEntries={["/dashboard"]}>
+    
       <DashboardProvider><TestConsumer /></DashboardProvider>
-    </MemoryRouter>,
+    ,
   );
 }
 

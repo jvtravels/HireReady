@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
+import "./setup-next-navigation";
 import SessionDetail from "../SessionDetail";
 
 // Mock useAuth
@@ -34,14 +34,9 @@ const mockLocalStorage = {
 Object.defineProperty(globalThis, "localStorage", { value: mockLocalStorage, writable: true });
 
 function renderWithRouter(sessionId: string) {
-  return render(
-    <MemoryRouter initialEntries={[`/session/${sessionId}`]}>
-      <Routes>
-        <Route path="/session/:id" element={<SessionDetail />} />
-        <Route path="/dashboard" element={<div>Dashboard</div>} />
-      </Routes>
-    </MemoryRouter>,
-  );
+  const { useParams } = require("next/navigation");
+  (useParams as ReturnType<typeof vi.fn>).mockReturnValue({ id: sessionId });
+  return render(<SessionDetail />);
 }
 
 describe("SessionDetail", () => {
