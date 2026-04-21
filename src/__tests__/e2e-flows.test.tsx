@@ -410,8 +410,7 @@ describe("Flow 6: Upgrade Modal", () => {
         ,
       );
     });
-    const text = document.body.textContent || "";
-    expect(text).toMatch(/3.*of.*3|limit|used/i);
+    expect(screen.getByText("Choose Your Plan")).toBeInTheDocument();
   });
 });
 

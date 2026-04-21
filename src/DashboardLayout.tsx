@@ -4,10 +4,11 @@ import { useRouter, usePathname } from "next/navigation";
 import { c, font } from "./tokens";
 import { useAuth } from "./AuthContext";
 import { useDashboard } from "./DashboardContext";
-import { UpgradeModal } from "./dashboardComponents";
+const UpgradeModal = dynamic(() => import("./dashboardComponents").then(m => ({ default: m.UpgradeModal })), { ssr: false });
 import { FREE_SESSION_LIMIT, STARTER_WEEKLY_LIMIT } from "./dashboardData";
 import { daysUntilEvent } from "./dashboardHelpers";
-import CommandPalette from "./CommandPalette";
+import dynamic from "next/dynamic";
+const CommandPalette = dynamic(() => import("./CommandPalette"), { ssr: false });
 
 const modKey = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform) ? "⌘" : "Ctrl+";
 

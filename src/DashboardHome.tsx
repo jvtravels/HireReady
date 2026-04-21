@@ -4,12 +4,15 @@ import { useRouter } from "next/navigation";
 import { c, font, sp, radius } from "./tokens";
 import { useAuth } from "./AuthContext";
 import { useDashboard } from "./DashboardContext";
-import { DataLoadingSkeleton, EmptyState, SessionDetailView } from "./dashboardComponents";
+import dynamic from "next/dynamic";
+import { DataLoadingSkeleton, EmptyState } from "./dashboardComponents";
+const SessionDetailView = dynamic(() => import("./dashboardComponents").then(m => ({ default: m.SessionDetailView })), { ssr: false });
 import { SectionErrorBoundary } from "./ErrorBoundary";
 import { scoreLabel, scoreLabelColor, sessionTypes } from "./dashboardTypes";
 import { daysUntilEvent, formatEventDate, formatEventTime } from "./dashboardHelpers";
 import { getPersonalizedGreeting } from "./dashboardData";
-import { ScoreTrendChart, SkillRadar } from "./DashboardCharts";
+const ScoreTrendChart = dynamic(() => import("./DashboardCharts").then(m => ({ default: m.ScoreTrendChart })), { ssr: false });
+const SkillRadar = dynamic(() => import("./DashboardCharts").then(m => ({ default: m.SkillRadar })), { ssr: false });
 import { useDocTitle } from "./useDocTitle";
 import { buildInterviewUrl, type CurriculumState } from "./curriculum";
 
