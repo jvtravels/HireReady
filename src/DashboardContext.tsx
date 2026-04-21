@@ -226,6 +226,19 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
 
     let cancelled = false;
 
+    // Show cached data immediately for instant LCP, then refresh from network
+    try {
+      const cachedSessions = localStorage.getItem(sessionsCacheKey);
+      const cachedEvents = localStorage.getItem(eventsCacheKey);
+      if (cachedSessions) setSupabaseSessions(JSON.parse(cachedSessions));
+      if (cachedEvents) {
+        const parsed = JSON.parse(cachedEvents);
+        setCalendarEvents(parsed);
+        scheduleEventNotifications(parsed);
+      }
+      if (cachedSessions || cachedEvents) setDataLoading(false);
+    } catch { /* expected: localStorage may be unavailable */ }
+
     Promise.allSettled([
       getUserSessions(user.id).then(sessions => {
         if (cancelled) return;
@@ -241,7 +254,6 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
         try {
           const cached = localStorage.getItem(sessionsCacheKey);
           if (cached) {
-            setSupabaseSessions(JSON.parse(cached));
             setSyncError("Offline — showing cached data.");
           } else {
             setSyncError("Could not load session data.");
@@ -263,7 +275,6 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
         try {
           const cached = localStorage.getItem(eventsCacheKey);
           if (cached) {
-            setCalendarEvents(JSON.parse(cached));
             if (!syncError) setSyncError("Offline — showing cached data.");
           }
         } catch { /* expected: cache read may fail */ }
@@ -417,7 +428,8 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
   }, [user?.name, user?.targetRole, user?.resumeFileName, user?.interviewDate]);
 
   const displayName = user?.name || persisted.userName || "User";
-  const isNewUser = !hasData && !user?.hasCompletedOnboarding && !persisted.hasCompletedFirstSession;
+  // Only evaluate isNewUser after data has loaded — prevents flash of EmptyState for returning users
+  const isNewUser = !dataLoading && !hasData && !user?.hasCompletedOnboarding && !persisted.hasCompletedFirstSession;
 
   // Mobile detection
   useEffect(() => {

@@ -195,12 +195,7 @@ export default function RootLayout({
     >
       <head>
         {/* Preconnect hints for third-party origins */}
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link
-          rel="preconnect"
-          href="https://fonts.gstatic.com"
-          crossOrigin="anonymous"
-        />
+        <link rel="preconnect" href="https://esluwqkqoofmquqdevap.supabase.co" />
         <link rel="dns-prefetch" href="https://images.unsplash.com" />
         <link rel="preconnect" href="https://api.cartesia.ai" />
         <link rel="preconnect" href="https://api.deepgram.com" />
