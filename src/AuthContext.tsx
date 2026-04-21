@@ -487,8 +487,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
           // Store session fingerprint for hijack detection
           storeSessionFingerprint();
-          // Single-device enforcement: set device token on new sign-in
-          if (event === "SIGNED_IN") {
+          // Single-device enforcement: only set new device token on genuine new logins,
+          // not on session restores/refreshes (which also fire SIGNED_IN)
+          if (event === "SIGNED_IN" && !getStoredDeviceToken()) {
             const newDeviceToken = generateDeviceToken();
             storeDeviceToken(newDeviceToken);
             client.auth.updateUser({ data: { active_device_token: newDeviceToken } }).catch(() => {});
