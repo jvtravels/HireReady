@@ -137,7 +137,7 @@ export default function ComingSoon() {
 
   // Launch date — configurable via env var, auto-extends if past
   const launchDate = (() => {
-    const configured = import.meta.env.VITE_LAUNCH_DATE;
+    const configured = process.env.NEXT_PUBLIC_LAUNCH_DATE;
     const date = configured ? new Date(configured) : new Date("2026-05-15T00:00:00+05:30");
     // If launch date has passed, show countdown to 30 days from now
     if (date.getTime() <= Date.now()) {

@@ -4,7 +4,7 @@
  */
 
 import { useEffect } from "react";
-import { useLocation } from "react-router-dom";
+import { usePathname, useSearchParams } from "next/navigation";
 
 const APP_HOST = "app.hirestepx.com";
 const MARKETING_HOST = "hirestepx.com";
@@ -27,8 +27,11 @@ function isAppPath(pathname: string): boolean {
 }
 
 export function useDomainRedirect() {
-  const { pathname, search, hash } = useLocation();
-  const hostname = window.location.hostname;
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const search = searchParams.toString() ? `?${searchParams.toString()}` : "";
+  const hash = typeof window !== "undefined" ? window.location.hash : "";
+  const hostname = typeof window !== "undefined" ? window.location.hostname : "";
 
   useEffect(() => {
     // Skip in development

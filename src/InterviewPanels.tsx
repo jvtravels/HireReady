@@ -1816,7 +1816,7 @@ export const EvaluatingOverlay = memo(function EvaluatingOverlay({ usedFallbackS
   interviewEndedRef: React.MutableRefObject<boolean>;
   handleEnd: () => void;
   lastSessionId: string | null;
-  navigate: (path: string) => void;
+  navigate: { push: (path: string) => void };
 }) {
   const retryCountRef = useRef(0);
   const maxRetries = 2;
@@ -1868,7 +1868,7 @@ export const EvaluatingOverlay = memo(function EvaluatingOverlay({ usedFallbackS
             </button>
             )}
             <button
-              onClick={() => { setEvaluating(false); if (lastSessionId) navigate(`/session/${lastSessionId}`); else navigate("/dashboard"); }}
+              onClick={() => { setEvaluating(false); if (lastSessionId) navigate.push(`/session/${lastSessionId}`); else navigate.push("/dashboard"); }}
               style={{
                 fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: c.obsidian,
                 background: `linear-gradient(135deg, ${c.gilt}, ${c.giltDark})`,

@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import Link from "next/link";
+import { useParams, useRouter } from "next/navigation";
 import { c, font } from "./tokens";
 import { useSEO, articleJsonLd, faqJsonLd } from "./useSEO";
 
@@ -483,7 +484,7 @@ function getRelatedPosts(slugs: string[]): BlogPost[] {
 const CATEGORIES = ["All", ...Array.from(new Set(posts.map(p => p.category)))];
 
 /* ─── Blog index (list of all posts) ─── */
-function BlogIndex({ navigate }: { navigate: (path: string) => void }) {
+function BlogIndex({ router }: { router: { push: (path: string) => void } }) {
   const [activeCategory, setActiveCategory] = useState("All");
 
   useSEO({
@@ -517,10 +518,10 @@ function BlogIndex({ navigate }: { navigate: (path: string) => void }) {
     <div style={{ minHeight: "100vh", background: c.obsidian }}>
       {/* Nav */}
       <nav className="blog-nav" style={{ padding: "20px 40px", borderBottom: `1px solid ${c.border}`, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <Link to="/" style={{ textDecoration: "none" }}>
+        <Link href="/" style={{ textDecoration: "none" }}>
           <span style={{ fontFamily: font.display, fontSize: 22, fontWeight: 400, color: c.ivory, letterSpacing: "0.02em" }}>HireStepX</span>
         </Link>
-        <Link to="/signup" style={{
+        <Link href="/signup" style={{
           fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.obsidian,
           background: c.ivory, padding: "8px 20px", borderRadius: 10, textDecoration: "none",
         }}>Start Free Practice</Link>
@@ -561,7 +562,7 @@ function BlogIndex({ navigate }: { navigate: (path: string) => void }) {
           // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions -- article acts as navigable card
           <article
             className="blog-featured"
-            onClick={() => navigate(`/blog/${featured.slug}`)}
+            onClick={() => router.push(`/blog/${featured.slug}`)}
             style={{
               display: "grid", gridTemplateColumns: "1fr 1fr", gap: 0,
               background: c.graphite, borderRadius: 16, border: `1px solid ${c.border}`,
@@ -603,7 +604,7 @@ function BlogIndex({ navigate }: { navigate: (path: string) => void }) {
             // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions -- article acts as navigable card
             <article
               key={post.slug}
-              onClick={() => navigate(`/blog/${post.slug}`)}
+              onClick={() => router.push(`/blog/${post.slug}`)}
               style={{
                 background: c.graphite, borderRadius: 14, border: `1px solid ${c.border}`,
                 overflow: "hidden", cursor: "pointer", transition: "border-color 0.2s",
@@ -649,7 +650,7 @@ function BlogIndex({ navigate }: { navigate: (path: string) => void }) {
           <p style={{ fontFamily: font.ui, fontSize: 14, color: c.stone, marginBottom: 24 }}>
             AI mock interviews with instant feedback — 3 sessions free.
           </p>
-          <Link to="/signup" style={{
+          <Link href="/signup" style={{
             display: "inline-block", fontFamily: font.ui, fontSize: 14, fontWeight: 600,
             padding: "12px 32px", borderRadius: 8, textDecoration: "none",
             background: c.ivory, color: c.obsidian,
@@ -696,13 +697,13 @@ function BlogPostPage({ post }: { post: BlogPost }) {
       {/* Nav */}
       <nav className="blog-nav" style={{ padding: "20px 40px", borderBottom: `1px solid ${c.border}`, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <Link to="/" style={{ textDecoration: "none" }}>
+          <Link href="/" style={{ textDecoration: "none" }}>
             <span style={{ fontFamily: font.display, fontSize: 22, fontWeight: 400, color: c.ivory, letterSpacing: "0.02em" }}>HireStepX</span>
           </Link>
           <span style={{ color: c.stone, fontSize: 14 }}>/</span>
-          <Link to="/blog" style={{ textDecoration: "none", fontFamily: font.ui, fontSize: 13, color: c.stone }}>Blog</Link>
+          <Link href="/blog" style={{ textDecoration: "none", fontFamily: font.ui, fontSize: 13, color: c.stone }}>Blog</Link>
         </div>
-        <Link to="/signup" style={{
+        <Link href="/signup" style={{
           fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.obsidian,
           background: c.ivory, padding: "8px 20px", borderRadius: 10, textDecoration: "none",
         }}>Start Free Practice</Link>
@@ -815,7 +816,7 @@ function BlogPostPage({ post }: { post: BlogPost }) {
           <p style={{ fontFamily: font.ui, fontSize: 14, color: c.stone, lineHeight: 1.6, marginBottom: 24, maxWidth: 400, margin: "0 auto 24px" }}>
             {post.cta}
           </p>
-          <Link to="/signup" style={{
+          <Link href="/signup" style={{
             display: "inline-block", fontFamily: font.ui, fontSize: 14, fontWeight: 600,
             padding: "12px 32px", borderRadius: 8, textDecoration: "none",
             background: c.ivory, color: c.obsidian,
@@ -832,7 +833,7 @@ function BlogPostPage({ post }: { post: BlogPost }) {
             </h2>
             <div className="blog-related-grid" style={{ display: "grid", gridTemplateColumns: `repeat(${Math.min(related.length, 3)}, 1fr)`, gap: 16 }}>
               {related.map(r => (
-                <Link key={r.slug} to={`/blog/${r.slug}`} style={{
+                <Link key={r.slug} href={`/blog/${r.slug}`} style={{
                   background: c.graphite, borderRadius: 12, border: `1px solid ${c.border}`,
                   textDecoration: "none", transition: "border-color 0.2s", overflow: "hidden",
                 }}
@@ -857,11 +858,11 @@ function BlogPostPage({ post }: { post: BlogPost }) {
 
 /* ─── Main export ─── */
 export default function BlogPage() {
-  const { slug } = useParams<{ slug: string }>();
-  const navigate = useNavigate();
+  const { slug } = useParams() as { slug?: string };
+  const router = useRouter();
 
   if (!slug) {
-    return <BlogIndex navigate={navigate} />;
+    return <BlogIndex router={router} />;
   }
 
   const post = posts.find(p => p.slug === slug);
@@ -870,7 +871,7 @@ export default function BlogPage() {
       <div style={{ minHeight: "100vh", background: c.obsidian, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 40 }}>
         <h1 style={{ fontFamily: font.display, fontSize: 32, color: c.ivory, marginBottom: 12 }}>Post Not Found</h1>
         <p style={{ fontFamily: font.ui, fontSize: 15, color: c.stone, marginBottom: 24 }}>This blog post doesn't exist.</p>
-        <Link to="/blog" style={{ fontFamily: font.ui, fontSize: 14, color: c.gilt, textDecoration: "none" }}>Back to Blog</Link>
+        <Link href="/blog" style={{ fontFamily: font.ui, fontSize: 14, color: c.gilt, textDecoration: "none" }}>Back to Blog</Link>
       </div>
     );
   }

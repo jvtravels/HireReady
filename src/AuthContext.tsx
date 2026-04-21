@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useCallback, useEffect, useRef, type ReactNode } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useRouter, usePathname } from "next/navigation";
 import { track } from "@vercel/analytics";
 import { getSupabase, preloadSupabase, supabaseConfigured, getProfile, upsertProfile, type Profile } from "./supabase";
 
@@ -619,7 +619,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const loginWithGoogle = useCallback(async (returnTo?: string): Promise<{ success: boolean; error?: string }> => {
     if (!supabaseConfigured) return { success: false, error: "Google login requires Supabase configuration" };
 
-    const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+    const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
 
     // If no Google Client ID is set, fall back to Supabase OAuth (shows supabase.co domain)
     if (!googleClientId) {
@@ -845,16 +845,16 @@ export function useAuth() {
 /* Route guard — redirects to /login if not authenticated */
 export function RequireAuth({ children }: { children: ReactNode }) {
   const { isLoggedIn, loading, user } = useAuth();
-  const navigate = useNavigate();
-  const location = useLocation();
+  const router = useRouter();
+  const pathname = usePathname();
   const retryCount = useRef(0);
 
   // Track the last authenticated route so users return where they left off
   useEffect(() => {
     if (isLoggedIn) {
-      saveLastRoute(location.pathname);
+      saveLastRoute(pathname);
     }
-  }, [isLoggedIn, location.pathname]);
+  }, [isLoggedIn, pathname]);
 
   useEffect(() => {
     if (loading) return;
@@ -868,14 +868,14 @@ export function RequireAuth({ children }: { children: ReactNode }) {
         setTimeout(() => getSupabase().then(c => c.auth.getSession()), delay);
         return;
       }
-      navigate("/login", { replace: true, state: { from: location.pathname } });
-    } else if (user && !user.emailVerified && !["/onboarding", "/settings"].includes(location.pathname)) {
+      router.replace("/login");
+    } else if (user && !user.emailVerified && !["/onboarding", "/settings"].includes(pathname)) {
       // Allow unverified users to access onboarding (where they'll see the verify prompt) and settings
-      navigate("/onboarding", { replace: true });
-    } else if (user && !user.hasCompletedOnboarding && !["/onboarding", "/interview", "/onboarding/complete"].includes(location.pathname) && !location.pathname.startsWith("/session/")) {
-      navigate("/onboarding", { replace: true });
+      router.replace("/onboarding");
+    } else if (user && !user.hasCompletedOnboarding && !["/onboarding", "/interview", "/onboarding/complete"].includes(pathname) && !pathname.startsWith("/session/")) {
+      router.replace("/onboarding");
     }
-  }, [isLoggedIn, loading, user, navigate, location.pathname]);
+  }, [isLoggedIn, loading, user, router, pathname]);
 
   if (loading || (!isLoggedIn && hasStoredSession())) return (
     <div role="status" aria-live="polite" aria-busy="true" style={{ minHeight: "100vh", background: "#060607", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16 }}>
@@ -887,7 +887,7 @@ export function RequireAuth({ children }: { children: ReactNode }) {
     </div>
   );
   if (!isLoggedIn) return null;
-  if (user && !user.hasCompletedOnboarding && !["/onboarding", "/interview", "/onboarding/complete"].includes(location.pathname) && !location.pathname.startsWith("/session/")) return null;
+  if (user && !user.hasCompletedOnboarding && !["/onboarding", "/interview", "/onboarding/complete"].includes(pathname) && !pathname.startsWith("/session/")) return null;
 
   return <>{children}</>;
 }

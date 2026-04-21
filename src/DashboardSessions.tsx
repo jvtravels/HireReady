@@ -1,5 +1,5 @@
 import { useState, useMemo, memo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useRouter } from "next/navigation";
 import { c, font } from "./tokens";
 import { scoreLabel, scoreLabelColor, sessionTypes } from "./dashboardTypes";
 import type { DashboardSession } from "./dashboardTypes";
@@ -68,7 +68,7 @@ const SessionRow = memo(function SessionRow({ session, onClick }: { session: Das
 
 export default function DashboardSessions() {
   useDocTitle("Sessions");
-  const sessionNav = useNavigate();
+  const sessionNav = useRouter();
   const { recentSessions, handleStartSession, dataLoading } = useDashboard();
   const [filter, setFilter] = useState("All");
   const [search, setSearch] = useState("");
@@ -201,7 +201,7 @@ export default function DashboardSessions() {
           </div>
         ) : (
           visible.map(session => (
-            <SessionRow key={session.id} session={session} onClick={() => sessionNav(`/session/${session.id}`)} />
+            <SessionRow key={session.id} session={session} onClick={() => sessionNav.push(`/session/${session.id}`)} />
           ))
         )}
         {hasMore && (

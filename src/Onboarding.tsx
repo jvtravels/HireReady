@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
-import { useNavigate } from "react-router-dom";
+import { useRouter } from "next/navigation";
 import { c, font } from "./tokens";
 import { useAuth } from "./AuthContext";
 import { extractResumeText, parseResumeData, type ParsedResume } from "./resumeParser";
@@ -138,14 +138,14 @@ function loadObForm(): { targetRole: string; targetCompany: string; interviewFoc
 const SESSION_LENGTH_MAP: Record<string, 10 | 15 | 25> = { "10m": 10, "15m": 15, "25m": 25 };
 
 export default function Onboarding() {
-  const navigate = useNavigate();
+  const router = useRouter();
   const { user, updateUser, logout } = useAuth();
 
   // Redirect returning users who already completed onboarding (but not during active start)
   const startingRef = useRef(false);
   useEffect(() => {
-    if (user?.hasCompletedOnboarding && !startingRef.current) navigate("/dashboard", { replace: true });
-  }, [user?.hasCompletedOnboarding, navigate]);
+    if (user?.hasCompletedOnboarding && !startingRef.current) router.replace("/dashboard");
+  }, [user?.hasCompletedOnboarding, router]);
 
   const [step, setStep] = useState(loadObStep);
   const [slideDir, setSlideDir] = useState<"forward" | "back">("forward");
@@ -495,7 +495,7 @@ export default function Onboarding() {
     // Show launch animation before navigating
     setLaunching(true);
     await new Promise(r => setTimeout(r, 1400));
-    navigate(`/interview?type=${encodeURIComponent(focusType)}&difficulty=standard&mini=true&new=1`);
+    router.push(`/interview?type=${encodeURIComponent(focusType)}&difficulty=standard&mini=true&new=1`);
   };
 
   const isStep1Busy = step === 1 && (resumeParsing || aiPhase === "analyzing");
@@ -571,7 +571,7 @@ export default function Onboarding() {
         }
       `}</style>
 
-      <TopBar step={step} emailUnverified={!!(user && !user.emailVerified)} onNavigateHome={() => navigate("/")} onStepClick={(s) => { setSlideDir("back"); setStep(s); saveObStep(s); }} onLogout={async () => { await logout(); navigate("/"); }} />
+      <TopBar step={step} emailUnverified={!!(user && !user.emailVerified)} onNavigateHome={() => router.push("/")} onStepClick={(s) => { setSlideDir("back"); setStep(s); saveObStep(s); }} onLogout={async () => { await logout(); router.push("/"); }} />
 
       {/* ─── Content ─── */}
       <div className="ob-content-area" style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "40px 32px", overflow: "auto" }}>

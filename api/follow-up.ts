@@ -2,9 +2,9 @@
 
 export const config = { runtime: "edge" };
 
-import { handleCorsPreflightOrMethod, corsHeaders, isRateLimited, getClientIp, rateLimitResponse, verifyAuth, unauthorizedResponse, validateOrigin, sanitizeForLLM, withRequestId, checkLLMQuota, validateContentType } from "./_shared.js";
-import { callLLM, extractJSON } from "./_llm.js";
-import { lookupSalaryContext, getNegotiationStyleContext, INDUSTRY_PACKAGE_CONTEXT, type NegotiationStyle } from "../data/salary-lookup.js";
+import { handleCorsPreflightOrMethod, corsHeaders, isRateLimited, getClientIp, rateLimitResponse, verifyAuth, unauthorizedResponse, validateOrigin, sanitizeForLLM, withRequestId, checkLLMQuota, validateContentType } from "./_shared";
+import { callLLM, extractJSON } from "./_llm";
+import { lookupSalaryContext, getNegotiationStyleContext, INDUSTRY_PACKAGE_CONTEXT, type NegotiationStyle } from "../data/salary-lookup";
 
 declare const process: { env: Record<string, string | undefined> };
 const GROQ_KEY = process.env.GROQ_API_KEY || "";
@@ -370,7 +370,7 @@ YOUR GOAL: Summarize the SPECIFIC deal and set concrete next steps. Rebuild warm
         candidateNum = allNums[allNums.length - 1]; // default: use last number mentioned (most likely the ask)
       }
       // "consider" co-occurring with a number is a counter, not a time request
-      const candidateNeedsTime = thinkWords.test(answer) && !candidateNumMatch;
+      const candidateNeedsTime = thinkWords.test(answer) && !candidateNum;
       const candidateMentionedCompeting = competingWords.test(answer);
 
       // Build intent banner — placed at the VERY TOP of the prompt so the LLM can't miss it

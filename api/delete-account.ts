@@ -7,7 +7,7 @@ import {
   supabaseUrl,
   supabaseAnonKey,
   escapeHtml,
-} from "./_shared.js";
+} from "./_shared";
 
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 const RESEND_API_KEY = (process.env.RESEND_API_KEY || "").trim();

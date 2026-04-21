@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useRouter, useSearchParams } from "next/navigation";
 import { track } from "@vercel/analytics";
 
 import { useAuth } from "./AuthContext";
@@ -179,10 +179,10 @@ interface InterviewDraft {
    useInterviewEngine — core state & logic
    ═══════════════════════════════════════════════ */
 export function useInterviewEngine() {
-  const navigate = useNavigate();
+  const router = useRouter();
   const { user, updateUser } = useAuth();
   const { toast } = useToast();
-  const [searchParams] = useSearchParams();
+  const searchParams = useSearchParams();
   const rawType = searchParams.get("type");
   const interviewType = (rawType && rawType !== "undefined" && rawType !== "null") ? rawType : "behavioral";
   const interviewFocus = searchParams.get("focus") || "general";
@@ -1856,7 +1856,7 @@ export function useInterviewEngine() {
     }
 
     try {
-      navigate(`/session/${sessionId}`);
+      router.push(`/session/${sessionId}`);
     } catch (navErr) {
       console.warn("[interview] Navigation failed:", navErr);
       toast("Session saved! Navigate to dashboard to view results.", "info");
@@ -1865,12 +1865,12 @@ export function useInterviewEngine() {
     } catch (fatalErr) {
       console.error("[interview] handleEnd fatal error:", fatalErr);
       toast("Something went wrong saving your session. Please check your dashboard.", "error");
-      try { navigate("/dashboard"); } catch { /* expected: navigation may fail if component unmounted */ }
+      try { router.push("/dashboard"); } catch { /* expected: navigation may fail if component unmounted */ }
     } finally {
       clearTimeout(safetyTimer);
       setEvaluating(false);
     }
-  }, [navigate, elapsed, interviewType, interviewDifficulty, interviewFocus, totalQuestions, user, updateUser, currentStep, interviewScript.length, transcript, currentTranscript]);
+  }, [router, elapsed, interviewType, interviewDifficulty, interviewFocus, totalQuestions, user, updateUser, currentStep, interviewScript.length, transcript, currentTranscript]);
 
   // ─── Live negotiation state (derived from transcript for dashboard) ───
   const liveNegotiationState = useMemo(() => {
@@ -2064,7 +2064,7 @@ export function useInterviewEngine() {
     handleNextQuestion,
     skipSpeaking,
     handleEnd,
-    navigate,
+    navigate: router,
     retryQuestions,
 
     // Refs the UI needs

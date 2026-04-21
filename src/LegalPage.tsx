@@ -1,5 +1,5 @@
 import { c, font } from "./tokens";
-import { Link } from "react-router-dom";
+import Link from "next/link";
 
 const TERMS_SECTIONS = [
   { title: "1. Acceptance of Terms", body: "By accessing or using HireStepX, you agree to be bound by these Terms of Service. If you do not agree, do not use the platform." },
@@ -35,7 +35,7 @@ export default function LegalPage({ type }: { type: "terms" | "privacy" }) {
   return (
     <div style={{ minHeight: "100vh", background: c.obsidian, padding: "60px 24px 80px" }}>
       <div style={{ maxWidth: 640, margin: "0 auto" }}>
-        <Link to="/" style={{ fontFamily: font.ui, fontSize: 12, color: c.gilt, textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 6, marginBottom: 32 }}>
+        <Link href="/" style={{ fontFamily: font.ui, fontSize: 12, color: c.gilt, textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 6, marginBottom: 32 }}>
           <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6"/></svg>
           Back to home
         </Link>
@@ -51,8 +51,8 @@ export default function LegalPage({ type }: { type: "terms" | "privacy" }) {
         ))}
 
         <div style={{ marginTop: 40, paddingTop: 24, borderTop: `1px solid ${c.border}`, display: "flex", gap: 20 }}>
-          <Link to="/terms" style={{ fontFamily: font.ui, fontSize: 12, color: isTerms ? c.ivory : c.stone, textDecoration: "none" }}>Terms of Service</Link>
-          <Link to="/privacy" style={{ fontFamily: font.ui, fontSize: 12, color: !isTerms ? c.ivory : c.stone, textDecoration: "none" }}>Privacy Policy</Link>
+          <Link href="/terms" style={{ fontFamily: font.ui, fontSize: 12, color: isTerms ? c.ivory : c.stone, textDecoration: "none" }}>Terms of Service</Link>
+          <Link href="/privacy" style={{ fontFamily: font.ui, fontSize: 12, color: !isTerms ? c.ivory : c.stone, textDecoration: "none" }}>Privacy Policy</Link>
         </div>
       </div>
     </div>

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useRouter } from "next/navigation";
 import { c, font } from "./tokens";
 import { getSupabase, supabaseConfigured } from "./supabase";
 
@@ -30,7 +30,7 @@ function validateCsrfToken(token: string): boolean {
 }
 
 export default function ResetPassword() {
-  const navigate = useNavigate();
+  const router = useRouter();
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [loading, setLoading] = useState(false);
@@ -157,7 +157,7 @@ export default function ResetPassword() {
         // Sign out the recovery session so user must log in with new password
         try { await client.auth.signOut(); } catch { /* best effort */ }
         setSuccess(true);
-        setTimeout(() => navigate("/login"), 2000);
+        setTimeout(() => router.push("/login"), 2000);
       }
     } catch (err) {
       setError("An unexpected error occurred. Please try again.");
@@ -207,7 +207,7 @@ export default function ResetPassword() {
                 {!hasSession && (
                   <button
                     type="button"
-                    onClick={() => navigate("/login")}
+                    onClick={() => router.push("/login")}
                     style={{
                       fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: c.gilt,
                       background: "none", border: `1px solid rgba(212,179,127,0.3)`,
@@ -286,7 +286,7 @@ export default function ResetPassword() {
 
             <button
               type="button"
-              onClick={() => navigate("/login")}
+              onClick={() => router.push("/login")}
               style={{
                 width: "100%", padding: "10px 0", marginTop: 12,
                 background: "transparent", border: "none",

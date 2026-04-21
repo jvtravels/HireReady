@@ -9,7 +9,7 @@ import {
   getVercelClientIp,
   supabaseUrl,
   supabaseAnonKey,
-} from "./_shared.js";
+} from "./_shared";
 
 const RAZORPAY_KEY_ID = (process.env.RAZORPAY_KEY_ID || "").trim();
 const RAZORPAY_KEY_SECRET = (process.env.RAZORPAY_KEY_SECRET || "").trim();

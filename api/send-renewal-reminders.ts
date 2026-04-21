@@ -2,7 +2,7 @@
 /* Runs daily at 9 AM UTC. Sends reminders to users whose subscription expires within 3 days. */
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { escapeHtml } from "./_shared.js";
+import { escapeHtml } from "./_shared";
 
 const SUPABASE_URL = process.env.SUPABASE_URL || "";
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";

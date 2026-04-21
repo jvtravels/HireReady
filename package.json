@@ -3,14 +3,13 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "vite build && node -e \"const f=require('fs');const s=f.readFileSync('dist/sw.js','utf8');f.writeFileSync('dist/sw.js',s.replace('__BUILD_TS__',Date.now()))\" && node scripts/prerender.mjs",
-    "build:fast": "vite build && node -e \"const f=require('fs');const s=f.readFileSync('dist/sw.js','utf8');f.writeFileSync('dist/sw.js',s.replace('__BUILD_TS__',Date.now()))\"",
+    "build": "next build",
     "check": "tsc --noEmit && eslint .",
-    "dev": "vite",
+    "dev": "next dev",
+    "start": "next start",
     "format": "prettier --write \"src/**/*.{ts,tsx,css}\"",
-    "lint": "eslint .",
+    "lint": "next lint",
     "lint:fix": "eslint . --fix",
-    "preview": "vite preview --host 127.0.0.1",
     "test": "vitest run",
     "test:e2e": "playwright test",
     "test:e2e:headed": "playwright test --headed",
@@ -20,19 +19,19 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.101.1",
+    "@tailwindcss/postcss": "^4.2.3",
     "@upstash/redis": "^1.37.0",
     "@vercel/analytics": "^2.0.1",
     "@vercel/speed-insights": "^2.0.0",
+    "next": "^16.2.4",
     "pdfjs-dist": "^3.11.174",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "react-router-dom": "^7.13.2"
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.11.1",
     "@eslint/js": "^9.39.4",
     "@playwright/test": "^1.59.1",
-    "@tailwindcss/vite": "^4.0.0",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@types/node": "^25.5.0",
@@ -40,7 +39,7 @@
     "@types/react-dom": "^19.2.3",
     "@vercel/edge": "^1.2.2",
     "@vercel/node": "^5.7.0",
-    "@vitejs/plugin-react": "^5.0.0",
+    "canvas": "npm:empty-npm-package@^1.0.0",
     "eslint": "^9.39.4",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-jsx-a11y": "^6.10.2",
@@ -49,11 +48,8 @@
     "jsdom": "^25.0.1",
     "prettier": "^3.8.1",
     "tailwindcss": "^4.0.0",
-    "tempo-sdk": "latest",
     "typescript": "^5.9.0",
     "typescript-eslint": "^8.58.1",
-    "vite": "^7.0.0",
-    "vite-tsconfig-paths": "^6.0.0",
     "vitest": "^4.1.2"
   }
 }

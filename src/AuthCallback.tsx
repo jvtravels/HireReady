@@ -7,12 +7,12 @@
  * account chooser instead of the Supabase project URL.
  */
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useRouter } from "next/navigation";
 import { getSupabase, supabaseConfigured } from "./supabase";
 import { c, font } from "./tokens";
 
 export default function AuthCallback() {
-  const navigate = useNavigate();
+  const router = useRouter();
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -32,7 +32,7 @@ export default function AuthCallback() {
         // Validate state to prevent CSRF attacks
         if (!storedState || storedState !== returnedState) {
           setError("Security check failed. Please try again.");
-          setTimeout(() => navigate("/login"), 2000);
+          setTimeout(() => router.push("/login"), 2000);
           return;
         }
         sessionStorage.removeItem("hirestepx_oauth_state");
@@ -45,7 +45,7 @@ export default function AuthCallback() {
           } else {
             setError("No authorization code received from Google.");
           }
-          setTimeout(() => navigate("/login"), 2000);
+          setTimeout(() => router.push("/login"), 2000);
           return;
         }
 
@@ -65,7 +65,7 @@ export default function AuthCallback() {
         if (!tokenRes.ok) {
           const errData = await tokenRes.json().catch(() => ({}));
           setError(errData.error || "Failed to complete Google sign-in.");
-          setTimeout(() => navigate("/login"), 3000);
+          setTimeout(() => router.push("/login"), 3000);
           return;
         }
 
@@ -73,7 +73,7 @@ export default function AuthCallback() {
 
         if (!id_token) {
           setError("No ID token received. Please try again.");
-          setTimeout(() => navigate("/login"), 2000);
+          setTimeout(() => router.push("/login"), 2000);
           return;
         }
 
@@ -88,7 +88,7 @@ export default function AuthCallback() {
         if (signInError) {
           console.error("[auth] signInWithIdToken failed:", signInError.message);
           setError("Failed to sign in. Please try again.");
-          setTimeout(() => navigate("/login"), 2000);
+          setTimeout(() => router.push("/login"), 2000);
           return;
         }
 
@@ -102,14 +102,14 @@ export default function AuthCallback() {
         sessionStorage.removeItem("hirestepx_oauth_return");
 
         // Redirect to the intended destination
-        navigate(returnTo, { replace: true });
+        router.replace(returnTo);
       } catch (err) {
         console.error("[auth] OAuth callback error:", err);
         setError("An unexpected error occurred. Please try again.");
-        setTimeout(() => navigate("/login"), 3000);
+        setTimeout(() => router.push("/login"), 3000);
       }
     })();
-  }, [navigate]);
+  }, [router]);
 
   return (
     <div style={{

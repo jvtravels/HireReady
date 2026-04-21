@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useMemo, memo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useRouter } from "next/navigation";
 import { c, font, sp, radius } from "./tokens";
 import { useAuth } from "./AuthContext";
 import { useDashboard } from "./DashboardContext";
@@ -190,7 +190,7 @@ const dashboardStyles = `
 
 /* ─── Curriculum View — guided 3-session onboarding ─── */
 function CurriculumView({ state, displayName, isMobile, onSkip }: { state: CurriculumState; displayName: string; isMobile: boolean; onSkip: () => void }) {
-  const nav = useNavigate();
+  const router = useRouter();
   const sessionLabels = ["Warmup", "Focus", "Challenge"];
   const sessionDescs = [
     "A quick, friendly warmup to set your baseline",
@@ -305,7 +305,7 @@ function CurriculumView({ state, displayName, isMobile, onSkip }: { state: Curri
             {state.nextSessionConfig.company && <><br /><span style={{ color: c.gilt }}>Company: {state.nextSessionConfig.company}</span></>}
           </p>
           <button
-            onClick={() => nav(buildInterviewUrl(state.nextSessionConfig!))}
+            onClick={() => router.push(buildInterviewUrl(state.nextSessionConfig!))}
             style={{
               width: "100%", padding: "14px 0", borderRadius: 10, cursor: "pointer",
               fontFamily: font.ui, fontSize: 15, fontWeight: 600,
@@ -375,7 +375,7 @@ function CurriculumView({ state, displayName, isMobile, onSkip }: { state: Curri
 }
 
 export default function DashboardHome() {
-  const nav = useNavigate();
+  const router = useRouter();
   const { user } = useAuth();
   const {
     dataLoading, isMobile, isNewUser, displayName,
@@ -593,8 +593,8 @@ export default function DashboardHome() {
             return (
               <div
                 role="button" tabIndex={0}
-                onClick={() => nav("/calendar")}
-                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") nav("/calendar"); }}
+                onClick={() => router.push("/calendar")}
+                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") router.push("/calendar"); }}
                 style={{
                   display: "inline-flex", alignItems: "center", gap: 10,
                   padding: "8px 16px", borderRadius: radius.pill, marginTop: 10,
@@ -647,8 +647,8 @@ export default function DashboardHome() {
                   { label: "Share Progress", icon: <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>, action: () => { handleExport(); setShareTooltip(true); setTimeout(() => setShareTooltip(false), 2000); } },
                   { label: "Export as JSON", icon: <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>, action: handleDownload },
                   { label: "Export as PDF", icon: <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>, action: handleExportPDF },
-                  { label: "Set Interview Date", icon: <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>, action: () => nav("/settings") },
-                  { label: "View Full Report", icon: <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>, action: () => nav("/analytics") },
+                  { label: "Set Interview Date", icon: <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>, action: () => router.push("/settings") },
+                  { label: "View Full Report", icon: <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>, action: () => router.push("/analytics") },
                 ].map((item) => (
                   <button key={item.label} role="menuitem" onClick={() => { item.action(); setHeaderMenuOpen(false); }}
                     style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", padding: "10px 16px", fontFamily: font.ui, fontSize: 13, color: c.chalk, background: "transparent", border: "none", cursor: "pointer", transition: "background 0.15s" }}
@@ -679,7 +679,7 @@ export default function DashboardHome() {
             <span style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: c.ivory, display: "block", marginBottom: 2 }}>You have an unfinished interview</span>
             <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>{hasDraft.type.charAt(0).toUpperCase() + hasDraft.type.slice(1)} · saved {relativeTime(new Date(hasDraft.savedAt).toISOString())}</span>
           </div>
-          <button onClick={() => nav(`/interview?type=${hasDraft.type}&resume=true`)}
+          <button onClick={() => router.push(`/interview?type=${hasDraft.type}&resume=true`)}
             style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, padding: "8px 18px", borderRadius: 8, border: "none", background: `linear-gradient(135deg, ${c.gilt}, ${c.giltDark})`, color: c.obsidian, cursor: "pointer", whiteSpace: "nowrap", transition: "filter 0.15s" }}
             onMouseEnter={(e) => { e.currentTarget.style.filter = "brightness(1.1)"; }}
             onMouseLeave={(e) => { e.currentTarget.style.filter = "brightness(1)"; }}>
@@ -696,9 +696,9 @@ export default function DashboardHome() {
         if (dailyChallenge && !dailyChallenge.completed) {
           return (
             <div role="button" tabIndex={0} aria-label={`Daily Challenge: ${dailyChallenge.label}`}
-              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); nav(`/session/new?type=${dailyChallenge.type}${dailyChallenge.focus ? `&focus=${dailyChallenge.focus}` : ""}`); } }}
+              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); router.push(`/session/new?type=${dailyChallenge.type}${dailyChallenge.focus ? `&focus=${dailyChallenge.focus}` : ""}`); } }}
               style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 20px", borderRadius: radius.md, background: "rgba(212,179,127,0.03)", border: "1px solid rgba(212,179,127,0.08)", marginBottom: sp.xl, cursor: "pointer", transition: "all 0.2s ease" }}
-              onClick={() => nav(`/session/new?type=${dailyChallenge.type}${dailyChallenge.focus ? `&focus=${dailyChallenge.focus}` : ""}`)}
+              onClick={() => router.push(`/session/new?type=${dailyChallenge.type}${dailyChallenge.focus ? `&focus=${dailyChallenge.focus}` : ""}`)}
               onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(212,179,127,0.06)"; e.currentTarget.style.borderColor = "rgba(212,179,127,0.15)"; }}
               onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(212,179,127,0.03)"; e.currentTarget.style.borderColor = "rgba(212,179,127,0.08)"; }}>
               <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="2" strokeLinecap="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" /></svg>
@@ -733,9 +733,9 @@ export default function DashboardHome() {
               <span style={{ fontFamily: font.ui, fontSize: 14, color: c.chalk, flex: 1, lineHeight: 1.5 }}>{notif.text}</span>
               {notif.action && (
                 <button onClick={() => {
-                  if (notif.action === "View Report") nav("/analytics");
+                  if (notif.action === "View Report") router.push("/analytics");
                   else if (notif.action === "Quick Practice" || notif.action === "Practice Now") handleStartSession();
-                  else if (notif.action === "Renew") nav("/#pricing");
+                  else if (notif.action === "Renew") router.push("/#pricing");
                 }} style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: c.sage, background: "rgba(122,158,126,0.08)", border: `1px solid rgba(122,158,126,0.2)`, borderRadius: 10, padding: "6px 14px", cursor: "pointer", whiteSpace: "nowrap" }}
                   onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(122,158,126,0.15)"; }}
                   onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(122,158,126,0.08)"; }}
@@ -891,7 +891,7 @@ export default function DashboardHome() {
 
             {/* Practice weakest button */}
             {companyReadiness.atRiskSkills.length > 0 && (
-              <button onClick={() => nav(`/session/new?focus=${companyReadiness.atRiskSkills[0].name}`)}
+              <button onClick={() => router.push(`/session/new?focus=${companyReadiness.atRiskSkills[0].name}`)}
                 style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: c.obsidian, background: `linear-gradient(135deg, ${c.gilt}, rgba(212,179,127,0.8))`, border: "none", borderRadius: 10, padding: "10px 18px", cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0, transition: "filter 0.15s" }}
                 onMouseEnter={(e) => { e.currentTarget.style.filter = "brightness(1.1)"; }}
                 onMouseLeave={(e) => { e.currentTarget.style.filter = "brightness(1)"; }}>
@@ -927,7 +927,7 @@ export default function DashboardHome() {
           <div style={{ ...card, padding: "24px 28px", marginBottom: sp["3xl"] }} className="gradient-border-card">
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
               {sectionTitle("Upcoming Interviews", 18)}
-              <button onClick={() => nav("/calendar")} style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.gilt, background: "none", border: "none", cursor: "pointer", textDecoration: "underline", textUnderlineOffset: 2 }}>View all</button>
+              <button onClick={() => router.push("/calendar")} style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.gilt, background: "none", border: "none", cursor: "pointer", textDecoration: "underline", textUnderlineOffset: 2 }}>View all</button>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : `repeat(${Math.min(upcomingEvents.length, 3)}, 1fr)`, gap: 12 }}>
               {upcomingEvents.map(ev => {
@@ -936,8 +936,8 @@ export default function DashboardHome() {
                 const isToday = days === 0;
                 return (
                   <div key={ev.id} role="button" tabIndex={0} aria-label={`${ev.company} interview — ${isToday ? "Today" : `${days} days away`}`}
-                    onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); nav("/calendar"); } }}
-                    style={{ padding: "16px 20px", borderRadius: radius.md, background: c.obsidian, borderLeft: `3px solid ${isToday ? c.ember : urgent ? c.gilt : c.sage}`, cursor: "pointer", transition: "background 0.2s ease" }} onClick={() => nav("/calendar")}
+                    onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); router.push("/calendar"); } }}
+                    style={{ padding: "16px 20px", borderRadius: radius.md, background: c.obsidian, borderLeft: `3px solid ${isToday ? c.ember : urgent ? c.gilt : c.sage}`, cursor: "pointer", transition: "background 0.2s ease" }} onClick={() => router.push("/calendar")}
                     onMouseEnter={(e) => e.currentTarget.style.background = "rgba(245,242,237,0.02)"}
                     onMouseLeave={(e) => e.currentTarget.style.background = c.obsidian}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
@@ -1009,14 +1009,14 @@ export default function DashboardHome() {
               {score < 50 && (
                 <p style={{ fontFamily: font.ui, fontSize: 12, color: c.ember, margin: 0, fontWeight: 500 }}>
                   Your resume needs work —{" "}
-                  <span role="link" tabIndex={0} onClick={() => nav("/resume")} onKeyDown={(e) => { if (e.key === "Enter") nav("/resume"); }}
+                  <span role="link" tabIndex={0} onClick={() => router.push("/resume")} onKeyDown={(e) => { if (e.key === "Enter") router.push("/resume"); }}
                     style={{ textDecoration: "underline", textUnderlineOffset: 2, cursor: "pointer", color: c.ember }}>improve it now</span>
                 </p>
               )}
             </div>
 
             {/* View link */}
-            <button onClick={() => nav("/resume")} style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.gilt, background: "none", border: "none", cursor: "pointer", textDecoration: "underline", textUnderlineOffset: 2, flexShrink: 0, whiteSpace: "nowrap" }}>
+            <button onClick={() => router.push("/resume")} style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.gilt, background: "none", border: "none", cursor: "pointer", textDecoration: "underline", textUnderlineOffset: 2, flexShrink: 0, whiteSpace: "nowrap" }}>
               View full profile
             </button>
           </div>
@@ -1067,8 +1067,8 @@ export default function DashboardHome() {
               </div>
               {/* Actions */}
               <div style={{ display: "flex", flexDirection: "column", gap: 8, flexShrink: 0, alignItems: isMobile ? "flex-start" : "flex-end" }}>
-                <button onClick={() => nav("/session/new")} style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: "#111", background: c.gilt, border: "none", borderRadius: 8, padding: "8px 18px", cursor: "pointer", whiteSpace: "nowrap" }}>Practice gaps</button>
-                <button onClick={() => nav("/session/new")} style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: c.gilt, background: "none", border: "none", cursor: "pointer", textDecoration: "underline", textUnderlineOffset: 2, padding: 0 }}>Re-analyze</button>
+                <button onClick={() => router.push("/session/new")} style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: "#111", background: c.gilt, border: "none", borderRadius: 8, padding: "8px 18px", cursor: "pointer", whiteSpace: "nowrap" }}>Practice gaps</button>
+                <button onClick={() => router.push("/session/new")} style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: c.gilt, background: "none", border: "none", cursor: "pointer", textDecoration: "underline", textUnderlineOffset: 2, padding: 0 }}>Re-analyze</button>
               </div>
             </div>
           </div>
@@ -1106,7 +1106,7 @@ export default function DashboardHome() {
                     </div>
                     <div style={{ flex: 1, paddingTop: 1, paddingBottom: 4 }}>
                       {canNav ? (
-                        <button onClick={() => nav(navUrl)} style={{ fontFamily: font.ui, fontSize: 13, color: c.chalk, background: "none", border: "none", padding: 0, cursor: "pointer", textAlign: "left" as const, textDecoration: "none" }}
+                        <button onClick={() => router.push(navUrl)} style={{ fontFamily: font.ui, fontSize: 13, color: c.chalk, background: "none", border: "none", padding: 0, cursor: "pointer", textAlign: "left" as const, textDecoration: "none" }}
                           onMouseEnter={(e) => { e.currentTarget.style.color = c.gilt; }}
                           onMouseLeave={(e) => { e.currentTarget.style.color = c.chalk; }}>
                           {step.label} →
@@ -1180,8 +1180,8 @@ export default function DashboardHome() {
               <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 14 }}>
                 {skills.map((sk) => (
                   <div key={sk.name} role="button" tabIndex={0} aria-label={`Practice ${sk.name} — score ${sk.score}`}
-                    onClick={() => nav(`/session/new?type=behavioral&focus=${sk.name.toLowerCase().replace(/\s+/g, "-")}`)}
-                    onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); nav(`/session/new?type=behavioral&focus=${sk.name.toLowerCase().replace(/\s+/g, "-")}`); } }}
+                    onClick={() => router.push(`/session/new?type=behavioral&focus=${sk.name.toLowerCase().replace(/\s+/g, "-")}`)}
+                    onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); router.push(`/session/new?type=behavioral&focus=${sk.name.toLowerCase().replace(/\s+/g, "-")}`); } }}
                     style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", padding: "6px 8px", margin: "-6px -8px", borderRadius: radius.sm, transition: "background 0.15s ease" }}
                     onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(245,242,237,0.03)"; }}
                     onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}>
@@ -1295,7 +1295,7 @@ export default function DashboardHome() {
                 onToggle={() => setExpandedSession(expandedSession === session.id ? null : session.id)}
                 onFeedbackToggle={() => setFeedbackSession(feedbackSession === session.id ? null : session.id)}
                 onViewTranscript={() => setViewingSession(session.id)}
-                onRedo={() => nav(`/session/new?type=${session.type.toLowerCase().replace(" ", "-")}`)}
+                onRedo={() => router.push(`/session/new?type=${session.type.toLowerCase().replace(" ", "-")}`)}
               />
             ))
           )}
@@ -1336,7 +1336,7 @@ export default function DashboardHome() {
                       </span>
                       <p style={{ fontFamily: font.ui, fontSize: 13, color: c.chalk, lineHeight: 1.6, marginBottom: (insight as { action?: string }).action ? 8 : 0 }}>{insight.text}</p>
                       {(insight as { action?: string }).action && (
-                        <button onClick={() => nav((insight as { action: string }).action)} style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.gilt, background: "rgba(212,179,127,0.08)", border: `1px solid rgba(212,179,127,0.15)`, borderRadius: 6, padding: "5px 12px", cursor: "pointer", transition: "background 0.15s" }}
+                        <button onClick={() => router.push((insight as { action: string }).action)} style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.gilt, background: "rgba(212,179,127,0.08)", border: `1px solid rgba(212,179,127,0.15)`, borderRadius: 6, padding: "5px 12px", cursor: "pointer", transition: "background 0.15s" }}
                           onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(212,179,127,0.15)"; }}
                           onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(212,179,127,0.08)"; }}>
                           Practice Now →
@@ -1374,7 +1374,7 @@ export default function DashboardHome() {
                         <div style={{ height: "100%", width: `${(goal.progress / goal.total) * 100}%`, background: done ? c.sage : c.gilt, borderRadius: 2, transition: "width 0.4s cubic-bezier(0.16,1,0.3,1)" }} />
                       </div>
                       {!done && (
-                        <button onClick={() => (goal as { action?: string }).action ? nav((goal as { action: string }).action) : handleStartSession()}
+                        <button onClick={() => (goal as { action?: string }).action ? router.push((goal as { action: string }).action) : handleStartSession()}
                           style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 500, color: c.gilt, background: "none", border: "none", cursor: "pointer", padding: 0, transition: "color 0.2s" }}
                           onMouseEnter={(e) => e.currentTarget.style.color = c.ivory}
                           onMouseLeave={(e) => e.currentTarget.style.color = c.gilt}>

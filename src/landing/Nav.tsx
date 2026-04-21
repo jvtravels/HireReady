@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Link } from "react-router-dom";
+import Link from "next/link";
 import { c, font } from "../tokens";
 import { useAuth } from "../AuthContext";
 
@@ -70,7 +70,7 @@ export function Nav() {
           <div style={{ width: 140, height: 36 }} />
         ) : isLoggedIn ? (
           <>
-            <Link to="/dashboard" className="premium-btn" style={{
+            <Link href="/dashboard" className="premium-btn" style={{
               fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: c.obsidian,
               borderRadius: 10, padding: "9px 22px",
               cursor: "pointer", letterSpacing: "0.02em", textDecoration: "none",
@@ -89,7 +89,7 @@ export function Nav() {
           </>
         ) : (
           <>
-            <Link to="/login" style={{
+            <Link href="/login" style={{
               fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.chalk,
               background: "transparent", border: "none", padding: "8px 16px",
               cursor: "pointer", letterSpacing: "0.01em", transition: "color 0.2s ease",
@@ -99,7 +99,7 @@ export function Nav() {
               onMouseLeave={(e) => { e.currentTarget.style.color = c.chalk; }}>
               Log in
             </Link>
-            <Link to="/signup" className="shimmer-btn premium-btn" style={{
+            <Link href="/signup" className="shimmer-btn premium-btn" style={{
               fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: c.obsidian,
               borderRadius: 10, padding: "9px 22px",
               cursor: "pointer", letterSpacing: "0.02em", textDecoration: "none",
@@ -144,13 +144,13 @@ export function Nav() {
           <div style={{ width: 40, height: 1, background: c.border, margin: "4px 0" }} />
           {loading ? null : isLoggedIn ? (
             <>
-              <Link to="/dashboard" style={{ fontFamily: font.ui, fontSize: 18, fontWeight: 600, color: c.gilt, textDecoration: "none" }}>Dashboard</Link>
+              <Link href="/dashboard" style={{ fontFamily: font.ui, fontSize: 18, fontWeight: 600, color: c.gilt, textDecoration: "none" }}>Dashboard</Link>
               <button onClick={() => { logout(); setMobileOpen(false); }} style={{ fontFamily: font.ui, fontSize: 16, color: c.stone, background: "none", border: "none", cursor: "pointer" }}>Log out</button>
             </>
           ) : (
             <>
-              <Link to="/login" style={{ fontFamily: font.ui, fontSize: 18, color: c.ivory, textDecoration: "none" }}>Log in</Link>
-              <Link to="/signup" style={{ fontFamily: font.ui, fontSize: 18, fontWeight: 600, color: c.gilt, textDecoration: "none" }}>Sign up</Link>
+              <Link href="/login" style={{ fontFamily: font.ui, fontSize: 18, color: c.ivory, textDecoration: "none" }}>Log in</Link>
+              <Link href="/signup" style={{ fontFamily: font.ui, fontSize: 18, fontWeight: 600, color: c.gilt, textDecoration: "none" }}>Sign up</Link>
             </>
           )}
         </div>

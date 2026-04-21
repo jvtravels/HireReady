@@ -3,7 +3,7 @@
 
 export const config = { runtime: "edge" };
 
-import { handleCorsPreflightOrMethod, corsHeaders, isRateLimited, getClientIp, rateLimitResponse, verifyAuth, unauthorizedResponse, validateOrigin, withRequestId } from "./_shared.js";
+import { handleCorsPreflightOrMethod, corsHeaders, isRateLimited, getClientIp, rateLimitResponse, verifyAuth, unauthorizedResponse, validateOrigin, withRequestId } from "./_shared";
 
 declare const process: { env: Record<string, string | undefined> };
 const AZURE_TTS_KEY = process.env.AZURE_TTS_KEY || "";
@@ -18,7 +18,6 @@ const VOICES: Record<string, { male: string[]; female: string[] }> = {
   },
 };
 
-const DEFAULT_VOICE = "en-IN-NeerjaNeural";
 
 function escapeXml(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&apos;");

@@ -4,7 +4,7 @@
 
 export const config = { runtime: "edge" };
 
-import { corsHeaders, verifyAuth, unauthorizedResponse, validateOrigin, withRequestId } from "./_shared.js";
+import { corsHeaders, verifyAuth, unauthorizedResponse, validateOrigin, withRequestId } from "./_shared";
 
 declare const process: { env: Record<string, string | undefined> };
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || "";

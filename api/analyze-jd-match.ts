@@ -2,8 +2,8 @@
 
 export const config = { runtime: "edge" };
 
-import { corsHeaders, handleCorsPreflightOrMethod, verifyAuth, unauthorizedResponse, isRateLimited, getClientIp, rateLimitResponse, checkBodySize, sanitizeForLLM, withRequestId, checkLLMQuota } from "./_shared.js";
-import { callLLM, extractJSON } from "./_llm.js";
+import { corsHeaders, handleCorsPreflightOrMethod, verifyAuth, unauthorizedResponse, isRateLimited, getClientIp, rateLimitResponse, checkBodySize, sanitizeForLLM, withRequestId, checkLLMQuota } from "./_shared";
+import { callLLM, extractJSON } from "./_llm";
 
 export default async function handler(req: Request): Promise<Response> {
   const preflight = handleCorsPreflightOrMethod(req);

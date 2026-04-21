@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { Link, Outlet, useNavigate, useLocation } from "react-router-dom";
+import Link from "next/link";
+import { useRouter, usePathname } from "next/navigation";
 import { c, font } from "./tokens";
 import { useAuth } from "./AuthContext";
 import { useDashboard } from "./DashboardContext";
@@ -30,9 +31,9 @@ const navItems = [
   { id: "settings", path: "/settings", label: "Settings", icon: <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg> },
 ];
 
-export default function DashboardLayout() {
-  const nav = useNavigate();
-  const location = useLocation();
+export default function DashboardLayout({ children }: { children?: React.ReactNode }) {
+  const nav = useRouter();
+  const pathname = usePathname();
   const { logout: authLogout, user, updateUser: authUpdateUser } = useAuth();
   const {
     isMobile, displayName, persisted,
@@ -145,7 +146,7 @@ export default function DashboardLayout() {
 
   // Determine active nav from current route
   const activeNav = (() => {
-    const path = location.pathname;
+    const path = pathname;
     if (path === "/dashboard" || path === "/dashboard/") return "dashboard";
     const match = navItems.find(item => item.path !== "/dashboard" && path === item.path);
     return match?.id || "dashboard";
@@ -180,7 +181,7 @@ export default function DashboardLayout() {
         transition: "transform 0.35s cubic-bezier(0.16, 1, 0.3, 1)",
       }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 40, padding: "0 12px" }}>
-          <Link to="/" style={{ textDecoration: "none" }}><span style={{ fontFamily: font.display, fontSize: 22, fontWeight: 400, color: c.ivory, letterSpacing: "0.02em" }}>HireStepX</span></Link>
+          <Link href="/" style={{ textDecoration: "none" }}><span style={{ fontFamily: font.display, fontSize: 22, fontWeight: 400, color: c.ivory, letterSpacing: "0.02em" }}>HireStepX</span></Link>
           {isMobile && <button onClick={() => setSidebarOpen(false)} style={{ background: "none", border: "none", color: c.stone, cursor: "pointer", padding: 4 }}><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>}
         </div>
         <nav aria-label="Main navigation" style={{ display: "flex", flexDirection: "column", gap: 4, flex: "1 1 auto", overflow: "hidden" }}>
@@ -188,7 +189,7 @@ export default function DashboardLayout() {
             <button key={item.id}
               aria-current={activeNav === item.id ? "page" : undefined}
               aria-label={item.label}
-              onClick={() => { nav(item.path); if (isMobile) setSidebarOpen(false); }}
+              onClick={() => { nav.push(item.path); if (isMobile) setSidebarOpen(false); }}
               style={{
                 display: "flex", alignItems: "center", gap: 12, padding: "11px 14px",
                 borderRadius: 10, border: "none", cursor: "pointer",
@@ -333,8 +334,8 @@ export default function DashboardLayout() {
             <span style={{ fontFamily: font.ui, fontSize: 12, color: c.slate }}>You're offline — some features may be unavailable</span>
           </div>
         )}
-        <div key={location.pathname} className="dash-page-enter">
-          <Outlet />
+        <div key={pathname} className="dash-page-enter">
+          {children}
         </div>
       </main>
 
@@ -420,7 +421,7 @@ export default function DashboardLayout() {
             {/* Quick links */}
             <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
               {/* Getting Started */}
-              <Link to="/page/help" style={{ textDecoration: "none" }} onClick={() => setHelpOpen(false)}>
+              <Link href="/page/help" style={{ textDecoration: "none" }} onClick={() => setHelpOpen(false)}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 8, border: `1px solid ${c.border}`, background: "rgba(245,242,237,0.02)", cursor: "pointer", transition: "all 0.15s", color: c.chalk, fontFamily: font.ui, fontSize: 13, fontWeight: 500 }}
                   onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(212,179,127,0.06)"; e.currentTarget.style.borderColor = "rgba(212,179,127,0.25)"; }}
                   onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(245,242,237,0.02)"; e.currentTarget.style.borderColor = c.border; }}>
@@ -429,7 +430,7 @@ export default function DashboardLayout() {
                 </div>
               </Link>
               {/* FAQs */}
-              <Link to="/#faq" style={{ textDecoration: "none" }} onClick={() => setHelpOpen(false)}>
+              <Link href="/#faq" style={{ textDecoration: "none" }} onClick={() => setHelpOpen(false)}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 8, border: `1px solid ${c.border}`, background: "rgba(245,242,237,0.02)", cursor: "pointer", transition: "all 0.15s", color: c.chalk, fontFamily: font.ui, fontSize: 13, fontWeight: 500 }}
                   onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(212,179,127,0.06)"; e.currentTarget.style.borderColor = "rgba(212,179,127,0.25)"; }}
                   onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(245,242,237,0.02)"; e.currentTarget.style.borderColor = c.border; }}>

@@ -7,7 +7,7 @@ import {
   supabaseUrl,
   supabaseAnonKey,
   escapeHtml,
-} from "./_shared.js";
+} from "./_shared";
 
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 const RAZORPAY_KEY_ID = (process.env.RAZORPAY_KEY_ID || "").trim();

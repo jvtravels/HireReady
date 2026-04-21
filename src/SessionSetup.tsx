@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useRouter, useSearchParams } from "next/navigation";
 import { track } from "@vercel/analytics";
 
 import { c, font } from "./tokens";
@@ -227,9 +227,9 @@ const focusToType: Record<string, string> = {
 const TOTAL_STEPS = 2;
 
 export default function SessionSetup() {
-  const navigate = useNavigate();
+  const router = useRouter();
   const { user } = useAuth();
-  const [searchParams] = useSearchParams();
+  const searchParams = useSearchParams();
   const preselectedFocus = searchParams.get("type");
   const [draft] = useState(() => loadDraft(user?.id));
   const [showDraftBanner, setShowDraftBanner] = useState(!!draft);
@@ -390,11 +390,11 @@ export default function SessionSetup() {
     }
     setTimeout(() => {
       setCountdown(0);
-      navigate(`/interview?type=${focusType}&difficulty=standard&new=1${targetCompany ? `&company=${encodeURIComponent(targetCompany)}` : ""}${currentCity ? `&currentCity=${encodeURIComponent(currentCity)}` : ""}${jobCity ? `&jobCity=${encodeURIComponent(jobCity)}` : ""}&role=${encodeURIComponent(targetRole)}&length=${sessionLength}${useResume ? "" : "&useResume=false"}${jobDescription.trim() ? `&jd=${encodeURIComponent(jobDescription.trim().slice(0, 2000))}` : ""}${micStatus === "denied" ? "&nomic=1" : ""}`);
+      router.push(`/interview?type=${focusType}&difficulty=standard&new=1${targetCompany ? `&company=${encodeURIComponent(targetCompany)}` : ""}${currentCity ? `&currentCity=${encodeURIComponent(currentCity)}` : ""}${jobCity ? `&jobCity=${encodeURIComponent(jobCity)}` : ""}&role=${encodeURIComponent(targetRole)}&length=${sessionLength}${useResume ? "" : "&useResume=false"}${jobDescription.trim() ? `&jd=${encodeURIComponent(jobDescription.trim().slice(0, 2000))}` : ""}${micStatus === "denied" ? "&nomic=1" : ""}`);
     }, 3000);
   };
 
-  const goBack = () => { if (step > 1) setStep(step - 1); else navigate("/dashboard"); };
+  const goBack = () => { if (step > 1) setStep(step - 1); else router.push("/dashboard"); };
   const goNext = () => { if (step < TOTAL_STEPS) setStep(step + 1); };
 
   const sessionLengthLabel = sessionLength === "10m" ? "10 minutes" : sessionLength === "25m" ? "25 minutes" : "15 minutes";
@@ -435,7 +435,7 @@ export default function SessionSetup() {
           </span>
           <button onClick={() => {
             unlockAudio();
-            navigate(`/interview?type=${draft.type}&difficulty=${draft.difficulty}&focus=${draft.focus || "general"}&resume=true`);
+            router.push(`/interview?type=${draft.type}&difficulty=${draft.difficulty}&focus=${draft.focus || "general"}&resume=true`);
           }} style={{
             padding: "6px 16px", borderRadius: 10, border: "none", cursor: "pointer",
             background: `linear-gradient(135deg, ${c.gilt}, ${c.giltDark})`, color: c.obsidian,
@@ -455,7 +455,7 @@ export default function SessionSetup() {
       {/* ─── Top Bar (matches Onboarding) ─── */}
       <div style={{ padding: "18px 40px", display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", borderBottom: `1px solid rgba(245,242,237,0.04)`, background: "rgba(6,6,7,0.6)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)", zIndex: 10 }}>
         {/* Logo */}
-        <div role="button" tabIndex={0} onClick={() => navigate("/dashboard")} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); navigate("/dashboard"); } }} style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }} title="Back to dashboard">
+        <div role="button" tabIndex={0} onClick={() => router.push("/dashboard")} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); router.push("/dashboard"); } }} style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }} title="Back to dashboard">
           <div style={{ width: 6, height: 6, borderRadius: 2, background: `linear-gradient(135deg, ${c.gilt}, ${c.giltDark})`, boxShadow: "0 0 8px rgba(212,179,127,0.3)" }} />
           <span style={{ fontFamily: font.display, fontSize: 17, fontWeight: 400, color: c.ivory, letterSpacing: "0.02em" }}>HireStepX</span>
         </div>

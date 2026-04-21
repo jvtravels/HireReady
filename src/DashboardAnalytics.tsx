@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useRouter } from "next/navigation";
 import { c, font } from "./tokens";
 import { useDocTitle } from "./useDocTitle";
 import { useAuth } from "./AuthContext";
@@ -48,7 +48,7 @@ const DATE_RANGES = [
 
 export default function AnalyticsPage() {
   useDocTitle("Analytics");
-  const nav = useNavigate();
+  const router = useRouter();
   const { user } = useAuth();
   const resumeProfile = user?.resumeData as unknown as ResumeProfile | undefined;
   const {
@@ -136,7 +136,7 @@ export default function AnalyticsPage() {
   // Targeted session start
   const startTargeted = (type?: string) => {
     if (atSessionLimit) { setShowUpgradeModal(true); return; }
-    nav(type ? `/session/new?type=${type}` : "/session/new");
+    router.push(type ? `/session/new?type=${type}` : "/session/new");
   };
 
   // Weekly practice heatmap — respects selected date range

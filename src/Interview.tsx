@@ -176,7 +176,7 @@ export default function Interview() {
                     // Replay the negotiation with a different hiring manager style
                     const params = new URLSearchParams(window.location.search);
                     params.set("negotiationStyle", style);
-                    navigate(`/interview?${params.toString()}`);
+                    navigate.push(`/interview?${params.toString()}`);
                     window.location.reload();
                   }}
                 />

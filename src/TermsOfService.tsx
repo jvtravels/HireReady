@@ -1,5 +1,5 @@
 import { c, font } from "./tokens";
-import { Link } from "react-router-dom";
+import Link from "next/link";
 
 const sections = [
   {
@@ -114,7 +114,7 @@ export default function TermsOfService() {
     <div style={{ minHeight: "100vh", background: c.obsidian, padding: "60px 24px 80px" }}>
       <div style={{ maxWidth: 720, margin: "0 auto" }}>
         <Link
-          to="/"
+          href="/"
           style={{
             fontFamily: font.ui, fontSize: 12, color: c.gilt, textDecoration: "none",
             display: "inline-flex", alignItems: "center", gap: 6, marginBottom: 32,
@@ -145,7 +145,7 @@ export default function TermsOfService() {
             </p>
             {section.hasRefundLink && (
               <Link
-                to="/refund"
+          href="/refund"
                 style={{
                   fontFamily: font.ui, fontSize: 14, color: c.gilt, textDecoration: "none",
                   display: "inline-block", marginTop: 8,
@@ -158,9 +158,9 @@ export default function TermsOfService() {
         ))}
 
         <div style={{ marginTop: 48, paddingTop: 24, borderTop: `1px solid ${c.border}`, display: "flex", gap: 20 }}>
-          <Link to="/terms" style={{ fontFamily: font.ui, fontSize: 12, color: c.ivory, textDecoration: "none" }}>Terms of Service</Link>
-          <Link to="/privacy" style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, textDecoration: "none" }}>Privacy Policy</Link>
-          <Link to="/refund" style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, textDecoration: "none" }}>Refund Policy</Link>
+          <Link href="/terms" style={{ fontFamily: font.ui, fontSize: 12, color: c.ivory, textDecoration: "none" }}>Terms of Service</Link>
+          <Link href="/privacy" style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, textDecoration: "none" }}>Privacy Policy</Link>
+          <Link href="/refund" style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, textDecoration: "none" }}>Refund Policy</Link>
         </div>
       </div>
     </div>

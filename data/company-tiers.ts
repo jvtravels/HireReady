@@ -455,7 +455,6 @@ const COMPANY_TIER_MAP: Record<string, CompanyTier> = {
   // Large Indian conglomerates & private corporates
   "l&t": "indian-unicorn",
   "larsen & toubro": "indian-unicorn",
-  "l&t infotech": "it-services",
   "tata motors": "indian-unicorn",
   "maruti suzuki": "indian-unicorn",
   "mahindra & mahindra": "indian-unicorn",

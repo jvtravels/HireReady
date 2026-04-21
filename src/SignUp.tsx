@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
-import { Link, useNavigate, useLocation } from "react-router-dom";
+import Link from "next/link";
+import { useRouter, usePathname, useSearchParams as useNextSearchParams } from "next/navigation";
 import { track } from "@vercel/analytics";
 
 import { c, font } from "./tokens";
@@ -76,8 +77,9 @@ function friendlyError(raw: string, isLogin: boolean): { message: string; sugges
 }
 
 export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
-  const navigate = useNavigate();
-  const location = useLocation();
+  const router = useRouter();
+  const pathname = usePathname();
+  const nextSearchParams = useNextSearchParams();
   const { login, signup, loginWithGoogle, resetPassword, isLoggedIn, user } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -111,8 +113,8 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
     const timer = setInterval(() => setResendCooldown(prev => prev - 1), 1000);
     return () => clearInterval(timer);
   }, [resendCooldown]);
-  const verifiedParam = new URLSearchParams(location.search).get("verified");
-  const errorParam = new URLSearchParams(location.search).get("error");
+  const verifiedParam = nextSearchParams.get("verified");
+  const errorParam = nextSearchParams.get("error");
   const firstInputRef = useRef<HTMLInputElement>(null);
   const verifiedBanner = verifiedParam === "true" || verifiedParam === "already";
 
@@ -135,18 +137,16 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
   };
 
   // Preserve plan intent from pricing page
-  const searchParams = new URLSearchParams(location.search);
-  const planParam = searchParams.get("plan");
+  const planParam = nextSearchParams.get("plan");
 
   // If already logged in, redirect based on onboarding status
   useEffect(() => {
     if (isLoggedIn && user) {
       const defaultDest = user.hasCompletedOnboarding ? "/dashboard" : "/onboarding";
-      const from = (location.state as { from?: string } | null)?.from || defaultDest;
-      const dest = planParam ? `${from}?plan=${planParam}` : from;
-      navigate(dest, { replace: true });
+      const dest = planParam ? `${defaultDest}?plan=${planParam}` : defaultDest;
+      router.replace(dest);
     }
-  }, [isLoggedIn, user, navigate, location.state, planParam]);
+  }, [isLoggedIn, user, router, planParam]);
 
   // Auto-focus first input field
   useEffect(() => {
@@ -283,7 +283,7 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
         padding: "60px 80px", maxWidth: 520, margin: "0 auto", width: "100%",
       }}>
         {/* Logo */}
-        <Link to="/" style={{ textDecoration: "none", marginBottom: 56 }}>
+        <Link href="/" style={{ textDecoration: "none", marginBottom: 56 }}>
           <span style={{
             fontFamily: font.display, fontSize: 24, fontWeight: 400,
             color: c.ivory, letterSpacing: "0.02em",
@@ -376,7 +376,7 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
                 We've sent a verification link to <strong>{email}</strong>. Click the link in your email to activate your account. Check your spam folder if you don't see it within a few minutes.
               </p>
             </div>
-            <button onClick={() => { setSignupSent(false); navigate("/login"); }}
+            <button onClick={() => { setSignupSent(false); router.push("/login"); }}
               style={{ fontFamily: font.ui, fontSize: 14, fontWeight: 600, padding: "12px 24px", borderRadius: 10, border: "none", background: c.gilt, color: c.obsidian, cursor: "pointer", transition: "all 0.2s ease" }}>
               Continue to Login
             </button>
@@ -734,7 +734,7 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
             {/* Toggle */}
             <p style={{ fontFamily: font.ui, fontSize: 13, color: c.stone, marginTop: 28, textAlign: "center" }}>
               {isLogin ? "Don't have an account? " : "Already have an account? "}
-              <Link to={isLogin ? "/signup" : "/login"}
+              <Link href={isLogin ? "/signup" : "/login"}
                 style={{ color: c.gilt, textDecoration: "none", fontWeight: 500, transition: "opacity 0.2s" }}
                 onMouseEnter={(e) => e.currentTarget.style.opacity = "0.8"}
                 onMouseLeave={(e) => e.currentTarget.style.opacity = "1"}>

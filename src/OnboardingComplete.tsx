@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useRouter } from "next/navigation";
 import { c, font } from "./tokens";
 import { useAuth } from "./AuthContext";
 
@@ -16,20 +16,26 @@ function scoreLabel(score: number) {
 }
 
 export default function OnboardingComplete() {
-  const navigate = useNavigate();
-  const location = useLocation();
+  const router = useRouter();
   const { user } = useAuth();
-  const state = (location.state as { score?: number; aiFeedback?: string; skillScores?: Record<string, number> } | null) || {};
-  const score: number = state.score || 72;
-  const aiFeedback: string = state.aiFeedback || "";
-  const skillScores: Record<string, number> | null = state.skillScores || null;
+  // In Next.js, location.state is not available. Read from sessionStorage instead.
+  const [stateData] = useState(() => {
+    try {
+      const raw = sessionStorage.getItem("hirestepx_onboarding_result");
+      if (raw) { sessionStorage.removeItem("hirestepx_onboarding_result"); return JSON.parse(raw); }
+    } catch { /* expected */ }
+    return {};
+  });
+  const score: number = stateData.score || 72;
+  const aiFeedback: string = stateData.aiFeedback || "";
+  const skillScores: Record<string, number> | null = stateData.skillScores || null;
 
   const [redirecting, _setRedirecting] = useState(false);
 
   // Guard: if accessed directly without coming from onboarding, redirect immediately
   useEffect(() => {
-    if (!state.score && !state.aiFeedback) {
-      navigate(user?.hasCompletedOnboarding ? "/dashboard" : "/onboarding", { replace: true });
+    if (!stateData.score && !stateData.aiFeedback) {
+      router.replace(user?.hasCompletedOnboarding ? "/dashboard" : "/onboarding");
     }
   }, []);
 
@@ -117,7 +123,7 @@ export default function OnboardingComplete() {
           {/* CTAs */}
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12, animation: "obcFadeIn 0.5s ease 0.8s both" }}>
             <button
-              onClick={() => navigate("/session/new")}
+              onClick={() => router.push("/session/new")}
               className="shimmer-btn"
               style={{
                 fontFamily: font.ui, fontSize: 15, fontWeight: 600,
@@ -135,7 +141,7 @@ export default function OnboardingComplete() {
               Start a Full Session
             </button>
             <button
-              onClick={() => navigate("/dashboard")}
+              onClick={() => router.push("/dashboard")}
               style={{ fontFamily: font.ui, fontSize: 13, color: c.stone, background: "none", border: "none", cursor: "pointer", transition: "color 0.2s" }}
               onMouseEnter={(e) => e.currentTarget.style.color = c.ivory}
               onMouseLeave={(e) => e.currentTarget.style.color = c.stone}

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { useParams, Link } from "react-router-dom";
+import Link from "next/link";
+import { useParams } from "next/navigation";
 import { c, font } from "./tokens";
 
 interface ProfileData {
@@ -16,7 +17,7 @@ interface ProfileData {
 }
 
 export default function PublicProfile() {
-  const { userId } = useParams<{ userId: string }>();
+  const { userId } = useParams() as { userId?: string };
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -45,7 +46,7 @@ export default function PublicProfile() {
     return (
       <div style={{ minHeight: "100vh", background: "#060607", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 16 }}>
         <span style={{ fontFamily: font.ui, fontSize: 16, color: c.stone }}>{error || "Profile not found"}</span>
-        <Link to="/" style={{ fontFamily: font.ui, fontSize: 13, color: c.gilt, textDecoration: "none" }}>Go to HireStepX</Link>
+        <Link href="/" style={{ fontFamily: font.ui, fontSize: 13, color: c.gilt, textDecoration: "none" }}>Go to HireStepX</Link>
       </div>
     );
   }
@@ -125,7 +126,7 @@ export default function PublicProfile() {
 
         {/* CTA */}
         <div style={{ textAlign: "center", marginTop: 20 }}>
-          <Link to="/signup" style={{
+          <Link href="/signup" style={{
             fontFamily: font.ui, fontSize: 14, fontWeight: 600, color: c.obsidian,
             background: `linear-gradient(135deg, ${c.gilt}, ${c.giltDark})`,
             padding: "12px 32px", borderRadius: 10, textDecoration: "none", display: "inline-block",

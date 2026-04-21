@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef, type ReactNode } from "react";
-import { useNavigate } from "react-router-dom";
+import { useRouter } from "next/navigation";
 import { useAuth } from "./AuthContext";
 import { getUserSessions, getCalendarEvents, syncGoogleEvents, getGoogleProviderToken } from "./supabase";
 import { scheduleEventNotifications } from "./interviewNotifications";
@@ -130,7 +130,7 @@ export function useDashboard() {
 /* ─── Provider ─── */
 
 export function DashboardProvider({ children }: { children: ReactNode }) {
-  const nav = useNavigate();
+  const nav = useRouter();
   const { user, updateUser: _authUpdateUser } = useAuth();
   const [persisted, setPersisted] = useState<PersistedState>(() => {
     const local = loadState();
@@ -463,7 +463,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
 
   const handleStartSession = useCallback(() => {
     if (atSessionLimit) { setShowUpgradeModal(true); return; }
-    nav("/session/new");
+    nav.push("/session/new");
   }, [atSessionLimit, nav]);
 
   const handleExport = useCallback(() => {

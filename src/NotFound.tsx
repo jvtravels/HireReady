@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import Link from "next/link";
 import { c, font } from "./tokens";
 
 export default function NotFound() {
@@ -13,7 +13,7 @@ export default function NotFound() {
       <p style={{ fontFamily: font.ui, fontSize: 14, color: c.stone, marginBottom: 32, maxWidth: 360, lineHeight: 1.6 }}>
         The page you're looking for doesn't exist or has been moved.
       </p>
-      <Link to="/" style={{
+      <Link href="/" style={{
         fontFamily: font.ui, fontSize: 14, fontWeight: 500, color: c.obsidian,
         background: c.gilt, padding: "12px 28px", borderRadius: 8, textDecoration: "none",
         display: "inline-flex", alignItems: "center", gap: 8,

@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { useNavigate, useParams, Link } from "react-router-dom";
+import Link from "next/link";
+import { useParams, useRouter } from "next/navigation";
 import { c, font } from "./tokens";
 import { useSEO } from "./useSEO";
 
@@ -54,7 +55,7 @@ const emailLink: React.CSSProperties = { color: c.gilt, textDecoration: "none" }
 function Nav() {
   return (
     <nav style={nav}>
-      <Link to="/" style={{ textDecoration: "none", display: "flex", alignItems: "center", gap: 8 }}>
+      <Link href="/" style={{ textDecoration: "none", display: "flex", alignItems: "center", gap: 8 }}>
         <div style={{
           width: 32, height: 32, borderRadius: 8,
           background: `linear-gradient(135deg, ${c.gilt}, ${c.giltDark})`,
@@ -63,7 +64,7 @@ function Nav() {
         }}>H</div>
         <span style={{ fontFamily: font.display, fontSize: 20, color: c.ivory }}>HireStepX</span>
       </Link>
-      <Link to="/signup" style={{ ...ctaBtn, fontSize: 13, padding: "8px 20px" }}>Get Started</Link>
+      <Link href="/signup" style={{ ...ctaBtn, fontSize: 13, padding: "8px 20px" }}>Get Started</Link>
     </nav>
   );
 }
@@ -73,10 +74,10 @@ function Footer() {
     <footer style={footer}>
       <p>&copy; {new Date().getFullYear()} Silva Vitalis LLC. All rights reserved.</p>
       <div style={{ marginTop: 8, display: "flex", gap: 20, justifyContent: "center", flexWrap: "wrap" }}>
-        <Link to="/page/about" style={{ color: c.stone, textDecoration: "none", fontSize: 13 }}>About</Link>
-        <Link to="/page/contact" style={{ color: c.stone, textDecoration: "none", fontSize: 13 }}>Contact</Link>
-        <Link to="/page/help" style={{ color: c.stone, textDecoration: "none", fontSize: 13 }}>Help</Link>
-        <Link to="/page/careers" style={{ color: c.stone, textDecoration: "none", fontSize: 13 }}>Careers</Link>
+        <Link href="/page/about" style={{ color: c.stone, textDecoration: "none", fontSize: 13 }}>About</Link>
+        <Link href="/page/contact" style={{ color: c.stone, textDecoration: "none", fontSize: 13 }}>Contact</Link>
+        <Link href="/page/help" style={{ color: c.stone, textDecoration: "none", fontSize: 13 }}>Help</Link>
+        <Link href="/page/careers" style={{ color: c.stone, textDecoration: "none", fontSize: 13 }}>Careers</Link>
       </div>
     </footer>
   );
@@ -98,7 +99,7 @@ function ValueCard({ icon, title, desc }: { icon: string; title: string; desc: s
 
 function AboutPage() {
   useSEO({ title: "About HireStepX — AI Interview Prep", description: "Learn about HireStepX, our mission to help every job seeker prepare for interviews with AI-powered practice." });
-  const nav = useNavigate();
+  const nav = useRouter();
   return (
     <>
       <div style={hero}>
@@ -141,7 +142,7 @@ function AboutPage() {
         </section>
 
         <div style={{ textAlign: "center", ...sectionGap }}>
-          <button onClick={() => nav("/signup")} style={ctaBtn}>Start practicing free</button>
+          <button onClick={() => nav.push("/signup")} style={ctaBtn}>Start practicing free</button>
         </div>
       </div>
     </>
@@ -152,7 +153,7 @@ function AboutPage() {
 
 function ContactPage() {
   useSEO({ title: "Contact HireStepX", description: "Get in touch with the HireStepX team for support, partnerships, or general inquiries." });
-  const nav = useNavigate();
+  const nav = useRouter();
   const contacts = [
     { label: "General Inquiries", email: "hello@hirestepx.com", desc: "Questions about the product, pricing, or anything else.", icon: "💬" },
     { label: "Support", email: "support@hirestepx.com", desc: "Technical issues, account help, or bug reports.", icon: "🛠" },
@@ -181,7 +182,7 @@ function ContactPage() {
           </p>
         </section>
         <div style={{ textAlign: "center", ...sectionGap }}>
-          <button onClick={() => nav("/signup")} style={ctaBtn}>Start free — no credit card needed</button>
+          <button onClick={() => nav.push("/signup")} style={ctaBtn}>Start free — no credit card needed</button>
         </div>
       </div>
     </>
@@ -192,7 +193,7 @@ function ContactPage() {
 
 function CareersPage() {
   useSEO({ title: "Careers at HireStepX", description: "Join the HireStepX team. See open roles and what we look for in teammates." });
-  const nav = useNavigate();
+  const nav = useRouter();
   const traits = [
     { icon: "🧠", title: "Deep curiosity", desc: "You dig into problems until you truly understand them." },
     { icon: "✍️", title: "Clear communication", desc: "You write well, explain simply, and ask good questions." },
@@ -232,7 +233,7 @@ function CareersPage() {
 
         <div style={{ textAlign: "center", ...sectionGap }}>
           <p style={{ ...bodyText, marginBottom: 20 }}>Curious what we've built?</p>
-          <button onClick={() => nav("/signup")} style={ctaBtn}>Try HireStepX free</button>
+          <button onClick={() => nav.push("/signup")} style={ctaBtn}>Try HireStepX free</button>
         </div>
       </div>
     </>
@@ -256,7 +257,7 @@ function AccordionItem({ q, a }: { q: string; a: string }) {
 
 function HelpPage() {
   useSEO({ title: "Help Center — HireStepX", description: "Get started with HireStepX, troubleshoot common issues, and find answers to frequently asked questions." });
-  const nav = useNavigate();
+  const nav = useRouter();
   const steps = [
     { n: "1", title: "Create your free account", desc: "Sign up with email — no credit card required." },
     { n: "2", title: "Upload your resume", desc: "We generate questions tailored to your experience and target role." },
@@ -312,7 +313,7 @@ function HelpPage() {
         </section>
 
         <div style={{ textAlign: "center", ...sectionGap }}>
-          <button onClick={() => nav("/dashboard")} style={ctaBtn}>Go to Dashboard</button>
+          <button onClick={() => nav.push("/dashboard")} style={ctaBtn}>Go to Dashboard</button>
         </div>
       </div>
     </>
@@ -323,12 +324,12 @@ function HelpPage() {
 
 function NotFoundPage() {
   useSEO({ title: "Page Not Found — HireStepX", description: "This page doesn't exist." });
-  const nav = useNavigate();
+  const nav = useRouter();
   return (
     <div style={{ ...hero, padding: "clamp(80px, 15vw, 160px) 20px" }}>
       <h1 style={h1}>Page Not Found</h1>
       <p style={{ ...subtitle, marginBottom: 32 }}>This page doesn't exist or has been moved.</p>
-      <button onClick={() => nav("/")} style={ctaBtn}>Back to Home</button>
+      <button onClick={() => nav.push("/")} style={ctaBtn}>Back to Home</button>
     </div>
   );
 }
@@ -343,7 +344,7 @@ const pageMap: Record<string, () => React.JSX.Element> = {
 };
 
 export default function PlaceholderPage() {
-  const { slug } = useParams<{ slug: string }>();
+  const { slug } = useParams() as { slug?: string };
   const Page = pageMap[slug || ""] || NotFoundPage;
 
   return (

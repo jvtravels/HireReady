@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import Link from "next/link";
 import { track } from "@vercel/analytics";
 import { c, font } from "../tokens";
 import { useAuth } from "../AuthContext";
@@ -141,7 +141,7 @@ export function StickyCTA() {
             No credit card required
           </span>
         </div>
-        <Link to="/signup" className="shimmer-btn premium-btn" style={{
+        <Link href="/signup" className="shimmer-btn premium-btn" style={{
           fontFamily: font.ui, fontSize: 13, fontWeight: 600, padding: "10px 24px",
           borderRadius: 8, cursor: "pointer", letterSpacing: "0.02em", textDecoration: "none",
           flexShrink: 0,
@@ -159,7 +159,7 @@ export function HeroCTA() {
   const { isLoggedIn } = useAuth();
   return (
     <div className="hero-cta" style={{ display: "flex", gap: 16, animation: "fadeInUp 0.8s ease 2.2s both", marginBottom: 40 }}>
-      <Link to={isLoggedIn ? "/dashboard" : "/signup"} className="shimmer-btn premium-btn" style={{
+      <Link href={isLoggedIn ? "/dashboard" : "/signup"} className="shimmer-btn premium-btn" style={{
         fontFamily: font.ui, fontSize: 15, fontWeight: 600, padding: "16px 36px",
         borderRadius: 12, cursor: "pointer", letterSpacing: "0.02em", textDecoration: "none",
         display: "inline-flex", alignItems: "center", gap: 8,
@@ -185,7 +185,7 @@ export function HeroCTA() {
 export function BottomCTA() {
   const { isLoggedIn } = useAuth();
   return (
-    <Link to={isLoggedIn ? "/dashboard" : "/signup"} className="shimmer-btn premium-btn" style={{
+    <Link href={isLoggedIn ? "/dashboard" : "/signup"} className="shimmer-btn premium-btn" style={{
       fontFamily: font.ui, fontSize: 16, fontWeight: 600, padding: "18px 44px",
       borderRadius: 14, cursor: "pointer", letterSpacing: "0.02em", textDecoration: "none",
       display: "inline-flex", alignItems: "center",

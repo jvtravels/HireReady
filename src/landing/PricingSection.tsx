@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useRouter } from "next/navigation";
 import { track } from "@vercel/analytics";
 import { c, font } from "../tokens";
 import { useAuth } from "../AuthContext";
@@ -43,7 +43,7 @@ export function PricingSection() {
 
 function PricingCard({ plan, delay }: { plan: (typeof plans)[0]; delay: number }) {
   const ref = useReveal<HTMLDivElement>();
-  const navigate = useNavigate();
+  const router = useRouter();
   const { user, isLoggedIn, updateUser } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -53,10 +53,10 @@ function PricingCard({ plan, delay }: { plan: (typeof plans)[0]; delay: number }
   const handleClick = async () => {
     track("cta_click", { cta: `pricing_${plan.name.toLowerCase()}`, plan: plan.name });
     if (plan.price === "Free") {
-      navigate(isLoggedIn ? "/session/new" : "/signup");
+      router.push(isLoggedIn ? "/session/new" : "/signup");
       return;
     }
-    if (!isLoggedIn) { navigate(`/signup?plan=${plan.planId}`); return; }
+    if (!isLoggedIn) { router.push(`/signup?plan=${plan.planId}`); return; }
 
     setLoading(true);
     setError("");
@@ -149,7 +149,7 @@ function PricingCard({ plan, delay }: { plan: (typeof plans)[0]; delay: number }
                 track("payment_success", { plan: plan.planId, method: "subscription" });
                 track("payment_completed", { plan: plan.planId || "session_pack" });
                 updateUser({ subscriptionTier: verifyData.subscriptionTier, subscriptionStart: verifyData.subscriptionStart, subscriptionEnd: verifyData.subscriptionEnd });
-                navigate("/dashboard?payment=success");
+                router.push("/dashboard?payment=success");
               } else {
                 track("payment_verify_failed", { plan: plan.planId, error: verifyData.error });
                 setError(verifyData.error || "Payment verification failed.");
@@ -183,7 +183,7 @@ function PricingCard({ plan, delay }: { plan: (typeof plans)[0]; delay: number }
                 track("payment_success", { plan: plan.planId, method: "order" });
                 track("payment_completed", { plan: plan.planId || "session_pack" });
                 updateUser({ subscriptionTier: verifyData.subscriptionTier, subscriptionStart: verifyData.subscriptionStart, subscriptionEnd: verifyData.subscriptionEnd });
-                navigate("/dashboard?payment=success");
+                router.push("/dashboard?payment=success");
               } else {
                 track("payment_verify_failed", { plan: plan.planId, error: verifyData.error });
                 setError(verifyData.error || "Payment verification failed.");

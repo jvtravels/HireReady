@@ -11,7 +11,7 @@ import {
   escapeHtml,
   supabaseUrl,
   supabaseAnonKey,
-} from "./_shared.js";
+} from "./_shared";
 
 /** Fetch with AbortController timeout (default 8s) */
 function fetchWithTimeout(url: string, opts: RequestInit & { timeout?: number } = {}): Promise<Response> {
@@ -390,7 +390,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(500).json({ error: "Failed to add session credit" });
       }
       // Send confirmation email (7 args: email, name, plan, tier, paymentId, startDate, endDate)
-      try { await sendPaymentEmail(userEmail || email || "", userName || "Customer", "single", "free", razorpay_payment_id, now.toISOString(), now.toISOString()); } catch (e) { console.warn("Email send failed:", e); }
+      try { await sendPaymentEmail(userEmail || "", userName || "Customer", "single", "free", razorpay_payment_id, now.toISOString(), now.toISOString()); } catch (e) { console.warn("Email send failed:", e); }
       return res.status(200).json({ success: true, tier: current?.subscription_tier || "free", plan: "single", credits: newCredits, quantity: sessionQuantity, subscription_start: now.toISOString(), subscription_end: current?.subscription_end || now.toISOString() });
     }
 

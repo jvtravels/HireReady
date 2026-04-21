@@ -3,7 +3,7 @@
 
 export const config = { runtime: "edge" };
 
-import { corsHeaders, validateOrigin, withRequestId, getClientIp } from "./_shared.js";
+import { corsHeaders, validateOrigin, withRequestId, getClientIp } from "./_shared";
 
 declare const process: { env: Record<string, string | undefined> };
 
