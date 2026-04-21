@@ -36,9 +36,9 @@ describe("UpgradeModal", () => {
     expect(screen.getByText("Active")).toBeInTheDocument();
   });
 
-  it("shows session usage in header", () => {
+  it("shows title in header", () => {
     render(<UpgradeModal {...defaultProps} />);
-    expect(screen.getByText(/3 of 3 free sessions/)).toBeInTheDocument();
+    expect(screen.getByText("Choose Your Plan")).toBeInTheDocument();
   });
 
   it("has role=dialog and aria-modal for accessibility", () => {

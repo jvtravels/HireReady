@@ -312,9 +312,7 @@ export const UpgradeModal = memo(function UpgradeModal({ onClose, sessionsUsed, 
 
         <div style={{ textAlign: "center", marginBottom: 28 }}>
           <h2 id="upgrade-modal-title" style={{ fontFamily: font.display, fontSize: 24, fontWeight: 400, color: c.ivory, marginBottom: 6 }}>Choose Your Plan</h2>
-          <p style={{ fontFamily: font.ui, fontSize: 13, color: c.stone, lineHeight: 1.5 }}>
-            {currentTier === "free" ? `You've used ${sessionsUsed} of ${FREE_SESSION_LIMIT} free sessions. Buy a session for ₹10 or upgrade.` : "Manage your plan"}
-          </p>
+          {currentTier !== "free" && <p style={{ fontFamily: font.ui, fontSize: 13, color: c.stone, lineHeight: 1.5 }}>Manage your plan</p>}
         </div>
 
         {error && (
