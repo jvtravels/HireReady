@@ -117,8 +117,9 @@ async function unzip(data: Uint8Array): Promise<{ entries: { filename: string; d
 async function readPdf(file: File): Promise<string> {
   const arrayBuffer = await file.arrayBuffer();
 
-  const pdfjsLib = await import("pdfjs-dist");
-  pdfjsLib.GlobalWorkerOptions.workerSrc = "";
+  const pdfjsLib = await import("pdfjs-dist/legacy/build/pdf");
+  // @ts-expect-error no type declarations for worker entry
+  await import("pdfjs-dist/legacy/build/pdf.worker.entry");
 
   const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer) }).promise;
 
