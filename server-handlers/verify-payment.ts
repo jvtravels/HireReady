@@ -153,13 +153,28 @@ async function sendPaymentEmail(
     if (!emailRes.ok) {
       const errBody = await emailRes.text().catch(() => "");
       console.error("Resend API error:", emailRes.status, errBody);
+      logPaymentResendUsage("error", `HTTP ${emailRes.status}`);
       throw new Error(`Resend error ${emailRes.status}: ${errBody}`);
     }
+    logPaymentResendUsage("success");
   } catch (err) {
     // Non-blocking — don't fail the payment if email fails
     console.error("Failed to send payment email:", err);
+    logPaymentResendUsage("error", err instanceof Error ? err.message : "Unknown");
     throw err; // re-throw so Promise.allSettled captures it
   }
+}
+
+/** Fire-and-forget: log Resend email usage for payment emails */
+function logPaymentResendUsage(status: "success" | "error", errorMessage?: string): void {
+  const url = process.env.SUPABASE_URL || "";
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+  if (!url || !key) return;
+  fetch(`${url}/rest/v1/service_usage`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", apikey: key, Authorization: `Bearer ${key}`, Prefer: "return=minimal" },
+    body: JSON.stringify({ service: "resend_email", endpoint: "payment-confirmation", status, error_message: errorMessage?.slice(0, 500) || null }),
+  }).catch(() => {});
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {

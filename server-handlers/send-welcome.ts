@@ -17,6 +17,46 @@ function escapeHtml(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
+/** Fire-and-forget: log Resend email usage. Self-contained — no _shared import. */
+function logResendUsage(action: string, status: "success" | "error", latencyMs?: number, errorMessage?: string): void {
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) return;
+  fetch(`${SUPABASE_URL}/rest/v1/service_usage`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      apikey: SUPABASE_SERVICE_ROLE_KEY,
+      Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+      Prefer: "return=minimal",
+    },
+    body: JSON.stringify({
+      service: "resend_email",
+      endpoint: action,
+      status,
+      latency_ms: latencyMs || null,
+      error_message: errorMessage?.slice(0, 500) || null,
+    }),
+  }).catch(() => {});
+}
+
+/** Tracked Resend email send — wraps fetch with logging */
+async function sendResendEmail(action: string, payload: Record<string, unknown>, signal?: AbortSignal): Promise<Response> {
+  const t0 = Date.now();
+  try {
+    const resp = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
+      signal,
+      body: JSON.stringify(payload),
+    });
+    const latency = Date.now() - t0;
+    logResendUsage(action, resp.ok ? "success" : "error", latency, resp.ok ? undefined : `HTTP ${resp.status}`);
+    return resp;
+  } catch (err) {
+    logResendUsage(action, "error", Date.now() - t0, err instanceof Error ? err.message : "Unknown error");
+    throw err;
+  }
+}
+
 /** Generate a unique, non-deterministic verification token with nonce. */
 export function generateVerifyToken(email: string, expiresAt?: number): string {
   const expiry = expiresAt ?? Math.floor(Date.now() / (24 * 60 * 60 * 1000));
@@ -120,7 +160,10 @@ async function handlePasswordChanged(req: VercelRequest, res: VercelResponse, no
       }),
     });
     clearTimeout(timer);
-  } catch { /* notification is best-effort */ }
+    logResendUsage("password-changed", "success");
+  } catch (err) {
+    logResendUsage("password-changed", "error", undefined, err instanceof Error ? err.message : "Unknown");
+  }
 
   return res.status(200).json({ ok: true });
 }
@@ -184,7 +227,10 @@ async function handleVerifyReminder(req: VercelRequest, res: VercelResponse, nor
       }),
     });
     clearTimeout(timer);
-  } catch { /* reminder is best-effort */ }
+    logResendUsage("verify-reminder", "success");
+  } catch (err) {
+    logResendUsage("verify-reminder", "error", undefined, err instanceof Error ? err.message : "Unknown");
+  }
 
   return res.status(200).json({ ok: true });
 }
@@ -316,12 +362,16 @@ async function handleReset(req: VercelRequest, res: VercelResponse, normalizedEm
     if (!emailRes.ok) {
       const errBody = await emailRes.text();
       console.error("Resend API error for reset:", emailRes.status, errBody);
+      logResendUsage("reset", "error", undefined, `HTTP ${emailRes.status}`);
+    } else {
+      logResendUsage("reset", "success");
     }
 
     // Always return success to not reveal whether the email exists
     return res.status(200).json({ ok: true });
   } catch (err) {
     console.error("Password reset email error:", err);
+    logResendUsage("reset", "error", undefined, err instanceof Error ? err.message : "Unknown");
     return res.status(200).json({ ok: true });
   }
 }
@@ -442,12 +492,15 @@ async function handleVerify(req: VercelRequest, res: VercelResponse, email: stri
     if (!emailRes.ok) {
       const errBody = await emailRes.text();
       console.error("Resend API error:", emailRes.status, errBody);
+      logResendUsage("verify", "error", undefined, `HTTP ${emailRes.status}`);
       return res.status(200).json({ ok: true, emailSent: false, reason: "Resend API error" });
     }
 
+    logResendUsage("verify", "success");
     return res.status(200).json({ ok: true, emailSent: true });
   } catch (err) {
     console.error("Verification email error:", err);
+    logResendUsage("verify", "error", undefined, err instanceof Error ? err.message : "Unknown");
     return res.status(200).json({ ok: true, emailSent: false, reason: "Email send failed" });
   }
 }

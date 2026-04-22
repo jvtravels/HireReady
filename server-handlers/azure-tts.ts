@@ -3,7 +3,7 @@
 
 export const config = { runtime: "edge" };
 
-import { handleCorsPreflightOrMethod, corsHeaders, isRateLimited, getClientIp, rateLimitResponse, verifyAuth, unauthorizedResponse, validateOrigin, withRequestId } from "./_shared";
+import { handleCorsPreflightOrMethod, corsHeaders, isRateLimited, getClientIp, rateLimitResponse, verifyAuth, unauthorizedResponse, validateOrigin, withRequestId, logServiceUsage } from "./_shared";
 
 declare const process: { env: Record<string, string | undefined> };
 const AZURE_TTS_KEY = process.env.AZURE_TTS_KEY || "";
@@ -93,6 +93,7 @@ export default async function handler(req: Request): Promise<Response> {
 
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 15_000);
+    const t0 = Date.now();
 
     const res = await fetch(TTS_ENDPOINT, {
       method: "POST",
@@ -106,17 +107,22 @@ export default async function handler(req: Request): Promise<Response> {
       signal: controller.signal,
     });
     clearTimeout(timeout);
+    const latency = Date.now() - t0;
 
     if (!res.ok) {
       const errText = await res.text().catch(() => "");
       console.warn("Azure TTS error:", res.status, errText);
+      logServiceUsage({ service: "azure_tts", endpoint: "tts/v1", userId: auth.userId, status: "error", latencyMs: latency, requestChars: trimmedText.length, errorMessage: `${res.status}: ${errText.slice(0, 200)}` });
       return new Response(JSON.stringify({ error: "TTS generation failed", status: res.status, detail: errText.slice(0, 200) }), { status: 502, headers });
     }
 
     const audioBytes = await res.arrayBuffer();
     if (audioBytes.byteLength < 100) {
+      logServiceUsage({ service: "azure_tts", endpoint: "tts/v1", userId: auth.userId, status: "error", latencyMs: latency, requestChars: trimmedText.length, errorMessage: "Empty audio response" });
       return new Response(JSON.stringify({ error: "Empty audio response" }), { status: 502, headers });
     }
+
+    logServiceUsage({ service: "azure_tts", endpoint: "tts/v1", userId: auth.userId, status: "success", latencyMs: latency, requestChars: trimmedText.length, responseBytes: audioBytes.byteLength });
 
     const audioHeaders: Record<string, string> = {
       "Content-Type": "audio/mpeg",
@@ -134,6 +140,7 @@ export default async function handler(req: Request): Promise<Response> {
     return new Response(audioBytes, { status: 200, headers: audioHeaders });
   } catch (err) {
     console.error("Azure TTS proxy error:", err);
+    logServiceUsage({ service: "azure_tts", endpoint: "tts/v1", status: "timeout", errorMessage: err instanceof Error ? err.message : "Unknown error" });
     return new Response(JSON.stringify({ error: "Internal error" }), { status: 500, headers });
   }
 }

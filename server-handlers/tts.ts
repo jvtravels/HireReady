@@ -3,7 +3,7 @@
 
 export const config = { runtime: "edge" };
 
-import { handleCorsPreflightOrMethod, corsHeaders, isRateLimited, getClientIp, rateLimitResponse, verifyAuth, unauthorizedResponse, validateOrigin, withRequestId } from "./_shared";
+import { handleCorsPreflightOrMethod, corsHeaders, isRateLimited, getClientIp, rateLimitResponse, verifyAuth, unauthorizedResponse, validateOrigin, withRequestId, logServiceUsage } from "./_shared";
 
 declare const process: { env: Record<string, string | undefined> };
 const CARTESIA_API_KEY = process.env.CARTESIA_API_KEY || "";
@@ -56,6 +56,7 @@ export default async function handler(req: Request): Promise<Response> {
 
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 15_000);
+    const t0 = Date.now();
     const res = await fetch("https://api.cartesia.ai/tts/bytes", {
       method: "POST",
       headers: {
@@ -77,14 +78,17 @@ export default async function handler(req: Request): Promise<Response> {
       }),
     });
     clearTimeout(timeout);
+    const latency = Date.now() - t0;
 
     if (!res.ok) {
       const errText = await res.text().catch(() => "");
       console.warn("Cartesia TTS error:", res.status, errText);
+      logServiceUsage({ service: "cartesia_tts", endpoint: "tts/bytes", userId: auth.userId, status: "error", latencyMs: latency, requestChars: trimmedText.length, errorMessage: `${res.status}: ${errText.slice(0, 200)}` });
       return new Response(JSON.stringify({ error: "TTS generation failed", cartesiaStatus: res.status, detail: errText.slice(0, 200) }), { status: 502, headers });
     }
 
     const audioBytes = await res.arrayBuffer();
+    logServiceUsage({ service: "cartesia_tts", endpoint: "tts/bytes", userId: auth.userId, status: "success", latencyMs: latency, requestChars: trimmedText.length, responseBytes: audioBytes.byteLength });
 
     const audioHeaders: Record<string, string> = {
       "Content-Type": "audio/mpeg",
@@ -101,6 +105,7 @@ export default async function handler(req: Request): Promise<Response> {
     return new Response(audioBytes, { status: 200, headers: audioHeaders });
   } catch (err) {
     console.error("TTS proxy error:", err);
+    logServiceUsage({ service: "cartesia_tts", endpoint: "tts/bytes", status: "timeout", errorMessage: err instanceof Error ? err.message : "Unknown error" });
     return new Response(JSON.stringify({ error: "Internal error" }), { status: 500, headers });
   }
 }

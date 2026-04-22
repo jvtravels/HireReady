@@ -3,7 +3,7 @@
 
 export const config = { runtime: "edge" };
 
-import { handleCorsPreflightOrMethod, corsHeaders, isRateLimited, getClientIp, rateLimitResponse, verifyAuth, unauthorizedResponse, validateOrigin, withRequestId } from "./_shared";
+import { handleCorsPreflightOrMethod, corsHeaders, isRateLimited, getClientIp, rateLimitResponse, verifyAuth, unauthorizedResponse, validateOrigin, withRequestId, logServiceUsage } from "./_shared";
 
 declare const process: { env: Record<string, string | undefined> };
 const DEEPGRAM_API_KEY = process.env.DEEPGRAM_API_KEY || "";
@@ -34,6 +34,9 @@ export default async function handler(req: Request): Promise<Response> {
   // Deepgram's scoped key API requires project ID which varies per account,
   // so we return the key directly (already behind auth + rate limiting + origin check)
   const expiresAt = Date.now() + 2 * 60 * 1000; // 2 minutes
+
+  // Log each token request as a Deepgram STT session start
+  logServiceUsage({ service: "deepgram_stt", endpoint: "token", userId: auth.userId, status: "success" });
 
   return new Response(JSON.stringify({
     apiKey: DEEPGRAM_API_KEY,

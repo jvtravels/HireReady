@@ -379,16 +379,16 @@ async function getLLMUsage() {
       endpoint: u.endpoint, model: u.model, error: u.error_message, date: u.created_at,
     })),
     // Service details for the enhanced Services view
-    services: buildServiceDetails(usage, todayTokens),
+    services: await buildServiceDetails(usage),
   };
 }
 
-/** Build detailed per-service breakdown with plan limits and health */
-function buildServiceDetails(
+/** Build detailed per-service breakdown with real usage from service_usage table + llm_usage */
+async function buildServiceDetails(
   llmUsage: Array<{ model: string; is_fallback: boolean; total_tokens: number; latency_ms: number; status: string; created_at: string }>,
-  todayTokens: number,
 ) {
   const today = daysAgo(0).slice(0, 10);
+  const monthAgo = daysAgo(30).slice(0, 10);
   const todayUsage = llmUsage.filter(u => u.created_at?.startsWith(today));
 
   // Groq usage (primary LLM)
@@ -405,6 +405,46 @@ function buildServiceDetails(
   const geminiErrors = geminiCalls.filter(u => u.status === "error" || u.status === "timeout").length;
   const geminiAvgLatency = geminiCalls.length > 0 ? Math.round(geminiCalls.reduce((s, u) => s + (u.latency_ms || 0), 0) / geminiCalls.length) : 0;
 
+  // Fetch service_usage for all non-LLM services
+  const serviceRows = await fetchJSON<{
+    service: string; status: string; latency_ms: number | null;
+    request_chars: number | null; response_bytes: number | null; created_at: string;
+  }>(`service_usage?select=service,status,latency_ms,request_chars,response_bytes,created_at&created_at=gte.${monthAgo}&order=created_at.desc&limit=5000`);
+
+  // Aggregate per service
+  type Agg = { callsTotal: number; callsToday: number; errorsTotal: number; errorsToday: number; latencySum: number; latencyCount: number; charsTotal: number; charsToday: number; bytesTotal: number };
+  const agg: Record<string, Agg> = {};
+  for (const r of serviceRows) {
+    if (!agg[r.service]) agg[r.service] = { callsTotal: 0, callsToday: 0, errorsTotal: 0, errorsToday: 0, latencySum: 0, latencyCount: 0, charsTotal: 0, charsToday: 0, bytesTotal: 0 };
+    const a = agg[r.service];
+    const isToday = r.created_at?.startsWith(today);
+    a.callsTotal++;
+    if (isToday) a.callsToday++;
+    if (r.status === "error" || r.status === "timeout") {
+      a.errorsTotal++;
+      if (isToday) a.errorsToday++;
+    }
+    if (r.latency_ms) { a.latencySum += r.latency_ms; a.latencyCount++; }
+    if (r.request_chars) { a.charsTotal += r.request_chars; if (isToday) a.charsToday += r.request_chars; }
+    if (r.response_bytes) a.bytesTotal += r.response_bytes;
+  }
+
+  const svc = (name: string): Agg => agg[name] || { callsTotal: 0, callsToday: 0, errorsTotal: 0, errorsToday: 0, latencySum: 0, latencyCount: 0, charsTotal: 0, charsToday: 0, bytesTotal: 0 };
+  const avgLat = (a: Agg) => a.latencyCount > 0 ? Math.round(a.latencySum / a.latencyCount) : 0;
+  const svcStatus = (a: Agg) => a.callsTotal > 0 && a.errorsTotal > a.callsTotal * 0.1 ? "degraded" : "healthy";
+
+  const az = svc("azure_tts");
+  const ca = svc("cartesia_tts");
+  const dg = svc("deepgram_stt");
+  const sv = svc("sarvam_stt");
+  const re = svc("resend_email");
+
+  // Upstash: estimate commands from total service calls (each rate-limited req = ~2 Redis commands)
+  const totalServiceCalls = serviceRows.length + llmUsage.length;
+  const todayServiceCalls = serviceRows.filter(r => r.created_at?.startsWith(today)).length + todayUsage.length;
+  const upstashEstCmdsTotal = totalServiceCalls * 2;
+  const upstashEstCmdsToday = todayServiceCalls * 2;
+
   return [
     {
       name: "Groq",
@@ -418,14 +458,10 @@ function buildServiceDetails(
         tokensToday: groqTokensToday,
         tokensTotal: groqCalls.reduce((s, u) => s + (u.total_tokens || 0), 0),
         errorsTotal: groqErrors,
+        errorsToday: groqToday.filter(u => u.status === "error" || u.status === "timeout").length,
         avgLatencyMs: groqAvgLatency,
       },
-      limits: {
-        tokensPerMinute: 30000,
-        tokensPerDay: 1_000_000,
-        requestsPerMinute: 30,
-        requestsPerDay: 14400,
-      },
+      limits: { requestsPerDay: 14400, tokensPerDay: 1_000_000 },
       notes: "Free tier: 30 RPM, ~1M TPD. Upgrade at console.groq.com if hitting limits.",
     },
     {
@@ -440,14 +476,10 @@ function buildServiceDetails(
         tokensToday: geminiTokensToday,
         tokensTotal: geminiCalls.reduce((s, u) => s + (u.total_tokens || 0), 0),
         errorsTotal: geminiErrors,
+        errorsToday: geminiToday.filter(u => u.is_fallback && (u.status === "error" || u.status === "timeout")).length,
         avgLatencyMs: geminiAvgLatency,
       },
-      limits: {
-        tokensPerMinute: 1_000_000,
-        tokensPerDay: 10_000_000,
-        requestsPerMinute: 1500,
-        requestsPerDay: 100_000,
-      },
+      limits: { requestsPerDay: 100_000, tokensPerDay: 10_000_000 },
       notes: "Free tier: 1500 RPM, 10M TPD. Only used when Groq fails. Upgrade at aistudio.google.com.",
     },
     {
@@ -455,19 +487,17 @@ function buildServiceDetails(
       type: "TTS",
       role: "Primary",
       model: "Neural voices (Indian English)",
-      status: "healthy", // No tracking yet — assume healthy
+      status: svcStatus(az),
       usage: {
-        callsTotal: null,
-        callsToday: null,
-        tokensToday: null,
-        tokensTotal: null,
-        errorsTotal: null,
-        avgLatencyMs: null,
+        callsTotal: az.callsTotal,
+        callsToday: az.callsToday,
+        charsToday: az.charsToday,
+        charsTotal: az.charsTotal,
+        errorsTotal: az.errorsTotal,
+        errorsToday: az.errorsToday,
+        avgLatencyMs: avgLat(az),
       },
-      limits: {
-        freeCharactersPerMonth: 500_000,
-        paidPricePerMillion: 16, // USD
-      },
+      limits: { freeCharsPerMonth: 500_000 },
       notes: "Free tier: 0.5M chars/month (F0). Standard: $16/1M chars. Check portal.azure.com for usage.",
     },
     {
@@ -475,19 +505,17 @@ function buildServiceDetails(
       type: "TTS",
       role: "Fallback",
       model: "sonic-3",
-      status: "healthy",
+      status: svcStatus(ca),
       usage: {
-        callsTotal: null,
-        callsToday: null,
-        tokensToday: null,
-        tokensTotal: null,
-        errorsTotal: null,
-        avgLatencyMs: null,
+        callsTotal: ca.callsTotal,
+        callsToday: ca.callsToday,
+        charsToday: ca.charsToday,
+        charsTotal: ca.charsTotal,
+        errorsTotal: ca.errorsTotal,
+        errorsToday: ca.errorsToday,
+        avgLatencyMs: avgLat(ca),
       },
-      limits: {
-        freeSecondsPerMonth: 600,
-        paidPricePerSecond: 0.02, // USD
-      },
+      limits: { freeSecondsPerMonth: 600 },
       notes: "Free: 10 min/month. Only used when Azure TTS fails. Check play.cartesia.ai for usage.",
     },
     {
@@ -495,38 +523,31 @@ function buildServiceDetails(
       type: "STT",
       role: "Primary",
       model: "Nova-3",
-      status: "healthy",
+      status: svcStatus(dg),
       usage: {
-        callsTotal: null,
-        callsToday: null,
-        tokensToday: null,
-        tokensTotal: null,
-        errorsTotal: null,
-        avgLatencyMs: null,
+        callsTotal: dg.callsTotal,
+        callsToday: dg.callsToday,
+        errorsTotal: dg.errorsTotal,
+        errorsToday: dg.errorsToday,
+        avgLatencyMs: avgLat(dg),
       },
-      limits: {
-        freeCredits: 200, // USD credits on signup
-        paidPricePerHour: 0.0043, // USD per second = ~$15.48/hr
-      },
-      notes: "Pay-as-you-go with $200 free credit. Check console.deepgram.com for balance.",
+      limits: { freeCredits: 200 },
+      notes: "Pay-as-you-go with $200 free credit. Each token request = 1 STT session. Check console.deepgram.com.",
     },
     {
       name: "Sarvam AI",
       type: "STT",
       role: "Fallback (Hinglish)",
       model: "saaras:v2",
-      status: "healthy",
+      status: svcStatus(sv),
       usage: {
-        callsTotal: null,
-        callsToday: null,
-        tokensToday: null,
-        tokensTotal: null,
-        errorsTotal: null,
-        avgLatencyMs: null,
+        callsTotal: sv.callsTotal,
+        callsToday: sv.callsToday,
+        errorsTotal: sv.errorsTotal,
+        errorsToday: sv.errorsToday,
+        avgLatencyMs: avgLat(sv),
       },
-      limits: {
-        freeRequestsPerDay: 50,
-      },
+      limits: { freeRequestsPerDay: 50 },
       notes: "Used for Hinglish code-switching. Check dashboard.sarvam.ai for usage.",
     },
     {
@@ -534,19 +555,15 @@ function buildServiceDetails(
       type: "Email",
       role: "Transactional",
       model: "—",
-      status: "healthy",
+      status: svcStatus(re),
       usage: {
-        callsTotal: null,
-        callsToday: null,
-        tokensToday: null,
-        tokensTotal: null,
-        errorsTotal: null,
-        avgLatencyMs: null,
+        callsTotal: re.callsTotal,
+        callsToday: re.callsToday,
+        errorsTotal: re.errorsTotal,
+        errorsToday: re.errorsToday,
+        avgLatencyMs: avgLat(re),
       },
-      limits: {
-        freeEmailsPerDay: 100,
-        freeEmailsPerMonth: 3000,
-      },
+      limits: { freeEmailsPerDay: 100, freeEmailsPerMonth: 3000 },
       notes: "Free: 100/day, 3K/month. Sends: welcome, payment, renewal, re-engagement. Check resend.com/overview.",
     },
     {
@@ -556,18 +573,14 @@ function buildServiceDetails(
       model: "—",
       status: "healthy",
       usage: {
-        callsTotal: null,
-        callsToday: null,
-        tokensToday: null,
-        tokensTotal: null,
-        errorsTotal: null,
+        callsTotal: upstashEstCmdsTotal,
+        callsToday: upstashEstCmdsToday,
+        errorsTotal: 0,
+        errorsToday: 0,
         avgLatencyMs: null,
       },
-      limits: {
-        freeCommandsPerDay: 10_000,
-        freeStorageMb: 256,
-      },
-      notes: "Free: 10K commands/day, 256MB. Used for IP rate limiting. Check console.upstash.com.",
+      limits: { freeCommandsPerDay: 10_000, freeStorageMb: 256 },
+      notes: "Free: 10K commands/day, 256MB. ~2 cmds per rate-limited request. Check console.upstash.com.",
     },
   ];
 }

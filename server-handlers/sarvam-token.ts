@@ -3,7 +3,7 @@
 
 export const config = { runtime: "edge" };
 
-import { handleCorsPreflightOrMethod, corsHeaders, isRateLimited, getClientIp, rateLimitResponse, verifyAuth, unauthorizedResponse, validateOrigin, withRequestId } from "./_shared";
+import { handleCorsPreflightOrMethod, corsHeaders, isRateLimited, getClientIp, rateLimitResponse, verifyAuth, unauthorizedResponse, validateOrigin, withRequestId, logServiceUsage } from "./_shared";
 
 declare const process: { env: Record<string, string | undefined> };
 const SARVAM_API_KEY = process.env.SARVAM_API_KEY || "";
@@ -31,6 +31,9 @@ export default async function handler(req: Request): Promise<Response> {
   }
 
   const expiresAt = Date.now() + 2 * 60 * 1000; // 2 minutes
+
+  // Log each token request as a Sarvam STT session start
+  logServiceUsage({ service: "sarvam_stt", endpoint: "token", userId: auth.userId, status: "success" });
 
   return new Response(JSON.stringify({
     apiKey: SARVAM_API_KEY,

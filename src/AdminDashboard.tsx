@@ -25,9 +25,17 @@ interface FinancialsData {
   recent: Array<{ id: string; amount: number; currency: string; status: string; plan: string; date: string }>;
 }
 
+interface ServiceUsage {
+  callsTotal: number; callsToday: number;
+  errorsTotal: number; errorsToday: number;
+  avgLatencyMs: number | null;
+  tokensToday?: number; tokensTotal?: number;
+  charsToday?: number; charsTotal?: number;
+}
+
 interface ServiceInfo {
   name: string; type: string; role: string; model: string; status: string;
-  usage: Record<string, number | null>;
+  usage: ServiceUsage;
   limits: Record<string, number>;
   notes: string;
 }
@@ -881,6 +889,33 @@ export default function AdminDashboard() {
     );
   };
 
+  /** Compute "used today" / "daily limit" for a service and return progress bar data */
+  function getUsageBar(svc: ServiceInfo): { usedToday: number; limit: number; label: string; unit: string } | null {
+    const lim = svc.limits;
+    // LLMs: requests per day
+    if (lim.requestsPerDay) {
+      return { usedToday: svc.usage.callsToday, limit: lim.requestsPerDay, label: "Requests", unit: "req" };
+    }
+    // Resend: emails per day
+    if (lim.freeEmailsPerDay) {
+      return { usedToday: svc.usage.callsToday, limit: lim.freeEmailsPerDay, label: "Emails", unit: "emails" };
+    }
+    // Sarvam: requests per day
+    if (lim.freeRequestsPerDay) {
+      return { usedToday: svc.usage.callsToday, limit: lim.freeRequestsPerDay, label: "Requests", unit: "req" };
+    }
+    // Upstash: commands per day
+    if (lim.freeCommandsPerDay) {
+      return { usedToday: svc.usage.callsToday, limit: lim.freeCommandsPerDay, label: "Commands", unit: "cmds" };
+    }
+    // Azure TTS: chars per month (show daily estimate)
+    if (lim.freeCharsPerMonth) {
+      const dailyBudget = Math.round(lim.freeCharsPerMonth / 30);
+      return { usedToday: svc.usage.charsToday || 0, limit: dailyBudget, label: "Chars", unit: "chars" };
+    }
+    return null;
+  }
+
   const renderServices = () => {
     if (!llm?.services || llm.services.length === 0) return null;
 
@@ -893,13 +928,18 @@ export default function AdminDashboard() {
 
     return (
       <div style={{ marginBottom: 24 }}>
-        <p style={{ ...labelStyle, fontSize: 13, marginBottom: 20, color: c.ivory }}>Service Health &amp; Limits</p>
+        <p style={{ ...labelStyle, fontSize: 13, marginBottom: 20, color: c.ivory }}>Service Health &amp; Usage</p>
 
         {typeOrder.filter(t => grouped[t]).map(type => (
           <div key={type} style={{ marginBottom: 20 }}>
             <p style={{ ...labelStyle, marginBottom: 12, color: c.gilt }}>{type}</p>
             <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
-              {grouped[type].map(svc => (
+              {grouped[type].map(svc => {
+                const bar = getUsageBar(svc);
+                const pct = bar ? Math.min(100, (bar.usedToday / bar.limit) * 100) : 0;
+                const barColor = pct > 90 ? c.ember : pct > 70 ? c.gilt : c.sage;
+
+                return (
                 <div key={svc.name} style={{ ...card, flex: "1 1 320px", minWidth: 300, maxWidth: 520 }}>
                   {/* Header */}
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14 }}>
@@ -918,59 +958,69 @@ export default function AdminDashboard() {
                     <ServiceStatusBadge status={svc.status} />
                   </div>
 
-                  {/* Usage metrics (if tracked) */}
-                  {svc.usage.callsTotal != null ? (
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 14 }}>
-                      <div>
-                        <p style={{ ...labelStyle, fontSize: 9 }}>Calls (Total)</p>
-                        <p style={{ margin: 0, fontFamily: font.mono, color: c.ivory, fontSize: 14, fontWeight: 600 }}>{formatNum(svc.usage.callsTotal)}</p>
+                  {/* Usage Today / Available Today bar */}
+                  {bar && (
+                    <div style={{ marginBottom: 14 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 6 }}>
+                        <span style={{ fontSize: 11, color: c.chalk }}>
+                          <span style={{ fontFamily: font.mono, fontWeight: 600, color: c.ivory }}>{formatNum(bar.usedToday)}</span>
+                          <span style={{ color: c.stone }}> / {formatNum(bar.limit)} {bar.unit} today</span>
+                        </span>
+                        <span style={{ fontSize: 11, fontFamily: font.mono, color: barColor, fontWeight: 600 }}>
+                          {formatNum(Math.max(0, bar.limit - bar.usedToday))} left
+                        </span>
                       </div>
-                      <div>
-                        <p style={{ ...labelStyle, fontSize: 9 }}>Calls (Today)</p>
-                        <p style={{ margin: 0, fontFamily: font.mono, color: c.ivory, fontSize: 14, fontWeight: 600 }}>{formatNum(svc.usage.callsToday ?? 0)}</p>
+                      <div style={{ height: 8, background: c.onyx, borderRadius: 4, overflow: "hidden" }}>
+                        <div style={{
+                          height: "100%", width: `${pct}%`, background: barColor, borderRadius: 4,
+                          transition: "width 0.3s ease", minWidth: bar.usedToday > 0 ? 4 : 0,
+                        }} />
                       </div>
-                      <div>
-                        <p style={{ ...labelStyle, fontSize: 9 }}>Errors</p>
-                        <p style={{ margin: 0, fontFamily: font.mono, color: (svc.usage.errorsTotal ?? 0) > 0 ? c.ember : c.stone, fontSize: 14, fontWeight: 600 }}>
-                          {svc.usage.errorsTotal ?? 0}
-                        </p>
-                      </div>
-                      {svc.usage.tokensToday != null && (
-                        <div>
-                          <p style={{ ...labelStyle, fontSize: 9 }}>Tokens (Today)</p>
-                          <p style={{ margin: 0, fontFamily: font.mono, color: c.ivory, fontSize: 14, fontWeight: 600 }}>{formatNum(svc.usage.tokensToday)}</p>
-                        </div>
-                      )}
-                      {svc.usage.avgLatencyMs != null && (
-                        <div>
-                          <p style={{ ...labelStyle, fontSize: 9 }}>Avg Latency</p>
-                          <p style={{ margin: 0, fontFamily: font.mono, color: c.ivory, fontSize: 14, fontWeight: 600 }}>{svc.usage.avgLatencyMs}ms</p>
-                        </div>
-                      )}
                     </div>
-                  ) : (
-                    <p style={{ fontSize: 11, color: c.stone, marginBottom: 14, fontStyle: "italic" }}>Usage not tracked in DB — check provider dashboard</p>
                   )}
 
-                  {/* Limits */}
-                  <div style={{ padding: "10px 12px", background: c.onyx, borderRadius: radius.md, marginBottom: 10 }}>
-                    <p style={{ ...labelStyle, fontSize: 9, marginBottom: 6 }}>Plan Limits</p>
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: "4px 16px" }}>
-                      {Object.entries(svc.limits).map(([key, val]) => (
-                        <span key={key} style={{ fontSize: 11, color: c.chalk }}>
-                          <span style={{ color: c.stone }}>{key.replace(/([A-Z])/g, " $1").replace(/^./, s => s.toUpperCase())}: </span>
-                          <span style={{ fontFamily: font.mono, fontWeight: 600 }}>
-                            {typeof val === "number" ? val.toLocaleString() : String(val)}
-                          </span>
-                        </span>
-                      ))}
+                  {/* Usage metrics grid */}
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 14 }}>
+                    <div>
+                      <p style={{ ...labelStyle, fontSize: 9 }}>Total Calls</p>
+                      <p style={{ margin: 0, fontFamily: font.mono, color: c.ivory, fontSize: 14, fontWeight: 600 }}>{formatNum(svc.usage.callsTotal)}</p>
                     </div>
+                    <div>
+                      <p style={{ ...labelStyle, fontSize: 9 }}>Today</p>
+                      <p style={{ margin: 0, fontFamily: font.mono, color: c.ivory, fontSize: 14, fontWeight: 600 }}>{formatNum(svc.usage.callsToday)}</p>
+                    </div>
+                    <div>
+                      <p style={{ ...labelStyle, fontSize: 9 }}>Errors</p>
+                      <p style={{ margin: 0, fontFamily: font.mono, color: svc.usage.errorsToday > 0 ? c.ember : c.stone, fontSize: 14, fontWeight: 600 }}>
+                        {svc.usage.errorsToday}
+                        {svc.usage.errorsTotal > 0 && <span style={{ fontSize: 10, color: c.stone }}> ({svc.usage.errorsTotal})</span>}
+                      </p>
+                    </div>
+                    {svc.usage.tokensToday != null && svc.usage.tokensToday > 0 && (
+                      <div>
+                        <p style={{ ...labelStyle, fontSize: 9 }}>Tokens Today</p>
+                        <p style={{ margin: 0, fontFamily: font.mono, color: c.ivory, fontSize: 14, fontWeight: 600 }}>{formatNum(svc.usage.tokensToday)}</p>
+                      </div>
+                    )}
+                    {svc.usage.charsToday != null && svc.usage.charsToday > 0 && (
+                      <div>
+                        <p style={{ ...labelStyle, fontSize: 9 }}>Chars Today</p>
+                        <p style={{ margin: 0, fontFamily: font.mono, color: c.ivory, fontSize: 14, fontWeight: 600 }}>{formatNum(svc.usage.charsToday)}</p>
+                      </div>
+                    )}
+                    {svc.usage.avgLatencyMs != null && svc.usage.avgLatencyMs > 0 && (
+                      <div>
+                        <p style={{ ...labelStyle, fontSize: 9 }}>Avg Latency</p>
+                        <p style={{ margin: 0, fontFamily: font.mono, color: c.ivory, fontSize: 14, fontWeight: 600 }}>{svc.usage.avgLatencyMs}ms</p>
+                      </div>
+                    )}
                   </div>
 
                   {/* Notes */}
                   <p style={{ margin: 0, fontSize: 11, color: c.stone, lineHeight: 1.5 }}>{svc.notes}</p>
                 </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         ))}

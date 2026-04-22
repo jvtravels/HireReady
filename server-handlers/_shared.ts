@@ -538,3 +538,42 @@ export function getVercelClientIp(req: VercelRequest): string {
     || (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim()
     || "unknown";
 }
+
+/* ─── Service Usage Logging ─── */
+
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+
+/** Fire-and-forget: log service usage to Supabase. Never blocks or throws. */
+export function logServiceUsage(entry: {
+  service: string;
+  endpoint?: string;
+  userId?: string;
+  status: "success" | "error" | "timeout" | "rate_limited";
+  latencyMs?: number;
+  requestChars?: number;
+  responseBytes?: number;
+  errorMessage?: string;
+  meta?: Record<string, unknown>;
+}): void {
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) return;
+  fetch(`${SUPABASE_URL}/rest/v1/service_usage`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      apikey: SUPABASE_SERVICE_ROLE_KEY,
+      Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+      Prefer: "return=minimal",
+    },
+    body: JSON.stringify({
+      service: entry.service,
+      endpoint: entry.endpoint || null,
+      user_id: entry.userId || null,
+      status: entry.status,
+      latency_ms: entry.latencyMs || null,
+      request_chars: entry.requestChars || null,
+      response_bytes: entry.responseBytes || null,
+      error_message: entry.errorMessage?.slice(0, 500) || null,
+      meta: entry.meta || null,
+    }),
+  }).catch(() => {}); // swallow — never block the response
+}
