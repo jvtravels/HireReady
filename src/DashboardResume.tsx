@@ -214,8 +214,7 @@ export default function DashboardResume() {
     if (stored) {
       const isFallback = !stored.headline || stored.headline === "Resume uploaded"
         || (!stored.seniorityLevel && (!stored.topSkills || stored.topSkills.length === 0) && (!stored.interviewStrengths || stored.interviewStrengths.length === 0))
-        || (stored as Record<string, unknown>)._type === "fallback"
-        || stored.resumeScore == null;
+        || (stored as Record<string, unknown>)._type === "fallback";
       if (stored.headline && !isFallback) {
         setProfile(stored);
         setAnalysisSource("ai");
@@ -234,10 +233,12 @@ export default function DashboardResume() {
               setAnalysisSource("ai");
               updateUser({ resumeData: { ...result.profile, _type: "ai" } as unknown as ParsedResume });
               if (user?.resumeFileName) saveResumeVersion(user.resumeFileName, result.profile.resumeScore, user.resumeText);
+            } else {
+              console.warn("[resume] AI re-analysis returned null — API may have failed");
             }
             setPhase("done");
           })
-          .catch(() => setPhase("done"))
+          .catch(err => { console.error("[resume] AI re-analysis error:", err); setPhase("done"); })
           .finally(() => { analyzingRef.current = false; });
       } else if (stored.name || stored.skills) {
         type LegacyResume = { name?: string; summary?: string; skills?: string[]; experience?: { bullets?: string[] }[] };
