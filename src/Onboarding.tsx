@@ -92,7 +92,7 @@ export default function Onboarding() {
           .finally(() => setAiPhase("done"));
       }
       if (!targetRole) {
-        const aiRole = savedAiProfile?.headline && savedAiProfile.headline !== "Analyzing..." ? savedAiProfile.headline : "";
+        const aiRole = savedAiProfile?.headline && savedAiProfile.headline !== "Analyzing..." ? savedAiProfile.headline.split(/\s+with\s+/i)[0] : "";
         const parserRole = data.experience?.[0]?.title || "";
         const autoRole = aiRole || parserRole;
         if (autoRole) setTargetRole(autoRole);
@@ -241,7 +241,7 @@ export default function Onboarding() {
           setAiProfile(finalProfile);
           aiSuccess = true;
           if (finalProfile.headline && finalProfile.headline !== "Analyzing...") {
-            setTargetRole(finalProfile.headline);
+            setTargetRole(finalProfile.headline.split(/\s+with\s+/i)[0]);
           }
         }
       } catch (analysisErr: unknown) {

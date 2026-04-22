@@ -295,7 +295,7 @@ export function ProfileReadyState({ aiProfile, resumeParsed, userName, fileName,
       <div className="ob-card ob-s1-header" style={{ borderRadius: 14, padding: "20px 24px", border: `1px solid rgba(245,242,237,0.06)`, display: "flex", alignItems: "flex-start", gap: 20 }}>
         <div className="ob-s1-header-text" style={{ flex: 1, minWidth: 0 }}>
           <h3 style={{ fontFamily: font.display, fontSize: 22, color: c.ivory, letterSpacing: "-0.025em", lineHeight: 1.2, marginBottom: 8 }}>
-            {aiProfile.headline && aiProfile.headline !== "Analyzing..." ? aiProfile.headline : userName || resumeParsed.name || "Your Profile"}
+            {aiProfile.headline && aiProfile.headline !== "Analyzing..." ? aiProfile.headline.split(/\s+with\s+/i)[0] : userName || resumeParsed.name || "Your Profile"}
           </h3>
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
             {aiProfile.seniorityLevel && <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, color: c.gilt, background: "rgba(212,179,127,0.08)", border: "1px solid rgba(212,179,127,0.18)", borderRadius: 4, padding: "2px 10px" }}>{aiProfile.seniorityLevel}</span>}
