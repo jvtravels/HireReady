@@ -125,48 +125,63 @@ export default function Onboarding() {
     const textForAnalysis = resumeText || user.resumeText;
     if (!textForAnalysis || textForAnalysis.length < 20) return;
     reanalyzedRef.current = true;
-    console.log("[onboarding] Auto re-analyzing, textLen:", textForAnalysis.length);
     setAiPhase("analyzing");
     const ac = new AbortController();
-    const timer = setTimeout(() => { console.error("[onboarding] 20s timeout — aborting"); ac.abort(); }, 20000);
+    const timer = setTimeout(() => { console.error("[onboarding] 20s timeout"); ac.abort(); }, 20000);
 
-    // Read token from localStorage to avoid getSession() deadlock with AuthContext
-    let token: string | null = null;
-    try {
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key?.startsWith("sb-") && key.endsWith("-auth-token")) {
-          const raw = localStorage.getItem(key);
-          if (raw) { const parsed = JSON.parse(raw); token = parsed?.access_token || null; }
-          break;
+    // Strategy 1: Read token from localStorage (sync, no deadlock)
+    function getTokenFromStorage(): string | null {
+      try {
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key?.startsWith("sb-") && key.endsWith("-auth-token")) {
+            const raw = localStorage.getItem(key);
+            if (raw) return JSON.parse(raw)?.access_token || null;
+          }
         }
+      } catch { /* noop */ }
+      return null;
+    }
+
+    async function doAnalysis(): Promise<void> {
+      let token = getTokenFromStorage();
+      // Strategy 2: If no token in storage, wait 2s for session init then retry
+      if (!token) {
+        console.log("[onboarding] No token in localStorage, waiting 2s for session...");
+        await new Promise(r => setTimeout(r, 2000));
+        token = getTokenFromStorage();
       }
-    } catch { /* noop */ }
-    const headers: Record<string, string> = { "Content-Type": "application/json" };
-    if (token) headers["Authorization"] = `Bearer ${token}`;
-    console.log("[onboarding] Auth token:", token ? "found" : "MISSING");
+      // Strategy 3: Last resort — try authHeaders (might work after AuthContext init)
+      if (!token) {
+        console.log("[onboarding] Still no token, trying authHeaders...");
+        try {
+          const { authHeaders } = await import("./supabase");
+          const raceResult = await Promise.race([
+            authHeaders(),
+            new Promise<null>((_, rej) => setTimeout(() => rej(new Error("auth-timeout")), 3000)),
+          ]);
+          if (raceResult) {
+            const authVal = raceResult["Authorization"];
+            if (authVal) token = authVal.replace("Bearer ", "");
+          }
+        } catch { console.warn("[onboarding] authHeaders fallback failed"); }
+      }
+      console.log("[onboarding] Auth token:", token ? `found (${token.length} chars)` : "MISSING — will get 401");
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      const res = await fetch("/api/analyze-resume", { method: "POST", headers, signal: ac.signal, body: JSON.stringify({ resumeText: textForAnalysis, targetRole }) });
+      console.log("[onboarding] Response:", res.status);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      if (data?.profile) {
+        setAiProfile(data.profile);
+        console.log("[onboarding] Auto re-analysis succeeded, score:", data.profile.resumeScore);
+      }
+    }
 
-    fetch("/api/analyze-resume", {
-      method: "POST",
-      headers,
-      signal: ac.signal,
-      body: JSON.stringify({ resumeText: textForAnalysis, targetRole }),
-    })
-      .then(res => {
-        console.log("[onboarding] Response:", res.status);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return res.json();
-      })
-      .then(data => {
-        if (data?.profile) {
-          setAiProfile(data.profile);
-          console.log("[onboarding] Auto re-analysis succeeded, score:", data.profile.resumeScore);
-        }
-      })
-      .catch(err => {
-        const msg = err instanceof Error ? err.message : String(err);
-        console.error("[onboarding] Auto re-analysis failed:", msg);
-      })
+    console.log("[onboarding] Auto re-analyzing, textLen:", textForAnalysis.length);
+    doAnalysis()
+      .catch(err => console.error("[onboarding] Auto re-analysis failed:", err instanceof Error ? err.message : err))
       .finally(() => { clearTimeout(timer); setAiPhase("done"); });
     return () => { clearTimeout(timer); ac.abort(); };
   }, [user, resumeParsed, resumeText, aiPhase, aiProfile?.resumeScore, targetRole]);
