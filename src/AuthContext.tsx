@@ -221,7 +221,8 @@ function profileToUser(profile: Profile, session: Session): User {
   const completed = profile.has_completed_onboarding != null
     ? !!(profile.has_completed_onboarding)
     : !!(profile.practice_timestamps && profile.practice_timestamps.length > 0)
-      || !!(profile.resume_file_name && profile.target_role)
+      || !!(profile.resume_file_name || profile.resume_text)
+      || !!(profile.target_role)
       || getLocalOnboardingDone(profile.id);
   // Persist to localStorage so it survives refresh even if Supabase column doesn't exist yet
   if (completed) setLocalOnboardingDone(profile.id);
@@ -447,7 +448,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               email: session.user.email || "",
               targetRole: "",
               resumeFileName: null,
-              hasCompletedOnboarding: meta.has_completed_onboarding || false,
+              hasCompletedOnboarding: meta.has_completed_onboarding || getLocalOnboardingDone(session.user.id) || false,
               emailVerified: meta.custom_email_verified === true || !!session.user.email_confirmed_at,
             });
           }
