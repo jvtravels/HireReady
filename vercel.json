@@ -13,6 +13,10 @@
     {
       "path": "/api/uptime-check",
       "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/re-engage-users",
+      "schedule": "0 10 * * *"
     }
   ]
 }
