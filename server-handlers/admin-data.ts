@@ -244,7 +244,7 @@ async function getUsers(search?: string, offset = 0, limit = 50) {
 
   // Get session counts only for the users on this page (not ALL users)
   const userIds = (profiles as Array<{ id: string }>).map(p => p.id);
-  let countMap: Record<string, number> = {};
+  const countMap: Record<string, number> = {};
   if (userIds.length > 0) {
     // Batch query: get sessions for these specific users
     const sessionData = await fetchJSON<{ user_id: string }>(

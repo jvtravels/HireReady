@@ -1391,13 +1391,13 @@ export default function AdminDashboard() {
 
           <form onSubmit={handleLogin}>
             <div style={{ marginBottom: 24 }}>
-              <label style={{ display: "block", fontSize: 12, color: c.stone, marginBottom: 6, fontWeight: 500 }}>Password</label>
+              <label htmlFor="admin-password" style={{ display: "block", fontSize: 12, color: c.stone, marginBottom: 6, fontWeight: 500 }}>Password</label>
               <input
+                id="admin-password"
                 type="password"
                 value={loginPassword}
                 onChange={e => setLoginPassword(e.target.value)}
                 required
-                autoFocus
                 autoComplete="off"
                 style={{
                   width: "100%", padding: "11px 14px", background: c.onyx,
