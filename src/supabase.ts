@@ -138,37 +138,34 @@ export async function getProfile(userId: string): Promise<Profile | null> {
 export async function upsertProfile(profile: Partial<Profile> & { id: string }) {
   const client = await getSupabase();
   const { id, ...updates } = profile;
-  const result = await client
-    .from("profiles")
-    .update(updates)
-    .eq("id", id);
-  if (result.error) {
-    // If the error is about a missing column, strip it and retry
-    const missingCol = result.error.message.match(/Could not find the '(\w+)' column/)?.[1];
-    if (missingCol && missingCol in updates) {
-      console.warn(`[supabase] column '${missingCol}' missing, retrying without it`);
-      const { [missingCol]: _removed, ...safeUpdates } = updates as Record<string, unknown>;
-      if (Object.keys(safeUpdates).length > 0) {
-        const retryResult = await client.from("profiles").update(safeUpdates).eq("id", id);
-        if (retryResult.error) {
-          const upsertResult = await client.from("profiles").upsert({ id, ...safeUpdates } as Record<string, unknown>, { onConflict: "id" });
-          if (upsertResult.error) {
-            console.error("[supabase] upsert also failed:", upsertResult.error.message, upsertResult.error.code);
-          }
-          return upsertResult;
-        }
-        return retryResult;
-      }
-      return { data: null, error: null }; // Nothing left to update
+  console.log("[supabase] upsertProfile keys:", Object.keys(updates));
+  let safeUpdates = { ...updates } as Record<string, unknown>;
+
+  // Retry loop: strip missing columns one at a time until the update succeeds
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const result = await client.from("profiles").update(safeUpdates).eq("id", id);
+    if (!result.error) {
+      if (attempt > 0) console.log("[supabase] update succeeded after stripping columns");
+      return result;
     }
-    console.warn("[supabase] update failed, trying upsert:", result.error.message);
-    const upsertResult = await client.from("profiles").upsert(profile, { onConflict: "id" });
+    const missingCol = result.error.message.match(/Could not find the '(\w+)' column/)?.[1];
+    if (missingCol && missingCol in safeUpdates) {
+      console.warn(`[supabase] column '${missingCol}' missing, stripping`);
+      delete safeUpdates[missingCol];
+      if (Object.keys(safeUpdates).length === 0) {
+        console.warn("[supabase] all columns stripped, nothing to save");
+        return { data: null, error: null };
+      }
+      continue;
+    }
+    console.warn("[supabase] update failed:", result.error.message);
+    const upsertResult = await client.from("profiles").upsert({ id, ...safeUpdates }, { onConflict: "id" });
     if (upsertResult.error) {
       console.error("[supabase] upsert also failed:", upsertResult.error.message, upsertResult.error.code);
     }
     return upsertResult;
   }
-  return result;
+  return { data: null, error: null };
 }
 
 /* ─── Live Interview Turn Persistence ─── */
