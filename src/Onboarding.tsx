@@ -115,6 +115,31 @@ export default function Onboarding() {
     }).catch(err => console.error("[onboarding-restore] PARSER ERROR:", err));
   }, [user?.resumeFileName, user?.resumeText]);
 
+  // Auto re-analyze when profile is fallback/stale (e.g. previous analysis timed out)
+  const reanalyzedRef = useRef(false);
+  useEffect(() => {
+    if (reanalyzedRef.current) return;
+    if (!resumeParsed || !resumeText || aiPhase === "analyzing") return;
+    const hasRealScore = aiProfile?.resumeScore != null;
+    if (hasRealScore) return;
+    const textForAnalysis = resumeText || user?.resumeText;
+    if (!textForAnalysis || textForAnalysis.length < 20) return;
+    reanalyzedRef.current = true;
+    console.log("[onboarding] Auto re-analyzing stale fallback profile");
+    setAiPhase("analyzing");
+    import("./dashboardData").then(({ analyzeResumeWithAI }) => {
+      analyzeResumeWithAI(textForAnalysis, targetRole)
+        .then(result => {
+          if (result && "profile" in result) {
+            setAiProfile(result.profile);
+            console.log("[onboarding] Auto re-analysis succeeded");
+          }
+        })
+        .catch(err => console.warn("[onboarding] Auto re-analysis failed:", err instanceof Error ? err.message : err))
+        .finally(() => setAiPhase("done"));
+    });
+  }, [resumeParsed, resumeText, aiPhase, aiProfile?.resumeScore, user?.resumeText, targetRole]);
+
   // Progress stage timer for resume analysis
   useEffect(() => {
     if (aiPhase !== "analyzing" && !resumeParsing) { setAnalysisStage(0); return; }
