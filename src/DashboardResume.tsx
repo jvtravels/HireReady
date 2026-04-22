@@ -359,7 +359,11 @@ export default function DashboardResume() {
   };
 
   const handleReanalyze = async () => {
-    if (!resumeText || reanalyzing) return;
+    if (reanalyzing) return;
+    if (!resumeText) {
+      setErrorMsg("Resume text not available — please re-upload your resume to get AI analysis.");
+      return;
+    }
     setReanalyzing(true);
     setReanalyzeDone(false);
     setErrorMsg("");
@@ -535,10 +539,19 @@ export default function DashboardResume() {
             Your resume was truncated to fit the analysis window. For best results, keep your resume to 2 pages.
           </p>
         )}
-        {analysisSource === "fallback" && resumeText && (
+        {analysisSource === "fallback" && (
           <div style={{ marginTop: 12, padding: "10px 14px", borderRadius: 8, background: "rgba(212,179,127,0.04)", border: "1px solid rgba(212,179,127,0.1)", display: "flex", alignItems: "center", gap: 8 }}>
             <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-            <span style={{ fontFamily: font.ui, fontSize: 11, color: c.chalk, flex: 1 }}>AI analysis wasn't available — showing basic extraction. Click re-analyze for a full profile.</span>
+            <span style={{ fontFamily: font.ui, fontSize: 11, color: c.chalk, flex: 1 }}>
+              {resumeText
+                ? "Showing basic extraction. Click re-analyze (↻) for a full AI profile with score."
+                : "Resume text not available. Re-upload your resume to get a full AI profile with score and insights."}
+            </span>
+            {!resumeText && (
+              <button onClick={triggerUpload} style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.gilt, background: "none", border: `1px solid rgba(212,179,127,0.2)`, borderRadius: 6, padding: "4px 12px", cursor: "pointer", whiteSpace: "nowrap" }}>
+                Re-upload
+              </button>
+            )}
           </div>
         )}
         {needsReupload && !profile && (
