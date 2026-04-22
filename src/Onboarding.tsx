@@ -283,7 +283,7 @@ export default function Onboarding() {
         if (analysisErr instanceof Error && analysisErr.message === "aborted") return;
         console.warn("[onboarding] AI analysis failed, using fallback:", analysisErr instanceof Error ? analysisErr.message : analysisErr);
       }
-      if (!aiSuccess && data.skills.length > 0) {
+      if (!aiSuccess && !reanalyzedRef.current && data.skills.length > 0) {
         const cleanSkills = data.skills.filter(s =>
           s.length >= 2 && s.length < 30 &&
           !s.includes(".") &&
@@ -296,7 +296,7 @@ export default function Onboarding() {
         }
       }
       setResumeParsing(false);
-      setAiPhase("done");
+      if (!reanalyzedRef.current) setAiPhase("done");
       const profileSave: Partial<Parameters<typeof updateUser>[0]> = {
         resumeFileName: file.name,
         resumeText: text,
