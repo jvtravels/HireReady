@@ -57,7 +57,6 @@ export default function Onboarding() {
     // Try localStorage fallback if Supabase columns are missing
     const localResume = (() => { try { const r = localStorage.getItem("hirestepx_resume"); return r ? JSON.parse(r) as { fileName: string; text: string; data: ParsedResume; aiProfile?: ResumeProfile } : null; } catch { return null; } })();
     const rFileName = user?.resumeFileName || localResume?.fileName;
-    console.log("[restore] user:", { resumeFileName: user?.resumeFileName, hasResumeText: !!user?.resumeText, textLen: user?.resumeText?.length, hasLocal: !!localResume, localFileName: localResume?.fileName });
     if (!rFileName) return;
     resumeRestoredRef.current = true;
     setFileName(rFileName);
@@ -216,6 +215,8 @@ export default function Onboarding() {
       const data = parseResumeData(text);
       setResumeText(text);
       setResumeParsed(data);
+      // Save to localStorage immediately — Supabase columns may not exist
+      try { localStorage.setItem("hirestepx_resume", JSON.stringify({ fileName: file.name, text, data })); } catch { /* quota */ }
       const fallback: ResumeProfile = {
         headline: data.name || "Analyzing...",
         summary: data.summary || "", yearsExperience: null, seniorityLevel: "",

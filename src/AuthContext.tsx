@@ -345,7 +345,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       };
       const { error } = await upsertProfile(newProfile);
       if (error) {
-        console.error("[auth] ensureProfile failed, trying insert:", error.message);
+        console.error("[auth] ensureProfile failed, trying insert:", (error as { message?: string })?.message);
         const { error: insertErr } = await client
           .from("profiles")
           .insert(newProfile);
@@ -860,7 +860,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (updates.hasCompletedOnboarding) setLocalOnboardingDone(currentId);
     }
 
-    await upsertProfile(profileUpdates);
+    const result = await upsertProfile(profileUpdates);
+    if (result.strippedColumns && result.strippedColumns.length > 0) {
+      console.warn("[updateUser] Supabase columns missing:", result.strippedColumns.join(", "), "— resume data NOT saved to database, using localStorage only");
+    }
   }, []);
 
   // Multi-tab session coordination via BroadcastChannel

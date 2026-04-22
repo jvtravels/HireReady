@@ -135,37 +135,32 @@ export async function getProfile(userId: string): Promise<Profile | null> {
   return data;
 }
 
-export async function upsertProfile(profile: Partial<Profile> & { id: string }) {
+export async function upsertProfile(profile: Partial<Profile> & { id: string }): Promise<{ data: unknown; error: unknown; strippedColumns?: string[] }> {
   const client = await getSupabase();
   const { id, ...updates } = profile;
-  console.log("[supabase] upsertProfile keys:", Object.keys(updates));
   let safeUpdates = { ...updates } as Record<string, unknown>;
+  const strippedColumns: string[] = [];
 
-  // Retry loop: strip missing columns one at a time until the update succeeds
-  for (let attempt = 0; attempt < 5; attempt++) {
+  for (let attempt = 0; attempt < 8; attempt++) {
     const result = await client.from("profiles").update(safeUpdates).eq("id", id);
     if (!result.error) {
-      if (attempt > 0) console.log("[supabase] update succeeded after stripping columns");
-      return result;
+      if (strippedColumns.length > 0) console.warn("[supabase] saved OK but stripped columns:", strippedColumns.join(", "));
+      return { ...result, strippedColumns };
     }
     const missingCol = result.error.message.match(/Could not find the '(\w+)' column/)?.[1];
     if (missingCol && missingCol in safeUpdates) {
-      console.warn(`[supabase] column '${missingCol}' missing, stripping`);
+      console.warn(`[supabase] column '${missingCol}' missing in DB`);
+      strippedColumns.push(missingCol);
       delete safeUpdates[missingCol];
-      if (Object.keys(safeUpdates).length === 0) {
-        console.warn("[supabase] all columns stripped, nothing to save");
-        return { data: null, error: null };
-      }
+      if (Object.keys(safeUpdates).length === 0) return { data: null, error: null, strippedColumns };
       continue;
     }
     console.warn("[supabase] update failed:", result.error.message);
     const upsertResult = await client.from("profiles").upsert({ id, ...safeUpdates }, { onConflict: "id" });
-    if (upsertResult.error) {
-      console.error("[supabase] upsert also failed:", upsertResult.error.message, upsertResult.error.code);
-    }
-    return upsertResult;
+    if (upsertResult.error) console.error("[supabase] upsert also failed:", upsertResult.error.message);
+    return { ...upsertResult, strippedColumns };
   }
-  return { data: null, error: null };
+  return { data: null, error: null, strippedColumns };
 }
 
 /* ─── Live Interview Turn Persistence ─── */
