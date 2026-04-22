@@ -350,7 +350,7 @@ export default function DashboardResume() {
     setPhase("idle");
     setErrorMsg("");
     updatePersisted({ resumeFileName: null });
-    updateUser({ resumeFileName: null, resumeText: undefined, resumeData: undefined });
+    updateUser({ resumeFileName: null, resumeText: "", resumeData: null as unknown as ParsedResume });
   };
 
   const handleReanalyze = async () => {
