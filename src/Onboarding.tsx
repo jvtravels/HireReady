@@ -119,25 +119,44 @@ export default function Onboarding() {
   const reanalyzedRef = useRef(false);
   useEffect(() => {
     if (reanalyzedRef.current) return;
-    if (!resumeParsed || !resumeText || aiPhase === "analyzing") return;
+    if (!resumeParsed || aiPhase === "analyzing") return;
     const hasRealScore = aiProfile?.resumeScore != null;
     if (hasRealScore) return;
     const textForAnalysis = resumeText || user?.resumeText;
     if (!textForAnalysis || textForAnalysis.length < 20) return;
     reanalyzedRef.current = true;
-    console.log("[onboarding] Auto re-analyzing stale fallback profile");
+    console.log("[onboarding] Auto re-analyzing stale fallback profile, textLen:", textForAnalysis.length);
     setAiPhase("analyzing");
-    import("./dashboardData").then(({ analyzeResumeWithAI }) => {
-      analyzeResumeWithAI(textForAnalysis, targetRole)
-        .then(result => {
-          if (result && "profile" in result) {
-            setAiProfile(result.profile);
-            console.log("[onboarding] Auto re-analysis succeeded");
-          }
-        })
-        .catch(err => console.warn("[onboarding] Auto re-analysis failed:", err instanceof Error ? err.message : err))
-        .finally(() => setAiPhase("done"));
-    });
+    const ac = new AbortController();
+    const timer = setTimeout(() => ac.abort(), 20000);
+    import("./supabase").then(({ authHeaders }) =>
+      authHeaders().then(headers => {
+        console.log("[onboarding] Got auth headers, making fetch...");
+        return fetch("/api/analyze-resume", {
+          method: "POST",
+          headers,
+          signal: ac.signal,
+          body: JSON.stringify({ resumeText: textForAnalysis, targetRole }),
+        });
+      })
+    )
+      .then(res => {
+        console.log("[onboarding] analyze-resume response:", res.status);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      })
+      .then(data => {
+        if (data?.profile) {
+          setAiProfile(data.profile);
+          console.log("[onboarding] Auto re-analysis succeeded");
+        }
+      })
+      .catch(err => {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error("[onboarding] Auto re-analysis failed:", msg);
+      })
+      .finally(() => { clearTimeout(timer); setAiPhase("done"); });
+    return () => { clearTimeout(timer); ac.abort(); };
   }, [resumeParsed, resumeText, aiPhase, aiProfile?.resumeScore, user?.resumeText, targetRole]);
 
   // Progress stage timer for resume analysis
