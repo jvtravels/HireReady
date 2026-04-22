@@ -130,16 +130,28 @@ export default function Onboarding() {
     const ac = new AbortController();
     const timer = setTimeout(() => { console.error("[onboarding] 20s timeout — aborting"); ac.abort(); }, 20000);
 
-    import("./supabase").then(({ authHeaders }) => authHeaders())
-      .then(headers => {
-        console.log("[onboarding] Got auth, fetching /api/analyze-resume...");
-        return fetch("/api/analyze-resume", {
-          method: "POST",
-          headers,
-          signal: ac.signal,
-          body: JSON.stringify({ resumeText: textForAnalysis, targetRole }),
-        });
-      })
+    // Read token from localStorage to avoid getSession() deadlock with AuthContext
+    let token: string | null = null;
+    try {
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key?.startsWith("sb-") && key.endsWith("-auth-token")) {
+          const raw = localStorage.getItem(key);
+          if (raw) { const parsed = JSON.parse(raw); token = parsed?.access_token || null; }
+          break;
+        }
+      }
+    } catch { /* noop */ }
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+    console.log("[onboarding] Auth token:", token ? "found" : "MISSING");
+
+    fetch("/api/analyze-resume", {
+      method: "POST",
+      headers,
+      signal: ac.signal,
+      body: JSON.stringify({ resumeText: textForAnalysis, targetRole }),
+    })
       .then(res => {
         console.log("[onboarding] Response:", res.status);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
