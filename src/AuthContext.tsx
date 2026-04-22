@@ -345,13 +345,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       };
       const { error } = await upsertProfile(newProfile);
       if (error) {
-        console.error("[auth] ensureProfile failed, trying insert:", (error as { message?: string })?.message);
-        const { error: insertErr } = await client
-          .from("profiles")
-          .insert(newProfile);
-        if (insertErr) {
-          console.error("[auth] insert also failed:", insertErr.message, insertErr.code);
-        }
+        console.error("[auth] ensureProfile failed:", (error as { message?: string })?.message);
       }
       const newUser: User = {
         id: session.user.id,
