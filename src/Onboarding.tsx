@@ -53,6 +53,7 @@ export default function Onboarding() {
   // ─── Restore resume from user profile on mount/refresh ───
   const resumeRestoredRef = useRef(false);
   useEffect(() => {
+    console.log("[onboarding-restore] enter", { ref: resumeRestoredRef.current, hasParsed: !!resumeParsed, parsing: resumeParsing, fileName: user?.resumeFileName, hasText: !!user?.resumeText, textLen: user?.resumeText?.length });
     if (resumeRestoredRef.current || resumeParsed || resumeParsing) return;
     if (!user?.resumeFileName) return;
     resumeRestoredRef.current = true;
@@ -68,10 +69,19 @@ export default function Onboarding() {
       setResumeParsed(data);
       const savedAiProfile = (data as ParsedResume & { aiProfile?: ResumeProfile })?.aiProfile;
       if (data.name && !userName) setUserName(data.name);
+      console.log("[onboarding-restore] aiProfile check", {
+        hasProfile: !!savedAiProfile,
+        headline: savedAiProfile?.headline,
+        score: savedAiProfile?.resumeScore,
+        scoreCheck: savedAiProfile?.resumeScore != null,
+        skillsLen: savedAiProfile?.topSkills?.length,
+        type: (savedAiProfile as unknown as Record<string, unknown>)?._type,
+      });
       const isRealAiProfile = savedAiProfile && savedAiProfile.headline
         && savedAiProfile.resumeScore != null
         && savedAiProfile.topSkills && savedAiProfile.topSkills.length > 0
         && (savedAiProfile as unknown as Record<string, unknown>)._type !== "fallback";
+      console.log("[onboarding-restore] isReal:", isRealAiProfile);
       if (isRealAiProfile) {
         setAiProfile(savedAiProfile);
         setAiPhase("done");
@@ -79,18 +89,21 @@ export default function Onboarding() {
           setUserName(savedAiProfile.headline.split(/[—–|,]/)[0].trim().slice(0, 40));
         }
       } else {
+        console.log("[onboarding-restore] triggering AI analysis...");
         if (savedAiProfile) setAiProfile(savedAiProfile);
         setAiPhase("analyzing");
         const autoRole = data.experience?.[0]?.title || "";
         const { analyzeResumeWithAI } = await import("./dashboardData");
+        console.log("[onboarding-restore] calling analyzeResumeWithAI, textLen:", user.resumeText!.length);
         analyzeResumeWithAI(user.resumeText!, targetRole || autoRole)
           .then(result => {
+            console.log("[onboarding-restore] AI result:", !!result, result && "profile" in result);
             if (result && "profile" in result) {
               setAiProfile(result.profile);
               console.log("[onboarding] AI analysis succeeded");
             }
           })
-          .catch(err => { console.warn("[onboarding] AI analysis error:", err instanceof Error ? err.message : err); })
+          .catch(err => { console.error("[onboarding] AI analysis error:", err instanceof Error ? err.message : err); })
           .finally(() => setAiPhase("done"));
       }
       if (!targetRole) {
@@ -99,7 +112,7 @@ export default function Onboarding() {
         const autoRole = aiRole || parserRole;
         if (autoRole) setTargetRole(autoRole);
       }
-    });
+    }).catch(err => console.error("[onboarding-restore] PARSER ERROR:", err));
   }, [user?.resumeFileName, user?.resumeText]);
 
   // Progress stage timer for resume analysis
