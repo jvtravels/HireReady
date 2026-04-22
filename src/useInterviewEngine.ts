@@ -1600,12 +1600,6 @@ export function useInterviewEngine() {
       } else if (e.key === "Enter" && phase === "done") {
         handleEnd();
       }
-      if (e.altKey) {
-        if (e.key === "m") { e.preventDefault(); setIsMuted(m => !m); }
-        else if (e.key === "t") { e.preventDefault(); setShowTranscript(t => !t); }
-        else if (e.key === "k") { e.preventDefault(); setShowCaptions(c => !c); }
-        else if (e.key === "v") { e.preventDefault(); if (aiVoiceEnabled) ttsCancelRef.current?.(); setAiVoiceEnabled(v => !v); }
-      }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);

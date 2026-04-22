@@ -1,4 +1,4 @@
-/* Unified LLM caller with automatic fallback: Groq → Gemini */
+/* Unified LLM caller — races Gemini + Groq in parallel, fastest wins */
 
 declare const process: { env: Record<string, string | undefined> };
 
@@ -7,7 +7,6 @@ const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "";
 const SUPABASE_URL = process.env.SUPABASE_URL || "";
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 
-/** Fire-and-forget: log LLM usage to Supabase. Never blocks or throws. */
 function logUsage(entry: {
   userId?: string; endpoint?: string; model: string; isFallback: boolean;
   promptTokens: number; completionTokens: number; totalTokens: number;
@@ -34,7 +33,7 @@ function logUsage(entry: {
       status: entry.status,
       error_message: entry.errorMessage?.slice(0, 500) || null,
     }),
-  }).catch(() => {}); // swallow — never block the response
+  }).catch(() => {});
 }
 
 interface LLMOptions {
@@ -42,7 +41,7 @@ interface LLMOptions {
   temperature?: number;
   maxTokens?: number;
   jsonMode?: boolean;
-  fast?: boolean; // Use smaller, faster model (8B instead of 70B)
+  fast?: boolean;
 }
 
 interface LLMResult {
@@ -56,6 +55,7 @@ interface LLMResult {
 async function callGroq(opts: LLMOptions, signal?: AbortSignal): Promise<LLMResult> {
   const model = opts.fast ? "llama-3.1-8b-instant" : "llama-3.3-70b-versatile";
   const start = Date.now();
+  console.log(`[LLM] Groq ${model} — starting request`);
   const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
     method: "POST",
     headers: { "Content-Type": "application/json", "Authorization": `Bearer ${GROQ_API_KEY}` },
@@ -68,25 +68,25 @@ async function callGroq(opts: LLMOptions, signal?: AbortSignal): Promise<LLMResu
       ...(opts.jsonMode ? { response_format: { type: "json_object" } } : {}),
     }),
   });
+  const latencyMs = Date.now() - start;
   if (!res.ok) {
-    const status = res.status;
     const errText = await res.text().catch(() => "");
-    throw new Error(`Groq error ${status}: ${errText.slice(0, 200)}`);
+    console.error(`[LLM] Groq ${model} — HTTP ${res.status} after ${latencyMs}ms: ${errText.slice(0, 100)}`);
+    throw new Error(`Groq error ${res.status}: ${errText.slice(0, 200)}`);
   }
   const data = await res.json();
-  const latencyMs = Date.now() - start;
   const usage = data.usage;
   const tokensUsed = usage ? { prompt: usage.prompt_tokens, completion: usage.completion_tokens, total: usage.total_tokens } : undefined;
-  if (tokensUsed) {
-    console.warn(`[LLM] Groq ${model} — ${tokensUsed.total} tokens, ${latencyMs}ms`);
-  }
+  console.log(`[LLM] Groq ${model} — ${tokensUsed?.total ?? "?"} tokens, ${latencyMs}ms`);
   return { text: data.choices?.[0]?.message?.content || "", model, fallback: false, tokensUsed, latencyMs };
 }
 
 async function callGemini(opts: LLMOptions, signal?: AbortSignal): Promise<LLMResult> {
   if (!GEMINI_API_KEY) throw new Error("Gemini not configured");
+  const model = "gemini-2.5-flash-lite";
   const start = Date.now();
-  const res = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent", {
+  console.log(`[LLM] Gemini ${model} — starting request`);
+  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
     method: "POST",
     headers: { "Content-Type": "application/json", "x-goog-api-key": GEMINI_API_KEY },
     signal,
@@ -96,97 +96,104 @@ async function callGemini(opts: LLMOptions, signal?: AbortSignal): Promise<LLMRe
         temperature: opts.temperature ?? 0.3,
         maxOutputTokens: opts.maxTokens ?? 2000,
         ...(opts.jsonMode ? { responseMimeType: "application/json" } : {}),
+        thinkingConfig: { thinkingBudget: 0 },
       },
     }),
   });
+  const latencyMs = Date.now() - start;
   if (!res.ok) {
     const errText = await res.text().catch(() => "");
+    console.error(`[LLM] Gemini ${model} — HTTP ${res.status} after ${latencyMs}ms: ${errText.slice(0, 100)}`);
     throw new Error(`Gemini error ${res.status}: ${errText.slice(0, 200)}`);
   }
   const data = await res.json();
-  const latencyMs = Date.now() - start;
   const usage = data.usageMetadata;
   const tokensUsed = usage ? { prompt: usage.promptTokenCount, completion: usage.candidatesTokenCount, total: usage.totalTokenCount } : undefined;
-  if (tokensUsed) {
-    console.warn(`[LLM] Gemini — ${tokensUsed.total} tokens, ${latencyMs}ms`);
-  }
-  return { text: data.candidates?.[0]?.content?.parts?.[0]?.text || "", model: "gemini-2.0-flash", fallback: true, tokensUsed, latencyMs };
+  console.log(`[LLM] Gemini ${model} — ${tokensUsed?.total ?? "?"} tokens, ${latencyMs}ms`);
+  return { text: data.candidates?.[0]?.content?.parts?.[0]?.text || "", model, fallback: false, tokensUsed, latencyMs };
 }
 
-/** Call the LLM with automatic Groq -> Gemini fallback. Respects timeout and aborts on expiry. */
 export async function callLLM(opts: LLMOptions, timeoutMs = 15000, meta?: { userId?: string; endpoint?: string }): Promise<LLMResult> {
-  const ac = new AbortController();
-  const timer = setTimeout(() => ac.abort(), timeoutMs);
+  const providers: Array<{ name: string; call: (signal: AbortSignal) => Promise<LLMResult> }> = [];
 
-  try {
-    if (GROQ_API_KEY) {
-      try {
-        const result = await callGroq(opts, ac.signal);
-        clearTimeout(timer);
-        logUsage({ userId: meta?.userId, endpoint: meta?.endpoint, model: result.model, isFallback: false, promptTokens: result.tokensUsed?.prompt ?? 0, completionTokens: result.tokensUsed?.completion ?? 0, totalTokens: result.tokensUsed?.total ?? 0, latencyMs: result.latencyMs ?? 0, status: "success" });
-        return result;
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : "";
-        // Auth errors (invalid key) should fail fast — don't waste Gemini credits
-        const isAuthError = msg.includes("401") || msg.includes("403");
-        if (isAuthError) {
-          console.error("[LLM] Groq auth error — check GROQ_API_KEY:", msg.slice(0, 100));
-          logUsage({ userId: meta?.userId, endpoint: meta?.endpoint, model: "groq", isFallback: false, promptTokens: 0, completionTokens: 0, totalTokens: 0, latencyMs: 0, status: "error", errorMessage: msg.slice(0, 200) });
-          throw err;
-        }
-        // Rate limit (429) or server error (5xx) — try Gemini fallback
-        const isRetryable = msg.includes("429") || msg.includes("500") || msg.includes("502") || msg.includes("503") || msg.includes("AbortError");
-        if (isRetryable && GEMINI_API_KEY) {
-          console.warn("[LLM] Groq failed, falling back to Gemini:", msg.slice(0, 100));
-          logUsage({ userId: meta?.userId, endpoint: meta?.endpoint, model: "groq", isFallback: false, promptTokens: 0, completionTokens: 0, totalTokens: 0, latencyMs: 0, status: msg.includes("AbortError") ? "timeout" : "error", errorMessage: msg.slice(0, 200) });
-          clearTimeout(timer);
-          const ac2 = new AbortController();
-          // Give Gemini fallback less time to avoid compounding waits
-          const fallbackTimeout = Math.min(timeoutMs, 12000);
-          const timer2 = setTimeout(() => ac2.abort(), fallbackTimeout);
-          try {
-            const result = await callGemini(opts, ac2.signal);
-            clearTimeout(timer2);
-            logUsage({ userId: meta?.userId, endpoint: meta?.endpoint, model: result.model, isFallback: true, promptTokens: result.tokensUsed?.prompt ?? 0, completionTokens: result.tokensUsed?.completion ?? 0, totalTokens: result.tokensUsed?.total ?? 0, latencyMs: result.latencyMs ?? 0, status: "success" });
-            return result;
-          } catch (geminiErr) {
-            clearTimeout(timer2);
-            const gemMsg = geminiErr instanceof Error ? geminiErr.message : "";
-            logUsage({ userId: meta?.userId, endpoint: meta?.endpoint, model: "gemini-2.0-flash", isFallback: true, promptTokens: 0, completionTokens: 0, totalTokens: 0, latencyMs: 0, status: gemMsg.includes("AbortError") ? "timeout" : "error", errorMessage: gemMsg.slice(0, 200) });
-            throw geminiErr;
-          }
-        }
-        logUsage({ userId: meta?.userId, endpoint: meta?.endpoint, model: "groq", isFallback: false, promptTokens: 0, completionTokens: 0, totalTokens: 0, latencyMs: 0, status: msg.includes("AbortError") ? "timeout" : "error", errorMessage: msg.slice(0, 200) });
-        throw err;
-      }
-    } else if (GEMINI_API_KEY) {
-      const result = await callGemini(opts, ac.signal);
+  if (GEMINI_API_KEY) providers.push({ name: "gemini", call: (s) => callGemini(opts, s) });
+  if (GROQ_API_KEY) providers.push({ name: "groq", call: (s) => callGroq(opts, s) });
+
+  if (providers.length === 0) throw new Error("No LLM configured — set GEMINI_API_KEY or GROQ_API_KEY");
+
+  console.log(`[LLM] Starting with ${providers.map(p => p.name).join(" + ")} (timeout: ${timeoutMs}ms)`);
+
+  // Single provider
+  if (providers.length === 1) {
+    const ac = new AbortController();
+    const timer = setTimeout(() => ac.abort(), timeoutMs);
+    try {
+      const result = await providers[0].call(ac.signal);
       clearTimeout(timer);
       logUsage({ userId: meta?.userId, endpoint: meta?.endpoint, model: result.model, isFallback: false, promptTokens: result.tokensUsed?.prompt ?? 0, completionTokens: result.tokensUsed?.completion ?? 0, totalTokens: result.tokensUsed?.total ?? 0, latencyMs: result.latencyMs ?? 0, status: "success" });
       return result;
-    } else {
+    } catch (err) {
       clearTimeout(timer);
-      throw new Error("No LLM configured");
+      const msg = err instanceof Error ? err.message : "";
+      const isTimeout = msg.includes("AbortError") || msg.includes("abort");
+      console.error(`[LLM] ${providers[0].name} failed (${isTimeout ? "timeout" : "error"}): ${msg.slice(0, 150)}`);
+      logUsage({ userId: meta?.userId, endpoint: meta?.endpoint, model: providers[0].name, isFallback: false, promptTokens: 0, completionTokens: 0, totalTokens: 0, latencyMs: 0, status: isTimeout ? "timeout" : "error", errorMessage: msg.slice(0, 200) });
+      throw err;
     }
-  } catch (err) {
-    clearTimeout(timer);
-    throw err;
   }
+
+  // Two providers — race in parallel
+  const ac = new AbortController();
+  const timer = setTimeout(() => ac.abort(), timeoutMs);
+  const controllers = providers.map(() => new AbortController());
+  ac.signal.addEventListener("abort", () => controllers.forEach(c => c.abort()));
+
+  const raceResult = await new Promise<LLMResult>((resolve, reject) => {
+    let settled = false;
+    let errorCount = 0;
+    let lastError: Error | undefined;
+
+    providers.forEach((provider, i) => {
+      provider.call(controllers[i].signal)
+        .then(result => {
+          if (settled) return;
+          settled = true;
+          clearTimeout(timer);
+          controllers.forEach((c, j) => { if (j !== i) c.abort(); });
+          console.log(`[LLM] Winner: ${provider.name} (${result.latencyMs}ms)`);
+          logUsage({ userId: meta?.userId, endpoint: meta?.endpoint, model: result.model, isFallback: i > 0, promptTokens: result.tokensUsed?.prompt ?? 0, completionTokens: result.tokensUsed?.completion ?? 0, totalTokens: result.tokensUsed?.total ?? 0, latencyMs: result.latencyMs ?? 0, status: "success" });
+          resolve(result);
+        })
+        .catch(err => {
+          const msg = err instanceof Error ? err.message : "";
+          const isAbortedLoser = settled && (msg.includes("AbortError") || msg.includes("abort"));
+          if (!isAbortedLoser) {
+            const isTimeout = msg.includes("AbortError") || msg.includes("abort");
+            console.error(`[LLM] ${provider.name} failed (${isTimeout ? "timeout" : "error"}): ${msg.slice(0, 150)}`);
+            logUsage({ userId: meta?.userId, endpoint: meta?.endpoint, model: provider.name, isFallback: i > 0, promptTokens: 0, completionTokens: 0, totalTokens: 0, latencyMs: 0, status: isTimeout ? "timeout" : "error", errorMessage: msg.slice(0, 200) });
+          }
+          errorCount++;
+          lastError = err instanceof Error ? err : new Error(msg);
+          if (errorCount === providers.length && !settled) {
+            settled = true;
+            clearTimeout(timer);
+            reject(lastError);
+          }
+        });
+    });
+  });
+
+  return raceResult;
 }
 
-/** Extract JSON from LLM response text. Handles markdown fences, prose wrapping, and malformed output. */
 export function extractJSON<T = unknown>(text: string): T | null {
-  // Try direct parse first
-  try { return JSON.parse(text); } catch { /* fallback: try cleaned formats below */ }
-  // Strip markdown code fences
+  try { return JSON.parse(text); } catch { /* fallback */ }
   const cleaned = text.replace(/^```(?:json)?\s*\n?/i, "").replace(/\n?```\s*$/i, "").trim();
-  try { return JSON.parse(cleaned); } catch { /* fallback: try regex extraction below */ }
-  // Try extracting JSON array first (less ambiguous than objects)
+  try { return JSON.parse(cleaned); } catch { /* fallback */ }
   const arrMatch = cleaned.match(/\[[\s\S]*\]/);
   if (arrMatch) {
-    try { return JSON.parse(arrMatch[0]); } catch { /* fallback: try object extraction below */ }
+    try { return JSON.parse(arrMatch[0]); } catch { /* fallback */ }
   }
-  // Extract JSON object — find matching braces instead of greedy regex
   const objStart = cleaned.indexOf("{");
   if (objStart !== -1) {
     let depth = 0;
@@ -202,7 +209,7 @@ export function extractJSON<T = unknown>(text: string): T | null {
       if (ch === "}") {
         depth--;
         if (depth === 0) {
-          try { return JSON.parse(cleaned.slice(objStart, i + 1)); } catch { /* malformed JSON object, return null */ }
+          try { return JSON.parse(cleaned.slice(objStart, i + 1)); } catch { /* malformed */ }
           break;
         }
       }

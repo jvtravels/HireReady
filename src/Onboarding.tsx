@@ -54,28 +54,43 @@ export default function Onboarding() {
   const resumeRestoredRef = useRef(false);
   useEffect(() => {
     if (resumeRestoredRef.current || resumeParsed || resumeParsing) return;
-    if (!user?.resumeFileName || !user?.resumeText) return;
+    if (!user?.resumeFileName) return;
     resumeRestoredRef.current = true;
     setFileName(user.resumeFileName);
+    if (!user?.resumeText) {
+      console.warn("[onboarding] Resume text missing from database — user needs to re-upload");
+      setResumeError("Your resume text wasn't saved properly. Please re-upload your resume to continue.");
+      return;
+    }
     setResumeText(user.resumeText);
     import("./resumeParser").then(async ({ parseResumeData }) => {
       const data = user.resumeData || parseResumeData(user.resumeText!);
       setResumeParsed(data);
       const savedAiProfile = (data as ParsedResume & { aiProfile?: ResumeProfile })?.aiProfile;
       if (data.name && !userName) setUserName(data.name);
-      if (savedAiProfile && savedAiProfile.headline) {
+      const isRealAiProfile = savedAiProfile && savedAiProfile.headline
+        && savedAiProfile.resumeScore != null
+        && savedAiProfile.topSkills && savedAiProfile.topSkills.length > 0
+        && (savedAiProfile as unknown as Record<string, unknown>)._type !== "fallback";
+      if (isRealAiProfile) {
         setAiProfile(savedAiProfile);
         setAiPhase("done");
         if (!data.name && !userName && savedAiProfile.headline !== "Analyzing...") {
           setUserName(savedAiProfile.headline.split(/[—–|,]/)[0].trim().slice(0, 40));
         }
       } else {
+        if (savedAiProfile) setAiProfile(savedAiProfile);
         setAiPhase("analyzing");
         const autoRole = data.experience?.[0]?.title || "";
         const { analyzeResumeWithAI } = await import("./dashboardData");
         analyzeResumeWithAI(user.resumeText!, targetRole || autoRole)
-          .then(result => { if (result && "profile" in result) setAiProfile(result.profile); })
-          .catch(() => {})
+          .then(result => {
+            if (result && "profile" in result) {
+              setAiProfile(result.profile);
+              console.log("[onboarding] AI analysis succeeded");
+            }
+          })
+          .catch(err => { console.warn("[onboarding] AI analysis error:", err instanceof Error ? err.message : err); })
           .finally(() => setAiPhase("done"));
       }
       if (!targetRole) {
@@ -167,7 +182,7 @@ export default function Onboarding() {
       try {
         const result = await Promise.race([
           analyzeResumeWithAI(text, targetRole || autoRole),
-          new Promise<null>((_, reject) => setTimeout(() => reject(new Error("timeout")), 30000)),
+          new Promise<null>((_, reject) => setTimeout(() => reject(new Error("timeout")), 25000)),
           new Promise<null>((_, reject) => {
             currentAbort.signal.addEventListener("abort", () => reject(new Error("aborted")));
           }),

@@ -502,16 +502,6 @@ export default function DashboardHome() {
     return () => document.removeEventListener("mousedown", handleClick);
   }, [headerMenuOpen]);
 
-  // Keyboard shortcuts: N = new session, / = focus search
-  useEffect(() => {
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
-      if (e.key === "n" || e.key === "N") { e.preventDefault(); handleStartSession(); }
-      if (e.key === "/") { e.preventDefault(); searchInputRef.current?.focus(); }
-    };
-    document.addEventListener("keydown", handleKey);
-    return () => document.removeEventListener("keydown", handleKey);
-  }, [handleStartSession]);
 
   // Refresh draft relative time every 60s
   useEffect(() => {
@@ -1349,7 +1339,7 @@ export default function DashboardHome() {
         <div style={{ display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
           <div style={{ flex: 1, minWidth: 160, position: "relative" }}>
             <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.stone} strokeWidth="2" strokeLinecap="round" style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)" }}><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            <input ref={searchInputRef} type="text" placeholder="Search sessions... (press /)" aria-label="Search sessions" value={searchQuery} onChange={(e) => handleSearch(e.target.value)}
+            <input ref={searchInputRef} type="text" placeholder="Search sessions..." aria-label="Search sessions" value={searchQuery} onChange={(e) => handleSearch(e.target.value)}
               style={{ width: "100%", padding: "9px 10px 9px 32px", fontFamily: font.ui, fontSize: 13, color: c.ivory, background: c.obsidian, border: `1px solid rgba(245,242,237,0.06)`, borderRadius: radius.sm, outline: "none", boxSizing: "border-box", transition: "border-color 0.2s" }}
               onFocus={(e) => e.currentTarget.style.borderColor = "rgba(212,179,127,0.3)"}
               onBlur={(e) => e.currentTarget.style.borderColor = "rgba(245,242,237,0.06)"}

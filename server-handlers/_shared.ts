@@ -425,7 +425,7 @@ export function sanitizeForLLM(s: unknown, maxLen = 200): string {
 
 /* ─── Per-User Daily LLM Quota ─── */
 
-const DAILY_LLM_LIMITS: Record<string, number> = { free: 10, starter: 30, pro: 100, team: 200 };
+const DAILY_LLM_LIMITS: Record<string, number> = { free: 25, starter: 60, pro: 200, team: 500 };
 
 /** Check if a user has exceeded their daily LLM API call quota for a specific endpoint. */
 export async function checkLLMQuota(userId: string, endpoint: string): Promise<{ allowed: boolean; reason?: string }> {

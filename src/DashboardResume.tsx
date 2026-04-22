@@ -330,7 +330,7 @@ export default function DashboardResume() {
     try {
       result = await Promise.race([
         analyzeResumeWithAI(text, user?.targetRole),
-        new Promise<null>((_, reject) => setTimeout(() => reject(new Error("timeout")), 30_000)),
+        new Promise<null>((_, reject) => setTimeout(() => reject(new Error("timeout")), 25_000)),
       ]);
     } catch { /* timeout or network error — fall through to fallback */ }
     if (result?.profile) {
@@ -381,7 +381,7 @@ export default function DashboardResume() {
     try {
       const result = await Promise.race([
         analyzeResumeWithAI(resumeText, user?.targetRole),
-        new Promise<null>((_, reject) => setTimeout(() => reject(new Error("timeout")), 30_000)),
+        new Promise<null>((_, reject) => setTimeout(() => reject(new Error("timeout")), 25_000)),
       ]);
       if (result?.profile) {
         setProfile(result.profile);

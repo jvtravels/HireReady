@@ -8,9 +8,7 @@ const UpgradeModal = dynamic(() => import("./dashboardComponents").then(m => ({ 
 import { FREE_SESSION_LIMIT, STARTER_WEEKLY_LIMIT } from "./dashboardData";
 import { daysUntilEvent } from "./dashboardHelpers";
 import dynamic from "next/dynamic";
-const CommandPalette = dynamic(() => import("./CommandPalette"), { ssr: false });
 
-const modKey = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform) ? "⌘" : "Ctrl+";
 
 /* ─── Prefetch route chunks on nav hover ─── */
 const prefetchMap: Record<string, () => void> = {
@@ -57,12 +55,10 @@ export default function DashboardLayout({ children }: { children?: React.ReactNo
   );
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [showShortcuts, setShowShortcuts] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [helpFeedback, setHelpFeedback] = useState("");
   const [helpSending, setHelpSending] = useState(false);
   const [helpSent, setHelpSent] = useState(false);
-  const shortcutsDialogRef = useRef<HTMLDivElement>(null);
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
 
   useEffect(() => {
@@ -73,37 +69,6 @@ export default function DashboardLayout({ children }: { children?: React.ReactNo
     return () => { window.removeEventListener("offline", goOffline); window.removeEventListener("online", goOnline); };
   }, []);
 
-  // Focus trap for keyboard shortcuts dialog
-  useEffect(() => {
-    const el = shortcutsDialogRef.current;
-    if (!el || !showShortcuts) return;
-    const closeBtn = el.querySelector<HTMLButtonElement>("button");
-    closeBtn?.focus();
-    const trap = (e: KeyboardEvent) => {
-      if (e.key !== "Tab") return;
-      const focusable = el.querySelectorAll<HTMLElement>("button, [tabindex]");
-      if (focusable.length === 0) return;
-      const first = focusable[0], last = focusable[focusable.length - 1];
-      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
-      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
-    };
-    el.addEventListener("keydown", trap);
-    return () => el.removeEventListener("keydown", trap);
-  }, [showShortcuts]);
-
-  // Keyboard shortcuts
-  const handleKeydown = useCallback((e: KeyboardEvent) => {
-    // Ignore when typing in inputs
-    if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLSelectElement) return;
-    if (e.key === "n" && !e.metaKey && !e.ctrlKey) { handleStartSession(); }
-    if (e.key === "?" && !e.metaKey && !e.ctrlKey) { setShowShortcuts(v => !v); }
-    if (e.key === "Escape" && showShortcuts) { setShowShortcuts(false); }
-  }, [nav, showShortcuts, handleStartSession]);
-
-  useEffect(() => {
-    window.addEventListener("keydown", handleKeydown);
-    return () => window.removeEventListener("keydown", handleKeydown);
-  }, [handleKeydown]);
 
   // Haptic feedback on mobile button taps
   useEffect(() => {
@@ -214,12 +179,6 @@ export default function DashboardLayout({ children }: { children?: React.ReactNo
               {activeNav === item.id && <div style={{ width: 3, height: 16, borderRadius: 2, background: c.gilt, marginLeft: "auto" }} />}
             </button>
           ))}
-          {!isMobile && (
-            <div style={{ margin: "16px 12px 0", padding: "8px 12px", borderRadius: 8, background: "rgba(245,242,237,0.02)", display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "default" }}>
-              <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>Command palette</span>
-              <kbd style={{ fontFamily: font.mono, fontSize: 10, color: c.stone, background: "rgba(245,242,237,0.04)", border: `1px solid ${c.border}`, borderRadius: 4, padding: "2px 6px" }}>{modKey}K</kbd>
-            </div>
-          )}
         </nav>
 
         {/* Plan Status */}
@@ -356,37 +315,6 @@ export default function DashboardLayout({ children }: { children?: React.ReactNo
         />
       )}
 
-      {/* Keyboard shortcuts help */}
-      {showShortcuts && (
-        <>
-          {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- modal backdrop dismissal */}
-          <div onClick={() => setShowShortcuts(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 90 }} />
-          <div role="dialog" aria-modal="true" aria-label="Keyboard shortcuts"
-            ref={shortcutsDialogRef}
-            style={{
-            position: "fixed", top: "50%", left: "50%", transform: "translate(-50%, -50%)",
-            background: c.graphite, border: `1px solid ${c.border}`, borderRadius: 14,
-            padding: "28px 32px", zIndex: 91, minWidth: 280,
-          }}>
-            <h3 style={{ fontFamily: font.ui, fontSize: 15, fontWeight: 600, color: c.ivory, marginBottom: 16 }}>Keyboard Shortcuts</h3>
-            {[
-              ["N", "New session"],
-              [`${modKey}K`, "Command palette"],
-              ["/", "Search sessions"],
-              ["?", "Toggle this help"],
-              ["Esc", "Close dialogs"],
-            ].map(([key, desc]) => (
-              <div key={key} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 0" }}>
-                <span style={{ fontFamily: font.ui, fontSize: 13, color: c.chalk }}>{desc}</span>
-                <kbd style={{ fontFamily: font.mono, fontSize: 11, fontWeight: 600, color: c.gilt, background: "rgba(212,179,127,0.08)", border: `1px solid rgba(212,179,127,0.15)`, borderRadius: 4, padding: "2px 8px" }}>{key}</kbd>
-              </div>
-            ))}
-            <button onClick={() => setShowShortcuts(false)} style={{ marginTop: 16, width: "100%", padding: "8px 0", borderRadius: 8, border: `1px solid ${c.border}`, background: "transparent", color: c.stone, fontFamily: font.ui, fontSize: 12, cursor: "pointer", transition: "background 0.15s" }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(245,242,237,0.06)"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}>Close</button>
-          </div>
-        </>
-      )}
 
       {/* Toast notification */}
       {toast && (
@@ -439,15 +367,6 @@ export default function DashboardLayout({ children }: { children?: React.ReactNo
                   FAQs
                 </div>
               </Link>
-              {/* Keyboard Shortcuts */}
-              <button onClick={() => { setShowShortcuts(true); setHelpOpen(false); }} style={{ background: "none", border: "none", padding: 0, textAlign: "left", cursor: "pointer" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 8, border: `1px solid ${c.border}`, background: "rgba(245,242,237,0.02)", cursor: "pointer", transition: "all 0.15s", color: c.chalk, fontFamily: font.ui, fontSize: 13, fontWeight: 500 }}
-                  onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(212,179,127,0.06)"; e.currentTarget.style.borderColor = "rgba(212,179,127,0.25)"; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(245,242,237,0.02)"; e.currentTarget.style.borderColor = c.border; }}>
-                  <span style={{ color: c.gilt, flexShrink: 0 }}><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="4" width="20" height="16" rx="2" ry="2"/><path d="M6 8h.001"/><path d="M10 8h.001"/><path d="M14 8h.001"/><path d="M18 8h.001"/><path d="M8 12h.001"/><path d="M12 12h.001"/><path d="M16 12h.001"/><line x1="7" y1="16" x2="17" y2="16"/></svg></span>
-                  Keyboard Shortcuts
-                </div>
-              </button>
             </div>
 
             {/* Contact section */}
@@ -539,8 +458,6 @@ export default function DashboardLayout({ children }: { children?: React.ReactNo
         </button>
       </div>
 
-      {/* Command palette */}
-      <CommandPalette onStartSession={handleStartSession} onExport={handleExport} sessions={recentSessions} />
     </div>
   );
 }
