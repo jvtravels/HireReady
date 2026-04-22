@@ -119,10 +119,10 @@ export default function Onboarding() {
   const reanalyzedRef = useRef(false);
   useEffect(() => {
     if (reanalyzedRef.current) return;
-    if (!resumeParsed || aiPhase === "analyzing") return;
+    if (!user || !resumeParsed || aiPhase === "analyzing") return;
     const hasRealScore = aiProfile?.resumeScore != null;
     if (hasRealScore) return;
-    const textForAnalysis = resumeText || user?.resumeText;
+    const textForAnalysis = resumeText || user.resumeText;
     if (!textForAnalysis || textForAnalysis.length < 20) return;
     reanalyzedRef.current = true;
     console.log("[onboarding] Auto re-analyzing, textLen:", textForAnalysis.length);
@@ -130,27 +130,9 @@ export default function Onboarding() {
     const ac = new AbortController();
     const timer = setTimeout(() => { console.error("[onboarding] 20s timeout — aborting"); ac.abort(); }, 20000);
 
-    const getHeaders = async (): Promise<Record<string, string>> => {
-      try {
-        const { authHeaders } = await Promise.race([
-          import("./supabase"),
-          new Promise<never>((_, rej) => setTimeout(() => rej(new Error("auth-timeout")), 5000)),
-        ]);
-        const h = await Promise.race([
-          authHeaders(),
-          new Promise<never>((_, rej) => setTimeout(() => rej(new Error("auth-timeout")), 5000)),
-        ]);
-        console.log("[onboarding] Got auth headers");
-        return h;
-      } catch {
-        console.warn("[onboarding] authHeaders timed out, proceeding without auth");
-        return { "Content-Type": "application/json" };
-      }
-    };
-
-    getHeaders()
+    import("./supabase").then(({ authHeaders }) => authHeaders())
       .then(headers => {
-        console.log("[onboarding] Fetching /api/analyze-resume...");
+        console.log("[onboarding] Got auth, fetching /api/analyze-resume...");
         return fetch("/api/analyze-resume", {
           method: "POST",
           headers,
@@ -175,7 +157,7 @@ export default function Onboarding() {
       })
       .finally(() => { clearTimeout(timer); setAiPhase("done"); });
     return () => { clearTimeout(timer); ac.abort(); };
-  }, [resumeParsed, resumeText, aiPhase, aiProfile?.resumeScore, user?.resumeText, targetRole]);
+  }, [user, resumeParsed, resumeText, aiPhase, aiProfile?.resumeScore, targetRole]);
 
   // Progress stage timer for resume analysis
   useEffect(() => {
