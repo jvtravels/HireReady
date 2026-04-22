@@ -810,11 +810,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(async () => {
     logAuditEvent("logout", { userId: user?.id });
-    if (supabaseConfigured) { const client = await getSupabase(); await client.auth.signOut(); }
-    track("logout");
     setUser(null);
+    // Clear stored session tokens BEFORE signOut to prevent the routing guard
+    // from re-restoring the session via hasStoredSession() retry logic
+    try {
+      for (let i = localStorage.length - 1; i >= 0; i--) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith("sb-") && key.endsWith("-auth-token")) localStorage.removeItem(key);
+      }
+    } catch { /* expected */ }
+    if (supabaseConfigured) { const client = await getSupabase(); await client.auth.signOut().catch(() => {}); }
+    track("logout");
     clearLastRoute();
-    broadcastLogout(); // Sync logout across all open tabs
+    broadcastLogout();
   }, [user?.id, broadcastLogout]);
 
   const updateUser = useCallback(async (updates: Partial<User>) => {
