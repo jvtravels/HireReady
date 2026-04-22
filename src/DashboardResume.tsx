@@ -10,12 +10,32 @@ import { DataLoadingSkeleton } from "./dashboardComponents";
 
 /* ─── Resume Version History (localStorage) ─── */
 const RESUME_HISTORY_KEY = "hirestepx_resume_history";
-interface ResumeVersion { fileName: string; date: string; resumeScore?: number; }
-function saveResumeVersion(fileName: string, resumeScore?: number) {
+interface ResumeVersion { fileName: string; date: string; resumeScore?: number; contentHash?: string; }
+/** Simple fast hash of resume text to detect content changes */
+function hashText(text: string): string {
+  let h = 0;
+  for (let i = 0; i < text.length; i++) {
+    h = ((h << 5) - h + text.charCodeAt(i)) | 0;
+  }
+  return h.toString(36);
+}
+function saveResumeVersion(fileName: string, resumeScore?: number, resumeText?: string) {
   try {
     const raw = localStorage.getItem(RESUME_HISTORY_KEY);
     const history: ResumeVersion[] = raw ? JSON.parse(raw) : [];
-    history.unshift({ fileName, date: new Date().toISOString(), resumeScore });
+    const hash = resumeText ? hashText(resumeText) : undefined;
+    // Same file AND same content = re-analysis of identical resume → update score only
+    // Same file but different content (or no hash to compare) = genuinely new version
+    const isDuplicate = history.length > 0
+      && history[0].fileName === fileName
+      && hash != null && history[0].contentHash != null
+      && hash === history[0].contentHash;
+    if (isDuplicate) {
+      history[0].resumeScore = resumeScore ?? history[0].resumeScore;
+      history[0].date = new Date().toISOString();
+    } else {
+      history.unshift({ fileName, date: new Date().toISOString(), resumeScore, contentHash: hash });
+    }
     // Keep last 10 versions
     localStorage.setItem(RESUME_HISTORY_KEY, JSON.stringify(history.slice(0, 10)));
   } catch { /* expected: localStorage may be unavailable */ }
@@ -302,7 +322,7 @@ export default function DashboardResume() {
       setAnalysisSource("ai");
       setTruncated(!!result.truncated);
       updateUser({ resumeData: { ...result.profile, _type: "ai" } as unknown as ParsedResume });
-      saveResumeVersion(file.name, result.profile.resumeScore);
+      saveResumeVersion(file.name, result.profile.resumeScore, text);
       setPhase("done");
     } else {
       setErrorMsg("AI analysis unavailable — showing basic profile from your resume. You can re-analyze anytime.");
@@ -318,7 +338,7 @@ export default function DashboardResume() {
       setProfile(fallback);
       setAnalysisSource("fallback");
       updateUser({ resumeData: { ...fallback, _type: "fallback" } as unknown as ParsedResume });
-      saveResumeVersion(file.name);
+      saveResumeVersion(file.name, undefined, text);
       setPhase("done");
     }
   };
@@ -348,6 +368,7 @@ export default function DashboardResume() {
         setAnalysisSource("ai");
         setTruncated(!!result.truncated);
         updateUser({ resumeData: { ...result.profile, _type: "ai" } as unknown as ParsedResume });
+        if (fileName) saveResumeVersion(fileName, result.profile.resumeScore, resumeText);
       } else {
         setErrorMsg("AI couldn't extract structured data. Try re-uploading a cleaner PDF or DOCX.");
       }
@@ -389,6 +410,14 @@ export default function DashboardResume() {
               <span style={{ fontFamily: font.ui, fontSize: 12, color: c.chalk }}>{fileName}</span>
             </div>
           )}
+          <button
+            onClick={() => { abortControllerRef.current?.abort(); setPhase("idle"); setFileName(""); setResumeText(""); setProfile(null); }}
+            style={{ display: "block", margin: "20px auto 0", fontFamily: font.ui, fontSize: 13, color: c.stone, background: "none", border: "none", cursor: "pointer", padding: "6px 16px", borderRadius: 8, transition: "color 0.2s" }}
+            onMouseEnter={e => (e.currentTarget.style.color = c.ivory)}
+            onMouseLeave={e => (e.currentTarget.style.color = c.stone)}
+          >
+            Cancel
+          </button>
         </div>
       </div>
     );

@@ -193,9 +193,10 @@ export function ResumeEmptyState({ isDragging, dragFileName, resumeError, showUn
 export interface ResumeLoadingStateProps {
   analysisStage: number;
   fileName: string;
+  onCancel?: () => void;
 }
 
-export function ResumeLoadingState({ analysisStage, fileName }: ResumeLoadingStateProps) {
+export function ResumeLoadingState({ analysisStage, fileName, onCancel }: ResumeLoadingStateProps) {
   return (
     <>
       <p style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 700, color: c.gilt, textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 12 }}>Step 1 — Your Experience</p>
@@ -244,6 +245,16 @@ export function ResumeLoadingState({ analysisStage, fileName }: ResumeLoadingSta
             <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={c.stone} strokeWidth="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
             <span style={{ fontFamily: font.ui, fontSize: 12, color: c.stone }}>{fileName}</span>
           </div>
+        )}
+        {onCancel && (
+          <button
+            onClick={onCancel}
+            style={{ display: "block", margin: "20px auto 0", fontFamily: font.ui, fontSize: 13, color: c.stone, background: "none", border: "none", cursor: "pointer", padding: "6px 16px", borderRadius: 8, transition: "color 0.2s" }}
+            onMouseEnter={e => (e.currentTarget.style.color = c.ivory)}
+            onMouseLeave={e => (e.currentTarget.style.color = c.stone)}
+          >
+            Cancel
+          </button>
         )}
       </div>
     </>

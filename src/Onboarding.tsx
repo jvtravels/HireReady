@@ -281,6 +281,16 @@ export default function Onboarding() {
     });
   };
 
+  const handleCancelAnalysis = () => {
+    analysisAbortRef.current?.abort();
+    setResumeParsing(false);
+    setAiPhase("idle");
+    setFileName("");
+    setResumeText("");
+    setResumeParsed(null);
+    setAiProfile(null);
+  };
+
   const handleRemoveResume = () => {
     undoRef.current = { fileName, resumeText, resumeParsed, aiProfile, aiPhase, targetRole, userName };
     setFileName(""); setResumeText(""); setResumeParsed(null); setResumeError(""); setAiProfile(null); setAiPhase("idle"); setTargetRole(""); setUserName("");
@@ -349,7 +359,7 @@ export default function Onboarding() {
             />
           )}
           {(resumeParsing || aiPhase === "analyzing") && aiPhase !== "done" && (
-            <ResumeLoadingState analysisStage={analysisStage} fileName={fileName} />
+            <ResumeLoadingState analysisStage={analysisStage} fileName={fileName} onCancel={handleCancelAnalysis} />
           )}
           {resumeParsed && !resumeParsing && aiPhase === "done" && aiProfile && (
             <ProfileReadyState
