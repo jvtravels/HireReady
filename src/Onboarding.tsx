@@ -125,13 +125,32 @@ export default function Onboarding() {
     const textForAnalysis = resumeText || user?.resumeText;
     if (!textForAnalysis || textForAnalysis.length < 20) return;
     reanalyzedRef.current = true;
-    console.log("[onboarding] Auto re-analyzing stale fallback profile, textLen:", textForAnalysis.length);
+    console.log("[onboarding] Auto re-analyzing, textLen:", textForAnalysis.length);
     setAiPhase("analyzing");
     const ac = new AbortController();
-    const timer = setTimeout(() => ac.abort(), 20000);
-    import("./supabase").then(({ authHeaders }) =>
-      authHeaders().then(headers => {
-        console.log("[onboarding] Got auth headers, making fetch...");
+    const timer = setTimeout(() => { console.error("[onboarding] 20s timeout — aborting"); ac.abort(); }, 20000);
+
+    const getHeaders = async (): Promise<Record<string, string>> => {
+      try {
+        const { authHeaders } = await Promise.race([
+          import("./supabase"),
+          new Promise<never>((_, rej) => setTimeout(() => rej(new Error("auth-timeout")), 5000)),
+        ]);
+        const h = await Promise.race([
+          authHeaders(),
+          new Promise<never>((_, rej) => setTimeout(() => rej(new Error("auth-timeout")), 5000)),
+        ]);
+        console.log("[onboarding] Got auth headers");
+        return h;
+      } catch {
+        console.warn("[onboarding] authHeaders timed out, proceeding without auth");
+        return { "Content-Type": "application/json" };
+      }
+    };
+
+    getHeaders()
+      .then(headers => {
+        console.log("[onboarding] Fetching /api/analyze-resume...");
         return fetch("/api/analyze-resume", {
           method: "POST",
           headers,
@@ -139,16 +158,15 @@ export default function Onboarding() {
           body: JSON.stringify({ resumeText: textForAnalysis, targetRole }),
         });
       })
-    )
       .then(res => {
-        console.log("[onboarding] analyze-resume response:", res.status);
+        console.log("[onboarding] Response:", res.status);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         return res.json();
       })
       .then(data => {
         if (data?.profile) {
           setAiProfile(data.profile);
-          console.log("[onboarding] Auto re-analysis succeeded");
+          console.log("[onboarding] Auto re-analysis succeeded, score:", data.profile.resumeScore);
         }
       })
       .catch(err => {
