@@ -57,6 +57,7 @@ export default function Onboarding() {
     // Try localStorage fallback if Supabase columns are missing
     const localResume = (() => { try { const r = localStorage.getItem("hirestepx_resume"); return r ? JSON.parse(r) as { fileName: string; text: string; data: ParsedResume; aiProfile?: ResumeProfile } : null; } catch { return null; } })();
     const rFileName = user?.resumeFileName || localResume?.fileName;
+    console.log("[restore] user:", { resumeFileName: user?.resumeFileName, hasResumeText: !!user?.resumeText, textLen: user?.resumeText?.length, hasLocal: !!localResume, localFileName: localResume?.fileName });
     if (!rFileName) return;
     resumeRestoredRef.current = true;
     setFileName(rFileName);
