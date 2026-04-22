@@ -54,18 +54,22 @@ export default function Onboarding() {
   const resumeRestoredRef = useRef(false);
   useEffect(() => {
     if (resumeRestoredRef.current || resumeParsed || resumeParsing) return;
-    if (!user?.resumeFileName) return;
+    // Try localStorage fallback if Supabase columns are missing
+    const localResume = (() => { try { const r = localStorage.getItem("hirestepx_resume"); return r ? JSON.parse(r) as { fileName: string; text: string; data: ParsedResume; aiProfile?: ResumeProfile } : null; } catch { return null; } })();
+    const rFileName = user?.resumeFileName || localResume?.fileName;
+    if (!rFileName) return;
     resumeRestoredRef.current = true;
-    setFileName(user.resumeFileName);
-    if (!user?.resumeText) {
+    setFileName(rFileName);
+    const rText = user?.resumeText || localResume?.text;
+    if (!rText) {
       setResumeError("Your resume text wasn't saved properly. Please re-upload your resume to continue.");
       return;
     }
-    setResumeText(user.resumeText);
+    setResumeText(rText);
     import("./resumeParser").then(async ({ parseResumeData }) => {
-      const data = user.resumeData || parseResumeData(user.resumeText!);
+      const data = user?.resumeData || localResume?.data || parseResumeData(rText);
       setResumeParsed(data);
-      const savedAiProfile = (data as ParsedResume & { aiProfile?: ResumeProfile })?.aiProfile;
+      const savedAiProfile = localResume?.aiProfile || (data as ParsedResume & { aiProfile?: ResumeProfile })?.aiProfile;
       if (data.name && !userName) setUserName(data.name);
       const isRealAiProfile = savedAiProfile && savedAiProfile.headline
         && savedAiProfile.resumeScore != null
@@ -82,10 +86,11 @@ export default function Onboarding() {
         setAiPhase("analyzing");
         const autoRole = data.experience?.[0]?.title || "";
         const { analyzeResumeWithAI } = await import("./dashboardData");
-        analyzeResumeWithAI(user.resumeText!, targetRole || autoRole)
+        analyzeResumeWithAI(rText, targetRole || autoRole)
           .then(result => {
             if (result && "profile" in result) {
               setAiProfile(result.profile);
+              try { const cached = localStorage.getItem("hirestepx_resume"); if (cached) { const obj = JSON.parse(cached); obj.aiProfile = result.profile; localStorage.setItem("hirestepx_resume", JSON.stringify(obj)); } } catch { /* noop */ }
             }
           })
           .catch(err => { console.error("[onboarding] AI analysis error:", err instanceof Error ? err.message : err); })
@@ -142,6 +147,7 @@ export default function Onboarding() {
       const data = await res.json();
       if (data?.profile) {
         setAiProfile(data.profile);
+        try { const cached = localStorage.getItem("hirestepx_resume"); if (cached) { const obj = JSON.parse(cached); obj.aiProfile = data.profile; localStorage.setItem("hirestepx_resume", JSON.stringify(obj)); } } catch { /* noop */ }
       }
     }
 
@@ -281,6 +287,7 @@ export default function Onboarding() {
         const mapped = seniorityMap[finalProfile.seniorityLevel.toLowerCase()] || "";
         if (mapped) profileSave.experienceLevel = mapped;
       }
+      try { localStorage.setItem("hirestepx_resume", JSON.stringify({ fileName: file.name, text, data, aiProfile: finalProfile })); } catch { /* quota exceeded */ }
       setSaveStatus("saving");
       try {
         await updateUser(profileSave);
@@ -358,6 +365,7 @@ export default function Onboarding() {
   const handleRemoveResume = () => {
     undoRef.current = { fileName, resumeText, resumeParsed, aiProfile, aiPhase, targetRole, userName };
     setFileName(""); setResumeText(""); setResumeParsed(null); setResumeError(""); setAiProfile(null); setAiPhase("idle"); setTargetRole(""); setUserName("");
+    try { localStorage.removeItem("hirestepx_resume"); } catch { /* noop */ }
     setShowUndo(true); clearTimeout(undoTimerRef.current);
     undoTimerRef.current = window.setTimeout(() => { setShowUndo(false); undoRef.current = null; }, 12000);
   };
