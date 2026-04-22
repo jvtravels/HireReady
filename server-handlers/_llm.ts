@@ -114,76 +114,43 @@ async function callGemini(opts: LLMOptions, signal?: AbortSignal): Promise<LLMRe
 }
 
 export async function callLLM(opts: LLMOptions, timeoutMs = 15000, meta?: { userId?: string; endpoint?: string }): Promise<LLMResult> {
-  const providers: Array<{ name: string; call: (signal: AbortSignal) => Promise<LLMResult> }> = [];
+  const primary = GROQ_API_KEY ? { name: "groq", call: (s: AbortSignal) => callGroq(opts, s) } : null;
+  const fallback = GEMINI_API_KEY ? { name: "gemini", call: (s: AbortSignal) => callGemini(opts, s) } : null;
 
-  if (GEMINI_API_KEY) providers.push({ name: "gemini", call: (s) => callGemini(opts, s) });
-  if (GROQ_API_KEY) providers.push({ name: "groq", call: (s) => callGroq(opts, s) });
+  if (!primary && !fallback) throw new Error("No LLM configured — set GROQ_API_KEY or GEMINI_API_KEY");
 
-  if (providers.length === 0) throw new Error("No LLM configured — set GEMINI_API_KEY or GROQ_API_KEY");
-
-  console.log(`[LLM] Starting with ${providers.map(p => p.name).join(" + ")} (timeout: ${timeoutMs}ms)`);
-
-  // Single provider
-  if (providers.length === 1) {
+  const tryProvider = async (provider: { name: string; call: (s: AbortSignal) => Promise<LLMResult> }, isFallback: boolean): Promise<LLMResult> => {
     const ac = new AbortController();
     const timer = setTimeout(() => ac.abort(), timeoutMs);
     try {
-      const result = await providers[0].call(ac.signal);
+      const result = await provider.call(ac.signal);
       clearTimeout(timer);
-      logUsage({ userId: meta?.userId, endpoint: meta?.endpoint, model: result.model, isFallback: false, promptTokens: result.tokensUsed?.prompt ?? 0, completionTokens: result.tokensUsed?.completion ?? 0, totalTokens: result.tokensUsed?.total ?? 0, latencyMs: result.latencyMs ?? 0, status: "success" });
+      logUsage({ userId: meta?.userId, endpoint: meta?.endpoint, model: result.model, isFallback, promptTokens: result.tokensUsed?.prompt ?? 0, completionTokens: result.tokensUsed?.completion ?? 0, totalTokens: result.tokensUsed?.total ?? 0, latencyMs: result.latencyMs ?? 0, status: "success" });
       return result;
     } catch (err) {
       clearTimeout(timer);
       const msg = err instanceof Error ? err.message : "";
       const isTimeout = msg.includes("AbortError") || msg.includes("abort");
-      console.error(`[LLM] ${providers[0].name} failed (${isTimeout ? "timeout" : "error"}): ${msg.slice(0, 150)}`);
-      logUsage({ userId: meta?.userId, endpoint: meta?.endpoint, model: providers[0].name, isFallback: false, promptTokens: 0, completionTokens: 0, totalTokens: 0, latencyMs: 0, status: isTimeout ? "timeout" : "error", errorMessage: msg.slice(0, 200) });
+      console.error(`[LLM] ${provider.name} failed (${isTimeout ? "timeout" : "error"}): ${msg.slice(0, 150)}`);
+      logUsage({ userId: meta?.userId, endpoint: meta?.endpoint, model: provider.name, isFallback, promptTokens: 0, completionTokens: 0, totalTokens: 0, latencyMs: 0, status: isTimeout ? "timeout" : "error", errorMessage: msg.slice(0, 200) });
       throw err;
+    }
+  };
+
+  // Groq first, Gemini fallback
+  if (primary && fallback) {
+    console.warn(`[LLM] Trying ${primary.name} first, fallback: ${fallback.name} (timeout: ${timeoutMs}ms)`);
+    try {
+      return await tryProvider(primary, false);
+    } catch {
+      console.warn(`[LLM] ${primary.name} failed, falling back to ${fallback.name}`);
+      return await tryProvider(fallback, true);
     }
   }
 
-  // Two providers — race in parallel
-  const ac = new AbortController();
-  const timer = setTimeout(() => ac.abort(), timeoutMs);
-  const controllers = providers.map(() => new AbortController());
-  ac.signal.addEventListener("abort", () => controllers.forEach(c => c.abort()));
-
-  const raceResult = await new Promise<LLMResult>((resolve, reject) => {
-    let settled = false;
-    let errorCount = 0;
-    let lastError: Error | undefined;
-
-    providers.forEach((provider, i) => {
-      provider.call(controllers[i].signal)
-        .then(result => {
-          if (settled) return;
-          settled = true;
-          clearTimeout(timer);
-          controllers.forEach((c, j) => { if (j !== i) c.abort(); });
-          console.log(`[LLM] Winner: ${provider.name} (${result.latencyMs}ms)`);
-          logUsage({ userId: meta?.userId, endpoint: meta?.endpoint, model: result.model, isFallback: i > 0, promptTokens: result.tokensUsed?.prompt ?? 0, completionTokens: result.tokensUsed?.completion ?? 0, totalTokens: result.tokensUsed?.total ?? 0, latencyMs: result.latencyMs ?? 0, status: "success" });
-          resolve(result);
-        })
-        .catch(err => {
-          const msg = err instanceof Error ? err.message : "";
-          const isAbortedLoser = settled && (msg.includes("AbortError") || msg.includes("abort"));
-          if (!isAbortedLoser) {
-            const isTimeout = msg.includes("AbortError") || msg.includes("abort");
-            console.error(`[LLM] ${provider.name} failed (${isTimeout ? "timeout" : "error"}): ${msg.slice(0, 150)}`);
-            logUsage({ userId: meta?.userId, endpoint: meta?.endpoint, model: provider.name, isFallback: i > 0, promptTokens: 0, completionTokens: 0, totalTokens: 0, latencyMs: 0, status: isTimeout ? "timeout" : "error", errorMessage: msg.slice(0, 200) });
-          }
-          errorCount++;
-          lastError = err instanceof Error ? err : new Error(msg);
-          if (errorCount === providers.length && !settled) {
-            settled = true;
-            clearTimeout(timer);
-            reject(lastError);
-          }
-        });
-    });
-  });
-
-  return raceResult;
+  const solo = primary || fallback!;
+  console.warn(`[LLM] Using ${solo.name} only (timeout: ${timeoutMs}ms)`);
+  return await tryProvider(solo, false);
 }
 
 export function extractJSON<T = unknown>(text: string): T | null {

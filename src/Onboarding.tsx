@@ -53,13 +53,11 @@ export default function Onboarding() {
   // ─── Restore resume from user profile on mount/refresh ───
   const resumeRestoredRef = useRef(false);
   useEffect(() => {
-    console.log("[onboarding-restore] enter", { ref: resumeRestoredRef.current, hasParsed: !!resumeParsed, parsing: resumeParsing, fileName: user?.resumeFileName, hasText: !!user?.resumeText, textLen: user?.resumeText?.length });
     if (resumeRestoredRef.current || resumeParsed || resumeParsing) return;
     if (!user?.resumeFileName) return;
     resumeRestoredRef.current = true;
     setFileName(user.resumeFileName);
     if (!user?.resumeText) {
-      console.warn("[onboarding] Resume text missing from database — user needs to re-upload");
       setResumeError("Your resume text wasn't saved properly. Please re-upload your resume to continue.");
       return;
     }
@@ -69,19 +67,10 @@ export default function Onboarding() {
       setResumeParsed(data);
       const savedAiProfile = (data as ParsedResume & { aiProfile?: ResumeProfile })?.aiProfile;
       if (data.name && !userName) setUserName(data.name);
-      console.log("[onboarding-restore] aiProfile check", {
-        hasProfile: !!savedAiProfile,
-        headline: savedAiProfile?.headline,
-        score: savedAiProfile?.resumeScore,
-        scoreCheck: savedAiProfile?.resumeScore != null,
-        skillsLen: savedAiProfile?.topSkills?.length,
-        type: (savedAiProfile as unknown as Record<string, unknown>)?._type,
-      });
       const isRealAiProfile = savedAiProfile && savedAiProfile.headline
         && savedAiProfile.resumeScore != null
         && savedAiProfile.topSkills && savedAiProfile.topSkills.length > 0
         && (savedAiProfile as unknown as Record<string, unknown>)._type !== "fallback";
-      console.log("[onboarding-restore] isReal:", isRealAiProfile);
       if (isRealAiProfile) {
         setAiProfile(savedAiProfile);
         setAiPhase("done");
@@ -89,18 +78,14 @@ export default function Onboarding() {
           setUserName(savedAiProfile.headline.split(/[—–|,]/)[0].trim().slice(0, 40));
         }
       } else {
-        console.log("[onboarding-restore] triggering AI analysis...");
         if (savedAiProfile) setAiProfile(savedAiProfile);
         setAiPhase("analyzing");
         const autoRole = data.experience?.[0]?.title || "";
         const { analyzeResumeWithAI } = await import("./dashboardData");
-        console.log("[onboarding-restore] calling analyzeResumeWithAI, textLen:", user.resumeText!.length);
         analyzeResumeWithAI(user.resumeText!, targetRole || autoRole)
           .then(result => {
-            console.log("[onboarding-restore] AI result:", !!result, result && "profile" in result);
             if (result && "profile" in result) {
               setAiProfile(result.profile);
-              console.log("[onboarding] AI analysis succeeded");
             }
           })
           .catch(err => { console.error("[onboarding] AI analysis error:", err instanceof Error ? err.message : err); })
@@ -121,15 +106,16 @@ export default function Onboarding() {
     if (reanalyzedRef.current) return;
     if (!user || !resumeParsed) return;
     const hasRealScore = aiProfile?.resumeScore != null;
-    if (hasRealScore) return;
+    if (hasRealScore) { reanalyzedRef.current = true; return; }
     const textForAnalysis = resumeText || user.resumeText;
     if (!textForAnalysis || textForAnalysis.length < 20) return;
     reanalyzedRef.current = true;
     setAiPhase("analyzing");
+    analysisAbortRef.current?.abort();
     const ac = new AbortController();
-    const timer = setTimeout(() => { console.error("[onboarding] 20s timeout"); ac.abort(); }, 20000);
+    analysisAbortRef.current = ac;
+    const timer = setTimeout(() => { ac.abort(); }, 20000);
 
-    // Strategy 1: Read token from localStorage (sync, no deadlock)
     function getTokenFromStorage(): string | null {
       try {
         for (let i = 0; i < localStorage.length; i++) {
@@ -145,45 +131,24 @@ export default function Onboarding() {
 
     async function doAnalysis(): Promise<void> {
       let token = getTokenFromStorage();
-      // Strategy 2: If no token in storage, wait 2s for session init then retry
       if (!token) {
-        console.log("[onboarding] No token in localStorage, waiting 2s for session...");
         await new Promise(r => setTimeout(r, 2000));
         token = getTokenFromStorage();
       }
-      // Strategy 3: Last resort — try authHeaders (might work after AuthContext init)
-      if (!token) {
-        console.log("[onboarding] Still no token, trying authHeaders...");
-        try {
-          const { authHeaders } = await import("./supabase");
-          const raceResult = await Promise.race([
-            authHeaders(),
-            new Promise<null>((_, rej) => setTimeout(() => rej(new Error("auth-timeout")), 3000)),
-          ]);
-          if (raceResult) {
-            const authVal = raceResult["Authorization"];
-            if (authVal) token = authVal.replace("Bearer ", "");
-          }
-        } catch { console.warn("[onboarding] authHeaders fallback failed"); }
-      }
-      console.log("[onboarding] Auth token:", token ? `found (${token.length} chars)` : "MISSING — will get 401");
       const headers: Record<string, string> = { "Content-Type": "application/json" };
       if (token) headers["Authorization"] = `Bearer ${token}`;
       const res = await fetch("/api/analyze-resume", { method: "POST", headers, signal: ac.signal, body: JSON.stringify({ resumeText: textForAnalysis, targetRole }) });
-      console.log("[onboarding] Response:", res.status);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       if (data?.profile) {
         setAiProfile(data.profile);
-        console.log("[onboarding] Auto re-analysis succeeded, score:", data.profile.resumeScore);
       }
     }
 
-    console.log("[onboarding] Auto re-analyzing, textLen:", textForAnalysis.length);
     doAnalysis()
       .catch(err => console.error("[onboarding] Auto re-analysis failed:", err instanceof Error ? err.message : err))
       .finally(() => { clearTimeout(timer); setAiPhase("done"); });
-    // No cleanup abort — reanalyzedRef prevents re-runs, and the 20s timer handles timeouts
+    return () => { clearTimeout(timer); ac.abort(); };
   }, [user, resumeParsed, resumeText, aiProfile?.resumeScore, targetRole]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Progress stage timer for resume analysis
@@ -460,9 +425,10 @@ export default function Onboarding() {
           {(resumeParsing || aiPhase === "analyzing") && aiPhase !== "done" && (
             <ResumeLoadingState analysisStage={analysisStage} fileName={fileName} onCancel={handleCancelAnalysis} />
           )}
-          {resumeParsed && !resumeParsing && aiPhase === "done" && aiProfile && (
+          {resumeParsed && !resumeParsing && aiPhase === "done" && (
             <ProfileReadyState
-              aiProfile={aiProfile} resumeParsed={resumeParsed} userName={userName}
+              aiProfile={aiProfile || { headline: resumeParsed.name || "Your Profile", summary: "", yearsExperience: null, seniorityLevel: "", topSkills: resumeParsed.skills?.slice(0, 8) || [], keyAchievements: [], industries: [], interviewStrengths: [], interviewGaps: [], careerTrajectory: "" }}
+              resumeParsed={resumeParsed} userName={userName}
               fileName={fileName} resumeText={resumeText} targetRole={targetRole}
               fileInputRef={fileInputRef} onUserNameChange={setUserName}
               onReanalyze={handleReanalyze} onRemove={handleRemoveResume}
