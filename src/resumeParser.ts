@@ -311,14 +311,40 @@ function splitSections(text: string): Record<string, string> {
   return result;
 }
 
+const STOPWORDS = new Set([
+  "a","an","and","are","as","at","be","been","being","but","by","can","did","do",
+  "does","doing","done","for","from","get","got","had","has","have","having","he",
+  "her","here","him","his","how","i","if","in","into","is","it","its","just","let",
+  "may","me","might","my","no","nor","not","of","on","or","our","out","own","said",
+  "she","should","so","some","such","than","that","the","their","them","then",
+  "there","these","they","this","those","to","too","up","us","very","was","we",
+  "were","what","when","where","which","while","who","whom","why","will","with",
+  "would","you","your","working","worked","work","used","using","use","also",
+  "including","included","various","responsible","collaborated","helped","built",
+  "developed","managed","led","created","designed","implemented","maintained",
+  "supported","involved","contributed","participated","assisted","performed",
+  "prepared","conducted","provided","delivered","achieved","established",
+]);
+
+function isLikelySkill(s: string): boolean {
+  const lower = s.toLowerCase();
+  const words = lower.split(/\s+/);
+  if (words.length > 4) return false;
+  if (words.length === 1 && STOPWORDS.has(lower)) return false;
+  if (words.every(w => STOPWORDS.has(w))) return false;
+  if (/^\d+$/.test(s)) return false;
+  if (/^(19|20)\d{2}/.test(s)) return false;
+  if (s.length < 2 || s.length > 40) return false;
+  if (/\b(university|college|school|institute|bachelor|master|b\.?tech|m\.?tech|b\.?e|m\.?e|b\.?sc|m\.?sc|ph\.?d)\b/i.test(s)) return false;
+  return true;
+}
+
 function parseSkills(text: string): string[] {
-  // Skills are typically comma, pipe, or bullet separated
   const skills = text
     .split(/[,|•·●►▸▪■◆★\n]/)
-    .map(s => s.replace(/[-–—:]/g, " ").trim())
-    .filter(s => s.length > 1 && s.length < 50 && !s.match(SECTION_PATTERNS.skills));
+    .map(s => s.replace(/[-–—:]/g, " ").replace(/\s+/g, " ").trim())
+    .filter(s => !s.match(SECTION_PATTERNS.skills) && isLikelySkill(s));
 
-  // Deduplicate
   const seen = new Set<string>();
   return skills.filter(s => {
     const key = s.toLowerCase();

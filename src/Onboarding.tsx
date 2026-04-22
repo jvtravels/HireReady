@@ -182,9 +182,15 @@ export default function Onboarding() {
         }
       } catch (analysisErr: unknown) {
         if (analysisErr instanceof Error && analysisErr.message === "aborted") return;
+        console.warn("[onboarding] AI analysis failed, using fallback:", analysisErr instanceof Error ? analysisErr.message : analysisErr);
       }
       if (!aiSuccess && data.skills.length > 0) {
-        const cleanSkills = data.skills.filter(s => s.length < 30 && !s.includes(".") && s.split(/\s+/).length <= 4);
+        const cleanSkills = data.skills.filter(s =>
+          s.length >= 2 && s.length < 30 &&
+          !s.includes(".") &&
+          s.split(/\s+/).length <= 4 &&
+          !/^(and|or|the|with|for|from|working|worked|used|using|also|various)\b/i.test(s)
+        );
         if (cleanSkills.length > 0) {
           finalProfile = { ...fallback, topSkills: cleanSkills.slice(0, 8), headline: data.name || "Your Profile" };
           setAiProfile(finalProfile);
