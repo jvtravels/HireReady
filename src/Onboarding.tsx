@@ -119,7 +119,7 @@ export default function Onboarding() {
   const reanalyzedRef = useRef(false);
   useEffect(() => {
     if (reanalyzedRef.current) return;
-    if (!user || !resumeParsed || aiPhase === "analyzing") return;
+    if (!user || !resumeParsed) return;
     const hasRealScore = aiProfile?.resumeScore != null;
     if (hasRealScore) return;
     const textForAnalysis = resumeText || user.resumeText;
@@ -183,8 +183,8 @@ export default function Onboarding() {
     doAnalysis()
       .catch(err => console.error("[onboarding] Auto re-analysis failed:", err instanceof Error ? err.message : err))
       .finally(() => { clearTimeout(timer); setAiPhase("done"); });
-    return () => { clearTimeout(timer); ac.abort(); };
-  }, [user, resumeParsed, resumeText, aiPhase, aiProfile?.resumeScore, targetRole]);
+    // No cleanup abort — reanalyzedRef prevents re-runs, and the 20s timer handles timeouts
+  }, [user, resumeParsed, resumeText, aiProfile?.resumeScore, targetRole]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Progress stage timer for resume analysis
   useEffect(() => {
