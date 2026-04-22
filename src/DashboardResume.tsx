@@ -10,7 +10,7 @@ import { DataLoadingSkeleton } from "./dashboardComponents";
 
 /* ─── Resume Version History (localStorage) ─── */
 const RESUME_HISTORY_KEY = "hirestepx_resume_history";
-interface ResumeVersion { fileName: string; date: string; resumeScore?: number; contentHash?: string; }
+interface ResumeVersion { fileName: string; date: string; resumeScore?: number; contentHash?: string; resumeText?: string; }
 /** Simple fast hash of resume text to detect content changes */
 function hashText(text: string): string {
   let h = 0;
@@ -33,8 +33,9 @@ function saveResumeVersion(fileName: string, resumeScore?: number, resumeText?: 
     if (isDuplicate) {
       history[0].resumeScore = resumeScore ?? history[0].resumeScore;
       history[0].date = new Date().toISOString();
+      if (resumeText) history[0].resumeText = resumeText.slice(0, 8000);
     } else {
-      history.unshift({ fileName, date: new Date().toISOString(), resumeScore, contentHash: hash });
+      history.unshift({ fileName, date: new Date().toISOString(), resumeScore, contentHash: hash, resumeText: resumeText?.slice(0, 8000) });
     }
     // Keep last 10 versions
     localStorage.setItem(RESUME_HISTORY_KEY, JSON.stringify(history.slice(0, 10)));
@@ -209,11 +210,12 @@ export default function DashboardResume() {
     if (user?.resumeText) setResumeText(user.resumeText);
     if (user?.resumeFileName) setFileName(user.resumeFileName);
 
-    const stored = user?.resumeData as unknown as (ResumeProfile & { name?: string; skills?: string[] }) | undefined;
+    const stored = user?.resumeData as unknown as (ResumeProfile & { name?: string; skills?: string[]; [key: string]: unknown }) | undefined;
     if (stored) {
-      // Check if this is a full AI profile (has real data beyond the fallback)
-      const isFallback = !stored.headline || stored.headline === "Resume uploaded" ||
-        (!stored.seniorityLevel && (!stored.topSkills || stored.topSkills.length === 0) && (!stored.interviewStrengths || stored.interviewStrengths.length === 0));
+      const isFallback = !stored.headline || stored.headline === "Resume uploaded"
+        || (!stored.seniorityLevel && (!stored.topSkills || stored.topSkills.length === 0) && (!stored.interviewStrengths || stored.interviewStrengths.length === 0))
+        || (stored as Record<string, unknown>)._type === "fallback"
+        || stored.resumeScore == null;
       if (stored.headline && !isFallback) {
         setProfile(stored);
         setAnalysisSource("ai");
@@ -229,7 +231,9 @@ export default function DashboardResume() {
           .then(result => {
             if (result?.profile) {
               setProfile(result.profile);
+              setAnalysisSource("ai");
               updateUser({ resumeData: { ...result.profile, _type: "ai" } as unknown as ParsedResume });
+              if (user?.resumeFileName) saveResumeVersion(user.resumeFileName, result.profile.resumeScore, user.resumeText);
             }
             setPhase("done");
           })
@@ -590,6 +594,36 @@ export default function DashboardResume() {
                     {v.fileName}
                     {i === 0 && <span style={{ fontFamily: font.ui, fontSize: 10, color: c.sage, marginLeft: 6, fontWeight: 600 }}>CURRENT</span>}
                   </span>
+                  {i !== 0 && v.resumeText && (
+                    <button
+                      onClick={() => {
+                        setFileName(v.fileName);
+                        setResumeText(v.resumeText!);
+                        setProfile(null);
+                        setPhase("analyzing");
+                        updateUser({ resumeFileName: v.fileName, resumeText: v.resumeText! });
+                        updatePersisted({ resumeFileName: v.fileName });
+                        abortControllerRef.current?.abort();
+                        abortControllerRef.current = new AbortController();
+                        analyzeResumeWithAI(v.resumeText!, user?.targetRole, abortControllerRef.current.signal)
+                          .then(result => {
+                            if (result?.profile) {
+                              setProfile(result.profile);
+                              setAnalysisSource("ai");
+                              updateUser({ resumeData: { ...result.profile, _type: "ai" } as unknown as ParsedResume });
+                              saveResumeVersion(v.fileName, result.profile.resumeScore, v.resumeText!);
+                            }
+                            setPhase("done");
+                          })
+                          .catch(() => setPhase("done"));
+                      }}
+                      style={{ fontFamily: font.ui, fontSize: 10, color: c.gilt, background: "none", border: `1px solid rgba(212,179,127,0.2)`, borderRadius: 6, padding: "2px 8px", cursor: "pointer", transition: "all 0.2s" }}
+                      onMouseEnter={e => { e.currentTarget.style.background = "rgba(212,179,127,0.08)"; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = "none"; }}
+                    >
+                      Restore
+                    </button>
+                  )}
                   {v.resumeScore != null && (
                     <span style={{ fontFamily: font.mono, fontSize: 10, fontWeight: 600, color: v.resumeScore >= 65 ? c.sage : v.resumeScore >= 40 ? c.gilt : c.ember }}>{v.resumeScore}/100</span>
                   )}
