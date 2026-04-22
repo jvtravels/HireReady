@@ -831,12 +831,16 @@ export async function analyzeResumeWithAI(resumeText: string, targetRole?: strin
       throw new Error(data.retryAfter ? `Too many requests. Please wait ${data.retryAfter} seconds.` : "Too many requests. Please wait a moment.");
     }
     if (!res.ok) {
-      const errBody = await res.text().catch(() => "");
-      console.error(`[analyzeResume] API error ${res.status}:`, errBody.slice(0, 200));
-      return null;
+      const errData = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+      const msg = errData?.error || `HTTP ${res.status}`;
+      console.error(`[analyzeResume] API error ${res.status}:`, msg);
+      throw new Error(msg);
     }
     const data = await res.json();
-    if (!data.profile) { console.warn("[analyzeResume] No profile in response:", JSON.stringify(data).slice(0, 200)); return null; }
+    if (!data.profile) {
+      console.warn("[analyzeResume] No profile in response");
+      throw new Error("Server returned no profile data");
+    }
     return { profile: data.profile, truncated: data.truncated };
   });
 }

@@ -231,14 +231,20 @@ export default function DashboardResume() {
             if (result?.profile) {
               setProfile(result.profile);
               setAnalysisSource("ai");
+              setErrorMsg("");
               updateUser({ resumeData: { ...result.profile, _type: "ai" } as unknown as ParsedResume });
               if (user?.resumeFileName) saveResumeVersion(user.resumeFileName, result.profile.resumeScore, user.resumeText);
             } else {
-              console.warn("[resume] AI re-analysis returned null — API may have failed");
+              setErrorMsg("AI analysis returned no results. Try clicking re-analyze.");
             }
             setPhase("done");
           })
-          .catch(err => { console.error("[resume] AI re-analysis error:", err); setPhase("done"); })
+          .catch(err => {
+            const msg = err instanceof Error ? err.message : "Unknown error";
+            setErrorMsg(`AI analysis failed: ${msg}`);
+            console.error("[resume] AI re-analysis error:", err);
+            setPhase("done");
+          })
           .finally(() => { analyzingRef.current = false; });
       } else if (stored.name || stored.skills) {
         type LegacyResume = { name?: string; summary?: string; skills?: string[]; experience?: { bullets?: string[] }[] };
@@ -381,8 +387,9 @@ export default function DashboardResume() {
       } else {
         setErrorMsg("AI couldn't extract structured data. Try re-uploading a cleaner PDF or DOCX.");
       }
-    } catch {
-      setErrorMsg("Analysis timed out after 30s. Check your connection and try again.");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Unknown error";
+      setErrorMsg(msg.includes("timeout") ? "Analysis timed out. Try again." : `Analysis failed: ${msg}`);
     }
     setReanalyzing(false);
     setReanalyzeDone(true);
