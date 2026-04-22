@@ -260,6 +260,11 @@ export default function DashboardResume() {
         setProfile(fallback);
         setAnalysisSource("fallback");
         setPhase("done");
+      } else {
+        setProfile(stored);
+        setAnalysisSource("fallback");
+        setPhase("done");
+        if (!user?.resumeText) setNeedsReupload(true);
       }
     } else if (user?.resumeText && user?.resumeFileName) {
       // Resume was uploaded (e.g. during onboarding) but no AI profile exists yet.
