@@ -532,6 +532,26 @@ export default function Onboarding() {
   // Back-compat: Enter key defaults to dashboard (safer than auto-starting an interview).
   const handleStart = handleGoToDashboard;
 
+  // Keyboard shortcuts — power-user-friendly:
+  //   Cmd/Ctrl + U → open the file picker (works from any onboarding state)
+  //   Cmd/Ctrl + Enter → start the interview (only when profile is ready)
+  // Prevents default so we don't collide with browser defaults.
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (!(e.metaKey || e.ctrlKey)) return;
+      if (e.key === "u" || e.key === "U") {
+        if (!resumeParsing) { e.preventDefault(); fileInputRef.current?.click(); }
+      } else if (e.key === "Enter") {
+        if (resumeParsed && aiPhase === "done" && userName.trim() && !starting) {
+          e.preventDefault();
+          handleStartInterview();
+        }
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [resumeParsed, aiPhase, userName, starting, resumeParsing]);
+
   const isBusy = resumeParsing || aiPhase === "analyzing";
   const noResume = !resumeParsed && !resumeParsing && aiPhase !== "analyzing";
   const nameEmpty = aiPhase === "done" && !userName.trim();
