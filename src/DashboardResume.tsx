@@ -433,14 +433,18 @@ export default function DashboardResume() {
     setErrorMsg("");
     const tStart = Date.now();
     console.log("[resume] Re-analyze triggered — text length:", textForAnalysis.length, "targetRole:", user?.targetRole || "(none)");
+    // AbortController lets us actually cancel the underlying fetch when the
+    // race timeout wins — without it the request stays in flight and never
+    // surfaces in the Network tab as "canceled", which is exactly what made
+    // the previous failure invisible.
+    const reanalyzeAbort = new AbortController();
+    const timeoutId = setTimeout(() => reanalyzeAbort.abort(), 40_000);
     try {
       const result = await Promise.race([
-        analyzeResumeWithAI(textForAnalysis, user?.targetRole),
-        // 40s covers the server's worst case: Groq (15s) → Gemini fallback
-        // (15s) + auth/rate/quota pre-checks (~2–5s). A tighter 25s budget
-        // was killing legitimate fallback paths.
+        analyzeResumeWithAI(textForAnalysis, user?.targetRole, reanalyzeAbort.signal),
         new Promise<null>((_, reject) => setTimeout(() => reject(new Error("timeout")), 40_000)),
       ]);
+      clearTimeout(timeoutId);
       const elapsed = Date.now() - tStart;
       if (result?.profile) {
         console.log(`[resume] Re-analyze SUCCESS in ${elapsed}ms — score=${result.profile.resumeScore} headline="${result.profile.headline}"`);
@@ -454,6 +458,8 @@ export default function DashboardResume() {
         setErrorMsg("AI couldn't extract structured data. Try re-uploading a cleaner PDF or DOCX.");
       }
     } catch (err) {
+      clearTimeout(timeoutId);
+      reanalyzeAbort.abort(); // cancel underlying fetch on any failure
       const elapsed = Date.now() - tStart;
       const msg = err instanceof Error ? err.message : "Unknown error";
       console.error(`[resume] Re-analyze FAILED after ${elapsed}ms: ${msg}`);

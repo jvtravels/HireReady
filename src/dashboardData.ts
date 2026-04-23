@@ -819,6 +819,7 @@ export interface ResumeProfile {
 
 export async function analyzeResumeWithAI(resumeText: string, targetRole?: string, signal?: AbortSignal): Promise<{ profile: ResumeProfile; truncated?: boolean } | null> {
   return withRetry(async () => {
+    const tFetchStart = Date.now();
     const headers = await authHeaders();
     if (!headers["Authorization"]) {
       // Session expired or never established. Fail loudly instead of sending
@@ -826,12 +827,14 @@ export async function analyzeResumeWithAI(resumeText: string, targetRole?: strin
       console.error("[analyzeResume] no auth token — session expired or missing");
       throw new Error("Session expired — please refresh and sign in again.");
     }
+    console.log(`[analyzeResume] POST /api/analyze-resume — body=${resumeText.length}b, role=${targetRole || "(none)"}`);
     const res = await fetch("/api/analyze-resume", {
       method: "POST",
       headers,
       signal,
       body: JSON.stringify({ resumeText, targetRole }),
     });
+    console.log(`[analyzeResume] response status=${res.status} reqId=${res.headers.get("x-request-id") || "?"} timing=${res.headers.get("x-timing") || "?"} elapsed=${Date.now() - tFetchStart}ms`);
     if (res.status === 401) {
       throw new Error("Session expired — please refresh and sign in again.");
     }
