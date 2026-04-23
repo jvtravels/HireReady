@@ -466,6 +466,17 @@ export default function Onboarding() {
       <style>{`
         @keyframes spin { to { transform: rotate(360deg); } }
         @keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.5; transform: scale(1.3); } }
+        @keyframes scoreReveal {
+          0%   { transform: scale(0.85); filter: brightness(1.1); box-shadow: 0 0 0 0 rgba(212,179,127,0.45); }
+          50%  { transform: scale(1.04); filter: brightness(1.25); box-shadow: 0 0 0 10px rgba(212,179,127,0); }
+          100% { transform: scale(1); filter: brightness(1); box-shadow: 0 0 0 0 rgba(212,179,127,0); }
+        }
+        @keyframes cardMorphIn {
+          0%   { opacity: 0; transform: translateY(4px); filter: blur(3px); }
+          100% { opacity: 1; transform: translateY(0); filter: blur(0); }
+        }
+        .ob-score-reveal { animation: scoreReveal 0.9s cubic-bezier(0.34, 1.56, 0.64, 1) 0.15s both; }
+        .ob-card-morph { animation: cardMorphIn 0.45s cubic-bezier(0.16, 1, 0.3, 1) both; }
         @keyframes progressFill { 0% { width: 0%; } 30% { width: 35%; } 60% { width: 65%; } 80% { width: 80%; } 100% { width: 92%; } }
         .ob-progress-bar { animation: progressFill 18s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
         @keyframes fadeUp { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }

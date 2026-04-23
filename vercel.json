@@ -21,6 +21,10 @@
     {
       "path": "/api/cleanup-deleted-accounts",
       "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/send-abandonment-emails",
+      "schedule": "30 * * * *"
     }
   ]
 }

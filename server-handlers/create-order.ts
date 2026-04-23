@@ -175,6 +175,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }).catch(() => {});
     }
 
+    // Payment abandonment tracking — store intent with 25h TTL.
+    // Cron (/api/send-abandonment-emails) queries keys older than 1h, sends
+    // recovery email, and deletes the key. verify-payment.ts deletes the
+    // key on successful payment so we never email paying users.
+    if (UPSTASH_URL && UPSTASH_TOKEN && resolvedUserId && typeof email === "string" && email.length > 0) {
+      const intentKey = `pay_intent:${order.id}`;
+      const intentValue = JSON.stringify({
+        userId: resolvedUserId,
+        email,
+        plan,
+        amount: finalAmount,
+        planName: price.name,
+        createdAt: Date.now(),
+      });
+      fetch(`${UPSTASH_URL}/SET/${encodeURIComponent(intentKey)}/${encodeURIComponent(intentValue)}?EX=90000`, {
+        headers: { Authorization: `Bearer ${UPSTASH_TOKEN}` },
+      }).catch(() => {});
+    }
+
     return res.status(200).json({
       orderId: order.id,
       amount: order.amount,

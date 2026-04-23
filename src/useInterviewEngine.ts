@@ -685,6 +685,20 @@ export function useInterviewEngine() {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       e.preventDefault();
       saveDraft();
+      // Fire-and-forget abandonment analytics (use sendBeacon since page is unloading)
+      try {
+        const completionRate = totalQuestions > 0 ? currentStep / totalQuestions : 0;
+        const body = JSON.stringify({
+          event: "session_abandoned",
+          type: interviewType,
+          difficulty: interviewDifficulty,
+          currentStep,
+          totalQuestions,
+          completionRate: Math.round(completionRate * 100) / 100,
+          duration: elapsed,
+        });
+        navigator.sendBeacon?.("/api/log-error", body);
+      } catch { /* noop */ }
     };
     window.addEventListener("beforeunload", handleBeforeUnload);
     const autoSaveInterval = setInterval(saveDraft, 15_000);

@@ -148,6 +148,12 @@ function PricingCard({ plan, delay }: { plan: (typeof plans)[0]; delay: number }
               if (verifyData.success) {
                 track("payment_success", { plan: plan.planId, method: "subscription" });
                 track("payment_completed", { plan: plan.planId || "session_pack" });
+                // First-paid detection: if prior tier was free, fire a distinct conversion event
+                if (!user?.subscriptionTier || user.subscriptionTier === "free") {
+                  track("first_paid_subscription", { plan: plan.planId || "unknown", tier: verifyData.subscriptionTier || "unknown" });
+                } else {
+                  track("subscription_upgraded", { fromTier: user.subscriptionTier, toTier: verifyData.subscriptionTier || "unknown" });
+                }
                 updateUser({ subscriptionTier: verifyData.subscriptionTier, subscriptionStart: verifyData.subscriptionStart, subscriptionEnd: verifyData.subscriptionEnd });
                 router.push("/dashboard?payment=success");
               } else {

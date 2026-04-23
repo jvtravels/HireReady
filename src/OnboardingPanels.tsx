@@ -107,7 +107,7 @@ export function TopBar({ emailUnverified, onNavigateHome, onLogout, userEmail, u
         {displayName && (
           <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 10px 4px 4px", borderRadius: 20, background: "rgba(245,242,237,0.04)", border: "1px solid rgba(245,242,237,0.06)" }}>
             {userAvatar ? (
-              <img src={userAvatar} alt="" style={{ width: 24, height: 24, borderRadius: "50%", objectFit: "cover" }} referrerPolicy="no-referrer" />
+              <img src={userAvatar} alt={displayName ? `${displayName} avatar` : "User avatar"} width={24} height={24} loading="lazy" decoding="async" style={{ width: 24, height: 24, borderRadius: "50%", objectFit: "cover" }} referrerPolicy="no-referrer" />
             ) : (
               <div style={{ width: 24, height: 24, borderRadius: "50%", background: "rgba(212,179,127,0.12)", border: "1px solid rgba(212,179,127,0.2)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                 <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.gilt }}>{initial}</span>
@@ -431,7 +431,7 @@ export function ProfileReadyState({ aiProfile, resumeParsed, userName, fileName,
   }, []);
 
   return (
-    <div className={mobileExpanded ? "ob-mobile-expanded" : ""} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+    <div className={`ob-card-morph ${mobileExpanded ? "ob-mobile-expanded" : ""}`} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       {/* Step heading */}
       <div style={{ marginBottom: 8 }}>
         <p style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 700, color: c.sage, textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 12, display: "flex", alignItems: "center", gap: 8 }}>
@@ -539,7 +539,7 @@ export function ProfileReadyState({ aiProfile, resumeParsed, userName, fileName,
           </div>
           {aiProfile.resumeScore != null ? (
             <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-              <div style={{ position: "relative", width: 64, height: 64, flexShrink: 0 }}>
+              <div className="ob-score-reveal" style={{ position: "relative", width: 64, height: 64, flexShrink: 0, borderRadius: "50%" }}>
                 <svg width="64" height="64" viewBox="0 0 64 64">
                   <circle cx="32" cy="32" r="28" fill="none" stroke="rgba(245,242,237,0.06)" strokeWidth="5" />
                   <circle cx="32" cy="32" r="28" fill="none"

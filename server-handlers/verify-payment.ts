@@ -27,6 +27,18 @@ const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 const RESEND_API_KEY = (process.env.RESEND_API_KEY || "").trim();
 const FROM_EMAIL = process.env.FROM_EMAIL || "HireStepX <onboarding@resend.dev>";
 const APP_URL = (process.env.APP_URL || "https://hirestepx.vercel.app").replace(/\/$/, "");
+const UPSTASH_URL = (process.env.UPSTASH_REDIS_REST_URL || "").trim();
+const UPSTASH_TOKEN = (process.env.UPSTASH_REDIS_REST_TOKEN || "").trim();
+
+/** Clear the payment-abandonment intent key so the cron doesn't email a paying user. */
+async function clearPaymentIntent(orderId: string): Promise<void> {
+  if (!UPSTASH_URL || !UPSTASH_TOKEN || !orderId) return;
+  try {
+    await fetch(`${UPSTASH_URL}/DEL/${encodeURIComponent(`pay_intent:${orderId}`)}`, {
+      headers: { Authorization: `Bearer ${UPSTASH_TOKEN}` },
+    });
+  } catch { /* best effort */ }
+}
 
 // PLAN_DURATION used for reference: single=0, weekly=7, monthly=setMonth(), yearly=365
 const PLAN_TIER: Record<string, string> = { single: "free", weekly: "starter", monthly: "pro", "yearly-starter": "starter", "yearly-pro": "pro" }; // single stays on free tier, just adds credits
@@ -406,6 +418,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
       // Send confirmation email (7 args: email, name, plan, tier, paymentId, startDate, endDate)
       try { await sendPaymentEmail(userEmail || "", userName || "Customer", "single", "free", razorpay_payment_id, now.toISOString(), now.toISOString()); } catch (e) { console.warn("Email send failed:", e); }
+      await clearPaymentIntent(razorpay_order_id);
       return res.status(200).json({ success: true, tier: current?.subscription_tier || "free", plan: "single", credits: newCredits, quantity: sessionQuantity, subscription_start: now.toISOString(), subscription_end: current?.subscription_end || now.toISOString() });
     }
 
@@ -554,6 +567,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       } catch (e) { console.warn("[verify-payment] Receipt URL persist failed:", e); }
     }
 
+    if (razorpay_order_id) await clearPaymentIntent(razorpay_order_id);
     return res.status(200).json({
       success: true,
       subscriptionTier: tier,

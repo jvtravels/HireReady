@@ -53,7 +53,21 @@ function ParticleCanvas() {
       ps.push({ x: Math.random() * w(), y: Math.random() * h(), vx: (Math.random() - 0.5) * 0.25, vy: -Math.random() * 0.35 - 0.08, r: Math.random() * 2.2 + 0.4, o: Math.random() * 0.45 + 0.08, od: (Math.random() - 0.5) * 0.004, c: cols[Math.floor(Math.random() * cols.length)] });
     }
 
-    const draw = () => {
+    // Throttle animation to ~30fps (saves ~50% CPU vs 60fps with no visible difference for subtle particles)
+    const TARGET_FPS = 30;
+    const FRAME_INTERVAL = 1000 / TARGET_FPS;
+    let lastFrame = 0;
+    // Cache connection threshold squared — avoids sqrt() inside the inner loop
+    const LINK_DIST = 60;           // reduced from 100 (fewer lines, less CPU)
+    const LINK_DIST_SQ = LINK_DIST * LINK_DIST;
+    let pauseDraw = false;
+
+    const draw = (now = 0) => {
+      animId = requestAnimationFrame(draw);
+      if (pauseDraw) return;
+      if (now - lastFrame < FRAME_INTERVAL) return;
+      lastFrame = now;
+
       ctx.clearRect(0, 0, w(), h());
       const g = ctx.createRadialGradient(w() / 2, h() * 0.3, 0, w() / 2, h() * 0.3, w() * 0.45);
       g.addColorStop(0, "rgba(212,179,127,0.035)");
@@ -76,16 +90,20 @@ function ParticleCanvas() {
         for (let i = 0; i < ps.length; i++) {
           for (let j = i + 1; j < ps.length; j++) {
             const dx = ps[i].x - ps[j].x, dy = ps[i].y - ps[j].y;
-            const d = Math.sqrt(dx * dx + dy * dy);
-            if (d < 100) {
+            const dsq = dx * dx + dy * dy;
+            if (dsq < LINK_DIST_SQ) {
+              const d = Math.sqrt(dsq);
               ctx.beginPath(); ctx.moveTo(ps[i].x, ps[i].y); ctx.lineTo(ps[j].x, ps[j].y);
-              ctx.strokeStyle = `rgba(212,179,127,${0.025 * (1 - d / 100)})`; ctx.lineWidth = 0.5; ctx.stroke();
+              ctx.strokeStyle = `rgba(212,179,127,${0.025 * (1 - d / LINK_DIST)})`; ctx.lineWidth = 0.5; ctx.stroke();
             }
           }
         }
       }
-      animId = requestAnimationFrame(draw);
     };
+
+    // Pause animation when tab is backgrounded to save battery/CPU
+    const onVis = () => { pauseDraw = document.hidden; };
+    document.addEventListener("visibilitychange", onVis);
 
     const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
     if (!mq.matches) {
@@ -98,7 +116,7 @@ function ParticleCanvas() {
         ctx.fillStyle = `${p.c}${p.o})`; ctx.fill();
       }
     }
-    return () => { cancelAnimationFrame(animId); window.removeEventListener("resize", resize); };
+    return () => { cancelAnimationFrame(animId); window.removeEventListener("resize", resize); document.removeEventListener("visibilitychange", onVis); };
   }, [ready]);
 
   return <canvas ref={canvasRef} aria-hidden="true" style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", pointerEvents: "none" }} />;

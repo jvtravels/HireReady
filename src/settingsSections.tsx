@@ -1,5 +1,6 @@
 import type React from "react";
 import { memo } from "react";
+import { track } from "@vercel/analytics";
 import { c, font, shadow, gradient } from "./tokens";
 import type { PersistedState } from "./dashboardTypes";
 import type { InterviewEvent } from "./dashboardHelpers";
@@ -692,7 +693,7 @@ export const PlanSection = memo(function PlanSection(props: PlanSectionProps) {
                         const timer = setTimeout(() => ctrl.abort(), 15000);
                         const res = await fetch("/api/cancel-subscription", { method: "POST", headers: hdrs, signal: ctrl.signal });
                         clearTimeout(timer);
-                        if (res.ok) { const data = await res.json(); if (data.success) { authUpdateUser({ cancelAtPeriodEnd: true }); setCancelMsg(""); setConfirmCancel(false); showToast("Plan will cancel at end of period"); } else { setCancelMsg(data.error || "Failed."); showToast(data.error || "Cancellation failed"); } }
+                        if (res.ok) { const data = await res.json(); if (data.success) { authUpdateUser({ cancelAtPeriodEnd: true }); setCancelMsg(""); setConfirmCancel(false); showToast("Plan will cancel at end of period"); track("subscription_cancelled", { tier: authUser?.subscriptionTier || "unknown" }); } else { setCancelMsg(data.error || "Failed."); showToast(data.error || "Cancellation failed"); } }
                         else { const d = await res.json().catch(() => ({})); setCancelMsg(d.error || `Error (${res.status}).`); showToast(d.error || "Cancellation failed"); }
                       } catch (err) { const msg = err instanceof DOMException && err.name === "AbortError" ? "Request timed out." : "Network error."; setCancelMsg(msg); showToast(msg); } finally { setCancelLoading(false); }
                     }}
