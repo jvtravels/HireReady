@@ -7,10 +7,13 @@ import type { DashboardSession } from "./dashboardTypes";
 import {
   evaluateSessionWithAI,
   saveStoryToNotebook,
+  fetchRecentSessionScores,
   type SessionReport,
   type SessionReportBand,
   type SessionReportPerQuestion,
   type SessionReportWinFix,
+  type SessionReportRedFlag,
+  type SessionTrendPoint,
 } from "./dashboardData";
 import { getCohortAverage, type RoleFamily } from "./roleBenchmarks";
 
@@ -41,6 +44,17 @@ const VERDICT_META: Record<SessionReportPerQuestion["verdict"], { label: string;
   weak:     { label: "Weak",     color: c.ember, bg: "rgba(196,112,90,0.06)" },
   skipped:  { label: "Skipped",  color: c.stone, bg: "rgba(158,158,158,0.06)" },
 };
+
+const RED_FLAG_TYPE_LABELS: Record<SessionReportRedFlag["type"], string> = {
+  blame:           "Blame language",
+  missing_result:  "Missing result",
+  we_without_i:    "We without I",
+  scope_drift:     "Scope drift",
+  contradiction:   "Contradiction",
+  vague:           "Too vague",
+};
+const SEVERITY_RANK: Record<SessionReportRedFlag["severity"], number> = { high: 0, medium: 1, low: 2 };
+const SEVERITY_COLOR: Record<SessionReportRedFlag["severity"], string> = { high: c.ember, medium: c.gilt, low: c.stone };
 
 /** Classify a raw role string into our 5 role-families. */
 function roleToFamily(role: string | undefined): RoleFamily {
@@ -489,6 +503,9 @@ export const SessionReportView = memo(function SessionReportView({
   const [errorMsg, setErrorMsg] = useState("");
   // Bumping this value re-runs the evaluate effect — used by the retry button.
   const [reloadTick, setReloadTick] = useState(0);
+  const [trend, setTrend] = useState<SessionTrendPoint[]>([]);
+  const [trustAnswer, setTrustAnswer] = useState<"yes" | "no" | null>(null);
+  const [usefulAnswer, setUsefulAnswer] = useState<"yes" | "no" | null>(null);
 
   const roleFamily: RoleFamily = useMemo(() => roleToFamily(session.role), [session.role]);
 
@@ -576,6 +593,32 @@ export const SessionReportView = memo(function SessionReportView({
     setReloadTick((t) => t + 1);
   }, [session.id]);
 
+  // Fetch the user's recent session scores for the hero sparkline (fire-and-forget).
+  useEffect(() => {
+    let cancelled = false;
+    fetchRecentSessionScores(10)
+      .then((points) => { if (!cancelled) setTrend(points); })
+      .catch(() => { /* sparkline is optional — silent fail */ });
+    return () => { cancelled = true; };
+  }, [session.id]);
+
+  const onDownloadPdf = useCallback(() => {
+    track("report_pdf_downloaded", { sessionId: session.id });
+    // CSS @media print hides controls and reflows cards; window.print() lets the
+    // user pick "Save as PDF" from the browser dialog — zero dependencies.
+    if (typeof window !== "undefined") window.print();
+  }, [session.id]);
+
+  const onPollAnswer = useCallback((kind: "trust" | "usefulness", value: "yes" | "no") => {
+    if (kind === "trust") {
+      setTrustAnswer(value);
+      track("report_trust_poll_submitted", { sessionId: session.id, fair: value === "yes" });
+    } else {
+      setUsefulAnswer(value);
+      track("report_usefulness_poll_submitted", { sessionId: session.id, useful: value === "yes" });
+    }
+  }, [session.id]);
+
   return (
     <div style={{ maxWidth: 840, margin: "0 auto" }}>
       {/* Back button */}
@@ -656,11 +699,29 @@ export const SessionReportView = memo(function SessionReportView({
                   <span>{session.duration}</span>
                 </div>
               </div>
-              <div style={{ textAlign: "center" }}>
+              <div style={{ textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
                 <div style={{
                   fontFamily: font.mono, fontSize: 56, fontWeight: 700, color: c.ivory, lineHeight: 1,
                 }}>{report.overallScore}</div>
-                <div style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, marginTop: 4 }}>/ 100</div>
+                <div style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>/ 100</div>
+                {trend.length >= 2 && <Sparkline points={trend} currentId={session.id} />}
+                <button
+                  onClick={onDownloadPdf}
+                  className="sr-print-hide"
+                  aria-label="Download report as PDF"
+                  style={{
+                    fontFamily: font.ui, fontSize: 11, fontWeight: 500, color: c.stone,
+                    background: "transparent", border: `1px solid ${c.border}`,
+                    borderRadius: 6, padding: "4px 10px", cursor: "pointer",
+                    display: "inline-flex", alignItems: "center", gap: 4,
+                    marginTop: 4,
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.color = c.chalk; e.currentTarget.style.borderColor = "rgba(245,242,237,0.25)"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.color = c.stone; e.currentTarget.style.borderColor = c.border; }}
+                >
+                  <svg aria-hidden="true" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                  PDF
+                </button>
               </div>
             </div>
 
@@ -688,6 +749,11 @@ export const SessionReportView = memo(function SessionReportView({
               </div>
             )}
           </div>
+
+          {/* Red-flag detector — rejection-grade signals shown above the fold */}
+          {report.redFlags && report.redFlags.length > 0 && (
+            <RedFlagsSection flags={report.redFlags} />
+          )}
 
           {/* 2. Core Metrics Strip */}
           <div style={{
@@ -781,11 +847,156 @@ export const SessionReportView = memo(function SessionReportView({
               )}
             </div>
           </div>
+
+          {/* Trust + usefulness polls — diagnostic signal for tuning the rubric */}
+          <div className="sr-print-hide" style={{
+            marginTop: 20, padding: "18px 24px",
+            background: "rgba(245,242,237,0.02)", border: `1px solid ${c.border}`,
+            borderRadius: 12, display: "flex", flexWrap: "wrap", gap: 20, alignItems: "center", justifyContent: "space-between",
+          }}>
+            <PollRow label="Do these scores feel fair?" answer={trustAnswer} onAnswer={(v) => onPollAnswer("trust", v)} />
+            <PollRow label="Did this help you know what to improve?" answer={usefulAnswer} onAnswer={(v) => onPollAnswer("usefulness", v)} />
+          </div>
         </>
       )}
+
+      {/* Print-only styles: hide controls, make layout printable */}
+      <style>{`
+        @media print {
+          body { background: white; }
+          .sr-print-hide { display: none !important; }
+          button { cursor: default !important; }
+          mark { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        }
+      `}</style>
     </div>
   );
 });
+
+/** Sparkline — recent session scores, left→right. Anchors the current score socially. */
+function Sparkline({ points, currentId }: { points: SessionTrendPoint[]; currentId: string }) {
+  if (points.length < 2) return null;
+  const W = 120;
+  const H = 32;
+  const pad = 2;
+  const min = Math.min(...points.map((p) => p.score));
+  const max = Math.max(...points.map((p) => p.score));
+  const range = Math.max(max - min, 1);
+  const xFor = (i: number) => pad + (i / (points.length - 1)) * (W - pad * 2);
+  const yFor = (v: number) => H - pad - ((v - min) / range) * (H - pad * 2);
+  const d = points.map((p, i) => `${i === 0 ? "M" : "L"} ${xFor(i).toFixed(1)} ${yFor(p.score).toFixed(1)}`).join(" ");
+  const currentIdx = points.findIndex((p) => p.id === currentId);
+  const highlightIdx = currentIdx >= 0 ? currentIdx : points.length - 1;
+  return (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
+      <svg width={W} height={H} aria-label={`Score trend over last ${points.length} sessions`} role="img">
+        <path d={d} fill="none" stroke={c.gilt} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity={0.85} />
+        <circle cx={xFor(highlightIdx)} cy={yFor(points[highlightIdx].score)} r={3} fill={c.gilt} />
+      </svg>
+      <span style={{ fontFamily: font.ui, fontSize: 10, color: c.stone }}>
+        last {points.length} sessions
+      </span>
+    </div>
+  );
+}
+
+/** Red-flag detector section — bar-raiser-grade signals above the fold. */
+function RedFlagsSection({ flags }: { flags: SessionReportRedFlag[] }) {
+  const sorted = [...flags].sort((a, b) => SEVERITY_RANK[a.severity] - SEVERITY_RANK[b.severity]);
+  return (
+    <div style={{
+      background: "rgba(196,112,90,0.04)",
+      border: `1px solid rgba(196,112,90,0.18)`,
+      borderRadius: 14, padding: "18px 24px", marginBottom: 20,
+    }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+        <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={c.ember} strokeWidth="2">
+          <path d="M4 4v16M4 4l14 4-4 5 4 5-14 2" />
+        </svg>
+        <h2 style={{ fontFamily: font.ui, fontSize: 14, fontWeight: 600, color: c.ivory, margin: 0 }}>
+          Red flags to address
+        </h2>
+        <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, marginLeft: "auto" }}>
+          {flags.length} issue{flags.length === 1 ? "" : "s"}
+        </span>
+      </div>
+      <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 10 }}>
+        {sorted.map((f, i) => {
+          const color = SEVERITY_COLOR[f.severity];
+          return (
+            <li key={i} style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+              <span aria-label={`severity: ${f.severity}`} style={{
+                width: 6, alignSelf: "stretch", borderRadius: 3, background: color, flexShrink: 0,
+                marginTop: 4, marginBottom: 4,
+              }} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
+                  <span style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: c.ivory }}>
+                    {f.title || RED_FLAG_TYPE_LABELS[f.type]}
+                  </span>
+                  <span style={{
+                    fontFamily: font.ui, fontSize: 9, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase",
+                    color, padding: "1px 6px", borderRadius: 3, border: `1px solid ${color}33`,
+                  }}>{f.severity}</span>
+                  {f.questionIdx >= 0 && (
+                    <span style={{ fontFamily: font.mono, fontSize: 10, color: c.stone }}>Q{f.questionIdx + 1}</span>
+                  )}
+                </div>
+                <p style={{ fontFamily: font.ui, fontSize: 12, color: c.chalk, lineHeight: 1.55, margin: "4px 0 0" }}>
+                  {f.explanation}
+                </p>
+                {f.quote && (
+                  <p style={{ fontFamily: font.ui, fontSize: 11, fontStyle: "italic", color: c.stone, lineHeight: 1.5, margin: "3px 0 0" }}>
+                    “{f.quote.length > 140 ? f.quote.slice(0, 140) + "…" : f.quote}”
+                  </p>
+                )}
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
+/** Single poll row — yes/no choice, collapses to a thank-you after answer. */
+function PollRow({ label, answer, onAnswer }: {
+  label: string; answer: "yes" | "no" | null; onAnswer: (v: "yes" | "no") => void;
+}) {
+  const answered = answer !== null;
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+      <span style={{ fontFamily: font.ui, fontSize: 12, color: answered ? c.stone : c.chalk }}>
+        {label}
+      </span>
+      {answered ? (
+        <span style={{ fontFamily: font.ui, fontSize: 11, color: c.sage, display: "inline-flex", alignItems: "center", gap: 4 }}>
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          thanks
+        </span>
+      ) : (
+        <div style={{ display: "inline-flex", gap: 6 }}>
+          {(["yes", "no"] as const).map((v) => (
+            <button
+              key={v}
+              onClick={() => onAnswer(v)}
+              style={{
+                fontFamily: font.ui, fontSize: 11, fontWeight: 500,
+                color: c.chalk, background: "transparent",
+                border: `1px solid ${c.border}`, borderRadius: 6, padding: "4px 10px",
+                cursor: "pointer", transition: "all 150ms",
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.borderColor = "rgba(245,242,237,0.35)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.borderColor = c.border; }}
+            >
+              {v === "yes" ? "Yes" : "No"}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 /** "32 min" / "1m 12s" / "12:34" → seconds. Defensive defaults. */
 function parseDurationSec(s: string | undefined): number {

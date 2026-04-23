@@ -40,6 +40,17 @@ interface WinOrFix {
   quote: string;        // verbatim substring of the candidate's words (validated)
 }
 
+type RedFlagType = "blame" | "missing_result" | "we_without_i" | "scope_drift" | "contradiction" | "vague";
+
+interface RedFlag {
+  type: RedFlagType;
+  severity: "high" | "medium" | "low";
+  title: string;              // e.g. "Missing result"
+  explanation: string;        // 1 sentence in second person
+  questionIdx: number;        // -1 for cross-cutting
+  quote: string;              // verbatim substring (validated); "" for cross-cutting
+}
+
 interface SessionReport {
   version: "mvp-1";
   overallScore: number;
@@ -47,6 +58,7 @@ interface SessionReport {
   verdict: string;
   wins: WinOrFix[];
   fixes: WinOrFix[];
+  redFlags: RedFlag[];
   coreMetrics: { fillerPerMin: number; silenceRatio: number; paceWpm: number; energy: number };
   skills: Array<{ name: string; score: number }>;
   perQuestion: PerQuestionReport[];
@@ -122,6 +134,21 @@ function filterGroundedItems(items: WinOrFix[] | undefined, candidateCorpus: str
       return typeof w.quote === "string" && candidateCorpus.includes(w.quote.trim());
     })
     .slice(0, 3);
+}
+
+/** Same grounding guard for red flags. Drops unknown types/severities. */
+function filterGroundedRedFlags(items: RedFlag[] | undefined, candidateCorpus: string): RedFlag[] {
+  if (!Array.isArray(items)) return [];
+  const validTypes: RedFlagType[] = ["blame", "missing_result", "we_without_i", "scope_drift", "contradiction", "vague"];
+  const validSeverities = ["high", "medium", "low"] as const;
+  return items
+    .filter((f) => f && validTypes.includes(f.type) && (validSeverities as readonly string[]).includes(f.severity))
+    .filter((f) => typeof f.title === "string" && f.title.trim().length > 0)
+    .filter((f) => {
+      if (f.questionIdx === -1 || !f.quote) return true;
+      return typeof f.quote === "string" && candidateCorpus.includes(f.quote.trim());
+    })
+    .slice(0, 4);
 }
 
 /** Validate LLM-returned report: every quote/citation must trace to real transcript text. */
@@ -224,6 +251,21 @@ Return a JSON object with EXACTLY this shape:
     // cross-question (e.g. pace), set questionIdx=-1 and quote="".
     { "text": "...", "questionIdx": <perQuestion idx or -1>, "quote": "..." }
   ],
+  "redFlags": [
+    // 0-4 items. Rejection-grade signals that typically sink a real-loop interview.
+    // Only include items that are honestly present; empty array is fine.
+    // type MUST be one of: blame, missing_result, we_without_i, scope_drift, contradiction, vague
+    // - "blame": blaming teammates/managers/leadership for failures ("they didn't ...", "management wouldn't ...")
+    // - "missing_result": behavioral answer with no measurable/quantified outcome
+    // - "we_without_i": accomplishment stated in collective "we" without the candidate's specific contribution
+    // - "scope_drift": answer wanders away from what was asked
+    // - "contradiction": contradicts a prior answer in the same interview
+    // - "vague": hand-wavy technical/strategic answer with no concrete specifics
+    // severity MUST be one of: high (likely rejection), medium (strong concern), low (nitpick)
+    // "quote" MUST be a verbatim substring of the candidate's words; cross-cutting flags
+    // may use questionIdx=-1 with quote="".
+    { "type": "<enum>", "severity": "<enum>", "title": "<≤40 chars>", "explanation": "<one sentence>", "questionIdx": <idx or -1>, "quote": "..." }
+  ],
   "skills": [${skillAxes.map((s) => `{"name":"${s}","score":<0-100>}`).join(",")}],
   "perQuestion": [
     {
@@ -274,6 +316,7 @@ CRITICAL RULES:
       verdict: typeof parsed.verdict === "string" ? parsed.verdict.slice(0, 200) : "",
       wins: filterGroundedItems(parsed.wins as WinOrFix[] | undefined, candidateCorpus),
       fixes: filterGroundedItems(parsed.fixes as WinOrFix[] | undefined, candidateCorpus),
+      redFlags: filterGroundedRedFlags((parsed as Record<string, unknown>).redFlags as RedFlag[] | undefined, candidateCorpus),
       coreMetrics,
       skills: Array.isArray(parsed.skills) ? parsed.skills.slice(0, 8) : [],
       perQuestion: Array.isArray(parsed.perQuestion) ? (parsed.perQuestion as PerQuestionReport[]).slice(0, 30) : [],

@@ -875,6 +875,18 @@ export interface SessionReportWinFix {
   quote: string;
 }
 
+export type SessionReportRedFlagType =
+  | "blame" | "missing_result" | "we_without_i" | "scope_drift" | "contradiction" | "vague";
+
+export interface SessionReportRedFlag {
+  type: SessionReportRedFlagType;
+  severity: "high" | "medium" | "low";
+  title: string;
+  explanation: string;
+  questionIdx: number;
+  quote: string;
+}
+
 export interface SessionReport {
   version: "mvp-1";
   overallScore: number;
@@ -882,6 +894,7 @@ export interface SessionReport {
   verdict: string;
   wins: SessionReportWinFix[];
   fixes: SessionReportWinFix[];
+  redFlags: SessionReportRedFlag[];
   coreMetrics: { fillerPerMin: number; silenceRatio: number; paceWpm: number; energy: number };
   skills: Array<{ name: string; score: number }>;
   perQuestion: SessionReportPerQuestion[];
@@ -930,6 +943,38 @@ export async function evaluateSessionWithAI(
     }
     return report;
   });
+}
+
+/* ─── Longitudinal trend (sparkline data) ──────────────────────────── */
+
+export interface SessionTrendPoint { id: string; date: string; score: number }
+
+/**
+ * Fetch the user's most recent N session scores for the trend sparkline,
+ * oldest-first. Read via the already-authenticated supabase client (RLS
+ * scopes to the current user by session.id foreign key).
+ */
+export async function fetchRecentSessionScores(limit = 10): Promise<SessionTrendPoint[]> {
+  const { getSupabase } = await import("./supabase");
+  const client = await getSupabase();
+  const { data: sessionData } = await client.auth.getSession();
+  const userId = sessionData.session?.user?.id;
+  if (!userId) return [];
+  const { data, error } = await client
+    .from("sessions")
+    .select("id, created_at, score")
+    .eq("user_id", userId)
+    .gt("score", 0)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (error) {
+    console.warn("[fetchRecentSessionScores] query failed:", error.message);
+    return [];
+  }
+  const rows = (data || []) as Array<{ id: string; created_at: string; score: number }>;
+  return rows
+    .map((r) => ({ id: r.id, date: r.created_at, score: r.score }))
+    .reverse(); // oldest → newest for left-to-right rendering
 }
 
 /* ─── Story Notebook (saved STAR stories from results reports) ─────── */
