@@ -817,6 +817,51 @@ export interface ResumeProfile {
   improvements?: string[];
 }
 
+/**
+ * POST JSON via XMLHttpRequest instead of fetch.
+ *
+ * Browser extensions (Loom, Jam.dev, Hotjar, etc.) install global
+ * fetch interceptors that wrap window.fetch to capture every request
+ * for telemetry. Some of these interceptors hang on POST bodies above
+ * a size threshold, causing the request to never resolve and the user
+ * to see a generic "timeout" with no Network row to diagnose. XHR is
+ * older API surface that these interceptors typically don't wrap, so
+ * routing latency-sensitive POSTs through it sidesteps the bug
+ * entirely without us having to detect-and-fallback.
+ */
+function postJsonXHR(
+  url: string,
+  body: unknown,
+  headers: Record<string, string>,
+  signal?: AbortSignal,
+): Promise<{ status: number; headers: Record<string, string>; data: unknown }> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", url, true);
+    xhr.responseType = "text"; // parse JSON ourselves so we always get the body, even on errors
+    Object.entries(headers).forEach(([k, v]) => xhr.setRequestHeader(k, v));
+    xhr.onload = () => {
+      // Parse all response headers into a flat map (lowercased)
+      const headerMap: Record<string, string> = {};
+      const raw = xhr.getAllResponseHeaders() || "";
+      raw.trim().split(/[\r\n]+/).forEach(line => {
+        const idx = line.indexOf(":");
+        if (idx > 0) headerMap[line.slice(0, idx).toLowerCase().trim()] = line.slice(idx + 1).trim();
+      });
+      let parsed: unknown = null;
+      try { parsed = xhr.responseText ? JSON.parse(xhr.responseText) : null; } catch { parsed = { error: xhr.responseText }; }
+      resolve({ status: xhr.status, headers: headerMap, data: parsed });
+    };
+    xhr.onerror = () => reject(new Error("Network error"));
+    xhr.onabort = () => reject(new Error("aborted"));
+    if (signal) {
+      if (signal.aborted) { xhr.abort(); return; }
+      signal.addEventListener("abort", () => xhr.abort(), { once: true });
+    }
+    xhr.send(typeof body === "string" ? body : JSON.stringify(body));
+  });
+}
+
 export async function analyzeResumeWithAI(resumeText: string, targetRole?: string, signal?: AbortSignal): Promise<{ profile: ResumeProfile; truncated?: boolean } | null> {
   return withRetry(async () => {
     const tFetchStart = Date.now();
@@ -828,31 +873,29 @@ export async function analyzeResumeWithAI(resumeText: string, targetRole?: strin
       throw new Error("Session expired — please refresh and sign in again.");
     }
     console.log(`[analyzeResume] POST /api/analyze-resume — body=${resumeText.length}b, role=${targetRole || "(none)"}`);
-    const res = await fetch("/api/analyze-resume", {
-      method: "POST",
+    const { status, headers: resHeaders, data } = await postJsonXHR(
+      "/api/analyze-resume",
+      { resumeText, targetRole },
       headers,
       signal,
-      body: JSON.stringify({ resumeText, targetRole }),
-    });
-    console.log(`[analyzeResume] response status=${res.status} reqId=${res.headers.get("x-request-id") || "?"} timing=${res.headers.get("x-timing") || "?"} elapsed=${Date.now() - tFetchStart}ms`);
-    if (res.status === 401) {
+    );
+    console.log(`[analyzeResume] response status=${status} reqId=${resHeaders["x-request-id"] || "?"} timing=${resHeaders["x-timing"] || "?"} elapsed=${Date.now() - tFetchStart}ms`);
+    const errBody = (data && typeof data === "object" ? data as Record<string, unknown> : {}) as { error?: string; retryAfter?: number; profile?: ResumeProfile; truncated?: boolean };
+    if (status === 401) {
       throw new Error("Session expired — please refresh and sign in again.");
     }
-    if (res.status === 429) {
-      const data = await res.json().catch(() => ({}));
-      throw new Error(data.retryAfter ? `Too many requests. Please wait ${data.retryAfter} seconds.` : "Too many requests. Please wait a moment.");
+    if (status === 429) {
+      throw new Error(errBody.retryAfter ? `Too many requests. Please wait ${errBody.retryAfter} seconds.` : "Too many requests. Please wait a moment.");
     }
-    if (!res.ok) {
-      const errData = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
-      const msg = errData?.error || `HTTP ${res.status}`;
-      console.error(`[analyzeResume] API error ${res.status}:`, msg);
+    if (status < 200 || status >= 300) {
+      const msg = errBody.error || `HTTP ${status}`;
+      console.error(`[analyzeResume] API error ${status}:`, msg);
       throw new Error(msg);
     }
-    const data = await res.json();
-    if (!data.profile) {
+    if (!errBody.profile) {
       console.warn("[analyzeResume] No profile in response");
       throw new Error("Server returned no profile data");
     }
-    return { profile: data.profile, truncated: data.truncated };
+    return { profile: errBody.profile, truncated: errBody.truncated };
   });
 }
