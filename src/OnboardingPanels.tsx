@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { c, font } from "./tokens";
 import type { ResumeProfile } from "./dashboardData";
 import type { ParsedResume } from "./resumeParser";
@@ -9,12 +9,59 @@ import type { ParsedResume } from "./resumeParser";
 
 /* ─── Email Verification Banner ─── */
 
-export function EmailVerificationBanner() {
+export function EmailVerificationBanner({ email }: { email?: string } = {}) {
+  const [cooldown, setCooldown] = useState(0);
+  const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
+
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const t = setTimeout(() => setCooldown(c => c - 1), 1000);
+    return () => clearTimeout(t);
+  }, [cooldown]);
+
+  const handleResend = async () => {
+    if (!email || cooldown > 0 || status === "sending") return;
+    setStatus("sending");
+    try {
+      const res = await fetch("/api/send-welcome", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "resend", email: email.toLowerCase().trim() }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      setStatus("sent");
+      setCooldown(45);
+      setTimeout(() => setStatus("idle"), 4000);
+    } catch (err) {
+      console.error("[onboarding] Resend verification failed:", err instanceof Error ? err.message : err);
+      setStatus("error");
+      setTimeout(() => setStatus("idle"), 4000);
+    }
+  };
+
   return (
-    <div style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 50, padding: "12px 24px", background: "rgba(212,179,127,0.1)", borderBottom: "1px solid rgba(212,179,127,0.2)", textAlign: "center", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)" }}>
+    <div style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 50, padding: "12px 24px", background: "rgba(212,179,127,0.1)", borderBottom: "1px solid rgba(212,179,127,0.2)", textAlign: "center", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", gap: 14, flexWrap: "wrap" }}>
       <span style={{ fontFamily: font.ui, fontSize: 13, color: c.chalk }}>
         Check your inbox for a verification link — your progress is saved automatically.
       </span>
+      {email && (
+        <button
+          type="button"
+          onClick={handleResend}
+          disabled={cooldown > 0 || status === "sending"}
+          style={{
+            fontFamily: font.ui, fontSize: 12, fontWeight: 500,
+            color: cooldown > 0 || status === "sending" ? c.stone : c.gilt,
+            background: "transparent",
+            border: `1px solid ${cooldown > 0 || status === "sending" ? "rgba(245,242,237,0.1)" : "rgba(212,179,127,0.3)"}`,
+            borderRadius: 6, padding: "4px 10px",
+            cursor: cooldown > 0 || status === "sending" ? "default" : "pointer",
+            transition: "all 0.15s",
+          }}
+        >
+          {status === "sending" ? "Sending..." : status === "sent" ? "Sent ✓" : status === "error" ? "Failed — try again" : cooldown > 0 ? `Resend in ${cooldown}s` : "Resend email"}
+        </button>
+      )}
     </div>
   );
 }
@@ -101,9 +148,10 @@ export interface ResumeEmptyStateProps {
   onDrop: (e: React.DragEvent) => void;
   onFileChange: (file: File | undefined) => void;
   onUndo: () => void;
+  onSkip?: () => void;
 }
 
-export function ResumeEmptyState({ isDragging, dragFileName, resumeError, showUndo, fileInputRef, onDragOver, onDragLeave, onDrop, onFileChange, onUndo }: ResumeEmptyStateProps) {
+export function ResumeEmptyState({ isDragging, dragFileName, resumeError, showUndo, fileInputRef, onDragOver, onDragLeave, onDrop, onFileChange, onUndo, onSkip }: ResumeEmptyStateProps) {
   return (
     <>
       <p style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 700, color: c.gilt, textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 12 }}>Step 1 — Your Experience</p>
@@ -182,6 +230,29 @@ export function ResumeEmptyState({ isDragging, dragFileName, resumeError, showUn
             style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: c.gilt, background: "none", border: "none", cursor: "pointer", padding: "2px 8px" }}>
             Undo
           </button>
+        </div>
+      )}
+
+      {/* Skip link — resume upload is optional but recommended */}
+      {onSkip && !showUndo && (
+        <div style={{ marginTop: 20, textAlign: "center" }}>
+          <button
+            type="button"
+            onClick={onSkip}
+            style={{
+              fontFamily: font.ui, fontSize: 13, color: c.stone,
+              background: "none", border: "none", cursor: "pointer",
+              padding: "8px 16px", borderRadius: 8, transition: "color 0.2s",
+              textDecoration: "underline", textUnderlineOffset: 3,
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.color = c.chalk)}
+            onMouseLeave={(e) => (e.currentTarget.style.color = c.stone)}
+          >
+            Skip for now — I'll upload later
+          </button>
+          <p style={{ fontFamily: font.ui, fontSize: 11, color: "rgba(154,149,144,0.6)", marginTop: 6, lineHeight: 1.5 }}>
+            Recommended: Upload your resume for tailored, high‑quality interview questions.
+          </p>
         </div>
       )}
     </>
@@ -794,30 +865,108 @@ export interface NavigationFooterProps {
   isContinueDisabled: boolean;
   starting: boolean;
   saveStatus: "idle" | "saving" | "saved" | "error";
-  onStart: () => void;
+  /** @deprecated use onStartInterview/onGoToDashboard for the new dual-CTA flow */
+  onStart?: () => void;
+  /** New — primary CTA. Shown only when resume is analyzed. */
+  onStartInterview?: () => void;
+  /** New — secondary CTA. */
+  onGoToDashboard?: () => void;
+  /** 0–100 resume score. When < 50 a subtle warning is shown. */
+  resumeScore?: number | null;
+  /** Whether the user has a resume analyzed (enables the dual-CTA mode). */
+  hasResume?: boolean;
 }
 
-export function NavigationFooter({ isContinueDisabled, starting, saveStatus, onStart }: NavigationFooterProps) {
+export function NavigationFooter({ isContinueDisabled, starting, saveStatus, onStart, onStartInterview, onGoToDashboard, resumeScore, hasResume }: NavigationFooterProps) {
+  const dualMode = !!(hasResume && onStartInterview && onGoToDashboard);
+  const lowScore = typeof resumeScore === "number" && resumeScore < 50;
+
+  const primaryDisabled = isContinueDisabled || starting;
+  const primaryBtnStyle: React.CSSProperties = {
+    fontFamily: font.ui, fontSize: 15, fontWeight: 600, padding: "14px 40px", borderRadius: 10, border: "none",
+    background: primaryDisabled ? "rgba(212,179,127,0.15)" : `linear-gradient(135deg, ${c.gilt}, ${c.giltDark})`,
+    color: primaryDisabled ? "rgba(212,179,127,0.4)" : c.obsidian,
+    cursor: primaryDisabled ? "not-allowed" : "pointer",
+    transition: "all 0.25s ease", display: "inline-flex", alignItems: "center", gap: 8,
+    boxShadow: primaryDisabled ? "none" : "0 8px 24px rgba(212,179,127,0.2)",
+  };
+  const secondaryBtnStyle: React.CSSProperties = {
+    fontFamily: font.ui, fontSize: 14, fontWeight: 500, padding: "12px 28px", borderRadius: 10,
+    background: "transparent", color: primaryDisabled ? "rgba(245,242,237,0.25)" : c.chalk,
+    border: `1px solid ${primaryDisabled ? "rgba(245,242,237,0.08)" : "rgba(245,242,237,0.15)"}`,
+    cursor: primaryDisabled ? "not-allowed" : "pointer",
+    transition: "all 0.25s ease", display: "inline-flex", alignItems: "center", gap: 6,
+  };
+
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12, marginTop: 40 }}>
-      <button onClick={onStart} disabled={isContinueDisabled || starting}
-        style={{
-          fontFamily: font.ui, fontSize: 15, fontWeight: 600, padding: "14px 40px", borderRadius: 10, border: "none",
-          background: (isContinueDisabled || starting) ? "rgba(212,179,127,0.15)" : `linear-gradient(135deg, ${c.gilt}, ${c.giltDark})`,
-          color: (isContinueDisabled || starting) ? "rgba(212,179,127,0.4)" : c.obsidian,
-          cursor: (isContinueDisabled || starting) ? "not-allowed" : "pointer",
-          transition: "all 0.25s ease", display: "inline-flex", alignItems: "center", gap: 8,
-          boxShadow: (isContinueDisabled || starting) ? "none" : "0 8px 24px rgba(212,179,127,0.2)",
-        }}
-        onMouseEnter={(e) => { if (!isContinueDisabled && !starting) { e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 12px 32px rgba(212,179,127,0.3)"; } }}
-        onMouseLeave={(e) => { if (!isContinueDisabled && !starting) { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 8px 24px rgba(212,179,127,0.2)"; } }}>
-        {starting ? (
-          <div style={{ width: 16, height: 16, border: "2.5px solid rgba(212,179,127,0.3)", borderTopColor: c.gilt, borderRadius: "50%", animation: "spin 1s linear infinite" }} />
-        ) : (
-          <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M3 12h18m-6-6l6 6-6 6"/></svg>
-        )}
-        {starting ? "Setting up..." : "Go to Dashboard"}
-      </button>
+      {dualMode ? (
+        <>
+          {/* Primary: Start First Interview (recommended) */}
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
+            <button
+              onClick={onStartInterview}
+              disabled={primaryDisabled}
+              style={primaryBtnStyle}
+              onMouseEnter={(e) => { if (!primaryDisabled) { e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 12px 32px rgba(212,179,127,0.3)"; } }}
+              onMouseLeave={(e) => { if (!primaryDisabled) { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 8px 24px rgba(212,179,127,0.2)"; } }}
+            >
+              {starting ? (
+                <div style={{ width: 16, height: 16, border: "2.5px solid rgba(212,179,127,0.3)", borderTopColor: c.gilt, borderRadius: "50%", animation: "spin 1s linear infinite" }} />
+              ) : (
+                <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polygon points="5,3 19,12 5,21"/></svg>
+              )}
+              {starting ? "Setting up..." : "Start your first interview"}
+            </button>
+            <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.gilt, letterSpacing: "0.06em", textTransform: "uppercase" }}>
+              Recommended · Free
+            </span>
+          </div>
+
+          {/* Secondary: Go to Dashboard */}
+          <button
+            onClick={onGoToDashboard}
+            disabled={primaryDisabled}
+            style={secondaryBtnStyle}
+            onMouseEnter={(e) => { if (!primaryDisabled) e.currentTarget.style.borderColor = "rgba(245,242,237,0.3)"; }}
+            onMouseLeave={(e) => { if (!primaryDisabled) e.currentTarget.style.borderColor = "rgba(245,242,237,0.15)"; }}
+          >
+            Go to Dashboard
+            <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M5 12h14m-6-6l6 6-6 6"/></svg>
+          </button>
+
+          {/* Low-score advisory */}
+          {lowScore && (
+            <div style={{
+              marginTop: 8, maxWidth: 480,
+              display: "flex", alignItems: "flex-start", gap: 10,
+              padding: "10px 14px", borderRadius: 10,
+              background: "rgba(212,179,127,0.05)",
+              border: "1px solid rgba(212,179,127,0.18)",
+            }}>
+              <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.8" style={{ flexShrink: 0, marginTop: 2 }}>
+                <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12" y2="16"/>
+              </svg>
+              <p style={{ fontFamily: font.ui, fontSize: 12, color: c.chalk, lineHeight: 1.55, margin: 0 }}>
+                Your resume score is <strong style={{ color: c.gilt }}>{resumeScore}/100</strong>. You can still continue, but
+                interview questions may be less tailored. For a more robust experience, consider uploading a stronger resume first.
+              </p>
+            </div>
+          )}
+        </>
+      ) : (
+        <button onClick={onStart} disabled={primaryDisabled}
+          style={primaryBtnStyle}
+          onMouseEnter={(e) => { if (!primaryDisabled) { e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 12px 32px rgba(212,179,127,0.3)"; } }}
+          onMouseLeave={(e) => { if (!primaryDisabled) { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 8px 24px rgba(212,179,127,0.2)"; } }}>
+          {starting ? (
+            <div style={{ width: 16, height: 16, border: "2.5px solid rgba(212,179,127,0.3)", borderTopColor: c.gilt, borderRadius: "50%", animation: "spin 1s linear infinite" }} />
+          ) : (
+            <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M3 12h18m-6-6l6 6-6 6"/></svg>
+          )}
+          {starting ? "Setting up..." : "Go to Dashboard"}
+        </button>
+      )}
 
       {saveStatus !== "idle" && (
         <div aria-live="polite" style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4, animation: "fadeUp 0.25s ease-out" }}>

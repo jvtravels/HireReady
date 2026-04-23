@@ -322,6 +322,18 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
       minHeight: "100vh", background: c.obsidian, display: "grid",
       gridTemplateColumns: "1fr 1fr",
     }}>
+      <style>{`
+        @media (max-width: 900px) {
+          .signup-grid { grid-template-columns: 1fr !important; }
+          .signup-visual { display: none !important; }
+          .signup-form { padding: 32px 20px !important; max-width: 100% !important; }
+          .signup-form h1 { font-size: 28px !important; }
+        }
+        @media (max-width: 480px) {
+          .signup-form { padding: 24px 16px !important; }
+          .signup-form h1 { font-size: 24px !important; }
+        }
+      `}</style>
       {/* Left: Form */}
       <div className="signup-form" style={{
         display: "flex", flexDirection: "column", justifyContent: "center",

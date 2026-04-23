@@ -122,7 +122,11 @@ function storeSessionFingerprint() {
 function validateSessionFingerprint(): boolean {
   try {
     const stored = localStorage.getItem(SESSION_FP_KEY);
-    if (!stored) return true; // first time — no fingerprint yet
+    if (!stored) {
+      // First time: store fingerprint immediately to close the hijacking window
+      try { localStorage.setItem(SESSION_FP_KEY, computeSessionFingerprint()); } catch { /* expected */ }
+      return true;
+    }
     return stored === computeSessionFingerprint();
   } catch { return true; }
 }
@@ -279,6 +283,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Clean up legacy localStorage cache from previous versions
   useEffect(() => {
     try { localStorage.removeItem("hirestepx_auth"); } catch { /* expected: localStorage may be unavailable */ }
+  }, []);
+
+  // Global unhandled rejection handler — catches promises without .catch()
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const handler = (event: PromiseRejectionEvent) => {
+      const reason = event.reason;
+      const msg = reason instanceof Error ? reason.message : String(reason);
+      // Ignore expected abort errors
+      if (msg.includes("abort") || msg.includes("AbortError")) return;
+      console.error("[unhandled-rejection]", msg, reason);
+    };
+    window.addEventListener("unhandledrejection", handler);
+    return () => window.removeEventListener("unhandledrejection", handler);
   }, []);
 
   // "Remember me" — clear session on tab/browser close if ephemeral
@@ -466,10 +484,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                     refreshError?.status === 401) {
                   console.warn("[auth] refresh token invalid — signing out");
                   setUser(null);
-                  client.auth.signOut().catch(() => {});
+                  client.auth.signOut().catch(err => console.warn("[auth] signOut failed:", err?.message));
                 }
               }
-            }).catch(() => {});
+            }).catch(err => console.warn("[auth] background refreshSession failed:", err?.message));
           }, 5000);
         }
       } catch (err) {
@@ -513,7 +531,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (event === "SIGNED_IN" && !getStoredDeviceToken()) {
             const newDeviceToken = generateDeviceToken();
             storeDeviceToken(newDeviceToken);
-            client.auth.updateUser({ data: { active_device_token: newDeviceToken } }).catch(() => {});
+            client.auth.updateUser({ data: { active_device_token: newDeviceToken } }).catch(err => console.warn("[auth] updateUser(device_token) failed:", err?.message));
           }
           // Persist Google provider token for Calendar API access
           if (session.provider_token) {
@@ -601,7 +619,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "signup", email: email.toLowerCase().trim() }),
-      }).catch(() => {});
+      }).catch(err => console.warn("[auth] signup rate-limit tracking failed (non-blocking):", err?.message));
 
       // Send verification email via Resend API (don't block signup on failure)
       const userId = data?.user?.id;
@@ -694,7 +712,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       if (error.message === "Invalid login credentials") {
         const remaining = MAX_LOGIN_ATTEMPTS - attempts;
-        return { success: false, error: `Invalid email or password. Check your credentials or reset your password. (${remaining} attempt${remaining !== 1 ? "s" : ""} remaining)` };
+        const warning = remaining <= 2 ? ` ⚠️ ${remaining} attempt${remaining !== 1 ? "s" : ""} before temporary lockout.` : ` (${remaining} attempts remaining)`;
+        return { success: false, error: `Invalid email or password.${warning}` };
       }
       return { success: false, error: error.message };
     }
@@ -716,14 +735,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Single-device enforcement: generate a new device token and save to user_metadata
     const deviceToken = generateDeviceToken();
     storeDeviceToken(deviceToken);
-    client.auth.updateUser({ data: { active_device_token: deviceToken } }).catch(() => {});
+    client.auth.updateUser({ data: { active_device_token: deviceToken } }).catch(err => console.warn("[auth] updateUser(device_token) failed:", err?.message));
 
     // Clear server-side rate limit (fire-and-forget)
     fetch("/api/send-welcome", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action: "success", email: email.toLowerCase().trim() }),
-    }).catch(() => {});
+    }).catch(err => console.warn("[auth] login rate-limit clear failed (non-blocking):", err?.message));
     logAuditEvent("login_success", { email, method: "email" });
     track("login_success");
     return { success: true };

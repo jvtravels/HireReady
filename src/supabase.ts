@@ -137,7 +137,7 @@ export async function getProfile(userId: string): Promise<Profile | null> {
 
 export async function upsertProfile(profile: Partial<Profile> & { id: string }): Promise<{ data: unknown; error: unknown; strippedColumns?: string[] }> {
   const client = await getSupabase();
-  let safeProfile = { ...profile } as Record<string, unknown>;
+  const safeProfile = { ...profile } as Record<string, unknown>;
   const strippedColumns: string[] = [];
 
   for (let attempt = 0; attempt < 8; attempt++) {

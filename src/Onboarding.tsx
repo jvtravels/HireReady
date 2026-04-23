@@ -86,7 +86,9 @@ export default function Onboarding() {
         setAiPhase("analyzing");
         const autoRole = data.experience?.[0]?.title || "";
         const { analyzeResumeWithAI } = await import("./dashboardData");
-        analyzeResumeWithAI(rText, targetRole || autoRole)
+        analysisAbortRef.current?.abort();
+        analysisAbortRef.current = new AbortController();
+        analyzeResumeWithAI(rText, targetRole || autoRole, analysisAbortRef.current.signal)
           .then(result => {
             if (result && "profile" in result) {
               setAiProfile(result.profile);
@@ -238,7 +240,7 @@ export default function Onboarding() {
       let aiSuccess = false;
       try {
         const result = await Promise.race([
-          analyzeResumeWithAI(text, targetRole || autoRole),
+          analyzeResumeWithAI(text, targetRole || autoRole, currentAbort.signal),
           new Promise<null>((_, reject) => setTimeout(() => reject(new Error("timeout")), 25000)),
           new Promise<null>((_, reject) => {
             currentAbort.signal.addEventListener("abort", () => reject(new Error("aborted")));
@@ -273,7 +275,7 @@ export default function Onboarding() {
       const profileSave: Partial<Parameters<typeof updateUser>[0]> = {
         resumeFileName: file.name,
         resumeText: text,
-        resumeData: { ...data, aiProfile: finalProfile } as unknown as ParsedResume,
+        resumeData: { ...finalProfile, _type: aiSuccess ? "ai" : "fallback", _parsed: data } as unknown as ParsedResume,
       };
       if (!targetRole && autoRole) profileSave.targetRole = autoRole;
       if (data.name) profileSave.name = data.name;
@@ -307,7 +309,13 @@ export default function Onboarding() {
     }
   };
 
-  const handleStart = async () => {
+  /**
+   * Finalize onboarding and navigate to the chosen destination.
+   *   "interview" → /session/new?firstFree=1 (recommended path)
+   *   "dashboard" → /dashboard
+   *   "skip"      → /dashboard (no resume), tracked separately
+   */
+  const finalizeOnboarding = async (dest: "interview" | "dashboard" | "skip") => {
     if (starting) return;
     setStarting(true);
     startingRef.current = true;
@@ -329,16 +337,28 @@ export default function Onboarding() {
         ]);
         setSaveStatus("saved");
       } catch (err) {
-        console.warn("[handleStart] save failed or timed out, proceeding anyway:", err);
+        console.warn("[finalizeOnboarding] save failed or timed out, proceeding anyway:", err);
         setSaveStatus("error");
       }
     } else {
       setSaveStatus("saved");
     }
     clearObStep();
-    track("onboarding_completed", { targetRole: targetRole || "", hasResume: !!fileName });
-    router.push("/dashboard");
+    track("onboarding_completed", {
+      targetRole: targetRole || "",
+      hasResume: !!fileName,
+      resumeScore: aiProfile?.resumeScore ?? null,
+      dest,
+    });
+    if (dest === "interview") router.push("/session/new?firstFree=1");
+    else router.push("/dashboard");
   };
+
+  const handleStartInterview = () => { finalizeOnboarding("interview"); };
+  const handleGoToDashboard = () => { finalizeOnboarding("dashboard"); };
+  const handleSkip = () => { finalizeOnboarding("skip"); };
+  // Back-compat: Enter key defaults to dashboard (safer than auto-starting an interview).
+  const handleStart = handleGoToDashboard;
 
   const isBusy = resumeParsing || aiPhase === "analyzing";
   const noResume = !resumeParsed && !resumeParsing && aiPhase !== "analyzing";
@@ -347,10 +367,15 @@ export default function Onboarding() {
 
   const handleReanalyze = () => {
     setAiPhase("analyzing");
+    analysisAbortRef.current?.abort();
+    analysisAbortRef.current = new AbortController();
+    const ac = analysisAbortRef.current;
+    const timer = setTimeout(() => ac.abort(), 30000);
     import("./dashboardData").then(({ analyzeResumeWithAI }) => {
-      Promise.race([analyzeResumeWithAI(resumeText, targetRole), new Promise<null>((_, rej) => setTimeout(() => rej(new Error("timeout")), 30000))])
-        .then(r => { if (r && typeof r === "object" && "profile" in r) setAiProfile(r.profile); setAiPhase("done"); })
-        .catch(() => setAiPhase("done"));
+      analyzeResumeWithAI(resumeText, targetRole, ac.signal)
+        .then(r => { if (r && typeof r === "object" && "profile" in r) setAiProfile(r.profile); })
+        .catch(err => { console.error("[onboarding] Re-analyze failed:", err instanceof Error ? err.message : err); })
+        .finally(() => { clearTimeout(timer); setAiPhase("done"); });
     });
   };
 
@@ -381,7 +406,7 @@ export default function Onboarding() {
 
   return (
     <div style={{ minHeight: "100vh", background: `radial-gradient(ellipse 80% 50% at 50% 0%, rgba(212,179,127,0.03) 0%, ${c.obsidian} 70%)`, display: "flex", flexDirection: "column", position: "relative" }}>
-      {user && !user.emailVerified && <EmailVerificationBanner />}
+      {user && !user.emailVerified && <EmailVerificationBanner email={user.email} />}
       <style>{`
         @keyframes spin { to { transform: rotate(360deg); } }
         @keyframes progressFill { 0% { width: 0%; } 30% { width: 35%; } 60% { width: 65%; } 80% { width: 80%; } 100% { width: 92%; } }
@@ -430,6 +455,7 @@ export default function Onboarding() {
               onDragLeave={() => { setIsDragging(false); setDragFileName(""); }}
               onDrop={(e) => { e.preventDefault(); setIsDragging(false); setDragFileName(""); handleFileChange(e.dataTransfer.files[0]); }}
               onFileChange={handleFileChange} onUndo={handleUndo}
+              onSkip={handleSkip}
             />
           )}
           {(resumeParsing || aiPhase === "analyzing") && aiPhase !== "done" && (
@@ -450,6 +476,10 @@ export default function Onboarding() {
             isContinueDisabled={isContinueDisabled}
             starting={starting} saveStatus={saveStatus}
             onStart={handleStart}
+            onStartInterview={handleStartInterview}
+            onGoToDashboard={handleGoToDashboard}
+            resumeScore={aiProfile?.resumeScore ?? null}
+            hasResume={!!resumeParsed && aiPhase === "done"}
           />
         </div>
       </div>

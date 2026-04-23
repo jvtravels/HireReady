@@ -1,4 +1,4 @@
-/* Unified LLM caller — races Gemini + Groq in parallel, fastest wins */
+/* Unified LLM caller — tries Groq first, falls back to Gemini on failure */
 
 declare const process: { env: Record<string, string | undefined> };
 
