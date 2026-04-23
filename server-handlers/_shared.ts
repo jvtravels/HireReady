@@ -580,7 +580,10 @@ export async function withAuthAndRateLimit(
   if (early) return early;
   const headers = withRequestId(corsHeaders(req));
 
-  if (!checkBodySize(req, opts.maxBytes ?? 1048576)) return tooLargeResponse(headers);
+  // checkBodySize returns true when the body EXCEEDS the limit, so we 413
+  // on the truthy branch — the previous `!checkBodySize` inverted the check
+  // and rejected every request that was actually inside the limit.
+  if (checkBodySize(req, opts.maxBytes ?? 1048576)) return tooLargeResponse(headers);
   if (!opts.skipOriginCheck && !validateOrigin(req)) return forbiddenResponse(headers);
 
   const ip = getClientIp(req);
