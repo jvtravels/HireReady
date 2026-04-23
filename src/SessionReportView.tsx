@@ -1,5 +1,5 @@
 "use client";
-import { memo, useEffect, useMemo, useState } from "react";
+import { memo, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { c, font } from "./tokens";
 import type { DashboardSession } from "./dashboardTypes";
@@ -79,6 +79,118 @@ function MetricTile({ label, value, unit, target, good }: {
         {unit && <span style={{ fontFamily: font.ui, fontSize: 12, color: c.stone }}>{unit}</span>}
       </div>
       <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>Target: {target}</span>
+    </div>
+  );
+}
+
+/* ─── Inline answer highlighting ────────────────────────────────────
+ * We highlight three categories inside the candidate's raw answer so the
+ * coaching feels evidence-linked without requiring the LLM to return span
+ * offsets (which it hallucinates unreliably):
+ *   - filler:       um, uh, like, you know, so, actually, basically, literally
+ *   - hedge:        I think, I guess, maybe, kind of, sort of, probably,
+ *                   perhaps, might, could be
+ *   - quant:        numbers, %, $, x multipliers — signals of quantified impact
+ * All detection is pure regex, client-side, deterministic.
+ */
+
+type HighlightKind = "filler" | "hedge" | "quant";
+
+interface HighlightSpan { start: number; end: number; kind: HighlightKind }
+
+// Order matters: regex is applied in order and later spans that overlap
+// earlier ones are dropped (first-match-wins).
+const HIGHLIGHT_PATTERNS: Array<{ kind: HighlightKind; re: RegExp }> = [
+  // Quantified claims — match first so "I cut latency 40%" doesn't lose the "%" to another pattern.
+  { kind: "quant", re: /\b\d+(?:[.,]\d+)?\s*(?:%|percent|x|×)\b|\$\s*\d+(?:[.,]\d+)?\s*(?:k|m|bn|b|million|billion|thousand)?\b|\b\d+(?:[.,]\d+)?\s*(?:k|m|bn|b|million|billion|thousand|users?|customers?|req\/s|rps|qps|hrs?|hours?|days?|weeks?|months?|years?|people|employees?|teams?)\b|\b\d{3,}\b/gi },
+  // Fillers
+  { kind: "filler", re: /\b(?:um+|uh+|erm+|hmm+|like|you know|so|actually|basically|literally)\b/gi },
+  // Hedges
+  { kind: "hedge", re: /\b(?:i (?:think|guess|feel|believe|assume|suppose)|maybe|kind of|sort of|kinda|sorta|probably|perhaps|might|could be|i'm not sure|not really sure|i guess)\b/gi },
+];
+
+function computeHighlights(text: string): HighlightSpan[] {
+  if (!text) return [];
+  const spans: HighlightSpan[] = [];
+  for (const { kind, re } of HIGHLIGHT_PATTERNS) {
+    re.lastIndex = 0;
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(text)) !== null) {
+      const start = m.index;
+      const end = m.index + m[0].length;
+      // Skip if it overlaps an earlier (higher-priority) span.
+      if (spans.some((s) => !(end <= s.start || start >= s.end))) continue;
+      spans.push({ start, end, kind });
+    }
+  }
+  return spans.sort((a, b) => a.start - b.start);
+}
+
+const HIGHLIGHT_STYLES: Record<HighlightKind, { bg: string; color: string; title: string }> = {
+  filler:  { bg: "rgba(212,179,127,0.20)", color: c.gilt,  title: "Filler word" },
+  hedge:   { bg: "rgba(158,158,158,0.18)", color: c.stone, title: "Hedging language" },
+  quant:   { bg: "rgba(122,158,126,0.20)", color: c.sage,  title: "Quantified claim" },
+};
+
+/**
+ * Render a string with colored mark spans for fillers/hedges/quantified claims.
+ * Uses React text nodes + <mark> so no dangerouslySetInnerHTML and no XSS risk.
+ */
+function HighlightedText({ text }: { text: string }) {
+  const spans = useMemo(() => computeHighlights(text), [text]);
+  if (spans.length === 0) return <>{text}</>;
+
+  const nodes: ReactNode[] = [];
+  let cursor = 0;
+  spans.forEach((s, i) => {
+    if (s.start > cursor) nodes.push(text.slice(cursor, s.start));
+    const style = HIGHLIGHT_STYLES[s.kind];
+    nodes.push(
+      <mark
+        key={`h-${i}`}
+        title={style.title}
+        style={{
+          background: style.bg, color: style.color, borderRadius: 3,
+          padding: "0 3px", fontWeight: 500,
+        }}
+      >{text.slice(s.start, s.end)}</mark>
+    );
+    cursor = s.end;
+  });
+  if (cursor < text.length) nodes.push(text.slice(cursor));
+  return <>{nodes}</>;
+}
+
+/** Count-only summary for the small legend shown under each highlighted answer. */
+function summarizeHighlights(text: string): Record<HighlightKind, number> {
+  const counts: Record<HighlightKind, number> = { filler: 0, hedge: 0, quant: 0 };
+  for (const s of computeHighlights(text)) counts[s.kind]++;
+  return counts;
+}
+
+/** Small inline legend — only shows categories that actually occurred in the answer. */
+function HighlightLegend({ counts }: { counts: Record<HighlightKind, number> }) {
+  const allItems: Array<{ kind: HighlightKind; label: string; n: number }> = [
+    { kind: "quant",  label: "quantified", n: counts.quant },
+    { kind: "hedge",  label: "hedges",     n: counts.hedge },
+    { kind: "filler", label: "fillers",    n: counts.filler },
+  ];
+  const items = allItems.filter((i) => i.n > 0);
+  if (items.length === 0) return null;
+  return (
+    <div style={{ display: "inline-flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+      {items.map(({ kind, label, n }) => {
+        const style = HIGHLIGHT_STYLES[kind];
+        return (
+          <span key={kind} style={{ display: "inline-flex", alignItems: "center", gap: 4, fontFamily: font.ui, fontSize: 10, color: c.stone }}>
+            <span style={{
+              display: "inline-block", width: 8, height: 8, borderRadius: 2,
+              background: style.bg, border: `1px solid ${style.color}`,
+            }} aria-hidden="true" />
+            {n} {label}
+          </span>
+        );
+      })}
     </div>
   );
 }
@@ -197,11 +309,16 @@ function QuestionCard({ q, index }: { q: SessionReportPerQuestion; index: number
             </div>
           )}
 
-          {/* Candidate's answer */}
+          {/* Candidate's answer with inline evidence highlights */}
           {q.answerText && (
             <div>
-              <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, color: c.stone, textTransform: "uppercase", letterSpacing: "0.06em" }}>Your Answer</span>
-              <p style={{ fontFamily: font.ui, fontSize: 13, color: c.chalk, lineHeight: 1.65, margin: "6px 0 0", whiteSpace: "pre-wrap" }}>{q.answerText}</p>
+              <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12 }}>
+                <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, color: c.stone, textTransform: "uppercase", letterSpacing: "0.06em" }}>Your Answer</span>
+                <HighlightLegend counts={summarizeHighlights(q.answerText)} />
+              </div>
+              <p style={{ fontFamily: font.ui, fontSize: 13, color: c.chalk, lineHeight: 1.75, margin: "6px 0 0", whiteSpace: "pre-wrap" }}>
+                <HighlightedText text={q.answerText} />
+              </p>
             </div>
           )}
 
