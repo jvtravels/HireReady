@@ -506,36 +506,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             const profile = await getProfile(session.user.id);
             if (profile) {
               setUser(profileToUser(profile, session));
-              // Single-device check on session restore. Semantics:
-              //   - localToken MATCHES serverToken → this device is still
-              //     the active one. Keep the session.
-              //   - localToken is missing → first login after an upgrade or
-              //     on a device that never had one. Adopt the server token.
-              //   - localToken differs from serverToken → someone ELSE
-              //     logged in more recently on another device, invalidating
-              //     this device. That's exactly what single-device
-              //     enforcement is supposed to do: sign THIS device out.
-              // Skip the check entirely during the grace window after a
-              // fresh login/signup on THIS device (the updateUser that
-              // wrote the new token is still in flight, so the session
-              // snapshot's active_device_token is stale).
-              // Multi-device is allowed (like Linear/Stripe/GitHub). We used to
-               // forcibly sign out devices whose local token didn't match the
-               // server token — but that's bank-grade enforcement that doesn't
-               // suit an interview-practice product. It blocked legitimate
-               // users who simply had two tabs open or moved between laptop
-               // and phone. Now we:
-               //   1. Log a "device_mismatch_detected" audit event (forensic trail).
-               //   2. Adopt the server's latest token silently so future checks are consistent.
-               //   3. Rely on the new-device email alert (fires from login())
-               //      as the actual user-visible security signal.
+              // ─── Single-device enforcement (restore path) ───
+              // Semantics:
+              //   • local == server  → this device is still the active one. Keep session.
+              //   • local missing    → first login post-upgrade; adopt server token.
+              //   • local ≠ server   → someone else logged in more recently from
+              //                        another device. Sign THIS device out. The
+              //                        user's data is safe; they just get kicked to /login.
+              //
+              // The 15s grace window (justAuthenticatedRef) protects the brand-new
+              // login on Device B — its session snapshot may still contain Device A's
+              // stale server token until the updateUser() call lands. Without grace,
+              // the freshly-logged-in user would immediately sign themselves out.
               const localToken = getStoredDeviceToken();
               const serverToken = session.user.user_metadata?.active_device_token;
               if (!justAuthenticatedRef.current && localToken && serverToken && localToken !== serverToken) {
-                logAuditEvent("device_mismatch_detected", { userId: session.user.id });
-                storeDeviceToken(serverToken);
-              } else if (!localToken && serverToken) {
-                // First login after an upgrade — adopt the server token
+                console.warn("[auth] single-device: another device has taken over — signing out");
+                logAuditEvent("single_device_enforcement", { userId: session.user.id });
+                setUser(null);
+                await client.auth.signOut().catch(() => {});
+                try { localStorage.removeItem(DEVICE_TOKEN_KEY); } catch { /* expected */ }
+                clearTimeout(safetyTimer);
+                setLoading(false);
+                return;
+              }
+              // No local token yet (first login after upgrade, or cleared localStorage):
+              // adopt server's so next check compares apples to apples.
+              if (!localToken && serverToken) {
                 storeDeviceToken(serverToken);
               }
             } else {
@@ -832,16 +829,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     clearLoginLockout();
     storeSessionFingerprint();
 
-    // Single-device enforcement: generate a new device token and save to
-    // user_metadata. Set the grace-window flag so the upcoming
-    // onAuthStateChange/SIGNED_IN handler doesn't mistake the stale cached
-    // token on the session snapshot for a competing device.
+    // ─── Single-device enforcement — token rotation ───
+    // New login wins: we generate a fresh device token, write it to
+    // user_metadata on the server, and store it locally. Any other device
+    // that still holds the old token will be kicked on its next session
+    // restore or 60-second checkExpiry poll.
+    //
+    // Grace window (15s) protects THIS tab from the onAuthStateChange
+    // handler's enforcement check — the session snapshot it has was
+    // captured BEFORE updateUser() completed, so it still shows the old
+    // server token. Without grace, we'd kick ourselves out immediately.
+    //
+    // We AWAIT the updateUser call so the rest of the flow knows the server
+    // really has the new token; previously this was fire-and-forget which
+    // made the Device A kick-out unreliable (sometimes Device A polled
+    // before the write landed and saw no mismatch).
     justAuthenticatedRef.current = true;
-    setTimeout(() => { justAuthenticatedRef.current = false; }, 10_000);
+    setTimeout(() => { justAuthenticatedRef.current = false; }, 15_000);
     const existingServerToken = data?.user?.user_metadata?.active_device_token;
     const deviceToken = generateDeviceToken();
     storeDeviceToken(deviceToken);
-    client.auth.updateUser({ data: { active_device_token: deviceToken } }).catch(err => console.warn("[auth] updateUser(device_token) failed:", err?.message));
+    try {
+      await client.auth.updateUser({ data: { active_device_token: deviceToken } });
+      // Refresh so THIS tab's next getSession() returns metadata containing
+      // the new token — eliminates the race where our own check would see
+      // the stale pre-update snapshot.
+      await client.auth.refreshSession().catch(() => {});
+    } catch (err) {
+      console.warn("[auth] updateUser(device_token) failed:", err instanceof Error ? err.message : err);
+    }
 
     // Security: if an existing session on another device is being displaced, notify user via email
     if (existingServerToken && existingServerToken !== deviceToken) {
@@ -1084,18 +1100,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const { data: { session } } = await client.auth.getSession();
         if (!session) return;
 
-        // Multi-device allowed — we used to forcibly sign out any tab whose
-        // local token didn't match the server's current token every 60s.
-        // For an interview-practice product (not banking) that's overly
-        // aggressive — it killed active sessions when users simply logged
-        // in from a second device. We now silently re-sync our local token
-        // to the server's so both devices stay usable; the new-device email
-        // alert remains the authoritative security signal.
+        // ─── Single-device enforcement (periodic check) ───
+        // Runs every 60s. If another device has logged in since we last
+        // synced, THIS tab's local token will no longer match the server's.
+        // That means a more-recent login has displaced us → sign out cleanly
+        // and let the multi-tab broadcast take care of the others.
+        // (The freshly-logged-in tab's localToken === server's — it stays.)
         const localDeviceToken = getStoredDeviceToken();
         const serverDeviceToken = session.user.user_metadata?.active_device_token;
         if (localDeviceToken && serverDeviceToken && localDeviceToken !== serverDeviceToken) {
-          logAuditEvent("device_mismatch_detected", { userId: user.id });
-          storeDeviceToken(serverDeviceToken);
+          logAuditEvent("single_device_kicked", { userId: user.id });
+          setSessionExpiryWarning("Signed in on another device — signing out here.");
+          setUser(null);
+          await client.auth.signOut().catch(() => {});
+          broadcastLogout();
+          try { localStorage.removeItem(DEVICE_TOKEN_KEY); } catch { /* expected */ }
+          return;
         }
 
         const exp = session.expires_at; // Unix timestamp in seconds
