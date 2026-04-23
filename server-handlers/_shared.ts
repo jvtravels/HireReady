@@ -541,6 +541,77 @@ export function escapeHtml(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
+/* ─── Composed Request Preamble ─── */
+
+/**
+ * One-call helper that runs the common edge-function preamble:
+ *   1. CORS preflight / method check
+ *   2. Body size guard
+ *   3. Origin validation (CSRF defense)
+ *   4. Per-IP rate limit
+ *   5. Supabase auth verification
+ *   6. Optional per-user rate limit
+ *   7. Optional LLM quota check (returns warning flag on X-LLM-Quota-Warning header)
+ *
+ * Returns either a Response (caller returns early) or { headers, auth, quota }
+ * for the handler to use.
+ *
+ * Example:
+ *   const pre = await withAuthAndRateLimit(req, { endpoint: "evaluate", ipLimit: 15, userLimit: 8, checkQuota: true });
+ *   if (pre instanceof Response) return pre;
+ *   const { headers, auth } = pre;
+ */
+export async function withAuthAndRateLimit(
+  req: Request,
+  opts: {
+    endpoint: string;
+    ipLimit?: number;
+    userLimit?: number;
+    checkQuota?: boolean;
+    maxBytes?: number;
+    skipOriginCheck?: boolean;
+  },
+): Promise<Response | {
+  headers: Record<string, string>;
+  auth: { authenticated: boolean; userId?: string };
+  quota?: { allowed: boolean; reason?: string; count?: number; limit?: number; warning?: boolean };
+}> {
+  const early = handleCorsPreflightOrMethod(req);
+  if (early) return early;
+  const headers = withRequestId(corsHeaders(req));
+
+  if (!checkBodySize(req, opts.maxBytes ?? 1048576)) return tooLargeResponse(headers);
+  if (!opts.skipOriginCheck && !validateOrigin(req)) return forbiddenResponse(headers);
+
+  const ip = getClientIp(req);
+  if (opts.ipLimit && await isRateLimited(ip, opts.endpoint, opts.ipLimit, 60_000)) {
+    return rateLimitResponse(headers);
+  }
+
+  const auth = await verifyAuth(req);
+  if (!auth.authenticated) return unauthorizedResponse(headers);
+
+  if (opts.userLimit && auth.userId
+      && await isRateLimited(`user:${auth.userId}`, opts.endpoint, opts.userLimit, 60_000)) {
+    return rateLimitResponse(headers);
+  }
+
+  let quota: { allowed: boolean; reason?: string; count?: number; limit?: number; warning?: boolean } | undefined;
+  if (opts.checkQuota && auth.userId) {
+    quota = await checkLLMQuota(auth.userId, opts.endpoint);
+    if (!quota.allowed) {
+      return new Response(JSON.stringify({ error: quota.reason, quotaExceeded: true }), { status: 429, headers });
+    }
+    if (quota.warning && quota.count != null && quota.limit != null) {
+      headers["X-LLM-Quota-Count"] = String(quota.count);
+      headers["X-LLM-Quota-Limit"] = String(quota.limit);
+      headers["X-LLM-Quota-Warning"] = "1";
+    }
+  }
+
+  return { headers, auth, quota };
+}
+
 /* ─── Standard Error Responses (Edge) ─── */
 
 /** Return a JSON error response with the given status code and message. */
