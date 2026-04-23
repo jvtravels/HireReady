@@ -16,7 +16,28 @@ import { InterviewProvider } from "./InterviewContext";
    Wraps with InterviewProvider so any child component
    can call useInterview() instead of receiving props.
    ═══════════════════════════════════════════════ */
+/**
+ * Preconnect to the TTS + STT providers the moment the user lands on /interview.
+ * Previously these hints lived in app/layout.tsx and fired on every page load,
+ * wasting a TCP+TLS handshake per tab for routes that never touch audio.
+ * Now they fire exactly once per interview session, right before the APIs are
+ * hit — which saves ~50-150ms on the first TTS playback.
+ */
+function addInterviewPreconnects() {
+  if (typeof document === "undefined") return;
+  const hosts = ["https://api.cartesia.ai", "https://api.deepgram.com"];
+  for (const href of hosts) {
+    if (document.querySelector(`link[rel="preconnect"][href="${href}"]`)) continue;
+    const link = document.createElement("link");
+    link.rel = "preconnect";
+    link.href = href;
+    link.crossOrigin = "anonymous";
+    document.head.appendChild(link);
+  }
+}
+
 export default function Interview() {
+  useEffect(() => { addInterviewPreconnects(); }, []);
   const engine = useInterviewEngine();
   const video = useVideoRecorder();
 

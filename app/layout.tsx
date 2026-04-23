@@ -2,13 +2,24 @@ import type { Metadata, Viewport } from "next";
 import { Instrument_Serif, Inter, JetBrains_Mono } from "next/font/google";
 import "../src/index.css";
 
-/* ── Google Fonts via next/font ── */
+/* ── Google Fonts via next/font ──
+ *
+ * Each font has:
+ *   - display: "swap" so FCP never blocks on font download
+ *   - adjustFontFallback: auto — Next.js generates a size-adjusted fallback
+ *     which removes the CLS spike when the real font loads
+ *   - preload: true for the two critical (UI + display) fonts; JetBrains Mono
+ *     (used only in the Hero metrics + occasional badges) is preload:false
+ *     to cut a parallel font download off the critical path.
+ */
 const instrumentSerif = Instrument_Serif({
   subsets: ["latin"],
   weight: "400",
   style: ["normal", "italic"],
   variable: "--font-display",
   display: "swap",
+  preload: true,
+  fallback: ["Georgia", "Times New Roman", "serif"],
 });
 
 const inter = Inter({
@@ -16,6 +27,8 @@ const inter = Inter({
   weight: ["400", "500", "600"],
   variable: "--font-ui",
   display: "swap",
+  preload: true,
+  fallback: ["system-ui", "-apple-system", "Segoe UI", "Roboto", "sans-serif"],
 });
 
 const jetbrainsMono = JetBrains_Mono({
@@ -23,6 +36,8 @@ const jetbrainsMono = JetBrains_Mono({
   weight: ["400", "600"],
   variable: "--font-mono",
   display: "swap",
+  preload: false,  // Non-critical — used only in metrics/badges below the fold
+  fallback: ["SF Mono", "Consolas", "Menlo", "monospace"],
 });
 
 /* ── SEO Metadata ── */
@@ -199,15 +214,18 @@ export default function RootLayout({
       className={`${instrumentSerif.variable} ${inter.variable} ${jetbrainsMono.variable}`}
     >
       <head>
-        {/* Preconnect hints for third-party origins */}
-        <link rel="preconnect" href="https://esluwqkqoofmquqdevap.supabase.co" />
+        {/*
+          Critical-path preconnects only. Supabase is hit on every auth-gated
+          page load. Removed Cartesia + Deepgram preconnects from the root —
+          they were costing an extra TCP+TLS handshake on every page load
+          but only the /interview route actually uses those services. We now
+          preconnect from Interview.tsx with useEffect-injected links.
+        */}
+        <link rel="preconnect" href="https://esluwqkqoofmquqdevap.supabase.co" crossOrigin="anonymous" />
         <link rel="dns-prefetch" href="https://images.unsplash.com" />
-        <link rel="preconnect" href="https://api.cartesia.ai" />
-        <link rel="preconnect" href="https://api.deepgram.com" />
-        <link rel="dns-prefetch" href="https://api.cartesia.ai" />
-        <link rel="dns-prefetch" href="https://api.deepgram.com" />
 
-        {/* Structured Data */}
+        {/* Structured Data — server-rendered so SEO crawlers see it immediately,
+            but moved AFTER preconnects so network scheduling doesn't stall on parsing JSON. */}
         {structuredData.map((data, i) => (
           <script
             key={i}
