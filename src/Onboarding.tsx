@@ -224,9 +224,11 @@ export default function Onboarding() {
   const handleFileChange = async (file: File | undefined) => {
     if (!file) return;
     if (fileInputRef.current) fileInputRef.current.value = "";
+    track("resume_upload_started", { sizeBytes: file.size, ext: file.name.split(".").pop()?.toLowerCase() || "" });
     if (file.size > 10 * 1024 * 1024) {
       const mb = (file.size / (1024 * 1024)).toFixed(1);
       setResumeError(`Your file is ${mb} MB. Max is 10 MB — try compressing your PDF (e.g. smallpdf.com/compress-pdf) or export at lower quality.`);
+      track("resume_upload_failed", { reason: "too_large", sizeBytes: file.size });
       return;
     }
     const ext = file.name.split(".").pop()?.toLowerCase();
@@ -240,6 +242,7 @@ export default function Onboarding() {
       } else {
         setResumeError(`.${ext || "this"} files aren't supported. Please upload a PDF, DOCX, or TXT file.`);
       }
+      track("resume_upload_failed", { reason: "unsupported_type", ext: ext || "unknown" });
       return;
     }
     setFileName(file.name);
@@ -262,6 +265,7 @@ export default function Onboarding() {
       const data = parseResumeData(text);
       setResumeText(text);
       setResumeParsed(data);
+      track("resume_upload_completed", { textLen: text.length, skillCount: data.skills?.length || 0, hasName: !!data.name });
       // Save to localStorage immediately — Supabase columns may not exist
       try { localStorage.setItem("hirestepx_resume", JSON.stringify({ fileName: file.name, text, data })); } catch { /* quota */ }
       const fallback: ResumeProfile = {
@@ -347,8 +351,10 @@ export default function Onboarding() {
         setSaveStatus("error");
       }
     } catch (err: unknown) {
-      setResumeError(err instanceof Error ? err.message : "Failed to parse resume");
+      const msg = err instanceof Error ? err.message : "Failed to parse resume";
+      setResumeError(msg);
       setResumeText(""); setResumeParsed(null);
+      track("resume_upload_failed", { reason: "parse_error", message: msg.slice(0, 100) });
     } finally {
       setResumeParsing(false);
     }

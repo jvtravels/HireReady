@@ -1,5 +1,65 @@
 /* ─── Core Utilities ─── */
 
+/* ─── Intl Formatters (locale-aware number, currency, date) ─── */
+
+let _currencyFormatter: Intl.NumberFormat | null = null;
+let _numberFormatter: Intl.NumberFormat | null = null;
+let _dateTimeFormatter: Intl.DateTimeFormat | null = null;
+
+/** Format a number as INR currency. Defaults to "en-IN" for proper lakh/crore grouping. */
+export function formatINR(amount: number, opts: { minimumFractionDigits?: number; locale?: string } = {}): string {
+  const locale = opts.locale || "en-IN";
+  if (!_currencyFormatter || _currencyFormatter.resolvedOptions().locale !== locale) {
+    _currencyFormatter = new Intl.NumberFormat(locale, {
+      style: "currency", currency: "INR",
+      minimumFractionDigits: opts.minimumFractionDigits ?? 0,
+      maximumFractionDigits: 2,
+    });
+  }
+  return _currencyFormatter.format(amount);
+}
+
+/** Format a plain number with locale-aware grouping (12,345 or 12.345 depending on locale). */
+export function formatNumber(n: number, locale = "en-IN"): string {
+  if (!_numberFormatter || _numberFormatter.resolvedOptions().locale !== locale) {
+    _numberFormatter = new Intl.NumberFormat(locale);
+  }
+  return _numberFormatter.format(n);
+}
+
+/** Format a date/time in a locale-aware way. Accepts Date, ISO string, or epoch ms. */
+export function formatDateTime(value: Date | string | number, opts: Intl.DateTimeFormatOptions & { locale?: string } = {}): string {
+  const locale = opts.locale || "en-IN";
+  const date = value instanceof Date ? value : new Date(value);
+  const key = JSON.stringify(opts) + locale;
+  if (!_dateTimeFormatter || (_dateTimeFormatter as unknown as { _cacheKey?: string })._cacheKey !== key) {
+    _dateTimeFormatter = new Intl.DateTimeFormat(locale, {
+      dateStyle: opts.dateStyle || "medium",
+      timeStyle: opts.timeStyle,
+      timeZone: opts.timeZone,
+    });
+    (_dateTimeFormatter as unknown as { _cacheKey?: string })._cacheKey = key;
+  }
+  return _dateTimeFormatter.format(date);
+}
+
+/** Format a relative time like "2 hours ago" or "in 3 days". */
+export function formatRelativeTime(value: Date | string | number, locale = "en-IN"): string {
+  const date = value instanceof Date ? value : new Date(value);
+  const diffMs = date.getTime() - Date.now();
+  const rtf = new Intl.RelativeTimeFormat(locale, { numeric: "auto" });
+  const abs = Math.abs(diffMs);
+  const units: [Intl.RelativeTimeFormatUnit, number][] = [
+    ["year", 31536000000], ["month", 2628000000], ["week", 604800000],
+    ["day", 86400000], ["hour", 3600000], ["minute", 60000], ["second", 1000],
+  ];
+  for (const [unit, ms] of units) {
+    if (abs >= ms || unit === "second") return rtf.format(Math.round(diffMs / ms), unit);
+  }
+  return rtf.format(0, "second");
+}
+
+
 /**
  * Generate a v4 UUID, with fallback for insecure contexts (HTTP, older browsers).
  * Uses crypto.randomUUID() when available, otherwise manually constructs a compliant UUID.

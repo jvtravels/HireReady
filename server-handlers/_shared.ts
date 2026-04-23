@@ -428,7 +428,7 @@ export function sanitizeForLLM(s: unknown, maxLen = 200): string {
 const DAILY_LLM_LIMITS: Record<string, number> = { free: 25, starter: 60, pro: 200, team: 500 };
 
 /** Check if a user has exceeded their daily LLM API call quota for a specific endpoint. */
-export async function checkLLMQuota(userId: string, endpoint: string): Promise<{ allowed: boolean; reason?: string }> {
+export async function checkLLMQuota(userId: string, endpoint: string): Promise<{ allowed: boolean; reason?: string; count?: number; limit?: number; warning?: boolean }> {
   // Get user tier
   const tier = await getSubscriptionTier(userId);
   const dailyLimit = DAILY_LLM_LIMITS[tier] || DAILY_LLM_LIMITS.free;
@@ -448,9 +448,11 @@ export async function checkLLMQuota(userId: string, endpoint: string): Promise<{
     const results = await res.json();
     const count = results[0]?.result ?? 1;
     if (count > dailyLimit) {
-      return { allowed: false, reason: `Daily AI usage limit reached (${dailyLimit} calls/day for ${tier} plan). Upgrade for more, or try again tomorrow.` };
+      return { allowed: false, reason: `Daily AI usage limit reached (${dailyLimit} calls/day for ${tier} plan). Upgrade for more, or try again tomorrow.`, count, limit: dailyLimit };
     }
-    return { allowed: true };
+    // 80% warning threshold — caller can surface to client
+    const warning = count >= Math.floor(dailyLimit * 0.8);
+    return { allowed: true, count, limit: dailyLimit, warning };
   } catch {
     return { allowed: true }; // fail open
   }
@@ -462,6 +464,32 @@ export async function checkLLMQuota(userId: string, endpoint: string): Promise<{
 export function withRequestId(headers: Record<string, string>): Record<string, string> {
   return { ...headers, "X-Request-ID": crypto.randomUUID() };
 }
+
+/* ─── Structured Logging ─── */
+
+type LogLevel = "info" | "warn" | "error";
+
+/**
+ * Emit a single structured log line (JSON) with consistent fields.
+ * Vercel's log viewer can parse these for filtering/aggregation.
+ */
+export function structuredLog(level: LogLevel, message: string, fields: Record<string, unknown> = {}): void {
+  const line = JSON.stringify({
+    ts: new Date().toISOString(),
+    level,
+    msg: message,
+    ...fields,
+  });
+  if (level === "error") console.error(line);
+  else if (level === "warn") console.warn(line);
+  else console.log(line);
+}
+
+export const slog = {
+  info: (msg: string, fields?: Record<string, unknown>) => structuredLog("info", msg, fields),
+  warn: (msg: string, fields?: Record<string, unknown>) => structuredLog("warn", msg, fields),
+  error: (msg: string, fields?: Record<string, unknown>) => structuredLog("error", msg, fields),
+};
 
 /* ─── VercelResponse CORS helpers (for Node.js API routes) ─── */
 

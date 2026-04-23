@@ -17,6 +17,21 @@ ALTER TABLE profiles ADD COLUMN IF NOT EXISTS resume_data JSONB;
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
 CREATE INDEX IF NOT EXISTS profiles_deleted_at_idx ON profiles(deleted_at) WHERE deleted_at IS NOT NULL;
 
+-- ─── 1c. Cap resume_text at 200 KB (~50k chars) to prevent abuse ──
+-- Guard against >200KB resume uploads bloating the profiles table
+ALTER TABLE profiles DROP CONSTRAINT IF EXISTS resume_text_max_length;
+ALTER TABLE profiles ADD CONSTRAINT resume_text_max_length
+  CHECK (resume_text IS NULL OR length(resume_text) <= 200000);
+
+-- ─── 1d. Indexes for session count & date-range queries ───────────
+-- These are critical at scale (used by /api/evaluate quota checks)
+CREATE INDEX IF NOT EXISTS idx_sessions_user_created
+  ON sessions(user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_sessions_user_date
+  ON sessions(user_id, date DESC);
+-- Speed up admin queries / leaderboards (optional)
+CREATE INDEX IF NOT EXISTS idx_sessions_created ON sessions(created_at DESC);
+
 -- ─── 2. Enable RLS on all user-scoped tables ────────────────────
 ALTER TABLE IF EXISTS profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS sessions ENABLE ROW LEVEL SECURITY;

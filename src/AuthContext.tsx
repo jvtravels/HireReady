@@ -566,10 +566,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signup = useCallback(async (email: string, name: string, password: string): Promise<{ success: boolean; error?: string; userId?: string }> => {
+    track("signup_started");
     if (!supabaseConfigured) {
       // localStorage fallback
       const newUser: User = { id: Date.now().toString(36), name, email, targetRole: "", resumeFileName: null, hasCompletedOnboarding: false, emailVerified: false };
       setUser(newUser);
+      track("signup_completed", { method: "local" });
       return { success: true };
     }
 
@@ -640,6 +642,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await client.auth.signOut();
       setUser(null);
 
+      track("signup_completed", { method: "email" });
       return { success: true, userId };
     } finally {
       signingUpRef.current = false;
@@ -878,8 +881,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (updates.interviewDate !== undefined) profileUpdates.interview_date = updates.interviewDate;
     if (updates.learningStyle !== undefined) profileUpdates.learning_style = updates.learningStyle;
     if (updates.experienceLevel !== undefined) profileUpdates.experience_level = updates.experienceLevel;
-    if (updates.resumeFileName !== undefined) profileUpdates.resume_file_name = updates.resumeFileName || "";
-    if (updates.resumeText !== undefined) profileUpdates.resume_text = updates.resumeText || "";
+    if (updates.resumeFileName !== undefined) profileUpdates.resume_file_name = (updates.resumeFileName || "").slice(0, 255);
+    if (updates.resumeText !== undefined) {
+      // Cap at ~50k chars (~200KB) to match DB constraint and avoid bloating the profiles row
+      profileUpdates.resume_text = (updates.resumeText || "").slice(0, 50000);
+    }
     if (updates.resumeData !== undefined) profileUpdates.resume_data = (updates.resumeData as unknown as Record<string, unknown>) || null;
     if (updates.preferredSessionLength !== undefined) profileUpdates.preferred_session_length = updates.preferredSessionLength;
     if (updates.interviewTypes !== undefined) profileUpdates.interview_types = updates.interviewTypes;

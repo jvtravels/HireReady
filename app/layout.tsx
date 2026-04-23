@@ -66,6 +66,11 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: "#050506",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,   // Allow pinch-zoom up to 5x (WCAG 2.1 SC 1.4.4)
+  userScalable: true,
+  viewportFit: "cover",
 };
 
 /* ── Structured Data (JSON-LD) ── */

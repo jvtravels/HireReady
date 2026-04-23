@@ -1,18 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Analytics } from "@vercel/analytics/next";
-import { SpeedInsights } from "@vercel/speed-insights/next";
+import dynamic from "next/dynamic";
 import { getCookieConsent } from "./CookieConsent";
+
+// Dynamically imported only when user accepts — keeps ~20KB out of the default bundle
+const Analytics = dynamic(() => import("@vercel/analytics/next").then(m => m.Analytics), { ssr: false });
+const SpeedInsights = dynamic(() => import("@vercel/speed-insights/next").then(m => m.SpeedInsights), { ssr: false });
 
 export default function ConsentGatedAnalytics() {
   const [accepted, setAccepted] = useState(false);
 
   useEffect(() => {
-    // Read current consent on mount
     setAccepted(getCookieConsent() === "accepted");
-
-    // Listen for consent changes from the banner
     const handler = (e: Event) => {
       const detail = (e as CustomEvent<{ accepted: boolean }>).detail;
       setAccepted(!!detail?.accepted);

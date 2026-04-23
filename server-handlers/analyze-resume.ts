@@ -56,7 +56,12 @@ export default async function handler(req: Request): Promise<Response> {
   const tQuota = Date.now() - tQuota0;
   if (!quota.allowed) {
     console.error(`[analyze-resume] Quota exceeded after ${tQuota}ms: ${quota.reason}`);
-    return new Response(JSON.stringify({ error: quota.reason }), { status: 429, headers });
+    return new Response(JSON.stringify({ error: quota.reason, quotaExceeded: true }), { status: 429, headers });
+  }
+  if (quota.warning && quota.count != null && quota.limit != null) {
+    headers["X-LLM-Quota-Count"] = String(quota.count);
+    headers["X-LLM-Quota-Limit"] = String(quota.limit);
+    headers["X-LLM-Quota-Warning"] = "1";
   }
 
   console.log(`[analyze-resume] Pre-checks: auth=${tAuth}ms rate=${tRate}ms quota=${tQuota}ms`);

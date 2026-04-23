@@ -617,7 +617,7 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
               {!isLogin && (
                 <div>
                   <label htmlFor="signup-name" style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: c.chalk, display: "block", marginBottom: 6, letterSpacing: "0.02em" }}>Full name</label>
-                  <input id="signup-name" ref={!isLogin ? firstInputRef : undefined} type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Your full name" required maxLength={48} autoComplete="off"
+                  <input id="signup-name" ref={!isLogin ? firstInputRef : undefined} type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Your full name" required maxLength={48} autoComplete="name"
                     style={{ width: "100%", padding: "12px 16px", borderRadius: 8, background: c.graphite, border: `1px solid ${c.border}`, color: c.ivory, fontFamily: font.ui, fontSize: 14, outline: "none", transition: "border-color 0.2s ease", boxSizing: "border-box" }}
                     onFocus={(e) => e.currentTarget.style.borderColor = c.gilt}
                     onBlur={(e) => e.currentTarget.style.borderColor = c.border}
@@ -630,7 +630,7 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
                 <input id="signup-email" ref={isLogin ? firstInputRef : undefined} type="email" value={email}
                   onChange={(e) => { setEmail(e.target.value); checkEmailTypo(e.target.value); }}
                   onBlur={(e) => { e.currentTarget.style.borderColor = c.border; checkEmailTypo(email); }}
-                  placeholder="you@company.com" required autoComplete="new-password"
+                  placeholder="you@company.com" required autoComplete="email"
                   aria-describedby={error ? "form-error" : undefined}
                   style={{ width: "100%", padding: "12px 16px", borderRadius: 8, background: c.graphite, border: `1px solid ${c.border}`, color: c.ivory, fontFamily: font.ui, fontSize: 14, outline: "none", transition: "border-color 0.2s ease", boxSizing: "border-box" }}
                   onFocus={(e) => e.currentTarget.style.borderColor = c.gilt}
@@ -649,7 +649,7 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
                 <label htmlFor="signup-password" style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: c.chalk, display: "block", marginBottom: 6, letterSpacing: "0.02em" }}>Password</label>
                 <div style={{ position: "relative" }}>
                   <input id="signup-password" type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)}
-                    placeholder={isLogin ? "Enter your password" : "Create a password (8+ chars)"} required maxLength={128} autoComplete="new-password"
+                    placeholder={isLogin ? "Enter your password" : "Create a password (8+ chars)"} required maxLength={128} autoComplete={isLogin ? "current-password" : "new-password"}
                     aria-describedby={error ? "form-error" : undefined}
                     style={{ width: "100%", padding: "12px 44px 12px 16px", borderRadius: 8, background: c.graphite, border: `1px solid ${c.border}`, color: c.ivory, fontFamily: font.ui, fontSize: 14, outline: "none", transition: "border-color 0.2s ease", boxSizing: "border-box" }}
                     onFocus={(e) => e.currentTarget.style.borderColor = c.gilt}
@@ -725,13 +725,15 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
                   const colors = ["", c.ember, c.gilt, c.sage, c.sage];
                   return (
                     <>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8 }}>
-                        <div style={{ display: "flex", gap: 3, flex: 1 }}>
+                      <div role="status" aria-live="polite" style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8 }}>
+                        <div aria-hidden="true" style={{ display: "flex", gap: 3, flex: 1 }}>
                           {[1, 2, 3, 4].map(i => (
                             <div key={i} style={{ flex: 1, height: 3, borderRadius: 2, background: i <= strength ? colors[strength] : c.border, transition: "background 0.2s" }} />
                           ))}
                         </div>
-                        <span style={{ fontFamily: font.ui, fontSize: 11, color: colors[strength], fontWeight: 500 }}>{labels[strength]}</span>
+                        <span style={{ fontFamily: font.ui, fontSize: 11, color: colors[strength], fontWeight: 500 }}>
+                          <span className="sr-only">Password strength: </span>{labels[strength]}
+                        </span>
                       </div>
                       <div style={{ display: "flex", flexWrap: "wrap", gap: "3px 10px", marginTop: 6 }}>
                         {reqs.map(r => (
