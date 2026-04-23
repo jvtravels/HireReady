@@ -99,43 +99,66 @@ export default async function handler(req: Request): Promise<Response> {
 
   // Attach the authenticated user's id — the client never gets to override
   // which row is being touched.
-  const row = { id: auth.userId, ...updates };
+  const row: Record<string, unknown> = { id: auth.userId, ...updates };
+  const stripped: string[] = [];
 
-  // Server-to-server upsert via PostgREST using the service-role key.
-  // Using fetch here is safe: we're on the edge runtime, no DOM-level
-  // extension wrappers exist.
+  // Column-stripping retry loop. Older environments may be missing recently-
+  // added columns (city, feedback_style, etc.). Rather than 500 the whole
+  // request, peel off the missing column and try again — at most 8 rounds.
+  // Mirrors the resilience behaviour the previous client-side upsertProfile
+  // had, but enforced server-side where it's the right place for schema
+  // reconciliation.
   const t0 = Date.now();
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/profiles?on_conflict=id`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      apikey: SUPABASE_SERVICE_KEY,
-      Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`,
-      Prefer: "resolution=merge-duplicates,return=representation",
-    },
-    body: JSON.stringify([row]),
-  });
+  for (let attempt = 0; attempt < 8; attempt++) {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/profiles?on_conflict=id`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: SUPABASE_SERVICE_KEY,
+        Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`,
+        Prefer: "resolution=merge-duplicates,return=representation",
+      },
+      body: JSON.stringify([row]),
+    });
 
-  if (!res.ok) {
+    if (res.ok) {
+      let profile: unknown = null;
+      try {
+        const data = await res.json();
+        profile = Array.isArray(data) ? data[0] : data;
+      } catch { /* empty body — shouldn't happen with return=representation */ }
+      if (stripped.length > 0) {
+        console.warn(`[update-profile] OK after stripping missing columns: ${stripped.join(",")}`);
+      }
+      console.log(`[update-profile] OK user=${auth.userId?.slice(0, 8)} fields=${Object.keys(updates).join(",")} stripped=${stripped.join(",") || "-"} latency=${Date.now() - t0}ms`);
+      return new Response(JSON.stringify({ profile, strippedColumns: stripped }), { status: 200, headers });
+    }
+
     const errText = await res.text().catch(() => "");
-    console.error(`[update-profile] Supabase upsert failed HTTP ${res.status}: ${errText.slice(0, 300)}`);
-    // Surface column-missing errors so the client can prune and retry — this
-    // matches the behaviour of the previous supabase-js-based helper.
     const missingCol = errText.match(/Could not find the '(\w+)' column/)?.[1]
-      || errText.match(/column "(\w+)" of relation .* does not exist/i)?.[1];
+      || errText.match(/column "(\w+)" of .* does not exist/i)?.[1]
+      || errText.match(/column profiles\.(\w+) does not exist/i)?.[1];
+
+    if (missingCol && missingCol in row && missingCol !== "id") {
+      console.warn(`[update-profile] column '${missingCol}' missing in DB — stripping and retrying`);
+      stripped.push(missingCol);
+      delete row[missingCol];
+      continue;
+    }
+
+    // Unrecoverable — surface details to the client.
+    console.error(`[update-profile] Supabase upsert failed HTTP ${res.status}: ${errText.slice(0, 300)}`);
     return new Response(JSON.stringify({
       error: "Profile update failed",
       details: errText.slice(0, 300),
       missingColumn: missingCol || null,
+      strippedColumns: stripped,
     }), { status: res.status >= 400 && res.status < 500 ? 400 : 502, headers });
   }
 
-  let profile: unknown = null;
-  try {
-    const data = await res.json();
-    profile = Array.isArray(data) ? data[0] : data;
-  } catch { /* empty body — shouldn't happen with return=representation */ }
-
-  console.log(`[update-profile] OK user=${auth.userId?.slice(0, 8)} fields=${Object.keys(updates).join(",")} latency=${Date.now() - t0}ms`);
-  return new Response(JSON.stringify({ profile }), { status: 200, headers });
+  console.error(`[update-profile] retry loop exhausted — last stripped: ${stripped.join(",")}`);
+  return new Response(JSON.stringify({
+    error: "Profile update failed after maximum retries",
+    strippedColumns: stripped,
+  }), { status: 500, headers });
 }

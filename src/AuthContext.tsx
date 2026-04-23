@@ -921,9 +921,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     //    This replaces the previous direct supabase-js call so third-party
     //    fetch wrappers can't silently drop the write.
     const { apiFetch } = await import("./apiClient");
-    const result = await apiFetch<{ profile: unknown }>("/api/profile/update", payload);
+    const result = await apiFetch<{ profile: unknown; details?: string; missingColumn?: string }>("/api/profile/update", payload);
     if (!result.ok) {
-      console.error(`[updateUser] API update failed (${result.status}): ${result.error}`);
+      const details = result.data?.details || "";
+      const missing = result.data?.missingColumn;
+      console.error(`[updateUser] API update failed (${result.status}): ${result.error}${details ? ` — ${details}` : ""}${missing ? ` [missingColumn=${missing}]` : ""}`);
+      console.error("[updateUser] payload keys:", Object.keys(payload));
     }
   }, []);
 
