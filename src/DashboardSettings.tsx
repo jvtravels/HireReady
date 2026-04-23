@@ -5,7 +5,7 @@ import { useAuth } from "./AuthContext";
 import { useDocTitle } from "./useDocTitle";
 import { authHeaders, getPaymentHistory, type PaymentRecord } from "./supabase";
 import type { PersistedState } from "./dashboardTypes";
-import { useDashboard } from "./DashboardContext";
+import { useDashboardCore, useDashboardUI, useDashboardSessions } from "./DashboardContext";
 import { DataLoadingSkeleton } from "./dashboardComponents";
 import {
   icons,
@@ -30,7 +30,9 @@ const SECTIONS = ALL_SECTIONS;
 export default function SettingsPage() {
   useDocTitle("Settings");
   const { user: authUser, logout: authLogout, updateUser: authUpdateUser, resetPassword } = useAuth();
-  const { persisted, updatePersisted: onUpdate, handleExportCSV: onExportCSV, dataLoading, showToast, setShowUpgradeModal, calendarEvents } = useDashboard();
+  const { persisted, updatePersisted: onUpdate, handleExportCSV: onExportCSV } = useDashboardCore();
+  const { dataLoading, showToast, setShowUpgradeModal } = useDashboardUI();
+  const { calendarEvents } = useDashboardSessions();
   const onLogout = () => { authLogout(); };
 
   // Profile

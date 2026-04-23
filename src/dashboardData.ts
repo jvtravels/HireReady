@@ -1,6 +1,6 @@
 import { c } from "./tokens";
 import { loadEvents, daysUntilEvent, formatEventTime } from "./dashboardHelpers";
-import { authHeaders, supabaseConfigured } from "./supabase";
+import { supabaseConfigured } from "./supabase";
 import type { UserContext, DashboardSession, SkillData, TrendPoint, PersistedState } from "./dashboardTypes";
 import { scoreLabel } from "./dashboardTypes";
 
@@ -817,85 +817,36 @@ export interface ResumeProfile {
   improvements?: string[];
 }
 
-/**
- * POST JSON via XMLHttpRequest instead of fetch.
- *
- * Browser extensions (Loom, Jam.dev, Hotjar, etc.) install global
- * fetch interceptors that wrap window.fetch to capture every request
- * for telemetry. Some of these interceptors hang on POST bodies above
- * a size threshold, causing the request to never resolve and the user
- * to see a generic "timeout" with no Network row to diagnose. XHR is
- * older API surface that these interceptors typically don't wrap, so
- * routing latency-sensitive POSTs through it sidesteps the bug
- * entirely without us having to detect-and-fallback.
- */
-function postJsonXHR(
-  url: string,
-  body: unknown,
-  headers: Record<string, string>,
-  signal?: AbortSignal,
-): Promise<{ status: number; headers: Record<string, string>; data: unknown }> {
-  return new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    xhr.open("POST", url, true);
-    xhr.responseType = "text"; // parse JSON ourselves so we always get the body, even on errors
-    Object.entries(headers).forEach(([k, v]) => xhr.setRequestHeader(k, v));
-    xhr.onload = () => {
-      // Parse all response headers into a flat map (lowercased)
-      const headerMap: Record<string, string> = {};
-      const raw = xhr.getAllResponseHeaders() || "";
-      raw.trim().split(/[\r\n]+/).forEach(line => {
-        const idx = line.indexOf(":");
-        if (idx > 0) headerMap[line.slice(0, idx).toLowerCase().trim()] = line.slice(idx + 1).trim();
-      });
-      let parsed: unknown = null;
-      try { parsed = xhr.responseText ? JSON.parse(xhr.responseText) : null; } catch { parsed = { error: xhr.responseText }; }
-      resolve({ status: xhr.status, headers: headerMap, data: parsed });
-    };
-    xhr.onerror = () => reject(new Error("Network error"));
-    xhr.onabort = () => reject(new Error("aborted"));
-    if (signal) {
-      if (signal.aborted) { xhr.abort(); return; }
-      signal.addEventListener("abort", () => xhr.abort(), { once: true });
-    }
-    xhr.send(typeof body === "string" ? body : JSON.stringify(body));
-  });
-}
-
 export async function analyzeResumeWithAI(resumeText: string, targetRole?: string, signal?: AbortSignal): Promise<{ profile: ResumeProfile; truncated?: boolean } | null> {
   return withRetry(async () => {
     const tFetchStart = Date.now();
-    const headers = await authHeaders();
-    if (!headers["Authorization"]) {
-      // Session expired or never established. Fail loudly instead of sending
-      // an unauthenticated request that would silently 401.
-      console.error("[analyzeResume] no auth token — session expired or missing");
-      throw new Error("Session expired — please refresh and sign in again.");
-    }
-    console.log(`[analyzeResume] POST /api/analyze-resume — body=${resumeText.length}b, role=${targetRole || "(none)"}`);
-    const { status, headers: resHeaders, data } = await postJsonXHR(
+    // Route through the shared apiFetch helper — same transport (XHR,
+    // extension-resistant) and auth plumbing that every other mutation
+    // in the app uses. Failures are surfaced via ok/status/error on the
+    // response object, matching the AuthContext pattern.
+    const { apiFetch } = await import("./apiClient");
+    const res = await apiFetch<{ profile: ResumeProfile; truncated?: boolean; error?: string; retryAfter?: number }>(
       "/api/analyze-resume",
       { resumeText, targetRole },
-      headers,
-      signal,
+      { signal },
     );
-    console.log(`[analyzeResume] response status=${status} reqId=${resHeaders["x-request-id"] || "?"} timing=${resHeaders["x-timing"] || "?"} elapsed=${Date.now() - tFetchStart}ms`);
-    const errBody = (data && typeof data === "object" ? data as Record<string, unknown> : {}) as { error?: string; retryAfter?: number; profile?: ResumeProfile; truncated?: boolean };
-    if (status === 401) {
-      throw new Error("Session expired — please refresh and sign in again.");
+    console.log(`[analyzeResume] response status=${res.status} reqId=${res.headers["x-request-id"] || "?"} timing=${res.headers["x-timing"] || "?"} elapsed=${Date.now() - tFetchStart}ms`);
+
+    if (res.status === 401) throw new Error("Session expired — please refresh and sign in again.");
+    if (res.status === 429) {
+      const retryAfter = (res.data as { retryAfter?: number } | null)?.retryAfter;
+      throw new Error(retryAfter ? `Too many requests. Please wait ${retryAfter} seconds.` : "Too many requests. Please wait a moment.");
     }
-    if (status === 429) {
-      throw new Error(errBody.retryAfter ? `Too many requests. Please wait ${errBody.retryAfter} seconds.` : "Too many requests. Please wait a moment.");
-    }
-    if (status < 200 || status >= 300) {
-      const msg = errBody.error || `HTTP ${status}`;
-      console.error(`[analyzeResume] API error ${status}:`, msg);
+    if (!res.ok) {
+      const msg = res.error || `HTTP ${res.status}`;
+      console.error(`[analyzeResume] API error ${res.status}:`, msg);
       throw new Error(msg);
     }
-    if (!errBody.profile) {
+    const profile = res.data?.profile;
+    if (!profile) {
       console.warn("[analyzeResume] No profile in response");
       throw new Error("Server returned no profile data");
     }
-    return { profile: errBody.profile, truncated: errBody.truncated };
+    return { profile, truncated: res.data?.truncated };
   });
 }

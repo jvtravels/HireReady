@@ -3,7 +3,7 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import { c, font } from "./tokens";
 import { useAuth } from "./AuthContext";
 import { useDocTitle } from "./useDocTitle";
-import { useDashboard } from "./DashboardContext";
+import { useDashboardCore, useDashboardUI } from "./DashboardContext";
 import { extractResumeText, parseResumeData, type ParsedResume } from "./resumeParser";
 import { type ResumeProfile, analyzeResumeWithAI } from "./dashboardData";
 import { DataLoadingSkeleton } from "./dashboardComponents";
@@ -193,7 +193,8 @@ function computeATSScore(resumeText: string, _targetRole?: string): ATSResult {
 export default function DashboardResume() {
   useDocTitle("Resume");
   const { user, updateUser } = useAuth();
-  const { persisted, updatePersisted, dataLoading } = useDashboard();
+  const { persisted, updatePersisted } = useDashboardCore();
+  const { dataLoading } = useDashboardUI();
 
   const [isDragging, setIsDragging] = useState(false);
   const [fileName, setFileName] = useState(user?.resumeFileName || persisted.resumeFileName);

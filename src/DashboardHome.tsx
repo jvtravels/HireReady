@@ -3,7 +3,7 @@ import { useState, useRef, useEffect, useMemo, memo } from "react";
 import { useRouter } from "next/navigation";
 import { c, font, sp, radius } from "./tokens";
 import { useAuth } from "./AuthContext";
-import { useDashboard } from "./DashboardContext";
+import { useDashboardUI, useDashboardCore, useDashboardSessions, useDashboardSubscription } from "./DashboardContext";
 import dynamic from "next/dynamic";
 import { DataLoadingSkeleton, EmptyState } from "./dashboardComponents";
 const SessionDetailView = dynamic(() => import("./dashboardComponents").then(m => ({ default: m.SessionDetailView })), { ssr: false });
@@ -382,18 +382,20 @@ export default function DashboardHome() {
   const router = useRouter();
   const { user } = useAuth();
   const {
-    dataLoading, isMobile, isNewUser, displayName,
-    persisted, updatePersisted,
-    recentSessions, scoreTrend, skills, overallStats, hasData,
-    weekActivity, currentStreak, readinessScore, daysLeft, calendarEvents,
-    isFree, atSessionLimit, sessionsRemaining,
+    dataLoading, isMobile, showToast, setShowUpgradeModal,
+  } = useDashboardUI();
+  const {
+    isNewUser, displayName, persisted, updatePersisted, daysLeft,
     notifications, aiInsights, upcomingGoals, returnContext, smartSchedule, prepPlan,
-    companyReadiness, curriculumState, skillVelocity,
+    companyReadiness, curriculumState,
     badges, dailyChallenge, practiceReminder,
     handleStartSession, handleExport, handleDownload, handleExportPDF,
-    setShowUpgradeModal,
-    showToast,
-  } = useDashboard();
+  } = useDashboardCore();
+  const {
+    recentSessions, scoreTrend, skills, skillVelocity, overallStats, hasData,
+    weekActivity, currentStreak, readinessScore, calendarEvents,
+  } = useDashboardSessions();
+  const { isFree, atSessionLimit, sessionsRemaining } = useDashboardSubscription();
 
   useDocTitle("Dashboard");
 

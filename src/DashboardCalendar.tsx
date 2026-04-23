@@ -9,7 +9,7 @@ import {
   daysUntilEvent, formatEventDate, formatEventTime,
   generateICS, generateGoogleCalendarURL, interviewTypeOptions,
 } from "./dashboardHelpers";
-import { useDashboard } from "./DashboardContext";
+import { useDashboardCore, useDashboardUI, useDashboardSubscription } from "./DashboardContext";
 import { DataLoadingSkeleton, ProGate } from "./dashboardComponents";
 
 /* ─── Mini Month Grid ─── */
@@ -92,7 +92,9 @@ function MonthGrid({ events, onDateClick }: { events: InterviewEvent[]; onDateCl
 
 export default function CalendarPage() {
   useDocTitle("Calendar");
-  const { handleStartSession: onStartSession, dataLoading, isFree, isStarter, setShowUpgradeModal, showToast, syncGoogleCalendar: _syncGoogleCalendar, googleSyncStatus: _googleSyncStatus, hasGoogleToken: _hasGoogleToken } = useDashboard();
+  const { handleStartSession: onStartSession, syncGoogleCalendar: _syncGoogleCalendar, googleSyncStatus: _googleSyncStatus, hasGoogleToken: _hasGoogleToken } = useDashboardCore();
+  const { dataLoading, setShowUpgradeModal, showToast } = useDashboardUI();
+  const { isFree, isStarter } = useDashboardSubscription();
   const { user, loginWithGoogle: _loginWithGoogle } = useAuth();
   const [events, setEvents] = useState<InterviewEvent[]>(loadEvents);
   const [showForm, setShowForm] = useState(false);

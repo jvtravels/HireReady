@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { c, font } from "./tokens";
 import { scoreLabel, scoreLabelColor, sessionTypes } from "./dashboardTypes";
 import type { DashboardSession } from "./dashboardTypes";
-import { useDashboard } from "./DashboardContext";
+import { useDashboardSessions, useDashboardCore, useDashboardUI } from "./DashboardContext";
 import { DataLoadingSkeleton } from "./dashboardComponents";
 import { useDocTitle } from "./useDocTitle";
 
@@ -70,7 +70,9 @@ const SessionRow = memo(function SessionRow({ session, onClick }: { session: Das
 export default function DashboardSessions() {
   useDocTitle("Sessions");
   const sessionNav = useRouter();
-  const { recentSessions, handleStartSession, dataLoading } = useDashboard();
+  const { recentSessions } = useDashboardSessions();
+  const { handleStartSession } = useDashboardCore();
+  const { dataLoading } = useDashboardUI();
   const [filter, setFilter] = useState("All");
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState<"date" | "score">("date");

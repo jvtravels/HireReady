@@ -3,7 +3,7 @@ import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { c, font } from "./tokens";
 import { useAuth } from "./AuthContext";
-import { useDashboard } from "./DashboardContext";
+import { useDashboardCore, useDashboardSessions, useDashboardSubscription, useDashboardUI } from "./DashboardContext";
 const UpgradeModal = dynamic(() => import("./dashboardComponents").then(m => ({ default: m.UpgradeModal })), { ssr: false });
 import { FREE_SESSION_LIMIT, STARTER_WEEKLY_LIMIT } from "./dashboardData";
 import { daysUntilEvent } from "./dashboardHelpers";
@@ -34,17 +34,19 @@ export default function DashboardLayout({ children }: { children?: React.ReactNo
   const nav = useRouter();
   const pathname = usePathname();
   const { logout: authLogout, user, updateUser: authUpdateUser } = useAuth();
+  // Use focused hooks instead of aggregate useDashboard() — prevents this
+  // layout from re-rendering when unrelated state (e.g. recentSessions poll)
+  // changes. Each sub-context only notifies when ITS slice changes.
+  const { displayName, persisted, handleStartSession, handleExport } = useDashboardCore();
+  const { calendarEvents, recentSessions, refreshSessions } = useDashboardSessions();
+  const { isFree, isStarter, isPro, sessionsUsed, sessionsRemaining, starterRemaining, sessionsThisWeek } = useDashboardSubscription();
   const {
-    isMobile, displayName, persisted,
-    isFree, isStarter, isPro,
-    sessionsUsed, sessionsRemaining, starterRemaining, sessionsThisWeek,
+    isMobile,
     showUpgradeModal, setShowUpgradeModal,
     paymentBanner, setPaymentBanner,
     syncError, setSyncError,
-    toast, calendarEvents, recentSessions,
-    handleStartSession, handleExport,
-    refreshSessions,
-  } = useDashboard();
+    toast,
+  } = useDashboardUI();
 
   // Refetch sessions on mount (e.g. returning from interview)
   useEffect(() => { refreshSessions(); }, [refreshSessions]);

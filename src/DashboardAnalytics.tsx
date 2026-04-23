@@ -6,7 +6,7 @@ import { useDocTitle } from "./useDocTitle";
 import { useAuth } from "./AuthContext";
 import { sessionTypes, scoreLabel, scoreLabelColor } from "./dashboardTypes";
 import { ScoreTrendChart, SkillRadar } from "./DashboardCharts";
-import { useDashboard } from "./DashboardContext";
+import { useDashboardSessions, useDashboardCore, useDashboardUI, useDashboardSubscription } from "./DashboardContext";
 import { DataLoadingSkeleton, ProGate } from "./dashboardComponents";
 import type { ResumeProfile } from "./dashboardData";
 
@@ -54,10 +54,11 @@ export default function AnalyticsPage() {
   const resumeProfile = user?.resumeData as unknown as ResumeProfile | undefined;
   const {
     recentSessions: allSessions, skills: sk, scoreTrend: trend,
-    handleStartSession, dataLoading, isFree, setShowUpgradeModal,
-    readinessScore, currentStreak, aiInsights,
-    dailyChallenge, upcomingGoals, badges, overallStats, atSessionLimit,
-  } = useDashboard();
+    readinessScore, currentStreak, overallStats,
+  } = useDashboardSessions();
+  const { handleStartSession, aiInsights, dailyChallenge, upcomingGoals, badges } = useDashboardCore();
+  const { dataLoading, setShowUpgradeModal } = useDashboardUI();
+  const { isFree, atSessionLimit } = useDashboardSubscription();
 
   const [rangeIdx, setRangeIdx] = useState(1); // default: 12 weeks
   const range = DATE_RANGES[rangeIdx];

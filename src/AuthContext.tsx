@@ -874,46 +874,56 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [user?.id, broadcastLogout]);
 
   const updateUser = useCallback(async (updates: Partial<User>) => {
+    // 1. Update the in-memory user immediately so the UI doesn't stall on
+    //    the network round-trip. All downstream consumers see the new value
+    //    synchronously; the server persistence below catches up asynchronously.
     let currentId: string | null = null;
     setUser(prev => {
       if (!prev) return prev;
       currentId = prev.id;
-      const next = { ...prev, ...updates };
-      return next;
+      return { ...prev, ...updates };
     });
 
-    if (!supabaseConfigured) { return; }
-
-    // Persist to Supabase — use ID captured from state setter to avoid stale closure
+    if (!supabaseConfigured) return;
     if (!currentId) { console.warn("[updateUser] skipped: no user ID"); return; }
 
-    const profileUpdates: Partial<Profile> & { id: string } = { id: currentId };
-    if (updates.name !== undefined) profileUpdates.name = updates.name;
-    if (updates.targetRole !== undefined) profileUpdates.target_role = updates.targetRole;
-    if (updates.targetCompany !== undefined) profileUpdates.target_company = updates.targetCompany;
-    if (updates.city !== undefined) (profileUpdates as Record<string, unknown>).city = updates.city;
-    if (updates.industry !== undefined) profileUpdates.industry = updates.industry;
-    if (updates.interviewDate !== undefined) profileUpdates.interview_date = updates.interviewDate;
-    if (updates.learningStyle !== undefined) profileUpdates.learning_style = updates.learningStyle;
-    if (updates.experienceLevel !== undefined) profileUpdates.experience_level = updates.experienceLevel;
-    if (updates.resumeFileName !== undefined) profileUpdates.resume_file_name = (updates.resumeFileName || "").slice(0, 255);
-    if (updates.resumeText !== undefined) {
-      // Cap at ~50k chars (~200KB) to match DB constraint and avoid bloating the profiles row
-      profileUpdates.resume_text = (updates.resumeText || "").slice(0, 50000);
-    }
-    if (updates.resumeData !== undefined) profileUpdates.resume_data = (updates.resumeData as unknown as Record<string, unknown>) || null;
-    if (updates.preferredSessionLength !== undefined) profileUpdates.preferred_session_length = updates.preferredSessionLength;
-    if (updates.interviewTypes !== undefined) profileUpdates.interview_types = updates.interviewTypes;
-    if (updates.practiceTimestamps !== undefined) profileUpdates.practice_timestamps = updates.practiceTimestamps;
-    if (updates.cancelAtPeriodEnd !== undefined) profileUpdates.cancel_at_period_end = updates.cancelAtPeriodEnd;
-    if (updates.hasCompletedOnboarding !== undefined) {
-      profileUpdates.has_completed_onboarding = updates.hasCompletedOnboarding;
-      if (updates.hasCompletedOnboarding) setLocalOnboardingDone(currentId);
-    }
+    // 2. Mirror hasCompletedOnboarding to localStorage. This is a resilience
+    //    measure: even if the network write below fails, the next page
+    //    refresh will read the localStorage flag and keep the user on the
+    //    dashboard instead of bouncing back to /onboarding.
+    if (updates.hasCompletedOnboarding === true) setLocalOnboardingDone(currentId);
 
-    const result = await upsertProfile(profileUpdates);
-    if (result.strippedColumns && result.strippedColumns.length > 0) {
-      console.warn("[updateUser] Supabase columns missing:", result.strippedColumns.join(", "), "— resume data NOT saved to database, using localStorage only");
+    // 3. Translate the camelCase User-shaped update into the snake_case
+    //    column names the server endpoint accepts. We don't include the
+    //    user id — the server derives that from the JWT.
+    const payload: Record<string, unknown> = {};
+    if (updates.name !== undefined) payload.name = updates.name;
+    if (updates.targetRole !== undefined) payload.target_role = updates.targetRole;
+    if (updates.targetCompany !== undefined) payload.target_company = updates.targetCompany;
+    if (updates.city !== undefined) payload.city = updates.city;
+    if (updates.industry !== undefined) payload.industry = updates.industry;
+    if (updates.interviewDate !== undefined) payload.interview_date = updates.interviewDate;
+    if (updates.learningStyle !== undefined) payload.learning_style = updates.learningStyle;
+    if (updates.experienceLevel !== undefined) payload.experience_level = updates.experienceLevel;
+    if (updates.resumeFileName !== undefined) payload.resume_file_name = (updates.resumeFileName || "").slice(0, 255);
+    if (updates.resumeText !== undefined) payload.resume_text = (updates.resumeText || "").slice(0, 50000);
+    if (updates.resumeData !== undefined) payload.resume_data = updates.resumeData || null;
+    if (updates.preferredSessionLength !== undefined) payload.preferred_session_length = updates.preferredSessionLength;
+    if (updates.interviewTypes !== undefined) payload.interview_types = updates.interviewTypes;
+    if (updates.practiceTimestamps !== undefined) payload.practice_timestamps = updates.practiceTimestamps;
+    if (updates.cancelAtPeriodEnd !== undefined) payload.cancel_at_period_end = updates.cancelAtPeriodEnd;
+    if (updates.hasCompletedOnboarding !== undefined) payload.has_completed_onboarding = updates.hasCompletedOnboarding;
+
+    if (Object.keys(payload).length === 0) return;
+
+    // 4. Persist via our own API endpoint. The server validates the bearer
+    //    token, allow-lists columns, and upserts with the service role key.
+    //    This replaces the previous direct supabase-js call so third-party
+    //    fetch wrappers can't silently drop the write.
+    const { apiFetch } = await import("./apiClient");
+    const result = await apiFetch<{ profile: unknown }>("/api/profile/update", payload);
+    if (!result.ok) {
+      console.error(`[updateUser] API update failed (${result.status}): ${result.error}`);
     }
   }, []);
 
