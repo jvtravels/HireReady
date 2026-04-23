@@ -235,6 +235,33 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
         setError("Password must include an uppercase letter, a number, and a special character.");
         return;
       }
+      // Common password blocklist — catches the 99% attackers try first
+      const COMMON_PASSWORDS = new Set([
+        "password", "password1", "password123", "password1!", "password123!",
+        "qwerty", "qwerty123", "qwertyuiop", "asdfghjkl", "zxcvbnm",
+        "abc123", "abc12345", "abcd1234", "admin", "admin123", "admin1234",
+        "letmein", "letmein1", "welcome", "welcome1", "welcome123",
+        "iloveyou", "princess", "monkey", "dragon", "sunshine",
+        "123456", "12345678", "123456789", "1234567890", "111111", "000000",
+        "qazwsx", "trustno1", "master", "hello123", "login1234",
+        "p@ssw0rd", "pa$$w0rd", "p@ssword1", "passw0rd1", "passw0rd!",
+      ]);
+      const pwLower = password.toLowerCase();
+      if (COMMON_PASSWORDS.has(pwLower) || COMMON_PASSWORDS.has(pwLower.replace(/[!@#$%^&*]/g, ""))) {
+        setError("This password is too common. Please choose something unique.");
+        return;
+      }
+      // Check for email-in-password (low entropy)
+      const emailLocal = trimmedEmail.split("@")[0].toLowerCase();
+      if (emailLocal.length >= 4 && pwLower.includes(emailLocal)) {
+        setError("Your password shouldn't contain your email address.");
+        return;
+      }
+      // Check for sequential/repeated patterns
+      if (/(.)\1{4,}/.test(password) || /(012|123|234|345|456|567|678|789|890|abc|bcd|cde|def|xyz)/i.test(password)) {
+        setError("Avoid sequential or repeated characters in your password.");
+        return;
+      }
     }
     // Warn on likely email typo before submitting
     if (emailSuggestion) {
@@ -684,7 +711,16 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
                     { label: "Special char", met: /[^A-Za-z0-9]/.test(password) },
                   ];
                   const metCount = reqs.filter(r => r.met).length;
-                  const strength = metCount === 4 && password.length >= 12 ? 4 : metCount >= 3 ? 3 : password.length >= 8 ? 2 : 1;
+                  // Penalize common patterns: sequential, repeated, or email-in-password
+                  const pwLower = password.toLowerCase();
+                  const emailLocal = email.trim().split("@")[0].toLowerCase();
+                  const hasSequential = /(012|123|234|345|456|567|678|789|890|abc|bcd|cde|xyz|qwe|asd|zxc)/i.test(password);
+                  const hasRepeated = /(.)\1{4,}/.test(password);
+                  const containsEmail = emailLocal.length >= 4 && pwLower.includes(emailLocal);
+                  const isCommon = pwLower === "password123!" || pwLower === "password123" || pwLower === "qwerty123!" || pwLower === "abc12345";
+                  const weakPattern = hasSequential || hasRepeated || containsEmail || isCommon;
+                  let strength = metCount === 4 && password.length >= 12 ? 4 : metCount >= 3 ? 3 : password.length >= 8 ? 2 : 1;
+                  if (weakPattern && strength > 2) strength = 2; // cap at "Fair" if pattern is weak
                   const labels = ["", "Weak", "Fair", "Good", "Strong"];
                   const colors = ["", c.ember, c.gilt, c.sage, c.sage];
                   return (

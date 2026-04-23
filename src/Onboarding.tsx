@@ -50,6 +50,41 @@ export default function Onboarding() {
     return () => { if (undoTimerRef.current) clearTimeout(undoTimerRef.current); };
   }, []);
 
+  // ─── Auto-save name & targetRole to localStorage + Supabase (debounced 1.5s) ───
+  const autoSaveTimerRef = useRef<number | null>(null);
+  const lastSavedRef = useRef<{ name: string; role: string }>({ name: user?.name || "", role: user?.targetRole || "" });
+  useEffect(() => {
+    if (!user || !resumeParsed) return; // only auto-save after resume is ready
+    const name = userName.trim();
+    const role = targetRole.trim();
+    if (name === lastSavedRef.current.name && role === lastSavedRef.current.role) return;
+    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    autoSaveTimerRef.current = window.setTimeout(() => {
+      // Save to localStorage immediately (so refresh won't lose input)
+      try { localStorage.setItem("hirestepx_ob_form", JSON.stringify({ name, role })); } catch { /* quota */ }
+      const updates: Partial<Parameters<typeof updateUser>[0]> = {};
+      if (name && name !== lastSavedRef.current.name) updates.name = name;
+      if (role && role !== lastSavedRef.current.role) updates.targetRole = role;
+      if (Object.keys(updates).length === 0) return;
+      lastSavedRef.current = { name, role };
+      updateUser(updates).catch(err => console.warn("[onboarding] auto-save failed:", err instanceof Error ? err.message : err));
+    }, 1500);
+    return () => { if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current); };
+  }, [userName, targetRole, user, resumeParsed, updateUser]);
+
+  // Restore name/role from localStorage if user-data isn't loaded yet
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("hirestepx_ob_form");
+      if (!raw) return;
+      const saved = JSON.parse(raw) as { name?: string; role?: string };
+      if (saved.name && !userName) setUserName(saved.name);
+      if (saved.role && !targetRole) setTargetRole(saved.role);
+    } catch { /* noop */ }
+  // Run only once on mount
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // ─── Restore resume from user profile on mount/refresh ───
   const resumeRestoredRef = useRef(false);
   useEffect(() => {

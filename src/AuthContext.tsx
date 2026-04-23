@@ -733,9 +733,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     storeSessionFingerprint();
 
     // Single-device enforcement: generate a new device token and save to user_metadata
+    const existingServerToken = data?.user?.user_metadata?.active_device_token;
     const deviceToken = generateDeviceToken();
     storeDeviceToken(deviceToken);
     client.auth.updateUser({ data: { active_device_token: deviceToken } }).catch(err => console.warn("[auth] updateUser(device_token) failed:", err?.message));
+
+    // Security: if an existing session on another device is being displaced, notify user via email
+    if (existingServerToken && existingServerToken !== deviceToken) {
+      fetch("/api/send-welcome", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "new_device_login",
+          email: email.toLowerCase().trim(),
+          userAgent: typeof navigator !== "undefined" ? navigator.userAgent.slice(0, 200) : "",
+        }),
+      }).catch(err => console.warn("[auth] new-device email failed (non-blocking):", err?.message));
+      logAuditEvent("new_device_login", { email });
+    }
 
     // Clear server-side rate limit (fire-and-forget)
     fetch("/api/send-welcome", {

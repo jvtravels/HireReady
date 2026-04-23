@@ -168,6 +168,69 @@ async function handlePasswordChanged(req: VercelRequest, res: VercelResponse, no
   return res.status(200).json({ ok: true });
 }
 
+// ─── New Device Login Notification ───────────────────────────────────────────
+async function handleNewDeviceLogin(req: VercelRequest, res: VercelResponse, normalizedEmail: string) {
+  if (!RESEND_API_KEY) return res.status(200).json({ ok: true });
+  // Rate limit: max 5 notifications per IP per hour (prevent abuse)
+  if (await checkRateLimit(req, "new-device", 5)) {
+    return res.status(200).json({ ok: true });
+  }
+  const safeEmail = escapeHtml(normalizedEmail);
+  const ua = typeof req.body?.userAgent === "string" ? escapeHtml(req.body.userAgent.slice(0, 200)) : "Unknown browser";
+  const when = new Date().toLocaleString("en-US", { month: "long", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" });
+  try {
+    const ac = new AbortController();
+    const timer = setTimeout(() => ac.abort(), 10_000);
+    await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
+      signal: ac.signal,
+      body: JSON.stringify({
+        from: FROM_EMAIL,
+        to: [normalizedEmail],
+        subject: "New device sign-in — HireStepX",
+        html: `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background:#0A0A0B;font-family:'Helvetica Neue',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#0A0A0B;padding:40px 20px;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#141416;border-radius:16px;border:1px solid #2A2A2C;overflow:hidden;">
+        <tr><td style="padding:32px 40px 24px;border-bottom:1px solid #2A2A2C;">
+          <span style="font-size:18px;font-weight:600;color:#F0EDE8;letter-spacing:0.06em;">HireStepX</span>
+        </td></tr>
+        <tr><td style="padding:32px 40px;">
+          <h1 style="margin:0 0 8px;font-size:22px;font-weight:600;color:#F0EDE8;">New device sign-in</h1>
+          <p style="margin:0 0 24px;font-size:14px;color:#9A9590;line-height:1.6;">
+            Your account <strong style="color:#F0EDE8;">${safeEmail}</strong> was signed in on a new device at ${when}.
+          </p>
+          <div style="background:#1A1A1C;border-radius:12px;border:1px solid #2A2A2C;padding:16px 20px;margin-bottom:24px;">
+            <p style="margin:0;font-size:12px;color:#6A6560;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;">Device</p>
+            <p style="margin:6px 0 0;font-size:13px;color:#F0EDE8;word-break:break-word;">${ua}</p>
+          </div>
+          <div style="background:#1A1A1C;border-radius:12px;border:1px solid #2A2A2C;padding:16px 20px;margin-bottom:24px;">
+            <p style="margin:0;font-size:13px;color:#C4705A;font-weight:600;">⚠️ Didn't sign in?</p>
+            <p style="margin:8px 0 0;font-size:13px;color:#9A9590;line-height:1.5;">
+              If you didn't sign in from this device, someone may have access to your account. Please <a href="${APP_URL}/login" style="color:#C9A96E;text-decoration:underline;">reset your password immediately</a> or contact <a href="mailto:support@hirestepx.com" style="color:#C9A96E;text-decoration:underline;">support@hirestepx.com</a>.
+            </p>
+          </div>
+          <p style="margin:0;font-size:12px;color:#6A6560;line-height:1.5;text-align:center;">If this was you, no action is needed.</p>
+        </td></tr>
+        <tr><td style="padding:20px 40px;border-top:1px solid #2A2A2C;text-align:center;">
+          <p style="margin:0;font-size:11px;color:#6A6560;">HireStepX by Silva Vitalis LLC</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>`,
+      }),
+    });
+    clearTimeout(timer);
+    logResendUsage("new-device-login", "success");
+  } catch (err) {
+    logResendUsage("new-device-login", "error", undefined, err instanceof Error ? err.message : "Unknown");
+  }
+  return res.status(200).json({ ok: true });
+}
+
 // ─── Verification Reminder Email ─────────────────────────────────────────────
 async function handleVerifyReminder(req: VercelRequest, res: VercelResponse, normalizedEmail: string, name?: string) {
   if (!RESEND_API_KEY) return res.status(200).json({ ok: true });
@@ -707,7 +770,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   // MX record validation — check domain can receive email
   // Skip for: reset (don't reveal if email exists), password-changed (notification only), verify-reminder
-  if (!["reset", "password-changed", "verify-reminder"].includes(action)) {
+  if (!["reset", "password-changed", "verify-reminder", "new_device_login"].includes(action)) {
     const hasMx = await validateMxRecord(normalizedEmail);
     if (!hasMx) {
       return res.status(400).json({ error: "This email domain does not appear to accept mail. Please use a valid email address." });
@@ -720,6 +783,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
   if (action === "password-changed") {
     return handlePasswordChanged(req, res, normalizedEmail);
+  }
+  if (action === "new_device_login") {
+    return handleNewDeviceLogin(req, res, normalizedEmail);
   }
   if (action === "verify-reminder") {
     return handleVerifyReminder(req, res, normalizedEmail, name);
