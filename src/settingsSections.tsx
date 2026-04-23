@@ -807,17 +807,51 @@ export const PlanSection = memo(function PlanSection(props: PlanSectionProps) {
               <span style={{ fontFamily: font.ui, fontSize: 10, color: c.stone }}>Sessions & transcripts</span>
             </div>
           </div>
-          <button disabled={exporting} onClick={async () => { setExporting(true); try { await onExportCSV(); } finally { setExporting(false); } }}
-            style={{
-              fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.gilt, letterSpacing: "0.02em",
-              background: "rgba(212,179,127,0.06)", border: `1px solid rgba(212,179,127,0.15)`,
-              borderRadius: 8, padding: "7px 16px", cursor: exporting ? "default" : "pointer",
-              opacity: exporting ? 0.6 : 1, transition: "all 0.15s",
+          <div style={{ display: "flex", gap: 8 }}>
+            <button disabled={exporting} onClick={async () => { setExporting(true); try { await onExportCSV(); } finally { setExporting(false); } }}
+              style={{
+                fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.gilt, letterSpacing: "0.02em",
+                background: "rgba(212,179,127,0.06)", border: `1px solid rgba(212,179,127,0.15)`,
+                borderRadius: 8, padding: "7px 16px", cursor: exporting ? "default" : "pointer",
+                opacity: exporting ? 0.6 : 1, transition: "all 0.15s",
+              }}
+              onMouseEnter={(e) => { if (!exporting) e.currentTarget.style.background = "rgba(212,179,127,0.1)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(212,179,127,0.06)"; }}>
+              {exporting ? "Exporting..." : "CSV"}
+            </button>
+            <button disabled={exporting} onClick={async () => {
+              setExporting(true);
+              try {
+                const headers = await getAuthHeaders();
+                const res = await fetch("/api/export-user-data", { method: "GET", headers });
+                if (!res.ok) { showToast("Export failed. Try again."); return; }
+                const blob = await res.blob();
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = `hirestepx-export-${new Date().toISOString().slice(0,10)}.json`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                showToast("Full data export downloaded.");
+              } catch (err) {
+                console.error("[settings] GDPR export failed:", err);
+                showToast("Export failed. Try again.");
+              } finally { setExporting(false); }
             }}
-            onMouseEnter={(e) => { if (!exporting) e.currentTarget.style.background = "rgba(212,179,127,0.1)"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(212,179,127,0.06)"; }}>
-            {exporting ? "Exporting..." : "Export CSV"}
-          </button>
+              title="Complete JSON export of all your data (GDPR portability)"
+              style={{
+                fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.gilt, letterSpacing: "0.02em",
+                background: "rgba(212,179,127,0.06)", border: `1px solid rgba(212,179,127,0.15)`,
+                borderRadius: 8, padding: "7px 16px", cursor: exporting ? "default" : "pointer",
+                opacity: exporting ? 0.6 : 1, transition: "all 0.15s",
+              }}
+              onMouseEnter={(e) => { if (!exporting) e.currentTarget.style.background = "rgba(212,179,127,0.1)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(212,179,127,0.06)"; }}>
+              {exporting ? "Exporting..." : "Full JSON"}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -848,7 +882,7 @@ export const PlanSection = memo(function PlanSection(props: PlanSectionProps) {
       }}>
         <div>
           <span style={{ fontFamily: font.ui, fontSize: 14, fontWeight: 600, color: c.ember, display: "block", marginBottom: 3 }}>Delete account</span>
-          <span style={{ fontFamily: font.ui, fontSize: 12, color: c.stone }}>Permanently remove all data. This cannot be undone.</span>
+          <span style={{ fontFamily: font.ui, fontSize: 12, color: c.stone }}>Scheduled for permanent deletion in 7 days. Log in within 7 days to cancel.</span>
         </div>
         {!confirmDelete ? (
           <button onClick={() => { setConfirmDelete(true); setDeleteEmailInput(""); setDeleteMsg(""); }}
@@ -885,10 +919,16 @@ export const PlanSection = memo(function PlanSection(props: PlanSectionProps) {
                   const hdrs = await Promise.race([getAuthHeaders(), new Promise<never>((_, rej) => setTimeout(() => rej(new Error("Auth timeout")), 5000))]);
                   const ctrl = new AbortController();
                   const t = setTimeout(() => ctrl.abort(), 15000);
-                  const res = await fetch("/api/delete-account", { method: "POST", headers: hdrs, signal: ctrl.signal });
+                  const res = await fetch("/api/delete-account", { method: "POST", headers: { ...hdrs, "Content-Type": "application/json" }, body: JSON.stringify({}), signal: ctrl.signal });
                   clearTimeout(t);
-                  if (res.ok || res.status === 207) { localStorage.clear(); onLogout(); }
-                  else { const d = await res.json().catch(() => ({})); setDeleteMsg(d.error || "Failed. Try again."); setDeleteLoading(false); }
+                  if (res.ok || res.status === 207) {
+                    const data = await res.json().catch(() => ({}));
+                    if (data.scheduled) {
+                      showToast("Account scheduled for deletion. Log in within 7 days to cancel.");
+                    }
+                    localStorage.clear();
+                    onLogout();
+                  } else { const d = await res.json().catch(() => ({})); setDeleteMsg(d.error || "Failed. Try again."); setDeleteLoading(false); }
                 } catch (err) {
                   setDeleteMsg(err instanceof DOMException && err.name === "AbortError" ? "Timed out. Try again." : "Network error.");
                   setDeleteLoading(false);

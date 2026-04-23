@@ -225,14 +225,21 @@ export default function Onboarding() {
     if (!file) return;
     if (fileInputRef.current) fileInputRef.current.value = "";
     if (file.size > 10 * 1024 * 1024) {
-      setResumeError("File is too large. Please upload a file under 10 MB.");
+      const mb = (file.size / (1024 * 1024)).toFixed(1);
+      setResumeError(`Your file is ${mb} MB. Max is 10 MB — try compressing your PDF (e.g. smallpdf.com/compress-pdf) or export at lower quality.`);
       return;
     }
     const ext = file.name.split(".").pop()?.toLowerCase();
     const allowedExts = ["pdf", "docx", "doc", "txt"];
     const allowedMimes = ["application/pdf", "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "text/plain"];
     if (!ext || !allowedExts.includes(ext) || (file.type && !allowedMimes.includes(file.type))) {
-      setResumeError("Unsupported file type. Please upload a PDF, DOCX, or TXT file.");
+      if (ext && ["jpg", "jpeg", "png", "gif", "webp", "bmp", "heic"].includes(ext)) {
+        setResumeError("Image files aren't supported. Export your resume as a PDF or DOCX and try again.");
+      } else if (ext && ["pages", "numbers", "key"].includes(ext)) {
+        setResumeError("Apple iWork files aren't supported. In Pages → File → Export To → PDF, then upload.");
+      } else {
+        setResumeError(`.${ext || "this"} files aren't supported. Please upload a PDF, DOCX, or TXT file.`);
+      }
       return;
     }
     setFileName(file.name);
@@ -247,7 +254,10 @@ export default function Onboarding() {
         if (fileExt && ["jpg", "jpeg", "png", "gif", "webp", "bmp"].includes(fileExt)) {
           throw new Error("Image files aren't supported. Please upload a PDF, DOCX, or TXT resume.");
         }
-        throw new Error("Very little text was extracted from this file. Please check that it contains your resume content, or try a different format (PDF or DOCX).");
+        if (fileExt === "pdf") {
+          throw new Error("This looks like a scanned PDF — we can't extract its text. Try exporting from your resume builder as a searchable PDF, or save as DOCX and re-upload.");
+        }
+        throw new Error("Very little text was extracted. The file may be empty or corrupted — try re-exporting as a PDF or DOCX.");
       }
       const data = parseResumeData(text);
       setResumeText(text);

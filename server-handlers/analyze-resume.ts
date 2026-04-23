@@ -39,8 +39,14 @@ export default async function handler(req: Request): Promise<Response> {
 
   const ip = getClientIp(req);
   const tRate0 = Date.now();
+  // Per-IP limit (prevents credential-stuffing / scraping)
   if (await isRateLimited(ip, "analyze-resume", 15, 60_000)) {
-    console.error(`[analyze-resume] Rate limited after ${Date.now() - tRate0}ms`);
+    console.error(`[analyze-resume] IP rate limited after ${Date.now() - tRate0}ms`);
+    return rateLimitResponse(headers);
+  }
+  // Per-user limit (prevents a single authenticated user burning quota from many IPs)
+  if (await isRateLimited(`user:${auth.userId}`, "analyze-resume", 8, 60_000)) {
+    console.error(`[analyze-resume] User rate limited: ${auth.userId?.slice(0, 8)}`);
     return rateLimitResponse(headers);
   }
   const tRate = Date.now() - tRate0;

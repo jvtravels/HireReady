@@ -201,7 +201,7 @@ export default function ResetPassword() {
             textAlign: "center",
           }}>
             <p style={{ color: c.sage, fontSize: 14, fontWeight: 500 }}>Password updated successfully!</p>
-            <p style={{ color: c.stone, fontSize: 12, marginTop: 4 }}>Redirecting to login...</p>
+            <p style={{ color: c.stone, fontSize: 12, marginTop: 4 }}>We've sent a security notification to your email. If you didn't make this change, check your inbox and contact support.</p>
             <button
               onClick={() => router.push("/login")}
               style={{

@@ -217,7 +217,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .filter(Boolean);
 
     if (failures.length > 0) {
-      console.error("Partial delete failure:", failures.join(", "), "for user", userId.slice(0, 8));
+      // Hash the user id so logs don't enable user enumeration
+      const userHash = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(userId))
+        .then(buf => Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, "0")).join("").slice(0, 12))
+        .catch(() => "unknown");
+      console.error("Partial delete failure:", failures.join(", "), "for user hash", userHash);
       return res.status(500).json({ error: `Failed to delete data from: ${failures.join(", ")}. Account not deleted. Please try again or contact support.` });
     }
 

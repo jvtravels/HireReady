@@ -772,7 +772,7 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
                         <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                       )}
                     </div>
-                    <span style={{ fontFamily: font.ui, fontSize: 12, color: c.stone }}>Remember me <span style={{ fontSize: 11, opacity: 0.7 }}>· stay signed in</span></span>
+                    <span style={{ fontFamily: font.ui, fontSize: 12, color: c.stone }} title="If unchecked, you'll be signed out when you close the browser.">Keep me signed in <span style={{ fontSize: 11, opacity: 0.7 }}>· persists for 7 days</span></span>
                   </label>
                   <button type="button" onClick={() => { setShowReset(true); setError(""); }}
                     style={{ background: "none", border: "none", fontFamily: font.ui, fontSize: 12, color: c.gilt, cursor: "pointer", textAlign: "right", padding: 0 }}>

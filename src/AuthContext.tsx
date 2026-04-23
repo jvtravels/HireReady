@@ -905,9 +905,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const handleMessage = async (event: MessageEvent) => {
       const { type } = event.data || {};
       if (type === "logout") {
-        // Another tab logged out — sync this tab
+        // Another tab logged out — sync this tab with an explanation
         setUser(null);
-        setSessionExpiryWarning(null);
+        setSessionExpiryWarning("You were signed out on another tab or device.");
+        setTimeout(() => setSessionExpiryWarning(null), 8000);
       } else if (type === "session_refreshed") {
         // Another tab refreshed the session — clear any expiry warning here
         setSessionExpiryWarning(null);
@@ -1033,19 +1034,102 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  // Restore handler for soft-deleted accounts
+  const [restoring, setRestoring] = useState(false);
+  const restoreAccount = async () => {
+    if (restoring) return;
+    setRestoring(true);
+    try {
+      const client = await getSupabase();
+      const { data: { session } } = await client.auth.getSession();
+      if (!session?.access_token) throw new Error("No session");
+      const res = await fetch("/api/delete-account", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify({ restore: true }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      // Reload to refresh profile with deletedAt cleared
+      window.location.reload();
+    } catch (err) {
+      console.error("[auth] Restore account failed:", err);
+      setRestoring(false);
+    }
+  };
+
+  // Manual session refresh (invoked from expiry modal)
+  const [refreshing, setRefreshing] = useState(false);
+  const refreshSessionNow = async () => {
+    if (refreshing) return;
+    setRefreshing(true);
+    try {
+      const client = await getSupabase();
+      const { error } = await client.auth.refreshSession();
+      if (!error) {
+        setSessionExpiryWarning(null);
+        broadcastSessionRefreshed();
+      }
+    } catch (err) {
+      console.warn("[auth] Manual refresh failed:", err);
+    } finally { setRefreshing(false); }
+  };
+
   return (
     <AuthContext.Provider value={{ user, isLoggedIn: !!user, loading, login, signup, loginWithGoogle, logout, updateUser, resetPassword }}>
+      {/* Soft-delete restore banner */}
+      {user?.deletedAt && (
+        <div role="alert" style={{
+          position: "fixed", top: 0, left: 0, right: 0, zIndex: 10001,
+          padding: "12px 20px",
+          background: "rgba(196,112,90,0.12)", borderBottom: "1px solid rgba(196,112,90,0.3)",
+          backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)",
+          fontFamily: "'Inter', system-ui, sans-serif", fontSize: 13, color: "#E5A590",
+          display: "flex", alignItems: "center", justifyContent: "center", gap: 14, flexWrap: "wrap",
+        }}>
+          <span>
+            ⚠️ Your account is scheduled for permanent deletion on{" "}
+            <strong>{new Date(new Date(user.deletedAt).getTime() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString()}</strong>.
+          </span>
+          <button
+            type="button"
+            onClick={restoreAccount}
+            disabled={restoring}
+            style={{
+              fontFamily: "inherit", fontSize: 12, fontWeight: 600,
+              color: "#060607", background: "#E5A590",
+              border: "none", borderRadius: 6, padding: "6px 14px",
+              cursor: restoring ? "default" : "pointer", opacity: restoring ? 0.6 : 1,
+            }}
+          >
+            {restoring ? "Restoring..." : "Restore account"}
+          </button>
+        </div>
+      )}
+      {/* Session expiry banner with Refresh Now action */}
       {sessionExpiryWarning && (
         <div role="alert" style={{
           position: "fixed", top: 16, left: "50%", transform: "translateX(-50%)", zIndex: 10000,
-          padding: "10px 20px", borderRadius: 10, maxWidth: 400,
+          padding: "10px 16px 10px 20px", borderRadius: 10, maxWidth: 480,
           background: "rgba(212,179,127,0.15)", border: "1px solid rgba(212,179,127,0.3)",
           backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)",
           fontFamily: "'Inter', system-ui, sans-serif", fontSize: 13, color: "#C9A96E",
-          display: "flex", alignItems: "center", gap: 8,
+          display: "flex", alignItems: "center", gap: 12,
         }}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-          {sessionExpiryWarning}
+          <span style={{ flex: 1 }}>{sessionExpiryWarning}</span>
+          <button
+            type="button"
+            onClick={refreshSessionNow}
+            disabled={refreshing}
+            style={{
+              fontFamily: "inherit", fontSize: 12, fontWeight: 600,
+              color: "#C9A96E", background: "transparent",
+              border: "1px solid rgba(212,179,127,0.4)", borderRadius: 6, padding: "4px 10px",
+              cursor: refreshing ? "default" : "pointer", opacity: refreshing ? 0.6 : 1,
+            }}
+          >
+            {refreshing ? "Refreshing..." : "Refresh now"}
+          </button>
         </div>
       )}
       {children}
