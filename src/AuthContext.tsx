@@ -519,20 +519,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               // fresh login/signup on THIS device (the updateUser that
               // wrote the new token is still in flight, so the session
               // snapshot's active_device_token is stale).
+              // Multi-device is allowed (like Linear/Stripe/GitHub). We used to
+               // forcibly sign out devices whose local token didn't match the
+               // server token — but that's bank-grade enforcement that doesn't
+               // suit an interview-practice product. It blocked legitimate
+               // users who simply had two tabs open or moved between laptop
+               // and phone. Now we:
+               //   1. Log a "device_mismatch_detected" audit event (forensic trail).
+               //   2. Adopt the server's latest token silently so future checks are consistent.
+               //   3. Rely on the new-device email alert (fires from login())
+               //      as the actual user-visible security signal.
               const localToken = getStoredDeviceToken();
               const serverToken = session.user.user_metadata?.active_device_token;
               if (!justAuthenticatedRef.current && localToken && serverToken && localToken !== serverToken) {
-                console.warn("[auth] session active on another device — signing out");
-                logAuditEvent("single_device_enforcement", { userId: session.user.id });
-                setUser(null);
-                await client.auth.signOut().catch(() => {});
-                clearTimeout(safetyTimer);
-                setLoading(false);
-                return;
-              }
-              // If no device token yet (first login after upgrade), set one
-              if (!localToken && session.user.user_metadata?.active_device_token) {
-                storeDeviceToken(session.user.user_metadata.active_device_token);
+                logAuditEvent("device_mismatch_detected", { userId: session.user.id });
+                storeDeviceToken(serverToken);
+              } else if (!localToken && serverToken) {
+                // First login after an upgrade — adopt the server token
+                storeDeviceToken(serverToken);
               }
             } else {
               // No profile found — create one rather than signing out
@@ -1080,17 +1084,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const { data: { session } } = await client.auth.getSession();
         if (!session) return;
 
-        // Single-device enforcement: verify device token matches
+        // Multi-device allowed — we used to forcibly sign out any tab whose
+        // local token didn't match the server's current token every 60s.
+        // For an interview-practice product (not banking) that's overly
+        // aggressive — it killed active sessions when users simply logged
+        // in from a second device. We now silently re-sync our local token
+        // to the server's so both devices stay usable; the new-device email
+        // alert remains the authoritative security signal.
         const localDeviceToken = getStoredDeviceToken();
         const serverDeviceToken = session.user.user_metadata?.active_device_token;
         if (localDeviceToken && serverDeviceToken && localDeviceToken !== serverDeviceToken) {
-          logAuditEvent("single_device_kicked", { userId: user.id });
-          setSessionExpiryWarning(null);
-          setUser(null);
-          await client.auth.signOut().catch(() => {});
-          broadcastLogout();
-          try { localStorage.removeItem(DEVICE_TOKEN_KEY); } catch { /* expected */ }
-          return;
+          logAuditEvent("device_mismatch_detected", { userId: user.id });
+          storeDeviceToken(serverDeviceToken);
         }
 
         const exp = session.expires_at; // Unix timestamp in seconds
