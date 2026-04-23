@@ -346,7 +346,10 @@ export default function DashboardResume() {
     try {
       result = await Promise.race([
         analyzeResumeWithAI(text, user?.targetRole),
-        new Promise<null>((_, reject) => setTimeout(() => reject(new Error("timeout")), 25_000)),
+        // 40s covers the server's worst case: Groq (15s) → Gemini fallback
+        // (15s) + auth/rate/quota pre-checks (~2–5s). A tighter 25s budget
+        // was killing legitimate fallback paths.
+        new Promise<null>((_, reject) => setTimeout(() => reject(new Error("timeout")), 40_000)),
       ]);
     } catch (err) {
       // Preserve the real error so the UI can surface it (auth expired, quota,
@@ -432,7 +435,10 @@ export default function DashboardResume() {
     try {
       const result = await Promise.race([
         analyzeResumeWithAI(textForAnalysis, user?.targetRole),
-        new Promise<null>((_, reject) => setTimeout(() => reject(new Error("timeout")), 25_000)),
+        // 40s covers the server's worst case: Groq (15s) → Gemini fallback
+        // (15s) + auth/rate/quota pre-checks (~2–5s). A tighter 25s budget
+        // was killing legitimate fallback paths.
+        new Promise<null>((_, reject) => setTimeout(() => reject(new Error("timeout")), 40_000)),
       ]);
       if (result?.profile) {
         setProfile(result.profile);

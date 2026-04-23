@@ -290,7 +290,9 @@ export default function Onboarding() {
       try {
         const result = await Promise.race([
           analyzeResumeWithAI(text, targetRole || autoRole, currentAbort.signal),
-          new Promise<null>((_, reject) => setTimeout(() => reject(new Error("timeout")), 25000)),
+          // 40s budget — see DashboardResume.tsx comment. Matches server's
+          // worst-case Groq→Gemini fallback path plus pre-checks.
+          new Promise<null>((_, reject) => setTimeout(() => reject(new Error("timeout")), 40000)),
           new Promise<null>((_, reject) => {
             currentAbort.signal.addEventListener("abort", () => reject(new Error("aborted")));
           }),
