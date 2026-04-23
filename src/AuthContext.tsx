@@ -167,6 +167,53 @@ function setLocalOnboardingDone(userId: string) {
   try { localStorage.setItem(`${ONBOARDING_DONE_KEY}_${userId}`, "1"); } catch { /* expected: localStorage may be unavailable */ }
 }
 
+/**
+ * User-scoped localStorage keys that hold per-account state. These MUST be
+ * wiped whenever the authenticated user changes — otherwise signup #2 on a
+ * browser previously used by signup #1 sees the wrong user's resume,
+ * dashboard data, onboarding form state, etc. Keeping them scoped-by-key
+ * (rather than keyed by userId) is a legacy we live with; the cross-user
+ * wipe below is the industry-standard mitigation.
+ */
+const USER_SCOPED_KEYS = [
+  "hirestepx_resume",
+  "hirestepx_resume_history",
+  "hirestepx_ob_step",
+  "hirestepx_ob_form",
+  "hirestepx_dashboard",
+  "hirestepx_sessions",
+] as const;
+
+/**
+ * Tracks the last user id we rendered for. If the next auth event hands us a
+ * different id (new signup, different person logging in on a shared browser,
+ * etc.) we wipe the user-scoped cache so nothing leaks across accounts.
+ */
+const LAST_USER_ID_KEY = "hirestepx_last_user_id";
+
+function wipeUserScopedStorage() {
+  try {
+    for (const key of USER_SCOPED_KEYS) localStorage.removeItem(key);
+  } catch { /* storage unavailable */ }
+}
+
+function reconcileUserScopedStorage(currentUserId: string | null) {
+  try {
+    const previous = localStorage.getItem(LAST_USER_ID_KEY);
+    if (!currentUserId) {
+      // Fully logged out — wipe per-user caches. Keep LAST_USER_ID_KEY so
+      // next login can still detect a user change.
+      wipeUserScopedStorage();
+      return;
+    }
+    if (previous && previous !== currentUserId) {
+      console.info(`[auth] user changed (${previous.slice(0, 8)} → ${currentUserId.slice(0, 8)}) — wiping per-user localStorage`);
+      wipeUserScopedStorage();
+    }
+    if (previous !== currentUserId) localStorage.setItem(LAST_USER_ID_KEY, currentUserId);
+  } catch { /* storage unavailable */ }
+}
+
 /** Save/restore the last authenticated route so users return where they left off */
 const LAST_ROUTE_KEY = "hirestepx_last_route";
 export function saveLastRoute(path: string) {
@@ -231,19 +278,20 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | null>(null);
 
 function profileToUser(profile: Profile, session: Session): User {
-  // Treat the user as onboarded if ANY signal says so. Previously this was a
-  // ternary that bypassed every heuristic when has_completed_onboarding was
-  // explicitly false in Supabase — so a refresh could bounce a user with a
-  // saved resume back to /onboarding when the DB write hadn't propagated or
-  // a stale `false` value was sitting in the column. Now: explicit true,
-  // visible resume data, completed practice, or a localStorage flag from a
-  // prior finalize all count as "done".
+  // Completion signals, strongest to weakest:
+  //   1. Postgres column explicitly true — canonical source of truth.
+  //   2. Per-user localStorage flag (hirestepx_onboarding_done_<id>) — set
+  //      during finalize, survives even if the DB write was briefly lost.
+  //   3. practice_timestamps — they've run at least one interview, so they
+  //      must have finished onboarding first.
+  // We deliberately no longer treat "resume_file_name present" or
+  // "target_role present" as proof of onboarding. Both can become truthy
+  // from stale writes that happened before we introduced per-user cache
+  // wipes, and neither guarantees the full finalize step ran.
   const completed =
     profile.has_completed_onboarding === true
-    || !!(profile.practice_timestamps && profile.practice_timestamps.length > 0)
-    || !!(profile.resume_file_name || profile.resume_text)
-    || !!(profile.target_role)
-    || getLocalOnboardingDone(profile.id);
+    || getLocalOnboardingDone(profile.id)
+    || !!(profile.practice_timestamps && profile.practice_timestamps.length > 0);
   // Persist to localStorage so it survives refresh even if Supabase column doesn't exist yet
   if (completed) setLocalOnboardingDone(profile.id);
   return {
@@ -1191,6 +1239,15 @@ export function RequireAuth({ children }: { children: ReactNode }) {
     }
   }, [isLoggedIn, pathname]);
 
+  // Reconcile per-user localStorage on every auth state transition. Runs
+  // after loading resolves so we don't wipe the cache during the transient
+  // null → profile period of session restore. A different user id than
+  // last time we rendered → wipe user-scoped keys. Logout → wipe too.
+  useEffect(() => {
+    if (loading) return;
+    reconcileUserScopedStorage(user?.id || null);
+  }, [loading, user?.id]);
+
   useEffect(() => {
     if (loading) return;
     if (!isLoggedIn) {
@@ -1207,11 +1264,15 @@ export function RequireAuth({ children }: { children: ReactNode }) {
     } else if (user && !user.emailVerified && !["/onboarding", "/settings"].includes(pathname)) {
       // Allow unverified users to access onboarding (where they'll see the verify prompt) and settings
       router.replace("/onboarding");
-    } else if (user && !user.hasCompletedOnboarding && !user.resumeFileName && !user.targetRole && !getLocalOnboardingDone(user.id) && !["/onboarding", "/interview", "/onboarding/complete"].includes(pathname) && !pathname.startsWith("/session/")) {
-      // Only bounce to onboarding when we're confident the user truly hasn't
-      // been through it. A user who has a saved resume or target role has
-      // clearly onboarded, even if the has_completed_onboarding flag never
-      // made it to Supabase or got stuck at false.
+    } else if (user && !user.hasCompletedOnboarding && !getLocalOnboardingDone(user.id) && !["/onboarding", "/interview", "/onboarding/complete"].includes(pathname) && !pathname.startsWith("/session/")) {
+      // Only bounce to onboarding when we're confident the user hasn't
+      // been through it. hasCompletedOnboarding (derived server-side from
+      // the profile column or explicit heuristics in profileToUser) plus
+      // the per-user localStorage flag are the two authoritative signals.
+      // We no longer treat "has a resumeFileName" as onboarded-proof —
+      // cross-user localStorage leakage used to surface stale resume
+      // data that would trick this guard into letting a brand-new user
+      // through.
       router.replace("/onboarding");
     }
   }, [isLoggedIn, loading, user, router, pathname]);
@@ -1226,7 +1287,7 @@ export function RequireAuth({ children }: { children: ReactNode }) {
     </div>
   );
   if (!isLoggedIn) return null;
-  if (user && !user.hasCompletedOnboarding && !user.resumeFileName && !user.targetRole && !getLocalOnboardingDone(user.id) && !["/onboarding", "/interview", "/onboarding/complete"].includes(pathname) && !pathname.startsWith("/session/")) return null;
+  if (user && !user.hasCompletedOnboarding && !getLocalOnboardingDone(user.id) && !["/onboarding", "/interview", "/onboarding/complete"].includes(pathname) && !pathname.startsWith("/session/")) return null;
 
   return <>{children}</>;
 }
