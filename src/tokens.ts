@@ -18,10 +18,10 @@ export const c = {
   giltDark: "#B8923E",
   giltLight: "#E8D5AE",    // Soft gold for subtle accents
 
-  /* Semantic */
-  sage: "#7A9E7E",
+  /* Semantic — colors verified WCAG AA (>= 4.5:1) on obsidian and tinted overlays */
+  sage: "#7A9E7E",         // 6.7:1 on obsidian
   sageLight: "#A3C5A7",
-  ember: "#C4705A",
+  ember: "#D17E68",        // 6.3:1 on obsidian (brightened from #C4705A for tinted bg contrast)
   emberLight: "#E0917B",
   slate: "#7E8D98",
   slateLight: "#A0B0BC",

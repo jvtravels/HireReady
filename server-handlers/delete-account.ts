@@ -63,6 +63,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(401).json({ error: "Auth verification failed" });
   }
 
+  // Default: soft-delete with 7-day grace period. Pass { hard: true } to permanently delete immediately.
+  const hardDelete = req.body && typeof req.body === "object" && "hard" in req.body ? !!(req.body as Record<string, unknown>).hard : false;
+  const restore = req.body && typeof req.body === "object" && "restore" in req.body ? !!(req.body as Record<string, unknown>).restore : false;
+
   try {
     const headers = {
       apikey: SUPABASE_SERVICE_ROLE_KEY,
@@ -71,6 +75,53 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       Prefer: "return=minimal",
     };
     const encodedId = encodeURIComponent(userId);
+
+    // Restore path: clear deleted_at on the profile
+    if (restore) {
+      try {
+        const restoreRes = await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${encodedId}`, {
+          method: "PATCH",
+          headers,
+          body: JSON.stringify({ deleted_at: null }),
+        });
+        if (!restoreRes.ok) return res.status(500).json({ error: "Failed to restore account" });
+        return res.status(200).json({ success: true, restored: true });
+      } catch (err) {
+        console.error("[delete-account] Restore failed:", err);
+        return res.status(500).json({ error: "Failed to restore account" });
+      }
+    }
+
+    // Soft-delete path: mark profile with deleted_at (scheduled for permanent removal in 7 days)
+    if (!hardDelete) {
+      try {
+        const softRes = await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${encodedId}`, {
+          method: "PATCH",
+          headers,
+          body: JSON.stringify({ deleted_at: new Date().toISOString() }),
+        });
+        if (!softRes.ok) {
+          // If column is missing, fall through to hard delete
+          const msg = await softRes.text().catch(() => "");
+          if (msg.includes("deleted_at")) {
+            console.warn("[delete-account] deleted_at column missing, falling back to hard delete");
+          } else {
+            return res.status(500).json({ error: "Failed to schedule account deletion" });
+          }
+        } else {
+          const deletionDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+          return res.status(200).json({
+            success: true,
+            scheduled: true,
+            deletionDate: deletionDate.toISOString(),
+            message: `Your account is scheduled for deletion on ${deletionDate.toDateString()}. Log in any time before then to cancel.`,
+          });
+        }
+      } catch (err) {
+        console.error("[delete-account] Soft-delete failed:", err);
+        // Fall through to hard delete
+      }
+    }
 
     // Capture user email & name BEFORE deletion (data will be gone after)
     let userEmail: string | undefined;

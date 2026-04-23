@@ -205,6 +205,7 @@ export interface User {
   subscriptionPaused?: boolean;
   referralCode?: string;
   emailVerified: boolean;
+  deletedAt?: string | null;
 }
 
 interface AuthContextType {
@@ -267,6 +268,7 @@ function profileToUser(profile: Profile, session: Session): User {
     subscriptionPaused: !!profile.subscription_paused,
     referralCode: profile.referral_code || undefined,
     emailVerified: session.user.user_metadata?.custom_email_verified === true || !!session.user.email_confirmed_at,
+    deletedAt: (profile as unknown as Record<string, unknown>).deleted_at as string | null | undefined,
   };
 }
 

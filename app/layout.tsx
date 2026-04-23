@@ -1,7 +1,5 @@
 import type { Metadata, Viewport } from "next";
 import { Instrument_Serif, Inter, JetBrains_Mono } from "next/font/google";
-import { Analytics } from "@vercel/analytics/next";
-import { SpeedInsights } from "@vercel/speed-insights/next";
 import "../src/index.css";
 
 /* ── Google Fonts via next/font ── */
@@ -182,6 +180,8 @@ const structuredData = [
 /* ── Client helpers (extracted to keep layout a server component) ── */
 import { ServiceWorkerRegistrar } from "./ServiceWorkerRegistrar";
 import { OfflineBanner } from "./OfflineBanner";
+import CookieConsent from "./CookieConsent";
+import ConsentGatedAnalytics from "./ConsentGatedAnalytics";
 
 export default function RootLayout({
   children,
@@ -236,8 +236,8 @@ export default function RootLayout({
         </div>
 
         <ServiceWorkerRegistrar />
-        <Analytics />
-        <SpeedInsights />
+        <CookieConsent />
+        <ConsentGatedAnalytics />
       </body>
     </html>
   );

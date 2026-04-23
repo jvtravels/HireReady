@@ -13,6 +13,10 @@ ALTER TABLE profiles ADD COLUMN IF NOT EXISTS resume_file_name TEXT DEFAULT '';
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS resume_text TEXT DEFAULT '';
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS resume_data JSONB;
 
+-- ─── 1b. Soft-delete column for 7-day deletion grace period ──────
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
+CREATE INDEX IF NOT EXISTS profiles_deleted_at_idx ON profiles(deleted_at) WHERE deleted_at IS NOT NULL;
+
 -- ─── 2. Enable RLS on all user-scoped tables ────────────────────
 ALTER TABLE IF EXISTS profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS sessions ENABLE ROW LEVEL SECURITY;
@@ -97,8 +101,30 @@ CREATE INDEX IF NOT EXISTS audit_log_user_id_idx ON audit_log(user_id);
 CREATE INDEX IF NOT EXISTS audit_log_event_idx ON audit_log(event);
 CREATE INDEX IF NOT EXISTS audit_log_created_at_idx ON audit_log(created_at DESC);
 
--- ─── 9. Data retention (example: delete llm_usage older than 30 days) ─
--- Uncomment to enable via pg_cron (requires Supabase Pro):
+-- ─── 9. Data retention — via pg_cron (requires Supabase Pro or self-hosted) ─
+-- Uncomment each job after verifying pg_cron is available (`CREATE EXTENSION IF NOT EXISTS pg_cron;`)
+
+-- Hard-delete accounts soft-deleted 7+ days ago
+-- SELECT cron.schedule('hard-delete-accounts', '0 3 * * *', $$
+--   DELETE FROM profiles WHERE deleted_at IS NOT NULL AND deleted_at < NOW() - INTERVAL '7 days';
+-- $$);
+
+-- Purge llm_usage older than 30 days (cost telemetry only)
 -- SELECT cron.schedule('cleanup-llm-usage', '0 3 * * *', $$
 --   DELETE FROM llm_usage WHERE created_at < NOW() - INTERVAL '30 days';
+-- $$);
+
+-- Purge service_usage older than 30 days
+-- SELECT cron.schedule('cleanup-service-usage', '0 3 * * *', $$
+--   DELETE FROM service_usage WHERE created_at < NOW() - INTERVAL '30 days';
+-- $$);
+
+-- Purge audit_log older than 12 months
+-- SELECT cron.schedule('cleanup-audit-log', '0 4 * * 0', $$
+--   DELETE FROM audit_log WHERE created_at < NOW() - INTERVAL '12 months';
+-- $$);
+
+-- Purge interview_turns older than 180 days (keep recent transcripts only)
+-- SELECT cron.schedule('cleanup-interview-turns', '30 3 * * *', $$
+--   DELETE FROM interview_turns WHERE created_at < NOW() - INTERVAL '180 days';
 -- $$);
