@@ -176,18 +176,70 @@ export async function getProfile(userId: string): Promise<Profile | null> {
   return data;
 }
 
+/**
+ * Upsert via XHR directly to the Supabase REST endpoint.
+ *
+ * supabase-js uses window.fetch internally. Browser extensions that wrap
+ * fetch (Loom, Jam.dev, Hotjar) were hanging our profile writes — the
+ * call appeared to succeed client-side (no error thrown) but never
+ * reached Postgres, so has_completed_onboarding, resume_file_name, etc.
+ * stayed at their defaults in Supabase. XHR isn't touched by those
+ * interceptors, so this bypass guarantees delivery.
+ *
+ * Returns a Supabase-shaped { data, error } so callers don't have to
+ * branch on transport.
+ */
+function upsertProfileXHR(profile: Record<string, unknown>, token: string): Promise<{ data: unknown; error: { message: string; code?: string } | null }> {
+  return new Promise((resolve) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", `${supabaseUrl}/rest/v1/profiles?on_conflict=id`, true);
+    xhr.setRequestHeader("Content-Type", "application/json");
+    xhr.setRequestHeader("apikey", supabaseAnonKey);
+    xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+    // Upsert semantics: merge duplicates on PK, return the updated row.
+    xhr.setRequestHeader("Prefer", "resolution=merge-duplicates,return=representation");
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        let data: unknown = null;
+        try { data = xhr.responseText ? JSON.parse(xhr.responseText) : null; } catch { /* body may be empty */ }
+        resolve({ data, error: null });
+      } else {
+        let msg = `HTTP ${xhr.status}`;
+        try { const parsed = JSON.parse(xhr.responseText); msg = parsed.message || parsed.error || msg; } catch { /* noop */ }
+        resolve({ data: null, error: { message: msg, code: String(xhr.status) } });
+      }
+    };
+    xhr.onerror = () => resolve({ data: null, error: { message: "Network error", code: "network" } });
+    xhr.send(JSON.stringify([profile]));
+  });
+}
+
 export async function upsertProfile(profile: Partial<Profile> & { id: string }): Promise<{ data: unknown; error: unknown; strippedColumns?: string[] }> {
-  const client = await getSupabase();
   const safeProfile = { ...profile } as Record<string, unknown>;
   const strippedColumns: string[] = [];
 
+  // Prefer XHR path when we have a token in localStorage — it dodges
+  // extension fetch interceptors that silently hang supabase-js writes.
+  // Fall back to the SDK if no token is cached yet (e.g. during initial
+  // profile creation on first sign-in, before the session is persisted).
+  const localToken = getTokenFromLocalStorage();
+
   for (let attempt = 0; attempt < 8; attempt++) {
-    const result = await client.from("profiles").upsert(safeProfile, { onConflict: "id" });
+    let result: { data: unknown; error: { message: string; code?: string } | null };
+    if (localToken) {
+      result = await upsertProfileXHR(safeProfile, localToken);
+    } else {
+      const client = await getSupabase();
+      const sdkResult = await client.from("profiles").upsert(safeProfile, { onConflict: "id" });
+      result = { data: sdkResult.data, error: sdkResult.error as { message: string; code?: string } | null };
+    }
+
     if (!result.error) {
       if (strippedColumns.length > 0) console.warn("[supabase] saved OK but stripped columns:", strippedColumns.join(", "));
       return { ...result, strippedColumns };
     }
-    const missingCol = result.error.message.match(/Could not find the '(\w+)' column/)?.[1];
+    const missingCol = result.error.message.match(/Could not find the '(\w+)' column/)?.[1]
+      || result.error.message.match(/column "(\w+)" of relation .* does not exist/i)?.[1];
     if (missingCol && missingCol in safeProfile && missingCol !== "id") {
       console.warn(`[supabase] column '${missingCol}' missing in DB`);
       strippedColumns.push(missingCol);
