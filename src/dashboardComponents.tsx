@@ -1,8 +1,27 @@
 import { useState, useEffect, useRef, memo } from "react";
+import dynamic from "next/dynamic";
 import { c, font } from "./tokens";
 import { scoreLabel, scoreLabelColor } from "./dashboardTypes";
 import type { DashboardSession } from "./dashboardTypes";
 import { FREE_SESSION_LIMIT, STARTER_WEEKLY_LIMIT, PRO_MONTHLY_LIMIT } from "./dashboardData";
+
+// MVP results report — lazy-loaded so the legacy view still ships in bundles
+// where the flag is off.
+const SessionReportView = dynamic(() => import("./SessionReportView").then((m) => ({ default: m.SessionReportView })), {
+  ssr: false,
+});
+
+/**
+ * Feature flag for the new MVP report view. Controlled via env at build time
+ * (NEXT_PUBLIC_RESULTS_REPORT_MVP=true) so we can flip rollout without a deploy
+ * using Vercel's env vars. Defaults to ON now that the component exists.
+ */
+const RESULTS_REPORT_MVP_ENABLED = (() => {
+  try {
+    const env = (typeof process !== "undefined" ? process.env?.NEXT_PUBLIC_RESULTS_REPORT_MVP : undefined);
+    return env !== "false" && env !== "0";
+  } catch { return true; }
+})();
 
 declare global {
   interface Window {
@@ -655,6 +674,14 @@ export const EmptyState = memo(function EmptyState({ onStartWarmup, onStartCusto
 
 /* ─── Session Detail View ─── */
 export const SessionDetailView = memo(function SessionDetailView({ session, onBack }: { session: DashboardSession; onBack: () => void }) {
+  // MVP: render the new results-report view when the flag is on and the
+  // session has enough transcript to evaluate. Fall back to the legacy
+  // layout otherwise (keeps the rollout safe + reversible).
+  const transcriptLen = (session.transcript || []).filter((t) => t.text && t.text.trim().length > 0).length;
+  if (RESULTS_REPORT_MVP_ENABLED && transcriptLen >= 2) {
+    return <SessionReportView session={session} onBack={onBack} />;
+  }
+
   return (
     <div style={{ maxWidth: 800, margin: "0 auto" }}>
       <button onClick={onBack} style={{ display: "flex", alignItems: "center", gap: 8, fontFamily: font.ui, fontSize: 13, color: c.stone, background: "none", border: "none", cursor: "pointer", padding: "0 0 20px", outline: "none" }}

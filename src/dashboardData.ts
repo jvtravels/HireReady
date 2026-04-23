@@ -850,3 +850,76 @@ export async function analyzeResumeWithAI(resumeText: string, targetRole?: strin
     return { profile, truncated: res.data?.truncated };
   });
 }
+
+/* ─── Session Results Report (MVP) ─────────────────────────────────── */
+
+export type SessionReportBand = "strongHire" | "hire" | "leanHire" | "noHire" | "strongNoHire";
+
+export interface SessionReportPerQuestion {
+  idx: number;
+  question: string;
+  answerText: string;
+  verdict: "strong" | "complete" | "partial" | "weak" | "skipped";
+  score: number;
+  starPresence: { S: boolean; T: boolean; A: boolean; R: boolean };
+  restructured: {
+    text: string;
+    citations: Array<{ markerIdx: number; sourceStart: number; sourceEnd: number }>;
+  } | null;
+  explanation: string;
+}
+
+export interface SessionReport {
+  version: "mvp-1";
+  overallScore: number;
+  band: SessionReportBand;
+  verdict: string;
+  coreMetrics: { fillerPerMin: number; silenceRatio: number; paceWpm: number; energy: number };
+  skills: Array<{ name: string; score: number }>;
+  perQuestion: SessionReportPerQuestion[];
+  model: string;
+}
+
+export interface EvaluateSessionInput {
+  sessionId: string;
+  transcript: Array<{ role: "interviewer" | "candidate"; text: string; startMs?: number; endMs?: number }>;
+  meta: {
+    role?: string;
+    roleFamily?: "swe" | "pm" | "em" | "data" | "behavioral";
+    targetCompany?: string | null;
+    level?: string | null;
+    difficulty?: "warmup" | "standard" | "hard";
+    duration?: number;
+  };
+}
+
+export async function evaluateSessionWithAI(
+  input: EvaluateSessionInput,
+  signal?: AbortSignal,
+): Promise<SessionReport | null> {
+  return withRetry(async () => {
+    const { apiFetch } = await import("./apiClient");
+    const res = await apiFetch<{ report: SessionReport; error?: string; retryAfter?: number; retryable?: boolean }>(
+      "/api/evaluate-session",
+      input,
+      { signal },
+    );
+
+    if (res.status === 401) throw new Error("Session expired — please refresh and sign in again.");
+    if (res.status === 429) {
+      const retryAfter = (res.data as { retryAfter?: number } | null)?.retryAfter;
+      throw new Error(retryAfter ? `Too many requests. Please wait ${retryAfter} seconds.` : "Too many requests. Please wait a moment.");
+    }
+    if (!res.ok) {
+      const msg = res.error || `HTTP ${res.status}`;
+      console.error(`[evaluateSession] API error ${res.status}:`, msg);
+      throw new Error(msg);
+    }
+    const report = res.data?.report;
+    if (!report) {
+      console.warn("[evaluateSession] No report in response");
+      throw new Error("Server returned no report data");
+    }
+    return report;
+  });
+}
