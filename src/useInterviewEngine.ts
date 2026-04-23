@@ -1654,6 +1654,17 @@ export function useInterviewEngine() {
 
     const sessionId = liveSessionIdRef.current;
     setLastSessionId(sessionId);
+
+    // Global escape hatch — no matter what hangs below (eval, auth refresh,
+    // supabase save, service-worker intercept), navigate to the session
+    // detail after 35s so the user never stares at a dead spinner. The
+    // rich v6 report will regenerate server-side when SessionReportView
+    // mounts, and partial local saves survive page navigation.
+    const escapeHatch = setTimeout(() => {
+      console.warn("[interview] handleEnd exceeded 35s — forcing navigation to session detail");
+      try { router.push(`/session/${sessionId}`); } catch { /* best effort */ }
+      setEvaluating(false);
+    }, 35_000);
     let score = 0;
     let aiFeedback = "";
     let skillScores: Record<string, number> | null = null;
@@ -1779,38 +1790,51 @@ export function useInterviewEngine() {
       aiFeedback = "No answers were recorded in this session. Try speaking clearly into your microphone, or use the text input option.";
     }
 
-    // Refresh auth token before saving results
+    // Refresh auth token before saving results — capped so a hung network
+    // request can't trap the user on the loading spinner.
     try {
       const { getSupabase } = await import("./supabase");
       const client = await getSupabase();
-      const { error } = await client.auth.refreshSession();
-      if (error) console.warn("[interview] Auth refresh failed:", error.message);
+      const refreshResult = await Promise.race([
+        client.auth.refreshSession(),
+        new Promise<{ error: { message: string } }>((resolve) => setTimeout(() => resolve({ error: { message: "refresh timeout (3s)" } }), 3_000)),
+      ]);
+      if (refreshResult.error) console.warn("[interview] Auth refresh failed:", refreshResult.error.message);
     } catch { /* best effort */ }
 
     let localOk = false;
     let cloudOk = false;
     try {
-      const saveResult = await saveSessionResult({
-        id: sessionId,
-        date: new Date().toISOString(),
-        type: interviewType,
-        difficulty: interviewDifficulty,
-        focus: interviewFocus,
-        duration: elapsed,
-        score,
-        questions: totalQuestions,
-        transcript: evalTranscript,
-        ai_feedback: aiFeedback,
-        skill_scores: skillScores,
-        ideal_answers: idealAnswers.length > 0 ? idealAnswers : undefined,
-        starAnalysis,
-        strengths,
-        improvements,
-        nextSteps,
-        resumeUsed: !!user?.resumeText,
-        jobDescription: jobDescription || undefined,
-        jdAnalysis: jdAnalysisData || null,
-      }, user?.id);
+      // Race the entire save against a 10s ceiling — Supabase PATCH on slow
+      // networks has been observed to hang indefinitely. Fallback to local-only
+      // save so the user still lands on /session/{id} with their transcript.
+      const saveResult = await Promise.race([
+        saveSessionResult({
+          id: sessionId,
+          date: new Date().toISOString(),
+          type: interviewType,
+          difficulty: interviewDifficulty,
+          focus: interviewFocus,
+          duration: elapsed,
+          score,
+          questions: totalQuestions,
+          transcript: evalTranscript,
+          ai_feedback: aiFeedback,
+          skill_scores: skillScores,
+          ideal_answers: idealAnswers.length > 0 ? idealAnswers : undefined,
+          starAnalysis,
+          strengths,
+          improvements,
+          nextSteps,
+          resumeUsed: !!user?.resumeText,
+          jobDescription: jobDescription || undefined,
+          jdAnalysis: jdAnalysisData || null,
+        }, user?.id),
+        new Promise<{ localOk: boolean; cloudOk: boolean }>((resolve) => setTimeout(() => {
+          console.warn("[interview] saveSessionResult timeout (10s) — proceeding with whatever landed");
+          resolve({ localOk: true, cloudOk: false });
+        }, 10_000)),
+      ]);
       localOk = saveResult.localOk;
       cloudOk = saveResult.cloudOk;
     } catch (saveErr) {
@@ -1881,6 +1905,7 @@ export function useInterviewEngine() {
       try { router.push("/dashboard"); } catch { /* expected: navigation may fail if component unmounted */ }
     } finally {
       clearTimeout(safetyTimer);
+      clearTimeout(escapeHatch);
       setEvaluating(false);
     }
   }, [router, elapsed, interviewType, interviewDifficulty, interviewFocus, totalQuestions, user, updateUser, currentStep, interviewScript.length, transcript, currentTranscript]);
