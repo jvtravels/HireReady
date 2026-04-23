@@ -431,7 +431,8 @@ export default function DashboardResume() {
     setReanalyzing(true);
     setReanalyzeDone(false);
     setErrorMsg("");
-    console.log("[resume] Re-analyze triggered — text length:", textForAnalysis.length);
+    const tStart = Date.now();
+    console.log("[resume] Re-analyze triggered — text length:", textForAnalysis.length, "targetRole:", user?.targetRole || "(none)");
     try {
       const result = await Promise.race([
         analyzeResumeWithAI(textForAnalysis, user?.targetRole),
@@ -440,18 +441,23 @@ export default function DashboardResume() {
         // was killing legitimate fallback paths.
         new Promise<null>((_, reject) => setTimeout(() => reject(new Error("timeout")), 40_000)),
       ]);
+      const elapsed = Date.now() - tStart;
       if (result?.profile) {
+        console.log(`[resume] Re-analyze SUCCESS in ${elapsed}ms — score=${result.profile.resumeScore} headline="${result.profile.headline}"`);
         setProfile(result.profile);
         setAnalysisSource("ai");
         setTruncated(!!result.truncated);
         updateUser({ resumeData: { ...result.profile, _type: "ai" } as unknown as ParsedResume });
         if (fileName) saveResumeVersion(fileName, result.profile.resumeScore, textForAnalysis);
       } else {
+        console.warn(`[resume] Re-analyze returned no profile in ${elapsed}ms`, result);
         setErrorMsg("AI couldn't extract structured data. Try re-uploading a cleaner PDF or DOCX.");
       }
     } catch (err) {
+      const elapsed = Date.now() - tStart;
       const msg = err instanceof Error ? err.message : "Unknown error";
-      setErrorMsg(msg.includes("timeout") ? "Analysis timed out. Try again." : `Analysis failed: ${msg}`);
+      console.error(`[resume] Re-analyze FAILED after ${elapsed}ms: ${msg}`);
+      setErrorMsg(msg.includes("timeout") ? `Analysis timed out after ${Math.round(elapsed / 1000)}s. Try again.` : `Analysis failed: ${msg}`);
     }
     setReanalyzing(false);
     setReanalyzeDone(true);
