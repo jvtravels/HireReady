@@ -12,7 +12,10 @@ function logUsage(entry: {
   promptTokens: number; completionTokens: number; totalTokens: number;
   latencyMs: number; status: "success" | "error" | "timeout"; errorMessage?: string;
 }): void {
-  if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) return;
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
+    console.warn(`[logUsage] skipped — missing env vars (SUPABASE_URL=${!!SUPABASE_URL}, SERVICE_KEY=${!!SUPABASE_SERVICE_KEY})`);
+    return;
+  }
   fetch(`${SUPABASE_URL}/rest/v1/llm_usage`, {
     method: "POST",
     headers: {
@@ -33,7 +36,16 @@ function logUsage(entry: {
       status: entry.status,
       error_message: entry.errorMessage?.slice(0, 500) || null,
     }),
-  }).catch(() => {});
+  })
+    .then(async res => {
+      if (!res.ok) {
+        const body = await res.text().catch(() => "");
+        console.error(`[logUsage] HTTP ${res.status} writing llm_usage: ${body.slice(0, 200)}`);
+      }
+    })
+    .catch(err => {
+      console.error(`[logUsage] fetch failed: ${err instanceof Error ? err.message : String(err)}`);
+    });
 }
 
 interface LLMOptions {

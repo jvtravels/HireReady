@@ -224,6 +224,13 @@ create policy "Anyone can view promo codes" on promo_codes
 alter table llm_usage enable row level security;
 create policy "Users can view own llm usage" on llm_usage
   for select using (auth.uid() = user_id);
+-- Explicit INSERT policy as a safety net. The `service_role` key bypasses RLS
+-- by design, but if SUPABASE_SERVICE_ROLE_KEY is ever misconfigured (e.g. set
+-- to the anon key instead), writes would silently fail with a 401/403. This
+-- allows service_role to insert regardless of bypass behavior.
+drop policy if exists "Service role can insert llm usage" on llm_usage;
+create policy "Service role can insert llm usage" on llm_usage
+  for insert to service_role with check (true);
 
 -- ═══════════════════════════════════════════════════════
 -- Auto-create profile on signup
