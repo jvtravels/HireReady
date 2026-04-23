@@ -8,6 +8,72 @@ import { callLLM, extractJSON } from "./_llm";
 declare const process: { env: Record<string, string | undefined> };
 const GROQ_KEY = process.env.GROQ_API_KEY || "";
 const GEMINI_KEY = process.env.GEMINI_API_KEY || "";
+const SUPABASE_URL = process.env.SUPABASE_URL || "";
+const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+
+const REPORT_VERSION = "mvp-1";
+
+/**
+ * Try to read a cached report for this session. Returns null on any failure
+ * (cache miss, network error, version mismatch) so the caller re-evaluates.
+ * We verify user_id matches the caller so one user can't retrieve another's
+ * report via a guessed sessionId.
+ */
+async function loadCachedReport(sessionId: string, userId: string): Promise<SessionReport | null> {
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) return null;
+  try {
+    const q = `sessions?id=eq.${encodeURIComponent(sessionId)}&user_id=eq.${encodeURIComponent(userId)}&select=report_json,report_version`;
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/${q}`, {
+      headers: {
+        apikey: SUPABASE_SERVICE_KEY,
+        Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`,
+        "Accept": "application/json",
+      },
+    });
+    if (!res.ok) return null;
+    const rows = await res.json() as Array<{ report_json?: SessionReport; report_version?: string }>;
+    const row = rows?.[0];
+    if (!row?.report_json) return null;
+    if (row.report_version !== REPORT_VERSION) return null; // schema upgrade invalidates cache
+    return row.report_json;
+  } catch (err) {
+    console.warn(`[evaluate-session] cache read failed: ${err instanceof Error ? err.message : String(err)}`);
+    return null;
+  }
+}
+
+/**
+ * Persist the report on the session row. Fire-and-forget relative to the
+ * response: we await it so the write completes before the edge isolate
+ * terminates (same lesson as llm_usage), but failures don't block the
+ * response — worst case, the user re-evaluates on next view.
+ */
+async function saveCachedReport(sessionId: string, userId: string, report: SessionReport): Promise<void> {
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) return;
+  try {
+    const q = `sessions?id=eq.${encodeURIComponent(sessionId)}&user_id=eq.${encodeURIComponent(userId)}`;
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/${q}`, {
+      method: "PATCH",
+      headers: {
+        apikey: SUPABASE_SERVICE_KEY,
+        Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`,
+        "Content-Type": "application/json",
+        Prefer: "return=minimal",
+      },
+      body: JSON.stringify({
+        report_json: report,
+        report_version: REPORT_VERSION,
+        report_generated_at: new Date().toISOString(),
+      }),
+    });
+    if (!res.ok) {
+      const body = await res.text().catch(() => "");
+      console.error(`[evaluate-session] cache write HTTP ${res.status}: ${body.slice(0, 200)}`);
+    }
+  } catch (err) {
+    console.error(`[evaluate-session] cache write failed: ${err instanceof Error ? err.message : String(err)}`);
+  }
+}
 
 /** MVP report schema — kept tight; additive V2 fields documented in PRD. */
 interface EvaluateRequest {
@@ -320,6 +386,20 @@ export default async function handler(req: Request): Promise<Response> {
       return new Response(JSON.stringify({ error: "transcript too long" }), { status: 413, headers });
     }
 
+    // Try cache first — report is deterministic for (sessionId, REPORT_VERSION).
+    // Saves ~8-12s of LLM latency and ~2500 tokens per re-open of the same report.
+    if (auth.userId) {
+      const tCache0 = Date.now();
+      const cached = await loadCachedReport(sessionId, auth.userId);
+      const tCache = Date.now() - tCache0;
+      if (cached) {
+        const totalMs = Date.now() - t0;
+        console.warn(`[evaluate-session] CACHE HIT session=${sessionId.slice(0, 8)} lookup=${tCache}ms total=${totalMs}ms`);
+        headers["X-Timing"] = `cacheLookup=${tCache},total=${totalMs},cached=1`;
+        return new Response(JSON.stringify({ report: cached, cached: true }), { status: 200, headers });
+      }
+    }
+
     const roleFamily = (meta?.roleFamily as keyof typeof ROLE_SKILLS) || "behavioral";
     const skillAxes = ROLE_SKILLS[roleFamily] || ROLE_SKILLS.behavioral;
     const durationSec = meta?.duration || 600;
@@ -490,11 +570,16 @@ CRITICAL RULES:
       console.warn(`[evaluate-session] validation failed for session=${sessionId.slice(0, 8)}; returning anyway with warning`);
     }
 
+    // Persist to cache so re-opens are instant. Awaited so the edge isolate
+    // doesn't terminate mid-write (same lesson as llm_usage in _llm.ts).
+    // Cache failures are non-fatal — the user still gets their report.
+    if (auth.userId) await saveCachedReport(sessionId, auth.userId, report);
+
     const totalMs = Date.now() - t0;
     console.warn(`[evaluate-session] OK session=${sessionId.slice(0, 8)} score=${overallScore} band=${report.band} llm=${tLLM}ms total=${totalMs}ms model=${result.model}`);
     headers["X-Timing"] = `llm=${tLLM},total=${totalMs},model=${result.model}`;
 
-    return new Response(JSON.stringify({ report }), { status: 200, headers });
+    return new Response(JSON.stringify({ report, cached: false }), { status: 200, headers });
   } catch (err) {
     const totalMs = Date.now() - t0;
     const isTimeout = err instanceof Error && (err.name === "AbortError" || err.message.includes("abort"));

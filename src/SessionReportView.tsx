@@ -69,14 +69,30 @@ function roleToFamily(role: string | undefined): RoleFamily {
   return "behavioral";
 }
 
-/** Reshape the session transcript into the evaluator API's turn schema. */
+/**
+ * Reshape the session transcript into the evaluator API's turn schema.
+ * The persisted shape uses `speaker: "user" | "ai"` (written by useInterviewEngine
+ * and interviewAPI). System/unknown speakers are excluded rather than silently
+ * bucketed into "interviewer" — they're usually prompt scaffolding, not real turns.
+ */
+const KNOWN_CANDIDATE_SPEAKERS = new Set(["user", "candidate"]);
+const KNOWN_INTERVIEWER_SPEAKERS = new Set(["ai", "interviewer", "assistant"]);
+
 function toTurns(transcript: DashboardSession["transcript"]): Array<{ role: "interviewer" | "candidate"; text: string }> {
-  return (transcript || [])
-    .filter((t) => t.text && t.text.trim().length > 0)
-    .map((t) => ({
-      role: t.speaker === "user" || t.speaker === "candidate" ? "candidate" : "interviewer",
-      text: t.text.trim(),
-    }));
+  if (!Array.isArray(transcript)) return [];
+  const turns: Array<{ role: "interviewer" | "candidate"; text: string }> = [];
+  for (const t of transcript) {
+    const text = (t?.text ?? "").trim();
+    if (!text) continue;
+    const speaker = String(t?.speaker ?? "").toLowerCase();
+    if (KNOWN_CANDIDATE_SPEAKERS.has(speaker)) {
+      turns.push({ role: "candidate", text });
+    } else if (KNOWN_INTERVIEWER_SPEAKERS.has(speaker)) {
+      turns.push({ role: "interviewer", text });
+    }
+    // Unknown speakers (system, notes, etc.) are dropped intentionally.
+  }
+  return turns;
 }
 
 /** Metric tile — single core-metric card. */
