@@ -40,16 +40,33 @@ function extractRoleFromExperience(experience?: { title?: string }[]): string {
 
 /**
  * Shape check for a human name. Defensive fallback in case the resume
- * parser ever returns a stray city / role / company here again. Accepts
- * 2-4 Title-Case (or all-caps) tokens, allows hyphens and apostrophes,
- * rejects anything with a comma or digits.
+ * parser ever returns a stray city / role / company here again.
+ *
+ * Intentionally lenient — previous version rejected:
+ *   • single-token names (Prince, Madonna, Rihanna)
+ *   • names with initials (K. Venkatraman)
+ *   • names in non-Latin scripts (Devanagari, Tamil, Arabic, etc.)
+ *
+ * In an India-first product, rejecting non-Latin names was the biggest
+ * issue. The new check rejects only obvious non-names (commas, emails,
+ * numbers, excessive length) and shapes that contain forbidden role
+ * keywords (e.g. "Senior Designer" is a role, not a name).
  */
 function looksLikePersonName(s?: string | null): boolean {
   if (!s) return false;
   const trimmed = s.trim();
-  if (trimmed.length < 3 || trimmed.length > 60) return false;
-  if (/[,\d@]/.test(trimmed)) return false;
-  return /^(?:[A-Z][a-zA-Z'-]+|[A-Z]{2,})(?:\s+(?:[A-Z][a-zA-Z'-]+|[A-Z]{2,})){1,3}$/.test(trimmed);
+  if (trimmed.length < 2 || trimmed.length > 60) return false;
+  // Reject anything with commas, at-signs, digits — clearly not a name
+  if (/[,@0-9]/.test(trimmed)) return false;
+  // Reject role/company-shaped strings: if it contains role keywords,
+  // the parser probably mis-classified a job title as a name.
+  if (ROLE_KEYWORDS.test(trimmed)) return false;
+  // Max 5 tokens — "Dr. Jane Marie O'Brien-Smith" fits; "Jane Smith
+  // is looking for a Senior Engineer role" doesn't.
+  const tokens = trimmed.split(/\s+/);
+  if (tokens.length > 5) return false;
+  // At least one letter (covers Latin + every Unicode script via \p{L})
+  return /\p{L}/u.test(trimmed);
 }
 
 export default function Onboarding() {
@@ -81,6 +98,9 @@ export default function Onboarding() {
   const undoTimerRef = useRef<number>(0);
   const [targetRole, setTargetRole] = useState(user?.targetRole || "");
   const [starting, setStarting] = useState(false);
+  // Transient UI messages — saved-draft toast (#13) and autosave feedback (#15)
+  const [draftToast, setDraftToast] = useState<string | null>(null);
+  const [autosaveFlash, setAutosaveFlash] = useState(false);
 
   useEffect(() => {
     return () => { if (undoTimerRef.current) clearTimeout(undoTimerRef.current); };
@@ -103,10 +123,54 @@ export default function Onboarding() {
       if (role && role !== lastSavedRef.current.role) updates.targetRole = role;
       if (Object.keys(updates).length === 0) return;
       lastSavedRef.current = { name, role };
-      updateUser(updates).catch(err => console.warn("[onboarding] auto-save failed:", err instanceof Error ? err.message : err));
+      updateUser(updates)
+        .then(() => {
+          // #15 — surface autosave success so users can trust the silent auto-save
+          setAutosaveFlash(true);
+          setTimeout(() => setAutosaveFlash(false), 1800);
+        })
+        .catch(err => console.warn("[onboarding] auto-save failed:", err instanceof Error ? err.message : err));
     }, 1500);
     return () => { if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current); };
   }, [userName, targetRole, user, resumeParsed, updateUser]);
+
+  // ─── #13: Saved-draft toast on return ─────────────────────────────────────
+  // When a user comes back (fresh page load) and we successfully restore a
+  // previous resume from localStorage or their Supabase profile, surface a
+  // small "Welcome back — we kept your resume" toast so they know the app
+  // retained their progress. Fires exactly once per mount.
+  const draftToastFiredRef = useRef(false);
+  useEffect(() => {
+    if (draftToastFiredRef.current) return;
+    if (!resumeParsed || !fileName) return;
+    // Skip if this mount is the result of the user uploading right now
+    // (resumeParsing would have been true) vs a restore.
+    if (resumeParsing) return;
+    draftToastFiredRef.current = true;
+    setDraftToast(`Welcome back — we kept your resume (${fileName})`);
+    const t = setTimeout(() => setDraftToast(null), 5000);
+    return () => clearTimeout(t);
+  }, [resumeParsed, fileName, resumeParsing]);
+
+  // ─── #19: Exit-intent hint ────────────────────────────────────────────────
+  // If a user has uploaded a resume but not yet clicked "Start interview",
+  // mousing toward the top of the viewport (tab close) triggers a single-
+  // use reassurance toast: "Your resume is saved — come back anytime."
+  // No modal; no capture form. Just closing the trust gap.
+  const exitFiredRef = useRef(false);
+  useEffect(() => {
+    if (!resumeParsed) return;
+    if (exitFiredRef.current) return;
+    function handleMouseLeave(e: MouseEvent) {
+      if (e.clientY < 20 && !exitFiredRef.current) {
+        exitFiredRef.current = true;
+        setDraftToast("Your resume is saved — take your time, it'll be here when you get back.");
+        setTimeout(() => setDraftToast(null), 6000);
+      }
+    }
+    document.addEventListener("mouseleave", handleMouseLeave);
+    return () => document.removeEventListener("mouseleave", handleMouseLeave);
+  }, [resumeParsed]);
 
   // Restore name/role from localStorage if user-data isn't loaded yet
   useEffect(() => {
@@ -529,8 +593,8 @@ export default function Onboarding() {
         }
         .ob-score-reveal { animation: scoreReveal 0.9s cubic-bezier(0.34, 1.56, 0.64, 1) 0.15s both; }
         .ob-card-morph { animation: cardMorphIn 0.45s cubic-bezier(0.16, 1, 0.3, 1) both; }
-        @keyframes progressFill { 0% { width: 0%; } 30% { width: 35%; } 60% { width: 65%; } 80% { width: 80%; } 100% { width: 92%; } }
-        .ob-progress-bar { animation: progressFill 18s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
+        /* Removed: fake progressFill animation (18s stall → 92%) — replaced
+           by honest elapsed-seconds counter in ResumeLoadingState. */
         @keyframes fadeUp { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
         .skeleton-line { background: linear-gradient(90deg, rgba(245,242,237,0.03) 25%, rgba(245,242,237,0.07) 50%, rgba(245,242,237,0.03) 75%); background-size: 200% 100%; animation: shimmer 1.5s ease-in-out infinite; border-radius: 6px; }
@@ -617,9 +681,60 @@ export default function Onboarding() {
             onGoToDashboard={handleGoToDashboard}
             resumeScore={aiProfile?.resumeScore ?? null}
             hasResume={!!resumeParsed && aiPhase === "done"}
+            // #14 — surface free-tier quota near the primary CTA so users
+            // don't discover the session limit mid-flow. For paid users
+            // the hint is empty (NavigationFooter hides it).
+            quotaHint={
+              user && (!user.subscriptionTier || user.subscriptionTier === "free")
+                ? `${Math.max(0, 3 - (user.practiceTimestamps?.length || 0))} free interviews included`
+                : null
+            }
           />
         </div>
       </div>
+
+      {/* #13 + #19 — welcome-back toast (resume restored) + exit-intent reassurance */}
+      {draftToast && (
+        <div
+          role="status"
+          aria-live="polite"
+          style={{
+            position: "fixed", bottom: 28, left: "50%", transform: "translateX(-50%)",
+            zIndex: 100, maxWidth: "calc(100vw - 32px)",
+            padding: "12px 18px", borderRadius: 10,
+            background: "rgba(17,17,19,0.95)", border: `1px solid rgba(212,179,127,0.25)`,
+            backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)",
+            boxShadow: "0 10px 40px rgba(0,0,0,0.4)",
+            display: "flex", alignItems: "center", gap: 10,
+            fontFamily: font.ui, fontSize: 13, color: c.chalk,
+            animation: "toastIn 0.25s ease-out",
+          }}
+        >
+          <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="2" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+          {draftToast}
+        </div>
+      )}
+
+      {/* #15 — autosave feedback: tiny flash in the corner when the debounced
+          profile write lands. Non-intrusive; users who aren't looking for it
+          won't notice, users who are will know their edits are safe. */}
+      {autosaveFlash && (
+        <div
+          role="status"
+          aria-live="polite"
+          style={{
+            position: "fixed", bottom: 16, right: 16, zIndex: 99,
+            padding: "6px 12px", borderRadius: 8,
+            background: "rgba(122,158,126,0.1)", border: `1px solid rgba(122,158,126,0.25)`,
+            display: "flex", alignItems: "center", gap: 6,
+            fontFamily: font.ui, fontSize: 11, fontWeight: 500, color: c.sage,
+            animation: "toastIn 0.2s ease-out",
+          }}
+        >
+          <svg aria-hidden="true" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+          Saved
+        </div>
+      )}
     </div>
   );
 }

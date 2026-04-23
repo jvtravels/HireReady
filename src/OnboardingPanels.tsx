@@ -135,7 +135,7 @@ export function TopBar({ emailUnverified, onNavigateHome, onLogout, userEmail, u
   );
 }
 
-/* ─── Step 1: Resume Empty State (drop zone) ─── */
+/* ─── Resume Empty State (drop zone) ─── */
 
 export interface ResumeEmptyStateProps {
   isDragging: boolean;
@@ -154,12 +154,12 @@ export interface ResumeEmptyStateProps {
 export function ResumeEmptyState({ isDragging, dragFileName, resumeError, showUndo, fileInputRef, onDragOver, onDragLeave, onDrop, onFileChange, onUndo, onSkip }: ResumeEmptyStateProps) {
   return (
     <>
-      <p style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 700, color: c.gilt, textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 12 }}>Step 1 — Your Experience</p>
+      <p style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 700, color: c.gilt, textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 12 }}>Get started</p>
       <h2 style={{ fontFamily: font.display, fontSize: 32, fontWeight: 400, color: c.ivory, letterSpacing: "-0.025em", lineHeight: 1.2, marginBottom: 10 }}>
-        Upload your resume <span style={{ color: c.ember }}>*</span>
+        Upload your resume
       </h2>
       <p style={{ fontFamily: font.ui, fontSize: 15, color: c.stone, lineHeight: 1.7, marginBottom: 28 }}>
-        Upload your resume to get personalized interview questions tailored to your experience.
+        Optional but recommended — your resume unlocks role-specific questions tailored to your experience.
       </p>
 
       {/* Drop zone */}
@@ -199,12 +199,17 @@ export function ResumeEmptyState({ isDragging, dragFileName, resumeError, showUn
           </>
         ) : (
           <>
-            <div style={{ width: 52, height: 52, borderRadius: 14, margin: "0 auto 16px", background: "rgba(212,179,127,0.05)", border: "1px solid rgba(212,179,127,0.12)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            {/* Subtle idle bounce on the upload icon — invites action without screaming */}
+            <div className="ob-drop-icon" style={{ width: 52, height: 52, borderRadius: 14, margin: "0 auto 16px", background: "rgba(212,179,127,0.05)", border: "1px solid rgba(212,179,127,0.12)", display: "flex", alignItems: "center", justifyContent: "center" }}>
               <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
             </div>
             <p style={{ fontFamily: font.ui, fontSize: 16, fontWeight: 500, color: c.ivory, marginBottom: 6 }}>Drop your resume here</p>
-            <p style={{ fontFamily: font.ui, fontSize: 14, color: c.stone, marginBottom: 16 }}>or click to browse</p>
-            <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 10 }}>
+            <p style={{ fontFamily: font.ui, fontSize: 14, color: c.stone, marginBottom: 14 }}>or click to browse</p>
+            {/* Mini preview of what the parser extracts — builds expectation without another click */}
+            <p style={{ fontFamily: font.ui, fontSize: 11, color: "rgba(154,149,144,0.75)", marginBottom: 14, lineHeight: 1.5 }}>
+              We'll extract your name, skills, and experience to tailor the interview.
+            </p>
+            <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
               {["PDF", "DOCX", "TXT"].map((t) => (
                 <span key={t} style={{ fontFamily: font.mono, fontSize: 11, fontWeight: 500, color: c.stone, background: "rgba(245,242,237,0.03)", padding: "6px 14px", borderRadius: 10, border: `1px solid rgba(245,242,237,0.06)`, letterSpacing: "0.05em" }}>{t}</span>
               ))}
@@ -214,12 +219,19 @@ export function ResumeEmptyState({ isDragging, dragFileName, resumeError, showUn
         )}
       </div>
 
-      {/* Privacy bar */}
+      {/* Privacy reassurance — condensed to a single line with an expandable
+          details element. Reduces first-paint density (#3) while still offering
+          the full trust message to users who want it. */}
       {!showUndo && (
-        <div style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: "16px 20px", borderRadius: 12, background: c.graphite, border: `1px solid ${c.border}` }}>
-          <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={c.stone} strokeWidth="1.5" style={{ flexShrink: 0, marginTop: 1 }}><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-          <p style={{ fontFamily: font.ui, fontSize: 13, color: c.stone, lineHeight: 1.5 }}>Your resume text is used only to generate personalized interview questions. You can delete it anytime.</p>
-        </div>
+        <details style={{ marginTop: 4 }}>
+          <summary style={{ listStyle: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 8, padding: "6px 4px", fontFamily: font.ui, fontSize: 12, color: c.stone }}>
+            <svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="1.5" style={{ flexShrink: 0 }}><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            Your resume stays private — <span style={{ color: c.gilt, textDecoration: "underline", textUnderlineOffset: 2 }}>see how</span>
+          </summary>
+          <p style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, lineHeight: 1.6, padding: "8px 4px 0 25px", margin: 0 }}>
+            Encrypted at rest · never shared or sold · delete anytime from Settings · used only to tailor your interview questions.
+          </p>
+        </details>
       )}
 
       {/* Undo toast */}
@@ -259,7 +271,7 @@ export function ResumeEmptyState({ isDragging, dragFileName, resumeError, showUn
   );
 }
 
-/* ─── Step 1: Resume Loading State ─── */
+/* ─── Resume Loading State ─── */
 
 export interface ResumeLoadingStateProps {
   analysisStage: number;
@@ -389,15 +401,20 @@ export function ResumeLoadingState({ fileName, onCancel, userName, onUserNameCha
         ))}
       </div>
 
-      {onCancel && (
+      {onCancel && seconds >= 10 && (
         <div style={{ textAlign: "center", marginTop: 4 }}>
           <button
-            onClick={onCancel}
+            onClick={() => {
+              // Require confirmation — losing the upload by accident is painful
+              if (typeof window !== "undefined" && window.confirm("Cancel upload and remove your resume?")) {
+                onCancel();
+              }
+            }}
             style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, background: "none", border: "none", cursor: "pointer", padding: "6px 14px", borderRadius: 8, transition: "color 0.2s" }}
             onMouseEnter={e => (e.currentTarget.style.color = c.ivory)}
             onMouseLeave={e => (e.currentTarget.style.color = c.stone)}
           >
-            Cancel and start over
+            Cancel upload
           </button>
         </div>
       )}
@@ -405,7 +422,7 @@ export function ResumeLoadingState({ fileName, onCancel, userName, onUserNameCha
   );
 }
 
-/* ─── Step 1: Profile Ready State ─── */
+/* ─── Profile Ready State ─── */
 
 export interface ProfileReadyStateProps {
   aiProfile: ResumeProfile;
@@ -422,9 +439,15 @@ export interface ProfileReadyStateProps {
   onReplaceFile: () => void;
 }
 
-export function ProfileReadyState({ aiProfile, resumeParsed, userName, fileName, resumeText: _resumeText, targetRole, fileInputRef: _fileInputRef, onUserNameChange, onTargetRoleChange, onReanalyze, onRemove, onReplaceFile }: ProfileReadyStateProps) {
+export function ProfileReadyState({ aiProfile, resumeParsed, userName, fileName, resumeText: _resumeText, targetRole, fileInputRef: _fileInputRef, onUserNameChange, onTargetRoleChange, onReanalyze: _onReanalyze, onRemove, onReplaceFile }: ProfileReadyStateProps) {
   const headingRef = useRef<HTMLHeadingElement>(null);
   const [mobileExpanded, setMobileExpanded] = useState(false);
+  // Inline summary editor — users can override the AI-generated summary in place
+  // without re-analyzing or replacing the resume. State is intentionally local to
+  // this render cycle; a future version could persist to the profile row.
+  const [summaryDraft, setSummaryDraft] = useState<string | null>(null);
+  const [summaryEditing, setSummaryEditing] = useState(false);
+  const displayedSummary = summaryDraft != null ? summaryDraft : aiProfile.summary;
   useEffect(() => {
     // Move screen-reader focus to the heading when profile reveals
     headingRef.current?.focus?.();
@@ -452,28 +475,77 @@ export function ProfileReadyState({ aiProfile, resumeParsed, userName, fileName,
           <h3 style={{ fontFamily: font.display, fontSize: 22, color: c.ivory, letterSpacing: "-0.025em", lineHeight: 1.2, marginBottom: 8 }}>
             {aiProfile.headline && aiProfile.headline !== "Analyzing..." ? aiProfile.headline.split(/\s+with\s+/i)[0] : userName || resumeParsed.name || "Your Profile"}
           </h3>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
             {aiProfile.seniorityLevel && <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, color: c.gilt, background: "rgba(212,179,127,0.08)", border: "1px solid rgba(212,179,127,0.18)", borderRadius: 4, padding: "2px 10px" }}>{aiProfile.seniorityLevel}</span>}
-            {aiProfile.yearsExperience && <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>{aiProfile.yearsExperience}+ yrs</span>}
-            {aiProfile.industries && aiProfile.industries.length > 0 && <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>{aiProfile.industries.slice(0, 2).join(", ")}</span>}
+            {aiProfile.yearsExperience && <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 500, color: c.chalk, background: "rgba(245,242,237,0.04)", border: "1px solid rgba(245,242,237,0.08)", borderRadius: 4, padding: "2px 10px" }}>{aiProfile.yearsExperience}+ yrs</span>}
+            {aiProfile.industries && aiProfile.industries.slice(0, 3).map((ind, i) => (
+              <span key={i} style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 500, color: c.chalk, background: "rgba(245,242,237,0.04)", border: "1px solid rgba(245,242,237,0.08)", borderRadius: 4, padding: "2px 10px" }}>{ind}</span>
+            ))}
           </div>
-          <p style={{ fontFamily: font.ui, fontSize: 13, color: c.chalk, lineHeight: 1.6, display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{aiProfile.summary}</p>
+          {/* Inline-editable summary (#10) — click the pencil or the text to revise the AI's phrasing */}
+          {summaryEditing ? (
+            <div style={{ marginTop: 2 }}>
+              <textarea
+                value={displayedSummary}
+                onChange={(e) => setSummaryDraft(e.target.value)}
+                onBlur={() => setSummaryEditing(false)}
+                autoFocus
+                rows={3}
+                style={{
+                  width: "100%", fontFamily: font.ui, fontSize: 13, color: c.chalk, lineHeight: 1.6,
+                  background: "rgba(6,6,7,0.5)", border: `1px solid rgba(212,179,127,0.35)`,
+                  borderRadius: 8, padding: "8px 10px", outline: "none", resize: "vertical", boxSizing: "border-box",
+                }}
+              />
+              <p style={{ fontFamily: font.ui, fontSize: 10, color: c.stone, marginTop: 4 }}>
+                Tab/click away to save · used in the AI interviewer's opening question
+              </p>
+            </div>
+          ) : (
+            <div style={{ position: "relative", display: "flex", alignItems: "flex-start", gap: 8 }}>
+              <p style={{ flex: 1, fontFamily: font.ui, fontSize: 13, color: c.chalk, lineHeight: 1.6, display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden", margin: 0 }}>
+                {displayedSummary}
+              </p>
+              <button
+                type="button"
+                onClick={() => setSummaryEditing(true)}
+                aria-label="Edit summary"
+                title="Edit — if the AI got anything wrong"
+                style={{
+                  flexShrink: 0, background: "none", border: "none", padding: 2, cursor: "pointer",
+                  color: c.stone, transition: "color 0.15s",
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.color = c.gilt)}
+                onMouseLeave={(e) => (e.currentTarget.style.color = c.stone)}
+              >
+                <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              </button>
+            </div>
+          )}
           <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 10 }}>
             <svg aria-hidden="true" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={c.stone} strokeWidth="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
             <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>{fileName}</span>
-            <span style={{ color: c.stone, fontSize: 11 }}>·</span>
-            <button onClick={onReplaceFile} style={{ fontFamily: font.ui, fontSize: 11, color: c.gilt, background: "none", border: "none", cursor: "pointer", padding: 0, textDecoration: "underline" }}>Replace</button>
           </div>
         </div>
+        {/*
+          Consolidated from 3 retry paths (Replace + Re-analyze + Remove) down to 2
+          meaningful ones:
+            • Change resume — swaps the file AND re-runs AI (covers Replace + Re-analyze)
+            • Remove — nukes everything (with undo)
+          Re-analyze on the same file is rarely useful (same text → same output) and
+          confused users. Replace now handles "I want to try a different file".
+        */}
         <div className="ob-s1-header-actions" style={{ display: "flex", gap: 6, flexShrink: 0 }}>
-          <button onClick={onReanalyze}
+          <button onClick={onReplaceFile}
+            title="Upload a different resume and re-run the AI analysis"
             style={{ display: "flex", alignItems: "center", gap: 5, padding: "6px 12px", borderRadius: 7, background: c.graphite, border: `1px solid ${c.border}`, cursor: "pointer", fontFamily: font.ui, fontSize: 11, color: c.stone, transition: "all 0.2s" }}
             onMouseEnter={(e) => { e.currentTarget.style.borderColor = "rgba(245,242,237,0.15)"; e.currentTarget.style.color = c.ivory; }}
             onMouseLeave={(e) => { e.currentTarget.style.borderColor = c.border; e.currentTarget.style.color = c.stone; }}>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-            Re-analyze
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            Change resume
           </button>
           <button onClick={onRemove}
+            title="Remove the resume entirely — you can always re-upload later"
             style={{ display: "flex", alignItems: "center", gap: 5, padding: "6px 12px", borderRadius: 7, background: c.graphite, border: `1px solid ${c.border}`, cursor: "pointer", fontFamily: font.ui, fontSize: 11, color: c.stone, transition: "all 0.2s" }}
             onMouseEnter={(e) => { e.currentTarget.style.borderColor = "rgba(245,242,237,0.15)"; e.currentTarget.style.color = c.ivory; }}
             onMouseLeave={(e) => { e.currentTarget.style.borderColor = c.border; e.currentTarget.style.color = c.stone; }}>
@@ -514,10 +586,18 @@ export function ProfileReadyState({ aiProfile, resumeParsed, userName, fileName,
                 <svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5"><path d="M20 7h-3V4a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v3H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1V8a1 1 0 0 0-1-1z"/></svg>
                 Target Role
               </label>
+              {/*
+                Native <datalist> gives us autocomplete for free — no extra
+                JS, correct keyboard behavior, screen-reader friendly. Covers
+                #7 without pulling the heavier <AutocompleteInput /> component
+                which is designed for the full session-setup flow.
+              */}
               <input
                 id="ob-role" type="text" value={targetRole}
                 onChange={(e) => onTargetRoleChange(e.target.value)}
-                placeholder="Senior Product Designer"
+                placeholder="e.g. Senior Product Designer"
+                list="ob-role-suggestions"
+                autoComplete="organization-title"
                 style={{
                   width: "100%", padding: "10px 14px", borderRadius: 8,
                   background: c.graphite, border: `1.5px solid ${c.border}`,
@@ -527,6 +607,23 @@ export function ProfileReadyState({ aiProfile, resumeParsed, userName, fileName,
                 onFocus={(e) => { e.currentTarget.style.borderColor = c.gilt; }}
                 onBlur={(e) => { e.currentTarget.style.borderColor = c.border; }}
               />
+              <datalist id="ob-role-suggestions">
+                {[
+                  "Software Engineer", "Senior Software Engineer", "Staff Engineer",
+                  "Frontend Developer", "Backend Developer", "Full Stack Developer",
+                  "Product Manager", "Senior Product Manager", "Technical Product Manager",
+                  "Data Analyst", "Data Scientist", "Data Engineer",
+                  "UX Designer", "UI Designer", "Product Designer", "Senior Product Designer",
+                  "DevOps Engineer", "Site Reliability Engineer", "Cloud Architect",
+                  "Engineering Manager", "Tech Lead", "Director of Engineering",
+                  "Business Analyst", "Management Consultant", "Financial Analyst",
+                  "Sales Executive", "Marketing Manager", "Growth Manager",
+                  "Machine Learning Engineer", "AI Engineer", "Research Scientist",
+                  "QA Engineer", "Security Engineer", "Mobile Developer",
+                  "Chartered Accountant", "HR Manager", "Recruiter",
+                  "Intern", "Fresher", "Graduate Engineer Trainee",
+                ].map(r => <option key={r} value={r} />)}
+              </datalist>
             </div>
           )}
         </div>
@@ -558,10 +655,8 @@ export function ProfileReadyState({ aiProfile, resumeParsed, userName, fileName,
                 <p style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: aiProfile.resumeScore >= 50 ? c.sage : c.gilt, marginBottom: 4 }}>
                   {aiProfile.resumeScore >= 80 ? "Excellent" : aiProfile.resumeScore >= 65 ? "Good" : aiProfile.resumeScore >= 50 ? "Acceptable" : "Room to Grow"}
                 </p>
-                <p style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, lineHeight: 1.4 }}>
-                  {aiProfile.resumeScore >= 50
-                    ? "Your resume meets the minimum standard. You can proceed to interview practice."
-                    : "A few tweaks could make your resume stronger. Practice interviews will help too!"}
+                <p style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, lineHeight: 1.4, marginBottom: 4 }}>
+                  Average resumes score 40–65. Your score just tunes question difficulty — it doesn't limit what you can practice.
                 </p>
               </div>
             </div>
@@ -570,6 +665,34 @@ export function ProfileReadyState({ aiProfile, resumeParsed, userName, fileName,
           )}
         </div>
       </div>
+
+      {/*
+        Mobile-only: Show/Hide more insights toggle (#12).
+        Moved up here from below the profile grid so it's above the fold
+        on mobile — previously it lived after achievements + strengths +
+        gaps + career trajectory, meaning users had to scroll the entire
+        screen just to find out they could see more.
+      */}
+      <button
+        type="button"
+        className="ob-see-more"
+        onClick={() => setMobileExpanded(v => !v)}
+        aria-expanded={mobileExpanded}
+        style={{
+          display: "none",
+          width: "100%", padding: "10px 16px", marginTop: 4,
+          fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.gilt,
+          background: "rgba(212,179,127,0.04)", border: "1px solid rgba(212,179,127,0.18)",
+          borderRadius: 10, cursor: "pointer",
+          alignItems: "center", justifyContent: "center", gap: 6,
+        }}
+      >
+        {mobileExpanded ? "Hide insights" : "Show achievements, strengths & gaps"}
+        <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+          style={{ transform: mobileExpanded ? "rotate(180deg)" : "rotate(0)", transition: "transform 0.2s" }}>
+          <polyline points="6 9 12 15 18 9"/>
+        </svg>
+      </button>
 
       {/* Resume Improvement Suggestions */}
       {aiProfile.improvements && aiProfile.improvements.length > 0 && aiProfile.resumeScore != null && aiProfile.resumeScore < 50 && (
@@ -664,28 +787,6 @@ export function ProfileReadyState({ aiProfile, resumeParsed, userName, fileName,
           )}
         </div>
       </div>
-
-      {/* Mobile-only: Show/Hide more insights toggle */}
-      <button
-        type="button"
-        className="ob-see-more"
-        onClick={() => setMobileExpanded(v => !v)}
-        aria-expanded={mobileExpanded}
-        style={{
-          display: "none",
-          width: "100%", padding: "10px 16px", marginTop: 4,
-          fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.gilt,
-          background: "rgba(212,179,127,0.04)", border: "1px solid rgba(212,179,127,0.18)",
-          borderRadius: 10, cursor: "pointer",
-          alignItems: "center", justifyContent: "center", gap: 6,
-        }}
-      >
-        {mobileExpanded ? "Hide insights" : "Show achievements, strengths & gaps"}
-        <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-          style={{ transform: mobileExpanded ? "rotate(180deg)" : "rotate(0)", transition: "transform 0.2s" }}>
-          <polyline points="6 9 12 15 18 9"/>
-        </svg>
-      </button>
 
       {/* Career trajectory */}
       {aiProfile.careerTrajectory && (
@@ -1006,9 +1107,11 @@ export interface NavigationFooterProps {
   resumeScore?: number | null;
   /** Whether the user has a resume analyzed (enables the dual-CTA mode). */
   hasResume?: boolean;
+  /** #14 — inline quota hint shown under the primary CTA (e.g. "3 free interviews included") */
+  quotaHint?: string | null;
 }
 
-export function NavigationFooter({ isContinueDisabled, starting, saveStatus, onStart, onStartInterview, onGoToDashboard, resumeScore, hasResume }: NavigationFooterProps) {
+export function NavigationFooter({ isContinueDisabled, starting, saveStatus, onStart, onStartInterview, onGoToDashboard, resumeScore, hasResume, quotaHint }: NavigationFooterProps) {
   const dualMode = !!(hasResume && onStartInterview && onGoToDashboard);
   const lowScore = typeof resumeScore === "number" && resumeScore < 50;
 
@@ -1066,9 +1169,16 @@ export function NavigationFooter({ isContinueDisabled, starting, saveStatus, onS
               <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{ marginLeft: 2 }}><path d="M5 12h14m-6-6l6 6-6 6"/></svg>
             </button>
           </div>
-          {/* Hint line under the CTAs explaining what happens next */}
+          {/* Hint line under the CTAs — explains what happens next AND surfaces
+              the free-tier quota so users aren't blindsided at session 4 (#14). */}
           <p id="primary-cta-hint" style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, textAlign: "center", margin: 0, maxWidth: 480 }}>
             Takes ~10 minutes. You'll be asked role-specific questions by voice, then get scored feedback.
+            {quotaHint && (
+              <>
+                {" · "}
+                <span style={{ color: c.chalk, fontWeight: 500 }}>{quotaHint}</span>
+              </>
+            )}
           </p>
 
           {/* Low-score advisory */}
