@@ -13,7 +13,7 @@ const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 
 // Bump on any schema change to perQuestion/redFlags/etc. Old cached reports
 // with a different version are auto-invalidated on next view.
-const REPORT_VERSION = "mvp-4";
+const REPORT_VERSION = "mvp-5";
 
 /**
  * Try to read a cached report for this session. Returns null on any failure
@@ -144,6 +144,18 @@ interface EvaluateRequest {
   };
 }
 
+interface FollowUpQuestion {
+  question: string;   // the next question an interviewer would likely ask
+  why: string;        // why they'd ask it, given the candidate's answer
+}
+
+interface LengthVerdict {
+  verdict: "too-brief" | "right" | "too-long";
+  wordCount: number;
+  targetRange: string;  // e.g. "120-240 words"
+  note: string;         // one line, second-person
+}
+
 interface PerQuestionReport {
   idx: number;
   question: string;
@@ -151,6 +163,10 @@ interface PerQuestionReport {
   verdict: "strong" | "complete" | "partial" | "weak" | "skipped";
   score: number;
   starPresence: { S: boolean; T: boolean; A: boolean; R: boolean };
+  /** Interviewer's likely follow-up — adaptive-thinking training. */
+  likelyFollowUp: FollowUpQuestion | null;
+  /** Answer-length analysis against an interviewer's attention window. */
+  lengthVerdict: LengthVerdict | null;
   /**
    * Difficulty of the question *for the target role/level*. Warmup = opener,
    * standard = core loop question, hard = bar-raiser / senior-level probe.
@@ -219,9 +235,17 @@ interface CrossSessionInsight {
   delta?: number;               // signed pt change from last session, if numeric
 }
 
+interface StoryReuseFinding {
+  storyLabel: string;           // short label — e.g. "Catalyst IQ launch"
+  questionIndices: number[];    // perQuestion.idx list where the story was reused
+  concern: string;              // one sentence of coaching
+}
+
 interface SessionReport {
-  version: "mvp-4";
+  version: "mvp-5";
   overallScore: number;
+  /** LLM-self-reported 0-1 confidence in the overall score. Rendered as ±band. */
+  scoreConfidence: number;
   band: "strongHire" | "hire" | "leanHire" | "noHire" | "strongNoHire";
   verdict: string;
   wins: WinOrFix[];
@@ -239,6 +263,7 @@ interface SessionReport {
   };
   crossSessionInsights: CrossSessionInsight[];
   priorSessionCount: number;
+  storyReuseFindings: StoryReuseFinding[];
   model: string;
 }
 
@@ -601,8 +626,27 @@ Return a JSON object with EXACTLY this shape:
         "text": "<a synthesized 90/100 answer to THIS question, calibrated to the target role and company. You MAY invent realistic company names, metrics, and outcomes here — the purpose is to show what excellence looks like. 100-180 words. Use STAR structure with concrete quantification.>",
         "whatMakesItStrong": ["<reason 1, e.g. 'Leads with scope: 4M users affected'>", "<reason 2>", "<reason 3>"]
       },
+      "likelyFollowUp": {
+        "question": "<the next question a real interviewer would likely ask based on THIS candidate's answer to THIS question — specific, probing, one sentence>",
+        "why": "<one sentence on what the interviewer is trying to learn by asking that follow-up>"
+      },
+      "lengthVerdict": {
+        "verdict": "<too-brief|right|too-long>",
+        "wordCount": <integer word count of the candidate's answer>,
+        "targetRange": "<expected range for this type of question, e.g. '120-240 words' for behavioral or '180-360' for system design>",
+        "note": "<one line coaching, second-person>"
+      },
       "explanation": "<1-2 sentences on what worked/missed>"
     }
+  ],
+  "scoreConfidence": <0.0-1.0 — YOUR self-reported confidence in the overall score. Lower if transcript is short/noisy or if the candidate's intent was ambiguous. 0.8 is typical; 0.95 means very confident; 0.55 means treat score as indicative only.>,
+  "storyReuseFindings": [
+    // 0-3 items. Flag cases where the candidate used ONE story/project across
+    // MULTIPLE questions that test DIFFERENT competencies. Real interviews
+    // penalize this — it reads as a thin portfolio. Identify the story by a
+    // short label and list the perQuestion indices where it reappeared.
+    // Leave empty if no reuse detected.
+    { "storyLabel": "<short label, e.g. 'Catalyst IQ launch'>", "questionIndices": [<int>, <int>], "concern": "<one sentence>" }
   ],
   "crossSessionInsights": [
     // 0-4 items. ONLY populate if PRIOR SESSIONS context is present above —
@@ -634,12 +678,16 @@ CRITICAL RULES:
 - Citations must reference real character offsets inside answerText.
 - Keep verdict scores honest. Average mock interview scores 45-65.
 - For crossSessionInsights: if no PRIOR SESSIONS block is provided, return an empty array — do NOT fabricate history. If prior data IS provided, prefer persistent/regression callouts over improvements (users need correction more than praise).
+- likelyFollowUp must be specific to the candidate's actual answer, not generic. If they made a vague claim ("we improved performance"), the follow-up should probe scope ("by how much? on what metric?").
+- lengthVerdict.wordCount must be the actual word count of answerText. Target range depends on question type: behavioral 120-240, system design 180-360, opener 60-120, deep-dive probe 150-300.
+- storyReuseFindings only fires when the SAME underlying project/situation is used for DIFFERENT competencies (e.g. once for leadership, again for trade-offs). Two behavioral answers from different projects is fine; same project across two is a flag.
+- scoreConfidence should reflect transcript quality and answer clarity. Short interviews (<3 turns), garbled transcripts, or highly ambiguous answers warrant <0.7.
 - Return ONLY valid JSON — no markdown wrapping, no prose.`;
 
     const tLLM0 = Date.now();
     const result = await callLLM(
-      { prompt, temperature: 0.25, maxTokens: 6000, jsonMode: true },
-      28000,
+      { prompt, temperature: 0.25, maxTokens: 7500, jsonMode: true },
+      35000,
       { userId: auth.userId, endpoint: "evaluate-session" },
     );
     const tLLM = Date.now() - tLLM0;
@@ -686,9 +734,29 @@ CRITICAL RULES:
           .slice(0, 8)
       : [];
 
+    const rawConf = (parsed as Record<string, unknown>).scoreConfidence;
+    const scoreConfidence =
+      typeof rawConf === "number" && isFinite(rawConf)
+        ? Math.max(0, Math.min(1, Math.round(rawConf * 100) / 100))
+        : 0.8;
+
+    const rawStoryReuse = (parsed as Record<string, unknown>).storyReuseFindings;
+    const storyReuseFindings: StoryReuseFinding[] = Array.isArray(rawStoryReuse)
+      ? (rawStoryReuse as StoryReuseFinding[])
+          .filter((f) => f && typeof f.storyLabel === "string" && Array.isArray(f.questionIndices) && f.questionIndices.length >= 2 && typeof f.concern === "string")
+          .map((f) => ({
+            storyLabel: f.storyLabel.slice(0, 60),
+            questionIndices: f.questionIndices.filter((i) => typeof i === "number" && i >= 0).slice(0, 6),
+            concern: f.concern.slice(0, 200),
+          }))
+          .filter((f) => f.questionIndices.length >= 2)
+          .slice(0, 3)
+      : [];
+
     const report: SessionReport = {
-      version: "mvp-4",
+      version: "mvp-5",
       overallScore,
+      scoreConfidence,
       band: applyBands(overallScore, bands),
       verdict: typeof parsed.verdict === "string" ? parsed.verdict.slice(0, 200) : "",
       wins: filterGroundedItems(parsed.wins as WinOrFix[] | undefined, candidateCorpus),
@@ -702,17 +770,38 @@ CRITICAL RULES:
             .slice(0, 30)
             .map((pq) => {
               const validDifficulty = ["warmup", "standard", "hard"];
+              const validLength = ["too-brief", "right", "too-long"];
               const diff: PerQuestionReport["difficulty"] = validDifficulty.includes(pq.difficulty) ? pq.difficulty : "standard";
               const freqRaw = pq.frequencyPct;
               const freq: number | null =
                 typeof freqRaw === "number" && isFinite(freqRaw) && freqRaw >= 0 && freqRaw <= 100
                   ? Math.round(freqRaw)
                   : null;
+              // likelyFollowUp — accept only if both fields are non-empty strings
+              const fu = pq.likelyFollowUp;
+              const likelyFollowUp: FollowUpQuestion | null =
+                fu && typeof fu.question === "string" && fu.question.trim() && typeof fu.why === "string" && fu.why.trim()
+                  ? { question: fu.question.slice(0, 300), why: fu.why.slice(0, 200) }
+                  : null;
+              // lengthVerdict — sanity-check word count against actual answer
+              const lv = pq.lengthVerdict;
+              const actualWc = (pq.answerText || "").trim().split(/\s+/).filter(Boolean).length;
+              const lengthVerdict: LengthVerdict | null =
+                lv && validLength.includes(lv.verdict)
+                  ? {
+                      verdict: lv.verdict,
+                      wordCount: actualWc, // prefer our count; LLM's may drift
+                      targetRange: typeof lv.targetRange === "string" ? lv.targetRange.slice(0, 40) : "",
+                      note: typeof lv.note === "string" ? lv.note.slice(0, 140) : "",
+                    }
+                  : null;
               return {
                 ...pq,
                 difficulty: diff,
                 frequencyPct: freq,
                 frequencyNote: typeof pq.frequencyNote === "string" ? pq.frequencyNote.slice(0, 80) : "",
+                likelyFollowUp,
+                lengthVerdict,
               };
             })
         : [],
@@ -734,6 +823,7 @@ CRITICAL RULES:
           .slice(0, 4);
       })(),
       priorSessionCount: priorReports.length,
+      storyReuseFindings,
       model: result.model,
     };
 

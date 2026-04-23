@@ -14,6 +14,7 @@ import {
   type SessionReportWinFix,
   type SessionReportRedFlag,
   type SessionReportCrossSessionInsight,
+  type SessionReportStoryReuse,
   type SessionTrendPoint,
 } from "./dashboardData";
 import { getCohortAverage, type RoleFamily } from "./roleBenchmarks";
@@ -524,6 +525,12 @@ function QuestionCard({ q, index, sessionId }: { q: SessionReportPerQuestion; in
             </div>
           )}
 
+          {/* Length verdict — flags too-brief / too-long answers */}
+          {q.lengthVerdict && q.verdict !== "skipped" && <LengthVerdictBadge lv={q.lengthVerdict} />}
+
+          {/* Likely follow-up — adaptive-thinking training */}
+          {q.likelyFollowUp && q.verdict !== "skipped" && <LikelyFollowUp fu={q.likelyFollowUp} />}
+
           {/* Explanation */}
           {q.explanation && (
             <p style={{ fontFamily: font.ui, fontSize: 12, fontStyle: "italic", color: c.stone, lineHeight: 1.6, margin: 0 }}>
@@ -806,7 +813,20 @@ export const SessionReportView = memo(function SessionReportView({
                 <div style={{
                   fontFamily: font.mono, fontSize: 56, fontWeight: 700, color: c.ivory, lineHeight: 1,
                 }}>{report.overallScore}</div>
-                <div style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>/ 100</div>
+                <div style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>
+                  / 100
+                  {typeof report.scoreConfidence === "number" && report.scoreConfidence < 1 && (() => {
+                    // Confidence → ±band. 0.95 → ±2, 0.80 → ±6, 0.55 → ±12.
+                    const band = Math.round((1 - report.scoreConfidence) * 25);
+                    if (band <= 1) return null;
+                    return (
+                      <span
+                        title={`Score confidence: ${Math.round(report.scoreConfidence * 100)}%`}
+                        style={{ marginLeft: 6, color: c.stone, fontFamily: font.mono }}
+                      >· ±{band}</span>
+                    );
+                  })()}
+                </div>
                 {trend.length >= 2 && <Sparkline points={trend} currentId={session.id} />}
                 <button
                   onClick={onDownloadPdf}
@@ -912,6 +932,11 @@ export const SessionReportView = memo(function SessionReportView({
             <BiasPanel answers={report.perQuestion.map((q) => q.answerText || "")} />
           )}
 
+          {/* Story reuse — flags when one story was stretched across multiple competencies */}
+          {report.storyReuseFindings && report.storyReuseFindings.length > 0 && (
+            <StoryReuseSection findings={report.storyReuseFindings} />
+          )}
+
           {/* 4. Per-question deep-dive */}
           {report.perQuestion && report.perQuestion.length > 0 && (
             <div style={{ marginBottom: 20 }}>
@@ -994,6 +1019,115 @@ export const SessionReportView = memo(function SessionReportView({
     </div>
   );
 });
+
+/** Length verdict badge — inline pill rendered after the answer block. */
+function LengthVerdictBadge({ lv }: { lv: NonNullable<SessionReportPerQuestion["lengthVerdict"]> }) {
+  const meta = {
+    "too-brief": { label: "Too brief",  color: c.ember, bg: "rgba(196,112,90,0.06)" },
+    "right":     { label: "Right length", color: c.sage, bg: "rgba(122,158,126,0.06)" },
+    "too-long":  { label: "Too long",   color: c.ember, bg: "rgba(196,112,90,0.06)" },
+  }[lv.verdict];
+  return (
+    <div style={{
+      display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap",
+      padding: "8px 12px", background: meta.bg, border: `1px solid ${meta.color}33`, borderRadius: 8,
+    }}>
+      <span style={{
+        fontFamily: font.ui, fontSize: 10, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase",
+        color: meta.color,
+      }}>{meta.label}</span>
+      <span style={{ fontFamily: font.mono, fontSize: 11, color: c.chalk }}>
+        {lv.wordCount} words
+      </span>
+      {lv.targetRange && (
+        <span style={{ fontFamily: font.mono, fontSize: 10, color: c.stone }}>
+          · target {lv.targetRange}
+        </span>
+      )}
+      {lv.note && (
+        <span style={{ fontFamily: font.ui, fontSize: 11, color: c.chalk, flex: 1, minWidth: 200 }}>
+          {lv.note}
+        </span>
+      )}
+    </div>
+  );
+}
+
+/** Likely follow-up question — trains adaptive thinking. */
+function LikelyFollowUp({ fu }: { fu: NonNullable<SessionReportPerQuestion["likelyFollowUp"]> }) {
+  return (
+    <div style={{
+      background: "rgba(126,141,152,0.05)", border: `1px solid rgba(126,141,152,0.2)`,
+      borderRadius: 10, padding: "12px 14px",
+    }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
+        <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={c.slate} strokeWidth="2">
+          <path d="M9 5l7 7-7 7" />
+        </svg>
+        <span style={{
+          fontFamily: font.ui, fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase",
+          color: c.slate,
+        }}>They&apos;d likely ask next</span>
+      </div>
+      <p style={{ fontFamily: font.ui, fontSize: 13, color: c.ivory, lineHeight: 1.55, margin: 0 }}>
+        &ldquo;{fu.question}&rdquo;
+      </p>
+      {fu.why && (
+        <p style={{ fontFamily: font.ui, fontSize: 11, fontStyle: "italic", color: c.stone, lineHeight: 1.5, margin: "6px 0 0" }}>
+          {fu.why}
+        </p>
+      )}
+    </div>
+  );
+}
+
+/** Story-reuse callout section — flags when one story stretches across competencies. */
+function StoryReuseSection({ findings }: { findings: SessionReportStoryReuse[] }) {
+  return (
+    <div style={{
+      background: "rgba(212,179,127,0.04)", border: `1px solid rgba(212,179,127,0.22)`,
+      borderRadius: 14, padding: "18px 24px", marginBottom: 20,
+    }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+        <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="2">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+        </svg>
+        <h2 style={{ fontFamily: font.ui, fontSize: 14, fontWeight: 600, color: c.ivory, margin: 0 }}>
+          Story reuse detected
+        </h2>
+      </div>
+      <p style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, margin: "0 0 12px", lineHeight: 1.5 }}>
+        Interviewers flag candidates who stretch one project across many competencies. Rotate more of your portfolio in.
+      </p>
+      <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 8 }}>
+        {findings.map((f, i) => (
+          <li key={i} style={{
+            display: "flex", gap: 10, alignItems: "flex-start",
+            padding: "10px 12px", background: "rgba(212,179,127,0.05)",
+            border: `1px solid rgba(212,179,127,0.14)`, borderRadius: 8,
+          }}>
+            <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="2" style={{ flexShrink: 0, marginTop: 2 }}>
+              <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+            </svg>
+            <div style={{ flex: 1 }}>
+              <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
+                <span style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: c.ivory }}>
+                  {f.storyLabel}
+                </span>
+                <span style={{ fontFamily: font.mono, fontSize: 10, color: c.stone }}>
+                  used in {f.questionIndices.map((i) => `Q${i + 1}`).join(", ")}
+                </span>
+              </div>
+              <p style={{ fontFamily: font.ui, fontSize: 12, color: c.chalk, lineHeight: 1.55, margin: "3px 0 0" }}>
+                {f.concern}
+              </p>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
 
 const INSIGHT_META: Record<SessionReportCrossSessionInsight["kind"], { label: string; color: string; bg: string; icon: string }> = {
   improvement: { label: "Improved",   color: c.sage,  bg: "rgba(122,158,126,0.08)", icon: "↑" },

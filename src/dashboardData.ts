@@ -855,6 +855,24 @@ export async function analyzeResumeWithAI(resumeText: string, targetRole?: strin
 
 export type SessionReportBand = "strongHire" | "hire" | "leanHire" | "noHire" | "strongNoHire";
 
+export interface SessionReportFollowUp {
+  question: string;
+  why: string;
+}
+
+export interface SessionReportLengthVerdict {
+  verdict: "too-brief" | "right" | "too-long";
+  wordCount: number;
+  targetRange: string;
+  note: string;
+}
+
+export interface SessionReportStoryReuse {
+  storyLabel: string;
+  questionIndices: number[];
+  concern: string;
+}
+
 export interface SessionReportPerQuestion {
   idx: number;
   question: string;
@@ -865,6 +883,8 @@ export interface SessionReportPerQuestion {
   difficulty: "warmup" | "standard" | "hard";
   frequencyPct: number | null;
   frequencyNote: string;
+  likelyFollowUp: SessionReportFollowUp | null;
+  lengthVerdict: SessionReportLengthVerdict | null;
   restructured: {
     text: string;
     citations: Array<{ markerIdx: number; sourceStart: number; sourceEnd: number }>;
@@ -902,8 +922,9 @@ export interface SessionReportRedFlag {
 }
 
 export interface SessionReport {
-  version: "mvp-4";
+  version: "mvp-5";
   overallScore: number;
+  scoreConfidence: number;
   band: SessionReportBand;
   verdict: string;
   wins: SessionReportWinFix[];
@@ -932,6 +953,7 @@ export interface SessionReport {
   };
   crossSessionInsights: SessionReportCrossSessionInsight[];
   priorSessionCount: number;
+  storyReuseFindings: SessionReportStoryReuse[];
   model: string;
 }
 
