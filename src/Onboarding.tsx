@@ -463,6 +463,7 @@ export default function Onboarding() {
       {user && !user.emailVerified && <EmailVerificationBanner email={user.email} />}
       <style>{`
         @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.5; transform: scale(1.3); } }
         @keyframes progressFill { 0% { width: 0%; } 30% { width: 35%; } 60% { width: 65%; } 80% { width: 80%; } 100% { width: 92%; } }
         .ob-progress-bar { animation: progressFill 18s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
         @keyframes fadeUp { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
@@ -483,7 +484,15 @@ export default function Onboarding() {
           .ob-s1-header-text { max-width: 100% !important; }
           .ob-s1-header-actions { position: static !important; margin-top: 8px !important; }
           .ob-s1-name-score { grid-template-columns: 1fr !important; }
+          /* Mobile density: show only Skills by default; collapse rest behind details */
+          .ob-mobile-collapse { display: none !important; }
+          .ob-mobile-expanded .ob-mobile-collapse { display: flex !important; }
+          .ob-mobile-expanded .ob-card.ob-mobile-collapse { display: block !important; }
+          .ob-see-more { display: flex !important; }
+          .ob-footer-ctas { flex-direction: column-reverse !important; }
+          .ob-footer-ctas button { width: 100% !important; }
         }
+        @media (min-width: 769px) { .ob-see-more { display: none !important; } }
         @media (max-height: 700px) {
           .ob-content-area { padding-top: 16px !important; padding-bottom: 16px !important; }
         }
@@ -513,7 +522,15 @@ export default function Onboarding() {
             />
           )}
           {(resumeParsing || aiPhase === "analyzing") && aiPhase !== "done" && (
-            <ResumeLoadingState analysisStage={analysisStage} fileName={fileName} onCancel={handleCancelAnalysis} />
+            <ResumeLoadingState
+              analysisStage={analysisStage}
+              fileName={fileName}
+              onCancel={handleCancelAnalysis}
+              userName={userName}
+              onUserNameChange={setUserName}
+              targetRole={targetRole}
+              onTargetRoleChange={setTargetRole}
+            />
           )}
           {resumeParsed && !resumeParsing && aiPhase === "done" && (
             <ProfileReadyState
@@ -521,6 +538,7 @@ export default function Onboarding() {
               resumeParsed={resumeParsed} userName={userName}
               fileName={fileName} resumeText={resumeText} targetRole={targetRole}
               fileInputRef={fileInputRef} onUserNameChange={setUserName}
+              onTargetRoleChange={setTargetRole}
               onReanalyze={handleReanalyze} onRemove={handleRemoveResume}
               onReplaceFile={() => fileInputRef.current?.click()}
             />

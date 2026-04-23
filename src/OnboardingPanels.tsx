@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { c, font } from "./tokens";
 import type { ResumeProfile } from "./dashboardData";
 import type { ParsedResume } from "./resumeParser";
@@ -265,70 +265,143 @@ export interface ResumeLoadingStateProps {
   analysisStage: number;
   fileName: string;
   onCancel?: () => void;
+  /** Editable inputs surfaced during loading so the user can start filling them in
+   *  while the AI analyzes — removes the "all at once" feel on the final screen. */
+  userName?: string;
+  onUserNameChange?: (v: string) => void;
+  targetRole?: string;
+  onTargetRoleChange?: (v: string) => void;
 }
 
-export function ResumeLoadingState({ analysisStage, fileName, onCancel }: ResumeLoadingStateProps) {
+export function ResumeLoadingState({ fileName, onCancel, userName, onUserNameChange, targetRole, onTargetRoleChange }: ResumeLoadingStateProps) {
+  // Honest elapsed-time counter instead of fake staged progress
+  const [seconds, setSeconds] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setSeconds(s => s + 1), 1000);
+    return () => clearInterval(t);
+  }, []);
+
   return (
-    <>
-      <p style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 700, color: c.gilt, textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 12 }}>Step 1 — Your Experience</p>
-      <h2 style={{ fontFamily: font.display, fontSize: 32, fontWeight: 400, color: c.ivory, letterSpacing: "-0.025em", lineHeight: 1.2, marginBottom: 10 }}>
-        Upload your resume <span style={{ color: c.ember }}>*</span>
-      </h2>
-      <p style={{ fontFamily: font.ui, fontSize: 15, color: c.stone, lineHeight: 1.7, marginBottom: 28 }}>
-        Upload your resume to get personalized interview questions tailored to your experience.
-      </p>
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      {/* Heading */}
+      <div style={{ marginBottom: 8 }}>
+        <p style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 700, color: c.gilt, textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 12, display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ width: 6, height: 6, borderRadius: "50%", background: c.gilt, animation: "pulse 1.2s ease-in-out infinite" }} />
+          Analyzing your resume
+        </p>
+        <h2 style={{ fontFamily: font.display, fontSize: 32, fontWeight: 400, color: c.ivory, letterSpacing: "-0.025em", lineHeight: 1.2, marginBottom: 10 }}>
+          Your candidate profile
+        </h2>
+        <p style={{ fontFamily: font.ui, fontSize: 14, color: c.stone, lineHeight: 1.6 }}>
+          Reading your experience and matching it to interview questions
+          {seconds > 0 && (
+            <> · <span style={{ color: c.chalk, fontFamily: font.mono, fontSize: 12 }}>{seconds}s</span></>
+          )}
+          {seconds > 15 && (
+            <span style={{ color: c.stone, fontSize: 12 }}> · taking a bit longer than usual, hang tight</span>
+          )}
+        </p>
+      </div>
 
-      <div className="ob-card" style={{ borderRadius: 16, padding: "48px 32px", textAlign: "center", border: `1px solid rgba(245,242,237,0.06)` }}>
-        <div style={{ width: 60, height: 60, borderRadius: 16, margin: "0 auto 24px", background: "rgba(212,179,127,0.06)", border: "1px solid rgba(212,179,127,0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <div style={{ width: 24, height: 24, border: "2.5px solid rgba(212,179,127,0.2)", borderTopColor: c.gilt, borderRadius: "50%", animation: "spin 1s linear infinite" }} />
-        </div>
-        <h3 style={{ fontFamily: font.display, fontSize: 28, fontWeight: 400, color: c.ivory, marginBottom: 20, letterSpacing: "-0.02em" }}>Building your profile</h3>
-
-        <div style={{ maxWidth: 300, margin: "0 auto 20px", display: "flex", flexDirection: "column", gap: 10, textAlign: "left" }}>
-          {[
-            { label: "Extracting text", icon: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg> },
-            { label: "Identifying skills & experience", icon: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> },
-            { label: "Analyzing strengths & gaps", icon: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/></svg> },
-            { label: "Generating your profile", icon: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> },
-          ].map((stage, i) => {
-            const done = analysisStage > i;
-            const active = analysisStage === i;
-            return (
-              <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, opacity: active ? 1 : done ? 0.5 : 0.2, transition: "opacity 0.4s ease" }}>
-                <div style={{ width: 24, height: 24, borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, color: done ? c.sage : active ? c.gilt : c.stone, background: done ? "rgba(122,158,126,0.08)" : active ? "rgba(212,179,127,0.08)" : "transparent" }}>
-                  {done ? (
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-                  ) : active ? (
-                    <div style={{ width: 10, height: 10, border: "1.5px solid rgba(212,179,127,0.3)", borderTopColor: c.gilt, borderRadius: "50%", animation: "spin 1s linear infinite" }} />
-                  ) : stage.icon}
-                </div>
-                <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: active ? 500 : 400, color: done ? c.sage : active ? c.ivory : c.stone }}>{stage.label}</span>
-              </div>
-            );
-          })}
-        </div>
-
-        <div style={{ maxWidth: 300, margin: "0 auto", height: 3, borderRadius: 2, background: "rgba(245,242,237,0.06)", overflow: "hidden" }}>
-          <div className="ob-progress-bar" style={{ height: "100%", borderRadius: 2, background: `linear-gradient(90deg, ${c.gilt}, ${c.giltDark})` }} />
-        </div>
-        {fileName && (
-          <div style={{ display: "inline-flex", alignItems: "center", gap: 8, marginTop: 16, padding: "6px 14px", borderRadius: 8, background: c.graphite, border: `1px solid ${c.border}` }}>
-            <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={c.stone} strokeWidth="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-            <span style={{ fontFamily: font.ui, fontSize: 12, color: c.stone }}>{fileName}</span>
+      {/* Skeleton header matching ProfileReadyState layout */}
+      <div className="ob-card ob-s1-header" style={{ borderRadius: 14, padding: "20px 24px", border: `1px solid rgba(245,242,237,0.06)`, display: "flex", alignItems: "flex-start", gap: 20 }}>
+        <div className="ob-s1-header-text" style={{ flex: 1, minWidth: 0 }}>
+          <div className="skeleton-line" style={{ height: 24, width: "60%", marginBottom: 12 }} />
+          <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+            <div className="skeleton-line" style={{ height: 16, width: 60, borderRadius: 4 }} />
+            <div className="skeleton-line" style={{ height: 16, width: 50, borderRadius: 4 }} />
+            <div className="skeleton-line" style={{ height: 16, width: 80, borderRadius: 4 }} />
           </div>
-        )}
-        {onCancel && (
+          <div className="skeleton-line" style={{ height: 12, width: "100%", marginBottom: 6 }} />
+          <div className="skeleton-line" style={{ height: 12, width: "92%", marginBottom: 6 }} />
+          <div className="skeleton-line" style={{ height: 12, width: "78%", marginBottom: 10 }} />
+          {fileName && (
+            <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 10 }}>
+              <svg aria-hidden="true" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={c.stone} strokeWidth="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+              <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>{fileName}</span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Name + Role inputs available during analysis so user can fill while AI works */}
+      {(onUserNameChange || onTargetRoleChange) && (
+        <div className="ob-s1-name-score" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          {onUserNameChange && (
+            <div className="ob-card" style={{ borderRadius: 14, padding: "16px 20px" }}>
+              <label htmlFor="ob-name-early" style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: c.ivory, display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
+                <svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                Your Name <span style={{ color: c.ember }}>*</span>
+              </label>
+              <input
+                id="ob-name-early" type="text" value={userName || ""}
+                onChange={(e) => onUserNameChange(e.target.value)}
+                placeholder="What should the AI call you?"
+                autoComplete="name"
+                style={{
+                  width: "100%", padding: "10px 14px", borderRadius: 8,
+                  background: c.graphite, border: `1.5px solid ${c.border}`,
+                  color: c.ivory, fontFamily: font.ui, fontSize: 14,
+                  outline: "none", transition: "border-color 0.2s", boxSizing: "border-box",
+                }}
+                onFocus={(e) => { e.currentTarget.style.borderColor = c.gilt; }}
+                onBlur={(e) => { e.currentTarget.style.borderColor = c.border; }}
+              />
+              <p style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, marginTop: 4 }}>Fill this in while we analyze</p>
+            </div>
+          )}
+          {onTargetRoleChange && (
+            <div className="ob-card" style={{ borderRadius: 14, padding: "16px 20px" }}>
+              <label htmlFor="ob-role-early" style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: c.ivory, display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
+                <svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5"><path d="M20 7h-3V4a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v3H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1V8a1 1 0 0 0-1-1z"/></svg>
+                Target Role
+              </label>
+              <input
+                id="ob-role-early" type="text" value={targetRole || ""}
+                onChange={(e) => onTargetRoleChange(e.target.value)}
+                placeholder="e.g. Senior Product Designer"
+                style={{
+                  width: "100%", padding: "10px 14px", borderRadius: 8,
+                  background: c.graphite, border: `1.5px solid ${c.border}`,
+                  color: c.ivory, fontFamily: font.ui, fontSize: 14,
+                  outline: "none", transition: "border-color 0.2s", boxSizing: "border-box",
+                }}
+                onFocus={(e) => { e.currentTarget.style.borderColor = c.gilt; }}
+                onBlur={(e) => { e.currentTarget.style.borderColor = c.border; }}
+              />
+              <p style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, marginTop: 4 }}>We'll pre-fill from your resume if blank</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 3-column skeleton matching the profile grid */}
+      <div className="ob-s1-profile-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+        {[0, 1, 2].map(i => (
+          <div key={i} className="ob-card" style={{ borderRadius: 14, padding: "16px 20px" }}>
+            <div className="skeleton-line" style={{ height: 12, width: "50%", marginBottom: 14 }} />
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <div className="skeleton-line" style={{ height: 10, width: "100%" }} />
+              <div className="skeleton-line" style={{ height: 10, width: "82%" }} />
+              <div className="skeleton-line" style={{ height: 10, width: "68%" }} />
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {onCancel && (
+        <div style={{ textAlign: "center", marginTop: 4 }}>
           <button
             onClick={onCancel}
-            style={{ display: "block", margin: "20px auto 0", fontFamily: font.ui, fontSize: 13, color: c.stone, background: "none", border: "none", cursor: "pointer", padding: "6px 16px", borderRadius: 8, transition: "color 0.2s" }}
+            style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, background: "none", border: "none", cursor: "pointer", padding: "6px 14px", borderRadius: 8, transition: "color 0.2s" }}
             onMouseEnter={e => (e.currentTarget.style.color = c.ivory)}
             onMouseLeave={e => (e.currentTarget.style.color = c.stone)}
           >
-            Cancel
+            Cancel and start over
           </button>
-        )}
-      </div>
-    </>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -343,22 +416,33 @@ export interface ProfileReadyStateProps {
   targetRole: string;
   fileInputRef: React.RefObject<HTMLInputElement | null>;
   onUserNameChange: (v: string) => void;
+  onTargetRoleChange?: (v: string) => void;
   onReanalyze: () => void;
   onRemove: () => void;
   onReplaceFile: () => void;
 }
 
-export function ProfileReadyState({ aiProfile, resumeParsed, userName, fileName, resumeText: _resumeText, targetRole: _targetRole, fileInputRef: _fileInputRef, onUserNameChange, onReanalyze, onRemove, onReplaceFile }: ProfileReadyStateProps) {
+export function ProfileReadyState({ aiProfile, resumeParsed, userName, fileName, resumeText: _resumeText, targetRole, fileInputRef: _fileInputRef, onUserNameChange, onTargetRoleChange, onReanalyze, onRemove, onReplaceFile }: ProfileReadyStateProps) {
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const [mobileExpanded, setMobileExpanded] = useState(false);
+  useEffect(() => {
+    // Move screen-reader focus to the heading when profile reveals
+    headingRef.current?.focus?.();
+  }, []);
+
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+    <div className={mobileExpanded ? "ob-mobile-expanded" : ""} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       {/* Step heading */}
       <div style={{ marginBottom: 8 }}>
-        <p style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 700, color: c.gilt, textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 12 }}>Step 1 — Your Experience</p>
-        <h2 style={{ fontFamily: font.display, fontSize: 32, fontWeight: 400, color: c.ivory, letterSpacing: "-0.025em", lineHeight: 1.2, marginBottom: 10 }}>
+        <p style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 700, color: c.sage, textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 12, display: "flex", alignItems: "center", gap: 8 }}>
+          <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+          Profile ready
+        </p>
+        <h2 ref={headingRef} tabIndex={-1} style={{ fontFamily: font.display, fontSize: 32, fontWeight: 400, color: c.ivory, letterSpacing: "-0.025em", lineHeight: 1.2, marginBottom: 10, outline: "none" }}>
           Your candidate profile
         </h2>
-        <p style={{ fontFamily: font.ui, fontSize: 15, color: c.stone, lineHeight: 1.7 }}>
-          We've analyzed your resume. Review your profile below, then continue to set up your session.
+        <p style={{ fontFamily: font.ui, fontSize: 14, color: c.stone, lineHeight: 1.6 }}>
+          Review below, confirm your name, then start your first interview.
         </p>
       </div>
 
@@ -401,27 +485,50 @@ export function ProfileReadyState({ aiProfile, resumeParsed, userName, fileName,
 
       {/* Name field + Resume Score */}
       <div className="ob-s1-name-score" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-        {/* Editable Name */}
-        <div className="ob-card fade-up-1" style={{ borderRadius: 14, padding: "16px 20px" }}>
-          <label htmlFor="ob-name" style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: c.ivory, display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
-            <svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-            Your Name <span style={{ color: c.ember }}>*</span>
-          </label>
-          <input
-            id="ob-name" type="text" value={userName}
-            onChange={(e) => onUserNameChange(e.target.value)}
-            placeholder="Enter your name (used by AI interviewer)"
-            style={{
-              width: "100%", padding: "10px 14px", borderRadius: 8,
-              background: c.graphite, border: `1.5px solid ${!userName.trim() ? c.ember : c.border}`,
-              color: c.ivory, fontFamily: font.ui, fontSize: 14,
-              outline: "none", transition: "border-color 0.2s", boxSizing: "border-box",
-            }}
-            onFocus={(e) => { e.currentTarget.style.borderColor = c.gilt; }}
-            onBlur={(e) => { e.currentTarget.style.borderColor = !userName.trim() ? c.ember : c.border; }}
-          />
-          {!userName.trim() && <p style={{ fontFamily: font.ui, fontSize: 11, color: c.ember, marginTop: 4 }}>Name is required for the interview</p>}
-          <p style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, marginTop: 4 }}>The AI interviewer will address you by this name</p>
+        {/* Editable Name + Role (required for interview) */}
+        <div className="ob-card fade-up-1" style={{ borderRadius: 14, padding: "16px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
+          <div>
+            <label htmlFor="ob-name" style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: c.ivory, display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
+              <svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              Your Name <span style={{ color: c.ember }}>*</span>
+            </label>
+            <input
+              id="ob-name" type="text" value={userName}
+              onChange={(e) => onUserNameChange(e.target.value)}
+              placeholder="What should the AI call you?"
+              autoComplete="name"
+              style={{
+                width: "100%", padding: "10px 14px", borderRadius: 8,
+                background: c.graphite, border: `1.5px solid ${!userName.trim() ? c.ember : c.border}`,
+                color: c.ivory, fontFamily: font.ui, fontSize: 14,
+                outline: "none", transition: "border-color 0.2s", boxSizing: "border-box",
+              }}
+              onFocus={(e) => { e.currentTarget.style.borderColor = c.gilt; }}
+              onBlur={(e) => { e.currentTarget.style.borderColor = !userName.trim() ? c.ember : c.border; }}
+            />
+            {!userName.trim() && <p style={{ fontFamily: font.ui, fontSize: 11, color: c.ember, marginTop: 4 }}>Required — the AI interviewer uses this</p>}
+          </div>
+          {onTargetRoleChange && (
+            <div>
+              <label htmlFor="ob-role" style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: c.ivory, display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
+                <svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5"><path d="M20 7h-3V4a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v3H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1V8a1 1 0 0 0-1-1z"/></svg>
+                Target Role
+              </label>
+              <input
+                id="ob-role" type="text" value={targetRole}
+                onChange={(e) => onTargetRoleChange(e.target.value)}
+                placeholder="Senior Product Designer"
+                style={{
+                  width: "100%", padding: "10px 14px", borderRadius: 8,
+                  background: c.graphite, border: `1.5px solid ${c.border}`,
+                  color: c.ivory, fontFamily: font.ui, fontSize: 14,
+                  outline: "none", transition: "border-color 0.2s", boxSizing: "border-box",
+                }}
+                onFocus={(e) => { e.currentTarget.style.borderColor = c.gilt; }}
+                onBlur={(e) => { e.currentTarget.style.borderColor = c.border; }}
+              />
+            </div>
+          )}
         </div>
 
         {/* Resume Score */}
@@ -488,7 +595,9 @@ export function ProfileReadyState({ aiProfile, resumeParsed, userName, fileName,
         </div>
       )}
 
-      {/* 3-column grid: Skills | Achievements | Strengths & Gaps */}
+      {/* 3-column grid: Skills | Achievements | Strengths & Gaps
+          On mobile: Skills stays visible; Achievements/Strengths are hidden
+          behind the "Show more insights" toggle below. */}
       <div className="ob-s1-profile-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
         {aiProfile.topSkills && aiProfile.topSkills.length > 0 && (
           <div className="ob-card fade-up-1" style={{ borderRadius: 14, padding: "16px 20px" }}>
@@ -505,7 +614,7 @@ export function ProfileReadyState({ aiProfile, resumeParsed, userName, fileName,
         )}
 
         {aiProfile.keyAchievements && aiProfile.keyAchievements.length > 0 && (
-          <div className="ob-card fade-up-2" style={{ borderRadius: 14, padding: "16px 20px" }}>
+          <div className="ob-card fade-up-2 ob-mobile-collapse" style={{ borderRadius: 14, padding: "16px 20px" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
               <svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5"><path d="M12 15l-2 5-1-3-3-1 5-2"/><circle cx="12" cy="8" r="6"/></svg>
               <h4 style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: c.ivory, margin: 0 }}>Key Achievements</h4>
@@ -524,7 +633,7 @@ export function ProfileReadyState({ aiProfile, resumeParsed, userName, fileName,
         )}
 
         {/* Strengths & Gaps stacked */}
-        <div className="fade-up-3" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        <div className="fade-up-3 ob-mobile-collapse" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           {aiProfile.interviewStrengths && aiProfile.interviewStrengths.length > 0 && (
             <div className="ob-card" style={{ borderRadius: 14, padding: "16px 20px", flex: 1 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
@@ -556,9 +665,31 @@ export function ProfileReadyState({ aiProfile, resumeParsed, userName, fileName,
         </div>
       </div>
 
+      {/* Mobile-only: Show/Hide more insights toggle */}
+      <button
+        type="button"
+        className="ob-see-more"
+        onClick={() => setMobileExpanded(v => !v)}
+        aria-expanded={mobileExpanded}
+        style={{
+          display: "none",
+          width: "100%", padding: "10px 16px", marginTop: 4,
+          fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.gilt,
+          background: "rgba(212,179,127,0.04)", border: "1px solid rgba(212,179,127,0.18)",
+          borderRadius: 10, cursor: "pointer",
+          alignItems: "center", justifyContent: "center", gap: 6,
+        }}
+      >
+        {mobileExpanded ? "Hide insights" : "Show achievements, strengths & gaps"}
+        <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+          style={{ transform: mobileExpanded ? "rotate(180deg)" : "rotate(0)", transition: "transform 0.2s" }}>
+          <polyline points="6 9 12 15 18 9"/>
+        </svg>
+      </button>
+
       {/* Career trajectory */}
       {aiProfile.careerTrajectory && (
-        <div className="ob-card fade-up-3" style={{ borderRadius: 12, padding: "12px 18px", display: "flex", alignItems: "center", gap: 10, border: `1px solid rgba(245,242,237,0.04)` }}>
+        <div className="ob-card fade-up-3 ob-mobile-collapse" style={{ borderRadius: 12, padding: "12px 18px", display: "flex", alignItems: "center", gap: 10, border: `1px solid rgba(245,242,237,0.04)` }}>
           <svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="1.5" style={{ flexShrink: 0 }}><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
           <span style={{ fontFamily: font.ui, fontSize: 12, color: c.chalk, lineHeight: 1.4 }}>{aiProfile.careerTrajectory}</span>
         </div>
@@ -902,38 +1033,43 @@ export function NavigationFooter({ isContinueDisabled, starting, saveStatus, onS
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12, marginTop: 40 }}>
       {dualMode ? (
         <>
-          {/* Primary: Start First Interview (recommended) */}
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
+          {/* Primary + Secondary CTAs side-by-side (stack on mobile via .ob-footer-ctas) */}
+          <div className="ob-footer-ctas" style={{ display: "flex", alignItems: "stretch", gap: 12, flexWrap: "wrap", justifyContent: "center" }}>
+            {/* Secondary: Skip to Dashboard */}
+            <button
+              onClick={onGoToDashboard}
+              disabled={primaryDisabled}
+              style={{ ...secondaryBtnStyle, padding: "14px 24px", fontSize: 14 }}
+              onMouseEnter={(e) => { if (!primaryDisabled) e.currentTarget.style.borderColor = "rgba(245,242,237,0.3)"; }}
+              onMouseLeave={(e) => { if (!primaryDisabled) e.currentTarget.style.borderColor = "rgba(245,242,237,0.15)"; }}
+              title="Skip the first interview — go straight to the dashboard"
+            >
+              Skip for now
+              <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, marginLeft: 4 }}>(go to dashboard)</span>
+            </button>
+
+            {/* Primary: Start First Interview (recommended) */}
             <button
               onClick={onStartInterview}
               disabled={primaryDisabled}
-              style={primaryBtnStyle}
-              onMouseEnter={(e) => { if (!primaryDisabled) { e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 12px 32px rgba(212,179,127,0.3)"; } }}
+              style={{ ...primaryBtnStyle, padding: "14px 32px", fontSize: 15 }}
+              onMouseEnter={(e) => { if (!primaryDisabled) { e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 12px 32px rgba(212,179,127,0.35)"; } }}
               onMouseLeave={(e) => { if (!primaryDisabled) { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 8px 24px rgba(212,179,127,0.2)"; } }}
+              aria-describedby="primary-cta-hint"
             >
               {starting ? (
                 <div style={{ width: 16, height: 16, border: "2.5px solid rgba(212,179,127,0.3)", borderTopColor: c.gilt, borderRadius: "50%", animation: "spin 1s linear infinite" }} />
               ) : (
                 <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polygon points="5,3 19,12 5,21"/></svg>
               )}
-              {starting ? "Setting up..." : "Start your first interview"}
+              {starting ? "Setting up..." : "Start first interview — free"}
+              <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{ marginLeft: 2 }}><path d="M5 12h14m-6-6l6 6-6 6"/></svg>
             </button>
-            <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.gilt, letterSpacing: "0.06em", textTransform: "uppercase" }}>
-              Recommended · Free
-            </span>
           </div>
-
-          {/* Secondary: Go to Dashboard */}
-          <button
-            onClick={onGoToDashboard}
-            disabled={primaryDisabled}
-            style={secondaryBtnStyle}
-            onMouseEnter={(e) => { if (!primaryDisabled) e.currentTarget.style.borderColor = "rgba(245,242,237,0.3)"; }}
-            onMouseLeave={(e) => { if (!primaryDisabled) e.currentTarget.style.borderColor = "rgba(245,242,237,0.15)"; }}
-          >
-            Go to Dashboard
-            <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M5 12h14m-6-6l6 6-6 6"/></svg>
-          </button>
+          {/* Hint line under the CTAs explaining what happens next */}
+          <p id="primary-cta-hint" style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, textAlign: "center", margin: 0, maxWidth: 480 }}>
+            Takes ~10 minutes. You'll be asked role-specific questions by voice, then get scored feedback.
+          </p>
 
           {/* Low-score advisory */}
           {lowScore && (
