@@ -67,7 +67,12 @@ function sendError(report: ErrorReport, originalError?: Error | unknown) {
       headers: { "Content-Type": "application/json" },
       body: payload,
       keepalive: true,
-    }).catch(() => {});
+    }).catch(err => {
+      // Don't create a feedback loop — console only
+      if (typeof console !== "undefined") {
+        console.warn("[errorReporter] log endpoint failed:", err?.message || err);
+      }
+    });
   }
 
   // 2. Sentry (optional, opt-in via NEXT_PUBLIC_SENTRY_DSN)

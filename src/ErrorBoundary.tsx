@@ -35,7 +35,11 @@ export default class ErrorBoundary extends Component<Props, State> {
         url: window.location.href,
         timestamp: new Date().toISOString(),
       }),
-    }).catch(() => {});
+    }).catch(err => {
+      // The error-log endpoint itself failed — log to console only (don't re-throw into
+      // the error boundary and create a feedback loop).
+      if (typeof console !== "undefined") console.warn("[ErrorBoundary] log endpoint failed:", err?.message || err);
+    });
   }
 
   handleReset = () => {
@@ -174,7 +178,11 @@ export class RouteErrorBoundary extends Component<{ children: ReactNode }, Route
         url: window.location.href,
         timestamp: new Date().toISOString(),
       }),
-    }).catch(() => {});
+    }).catch(err => {
+      // The error-log endpoint itself failed — log to console only (don't re-throw into
+      // the error boundary and create a feedback loop).
+      if (typeof console !== "undefined") console.warn("[ErrorBoundary] log endpoint failed:", err?.message || err);
+    });
   }
 
   render() {
@@ -243,7 +251,11 @@ export class SectionErrorBoundary extends Component<{ children: ReactNode; label
         url: window.location.href,
         timestamp: new Date().toISOString(),
       }),
-    }).catch(() => {});
+    }).catch(err => {
+      // The error-log endpoint itself failed — log to console only (don't re-throw into
+      // the error boundary and create a feedback loop).
+      if (typeof console !== "undefined") console.warn("[ErrorBoundary] log endpoint failed:", err?.message || err);
+    });
   }
 
   render() {
