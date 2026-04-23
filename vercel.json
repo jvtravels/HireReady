@@ -24,7 +24,7 @@
     },
     {
       "path": "/api/send-abandonment-emails",
-      "schedule": "30 * * * *"
+      "schedule": "30 11 * * *"
     }
   ]
 }
