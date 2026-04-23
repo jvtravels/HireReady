@@ -20,6 +20,12 @@ export async function generateMetadata({
   };
 }
 
+// Each blog post — CDN cached, daily revalidate.
+export const dynamic = "force-static";
+export const revalidate = 86400;
+// Incrementally statically generate slugs on first visit (ISR fallback).
+export const dynamicParams = true;
+
 export default function Page() {
   return <BlogPage />;
 }

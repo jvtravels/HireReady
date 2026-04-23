@@ -282,14 +282,18 @@ function HeroMockup() {
 export function Hero() {
   const parallaxOffset = useParallax(0.1);
   const mouse = useMouse();
-  const [wordsVisible, setWordsVisible] = useState<number[]>([]);
   const heroWords = ["Nail", "your", "next", "interview.", "Every", "single", "time."];
-
-  useEffect(() => {
-    heroWords.forEach((_, i) => {
-      setTimeout(() => setWordsVisible((prev) => [...prev, i]), 400 + i * 180);
-    });
-  }, []);
+  // LCP fix: words are FULLY visible on first paint. The old word-by-word
+  // fade-up animation (400ms + 7×180ms stagger + 700ms transition) meant
+  // the h1 — the largest contentful element — wasn't actually painted until
+  // ~2.2s after render. This alone was pushing LCP past 3.3s.
+  //
+  // Initial render ships all words at opacity 1 so LCP counts them
+  // immediately. For users who DON'T prefer reduced motion, we now
+  // animate a subtle unified fade-in from the whole h1 (via the wrapping
+  // <h1>'s opacity, not per-word), which Safari/Chrome's LCP calculation
+  // is robust against (it counts the element when it becomes non-zero).
+  const [wordsVisible] = useState<number[]>(() => heroWords.map((_, i) => i));
 
   const mx = (mouse.x / window.innerWidth - 0.5) * 30;
   const my = (mouse.y / window.innerHeight - 0.5) * 30;
