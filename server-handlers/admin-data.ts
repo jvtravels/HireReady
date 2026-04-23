@@ -122,7 +122,11 @@ function supa(path: string, opts?: RequestInit) {
 
 async function fetchJSON<T = unknown>(path: string): Promise<T[]> {
   const res = await supa(path);
-  if (!res.ok) return [];
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    console.error(`[admin-data] supabase query failed: ${path.slice(0, 120)} → HTTP ${res.status}: ${body.slice(0, 200)}`);
+    return [];
+  }
   const data = await res.json();
   return Array.isArray(data) ? data : [];
 }
