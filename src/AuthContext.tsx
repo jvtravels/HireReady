@@ -348,6 +348,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signingUpRef = useRef(false);
   // Prevent race condition: onAuthStateChange should not override getSession result during init
   const initialSessionRestoredRef = useRef(false);
+  // Suppresses the "session active on another device" kick-out during the
+  // brief window between a fresh login and the device-token updateUser
+  // landing on Supabase. Without this, the user who just logged in is
+  // signed out immediately because the session snapshot still carries the
+  // previous device's token while our localStorage already has the new
+  // one. Login/signup set this to true; it clears after a few seconds.
+  const justAuthenticatedRef = useRef(false);
 
   // Clean up legacy localStorage cache from previous versions
   useEffect(() => {
@@ -499,10 +506,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             const profile = await getProfile(session.user.id);
             if (profile) {
               setUser(profileToUser(profile, session));
-              // Single-device check on session restore
+              // Single-device check on session restore. Semantics:
+              //   - localToken MATCHES serverToken → this device is still
+              //     the active one. Keep the session.
+              //   - localToken is missing → first login after an upgrade or
+              //     on a device that never had one. Adopt the server token.
+              //   - localToken differs from serverToken → someone ELSE
+              //     logged in more recently on another device, invalidating
+              //     this device. That's exactly what single-device
+              //     enforcement is supposed to do: sign THIS device out.
+              // Skip the check entirely during the grace window after a
+              // fresh login/signup on THIS device (the updateUser that
+              // wrote the new token is still in flight, so the session
+              // snapshot's active_device_token is stale).
               const localToken = getStoredDeviceToken();
               const serverToken = session.user.user_metadata?.active_device_token;
-              if (localToken && serverToken && localToken !== serverToken) {
+              if (!justAuthenticatedRef.current && localToken && serverToken && localToken !== serverToken) {
                 console.warn("[auth] session active on another device — signing out");
                 logAuditEvent("single_device_enforcement", { userId: session.user.id });
                 setUser(null);
@@ -600,6 +619,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (event === "SIGNED_IN" && !getStoredDeviceToken()) {
             const newDeviceToken = generateDeviceToken();
             storeDeviceToken(newDeviceToken);
+            // Grace window: the downstream mismatch check below would
+            // otherwise see local=newToken but session cache=oldToken (or
+            // undefined) and sign out the just-authenticated user.
+            justAuthenticatedRef.current = true;
+            setTimeout(() => { justAuthenticatedRef.current = false; }, 10_000);
             client.auth.updateUser({ data: { active_device_token: newDeviceToken } }).catch(err => console.warn("[auth] updateUser(device_token) failed:", err?.message));
           }
           // Persist Google provider token for Calendar API access
@@ -804,7 +828,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     clearLoginLockout();
     storeSessionFingerprint();
 
-    // Single-device enforcement: generate a new device token and save to user_metadata
+    // Single-device enforcement: generate a new device token and save to
+    // user_metadata. Set the grace-window flag so the upcoming
+    // onAuthStateChange/SIGNED_IN handler doesn't mistake the stale cached
+    // token on the session snapshot for a competing device.
+    justAuthenticatedRef.current = true;
+    setTimeout(() => { justAuthenticatedRef.current = false; }, 10_000);
     const existingServerToken = data?.user?.user_metadata?.active_device_token;
     const deviceToken = generateDeviceToken();
     storeDeviceToken(deviceToken);
