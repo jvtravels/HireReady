@@ -34,11 +34,19 @@ interface PerQuestionReport {
   explanation: string;
 }
 
+interface WinOrFix {
+  text: string;         // imperative for fixes, declarative for wins
+  questionIdx: number;  // which perQuestion.idx this relates to, -1 if cross-cutting
+  quote: string;        // verbatim substring of the candidate's words (validated)
+}
+
 interface SessionReport {
   version: "mvp-1";
   overallScore: number;
   band: "strongHire" | "hire" | "leanHire" | "noHire" | "strongNoHire";
   verdict: string;
+  wins: WinOrFix[];
+  fixes: WinOrFix[];
   coreMetrics: { fillerPerMin: number; silenceRatio: number; paceWpm: number; energy: number };
   skills: Array<{ name: string; score: number }>;
   perQuestion: PerQuestionReport[];
@@ -98,6 +106,22 @@ function computeCoreMetrics(
     paceWpm: Math.round(words.length / speakingMinutes),
     energy,
   };
+}
+
+/**
+ * Strip LLM-returned wins/fixes whose quotes can't be verified against the
+ * candidate's own transcript. Cross-cutting fixes (questionIdx=-1) are allowed
+ * without a quote since they apply to delivery, not a specific answer.
+ */
+function filterGroundedItems(items: WinOrFix[] | undefined, candidateCorpus: string): WinOrFix[] {
+  if (!Array.isArray(items)) return [];
+  return items
+    .filter((w) => w && typeof w.text === "string" && w.text.trim().length > 0)
+    .filter((w) => {
+      if (w.questionIdx === -1 || !w.quote) return true; // cross-cutting
+      return typeof w.quote === "string" && candidateCorpus.includes(w.quote.trim());
+    })
+    .slice(0, 3);
 }
 
 /** Validate LLM-returned report: every quote/citation must trace to real transcript text. */
@@ -188,7 +212,18 @@ ${skillAxes.map((s) => `- ${s}`).join("\n")}
 Return a JSON object with EXACTLY this shape:
 {
   "overallScore": <0-100 integer, role-weighted composite of skills>,
-  "verdict": "<one sentence, ≤140 chars, second-person>",
+  "verdict": "<one sentence, ≤140 chars, second-person, specific, honest>",
+  "wins": [
+    // 1-3 items. Concrete things the candidate did well. Each "quote" MUST be a verbatim
+    // substring of one of their own answers. "text" is a short declarative sentence.
+    { "text": "...", "questionIdx": <perQuestion idx>, "quote": "..." }
+  ],
+  "fixes": [
+    // 1-3 items. Imperative phrasing ("Quantify the result with a % or $"). Each "quote"
+    // MUST be a verbatim substring of one of the candidate's answers. If the fix applies
+    // cross-question (e.g. pace), set questionIdx=-1 and quote="".
+    { "text": "...", "questionIdx": <perQuestion idx or -1>, "quote": "..." }
+  ],
   "skills": [${skillAxes.map((s) => `{"name":"${s}","score":<0-100>}`).join(",")}],
   "perQuestion": [
     {
@@ -231,11 +266,14 @@ CRITICAL RULES:
 
     // Build final report — merge deterministic coreMetrics with LLM output
     const overallScore = typeof parsed.overallScore === "number" ? Math.max(0, Math.min(100, Math.round(parsed.overallScore))) : 50;
+    const candidateCorpus = transcript.filter((t) => t.role === "candidate").map((t) => t.text).join("\n");
     const report: SessionReport = {
       version: "mvp-1",
       overallScore,
       band: scoreToBand(overallScore),
       verdict: typeof parsed.verdict === "string" ? parsed.verdict.slice(0, 200) : "",
+      wins: filterGroundedItems(parsed.wins as WinOrFix[] | undefined, candidateCorpus),
+      fixes: filterGroundedItems(parsed.fixes as WinOrFix[] | undefined, candidateCorpus),
       coreMetrics,
       skills: Array.isArray(parsed.skills) ? parsed.skills.slice(0, 8) : [],
       perQuestion: Array.isArray(parsed.perQuestion) ? (parsed.perQuestion as PerQuestionReport[]).slice(0, 30) : [],

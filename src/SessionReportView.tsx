@@ -8,6 +8,7 @@ import {
   type SessionReport,
   type SessionReportBand,
   type SessionReportPerQuestion,
+  type SessionReportWinFix,
 } from "./dashboardData";
 
 /* ─── MVP Results Report view ───────────────────────────────────────
@@ -78,6 +79,50 @@ function MetricTile({ label, value, unit, target, good }: {
         {unit && <span style={{ fontFamily: font.ui, fontSize: 12, color: c.stone }}>{unit}</span>}
       </div>
       <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>Target: {target}</span>
+    </div>
+  );
+}
+
+/** Compact list of wins or fixes with a colored side-rail — used in the hero. */
+function WinFixList({ items, label, tone }: {
+  items: SessionReportWinFix[]; label: string; tone: "win" | "fix";
+}) {
+  const accent = tone === "win" ? c.sage : c.gilt;
+  const bg = tone === "win" ? "rgba(122,158,126,0.05)" : "rgba(212,179,127,0.05)";
+  const border = tone === "win" ? "rgba(122,158,126,0.18)" : "rgba(212,179,127,0.18)";
+  return (
+    <div style={{
+      background: bg, border: `1px solid ${border}`, borderRadius: 10,
+      padding: "12px 14px", display: "flex", flexDirection: "column", gap: 8,
+    }}>
+      <span style={{
+        fontFamily: font.ui, fontSize: 10, fontWeight: 700, color: accent,
+        letterSpacing: "0.08em", textTransform: "uppercase",
+      }}>{label}</span>
+      <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 8 }}>
+        {items.map((item, i) => (
+          <li key={i} style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+            <span aria-hidden="true" style={{
+              width: 4, alignSelf: "stretch", borderRadius: 2, background: accent, flexShrink: 0, marginTop: 3, marginBottom: 3,
+            }} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{ fontFamily: font.ui, fontSize: 13, color: c.ivory, lineHeight: 1.5, margin: 0 }}>
+                {item.text}
+                {item.questionIdx >= 0 && (
+                  <span style={{ fontFamily: font.mono, fontSize: 10, color: c.stone, marginLeft: 6 }}>
+                    Q{item.questionIdx + 1}
+                  </span>
+                )}
+              </p>
+              {item.quote && (
+                <p style={{ fontFamily: font.ui, fontSize: 11, fontStyle: "italic", color: c.stone, lineHeight: 1.5, margin: "3px 0 0" }}>
+                  “{item.quote.length > 120 ? item.quote.slice(0, 120) + "…" : item.quote}”
+                </p>
+              )}
+            </div>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
@@ -360,6 +405,30 @@ export const SessionReportView = memo(function SessionReportView({
                 <div style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, marginTop: 4 }}>/ 100</div>
               </div>
             </div>
+
+            {/* Top wins + fixes — two columns on desktop, stack on mobile */}
+            {(report.wins?.length > 0 || report.fixes?.length > 0) && (
+              <div style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+                gap: 14, marginTop: 20,
+              }}>
+                {report.wins?.length > 0 && (
+                  <WinFixList
+                    items={report.wins}
+                    label="What worked"
+                    tone="win"
+                  />
+                )}
+                {report.fixes?.length > 0 && (
+                  <WinFixList
+                    items={report.fixes}
+                    label="What to fix"
+                    tone="fix"
+                  />
+                )}
+              </div>
+            )}
           </div>
 
           {/* 2. Core Metrics Strip */}

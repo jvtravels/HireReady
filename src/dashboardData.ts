@@ -869,11 +869,19 @@ export interface SessionReportPerQuestion {
   explanation: string;
 }
 
+export interface SessionReportWinFix {
+  text: string;
+  questionIdx: number; // -1 for cross-cutting
+  quote: string;
+}
+
 export interface SessionReport {
   version: "mvp-1";
   overallScore: number;
   band: SessionReportBand;
   verdict: string;
+  wins: SessionReportWinFix[];
+  fixes: SessionReportWinFix[];
   coreMetrics: { fillerPerMin: number; silenceRatio: number; paceWpm: number; energy: number };
   skills: Array<{ name: string; score: number }>;
   perQuestion: SessionReportPerQuestion[];
