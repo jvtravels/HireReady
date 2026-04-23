@@ -42,11 +42,52 @@ export function getSupabaseSync(): SupabaseClient {
 
 /* ─── Auth Token Helper ─── */
 
+/**
+ * Read the access token straight out of the localStorage slot Supabase
+ * writes to on every auth event. Key format is
+ *   sb-<project-ref>-auth-token
+ * where <project-ref> is the subdomain of NEXT_PUBLIC_SUPABASE_URL.
+ *
+ * We need a synchronous fallback because browser extensions (Jam.dev,
+ * Loom, Hotjar) that wrap window.fetch and/or the service worker can
+ * cause supabase-js's own `getSession()` to hang indefinitely — it
+ * awaits an internal fetch that never resolves. The network call isn't
+ * strictly required: the session object (including the JWT) is always
+ * persisted to localStorage. Reading it directly gives us a working
+ * Authorization header in microseconds even when getSession() is
+ * frozen.
+ */
+function getTokenFromLocalStorage(): string | null {
+  try {
+    if (!supabaseUrl) return null;
+    const ref = new URL(supabaseUrl).hostname.split(".")[0];
+    if (!ref) return null;
+    const raw = localStorage.getItem(`sb-${ref}-auth-token`);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { access_token?: string; currentSession?: { access_token?: string } };
+    // supabase-js v2 stores { access_token, refresh_token, ... } at the top level.
+    // Older/custom storage adapters sometimes nest under currentSession.
+    return parsed.access_token || parsed.currentSession?.access_token || null;
+  } catch {
+    return null;
+  }
+}
+
 export async function getAuthToken(): Promise<string | null> {
   if (!supabaseConfigured) return null;
-  const client = await getSupabase();
-  const { data: { session } } = await client.auth.getSession();
-  return session?.access_token || null;
+  // Fast path: grab the token from localStorage without awaiting the
+  // Supabase client. Only fall through to the async client-based path
+  // when the local copy is missing entirely.
+  const localToken = getTokenFromLocalStorage();
+  if (localToken) return localToken;
+  try {
+    const client = await getSupabase();
+    const { data: { session } } = await client.auth.getSession();
+    return session?.access_token || null;
+  } catch (err) {
+    console.warn("[getAuthToken] getSession failed, proceeding unauthenticated:", err instanceof Error ? err.message : err);
+    return null;
+  }
 }
 
 export async function authHeaders(): Promise<Record<string, string>> {
