@@ -882,6 +882,13 @@ export interface SessionReportWinFix {
 export type SessionReportRedFlagType =
   | "blame" | "missing_result" | "we_without_i" | "scope_drift" | "contradiction" | "vague";
 
+export interface SessionReportCrossSessionInsight {
+  kind: "improvement" | "regression" | "persistent";
+  text: string;
+  metric?: string;
+  delta?: number;
+}
+
 export interface SessionReportRedFlag {
   type: SessionReportRedFlagType;
   severity: "high" | "medium" | "low";
@@ -892,7 +899,7 @@ export interface SessionReportRedFlag {
 }
 
 export interface SessionReport {
-  version: "mvp-2";
+  version: "mvp-3";
   overallScore: number;
   band: SessionReportBand;
   verdict: string;
@@ -920,6 +927,8 @@ export interface SessionReport {
     note: string;
     bands: { strongHire: number; hire: number; leanHire: number; noHire: number };
   };
+  crossSessionInsights: SessionReportCrossSessionInsight[];
+  priorSessionCount: number;
   model: string;
 }
 

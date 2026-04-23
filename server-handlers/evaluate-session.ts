@@ -13,7 +13,7 @@ const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 
 // Bump on any schema change to perQuestion/redFlags/etc. Old cached reports
 // with a different version are auto-invalidated on next view.
-const REPORT_VERSION = "mvp-2";
+const REPORT_VERSION = "mvp-3";
 
 /**
  * Try to read a cached report for this session. Returns null on any failure
@@ -74,6 +74,59 @@ async function saveCachedReport(sessionId: string, userId: string, report: Sessi
     }
   } catch (err) {
     console.error(`[evaluate-session] cache write failed: ${err instanceof Error ? err.message : String(err)}`);
+  }
+}
+
+/**
+ * Load the user's 3 most-recent prior reports (excluding the current session)
+ * so the LLM can reference longitudinal patterns — "you've improved on
+ * quantification" or "pace is a persistent issue". We only ship the compact
+ * coaching signal, NOT transcripts, for token economy + privacy.
+ */
+interface PriorReportSummary {
+  sessionId: string;
+  daysAgo: number;
+  overallScore: number;
+  band: string;
+  topFixes: string[];          // just the fix text, for recurrence matching
+  topWins: string[];
+  coreMetrics: { fillerPerMin: number; silenceRatio: number; paceWpm: number; energy: number };
+  weakestSkills: Array<{ name: string; score: number }>;
+}
+
+async function loadPriorReports(currentSessionId: string, userId: string): Promise<PriorReportSummary[]> {
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) return [];
+  try {
+    const q = `sessions?user_id=eq.${encodeURIComponent(userId)}&id=neq.${encodeURIComponent(currentSessionId)}&report_json=not.is.null&order=created_at.desc&limit=3&select=id,created_at,report_json`;
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/${q}`, {
+      headers: {
+        apikey: SUPABASE_SERVICE_KEY,
+        Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`,
+        Accept: "application/json",
+      },
+    });
+    if (!res.ok) return [];
+    const rows = (await res.json()) as Array<{ id: string; created_at: string; report_json: SessionReport }>;
+    const now = Date.now();
+    return rows
+      .filter((r) => r.report_json && typeof r.report_json === "object")
+      .map((r) => {
+        const rp = r.report_json;
+        const sortedSkills = [...(rp.skills || [])].sort((a, b) => a.score - b.score).slice(0, 2);
+        return {
+          sessionId: r.id,
+          daysAgo: Math.max(0, Math.floor((now - new Date(r.created_at).getTime()) / 86_400_000)),
+          overallScore: rp.overallScore || 0,
+          band: rp.band || "",
+          topFixes: (rp.fixes || []).slice(0, 3).map((f) => f.text),
+          topWins: (rp.wins || []).slice(0, 3).map((w) => w.text),
+          coreMetrics: rp.coreMetrics || { fillerPerMin: 0, silenceRatio: 0, paceWpm: 0, energy: 0 },
+          weakestSkills: sortedSkills.map((s) => ({ name: s.name, score: s.score })),
+        };
+      });
+  } catch (err) {
+    console.warn(`[evaluate-session] prior-reports fetch failed: ${err instanceof Error ? err.message : String(err)}`);
+    return [];
   }
 }
 
@@ -145,8 +198,15 @@ interface ThoughtBubbleSegment {
   note: string; // ≤80 chars, second-person, honest
 }
 
+interface CrossSessionInsight {
+  kind: "improvement" | "regression" | "persistent";
+  text: string;                 // one sentence, second-person
+  metric?: string;              // optional: "pace", "quantification", "Technical Depth"
+  delta?: number;               // signed pt change from last session, if numeric
+}
+
 interface SessionReport {
-  version: "mvp-2";
+  version: "mvp-3";
   overallScore: number;
   band: "strongHire" | "hire" | "leanHire" | "noHire" | "strongNoHire";
   verdict: string;
@@ -163,6 +223,8 @@ interface SessionReport {
     note: string;
     bands: { strongHire: number; hire: number; leanHire: number; noHire: number };
   };
+  crossSessionInsights: CrossSessionInsight[];
+  priorSessionCount: number;
   model: string;
 }
 
@@ -425,10 +487,28 @@ export default async function handler(req: Request): Promise<Response> {
     const companyLabel = companyProfile?.label ?? "Generic";
     const companyNote = companyProfile?.note ?? "Generic calibration — set a target company for role-specific scoring.";
 
+    // Cross-session memory: fetch the user's last 3 reports (structured
+    // coaching signal only — no transcripts) so the LLM can call out
+    // improvements, regressions, and persistent issues.
+    const priorReports = auth.userId ? await loadPriorReports(sessionId, auth.userId) : [];
+
     // Build transcript block — truncate individual turns but keep structure intact.
     const transcriptBlock = transcript
       .map((t, i) => `[${i}] ${t.role === "interviewer" ? "INTERVIEWER" : "CANDIDATE"}: ${sanitizeForLLM(t.text, 1500)}`)
       .join("\n");
+
+    // Compact prior-sessions block for the prompt. Omitted entirely if no history.
+    const priorContextBlock = priorReports.length > 0
+      ? `\nPRIOR SESSIONS (most recent first, for longitudinal coaching context):\n` +
+        priorReports
+          .map((p, i) =>
+            `[${i + 1}] ${p.daysAgo}d ago · score ${p.overallScore}/100 (${p.band})\n` +
+            `    pace: ${p.coreMetrics.paceWpm} wpm · fillers: ${p.coreMetrics.fillerPerMin}/min\n` +
+            `    weakest skills: ${p.weakestSkills.map((s) => `${s.name} ${s.score}`).join(", ") || "—"}\n` +
+            `    top fixes they were told: ${p.topFixes.map((f) => `"${f.slice(0, 90)}"`).join(" | ") || "—"}`,
+          )
+          .join("\n")
+      : "";
 
     const prompt = `You are a senior I/O-psychology-trained interview scorer. Produce a JSON report for this mock interview, calibrated to structured-interview rubrics (SHL UCF, STAR+L). Be honest and specific.
 
@@ -444,6 +524,7 @@ TRANSCRIPT (numbered turns):
 """
 ${transcriptBlock}
 """
+${priorContextBlock}
 
 RUBRIC — score each skill 0-100:
 ${skillAxes.map((s) => `- ${s}`).join("\n")}
@@ -505,6 +586,20 @@ Return a JSON object with EXACTLY this shape:
       },
       "explanation": "<1-2 sentences on what worked/missed>"
     }
+  ],
+  "crossSessionInsights": [
+    // 0-4 items. ONLY populate if PRIOR SESSIONS context is present above —
+    // otherwise return []. These are the coaching signals that turn the report
+    // from a scorecard into a coach. Each item is ONE of:
+    // - "improvement": something measurably better than last session
+    // - "regression": something measurably worse than last session
+    // - "persistent": a weakness that appears in BOTH this session AND prior sessions
+    //   (i.e. the candidate was told to fix it and hasn't)
+    // Write in second person, specific, honest. Example:
+    //   { "kind": "persistent", "text": "You were told to quantify results two sessions ago — still missing in 4/5 answers this time.", "metric": "quantification" }
+    //   { "kind": "improvement", "text": "Fillers dropped from 6.2/min to 2.8/min — your hardest-won gain.", "metric": "fillers", "delta": -3.4 }
+    //   { "kind": "regression", "text": "Pace climbed back to 201 wpm — the rushed delivery cost you on Q3.", "metric": "pace", "delta": 18 }
+    { "kind": "<enum>", "text": "<sentence>", "metric": "<optional short>", "delta": <optional number> }
   ]
 }
 
@@ -515,6 +610,7 @@ CRITICAL RULES:
 - TopPerformerAnswer IS allowed to invent realistic details — that's its purpose. It should showcase STAR structure, quantified impact, first-person ownership, and role-appropriate scope. Aim for what a strong L5/Senior would say at the target company.
 - Citations must reference real character offsets inside answerText.
 - Keep verdict scores honest. Average mock interview scores 45-65.
+- For crossSessionInsights: if no PRIOR SESSIONS block is provided, return an empty array — do NOT fabricate history. If prior data IS provided, prefer persistent/regression callouts over improvements (users need correction more than praise).
 - Return ONLY valid JSON — no markdown wrapping, no prose.`;
 
     const tLLM0 = Date.now();
@@ -568,7 +664,7 @@ CRITICAL RULES:
       : [];
 
     const report: SessionReport = {
-      version: "mvp-2",
+      version: "mvp-3",
       overallScore,
       band: applyBands(overallScore, bands),
       verdict: typeof parsed.verdict === "string" ? parsed.verdict.slice(0, 200) : "",
@@ -581,6 +677,22 @@ CRITICAL RULES:
       perQuestion: Array.isArray(parsed.perQuestion) ? (parsed.perQuestion as PerQuestionReport[]).slice(0, 30) : [],
       thoughtBubble,
       calibration: { companyLabel, note: companyNote, bands },
+      crossSessionInsights: (() => {
+        const raw = (parsed as Record<string, unknown>).crossSessionInsights;
+        if (!Array.isArray(raw)) return [];
+        if (priorReports.length === 0) return []; // Defense-in-depth against hallucinated history.
+        const validKinds = ["improvement", "regression", "persistent"];
+        return (raw as CrossSessionInsight[])
+          .filter((i) => i && validKinds.includes(i.kind) && typeof i.text === "string" && i.text.trim().length > 0)
+          .map((i) => ({
+            kind: i.kind,
+            text: i.text.slice(0, 220),
+            metric: typeof i.metric === "string" ? i.metric.slice(0, 40) : undefined,
+            delta: typeof i.delta === "number" && isFinite(i.delta) ? Math.round(i.delta * 10) / 10 : undefined,
+          }))
+          .slice(0, 4);
+      })(),
+      priorSessionCount: priorReports.length,
       model: result.model,
     };
 

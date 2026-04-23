@@ -13,6 +13,7 @@ import {
   type SessionReportPerQuestion,
   type SessionReportWinFix,
   type SessionReportRedFlag,
+  type SessionReportCrossSessionInsight,
   type SessionTrendPoint,
 } from "./dashboardData";
 import { getCohortAverage, type RoleFamily } from "./roleBenchmarks";
@@ -820,6 +821,12 @@ export const SessionReportView = memo(function SessionReportView({
             )}
           </div>
 
+          {/* Coach's note — longitudinal insights from prior sessions.
+              Turns the report into a coach (not a scorecard) for returning users. */}
+          {report.crossSessionInsights && report.crossSessionInsights.length > 0 && (
+            <CoachNoteSection insights={report.crossSessionInsights} priorCount={report.priorSessionCount} />
+          )}
+
           {/* Red-flag detector — rejection-grade signals shown above the fold */}
           {report.redFlags && report.redFlags.length > 0 && (
             <RedFlagsSection flags={report.redFlags} />
@@ -955,6 +962,97 @@ export const SessionReportView = memo(function SessionReportView({
     </div>
   );
 });
+
+const INSIGHT_META: Record<SessionReportCrossSessionInsight["kind"], { label: string; color: string; bg: string; icon: string }> = {
+  improvement: { label: "Improved",   color: c.sage,  bg: "rgba(122,158,126,0.08)", icon: "↑" },
+  regression:  { label: "Regressed",  color: c.ember, bg: "rgba(196,112,90,0.08)",  icon: "↓" },
+  persistent:  { label: "Persistent", color: c.gilt,  bg: "rgba(212,179,127,0.08)", icon: "!" },
+};
+
+/**
+ * Coach's note — longitudinal insights synthesized from the user's last 3
+ * reports. Empty on first session; fills with improvement/regression/persistent
+ * callouts once history exists. This is the feature that makes the report
+ * feel like a coach rather than a scorecard.
+ */
+function CoachNoteSection({ insights, priorCount }: { insights: SessionReportCrossSessionInsight[]; priorCount: number }) {
+  // Sort: persistent first (highest-priority for behavior change), then regression, then improvement.
+  const sorted = [...insights].sort((a, b) => {
+    const order = { persistent: 0, regression: 1, improvement: 2 };
+    return order[a.kind] - order[b.kind];
+  });
+  return (
+    <div style={{
+      background: `linear-gradient(135deg, rgba(212,179,127,0.05), rgba(212,179,127,0.02))`,
+      border: `1px solid rgba(212,179,127,0.22)`,
+      borderRadius: 14, padding: "20px 24px", marginBottom: 20,
+    }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+        <div style={{
+          width: 28, height: 28, borderRadius: 8,
+          background: "rgba(212,179,127,0.12)", border: "1px solid rgba(212,179,127,0.25)",
+          display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+        }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.8">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+          </svg>
+        </div>
+        <div style={{ flex: 1 }}>
+          <h2 style={{ fontFamily: font.ui, fontSize: 14, fontWeight: 600, color: c.ivory, margin: 0 }}>
+            Coach&apos;s note
+          </h2>
+          <p style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, margin: "2px 0 0" }}>
+            Based on your last {priorCount} session{priorCount === 1 ? "" : "s"}
+          </p>
+        </div>
+      </div>
+      <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 8 }}>
+        {sorted.map((ins, i) => {
+          const meta = INSIGHT_META[ins.kind];
+          const deltaStr = typeof ins.delta === "number"
+            ? `${ins.delta > 0 ? "+" : ""}${ins.delta}`
+            : null;
+          return (
+            <li key={i} style={{
+              display: "flex", gap: 10, alignItems: "flex-start",
+              background: meta.bg, border: `1px solid ${meta.color}22`,
+              borderRadius: 8, padding: "10px 12px",
+            }}>
+              <span aria-hidden="true" style={{
+                width: 22, height: 22, borderRadius: "50%",
+                background: meta.color, color: c.obsidian,
+                display: "inline-flex", alignItems: "center", justifyContent: "center",
+                fontFamily: font.mono, fontSize: 12, fontWeight: 700,
+                flexShrink: 0,
+              }}>{meta.icon}</span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
+                  <span style={{
+                    fontFamily: font.ui, fontSize: 9, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase",
+                    color: meta.color,
+                  }}>{meta.label}</span>
+                  {ins.metric && (
+                    <span style={{ fontFamily: font.mono, fontSize: 10, color: c.stone }}>
+                      {ins.metric}
+                    </span>
+                  )}
+                  {deltaStr && (
+                    <span style={{ fontFamily: font.mono, fontSize: 10, fontWeight: 600, color: meta.color }}>
+                      {deltaStr}
+                    </span>
+                  )}
+                </div>
+                <p style={{ fontFamily: font.ui, fontSize: 13, color: c.ivory, lineHeight: 1.55, margin: "3px 0 0" }}>
+                  {ins.text}
+                </p>
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
 
 /** Sparkline — recent session scores, left→right. Anchors the current score socially. */
 function Sparkline({ points, currentId }: { points: SessionTrendPoint[]; currentId: string }) {
