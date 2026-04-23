@@ -37,6 +37,24 @@ export async function apiFetch<T = unknown>(
   const headers = await authHeaders();
   return new Promise((resolve) => {
     const xhr = new XMLHttpRequest();
+    let settled = false;
+    let abortListener: (() => void) | null = null;
+
+    const settle = (response: ApiResponse<T>) => {
+      if (settled) return;
+      settled = true;
+      if (abortListener && opts.signal) opts.signal.removeEventListener("abort", abortListener);
+      resolve(response);
+    };
+
+    // If the caller passed an already-aborted signal we must resolve without
+    // ever sending the request. xhr.abort() on an unsent XHR is a no-op and
+    // won't fire onabort, which would leave the promise hanging.
+    if (opts.signal?.aborted) {
+      settle({ ok: false, status: 0, data: null, error: "aborted", headers: {} });
+      return;
+    }
+
     xhr.open(opts.method || "POST", path, true);
     xhr.responseType = "text";
     for (const [k, v] of Object.entries(headers)) xhr.setRequestHeader(k, v);
@@ -48,24 +66,34 @@ export async function apiFetch<T = unknown>(
         const idx = line.indexOf(":");
         if (idx > 0) headerMap[line.slice(0, idx).toLowerCase().trim()] = line.slice(idx + 1).trim();
       });
-      let parsed: unknown = null;
-      try { parsed = xhr.responseText ? JSON.parse(xhr.responseText) : null; } catch { parsed = null; }
-      const body = (parsed && typeof parsed === "object" ? parsed : {}) as Record<string, unknown>;
       const ok = xhr.status >= 200 && xhr.status < 300;
-      resolve({
+      const rawText = xhr.responseText || "";
+      let parsed: unknown = null;
+      let parseFailed = false;
+      if (rawText) {
+        try { parsed = JSON.parse(rawText); } catch { parseFailed = true; }
+      }
+      const errBody = (parsed && typeof parsed === "object" ? parsed : {}) as Record<string, unknown>;
+      settle({
         ok,
         status: xhr.status,
-        data: ok ? (parsed as T) : null,
-        error: ok ? null : (typeof body.error === "string" ? body.error : `HTTP ${xhr.status}`),
+        // If body isn't JSON (e.g. 502 HTML error page) but the status is 2xx,
+        // expose the raw text so callers can see what they actually got.
+        data: ok ? (parseFailed ? (rawText as unknown as T) : (parsed as T)) : null,
+        error: ok
+          ? null
+          : (typeof errBody.error === "string"
+              ? errBody.error
+              : (parseFailed && rawText ? rawText.slice(0, 200) : `HTTP ${xhr.status}`)),
         headers: headerMap,
       });
     };
-    xhr.onerror = () => resolve({ ok: false, status: 0, data: null, error: "Network error", headers: {} });
-    xhr.onabort = () => resolve({ ok: false, status: 0, data: null, error: "aborted", headers: {} });
+    xhr.onerror = () => settle({ ok: false, status: 0, data: null, error: "Network error", headers: {} });
+    xhr.onabort = () => settle({ ok: false, status: 0, data: null, error: "aborted", headers: {} });
 
     if (opts.signal) {
-      if (opts.signal.aborted) { xhr.abort(); return; }
-      opts.signal.addEventListener("abort", () => xhr.abort(), { once: true });
+      abortListener = () => xhr.abort();
+      opts.signal.addEventListener("abort", abortListener, { once: true });
     }
 
     xhr.send(body == null ? null : typeof body === "string" ? body : JSON.stringify(body));

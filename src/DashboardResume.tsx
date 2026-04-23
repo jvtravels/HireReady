@@ -405,6 +405,11 @@ export default function DashboardResume() {
     setErrorMsg("");
     updatePersisted({ resumeFileName: null });
     updateUser({ resumeFileName: null, resumeText: "", resumeData: null as unknown as ParsedResume });
+    // Also clear the local resume cache so handleReanalyze's fallback chain
+    // doesn't bring the deleted resume back from localStorage on the next
+    // Re-analyze click. Onboarding writes the same key on upload, so staying
+    // consistent with that namespace is important.
+    try { localStorage.removeItem("hirestepx_resume"); } catch { /* noop */ }
   };
 
   const handleReanalyze = async () => {

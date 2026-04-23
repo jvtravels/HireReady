@@ -182,6 +182,10 @@ const USER_SCOPED_KEYS = [
   "hirestepx_ob_form",
   "hirestepx_dashboard",
   "hirestepx_sessions",
+  // `hirestepx_last_route` is written by saveLastRoute() on every navigation
+  // for the currently-signed-in user. Without wiping it, signup B lands on
+  // signup A's last page (e.g. /settings) instead of /dashboard.
+  "hirestepx_last_route",
 ] as const;
 
 /**

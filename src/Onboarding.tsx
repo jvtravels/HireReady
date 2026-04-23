@@ -111,8 +111,16 @@ export default function Onboarding() {
   const resumeRestoredRef = useRef(false);
   useEffect(() => {
     if (resumeRestoredRef.current || resumeParsed || resumeParsing) return;
-    // Try localStorage fallback if Supabase columns are missing
-    const localResume = (() => { try { const r = localStorage.getItem("hirestepx_resume"); return r ? JSON.parse(r) as { fileName: string; text: string; data: ParsedResume; aiProfile?: ResumeProfile } : null; } catch { return null; } })();
+    // Only consult the localStorage cache when it demonstrably belongs to
+    // the currently-signed-in user. AuthContext wipes this key on user
+    // change, but we guard here too so a race between this effect and the
+    // wipe effect can't surface a previous user's resume. Without this
+    // check, signup #2 on a shared browser used to see signup #1's file
+    // name in the onboarding UI.
+    const activeUserId = (() => { try { return localStorage.getItem("hirestepx_last_user_id"); } catch { return null; } })();
+    const localResume = user?.id && activeUserId === user.id
+      ? (() => { try { const r = localStorage.getItem("hirestepx_resume"); return r ? JSON.parse(r) as { fileName: string; text: string; data: ParsedResume; aiProfile?: ResumeProfile } : null; } catch { return null; } })()
+      : null;
     const rFileName = user?.resumeFileName || localResume?.fileName;
     if (!rFileName) return;
     resumeRestoredRef.current = true;
@@ -346,7 +354,12 @@ export default function Onboarding() {
       const profileSave: Partial<Parameters<typeof updateUser>[0]> = {
         resumeFileName: file.name,
         resumeText: text,
-        resumeData: { ...finalProfile, _type: aiSuccess ? "ai" : "fallback", _parsed: data } as unknown as ParsedResume,
+        // Store only the AI-derived profile + a marker. We deliberately DO
+        // NOT embed `data` (the raw ParsedResume) here — it duplicates
+        // resume_text which already lives in its own column, and roughly
+        // doubles the row size for no functional benefit. If we ever need
+        // the structured parse again we can rehydrate it from resume_text.
+        resumeData: { ...finalProfile, _type: aiSuccess ? "ai" : "fallback" } as unknown as ParsedResume,
       };
       if (!targetRole && autoRole) profileSave.targetRole = autoRole;
       if (data.name) profileSave.name = data.name;

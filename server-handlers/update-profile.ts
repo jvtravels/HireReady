@@ -97,6 +97,14 @@ export default async function handler(req: Request): Promise<Response> {
     return new Response(JSON.stringify({ error: "No recognised fields to update" }), { status: 400, headers });
   }
 
+  // withAuthAndRateLimit already returns 401 when auth.authenticated is
+  // false, but the type allows userId to be undefined even on success. Be
+  // defensive — we never want to upsert a row with a null id.
+  if (!auth.userId || typeof auth.userId !== "string") {
+    console.error("[update-profile] auth.authenticated=true but userId is missing");
+    return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers });
+  }
+
   // Attach the authenticated user's id — the client never gets to override
   // which row is being touched.
   const row: Record<string, unknown> = { id: auth.userId, ...updates };
