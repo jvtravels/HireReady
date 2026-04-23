@@ -13,42 +13,51 @@ if (!USAGE_LOGGING_ENABLED) {
   console.warn(`[logUsage] disabled — missing env vars (SUPABASE_URL=${!!SUPABASE_URL}, SERVICE_KEY=${!!SUPABASE_SERVICE_KEY})`);
 }
 
-function logUsage(entry: {
+/**
+ * Writes a usage row to `llm_usage`. Returns a Promise so callers can await
+ * completion before returning a response.
+ *
+ * IMPORTANT — this must be awaited, not fire-and-forget. The analyze-resume
+ * handler runs on Vercel's edge runtime, which terminates the isolate as soon
+ * as `return Response` resolves. Unawaited fetches are killed mid-flight, so
+ * fire-and-forget writes never reach Supabase. (This was why llm_usage stayed
+ * empty despite LLM calls succeeding.)
+ */
+async function logUsage(entry: {
   userId?: string; endpoint?: string; model: string; isFallback: boolean;
   promptTokens: number; completionTokens: number; totalTokens: number;
   latencyMs: number; status: "success" | "error" | "timeout"; errorMessage?: string;
-}): void {
+}): Promise<void> {
   if (!USAGE_LOGGING_ENABLED) return;
-  fetch(`${SUPABASE_URL}/rest/v1/llm_usage`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      apikey: SUPABASE_SERVICE_KEY,
-      Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`,
-      Prefer: "return=minimal",
-    },
-    body: JSON.stringify({
-      user_id: entry.userId || null,
-      endpoint: entry.endpoint || "unknown",
-      model: entry.model,
-      is_fallback: entry.isFallback,
-      prompt_tokens: entry.promptTokens,
-      completion_tokens: entry.completionTokens,
-      total_tokens: entry.totalTokens,
-      latency_ms: entry.latencyMs,
-      status: entry.status,
-      error_message: entry.errorMessage?.slice(0, 500) || null,
-    }),
-  })
-    .then(async res => {
-      if (!res.ok) {
-        const body = await res.text().catch(() => "");
-        console.error(`[logUsage] HTTP ${res.status} writing llm_usage: ${body.slice(0, 200)}`);
-      }
-    })
-    .catch(err => {
-      console.error(`[logUsage] fetch failed: ${err instanceof Error ? err.message : String(err)}`);
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/llm_usage`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: SUPABASE_SERVICE_KEY,
+        Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`,
+        Prefer: "return=minimal",
+      },
+      body: JSON.stringify({
+        user_id: entry.userId || null,
+        endpoint: entry.endpoint || "unknown",
+        model: entry.model,
+        is_fallback: entry.isFallback,
+        prompt_tokens: entry.promptTokens,
+        completion_tokens: entry.completionTokens,
+        total_tokens: entry.totalTokens,
+        latency_ms: entry.latencyMs,
+        status: entry.status,
+        error_message: entry.errorMessage?.slice(0, 500) || null,
+      }),
     });
+    if (!res.ok) {
+      const body = await res.text().catch(() => "");
+      console.error(`[logUsage] HTTP ${res.status} writing llm_usage: ${body.slice(0, 200)}`);
+    }
+  } catch (err) {
+    console.error(`[logUsage] fetch failed: ${err instanceof Error ? err.message : String(err)}`);
+  }
 }
 
 interface LLMOptions {
@@ -140,14 +149,15 @@ export async function callLLM(opts: LLMOptions, timeoutMs = 15000, meta?: { user
     try {
       const result = await provider.call(ac.signal);
       clearTimeout(timer);
-      logUsage({ userId: meta?.userId, endpoint: meta?.endpoint, model: result.model, isFallback, promptTokens: result.tokensUsed?.prompt ?? 0, completionTokens: result.tokensUsed?.completion ?? 0, totalTokens: result.tokensUsed?.total ?? 0, latencyMs: result.latencyMs ?? 0, status: "success" });
+      // Await so the row is written before the edge isolate terminates.
+      await logUsage({ userId: meta?.userId, endpoint: meta?.endpoint, model: result.model, isFallback, promptTokens: result.tokensUsed?.prompt ?? 0, completionTokens: result.tokensUsed?.completion ?? 0, totalTokens: result.tokensUsed?.total ?? 0, latencyMs: result.latencyMs ?? 0, status: "success" });
       return result;
     } catch (err) {
       clearTimeout(timer);
       const msg = err instanceof Error ? err.message : "";
       const isTimeout = msg.includes("AbortError") || msg.includes("abort");
       console.error(`[LLM] ${provider.name} failed (${isTimeout ? "timeout" : "error"}): ${msg.slice(0, 150)}`);
-      logUsage({ userId: meta?.userId, endpoint: meta?.endpoint, model: provider.name, isFallback, promptTokens: 0, completionTokens: 0, totalTokens: 0, latencyMs: 0, status: isTimeout ? "timeout" : "error", errorMessage: msg.slice(0, 200) });
+      await logUsage({ userId: meta?.userId, endpoint: meta?.endpoint, model: provider.name, isFallback, promptTokens: 0, completionTokens: 0, totalTokens: 0, latencyMs: 0, status: isTimeout ? "timeout" : "error", errorMessage: msg.slice(0, 200) });
       throw err;
     }
   };
