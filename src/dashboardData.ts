@@ -873,6 +873,20 @@ export interface SessionReportStoryReuse {
   concern: string;
 }
 
+export interface SessionReportBlindSpot {
+  competency: string;
+  frequencyPct: number | null;
+  note: string;
+}
+
+export interface SessionReportReadiness {
+  targetBand: "strongHire" | "hire" | "leanHire";
+  estimatedHours: number;
+  estimatedSessions: number;
+  confidence: "low" | "medium" | "high";
+  rationale: string;
+}
+
 export interface SessionReportPerQuestion {
   idx: number;
   question: string;
@@ -922,7 +936,7 @@ export interface SessionReportRedFlag {
 }
 
 export interface SessionReport {
-  version: "mvp-5";
+  version: "mvp-6";
   overallScore: number;
   scoreConfidence: number;
   band: SessionReportBand;
@@ -954,6 +968,8 @@ export interface SessionReport {
   crossSessionInsights: SessionReportCrossSessionInsight[];
   priorSessionCount: number;
   storyReuseFindings: SessionReportStoryReuse[];
+  blindSpots: SessionReportBlindSpot[];
+  readiness: SessionReportReadiness | null;
   model: string;
 }
 

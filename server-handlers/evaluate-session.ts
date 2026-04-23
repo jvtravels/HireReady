@@ -13,7 +13,7 @@ const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 
 // Bump on any schema change to perQuestion/redFlags/etc. Old cached reports
 // with a different version are auto-invalidated on next view.
-const REPORT_VERSION = "mvp-5";
+const REPORT_VERSION = "mvp-6";
 
 /**
  * Try to read a cached report for this session. Returns null on any failure
@@ -241,8 +241,22 @@ interface StoryReuseFinding {
   concern: string;              // one sentence of coaching
 }
 
+interface BlindSpot {
+  competency: string;           // e.g. "Conflict resolution"
+  frequencyPct: number | null;  // how often this competency is tested at target role/company
+  note: string;                 // one-line coaching on how to prep for it
+}
+
+interface ReadinessForecast {
+  targetBand: "strongHire" | "hire" | "leanHire";
+  estimatedHours: number;       // focused practice hours to reach target band
+  estimatedSessions: number;    // estimated # of mock sessions
+  confidence: "low" | "medium" | "high";
+  rationale: string;            // one sentence explaining the estimate
+}
+
 interface SessionReport {
-  version: "mvp-5";
+  version: "mvp-6";
   overallScore: number;
   /** LLM-self-reported 0-1 confidence in the overall score. Rendered as ±band. */
   scoreConfidence: number;
@@ -264,6 +278,8 @@ interface SessionReport {
   crossSessionInsights: CrossSessionInsight[];
   priorSessionCount: number;
   storyReuseFindings: StoryReuseFinding[];
+  blindSpots: BlindSpot[];
+  readiness: ReadinessForecast | null;
   model: string;
 }
 
@@ -648,6 +664,24 @@ Return a JSON object with EXACTLY this shape:
     // Leave empty if no reuse detected.
     { "storyLabel": "<short label, e.g. 'Catalyst IQ launch'>", "questionIndices": [<int>, <int>], "concern": "<one sentence>" }
   ],
+  "blindSpots": [
+    // 2-5 competencies that are COMMONLY tested for the target role/company
+    // but were NOT assessed in this session. Prevents overfitting to seen Qs.
+    // frequencyPct is % of loops that test this at the target company (null if uncertain).
+    { "competency": "<short, e.g. 'Conflict resolution'>", "frequencyPct": <0-100 or null>, "note": "<one line on how to prep for it>" }
+  ],
+  "readiness": {
+    // Estimate practice volume to reach a target band. Use prior session
+    // trajectory if available; otherwise give a first-timer estimate.
+    // targetBand should be the next-higher band above the candidate's current one
+    // (leanHire → hire; hire → strongHire; strongHire → strongHire as a stretch goal).
+    // Be honest: 20-80 hours is typical; don't underestimate to flatter.
+    "targetBand": "<strongHire|hire|leanHire>",
+    "estimatedHours": <integer>,
+    "estimatedSessions": <integer>,
+    "confidence": "<low|medium|high>",
+    "rationale": "<one sentence>"
+  },
   "crossSessionInsights": [
     // 0-4 items. ONLY populate if PRIOR SESSIONS context is present above —
     // otherwise return []. These are the coaching signals that turn the report
@@ -754,7 +788,7 @@ CRITICAL RULES:
       : [];
 
     const report: SessionReport = {
-      version: "mvp-5",
+      version: "mvp-6",
       overallScore,
       scoreConfidence,
       band: applyBands(overallScore, bands),
@@ -824,6 +858,35 @@ CRITICAL RULES:
       })(),
       priorSessionCount: priorReports.length,
       storyReuseFindings,
+      blindSpots: (() => {
+        const raw = (parsed as Record<string, unknown>).blindSpots;
+        if (!Array.isArray(raw)) return [];
+        return (raw as BlindSpot[])
+          .filter((b) => b && typeof b.competency === "string" && b.competency.trim().length > 0)
+          .map((b) => ({
+            competency: b.competency.slice(0, 60),
+            frequencyPct:
+              typeof b.frequencyPct === "number" && isFinite(b.frequencyPct) && b.frequencyPct >= 0 && b.frequencyPct <= 100
+                ? Math.round(b.frequencyPct)
+                : null,
+            note: typeof b.note === "string" ? b.note.slice(0, 160) : "",
+          }))
+          .slice(0, 5);
+      })(),
+      readiness: (() => {
+        const raw = (parsed as Record<string, unknown>).readiness as ReadinessForecast | undefined;
+        if (!raw || typeof raw !== "object") return null;
+        const validBands = ["strongHire", "hire", "leanHire"];
+        const validConf = ["low", "medium", "high"];
+        if (!validBands.includes(raw.targetBand)) return null;
+        return {
+          targetBand: raw.targetBand,
+          estimatedHours: Math.max(0, Math.min(500, Math.round(Number(raw.estimatedHours) || 0))),
+          estimatedSessions: Math.max(0, Math.min(100, Math.round(Number(raw.estimatedSessions) || 0))),
+          confidence: validConf.includes(raw.confidence) ? raw.confidence : "medium",
+          rationale: typeof raw.rationale === "string" ? raw.rationale.slice(0, 220) : "",
+        };
+      })(),
       model: result.model,
     };
 

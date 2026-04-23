@@ -192,6 +192,9 @@ create policy "Users manage own stories" on story_notebook
 -- Users can only access their own data
 -- ═══════════════════════════════════════════════════════
 
+-- Weekly-summary cron uses this to rate-limit emails per user.
+alter table profiles add column if not exists last_summary_email_at timestamptz;
+
 alter table profiles enable row level security;
 alter table sessions enable row level security;
 alter table calendar_events enable row level security;

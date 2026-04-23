@@ -15,6 +15,8 @@ import {
   type SessionReportRedFlag,
   type SessionReportCrossSessionInsight,
   type SessionReportStoryReuse,
+  type SessionReportBlindSpot,
+  type SessionReportReadiness,
   type SessionTrendPoint,
 } from "./dashboardData";
 import { getCohortAverage, type RoleFamily } from "./roleBenchmarks";
@@ -929,7 +931,10 @@ export const SessionReportView = memo(function SessionReportView({
 
           {/* Hidden-bias / perception-optimizer — detected from candidate's own answers */}
           {report.perQuestion && report.perQuestion.length > 0 && (
-            <BiasPanel answers={report.perQuestion.map((q) => q.answerText || "")} />
+            <BiasPanel
+              answers={report.perQuestion.map((q) => q.answerText || "")}
+              nonNativeEnglish={detectNonNativeEnglish()}
+            />
           )}
 
           {/* Story reuse — flags when one story was stretched across multiple competencies */}
@@ -947,6 +952,16 @@ export const SessionReportView = memo(function SessionReportView({
                 {report.perQuestion.map((q, i) => <QuestionCard key={i} q={q} index={i} sessionId={session.id} />)}
               </div>
             </div>
+          )}
+
+          {/* Blind spots — competencies NOT assessed in this session but common in real loops */}
+          {report.blindSpots && report.blindSpots.length > 0 && (
+            <BlindSpotsSection blindSpots={report.blindSpots} />
+          )}
+
+          {/* Readiness forecast — estimated effort to reach target band */}
+          {report.readiness && (
+            <ReadinessSection readiness={report.readiness} priorSessionCount={report.priorSessionCount} />
           )}
 
           {/* 5. Next Steps */}
@@ -1019,6 +1034,158 @@ export const SessionReportView = memo(function SessionReportView({
     </div>
   );
 });
+
+/**
+ * Heuristic: if the browser's primary language isn't English, assume the user
+ * is a non-native English speaker. Soft signal — the detector applies a
+ * stricter threshold for over-hedging in that mode. User opt-out setting
+ * would override this in the future.
+ */
+function detectNonNativeEnglish(): boolean {
+  try {
+    if (typeof navigator === "undefined") return false;
+    const lang = (navigator.language || "").toLowerCase();
+    return lang.length > 0 && !lang.startsWith("en");
+  } catch { return false; }
+}
+
+const BAND_LABEL_SHORT: Record<"strongHire" | "hire" | "leanHire", string> = {
+  strongHire: "Strong Hire",
+  hire: "Hire",
+  leanHire: "Lean Hire",
+};
+
+const CONFIDENCE_META: Record<"low" | "medium" | "high", { color: string; label: string }> = {
+  low:    { color: c.stone, label: "Low confidence"    },
+  medium: { color: c.gilt,  label: "Medium confidence" },
+  high:   { color: c.sage,  label: "High confidence"   },
+};
+
+/** Blind-spot map — competencies never assessed but common at the target role. */
+function BlindSpotsSection({ blindSpots }: { blindSpots: SessionReportBlindSpot[] }) {
+  return (
+    <div style={{
+      background: c.graphite, borderRadius: 14, border: `1px solid ${c.border}`,
+      padding: "20px 24px", marginBottom: 20,
+    }}>
+      <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 4 }}>
+        <h2 style={{ fontFamily: font.ui, fontSize: 14, fontWeight: 600, color: c.ivory, margin: 0 }}>
+          Blind spots
+        </h2>
+        <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>
+          · competencies you weren&apos;t asked about
+        </span>
+      </div>
+      <p style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, margin: "0 0 12px", lineHeight: 1.5 }}>
+        Don&apos;t overfit to the questions you saw. Real loops test these patterns — prep a story for each.
+      </p>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 10 }}>
+        {blindSpots.map((bs, i) => (
+          <div key={i} style={{
+            background: "rgba(245,242,237,0.03)", border: `1px solid ${c.border}`,
+            borderRadius: 10, padding: "12px 14px",
+            display: "flex", flexDirection: "column", gap: 6,
+          }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
+              <span style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: c.ivory }}>
+                {bs.competency}
+              </span>
+              {typeof bs.frequencyPct === "number" && bs.frequencyPct > 0 && (
+                <span
+                  title={`Asked in ~${bs.frequencyPct}% of relevant loops`}
+                  style={{
+                    fontFamily: font.mono, fontSize: 10, fontWeight: 600,
+                    color: c.stone, background: "rgba(245,242,237,0.04)",
+                    padding: "2px 6px", borderRadius: 3, border: `1px solid ${c.border}`,
+                    flexShrink: 0,
+                  }}
+                >{bs.frequencyPct}%</span>
+              )}
+            </div>
+            {bs.note && (
+              <p style={{ fontFamily: font.ui, fontSize: 12, color: c.chalk, lineHeight: 1.5, margin: 0 }}>
+                {bs.note}
+              </p>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** Readiness forecast — estimated practice to reach target band. */
+function ReadinessSection({ readiness, priorSessionCount }: {
+  readiness: SessionReportReadiness;
+  priorSessionCount: number;
+}) {
+  const confMeta = CONFIDENCE_META[readiness.confidence];
+  const targetLabel = BAND_LABEL_SHORT[readiness.targetBand];
+  return (
+    <div style={{
+      background: `linear-gradient(135deg, rgba(122,158,126,0.06), rgba(122,158,126,0.02))`,
+      border: `1px solid rgba(122,158,126,0.22)`,
+      borderRadius: 14, padding: "20px 24px", marginBottom: 20,
+    }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14, flexWrap: "wrap" }}>
+        <div style={{
+          width: 28, height: 28, borderRadius: 8,
+          background: "rgba(122,158,126,0.14)", border: "1px solid rgba(122,158,126,0.28)",
+          display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+        }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="1.8">
+            <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+          </svg>
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <h2 style={{ fontFamily: font.ui, fontSize: 14, fontWeight: 600, color: c.ivory, margin: 0 }}>
+            Estimated path to {targetLabel}
+          </h2>
+          <p style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, margin: "2px 0 0" }}>
+            Based on {priorSessionCount > 0 ? `${priorSessionCount} prior session${priorSessionCount === 1 ? "" : "s"}` : "this session only"} and structured-interview improvement curves
+          </p>
+        </div>
+        <span
+          title={confMeta.label}
+          style={{
+            fontFamily: font.ui, fontSize: 9, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase",
+            color: confMeta.color, background: `${confMeta.color}14`, border: `1px solid ${confMeta.color}33`,
+            padding: "3px 8px", borderRadius: 3, flexShrink: 0,
+          }}
+        >{confMeta.label}</span>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12, marginBottom: 10 }}>
+        <div style={{
+          background: "rgba(245,242,237,0.02)", borderRadius: 10, padding: "12px 14px",
+          border: `1px solid ${c.border}`,
+        }}>
+          <div style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, color: c.stone, textTransform: "uppercase", letterSpacing: "0.06em" }}>Focused hours</div>
+          <div style={{ fontFamily: font.mono, fontSize: 28, fontWeight: 700, color: c.ivory, lineHeight: 1.1, marginTop: 4 }}>
+            {readiness.estimatedHours}
+            <span style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, fontWeight: 400, marginLeft: 4 }}>hrs</span>
+          </div>
+        </div>
+        <div style={{
+          background: "rgba(245,242,237,0.02)", borderRadius: 10, padding: "12px 14px",
+          border: `1px solid ${c.border}`,
+        }}>
+          <div style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, color: c.stone, textTransform: "uppercase", letterSpacing: "0.06em" }}>Mock sessions</div>
+          <div style={{ fontFamily: font.mono, fontSize: 28, fontWeight: 700, color: c.ivory, lineHeight: 1.1, marginTop: 4 }}>
+            {readiness.estimatedSessions}
+            <span style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, fontWeight: 400, marginLeft: 4 }}>runs</span>
+          </div>
+        </div>
+      </div>
+
+      {readiness.rationale && (
+        <p style={{ fontFamily: font.ui, fontSize: 12, fontStyle: "italic", color: c.chalk, lineHeight: 1.55, margin: 0 }}>
+          {readiness.rationale}
+        </p>
+      )}
+    </div>
+  );
+}
 
 /** Length verdict badge — inline pill rendered after the answer block. */
 function LengthVerdictBadge({ lv }: { lv: NonNullable<SessionReportPerQuestion["lengthVerdict"]> }) {
@@ -1502,15 +1669,20 @@ function ThoughtBubbleTimeline({ segments, totalMs }: { segments: SessionReport[
 }
 
 /** Hidden-bias / perception-optimizer panel. Client-side regex; no LLM. */
-function BiasPanel({ answers }: { answers: string[] }) {
-  const counts = useMemo(() => countBias(answers), [answers]);
+function BiasPanel({ answers, nonNativeEnglish, disabled }: {
+  answers: string[];
+  nonNativeEnglish?: boolean;
+  disabled?: boolean;
+}) {
+  const biasOpts = useMemo(() => ({ nonNativeEnglish, disabled }), [nonNativeEnglish, disabled]);
+  const counts = useMemo(() => countBias(answers, biasOpts), [answers, biasOpts]);
   const total = counts.selfDiminutive + counts.overApology + counts.overHedging + counts.uptalk;
-  if (total === 0) return null; // Clean — no need to raise the topic.
+  if (disabled || total === 0) return null; // Clean — no need to raise the topic.
 
   // Collect up to 3 example hits for the collapsible examples list.
   const examples: Array<{ kind: BiasPatternKind; text: string; suggestion: string }> = [];
   for (const a of answers) {
-    for (const h of detectBias(a)) {
+    for (const h of detectBias(a, biasOpts)) {
       if (examples.length < 3) examples.push({ kind: h.kind, text: h.text, suggestion: h.suggestion });
     }
     if (examples.length >= 3) break;

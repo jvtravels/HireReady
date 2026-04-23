@@ -56,8 +56,21 @@ const PATTERNS: Pattern[] = [
   },
 ];
 
+export interface BiasDetectorOptions {
+  /**
+   * Non-native English speakers may use hedging language as politeness, not
+   * self-diminution. When true, "I think" / "I guess" / "kind of" are
+   * softened: we only flag runs of 3+ hedges in one answer, and skip
+   * over-hedging hits in the public count.
+   */
+  nonNativeEnglish?: boolean;
+  /** If true, disables the detector entirely. Respects user opt-out. */
+  disabled?: boolean;
+}
+
 /** Scan text; returns non-overlapping bias hits in order. */
-export function detectBias(text: string): BiasHit[] {
+export function detectBias(text: string, opts: BiasDetectorOptions = {}): BiasHit[] {
+  if (opts.disabled) return [];
   if (!text || text.length < 10) return [];
   const hits: BiasHit[] = [];
   for (const p of PATTERNS) {
@@ -70,14 +83,23 @@ export function detectBias(text: string): BiasHit[] {
       hits.push({ kind: p.kind, text: m[0], index: start, suggestion: p.suggestion });
     }
   }
+  // Non-native-English softening: drop over-hedging unless there are ≥3 in this
+  // single answer. A solitary "I kind of think" is likely politeness; three
+  // stacked hedges signals a real authority-erosion problem.
+  if (opts.nonNativeEnglish) {
+    const hedgeHits = hits.filter((h) => h.kind === "overHedging");
+    if (hedgeHits.length < 3) {
+      return hits.filter((h) => h.kind !== "overHedging").sort((a, b) => a.index - b.index);
+    }
+  }
   return hits.sort((a, b) => a.index - b.index);
 }
 
 /** Total count of bias hits across all candidate answers. */
-export function countBias(allAnswers: string[]): Record<BiasPatternKind, number> {
+export function countBias(allAnswers: string[], opts: BiasDetectorOptions = {}): Record<BiasPatternKind, number> {
   const c: Record<BiasPatternKind, number> = { selfDiminutive: 0, overApology: 0, overHedging: 0, uptalk: 0 };
   for (const a of allAnswers) {
-    for (const h of detectBias(a)) c[h.kind]++;
+    for (const h of detectBias(a, opts)) c[h.kind]++;
   }
   return c;
 }
