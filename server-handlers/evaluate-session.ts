@@ -13,7 +13,7 @@ const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 
 // Bump on any schema change to perQuestion/redFlags/etc. Old cached reports
 // with a different version are auto-invalidated on next view.
-const REPORT_VERSION = "mvp-3";
+const REPORT_VERSION = "mvp-4";
 
 /**
  * Try to read a cached report for this session. Returns null on any failure
@@ -151,6 +151,20 @@ interface PerQuestionReport {
   verdict: "strong" | "complete" | "partial" | "weak" | "skipped";
   score: number;
   starPresence: { S: boolean; T: boolean; A: boolean; R: boolean };
+  /**
+   * Difficulty of the question *for the target role/level*. Warmup = opener,
+   * standard = core loop question, hard = bar-raiser / senior-level probe.
+   * Calibrates score interpretation: a 55 on a "hard" Q is different signal
+   * from a 55 on "warmup".
+   */
+  difficulty: "warmup" | "standard" | "hard";
+  /**
+   * Estimated % of loops at the target company/role that ask this question
+   * or a close variant. 0-100, or null when the LLM can't estimate.
+   */
+  frequencyPct: number | null;
+  /** Short context line — e.g. "common opener", "bar-raiser variant", "role-specific". ≤60 chars. */
+  frequencyNote: string;
   restructured: { text: string; citations: Array<{ markerIdx: number; sourceStart: number; sourceEnd: number }> } | null;
   /**
    * How a 90/100 candidate would answer this question. Unlike `restructured`
@@ -206,7 +220,7 @@ interface CrossSessionInsight {
 }
 
 interface SessionReport {
-  version: "mvp-3";
+  version: "mvp-4";
   overallScore: number;
   band: "strongHire" | "hire" | "leanHire" | "noHire" | "strongNoHire";
   verdict: string;
@@ -576,6 +590,9 @@ Return a JSON object with EXACTLY this shape:
       "verdict": "<strong|complete|partial|weak|skipped>",
       "score": <0-100>,
       "starPresence": {"S": <bool>, "T": <bool>, "A": <bool>, "R": <bool>},
+      "difficulty": "<warmup|standard|hard>",
+      "frequencyPct": <0-100 integer estimate OR null if you can't estimate>,
+      "frequencyNote": "<≤60 chars, e.g. 'common opener at FAANG', 'bar-raiser variant', 'role-specific probe'>",
       "restructured": {
         "text": "<rewrite the candidate's answer in STAR form, using ONLY facts from their own words; 80-160 words>",
         "citations": [{"markerIdx": <1-based marker>, "sourceStart": <char offset in answerText>, "sourceEnd": <char offset>}]
@@ -608,6 +625,12 @@ CRITICAL RULES:
 - Every skill score must be justified by transcript evidence.
 - Restructured answer MUST NOT invent numbers, company names, or outcomes not present in the candidate's words. If quantification is missing, frame it as a gap ("you could add the exact % here") rather than making one up.
 - TopPerformerAnswer IS allowed to invent realistic details — that's its purpose. It should showcase STAR structure, quantified impact, first-person ownership, and role-appropriate scope. Aim for what a strong L5/Senior would say at the target company.
+- Difficulty classification (for the target role/level, not absolute):
+    * warmup  = common opener with expected structure (e.g. "Tell me about yourself", "Why this company?")
+    * standard = core loop question probing a single competency (most behavioral + mid-complexity system design)
+    * hard    = bar-raiser / scope-stretch / senior-level probe (multi-part system design, unusual ethical dilemmas, scope >$10M impact expected)
+- frequencyPct is your best estimate of how common this question (or a near variant) is across the target company's loops for this role. "Tell me about yourself" ≈ 95. "Design a distributed rate limiter" ≈ 40 for SWE. Set null if uncertain.
+- frequencyNote is one short phrase contextualizing the question — help the candidate understand whether to deeply prep this pattern or treat it as a one-off.
 - Citations must reference real character offsets inside answerText.
 - Keep verdict scores honest. Average mock interview scores 45-65.
 - For crossSessionInsights: if no PRIOR SESSIONS block is provided, return an empty array — do NOT fabricate history. If prior data IS provided, prefer persistent/regression callouts over improvements (users need correction more than praise).
@@ -664,7 +687,7 @@ CRITICAL RULES:
       : [];
 
     const report: SessionReport = {
-      version: "mvp-3",
+      version: "mvp-4",
       overallScore,
       band: applyBands(overallScore, bands),
       verdict: typeof parsed.verdict === "string" ? parsed.verdict.slice(0, 200) : "",
@@ -674,7 +697,25 @@ CRITICAL RULES:
       coreMetrics,
       advancedDelivery,
       skills: weightedSkills,
-      perQuestion: Array.isArray(parsed.perQuestion) ? (parsed.perQuestion as PerQuestionReport[]).slice(0, 30) : [],
+      perQuestion: Array.isArray(parsed.perQuestion)
+        ? (parsed.perQuestion as PerQuestionReport[])
+            .slice(0, 30)
+            .map((pq) => {
+              const validDifficulty = ["warmup", "standard", "hard"];
+              const diff: PerQuestionReport["difficulty"] = validDifficulty.includes(pq.difficulty) ? pq.difficulty : "standard";
+              const freqRaw = pq.frequencyPct;
+              const freq: number | null =
+                typeof freqRaw === "number" && isFinite(freqRaw) && freqRaw >= 0 && freqRaw <= 100
+                  ? Math.round(freqRaw)
+                  : null;
+              return {
+                ...pq,
+                difficulty: diff,
+                frequencyPct: freq,
+                frequencyNote: typeof pq.frequencyNote === "string" ? pq.frequencyNote.slice(0, 80) : "",
+              };
+            })
+        : [],
       thoughtBubble,
       calibration: { companyLabel, note: companyNote, bands },
       crossSessionInsights: (() => {

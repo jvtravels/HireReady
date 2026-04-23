@@ -862,6 +862,9 @@ export interface SessionReportPerQuestion {
   verdict: "strong" | "complete" | "partial" | "weak" | "skipped";
   score: number;
   starPresence: { S: boolean; T: boolean; A: boolean; R: boolean };
+  difficulty: "warmup" | "standard" | "hard";
+  frequencyPct: number | null;
+  frequencyNote: string;
   restructured: {
     text: string;
     citations: Array<{ markerIdx: number; sourceStart: number; sourceEnd: number }>;
@@ -899,7 +902,7 @@ export interface SessionReportRedFlag {
 }
 
 export interface SessionReport {
-  version: "mvp-3";
+  version: "mvp-4";
   overallScore: number;
   band: SessionReportBand;
   verdict: string;

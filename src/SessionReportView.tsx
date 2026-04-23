@@ -40,6 +40,12 @@ const BAND_META: Record<SessionReportBand, { label: string; color: string; bg: s
   strongNoHire: { label: "Strong No Hire", color: c.ember, bg: "rgba(196,112,90,0.10)" },
 };
 
+const DIFFICULTY_META: Record<SessionReportPerQuestion["difficulty"], { label: string; color: string; bg: string }> = {
+  warmup:   { label: "Warmup",   color: c.sage,  bg: "rgba(122,158,126,0.08)" },
+  standard: { label: "Standard", color: c.stone, bg: "rgba(158,158,158,0.08)" },
+  hard:     { label: "Hard",     color: c.ember, bg: "rgba(196,112,90,0.08)" },
+};
+
 const VERDICT_META: Record<SessionReportPerQuestion["verdict"], { label: string; color: string; bg: string }> = {
   strong:   { label: "Strong",   color: c.sage,  bg: "rgba(122,158,126,0.10)" },
   complete: { label: "Complete", color: c.sage,  bg: "rgba(122,158,126,0.06)" },
@@ -383,7 +389,27 @@ function QuestionCard({ q, index, sessionId }: { q: SessionReportPerQuestion; in
             {q.question || "(no question)"}
           </span>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+          {q.difficulty && (
+            <span
+              title={q.frequencyNote || `Difficulty: ${DIFFICULTY_META[q.difficulty].label}`}
+              style={{
+                fontFamily: font.ui, fontSize: 9, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase",
+                color: DIFFICULTY_META[q.difficulty].color, background: DIFFICULTY_META[q.difficulty].bg,
+                padding: "3px 7px", borderRadius: 3,
+              }}
+            >{DIFFICULTY_META[q.difficulty].label}</span>
+          )}
+          {typeof q.frequencyPct === "number" && q.frequencyPct > 0 && (
+            <span
+              title={q.frequencyNote || `Asked in ~${q.frequencyPct}% of relevant loops`}
+              style={{
+                fontFamily: font.mono, fontSize: 10, fontWeight: 600,
+                color: c.stone, background: "rgba(245,242,237,0.04)",
+                padding: "2px 6px", borderRadius: 3, border: `1px solid ${c.border}`,
+              }}
+            >{q.frequencyPct}%</span>
+          )}
           <span style={{
             fontFamily: font.ui, fontSize: 10, fontWeight: 600, letterSpacing: "0.04em", textTransform: "uppercase",
             color: verdictMeta.color, background: verdictMeta.bg, padding: "3px 8px", borderRadius: 4,
@@ -402,6 +428,12 @@ function QuestionCard({ q, index, sessionId }: { q: SessionReportPerQuestion; in
             <div>
               <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, color: c.stone, textTransform: "uppercase", letterSpacing: "0.06em" }}>Question</span>
               <p style={{ fontFamily: font.ui, fontSize: 13, color: c.ivory, lineHeight: 1.6, margin: "6px 0 0" }}>{q.question}</p>
+              {q.frequencyNote && (
+                <p style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, margin: "4px 0 0", fontStyle: "italic" }}>
+                  {q.frequencyNote}
+                  {typeof q.frequencyPct === "number" && q.frequencyPct > 0 && ` · asked in ~${q.frequencyPct}% of relevant loops`}
+                </p>
+              )}
             </div>
           )}
 
