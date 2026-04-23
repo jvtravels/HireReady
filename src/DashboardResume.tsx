@@ -44,7 +44,24 @@ function saveResumeVersion(fileName: string, resumeScore?: number, resumeText?: 
 function getResumeHistory(): ResumeVersion[] {
   try {
     const raw = localStorage.getItem(RESUME_HISTORY_KEY);
-    return raw ? JSON.parse(raw) : [];
+    const history: ResumeVersion[] = raw ? JSON.parse(raw) : [];
+    // Retroactive dedup: earlier versions of saveResumeVersion could produce
+    // near-identical rows (same filename, same text content) because the
+    // auto-reanalyze useEffect ran on every user-object refresh. Collapse
+    // them keeping the newest occurrence of each (fileName, contentHash)
+    // pair and re-persist so the UI stabilises.
+    const seen = new Set<string>();
+    const deduped: ResumeVersion[] = [];
+    for (const v of history) {
+      const key = `${v.fileName}::${v.contentHash ?? "nohash"}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      deduped.push(v);
+    }
+    if (deduped.length !== history.length) {
+      try { localStorage.setItem(RESUME_HISTORY_KEY, JSON.stringify(deduped)); } catch { /* quota */ }
+    }
+    return deduped;
   } catch { return []; }
 }
 
@@ -325,12 +342,18 @@ export default function DashboardResume() {
 
     setPhase("analyzing");
     let result: { profile: ResumeProfile; truncated?: boolean } | null = null;
+    let analyzeError: string | null = null;
     try {
       result = await Promise.race([
         analyzeResumeWithAI(text, user?.targetRole),
         new Promise<null>((_, reject) => setTimeout(() => reject(new Error("timeout")), 25_000)),
       ]);
-    } catch { /* timeout or network error — fall through to fallback */ }
+    } catch (err) {
+      // Preserve the real error so the UI can surface it (auth expired, quota,
+      // LLM misconfigured, etc.) instead of a generic "unavailable" message.
+      analyzeError = err instanceof Error ? err.message : String(err);
+      console.error("[resume] Upload-time AI analysis failed:", analyzeError);
+    }
     if (result?.profile) {
       setProfile(result.profile);
       setAnalysisSource("ai");
@@ -339,7 +362,20 @@ export default function DashboardResume() {
       saveResumeVersion(file.name, result.profile.resumeScore, text);
       setPhase("done");
     } else {
-      setErrorMsg("AI analysis unavailable — showing basic profile from your resume. You can re-analyze anytime.");
+      const isTimeout = analyzeError?.toLowerCase().includes("timeout");
+      const isAuth = analyzeError?.toLowerCase().includes("session") || analyzeError?.toLowerCase().includes("unauthorized");
+      const isQuota = analyzeError?.toLowerCase().includes("quota") || analyzeError?.toLowerCase().includes("limit");
+      setErrorMsg(
+        isAuth
+          ? "Session expired — please refresh and sign in again, then click Re-analyze."
+          : isQuota
+            ? `${analyzeError} — basic profile shown below.`
+            : isTimeout
+              ? "AI analysis timed out — showing basic profile. Click Re-analyze to retry."
+              : analyzeError
+                ? `AI analysis failed: ${analyzeError}. Showing basic profile — click Re-analyze to retry.`
+                : "AI analysis unavailable — showing basic profile. Click Re-analyze to retry.",
+      );
       const parsed = parseResumeData(text);
       const fallback: ResumeProfile = {
         headline: parsed.name || "Resume uploaded",
