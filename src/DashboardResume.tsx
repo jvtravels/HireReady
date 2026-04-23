@@ -405,16 +405,33 @@ export default function DashboardResume() {
 
   const handleReanalyze = async () => {
     if (reanalyzing) return;
-    if (!resumeText) {
-      setErrorMsg("Resume text not available — please re-upload your resume to get AI analysis.");
+    // Fallback chain: local state → user profile → localStorage. The local
+    // state may be empty on first render before the hydration useEffect runs,
+    // or when the Supabase profile.resume_text column was skipped due to a
+    // missing column and text lives only in localStorage under hirestepx_resume.
+    let textForAnalysis = resumeText || user?.resumeText || "";
+    if (!textForAnalysis) {
+      try {
+        const raw = localStorage.getItem("hirestepx_resume");
+        if (raw) {
+          const obj = JSON.parse(raw) as { text?: string };
+          if (obj?.text) textForAnalysis = obj.text;
+        }
+      } catch { /* ignore */ }
+    }
+    if (!textForAnalysis || textForAnalysis.trim().length < 30) {
+      setErrorMsg("Resume text not available — please click Replace and re-upload your resume to get AI analysis.");
       return;
     }
+    // Sync local state so subsequent renders have the text available too.
+    if (!resumeText) setResumeText(textForAnalysis);
     setReanalyzing(true);
     setReanalyzeDone(false);
     setErrorMsg("");
+    console.log("[resume] Re-analyze triggered — text length:", textForAnalysis.length);
     try {
       const result = await Promise.race([
-        analyzeResumeWithAI(resumeText, user?.targetRole),
+        analyzeResumeWithAI(textForAnalysis, user?.targetRole),
         new Promise<null>((_, reject) => setTimeout(() => reject(new Error("timeout")), 25_000)),
       ]);
       if (result?.profile) {
@@ -422,7 +439,7 @@ export default function DashboardResume() {
         setAnalysisSource("ai");
         setTruncated(!!result.truncated);
         updateUser({ resumeData: { ...result.profile, _type: "ai" } as unknown as ParsedResume });
-        if (fileName) saveResumeVersion(fileName, result.profile.resumeScore, resumeText);
+        if (fileName) saveResumeVersion(fileName, result.profile.resumeScore, textForAnalysis);
       } else {
         setErrorMsg("AI couldn't extract structured data. Try re-uploading a cleaner PDF or DOCX.");
       }
