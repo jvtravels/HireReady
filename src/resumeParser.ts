@@ -454,6 +454,36 @@ export function parseResumeData(rawText: string): ParsedResume {
   };
 }
 
+/** Yield back to the main thread between parse stages so the UI stays responsive on large resumes. */
+function yieldToMain(): Promise<void> {
+  // Modern: scheduler.yield() (Chrome 129+). Fallback: setTimeout 0.
+  const sched = (globalThis as unknown as { scheduler?: { yield?: () => Promise<void> } }).scheduler;
+  if (sched?.yield) return sched.yield();
+  return new Promise(resolve => setTimeout(resolve, 0));
+}
+
+/**
+ * Non-blocking variant of parseResumeData that yields to the browser
+ * between each section so we don't freeze the UI on 50+ page CVs.
+ */
+export async function parseResumeDataAsync(rawText: string): Promise<ParsedResume> {
+  const contact = extractContact(rawText);
+  await yieldToMain();
+  const sections = splitSections(rawText);
+  await yieldToMain();
+  const skills = sections.skills ? parseSkills(sections.skills) : [];
+  await yieldToMain();
+  const experience = sections.experience ? parseExperience(sections.experience) : [];
+  await yieldToMain();
+  const education = sections.education ? parseEducation(sections.education) : [];
+  const certifications = sections.certifications ? parseCertifications(sections.certifications) : [];
+  return {
+    ...contact,
+    summary: sections.summary?.replace(/\n/g, " ").trim() || "",
+    skills, experience, education, certifications,
+  };
+}
+
 /**
  * Extract text from a resume file.
  * Supports: .pdf, .docx, .doc, .txt

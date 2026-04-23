@@ -31,16 +31,23 @@ interface SessionRow {
   created_at: string;
 }
 
-type EmailTier = "day1" | "day3" | "day7";
+type EmailTier = "day1" | "day3" | "day7" | "paid14" | "paid30";
 
-function getEmailTier(daysSinceLastSession: number, lastEmailSent: string | null): EmailTier | null {
+function getEmailTier(daysSinceLastSession: number, lastEmailSent: string | null, isPaid = false): EmailTier | null {
   const lastSentDays = lastEmailSent
     ? Math.floor((Date.now() - new Date(lastEmailSent).getTime()) / 86400000)
     : Infinity;
 
-  // Don't send more than one email per 2 days
-  if (lastSentDays < 2) return null;
+  if (isPaid) {
+    // Paid users get at most one email every 10 days
+    if (lastSentDays < 10) return null;
+    if (daysSinceLastSession >= 30 && daysSinceLastSession < 42) return "paid30";
+    if (daysSinceLastSession >= 14 && daysSinceLastSession < 30) return "paid14";
+    return null;
+  }
 
+  // Free: at most one email every 2 days
+  if (lastSentDays < 2) return null;
   if (daysSinceLastSession >= 7 && daysSinceLastSession < 14) return "day7";
   if (daysSinceLastSession >= 3 && daysSinceLastSession < 7) return "day3";
   if (daysSinceLastSession >= 1 && daysSinceLastSession < 3) return "day1";
@@ -70,6 +77,8 @@ function buildEmail(
     day1: `${user.name?.split(" ")[0] || "Hey"}, your next practice session is ready`,
     day3: `Your ${weakest || "interview"} skills need a refresh`,
     day7: `Don't lose your progress — practice before your interview`,
+    paid14: `${user.name?.split(" ")[0] || "Hey"}, 2 weeks since your last session — make today count`,
+    paid30: `Your subscription is still active — let's get the most out of it`,
   };
 
   const heroText: Record<EmailTier, string> = {
@@ -80,20 +89,26 @@ function buildEmail(
     day7: score
       ? `You scored <strong style="color:#C9A96E;">${score}/100</strong> in your last session. That's a solid start — but skills fade without practice. One more session keeps you sharp.`
       : `Interview skills fade fast without practice. A quick 10-minute session keeps your edge sharp.`,
+    paid14: `You're paying for unlimited practice — and haven't used it in 14 days. A 10-minute session today rebuilds the muscle memory that got you this far.`,
+    paid30: `It's been a month since your last session. Your ${role} skills are still in there — let's brush them off with a focused 15-minute drill.`,
   };
 
   const ctaText: Record<EmailTier, string> = {
     day1: "Continue Practicing",
     day3: weakest ? `Practice ${weakest}` : "Start a Session",
     day7: "Practice Now — It's Free",
+    paid14: "Start a Quick Session",
+    paid30: "Start a Focused Drill",
   };
 
-  const ctaUrl = tier === "day1" ? sessionUrl : dashUrl;
+  const ctaUrl = tier === "day1" || tier === "paid14" || tier === "paid30" ? sessionUrl : dashUrl;
 
   const footerText: Record<EmailTier, string> = {
     day1: "You have free sessions remaining. No card needed.",
     day3: "10 minutes is all it takes. Your resume-personalized questions are waiting.",
     day7: "This is your last reminder. We'll stop emailing — but your practice sessions will always be here when you're ready.",
+    paid14: "You're on the Pro plan. Unlimited sessions, every day.",
+    paid30: "Pause or cancel anytime from Settings → Plan. We want you practicing only when it's useful.",
   };
 
   const html = `<!DOCTYPE html>
@@ -169,8 +184,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // who haven't been emailed in the last 2 days
     const twoDaysAgo = new Date(Date.now() - 2 * 86400000).toISOString();
 
+    // Target free AND paid users who haven't practiced recently. Paid users
+    // get different copy (see buildEmail) since they need value-justification,
+    // not upgrade prompts.
     const profilesRes = await fetch(
-      `${SUPABASE_URL}/rest/v1/profiles?subscription_tier=eq.free&select=id,name,email,subscription_tier,practice_timestamps,target_role,re_engage_sent&limit=300`,
+      `${SUPABASE_URL}/rest/v1/profiles?or=(subscription_tier.eq.free,subscription_tier.eq.starter,subscription_tier.eq.pro)&select=id,name,email,subscription_tier,practice_timestamps,target_role,re_engage_sent&limit=500`,
       {
         headers: {
           apikey: SUPABASE_SERVICE_ROLE_KEY,
@@ -188,12 +206,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(200).json({ sent: 0, message: "No users to re-engage" });
     }
 
-    // Filter to users who have practiced but not recently
+    // Filter to users who have practiced but not recently.
+    // Free tier: 1-14 day window. Paid tier: longer window (paid users have
+    // higher tolerance; nag too early and they churn).
     const candidates = profiles.filter(p => {
       if (!p.email || !p.practice_timestamps || p.practice_timestamps.length === 0) return false;
       const lastPractice = new Date(p.practice_timestamps[p.practice_timestamps.length - 1]);
       const daysSince = Math.floor((Date.now() - lastPractice.getTime()) / 86400000);
-      // Only target users 1-14 days inactive
+      const isPaid = p.subscription_tier === "starter" || p.subscription_tier === "pro";
+      if (isPaid) {
+        // Paid: gently re-engage after 2 weeks idle, stop after 6 weeks
+        return daysSince >= 14 && daysSince < 42;
+      }
       return daysSince >= 1 && daysSince < 14;
     });
 
@@ -205,7 +229,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const lastPractice = new Date(user.practice_timestamps![user.practice_timestamps!.length - 1]);
       const daysSince = Math.floor((Date.now() - lastPractice.getTime()) / 86400000);
 
-      const tier = getEmailTier(daysSince, user.re_engage_sent);
+      const isPaid = user.subscription_tier === "starter" || user.subscription_tier === "pro";
+      const tier = getEmailTier(daysSince, user.re_engage_sent, isPaid);
       if (!tier) { skipped++; continue; }
 
       // Fetch their last session for score data

@@ -249,7 +249,7 @@ export default function Onboarding() {
     setResumeError("");
     setResumeParsing(true);
     try {
-      const { extractResumeText, parseResumeData } = await import("./resumeParser");
+      const { extractResumeText, parseResumeDataAsync } = await import("./resumeParser");
       const { analyzeResumeWithAI } = await import("./dashboardData");
       const text = await extractResumeText(file);
       if (!text || text.trim().length < 30) {
@@ -262,7 +262,7 @@ export default function Onboarding() {
         }
         throw new Error("Very little text was extracted. The file may be empty or corrupted — try re-exporting as a PDF or DOCX.");
       }
-      const data = parseResumeData(text);
+      const data = await parseResumeDataAsync(text);
       setResumeText(text);
       setResumeParsed(data);
       track("resume_upload_completed", { textLen: text.length, skillCount: data.skills?.length || 0, hasName: !!data.name });

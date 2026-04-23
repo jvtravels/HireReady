@@ -131,9 +131,17 @@ function validateSessionFingerprint(): boolean {
   } catch { return true; }
 }
 
-/* ─── Audit Logging (sends auth events to Vercel function logs) ─── */
+/* ─── Audit Logging (persists security events to audit_log table + function logs) ─── */
 function logAuditEvent(event: string, details?: Record<string, unknown>) {
   try {
+    // 1. Server-side persistence (queryable audit table)
+    fetch("/api/audit-log", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ event, details: { ...details, path: window.location.pathname } }),
+      keepalive: true,
+    }).catch(() => {});
+    // 2. Function-log backup (for events that arrive before the table exists)
     const payload = {
       message: `[audit] ${event}`,
       timestamp: new Date().toISOString(),
@@ -141,11 +149,11 @@ function logAuditEvent(event: string, details?: Record<string, unknown>) {
       userAgent: navigator.userAgent,
       ...details,
     };
-    // Fire-and-forget — don't block auth flow
     fetch("/api/log-error", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
+      keepalive: true,
     }).catch(() => {});
   } catch { /* audit is best-effort */ }
 }

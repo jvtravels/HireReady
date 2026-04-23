@@ -22,8 +22,7 @@ const ALL_SECTIONS = [
   // Hidden until fully implemented:
   // { id: "notifications", label: "Notifications", icon: icons.notifications },
   { id: "plan", label: "Plan & Data", icon: icons.plan },
-  // Hidden until fully implemented:
-  // { id: "referral", label: "Referral", icon: icons.referral },
+  { id: "referral", label: "Referral", icon: icons.referral },
 ] as const;
 
 const SECTIONS = ALL_SECTIONS;

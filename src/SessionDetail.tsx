@@ -1557,7 +1557,7 @@ export default function SessionDetail() {
           <Section animIndex={4}>
             <div
               onClick={() => setShowTranscript(v => !v)}
-              style={{ display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer" }}
+              style={{ display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer", gap: 12, flexWrap: "wrap" }}
               role="button" aria-expanded={showTranscript} tabIndex={0}
               onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setShowTranscript(v => !v); } }}
             >
@@ -1566,10 +1566,38 @@ export default function SessionDetail() {
                 Full Transcript
                 <span style={{ fontSize: 11, color: c.stone, fontWeight: 400 }}>({session.transcript.length} messages)</span>
               </h3>
-              <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={c.stone} strokeWidth="2" strokeLinecap="round"
-                style={{ transform: showTranscript ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.2s ease" }}>
-                <polyline points="6 9 12 15 18 9"/>
-              </svg>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (!session.transcript) return;
+                    const lines = session.transcript.map(m => `[${m.time}] ${m.speaker.toUpperCase()}: ${m.text}`).join("\n\n");
+                    const header = `HireStepX — ${session.type} (${session.difficulty})\nDate: ${session.date}  ·  Score: ${session.score}/100\n\n`;
+                    const blob = new Blob([header + lines], { type: "text/plain;charset=utf-8" });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement("a");
+                    a.href = url;
+                    a.download = `hirestepx-transcript-${session.id.slice(0, 8)}-${session.date}.txt`;
+                    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                  }}
+                  title="Download this interview transcript (accessibility: screen-readable alternative to audio)"
+                  style={{
+                    fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.gilt, letterSpacing: "0.02em",
+                    background: "rgba(212,179,127,0.06)", border: `1px solid rgba(212,179,127,0.15)`,
+                    borderRadius: 6, padding: "5px 10px", cursor: "pointer",
+                    display: "flex", alignItems: "center", gap: 5,
+                  }}
+                >
+                  <svg aria-hidden="true" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                  Download .txt
+                </button>
+                <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={c.stone} strokeWidth="2" strokeLinecap="round"
+                  style={{ transform: showTranscript ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.2s ease" }}>
+                  <polyline points="6 9 12 15 18 9"/>
+                </svg>
+              </div>
             </div>
 
             {showTranscript && (
