@@ -16,6 +16,8 @@ import {
   type SessionTrendPoint,
 } from "./dashboardData";
 import { getCohortAverage, type RoleFamily } from "./roleBenchmarks";
+import { detectBias, countBias, BIAS_LABELS, type BiasPatternKind } from "./biasDetector";
+import { useAuth } from "./AuthContext";
 
 /* ─── MVP Results Report view ───────────────────────────────────────
  * Sections (in order):
@@ -498,6 +500,7 @@ export const SessionReportView = memo(function SessionReportView({
   onBack: () => void;
 }) {
   const router = useRouter();
+  const { user } = useAuth();
   const [report, setReport] = useState<SessionReport | null>(null);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState("");
@@ -521,6 +524,7 @@ export const SessionReportView = memo(function SessionReportView({
         const meta = {
           role: session.role,
           roleFamily,
+          targetCompany: user?.targetCompany || null,
           difficulty: (session.difficulty as "warmup" | "standard" | "hard") || "standard",
           duration: parseDurationSec(session.duration),
         };
@@ -554,7 +558,7 @@ export const SessionReportView = memo(function SessionReportView({
 
     load();
     return () => { cancelled = true; ac.abort(); };
-  }, [session.id, reloadTick]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [session.id, reloadTick, user?.targetCompany]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Fire once per successful report view, for funnel analytics.
   useEffect(() => {
@@ -676,11 +680,29 @@ export const SessionReportView = memo(function SessionReportView({
           }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 20 }}>
               <div style={{ flex: 1, minWidth: 240 }}>
-                <span style={{
-                  display: "inline-block", fontFamily: font.ui, fontSize: 10, fontWeight: 700,
-                  letterSpacing: "0.08em", textTransform: "uppercase",
-                  color: bandMeta.color, background: bandMeta.bg, padding: "4px 10px", borderRadius: 4, marginBottom: 10,
-                }}>{bandMeta.label}</span>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 10 }}>
+                  <span style={{
+                    display: "inline-block", fontFamily: font.ui, fontSize: 10, fontWeight: 700,
+                    letterSpacing: "0.08em", textTransform: "uppercase",
+                    color: bandMeta.color, background: bandMeta.bg, padding: "4px 10px", borderRadius: 4,
+                  }}>{bandMeta.label}</span>
+                  {report.calibration && report.calibration.companyLabel !== "Generic" && (
+                    <span
+                      title={report.calibration.note}
+                      style={{
+                        display: "inline-flex", alignItems: "center", gap: 4,
+                        fontFamily: font.ui, fontSize: 10, fontWeight: 600, letterSpacing: "0.05em", textTransform: "uppercase",
+                        color: c.gilt, background: "rgba(212,179,127,0.06)", border: "1px solid rgba(212,179,127,0.2)",
+                        padding: "3px 9px", borderRadius: 4,
+                      }}
+                    >
+                      <svg aria-hidden="true" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+                      </svg>
+                      Calibrated · {report.calibration.companyLabel}
+                    </span>
+                  )}
+                </div>
                 <h1 style={{ fontFamily: font.display, fontSize: 30, fontWeight: 400, color: c.ivory, margin: "0 0 8px", letterSpacing: "-0.02em" }}>
                   Your interview report
                 </h1>
@@ -788,6 +810,19 @@ export const SessionReportView = memo(function SessionReportView({
                 ))}
               </div>
             </div>
+          )}
+
+          {/* Advanced delivery panel — hedging density, lexical diversity, latency, self-correction */}
+          {report.advancedDelivery && <AdvancedDeliveryPanel ad={report.advancedDelivery} />}
+
+          {/* Interviewer thought bubble — LLM-inferred cognitive state over time */}
+          {report.thoughtBubble && report.thoughtBubble.length > 0 && (
+            <ThoughtBubbleTimeline segments={report.thoughtBubble} totalMs={parseDurationSec(session.duration) * 1000} />
+          )}
+
+          {/* Hidden-bias / perception-optimizer — detected from candidate's own answers */}
+          {report.perQuestion && report.perQuestion.length > 0 && (
+            <BiasPanel answers={report.perQuestion.map((q) => q.answerText || "")} />
           )}
 
           {/* 4. Per-question deep-dive */}
@@ -993,6 +1028,223 @@ function PollRow({ label, answer, onAnswer }: {
             </button>
           ))}
         </div>
+      )}
+    </div>
+  );
+}
+
+/** Advanced delivery panel — hedging / diversity / ownership / latency / self-correction. */
+function AdvancedDeliveryPanel({ ad }: { ad: NonNullable<SessionReport["advancedDelivery"]> }) {
+  const tiles = [
+    {
+      label: "Hedging / min",
+      value: ad.hedgingPerMin.toString(),
+      target: "≤ 2",
+      good: ad.hedgingPerMin <= 2 ? "green" : ad.hedgingPerMin <= 4 ? "amber" : "red",
+      hint: "“I think…”, “maybe…”. Hedges reduce perceived authority.",
+    },
+    {
+      label: "Lexical diversity",
+      value: ad.lexicalDiversity.toFixed(2),
+      target: "0.40+",
+      good: ad.lexicalDiversity >= 0.40 ? "green" : ad.lexicalDiversity >= 0.30 ? "amber" : "red",
+      hint: "Ratio of unique words. Higher reads as more competent.",
+    },
+    {
+      label: "First-person (I:we)",
+      value: `${Math.round(ad.firstPersonRatio * 100)}%`,
+      target: "40–70%",
+      good: ad.firstPersonRatio >= 0.4 && ad.firstPersonRatio <= 0.7 ? "green" : ad.firstPersonRatio >= 0.3 ? "amber" : "red",
+      hint: "Too much “we” hides your contribution; too much “I” reads as a lone wolf.",
+    },
+    {
+      label: "Response latency",
+      value: ad.medianLatencyMs > 0 ? `${(ad.medianLatencyMs / 1000).toFixed(1)}s` : "—",
+      target: "1–3s",
+      good: ad.medianLatencyMs === 0 ? "amber"
+        : ad.medianLatencyMs >= 1000 && ad.medianLatencyMs <= 3000 ? "green"
+        : ad.medianLatencyMs <= 6000 ? "amber" : "red",
+      hint: "Median gap between question end and your first word.",
+    },
+    {
+      label: "Self-corrections / min",
+      value: ad.selfCorrectionRate.toString(),
+      target: "≤ 1",
+      good: ad.selfCorrectionRate <= 1 ? "green" : ad.selfCorrectionRate <= 2 ? "amber" : "red",
+      hint: "“Let me rephrase…”, “actually…” — cognitive-load signal.",
+    },
+  ];
+  return (
+    <div style={{
+      background: c.graphite, borderRadius: 14, border: `1px solid ${c.border}`,
+      padding: "22px 28px", marginBottom: 20,
+    }}>
+      <h2 style={{ fontFamily: font.ui, fontSize: 15, fontWeight: 600, color: c.ivory, margin: "0 0 4px" }}>
+        Advanced delivery
+      </h2>
+      <p style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, margin: "0 0 16px" }}>
+        Signals competitors don't surface. Tune these and your charisma jumps.
+      </p>
+      <div style={{
+        display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 10,
+      }}>
+        {tiles.map((t) => {
+          const dotColor = t.good === "green" ? c.sage : t.good === "amber" ? c.gilt : c.ember;
+          return (
+            <div key={t.label} title={t.hint} style={{
+              background: "rgba(245,242,237,0.02)", border: `1px solid ${c.border}`, borderRadius: 10,
+              padding: "12px 14px", display: "flex", flexDirection: "column", gap: 4,
+            }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+                <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, color: c.stone, textTransform: "uppercase", letterSpacing: "0.06em" }}>{t.label}</span>
+                <span style={{ display: "inline-block", width: 6, height: 6, borderRadius: "50%", background: dotColor }} />
+              </div>
+              <span style={{ fontFamily: font.mono, fontSize: 20, fontWeight: 700, color: c.ivory, lineHeight: 1 }}>{t.value}</span>
+              <span style={{ fontFamily: font.ui, fontSize: 10, color: c.stone }}>Target: {t.target}</span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+const THOUGHT_STATE_META: Record<SessionReport["thoughtBubble"][number]["state"], { label: string; color: string }> = {
+  tracking:         { label: "Tracking",           color: c.sage },
+  impressed:        { label: "Impressed",          color: c.sage },
+  probingForScope:  { label: "Probing for scope",  color: c.gilt },
+  readyToMoveOn:    { label: "Ready to move on",   color: c.gilt },
+  losingThread:     { label: "Losing thread",      color: c.ember },
+  concerned:        { label: "Concerned",          color: c.ember },
+};
+
+/** Interviewer thought-bubble timeline — horizontal colored ribbon + per-segment notes. */
+function ThoughtBubbleTimeline({ segments, totalMs }: { segments: SessionReport["thoughtBubble"]; totalMs: number }) {
+  // Normalize segments: if endMs values are all 0 (no real timestamps), lay
+  // them out in equal slices.
+  const hasReal = segments.some((s) => (s.endMs || 0) > 0);
+  const maxMs = hasReal
+    ? Math.max(totalMs, ...segments.map((s) => s.endMs || 0))
+    : segments.length;
+  const norm = segments.map((s, i) => ({
+    ...s,
+    _start: hasReal ? s.startMs : i,
+    _end:   hasReal ? Math.max(s.endMs, s.startMs + 1) : i + 1,
+  }));
+  const fmt = (ms: number) => hasReal ? `${Math.floor(ms / 60000)}:${String(Math.floor((ms % 60000) / 1000)).padStart(2, "0")}` : "";
+
+  return (
+    <div style={{
+      background: c.graphite, borderRadius: 14, border: `1px solid ${c.border}`,
+      padding: "22px 28px", marginBottom: 20,
+    }}>
+      <h2 style={{ fontFamily: font.ui, fontSize: 15, fontWeight: 600, color: c.ivory, margin: "0 0 4px" }}>
+        What the interviewer was likely thinking
+      </h2>
+      <p style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, margin: "0 0 14px" }}>
+        Inferred cognitive state segment-by-segment — use this to read between the lines.
+      </p>
+
+      {/* Ribbon */}
+      <div role="img" aria-label="Interviewer thought timeline" style={{
+        display: "flex", height: 14, borderRadius: 4, overflow: "hidden", background: c.obsidian, marginBottom: 14,
+      }}>
+        {norm.map((s, i) => {
+          const meta = THOUGHT_STATE_META[s.state] || THOUGHT_STATE_META.tracking;
+          const width = ((s._end - s._start) / maxMs) * 100;
+          return (
+            <div
+              key={i}
+              title={`${meta.label}${hasReal ? ` · ${fmt(s.startMs)}–${fmt(s.endMs)}` : ""}`}
+              style={{ width: `${width}%`, background: meta.color, opacity: 0.82 }}
+            />
+          );
+        })}
+      </div>
+
+      {/* Per-segment notes */}
+      <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 8 }}>
+        {norm.map((s, i) => {
+          const meta = THOUGHT_STATE_META[s.state] || THOUGHT_STATE_META.tracking;
+          return (
+            <li key={i} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+              <span style={{
+                fontFamily: font.ui, fontSize: 9, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase",
+                color: meta.color, background: `${meta.color}14`, border: `1px solid ${meta.color}33`,
+                padding: "2px 6px", borderRadius: 3, flexShrink: 0, minWidth: 90, textAlign: "center",
+              }}>{meta.label}</span>
+              <p style={{ fontFamily: font.ui, fontSize: 12, color: c.chalk, lineHeight: 1.5, margin: 0 }}>
+                {s.note}
+                {hasReal && (
+                  <span style={{ fontFamily: font.mono, fontSize: 10, color: c.stone, marginLeft: 6 }}>
+                    · {fmt(s.startMs)}
+                  </span>
+                )}
+              </p>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
+/** Hidden-bias / perception-optimizer panel. Client-side regex; no LLM. */
+function BiasPanel({ answers }: { answers: string[] }) {
+  const counts = useMemo(() => countBias(answers), [answers]);
+  const total = counts.selfDiminutive + counts.overApology + counts.overHedging + counts.uptalk;
+  if (total === 0) return null; // Clean — no need to raise the topic.
+
+  // Collect up to 3 example hits for the collapsible examples list.
+  const examples: Array<{ kind: BiasPatternKind; text: string; suggestion: string }> = [];
+  for (const a of answers) {
+    for (const h of detectBias(a)) {
+      if (examples.length < 3) examples.push({ kind: h.kind, text: h.text, suggestion: h.suggestion });
+    }
+    if (examples.length >= 3) break;
+  }
+
+  return (
+    <div style={{
+      background: "rgba(212,179,127,0.03)", border: `1px solid rgba(212,179,127,0.18)`,
+      borderRadius: 14, padding: "18px 24px", marginBottom: 20,
+    }}>
+      <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 4 }}>
+        <h2 style={{ fontFamily: font.ui, fontSize: 14, fontWeight: 600, color: c.ivory, margin: 0 }}>
+          Perception optimizer
+        </h2>
+        <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>
+          · {total} pattern{total === 1 ? "" : "s"} detected
+        </span>
+      </div>
+      <p style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, margin: "0 0 12px", lineHeight: 1.5 }}>
+        Language patterns research shows can quietly disadvantage you in interviews. Fixing these is low-effort, high-payoff.
+      </p>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: examples.length > 0 ? 12 : 0 }}>
+        {(Object.entries(counts) as Array<[BiasPatternKind, number]>)
+          .filter(([, n]) => n > 0)
+          .map(([kind, n]) => (
+            <span key={kind} style={{
+              fontFamily: font.ui, fontSize: 11, fontWeight: 500, color: c.chalk,
+              background: "rgba(245,242,237,0.04)", border: `1px solid ${c.border}`,
+              borderRadius: 6, padding: "4px 10px",
+            }}>
+              {BIAS_LABELS[kind]} · {n}
+            </span>
+          ))}
+      </div>
+      {examples.length > 0 && (
+        <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 6 }}>
+          {examples.map((ex, i) => (
+            <li key={i} style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+              <span style={{ flexShrink: 0, color: c.gilt, fontFamily: font.mono, fontSize: 11 }}>→</span>
+              <p style={{ fontFamily: font.ui, fontSize: 11, color: c.chalk, lineHeight: 1.5, margin: 0 }}>
+                <span style={{ fontStyle: "italic", color: c.stone }}>“{ex.text}”</span>{" · "}
+                <span>{ex.suggestion}</span>
+              </p>
+            </li>
+          ))}
+        </ul>
       )}
     </div>
   );

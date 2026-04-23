@@ -896,8 +896,26 @@ export interface SessionReport {
   fixes: SessionReportWinFix[];
   redFlags: SessionReportRedFlag[];
   coreMetrics: { fillerPerMin: number; silenceRatio: number; paceWpm: number; energy: number };
-  skills: Array<{ name: string; score: number }>;
+  advancedDelivery: {
+    hedgingPerMin: number;
+    lexicalDiversity: number;
+    firstPersonRatio: number;
+    medianLatencyMs: number;
+    selfCorrectionRate: number;
+  };
+  skills: Array<{ name: string; score: number; weight?: number }>;
   perQuestion: SessionReportPerQuestion[];
+  thoughtBubble: Array<{
+    startMs: number;
+    endMs: number;
+    state: "tracking" | "losingThread" | "probingForScope" | "readyToMoveOn" | "impressed" | "concerned";
+    note: string;
+  }>;
+  calibration: {
+    companyLabel: string;
+    note: string;
+    bands: { strongHire: number; hire: number; leanHire: number; noHire: number };
+  };
   model: string;
 }
 
@@ -1016,4 +1034,93 @@ export async function saveStoryToNotebook(entry: StoryNotebookEntry): Promise<{ 
     throw new Error(error.message || "Failed to save story");
   }
   return data ? { id: (data as { id: string }).id } : null;
+}
+
+export interface StoryNotebookRow {
+  id: string;
+  sessionId: string | null;
+  questionIdx: number | null;
+  title: string;
+  question: string;
+  answerText: string;
+  tags: string[];
+  createdAt: string;
+  lastUsedAt: string | null;
+  /** Days since last use (or creation if never used). Used for SR ordering. */
+  daysStale: number;
+}
+
+/**
+ * Fetch the user's Story Notebook, oldest-stale-first for spaced repetition.
+ * Leitner-lite: entries never reviewed OR last reviewed >7 days ago surface
+ * at the top; everything else by recency.
+ */
+export async function fetchStoryNotebook(): Promise<StoryNotebookRow[]> {
+  const { getSupabase } = await import("./supabase");
+  const client = await getSupabase();
+  const { data: sessionData } = await client.auth.getSession();
+  const userId = sessionData.session?.user?.id;
+  if (!userId) return [];
+  const { data, error } = await client
+    .from("story_notebook")
+    .select("id, session_id, question_idx, title, question, answer_text, tags, created_at, last_used_at")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false })
+    .limit(200);
+  if (error) {
+    console.warn("[fetchStoryNotebook] query failed:", error.message);
+    return [];
+  }
+  const now = Date.now();
+  const rows = (data || []) as Array<{
+    id: string; session_id: string | null; question_idx: number | null;
+    title: string | null; question: string | null; answer_text: string | null;
+    tags: string[] | null; created_at: string; last_used_at: string | null;
+  }>;
+  return rows
+    .map((r) => {
+      const referenceTs = new Date(r.last_used_at || r.created_at).getTime();
+      const daysStale = Math.floor((now - referenceTs) / 86_400_000);
+      return {
+        id: r.id,
+        sessionId: r.session_id,
+        questionIdx: r.question_idx,
+        title: r.title || "Untitled story",
+        question: r.question || "",
+        answerText: r.answer_text || "",
+        tags: r.tags || [],
+        createdAt: r.created_at,
+        lastUsedAt: r.last_used_at,
+        daysStale,
+      };
+    })
+    // Stale (≥7d) rises to the top; fresh stays chronological under.
+    .sort((a, b) => {
+      const aStale = a.daysStale >= 7;
+      const bStale = b.daysStale >= 7;
+      if (aStale !== bStale) return aStale ? -1 : 1;
+      return b.daysStale - a.daysStale;
+    });
+}
+
+/** Mark a story as reviewed — updates last_used_at so SR deprioritizes it. */
+export async function markStoryReviewed(storyId: string): Promise<void> {
+  const { getSupabase } = await import("./supabase");
+  const client = await getSupabase();
+  const { error } = await client
+    .from("story_notebook")
+    .update({ last_used_at: new Date().toISOString() })
+    .eq("id", storyId);
+  if (error) console.warn("[markStoryReviewed] update failed:", error.message);
+}
+
+/** Delete a story — user-controlled. */
+export async function deleteStory(storyId: string): Promise<void> {
+  const { getSupabase } = await import("./supabase");
+  const client = await getSupabase();
+  const { error } = await client.from("story_notebook").delete().eq("id", storyId);
+  if (error) {
+    console.warn("[deleteStory] delete failed:", error.message);
+    throw new Error(error.message || "Failed to delete story");
+  }
 }

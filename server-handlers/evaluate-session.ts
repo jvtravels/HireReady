@@ -51,6 +51,21 @@ interface RedFlag {
   quote: string;              // verbatim substring (validated); "" for cross-cutting
 }
 
+interface AdvancedDelivery {
+  hedgingPerMin: number;          // density of hedges per minute of speech
+  lexicalDiversity: number;       // MTLD-lite: unique-word ratio, 0-1
+  firstPersonRatio: number;       // I / (I + we) across candidate corpus
+  medianLatencyMs: number;        // median gap between question end → candidate start
+  selfCorrectionRate: number;     // "let me rephrase", "actually", restarts per minute
+}
+
+interface ThoughtBubbleSegment {
+  startMs: number;
+  endMs: number;
+  state: "tracking" | "losingThread" | "probingForScope" | "readyToMoveOn" | "impressed" | "concerned";
+  note: string; // ≤80 chars, second-person, honest
+}
+
 interface SessionReport {
   version: "mvp-1";
   overallScore: number;
@@ -60,8 +75,15 @@ interface SessionReport {
   fixes: WinOrFix[];
   redFlags: RedFlag[];
   coreMetrics: { fillerPerMin: number; silenceRatio: number; paceWpm: number; energy: number };
-  skills: Array<{ name: string; score: number }>;
+  advancedDelivery: AdvancedDelivery;
+  skills: Array<{ name: string; score: number; weight?: number }>;
   perQuestion: PerQuestionReport[];
+  thoughtBubble: ThoughtBubbleSegment[];
+  calibration: {
+    companyLabel: string;
+    note: string;
+    bands: { strongHire: number; hire: number; leanHire: number; noHire: number };
+  };
   model: string;
 }
 
@@ -73,12 +95,49 @@ const ROLE_SKILLS: Record<string, string[]> = {
   behavioral: ["Structure", "Ownership", "Impact", "Communication", "Composure"],
 };
 
-function scoreToBand(score: number): SessionReport["band"] {
-  if (score >= 85) return "strongHire";
-  if (score >= 70) return "hire";
-  if (score >= 55) return "leanHire";
-  if (score >= 40) return "noHire";
+/** Default score→band thresholds; company calibration can override. */
+const DEFAULT_BANDS = { strongHire: 85, hire: 70, leanHire: 55, noHire: 40 };
+
+function applyBands(score: number, bands: { strongHire: number; hire: number; leanHire: number; noHire: number }): SessionReport["band"] {
+  if (score >= bands.strongHire) return "strongHire";
+  if (score >= bands.hire) return "hire";
+  if (score >= bands.leanHire) return "leanHire";
+  if (score >= bands.noHire) return "noHire";
   return "strongNoHire";
+}
+
+/**
+ * Company profile registry — duplicated here (edge runtime) from
+ * src/companyCalibration.ts so we don't pull the whole client module
+ * into the handler bundle. Keep keys in sync.
+ */
+const COMPANY_BANDS: Record<string, { label: string; bands: typeof DEFAULT_BANDS; skillWeights: Record<string, number>; note: string }> = {
+  amazon:       { label: "Amazon",              bands: { strongHire: 90, hire: 75, leanHire: 60, noHire: 42 }, skillWeights: { "Ownership": 1.3, "Impact": 1.2, "Technical Depth": 1.15, "Problem Framing": 1.1, "Influencing": 1.1 }, note: "Amazon Bar Raiser — Ownership + Deliver Results weighted heavily." },
+  google:       { label: "Google",              bands: { strongHire: 88, hire: 73, leanHire: 58, noHire: 42 }, skillWeights: { "Problem Framing": 1.2, "Technical Depth": 1.2, "Communication": 1.15, "Trade-off Reasoning": 1.1 }, note: "Google G&L + technical bar." },
+  meta:         { label: "Meta",                bands: { strongHire: 88, hire: 72, leanHire: 58, noHire: 42 }, skillWeights: { "Impact": 1.25, "Execution": 1.15, "Technical Depth": 1.1, "Problem Framing": 1.05 }, note: "Meta's signal-based E-level rubric — Impact above all." },
+  stripe:       { label: "Stripe",              bands: { strongHire: 87, hire: 72, leanHire: 57, noHire: 42 }, skillWeights: { "Communication": 1.3, "Problem Framing": 1.15, "Ownership": 1.1, "Technical Depth": 1.1, "Customer Focus": 1.05 }, note: "Stripe's high writing and clarity bar." },
+  netflix:      { label: "Netflix",             bands: { strongHire: 90, hire: 76, leanHire: 62, noHire: 45 }, skillWeights: { "Impact": 1.3, "Ownership": 1.2, "Influencing": 1.15, "Execution": 1.1 }, note: "Netflix keeper-test — senior by default." },
+  microsoft:    { label: "Microsoft",           bands: { strongHire: 86, hire: 71, leanHire: 56, noHire: 40 }, skillWeights: { "Technical Depth": 1.15, "Problem Framing": 1.1, "Communication": 1.1, "Impact": 1.1 }, note: "Microsoft Growth Mindset + technical rubric." },
+  apple:        { label: "Apple",               bands: { strongHire: 88, hire: 73, leanHire: 58, noHire: 42 }, skillWeights: { "Technical Depth": 1.2, "Problem Framing": 1.15, "Customer Focus": 1.15, "Ownership": 1.1 }, note: "Apple craft + secrecy culture — depth over breadth." },
+  "series-b":   { label: "Series-B Startup",    bands: { strongHire: 80, hire: 65, leanHire: 50, noHire: 35 }, skillWeights: { "Ownership": 1.2, "Execution": 1.15, "Impact": 1.1 }, note: "Series-B growth stage — bias toward ownership + execution." },
+  "early-stage":{ label: "Early-Stage Startup", bands: { strongHire: 78, hire: 62, leanHire: 48, noHire: 32 }, skillWeights: { "Ownership": 1.25, "Execution": 1.2 }, note: "Seed / Series-A — friendlier bar, scrappy ownership." },
+};
+
+const COMPANY_ALIASES: Record<string, string> = {
+  aws: "amazon", amzn: "amazon", alphabet: "google", facebook: "meta", fb: "meta",
+  msft: "microsoft", ms: "microsoft", nflx: "netflix", startup: "early-stage",
+};
+
+function resolveCompanyProfile(targetCompany: string | null | undefined) {
+  if (!targetCompany) return null;
+  const key = String(targetCompany).toLowerCase().replace(/[^a-z0-9-]/g, "");
+  if (!key) return null;
+  if (COMPANY_BANDS[key]) return COMPANY_BANDS[key];
+  if (COMPANY_ALIASES[key] && COMPANY_BANDS[COMPANY_ALIASES[key]]) return COMPANY_BANDS[COMPANY_ALIASES[key]];
+  for (const k of Object.keys(COMPANY_BANDS)) {
+    if (key.includes(k)) return COMPANY_BANDS[k];
+  }
+  return null;
 }
 
 /** Heuristic delivery metrics from the transcript — computed server-side for determinism. */
@@ -117,6 +176,59 @@ function computeCoreMetrics(
     silenceRatio,
     paceWpm: Math.round(words.length / speakingMinutes),
     energy,
+  };
+}
+
+/**
+ * Advanced delivery signals — deterministic regex + arithmetic over the
+ * transcript, no LLM. Beats Yoodli on the delivery side because we unify
+ * these with content scoring on the same screen.
+ */
+function computeAdvancedDelivery(transcript: EvaluateRequest["transcript"], durationSec: number): AdvancedDelivery {
+  const candidateTurns = transcript.filter((t) => t.role === "candidate");
+  const allText = candidateTurns.map((t) => t.text).join(" ");
+  const words = allText.split(/\s+/).filter(Boolean);
+  const speakingMinutes = Math.max(durationSec / 60, 0.1);
+
+  // Hedging density: "I think", "maybe", "kind of", etc.
+  const hedgeRegex = /\b(?:i\s+(?:think|guess|feel|believe|assume|suppose)|maybe|kind\s+of|sort\s+of|kinda|sorta|probably|perhaps|might|could\s+be|i'?m\s+not\s+sure)\b/gi;
+  const hedgeCount = (allText.match(hedgeRegex) || []).length;
+
+  // Lexical diversity — MTLD-lite: unique words over total, floor-clamped at
+  // very short answers to avoid noise. This correlates with perceived
+  // competence (McCarthy & Jarvis 2010 simplified).
+  const uniqueWords = new Set(words.map((w) => w.toLowerCase().replace(/[^a-z']/g, ""))).size;
+  const lexicalDiversity = words.length >= 20 ? uniqueWords / words.length : 0;
+
+  // First-person ownership ratio across candidate text.
+  const iCount = (allText.match(/\bI\b/g) || []).length;
+  const weCount = (allText.match(/\bwe\b/gi) || []).length;
+  const firstPersonRatio = iCount + weCount > 0 ? iCount / (iCount + weCount) : 0.5;
+
+  // Response latency — gap between interviewer turn end → candidate turn start.
+  // Only meaningful if timestamps are present.
+  const latencies: number[] = [];
+  for (let i = 1; i < transcript.length; i++) {
+    const prev = transcript[i - 1];
+    const cur = transcript[i];
+    if (prev.role === "interviewer" && cur.role === "candidate" && prev.endMs != null && cur.startMs != null) {
+      const gap = cur.startMs - prev.endMs;
+      if (gap >= 0 && gap < 30_000) latencies.push(gap); // sanity-clamp 0–30s
+    }
+  }
+  latencies.sort((a, b) => a - b);
+  const medianLatencyMs = latencies.length > 0 ? latencies[Math.floor(latencies.length / 2)] : 0;
+
+  // Self-correction rate — restarts per minute.
+  const scRegex = /\b(?:let\s+me\s+rephrase|actually(?:,|\s+let\s+me)|what\s+i\s+(?:meant|mean)\s+(?:to\s+say\s+)?(?:is|was)|sorry,?\s+i\s+misspoke|scratch\s+that|let\s+me\s+start\s+over)\b/gi;
+  const scCount = (allText.match(scRegex) || []).length;
+
+  return {
+    hedgingPerMin: Math.round((hedgeCount / speakingMinutes) * 10) / 10,
+    lexicalDiversity: Math.round(lexicalDiversity * 100) / 100,
+    firstPersonRatio: Math.round(firstPersonRatio * 100) / 100,
+    medianLatencyMs: Math.round(medianLatencyMs),
+    selfCorrectionRate: Math.round((scCount / speakingMinutes) * 10) / 10,
   };
 }
 
@@ -212,6 +324,13 @@ export default async function handler(req: Request): Promise<Response> {
     const skillAxes = ROLE_SKILLS[roleFamily] || ROLE_SKILLS.behavioral;
     const durationSec = meta?.duration || 600;
     const coreMetrics = computeCoreMetrics(transcript, durationSec);
+    const advancedDelivery = computeAdvancedDelivery(transcript, durationSec);
+
+    // Resolve company calibration profile (falls back to default bands/weights).
+    const companyProfile = resolveCompanyProfile(meta?.targetCompany);
+    const bands = companyProfile?.bands ?? DEFAULT_BANDS;
+    const companyLabel = companyProfile?.label ?? "Generic";
+    const companyNote = companyProfile?.note ?? "Generic calibration — set a target company for role-specific scoring.";
 
     // Build transcript block — truncate individual turns but keep structure intact.
     const transcriptBlock = transcript
@@ -267,6 +386,14 @@ Return a JSON object with EXACTLY this shape:
     { "type": "<enum>", "severity": "<enum>", "title": "<≤40 chars>", "explanation": "<one sentence>", "questionIdx": <idx or -1>, "quote": "..." }
   ],
   "skills": [${skillAxes.map((s) => `{"name":"${s}","score":<0-100>}`).join(",")}],
+  "thoughtBubble": [
+    // 3-8 segments covering the whole interview in order. Each segment
+    // describes what the interviewer is likely thinking during that stretch.
+    // state MUST be one of: tracking, losingThread, probingForScope, readyToMoveOn, impressed, concerned
+    // startMs/endMs are in milliseconds; if timestamps aren't known, use 0 and estimate based on turn indices.
+    // note is a single short sentence in second person (≤80 chars), honest.
+    { "startMs": <int>, "endMs": <int>, "state": "<enum>", "note": "<sentence>" }
+  ],
   "perQuestion": [
     {
       "idx": <question turn index from transcript>,
@@ -306,20 +433,56 @@ CRITICAL RULES:
       return new Response(JSON.stringify({ error: "Failed to parse evaluation", retryable: true }), { status: 500, headers });
     }
 
-    // Build final report — merge deterministic coreMetrics with LLM output
-    const overallScore = typeof parsed.overallScore === "number" ? Math.max(0, Math.min(100, Math.round(parsed.overallScore))) : 50;
+    // Build final report — merge deterministic metrics with LLM output.
+    // Apply company calibration: re-weight skills + use company-specific bands.
+    const rawSkills = Array.isArray(parsed.skills) ? parsed.skills.slice(0, 8) : [];
+    const skillWeights = companyProfile?.skillWeights ?? {};
+    const weightedSkills = rawSkills.map((s) => ({
+      name: s.name,
+      score: s.score,
+      weight: Math.round((skillWeights[s.name] ?? 1.0) * 100) / 100,
+    }));
+    const totalWeight = weightedSkills.reduce((sum, w) => sum + w.weight, 0) || 1;
+    const llmOverall = typeof parsed.overallScore === "number" ? parsed.overallScore : 50;
+    // Blend: 60% role-weighted composite, 40% LLM's holistic score. The
+    // composite keeps company calibration honest; the LLM component
+    // captures cross-cutting signals the weights don't model.
+    const composite = weightedSkills.length > 0
+      ? weightedSkills.reduce((sum, w) => sum + w.score * w.weight, 0) / totalWeight
+      : llmOverall;
+    const overallScore = Math.max(0, Math.min(100, Math.round(composite * 0.6 + llmOverall * 0.4)));
     const candidateCorpus = transcript.filter((t) => t.role === "candidate").map((t) => t.text).join("\n");
+
+    // Thought bubble: validate each segment has a known state + clamp timestamps.
+    const validStates = ["tracking", "losingThread", "probingForScope", "readyToMoveOn", "impressed", "concerned"];
+    const rawThoughtBubble = (parsed as Record<string, unknown>).thoughtBubble;
+    const thoughtBubble: ThoughtBubbleSegment[] = Array.isArray(rawThoughtBubble)
+      ? (rawThoughtBubble as ThoughtBubbleSegment[])
+          .filter((s) => s && validStates.includes(s.state) && typeof s.note === "string")
+          .map((s) => ({
+            startMs: Math.max(0, Math.floor(Number(s.startMs) || 0)),
+            endMs: Math.max(0, Math.floor(Number(s.endMs) || 0)),
+            state: s.state,
+            note: s.note.slice(0, 100),
+          }))
+          .filter((s) => s.endMs >= s.startMs)
+          .slice(0, 8)
+      : [];
+
     const report: SessionReport = {
       version: "mvp-1",
       overallScore,
-      band: scoreToBand(overallScore),
+      band: applyBands(overallScore, bands),
       verdict: typeof parsed.verdict === "string" ? parsed.verdict.slice(0, 200) : "",
       wins: filterGroundedItems(parsed.wins as WinOrFix[] | undefined, candidateCorpus),
       fixes: filterGroundedItems(parsed.fixes as WinOrFix[] | undefined, candidateCorpus),
       redFlags: filterGroundedRedFlags((parsed as Record<string, unknown>).redFlags as RedFlag[] | undefined, candidateCorpus),
       coreMetrics,
-      skills: Array.isArray(parsed.skills) ? parsed.skills.slice(0, 8) : [],
+      advancedDelivery,
+      skills: weightedSkills,
       perQuestion: Array.isArray(parsed.perQuestion) ? (parsed.perQuestion as PerQuestionReport[]).slice(0, 30) : [],
+      thoughtBubble,
+      calibration: { companyLabel, note: companyNote, bands },
       model: result.model,
     };
 
