@@ -231,12 +231,19 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | null>(null);
 
 function profileToUser(profile: Profile, session: Session): User {
-  const completed = profile.has_completed_onboarding != null
-    ? !!(profile.has_completed_onboarding)
-    : !!(profile.practice_timestamps && profile.practice_timestamps.length > 0)
-      || !!(profile.resume_file_name || profile.resume_text)
-      || !!(profile.target_role)
-      || getLocalOnboardingDone(profile.id);
+  // Treat the user as onboarded if ANY signal says so. Previously this was a
+  // ternary that bypassed every heuristic when has_completed_onboarding was
+  // explicitly false in Supabase — so a refresh could bounce a user with a
+  // saved resume back to /onboarding when the DB write hadn't propagated or
+  // a stale `false` value was sitting in the column. Now: explicit true,
+  // visible resume data, completed practice, or a localStorage flag from a
+  // prior finalize all count as "done".
+  const completed =
+    profile.has_completed_onboarding === true
+    || !!(profile.practice_timestamps && profile.practice_timestamps.length > 0)
+    || !!(profile.resume_file_name || profile.resume_text)
+    || !!(profile.target_role)
+    || getLocalOnboardingDone(profile.id);
   // Persist to localStorage so it survives refresh even if Supabase column doesn't exist yet
   if (completed) setLocalOnboardingDone(profile.id);
   return {
@@ -1187,7 +1194,11 @@ export function RequireAuth({ children }: { children: ReactNode }) {
     } else if (user && !user.emailVerified && !["/onboarding", "/settings"].includes(pathname)) {
       // Allow unverified users to access onboarding (where they'll see the verify prompt) and settings
       router.replace("/onboarding");
-    } else if (user && !user.hasCompletedOnboarding && !["/onboarding", "/interview", "/onboarding/complete"].includes(pathname) && !pathname.startsWith("/session/")) {
+    } else if (user && !user.hasCompletedOnboarding && !user.resumeFileName && !user.targetRole && !getLocalOnboardingDone(user.id) && !["/onboarding", "/interview", "/onboarding/complete"].includes(pathname) && !pathname.startsWith("/session/")) {
+      // Only bounce to onboarding when we're confident the user truly hasn't
+      // been through it. A user who has a saved resume or target role has
+      // clearly onboarded, even if the has_completed_onboarding flag never
+      // made it to Supabase or got stuck at false.
       router.replace("/onboarding");
     }
   }, [isLoggedIn, loading, user, router, pathname]);
@@ -1202,7 +1213,7 @@ export function RequireAuth({ children }: { children: ReactNode }) {
     </div>
   );
   if (!isLoggedIn) return null;
-  if (user && !user.hasCompletedOnboarding && !["/onboarding", "/interview", "/onboarding/complete"].includes(pathname) && !pathname.startsWith("/session/")) return null;
+  if (user && !user.hasCompletedOnboarding && !user.resumeFileName && !user.targetRole && !getLocalOnboardingDone(user.id) && !["/onboarding", "/interview", "/onboarding/complete"].includes(pathname) && !pathname.startsWith("/session/")) return null;
 
   return <>{children}</>;
 }
