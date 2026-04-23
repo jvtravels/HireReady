@@ -820,12 +820,21 @@ export interface ResumeProfile {
 export async function analyzeResumeWithAI(resumeText: string, targetRole?: string, signal?: AbortSignal): Promise<{ profile: ResumeProfile; truncated?: boolean } | null> {
   return withRetry(async () => {
     const headers = await authHeaders();
+    if (!headers["Authorization"]) {
+      // Session expired or never established. Fail loudly instead of sending
+      // an unauthenticated request that would silently 401.
+      console.error("[analyzeResume] no auth token — session expired or missing");
+      throw new Error("Session expired — please refresh and sign in again.");
+    }
     const res = await fetch("/api/analyze-resume", {
       method: "POST",
       headers,
       signal,
       body: JSON.stringify({ resumeText, targetRole }),
     });
+    if (res.status === 401) {
+      throw new Error("Session expired — please refresh and sign in again.");
+    }
     if (res.status === 429) {
       const data = await res.json().catch(() => ({}));
       throw new Error(data.retryAfter ? `Too many requests. Please wait ${data.retryAfter} seconds.` : "Too many requests. Please wait a moment.");
