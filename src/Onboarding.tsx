@@ -38,6 +38,20 @@ function extractRoleFromExperience(experience?: { title?: string }[]): string {
   return "";
 }
 
+/**
+ * Shape check for a human name. Defensive fallback in case the resume
+ * parser ever returns a stray city / role / company here again. Accepts
+ * 2-4 Title-Case (or all-caps) tokens, allows hyphens and apostrophes,
+ * rejects anything with a comma or digits.
+ */
+function looksLikePersonName(s?: string | null): boolean {
+  if (!s) return false;
+  const trimmed = s.trim();
+  if (trimmed.length < 3 || trimmed.length > 60) return false;
+  if (/[,\d@]/.test(trimmed)) return false;
+  return /^(?:[A-Z][a-zA-Z'-]+|[A-Z]{2,})(?:\s+(?:[A-Z][a-zA-Z'-]+|[A-Z]{2,})){1,3}$/.test(trimmed);
+}
+
 export default function Onboarding() {
   const router = useRouter();
   const { user, updateUser, logout } = useAuth();
@@ -135,7 +149,7 @@ export default function Onboarding() {
       const data = user?.resumeData || localResume?.data || parseResumeData(rText);
       setResumeParsed(data);
       const savedAiProfile = localResume?.aiProfile || (data as ParsedResume & { aiProfile?: ResumeProfile })?.aiProfile;
-      if (data.name && !userName) setUserName(data.name);
+      if (looksLikePersonName(data.name) && !userName) setUserName(data.name);
       const isRealAiProfile = savedAiProfile && savedAiProfile.headline
         && savedAiProfile.resumeScore != null
         && savedAiProfile.topSkills && savedAiProfile.topSkills.length > 0
@@ -143,9 +157,11 @@ export default function Onboarding() {
       if (isRealAiProfile) {
         setAiProfile(savedAiProfile);
         setAiPhase("done");
-        if (!data.name && !userName && savedAiProfile.headline !== "Analyzing...") {
-          setUserName(savedAiProfile.headline.split(/[—–|,]/)[0].trim().slice(0, 40));
-        }
+        // Intentionally do NOT fall back to AI headline here. AI's
+        // headline is a role/summary ("Senior Product Designer with 5+
+        // years…"), not a person's name — falling back to it would put
+        // the user's job title in the Name field. Better to leave the
+        // field empty and let the user type it.
       } else {
         if (savedAiProfile) setAiProfile(savedAiProfile);
         setAiPhase("analyzing");
@@ -304,8 +320,11 @@ export default function Onboarding() {
       // proper headline; if the parser returned nothing usable we'd
       // rather show an empty field than "Unpause Studio".
       if (autoRole && !targetRole) setTargetRole(autoRole);
-      const parsedName = data.name || "";
-      if (parsedName && !userName) setUserName(parsedName);
+      // Only seed the Name field when the parser returned something that
+      // actually looks like a person's name. Same rationale as the role
+      // gate above — parser would otherwise surface cities ("Mumbai") or
+      // free text from the resume header.
+      if (looksLikePersonName(data.name) && !userName) setUserName(data.name);
       analysisAbortRef.current?.abort();
       analysisAbortRef.current = new AbortController();
       const currentAbort = analysisAbortRef.current;

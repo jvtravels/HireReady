@@ -259,19 +259,41 @@ function extractContact(text: string): Pick<ParsedResume, "name" | "email" | "ph
     }
   }
 
-  // Name: first non-empty line that isn't an email/phone/url/section header
+  // Name: first non-empty line that looks like a human name. The previous
+  // heuristic only used negative filters (no @, no digits, not a section
+  // header) and happily accepted city/location strings ("Mumbai",
+  // "Mumbai, India") that appeared above the actual name. Now we also
+  // enforce positive shape requirements: 2-4 tokens, each beginning with a
+  // capital, no commas, no digits, and — if we already resolved a
+  // location — the candidate must not BE that location.
   const sectionHeaderPattern = /^(contact|details|personal\s*info|personal\s*details|resume|curriculum\s*vitae|cv|bio|biodata|info|about|address|references|summary|profile|objective|about\s*me|professional\s*summary|career\s*summary|executive\s*summary|experience|work\s*history|employment|professional\s*experience|work\s*experience|career\s*history|education|academic|qualifications|degrees?|skills|technical\s*skills|core\s*competencies|competencies|technologies|tools|proficiencies|expertise|certifications?|licenses?|credentials|accreditations?|professional\s*development|projects?|achievements?|awards?|publications?|interests?|hobbies?|languages?|declaration)$/i;
+  // Each token must start with a capital letter followed by lowercase, OR
+  // be fully uppercase (allows "JAY VYAS"). Allows hyphenated and
+  // apostrophe names ("Anne-Marie", "O'Brien"). Between 2 and 4 tokens.
+  const namePattern = /^(?:[A-Z][a-zA-Z'-]+|[A-Z]{2,})(?:\s+(?:[A-Z][a-zA-Z'-]+|[A-Z]{2,})){1,3}$/;
+  const locationLower = resolvedLocation.toLowerCase();
   let name = "";
   for (const line of lines.slice(0, 8)) {
-    if (line.match(/@/) || line.match(/\d{5,}/) || line.match(/linkedin|http|www\./i) || line.match(/\(\d{3}\)/)) continue;
+    if (line.match(/@/) || line.match(/\d/) || line.match(/linkedin|http|www\./i)) continue;
     if (line.match(SECTION_PATTERNS.summary) || line.match(SECTION_PATTERNS.experience)) continue;
     let cleaned = line.replace(/[-—:=|_*#.]+/g, "").trim();
     // Collapse any remaining spaced-out letters (e.g. "C O N T A C T" → "CONTACT")
     cleaned = cleaned.replace(/\b([A-Z]) (?:[A-Z] ){1,}[A-Z]\b/g, m => m.replace(/ /g, ""));
     if (sectionHeaderPattern.test(cleaned)) continue;
+    // Reject anything that contains a comma — real names almost never do,
+    // but location lines ("Mumbai, India") always do.
+    if (cleaned.includes(",")) continue;
     // Skip single all-caps words (section headers like "CONTACT", "SKILLS")
-    // But allow 2-3 word all-caps (could be a name like "JAY VYAS")
     if (/^[A-Z]{2,}$/.test(cleaned)) continue;
+    // Must match the positive name shape.
+    if (!namePattern.test(cleaned)) continue;
+    // Don't treat our own location string as a name.
+    if (locationLower && cleaned.toLowerCase() === locationLower) continue;
+    // Don't pick up single-city labels that happen to fit the pattern but
+    // are obviously not people names — the positive pattern requires 2+
+    // tokens so this catches e.g. "New York" / "San Francisco" if they
+    // appear alone on a header line.
+    if (locationLower && locationLower.startsWith(cleaned.toLowerCase())) continue;
     if (cleaned.length > 2 && cleaned.length < 60) { name = cleaned; break; }
   }
 
