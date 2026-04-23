@@ -573,7 +573,24 @@ export default function DashboardResume() {
       <div style={{ background: `linear-gradient(135deg, ${c.graphite} 0%, rgba(212,179,127,0.04) 100%)`, borderRadius: 16, border: `1px solid ${c.border}`, padding: "28px 28px 24px", marginBottom: 14 }}>
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 12 }}>
           <div style={{ flex: 1 }}>
-            {profile?.headline ? <h2 style={{ fontFamily: font.display, fontSize: 24, color: c.ivory, marginBottom: 6, letterSpacing: "-0.02em", lineHeight: 1.3 }}>{profile.headline}</h2> : <h2 style={{ fontFamily: font.display, fontSize: 24, color: c.ivory, marginBottom: 6, letterSpacing: "-0.02em", lineHeight: 1.3 }}>Resume uploaded</h2>}
+            {(() => {
+              // AI returns sentence-style headlines like "Senior Product Designer
+              // with 5+ years of experience designing scalable digital products".
+              // For the title slot we want just the role part — the rest of the
+              // sentence is already represented by the badge row (seniority,
+              // years, industries) and the summary paragraph below.
+              const fullHeadline = profile?.headline || "";
+              const roleOnly = fullHeadline
+                .split(/\s+(?:with|,|—|–|\||·)\s+/i)[0]
+                .replace(/^(?:a|an|the)\s+/i, "")
+                .trim();
+              const display = roleOnly || fullHeadline || "Resume uploaded";
+              return (
+                <h2 style={{ fontFamily: font.display, fontSize: 24, color: c.ivory, marginBottom: 6, letterSpacing: "-0.02em", lineHeight: 1.3 }}>
+                  {display}
+                </h2>
+              );
+            })()}
             <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
               {profile?.seniorityLevel ? <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.gilt, background: "rgba(212,179,127,0.08)", border: "1px solid rgba(212,179,127,0.15)", borderRadius: 5, padding: "3px 10px" }}>{profile.seniorityLevel}</span> : null}
               {profile?.yearsExperience != null && profile.yearsExperience > 0 && <span style={{ fontFamily: font.ui, fontSize: 11, color: c.chalk }}>{profile.yearsExperience}+ years experience</span>}
