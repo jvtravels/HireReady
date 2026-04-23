@@ -171,6 +171,12 @@ export default function Onboarding() {
     if (!user || !resumeParsed) return;
     const hasRealScore = aiProfile?.resumeScore != null;
     if (hasRealScore) { reanalyzedRef.current = true; return; }
+    // If handleFileUpload's primary analysis is already in flight (aiPhase
+    // is already "analyzing"), don't fire a second one. The previous
+    // implementation raced both calls in parallel — the primary used the
+    // XHR helper (fast), this one used raw fetch (got hung by the
+    // Loom/Jam fetch interceptor for 20s) and kept the loading screen up.
+    if (aiPhase === "analyzing") return;
     const textForAnalysis = resumeText || user.resumeText;
     if (!textForAnalysis || textForAnalysis.length < 20) return;
     reanalyzedRef.current = true;
@@ -180,41 +186,25 @@ export default function Onboarding() {
     analysisAbortRef.current = ac;
     const timer = setTimeout(() => { ac.abort(); }, 20000);
 
-    function getTokenFromStorage(): string | null {
+    // Use the shared analyzeResumeWithAI helper (XHR-based) instead of raw
+    // fetch. Browser extensions that wrap window.fetch were hanging this
+    // call indefinitely; XHR sidesteps them.
+    import("./dashboardData").then(async ({ analyzeResumeWithAI }) => {
       try {
-        for (let i = 0; i < localStorage.length; i++) {
-          const key = localStorage.key(i);
-          if (key?.startsWith("sb-") && key.endsWith("-auth-token")) {
-            const raw = localStorage.getItem(key);
-            if (raw) return JSON.parse(raw)?.access_token || null;
-          }
+        const result = await analyzeResumeWithAI(textForAnalysis, targetRole, ac.signal);
+        if (result?.profile) {
+          setAiProfile(result.profile);
+          try { const cached = localStorage.getItem("hirestepx_resume"); if (cached) { const obj = JSON.parse(cached); obj.aiProfile = result.profile; localStorage.setItem("hirestepx_resume", JSON.stringify(obj)); } } catch { /* noop */ }
         }
-      } catch { /* noop */ }
-      return null;
-    }
-
-    async function doAnalysis(): Promise<void> {
-      let token = getTokenFromStorage();
-      if (!token) {
-        await new Promise(r => setTimeout(r, 2000));
-        token = getTokenFromStorage();
+      } catch (err) {
+        console.error("[onboarding] Auto re-analysis failed:", err instanceof Error ? err.message : err);
+      } finally {
+        clearTimeout(timer);
+        setAiPhase("done");
       }
-      const headers: Record<string, string> = { "Content-Type": "application/json" };
-      if (token) headers["Authorization"] = `Bearer ${token}`;
-      const res = await fetch("/api/analyze-resume", { method: "POST", headers, signal: ac.signal, body: JSON.stringify({ resumeText: textForAnalysis, targetRole }) });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      if (data?.profile) {
-        setAiProfile(data.profile);
-        try { const cached = localStorage.getItem("hirestepx_resume"); if (cached) { const obj = JSON.parse(cached); obj.aiProfile = data.profile; localStorage.setItem("hirestepx_resume", JSON.stringify(obj)); } } catch { /* noop */ }
-      }
-    }
-
-    doAnalysis()
-      .catch(err => console.error("[onboarding] Auto re-analysis failed:", err instanceof Error ? err.message : err))
-      .finally(() => { clearTimeout(timer); setAiPhase("done"); });
+    });
     return () => { clearTimeout(timer); ac.abort(); };
-  }, [user, resumeParsed, resumeText, aiProfile?.resumeScore, targetRole]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [user, resumeParsed, resumeText, aiProfile?.resumeScore, aiPhase, targetRole]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Progress stage timer for resume analysis
   useEffect(() => {
