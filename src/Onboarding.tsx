@@ -326,7 +326,10 @@ export default function Onboarding() {
     if (fileName) {
       saveData.resumeFileName = fileName;
       saveData.resumeText = resumeText;
-      saveData.resumeData = (aiProfile || resumeParsed) as unknown as ParsedResume;
+      saveData.resumeData = (aiProfile
+        ? { ...aiProfile, _type: "ai" }
+        : { ...(resumeParsed || {}), _type: "fallback" }
+      ) as unknown as ParsedResume;
     }
     setSaveStatus("saving");
     if (Object.keys(saveData).length > 0) {

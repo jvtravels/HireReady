@@ -212,9 +212,8 @@ export default function DashboardResume() {
 
     const stored = user?.resumeData as unknown as (ResumeProfile & { name?: string; skills?: string[]; [key: string]: unknown }) | undefined;
     if (stored) {
-      const isFallback = !stored.headline || stored.headline === "Resume uploaded"
-        || (!stored.seniorityLevel && (!stored.topSkills || stored.topSkills.length === 0) && (!stored.interviewStrengths || stored.interviewStrengths.length === 0))
-        || (stored as Record<string, unknown>)._type === "fallback";
+      const isFallback = (stored as Record<string, unknown>)._type === "fallback"
+        || (!stored.headline && !(stored as Record<string, unknown>)._type);
       if (stored.headline && !isFallback) {
         setProfile(stored);
         setAnalysisSource("ai");
@@ -233,7 +232,6 @@ export default function DashboardResume() {
               setAnalysisSource("ai");
               setErrorMsg("");
               updateUser({ resumeData: { ...result.profile, _type: "ai" } as unknown as ParsedResume });
-              if (user?.resumeFileName) saveResumeVersion(user.resumeFileName, result.profile.resumeScore, user.resumeText);
             } else {
               setErrorMsg("AI analysis returned no results. Try clicking re-analyze.");
             }
