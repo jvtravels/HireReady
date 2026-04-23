@@ -6,16 +6,19 @@ const GROQ_API_KEY = process.env.GROQ_API_KEY || "";
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "";
 const SUPABASE_URL = process.env.SUPABASE_URL || "";
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+const USAGE_LOGGING_ENABLED = !!(SUPABASE_URL && SUPABASE_SERVICE_KEY);
+
+if (!USAGE_LOGGING_ENABLED) {
+  // Fires once per cold start; surfaces misconfiguration without spamming per-call.
+  console.warn(`[logUsage] disabled — missing env vars (SUPABASE_URL=${!!SUPABASE_URL}, SERVICE_KEY=${!!SUPABASE_SERVICE_KEY})`);
+}
 
 function logUsage(entry: {
   userId?: string; endpoint?: string; model: string; isFallback: boolean;
   promptTokens: number; completionTokens: number; totalTokens: number;
   latencyMs: number; status: "success" | "error" | "timeout"; errorMessage?: string;
 }): void {
-  if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
-    console.warn(`[logUsage] skipped — missing env vars (SUPABASE_URL=${!!SUPABASE_URL}, SERVICE_KEY=${!!SUPABASE_SERVICE_KEY})`);
-    return;
-  }
+  if (!USAGE_LOGGING_ENABLED) return;
   fetch(`${SUPABASE_URL}/rest/v1/llm_usage`, {
     method: "POST",
     headers: {
