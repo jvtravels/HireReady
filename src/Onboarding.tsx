@@ -16,6 +16,28 @@ const OB_STEP_KEY = "hirestepx_ob_step";
 const OB_FORM_KEY = "hirestepx_ob_form";
 function clearObStep() { try { localStorage.removeItem(OB_STEP_KEY); localStorage.removeItem(OB_FORM_KEY); } catch { /* expected */ } }
 
+/**
+ * Reject company-name-shaped strings that the parser sometimes mis-classifies
+ * as job titles (e.g. "Unpause Studio", "Acme Corp"). A real role almost
+ * always contains one of these tokens. Stops the auto-fill from showing
+ * "Unpause Studio" in the Target Role field.
+ */
+const ROLE_KEYWORDS = /\b(engineer|developer|designer|manager|director|lead|architect|analyst|consultant|specialist|coordinator|scientist|researcher|writer|editor|marketer|seller|recruiter|administrator|administrator|officer|associate|principal|staff|senior|junior|head|chief|vp|vice\s*president|founder|co[-\s]?founder|ceo|cto|cfo|coo|cpo|cmo|product|engineering|design|marketing|sales|operations|hr|finance|legal|data|software|frontend|backend|fullstack|full[-\s]?stack|devops|sre|security|qa|qe|test|intern|trainee|fresher|apprentice|technician|operator|teacher|professor|nurse|doctor|advisor|strategist|partner|liaison|representative|agent|executive|generalist|architect|programmer)\b/i;
+
+function looksLikeJobTitle(s: string): boolean {
+  if (!s || s.length < 2 || s.length > 80) return false;
+  return ROLE_KEYWORDS.test(s);
+}
+
+/** Walk the parser's experience list and return the first entry whose title actually looks like a role. */
+function extractRoleFromExperience(experience?: { title?: string }[]): string {
+  if (!experience) return "";
+  for (const e of experience) {
+    if (e?.title && looksLikeJobTitle(e.title)) return e.title;
+  }
+  return "";
+}
+
 export default function Onboarding() {
   const router = useRouter();
   const { user, updateUser, logout } = useAuth();
@@ -119,7 +141,7 @@ export default function Onboarding() {
       } else {
         if (savedAiProfile) setAiProfile(savedAiProfile);
         setAiPhase("analyzing");
-        const autoRole = data.experience?.[0]?.title || "";
+        const autoRole = extractRoleFromExperience(data.experience);
         const { analyzeResumeWithAI } = await import("./dashboardData");
         analysisAbortRef.current?.abort();
         analysisAbortRef.current = new AbortController();
@@ -135,7 +157,7 @@ export default function Onboarding() {
       }
       if (!targetRole) {
         const aiRole = savedAiProfile?.headline && savedAiProfile.headline !== "Analyzing..." ? savedAiProfile.headline.split(/\s+with\s+/i)[0] : "";
-        const parserRole = data.experience?.[0]?.title || "";
+        const parserRole = extractRoleFromExperience(data.experience);
         const autoRole = aiRole || parserRole;
         if (autoRole) setTargetRole(autoRole);
       }
@@ -277,7 +299,12 @@ export default function Onboarding() {
         careerTrajectory: "",
       };
       setAiProfile(fallback);
-      const autoRole = data.experience?.[0]?.title || "";
+      const autoRole = extractRoleFromExperience(data.experience);
+      // Only seed the field with a parser-derived role when it actually
+      // looks like a job title — extractRoleFromExperience filters out
+      // company names. The AI step that follows can override with a
+      // proper headline; if the parser returned nothing usable we'd
+      // rather show an empty field than "Unpause Studio".
       if (autoRole && !targetRole) setTargetRole(autoRole);
       const parsedName = data.name || "";
       if (parsedName && !userName) setUserName(parsedName);
@@ -302,7 +329,10 @@ export default function Onboarding() {
           setAiProfile(finalProfile);
           aiSuccess = true;
           if (finalProfile.headline && finalProfile.headline !== "Analyzing...") {
-            setTargetRole(finalProfile.headline.split(/\s+with\s+/i)[0]);
+            // AI headlines look like "Senior Product Designer with 5+ years…"
+            // — slice off everything from " with " onwards to get just the role.
+            const aiRole = finalProfile.headline.split(/\s+with\s+/i)[0].trim();
+            if (looksLikeJobTitle(aiRole)) setTargetRole(aiRole);
           }
         }
       } catch (analysisErr: unknown) {
