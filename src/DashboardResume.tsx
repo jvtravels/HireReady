@@ -549,15 +549,53 @@ export default function DashboardResume() {
             Your resume was truncated to fit the analysis window. For best results, keep your resume to 2 pages.
           </p>
         )}
+        {errorMsg && (
+          <div role="alert" style={{
+            marginTop: 12, padding: "10px 14px", borderRadius: 8,
+            background: "rgba(196,112,90,0.06)", border: "1px solid rgba(196,112,90,0.2)",
+            display: "flex", alignItems: "center", gap: 8,
+          }}>
+            <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.ember} strokeWidth="1.5" style={{ flexShrink: 0 }}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            <span style={{ fontFamily: font.ui, fontSize: 12, color: c.chalk, flex: 1, lineHeight: 1.5 }}>{errorMsg}</span>
+            <button
+              onClick={() => setErrorMsg("")}
+              aria-label="Dismiss error"
+              style={{ background: "none", border: "none", color: c.stone, cursor: "pointer", padding: 4, display: "flex" }}
+            >
+              <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+        )}
         {analysisSource === "fallback" && (
           <div style={{ marginTop: 12, padding: "10px 14px", borderRadius: 8, background: "rgba(212,179,127,0.04)", border: "1px solid rgba(212,179,127,0.1)", display: "flex", alignItems: "center", gap: 8 }}>
             <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
             <span style={{ fontFamily: font.ui, fontSize: 11, color: c.chalk, flex: 1 }}>
               {resumeText
-                ? "Showing basic extraction. Click re-analyze (↻) for a full AI profile with score."
+                ? "Showing basic extraction. Run AI analysis for a full profile with score and insights."
                 : "Resume text not available. Re-upload your resume to get a full AI profile with score and insights."}
             </span>
-            {!resumeText && (
+            {resumeText ? (
+              <button
+                onClick={handleReanalyze}
+                disabled={reanalyzing}
+                style={{
+                  fontFamily: font.ui, fontSize: 11, fontWeight: 600,
+                  color: reanalyzing ? "rgba(17,17,19,0.5)" : c.obsidian,
+                  background: reanalyzing ? "rgba(212,179,127,0.25)" : `linear-gradient(135deg, ${c.gilt}, ${c.giltDark})`,
+                  border: "none", borderRadius: 6, padding: "5px 14px",
+                  cursor: reanalyzing ? "default" : "pointer", whiteSpace: "nowrap",
+                  display: "inline-flex", alignItems: "center", gap: 6,
+                  transition: "filter 0.15s",
+                }}
+              >
+                {reanalyzing ? (
+                  <>
+                    <div style={{ width: 10, height: 10, border: "1.5px solid rgba(17,17,19,0.3)", borderTopColor: c.obsidian, borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
+                    Analyzing…
+                  </>
+                ) : "Re-analyze with AI"}
+              </button>
+            ) : (
               <button onClick={triggerUpload} style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.gilt, background: "none", border: `1px solid rgba(212,179,127,0.2)`, borderRadius: 6, padding: "4px 12px", cursor: "pointer", whiteSpace: "nowrap" }}>
                 Re-upload
               </button>
