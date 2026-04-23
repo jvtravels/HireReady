@@ -441,7 +441,7 @@ function QuestionCard({ q, index, sessionId }: { q: SessionReportPerQuestion; in
             </div>
           )}
 
-          {/* Restructured STAR answer with citation markers */}
+          {/* Restructured STAR answer — grounded in the candidate's words */}
           {q.restructured && q.restructured.text && (
             <div style={{
               background: "rgba(212,179,127,0.04)", border: `1px solid rgba(212,179,127,0.14)`,
@@ -456,6 +456,38 @@ function QuestionCard({ q, index, sessionId }: { q: SessionReportPerQuestion; in
                 </span>
               </div>
               <p style={{ fontFamily: font.ui, fontSize: 13, color: c.ivory, lineHeight: 1.65, margin: 0 }}>{q.restructured.text}</p>
+            </div>
+          )}
+
+          {/* Top-performer example — synthesized excellence, distinct from restructured */}
+          {q.topPerformerAnswer && q.topPerformerAnswer.text && (
+            <div style={{
+              background: "rgba(122,158,126,0.04)", border: `1px solid rgba(122,158,126,0.18)`,
+              borderRadius: 10, padding: "12px 14px",
+            }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6, flexWrap: "wrap", gap: 6 }}>
+                <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 700, color: c.sage, letterSpacing: "0.08em", textTransform: "uppercase" }}>
+                  How a 90/100 candidate would answer
+                </span>
+                <span style={{ fontFamily: font.ui, fontSize: 10, color: c.stone, fontStyle: "italic" }}>
+                  generated example — details are illustrative
+                </span>
+              </div>
+              <p style={{ fontFamily: font.ui, fontSize: 13, color: c.ivory, lineHeight: 1.65, margin: 0 }}>{q.topPerformerAnswer.text}</p>
+              {Array.isArray(q.topPerformerAnswer.whatMakesItStrong) && q.topPerformerAnswer.whatMakesItStrong.length > 0 && (
+                <ul style={{
+                  margin: "10px 0 0", padding: "10px 0 0 0",
+                  borderTop: `1px solid rgba(122,158,126,0.12)`,
+                  listStyle: "none", display: "flex", flexDirection: "column", gap: 5,
+                }}>
+                  {q.topPerformerAnswer.whatMakesItStrong.map((reason, i) => (
+                    <li key={i} style={{ display: "flex", gap: 6, alignItems: "flex-start" }}>
+                      <span aria-hidden="true" style={{ color: c.sage, fontSize: 11, flexShrink: 0, marginTop: 1 }}>✓</span>
+                      <span style={{ fontFamily: font.ui, fontSize: 11, color: c.chalk, lineHeight: 1.5 }}>{reason}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           )}
 

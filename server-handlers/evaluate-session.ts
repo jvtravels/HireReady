@@ -11,7 +11,9 @@ const GEMINI_KEY = process.env.GEMINI_API_KEY || "";
 const SUPABASE_URL = process.env.SUPABASE_URL || "";
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 
-const REPORT_VERSION = "mvp-1";
+// Bump on any schema change to perQuestion/redFlags/etc. Old cached reports
+// with a different version are auto-invalidated on next view.
+const REPORT_VERSION = "mvp-2";
 
 /**
  * Try to read a cached report for this session. Returns null on any failure
@@ -97,6 +99,17 @@ interface PerQuestionReport {
   score: number;
   starPresence: { S: boolean; T: boolean; A: boolean; R: boolean };
   restructured: { text: string; citations: Array<{ markerIdx: number; sourceStart: number; sourceEnd: number }> } | null;
+  /**
+   * How a 90/100 candidate would answer this question. Unlike `restructured`
+   * (grounded in the candidate's own words), this is a synthesized exemplar —
+   * the LLM may invent realistic companies/numbers appropriate to the role
+   * and level. The UI must label this clearly as a generated example so the
+   * candidate doesn't think it's theirs.
+   */
+  topPerformerAnswer: {
+    text: string;
+    whatMakesItStrong: string[]; // 2-4 bullets: specific reasons this answer is 90/100
+  } | null;
   explanation: string;
 }
 
@@ -133,7 +146,7 @@ interface ThoughtBubbleSegment {
 }
 
 interface SessionReport {
-  version: "mvp-1";
+  version: "mvp-2";
   overallScore: number;
   band: "strongHire" | "hire" | "leanHire" | "noHire" | "strongNoHire";
   verdict: string;
@@ -486,23 +499,28 @@ Return a JSON object with EXACTLY this shape:
         "text": "<rewrite the candidate's answer in STAR form, using ONLY facts from their own words; 80-160 words>",
         "citations": [{"markerIdx": <1-based marker>, "sourceStart": <char offset in answerText>, "sourceEnd": <char offset>}]
       },
+      "topPerformerAnswer": {
+        "text": "<a synthesized 90/100 answer to THIS question, calibrated to the target role and company. You MAY invent realistic company names, metrics, and outcomes here — the purpose is to show what excellence looks like. 100-180 words. Use STAR structure with concrete quantification.>",
+        "whatMakesItStrong": ["<reason 1, e.g. 'Leads with scope: 4M users affected'>", "<reason 2>", "<reason 3>"]
+      },
       "explanation": "<1-2 sentences on what worked/missed>"
     }
   ]
 }
 
 CRITICAL RULES:
-- Pair each interviewer question with the candidate answer that follows it. Skip pairs where the candidate didn't answer (use verdict="skipped", restructured=null).
+- Pair each interviewer question with the candidate answer that follows it. Skip pairs where the candidate didn't answer (use verdict="skipped", restructured=null, topPerformerAnswer=null).
 - Every skill score must be justified by transcript evidence.
 - Restructured answer MUST NOT invent numbers, company names, or outcomes not present in the candidate's words. If quantification is missing, frame it as a gap ("you could add the exact % here") rather than making one up.
+- TopPerformerAnswer IS allowed to invent realistic details — that's its purpose. It should showcase STAR structure, quantified impact, first-person ownership, and role-appropriate scope. Aim for what a strong L5/Senior would say at the target company.
 - Citations must reference real character offsets inside answerText.
 - Keep verdict scores honest. Average mock interview scores 45-65.
 - Return ONLY valid JSON — no markdown wrapping, no prose.`;
 
     const tLLM0 = Date.now();
     const result = await callLLM(
-      { prompt, temperature: 0.25, maxTokens: 4500, jsonMode: true },
-      22000,
+      { prompt, temperature: 0.25, maxTokens: 6000, jsonMode: true },
+      28000,
       { userId: auth.userId, endpoint: "evaluate-session" },
     );
     const tLLM = Date.now() - tLLM0;
@@ -550,7 +568,7 @@ CRITICAL RULES:
       : [];
 
     const report: SessionReport = {
-      version: "mvp-1",
+      version: "mvp-2",
       overallScore,
       band: applyBands(overallScore, bands),
       verdict: typeof parsed.verdict === "string" ? parsed.verdict.slice(0, 200) : "",

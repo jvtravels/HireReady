@@ -866,6 +866,10 @@ export interface SessionReportPerQuestion {
     text: string;
     citations: Array<{ markerIdx: number; sourceStart: number; sourceEnd: number }>;
   } | null;
+  topPerformerAnswer: {
+    text: string;
+    whatMakesItStrong: string[];
+  } | null;
   explanation: string;
 }
 
@@ -888,7 +892,7 @@ export interface SessionReportRedFlag {
 }
 
 export interface SessionReport {
-  version: "mvp-1";
+  version: "mvp-2";
   overallScore: number;
   band: SessionReportBand;
   verdict: string;
