@@ -774,7 +774,27 @@ export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
                         <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                       )}
                     </div>
-                    <span style={{ fontFamily: font.ui, fontSize: 12, color: c.stone }} title="If unchecked, you'll be signed out when you close the browser.">Keep me signed in <span style={{ fontSize: 11, opacity: 0.7 }}>· persists for 7 days</span></span>
+                    {/*
+                      The copy used to say "· persists for 7 days" but there's
+                      no 7-day timer anywhere in the code. Reality:
+                        checked → session survives browser restarts (Supabase
+                                 refresh-token window, typically weeks)
+                        unchecked → beforeunload handler clears the tokens on
+                                   tab/browser close
+                      Updated copy reflects what actually happens.
+                    */}
+                    <span
+                      style={{ fontFamily: font.ui, fontSize: 12, color: c.stone }}
+                      title={rememberMe
+                        ? "Your session will survive browser restarts."
+                        : "You'll be signed out when you close this tab."}
+                    >
+                      Keep me signed in
+                      <span style={{ fontSize: 11, opacity: 0.7 }}>
+                        {" · "}
+                        {rememberMe ? "stays signed in next visit" : "sign out when I close the tab"}
+                      </span>
+                    </span>
                   </label>
                   <button type="button" onClick={() => { setShowReset(true); setError(""); }}
                     style={{ background: "none", border: "none", fontFamily: font.ui, fontSize: 12, color: c.gilt, cursor: "pointer", textAlign: "right", padding: 0 }}>
