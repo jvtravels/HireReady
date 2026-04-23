@@ -1668,12 +1668,17 @@ export function useInterviewEngine() {
       setCurrentTranscript("");
     }
 
-    // Evaluation timeout controller — used to abort the fetch if it exceeds 40s
+    // Evaluation timeout controller — shortened from 40s to 18s.
+    // The *rich* per-question evaluation now runs via /api/evaluate-session when
+    // the user opens their report, so this quick pre-save eval only needs to
+    // produce a usable score. Fallback scores are honest and the user lands
+    // on the report faster; SessionReportView computes the full v6 report
+    // there with proper caching.
     const evalAbort = new AbortController();
     const safetyTimer = setTimeout(() => {
-      console.warn("[interview] handleEnd evaluation timeout (40s) — aborting fetch");
+      console.warn("[interview] handleEnd evaluation timeout (18s) — aborting fetch, using fallback scores");
       evalAbort.abort();
-    }, 40_000);
+    }, 18_000);
 
     try {
     const fallback = computeFallbackScores({
@@ -1719,10 +1724,10 @@ export function useInterviewEngine() {
           }),
           new Promise<null>((_, reject) => {
             if (evalAbort.signal.aborted) {
-              reject(new Error("Evaluation timed out after 40 seconds."));
+              reject(new Error("Evaluation timed out after 18 seconds."));
               return;
             }
-            const onAbort = () => reject(new Error("Evaluation timed out after 40 seconds."));
+            const onAbort = () => reject(new Error("Evaluation timed out after 18 seconds."));
             evalAbort.signal.addEventListener("abort", onAbort, { once: true });
           }),
         ]);

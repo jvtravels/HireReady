@@ -303,7 +303,7 @@ export async function fetchLLMEvaluation(params: {
     highestOfferMade?: number;
     negotiationStyle?: string;
   };
-}, timeoutMs = 35000): Promise<EvaluationResult | null> {
+}, timeoutMs = 14000): Promise<EvaluationResult | null> {
   // Client-side rate limit: max 5 evaluations per 60s
   if (!checkRateLimit("evaluate", 5, 60_000)) {
     throw new Error("Too many requests. Please wait a moment and try again.");
@@ -331,13 +331,14 @@ export async function fetchLLMEvaluation(params: {
       if (!body || typeof body.overallScore !== "number" || typeof body.feedback !== "string") return null;
       return body;
     }, {
-      retries: 1,
-      baseDelayMs: 2000,
-      shouldRetry: (err) => {
-        if (err instanceof TypeError) return true; // Network error
-        if (err instanceof Error && err.message.startsWith("Evaluation server error")) return true;
-        return false; // Don't retry rate limits, timeouts, or client errors
-      },
+      // Zero retries here: the rich per-question evaluation runs via
+      // /api/evaluate-session when the user opens the report, so this
+      // quick eval is best-effort. Retrying would chain timeouts and
+      // trap the user on "Analyzing…" for 30-40s. Fallback scores are
+      // honest — let them land on the report fast.
+      retries: 0,
+      baseDelayMs: 0,
+      shouldRetry: () => false,
     });
   } catch (err) {
     if (err instanceof DOMException && err.name === "AbortError") {
