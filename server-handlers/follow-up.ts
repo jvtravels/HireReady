@@ -2,7 +2,7 @@
 
 export const config = { runtime: "edge" };
 
-import { handleCorsPreflightOrMethod, corsHeaders, isRateLimited, getClientIp, rateLimitResponse, verifyAuth, unauthorizedResponse, validateOrigin, sanitizeForLLM, withRequestId, checkLLMQuota, validateContentType } from "./_shared";
+import { withAuthAndRateLimit, corsHeaders, withRequestId, sanitizeForLLM, validateContentType } from "./_shared";
 import { callLLM, extractJSON } from "./_llm";
 import { lookupSalaryContext, getNegotiationStyleContext, INDUSTRY_PACKAGE_CONTEXT, type NegotiationStyle } from "../data/salary-lookup";
 
@@ -11,40 +11,27 @@ const GROQ_KEY = process.env.GROQ_API_KEY || "";
 const GEMINI_KEY = process.env.GEMINI_API_KEY || "";
 
 export default async function handler(req: Request): Promise<Response> {
-  const earlyResponse = handleCorsPreflightOrMethod(req);
-  if (earlyResponse) return earlyResponse;
-
-  const headers = withRequestId(corsHeaders(req));
-
-  const contentLength = parseInt(req.headers.get("content-length") || "0", 10);
-  if (contentLength > 524288) {
-    return new Response(JSON.stringify({ error: "Request too large" }), { status: 413, headers });
-  }
-
   if (!GROQ_KEY && !GEMINI_KEY) {
-    return new Response(JSON.stringify({ error: "LLM not configured" }), { status: 503, headers });
+    return new Response(JSON.stringify({ error: "LLM not configured" }), {
+      status: 503, headers: withRequestId(corsHeaders(req)),
+    });
   }
 
-  if (!validateOrigin(req)) {
-    return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers });
+  // Validate Content-Type before preamble (uses its own error path)
+  {
+    const early = validateContentType(req, withRequestId(corsHeaders(req)));
+    if (early) return early;
   }
 
-  const ctError = validateContentType(req, headers);
-  if (ctError) return ctError;
-
-  const auth = await verifyAuth(req);
-  if (!auth.authenticated) return unauthorizedResponse(headers);
-
-  const ip = getClientIp(req);
-  if (await isRateLimited(ip, "follow-up", 20, 60_000)) {
-    return rateLimitResponse(headers);
-  }
-
-  // LLM quota check
-  const quota = await checkLLMQuota(auth.userId!, "follow-up");
-  if (!quota.allowed) {
-    return new Response(JSON.stringify({ error: quota.reason, needsFollowUp: false }), { status: 429, headers });
-  }
+  // Composed preamble: CORS → body size (512KB) → origin → IP limit → auth → LLM quota
+  const pre = await withAuthAndRateLimit(req, {
+    endpoint: "follow-up",
+    ipLimit: 20,
+    checkQuota: true,
+    maxBytes: 524288,
+  });
+  if (pre instanceof Response) return pre;
+  const { headers, auth } = pre;
 
   try {
     const { question, answer, type, role, jobDescription, company, currentCity, jobCity, followUpDepth = 0, previousFollowUps, persona, conversationHistory, negotiationPhase, questionIndex, totalQuestions, resumeTopSkills, initialOfferText, negotiationFacts, negotiationStyle, negotiationBand, industry, highestOfferMade, candidateTarget, negotiationScenario } = await req.json() as {

@@ -2,7 +2,7 @@
 
 export const config = { runtime: "edge" };
 
-import { handleCorsPreflightOrMethod, corsHeaders, isRateLimited, getClientIp, rateLimitResponse, verifyAuth, unauthorizedResponse, validateOrigin, sanitizeForLLM, withRequestId, checkLLMQuota } from "./_shared";
+import { withAuthAndRateLimit, sanitizeForLLM, corsHeaders, withRequestId } from "./_shared";
 import { callLLM, extractJSON } from "./_llm";
 
 declare const process: { env: Record<string, string | undefined> };
@@ -11,60 +11,23 @@ const GEMINI_KEY = process.env.GEMINI_API_KEY || "";
 
 export default async function handler(req: Request): Promise<Response> {
   const t0 = Date.now();
-  const earlyResponse = handleCorsPreflightOrMethod(req);
-  if (earlyResponse) return earlyResponse;
-
-  const headers = withRequestId(corsHeaders(req));
-
-  const contentLength = parseInt(req.headers.get("content-length") || "0", 10);
-  if (contentLength > 1048576) {
-    return new Response(JSON.stringify({ error: "Request too large" }), { status: 413, headers });
-  }
 
   if (!GROQ_KEY && !GEMINI_KEY) {
-    return new Response(JSON.stringify({ error: "LLM not configured" }), { status: 503, headers });
+    return new Response(JSON.stringify({ error: "LLM not configured" }), {
+      status: 503,
+      headers: withRequestId(corsHeaders(req)),
+    });
   }
 
-  if (!validateOrigin(req)) {
-    return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers });
-  }
-
-  const tAuth0 = Date.now();
-  const auth = await verifyAuth(req);
-  const tAuth = Date.now() - tAuth0;
-  if (!auth.authenticated) {
-    console.error(`[analyze-resume] Auth failed after ${tAuth}ms`);
-    return unauthorizedResponse(headers);
-  }
-
-  const ip = getClientIp(req);
-  const tRate0 = Date.now();
-  // Per-IP limit (prevents credential-stuffing / scraping)
-  if (await isRateLimited(ip, "analyze-resume", 15, 60_000)) {
-    console.error(`[analyze-resume] IP rate limited after ${Date.now() - tRate0}ms`);
-    return rateLimitResponse(headers);
-  }
-  // Per-user limit (prevents a single authenticated user burning quota from many IPs)
-  if (await isRateLimited(`user:${auth.userId}`, "analyze-resume", 8, 60_000)) {
-    console.error(`[analyze-resume] User rate limited: ${auth.userId?.slice(0, 8)}`);
-    return rateLimitResponse(headers);
-  }
-  const tRate = Date.now() - tRate0;
-
-  const tQuota0 = Date.now();
-  const quota = await checkLLMQuota(auth.userId!, "analyze-resume");
-  const tQuota = Date.now() - tQuota0;
-  if (!quota.allowed) {
-    console.error(`[analyze-resume] Quota exceeded after ${tQuota}ms: ${quota.reason}`);
-    return new Response(JSON.stringify({ error: quota.reason, quotaExceeded: true }), { status: 429, headers });
-  }
-  if (quota.warning && quota.count != null && quota.limit != null) {
-    headers["X-LLM-Quota-Count"] = String(quota.count);
-    headers["X-LLM-Quota-Limit"] = String(quota.limit);
-    headers["X-LLM-Quota-Warning"] = "1";
-  }
-
-  console.log(`[analyze-resume] Pre-checks: auth=${tAuth}ms rate=${tRate}ms quota=${tQuota}ms`);
+  // One-call preamble: CORS → body size → origin → IP limit → auth → user limit → LLM quota
+  const pre = await withAuthAndRateLimit(req, {
+    endpoint: "analyze-resume",
+    ipLimit: 15,
+    userLimit: 8,
+    checkQuota: true,
+  });
+  if (pre instanceof Response) return pre;
+  const { headers, auth } = pre;
 
   try {
     const { resumeText, targetRole } = await req.json();
@@ -126,8 +89,8 @@ CRITICAL RULES:
     }
 
     const totalMs = Date.now() - t0;
-    console.log(`[analyze-resume] OK: auth=${tAuth}ms rate=${tRate}ms quota=${tQuota}ms llm=${tLLM}ms total=${totalMs}ms model=${result.model}`);
-    headers["X-Timing"] = `auth=${tAuth},rate=${tRate},quota=${tQuota},llm=${tLLM},total=${totalMs},model=${result.model}`;
+    console.log(`[analyze-resume] OK: llm=${tLLM}ms total=${totalMs}ms model=${result.model} user=${auth.userId?.slice(0, 8)}`);
+    headers["X-Timing"] = `llm=${tLLM},total=${totalMs},model=${result.model}`;
 
     return new Response(JSON.stringify({ profile }), { status: 200, headers });
   } catch (err) {

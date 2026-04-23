@@ -2,7 +2,7 @@
 
 export const config = { runtime: "edge" };
 
-import { handleCorsPreflightOrMethod, corsHeaders, isRateLimited, getClientIp, rateLimitResponse, verifyAuth, unauthorizedResponse, checkSessionLimit, validateOrigin, sanitizeForLLM, withRequestId, checkLLMQuota, validateContentType } from "./_shared";
+import { withAuthAndRateLimit, corsHeaders, withRequestId, checkSessionLimit, sanitizeForLLM, validateContentType } from "./_shared";
 import { callLLM, extractJSON } from "./_llm";
 
 declare const process: { env: Record<string, string | undefined> };
@@ -10,51 +10,32 @@ const GROQ_KEY = process.env.GROQ_API_KEY || "";
 const GEMINI_KEY = process.env.GEMINI_API_KEY || "";
 
 export default async function handler(req: Request): Promise<Response> {
-  const earlyResponse = handleCorsPreflightOrMethod(req);
-  if (earlyResponse) return earlyResponse;
-
-  const headers = withRequestId(corsHeaders(req));
-
-  // Body size check
-  const contentLength = parseInt(req.headers.get("content-length") || "0", 10);
-  if (contentLength > 1048576) {
-    return new Response(JSON.stringify({ error: "Request too large" }), { status: 413, headers });
-  }
-
   if (!GROQ_KEY && !GEMINI_KEY) {
-    return new Response(JSON.stringify({ error: "LLM not configured" }), { status: 503, headers });
+    return new Response(JSON.stringify({ error: "LLM not configured" }), {
+      status: 503, headers: withRequestId(corsHeaders(req)),
+    });
   }
 
-  // Validate Content-Type
-  const ctError = validateContentType(req, headers);
-  if (ctError) return ctError;
-
-  // CSRF: validate Origin header on POST
-  if (!validateOrigin(req)) {
-    return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers });
+  // Validate Content-Type BEFORE the preamble since it uses its own error path
+  {
+    const early = validateContentType(req, withRequestId(corsHeaders(req)));
+    if (early) return early;
   }
 
-  const auth = await verifyAuth(req);
-  if (!auth.authenticated) return unauthorizedResponse(headers);
+  // Composed preamble: CORS → body size → origin → IP limit → auth → LLM quota
+  const pre = await withAuthAndRateLimit(req, {
+    endpoint: "evaluate",
+    ipLimit: 10,
+    checkQuota: true,
+  });
+  if (pre instanceof Response) return pre;
+  const { headers, auth } = pre;
 
   if (auth.userId) {
     const limit = await checkSessionLimit(auth.userId);
     if (!limit.allowed) {
       return new Response(JSON.stringify({ error: limit.reason }), { status: 403, headers });
     }
-  }
-
-  // Per-user daily LLM quota
-  if (auth.userId) {
-    const quota = await checkLLMQuota(auth.userId, "evaluate");
-    if (!quota.allowed) {
-      return new Response(JSON.stringify({ error: quota.reason }), { status: 429, headers });
-    }
-  }
-
-  const ip = getClientIp(req);
-  if (await isRateLimited(ip, "evaluate", 10, 60_000)) {
-    return rateLimitResponse(headers);
   }
 
   try {

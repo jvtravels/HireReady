@@ -2,7 +2,7 @@
 
 export const config = { runtime: "edge" };
 
-import { handleCorsPreflightOrMethod, corsHeaders, isRateLimited, getClientIp, rateLimitResponse, verifyAuth, unauthorizedResponse, checkSessionLimit, validateOrigin, sanitizeForLLM, withRequestId, checkLLMQuota } from "./_shared";
+import { withAuthAndRateLimit, corsHeaders, withRequestId, checkSessionLimit, sanitizeForLLM } from "./_shared";
 import { callLLM, extractJSON } from "./_llm";
 import { buildSalaryNegotiationGuidance, buildExperienceSalaryContext, generateNegotiationBand, getNegotiationStyleContext, INDUSTRY_PACKAGE_CONTEXT, type NegotiationStyle } from "../data/salary-lookup";
 
@@ -145,48 +145,27 @@ function getCompanyGuidance(company: string): string {
 }
 
 export default async function handler(req: Request): Promise<Response> {
-  const earlyResponse = handleCorsPreflightOrMethod(req);
-  if (earlyResponse) return earlyResponse;
-
-  const headers = withRequestId(corsHeaders(req));
-
-  // Body size check
-  const contentLength = parseInt(req.headers.get("content-length") || "0", 10);
-  if (contentLength > 1048576) {
-    return new Response(JSON.stringify({ error: "Request too large" }), { status: 413, headers });
-  }
-
   if (!GROQ_KEY && !GEMINI_KEY) {
-    return new Response(JSON.stringify({ error: "LLM not configured" }), { status: 503, headers });
+    return new Response(JSON.stringify({ error: "LLM not configured" }), {
+      status: 503, headers: withRequestId(corsHeaders(req)),
+    });
   }
 
-  // CSRF: validate Origin header on POST
-  if (!validateOrigin(req)) {
-    return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers });
-  }
+  // Composed preamble: CORS → body size → origin → IP limit → auth → LLM quota
+  const pre = await withAuthAndRateLimit(req, {
+    endpoint: "generate",
+    ipLimit: 10,
+    checkQuota: true,
+  });
+  if (pre instanceof Response) return pre;
+  const { headers, auth } = pre;
 
-  const auth = await verifyAuth(req);
-  if (!auth.authenticated) return unauthorizedResponse(headers);
-
-  // Server-side session limit enforcement
+  // Server-side session limit enforcement (runs after quota, before LLM call)
   if (auth.userId) {
     const limit = await checkSessionLimit(auth.userId);
     if (!limit.allowed) {
       return new Response(JSON.stringify({ error: limit.reason }), { status: 403, headers });
     }
-  }
-
-  // Per-user daily LLM quota
-  if (auth.userId) {
-    const quota = await checkLLMQuota(auth.userId, "generate");
-    if (!quota.allowed) {
-      return new Response(JSON.stringify({ error: quota.reason }), { status: 429, headers });
-    }
-  }
-
-  const ip = getClientIp(req);
-  if (await isRateLimited(ip, "generate", 10, 60_000)) {
-    return rateLimitResponse(headers);
   }
 
   try {
