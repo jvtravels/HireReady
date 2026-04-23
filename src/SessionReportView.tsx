@@ -1,15 +1,18 @@
 "use client";
-import { memo, useEffect, useMemo, useState, type ReactNode } from "react";
+import { memo, useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
+import { track } from "@vercel/analytics";
 import { c, font } from "./tokens";
 import type { DashboardSession } from "./dashboardTypes";
 import {
   evaluateSessionWithAI,
+  saveStoryToNotebook,
   type SessionReport,
   type SessionReportBand,
   type SessionReportPerQuestion,
   type SessionReportWinFix,
 } from "./dashboardData";
+import { getCohortAverage, type RoleFamily } from "./roleBenchmarks";
 
 /* ─── MVP Results Report view ───────────────────────────────────────
  * Sections (in order):
@@ -40,7 +43,7 @@ const VERDICT_META: Record<SessionReportPerQuestion["verdict"], { label: string;
 };
 
 /** Classify a raw role string into our 5 role-families. */
-function roleToFamily(role: string | undefined): "swe" | "pm" | "em" | "data" | "behavioral" {
+function roleToFamily(role: string | undefined): RoleFamily {
   if (!role) return "behavioral";
   const r = role.toLowerCase();
   if (/engineer|developer|swe|sre|devops/.test(r)) return "swe";
@@ -244,28 +247,82 @@ function bandForSilence(v: number) { return v <= 20 ? "green" : v <= 30 ? "amber
 function bandForPace(v: number) { return v >= 140 && v <= 180 ? "green" : (v >= 125 && v < 140) || (v > 180 && v <= 200) ? "amber" : "red"; }
 function bandForEnergy(v: number) { return v >= 60 ? "green" : v >= 40 ? "amber" : "red"; }
 
-/** Skill bar — one row in the skills breakdown. */
-function SkillBar({ name, score }: { name: string; score: number }) {
+/** Skill bar — user score + cohort average overlay (static priors from roleBenchmarks). */
+function SkillBar({ name, score, cohortAvg }: { name: string; score: number; cohortAvg: number | null }) {
   const pct = Math.max(0, Math.min(100, score));
   const barColor = pct >= 70 ? c.sage : pct >= 50 ? c.gilt : c.ember;
+  const delta = cohortAvg != null ? pct - cohortAvg : null;
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
         <span style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.ivory }}>{name}</span>
-        <span style={{ fontFamily: font.mono, fontSize: 13, fontWeight: 600, color: barColor }}>{pct}</span>
+        <div style={{ display: "inline-flex", alignItems: "baseline", gap: 8 }}>
+          {delta != null && (
+            <span
+              style={{
+                fontFamily: font.mono, fontSize: 10, fontWeight: 600,
+                color: delta >= 0 ? c.sage : c.ember,
+              }}
+              title={`Cohort average: ${cohortAvg}`}
+            >
+              {delta >= 0 ? "+" : ""}{delta} vs avg
+            </span>
+          )}
+          <span style={{ fontFamily: font.mono, fontSize: 13, fontWeight: 600, color: barColor }}>{pct}</span>
+        </div>
       </div>
-      <div style={{ height: 6, background: "rgba(245,242,237,0.05)", borderRadius: 3, overflow: "hidden" }}>
+      <div style={{ position: "relative", height: 6, background: "rgba(245,242,237,0.05)", borderRadius: 3, overflow: "hidden" }}>
         <div style={{ width: `${pct}%`, height: "100%", background: barColor, borderRadius: 3, transition: "width 600ms ease" }} />
+        {cohortAvg != null && (
+          <span
+            aria-label={`cohort average marker at ${cohortAvg}`}
+            style={{
+              position: "absolute", top: -2, bottom: -2,
+              left: `${cohortAvg}%`, width: 1.5,
+              background: "rgba(245,242,237,0.45)",
+              borderRadius: 1,
+            }}
+          />
+        )}
       </div>
     </div>
   );
 }
 
 /** Per-question card — collapsed shows verdict + score, expanded shows full coaching. */
-function QuestionCard({ q, index }: { q: SessionReportPerQuestion; index: number }) {
+function QuestionCard({ q, index, sessionId }: { q: SessionReportPerQuestion; index: number; sessionId: string }) {
   const [open, setOpen] = useState(false);
+  const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const verdictMeta = VERDICT_META[q.verdict] || VERDICT_META.partial;
   const starChips: Array<"S" | "T" | "A" | "R"> = ["S", "T", "A", "R"];
+
+  const onSave = async () => {
+    if (saveState === "saving" || saveState === "saved") return;
+    setSaveState("saving");
+    track("report_action_clicked", { action: "save_story", sessionId, questionIdx: index });
+    try {
+      // Derive a short title from the first clause of the question, e.g. "Tell me about a time…"
+      const title = (q.question || "Story")
+        .replace(/\s+/g, " ")
+        .trim()
+        .slice(0, 80);
+      await saveStoryToNotebook({
+        sessionId,
+        questionIdx: index,
+        title,
+        question: q.question || "",
+        answerText: q.answerText || "",
+        star: null, // MVP: raw answer only; STAR extraction V2
+        tags: [],
+      });
+      setSaveState("saved");
+      setTimeout(() => setSaveState("idle"), 4000);
+    } catch (err) {
+      console.warn("[QuestionCard] save failed:", err instanceof Error ? err.message : err);
+      setSaveState("error");
+      setTimeout(() => setSaveState("idle"), 4000);
+    }
+  };
 
   return (
     <div style={{
@@ -273,7 +330,13 @@ function QuestionCard({ q, index }: { q: SessionReportPerQuestion; index: number
       overflow: "hidden", transition: "border-color 200ms",
     }}>
       <button
-        onClick={() => setOpen((o) => !o)}
+        onClick={() => {
+          setOpen((o) => {
+            const next = !o;
+            if (next) track("report_question_expanded", { sessionId, questionIdx: index, verdict: q.verdict });
+            return next;
+          });
+        }}
         aria-expanded={open}
         style={{
           width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center",
@@ -370,6 +433,41 @@ function QuestionCard({ q, index }: { q: SessionReportPerQuestion; index: number
               {q.explanation}
             </p>
           )}
+
+          {/* Per-question actions — MVP ships Save-to-Notebook; Try-again is covered by the global CTA. */}
+          {q.verdict !== "skipped" && q.answerText && (
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, paddingTop: 2 }}>
+              <button
+                onClick={onSave}
+                disabled={saveState === "saving" || saveState === "saved"}
+                aria-live="polite"
+                style={{
+                  fontFamily: font.ui, fontSize: 12, fontWeight: 500,
+                  color: saveState === "saved" ? c.sage : saveState === "error" ? c.ember : c.chalk,
+                  background: "transparent",
+                  border: `1px solid ${saveState === "saved" ? "rgba(122,158,126,0.35)" : saveState === "error" ? "rgba(196,112,90,0.35)" : "rgba(245,242,237,0.15)"}`,
+                  borderRadius: 8, padding: "6px 12px",
+                  cursor: (saveState === "saving" || saveState === "saved") ? "default" : "pointer",
+                  display: "inline-flex", alignItems: "center", gap: 6,
+                  transition: "all 150ms",
+                }}
+              >
+                {saveState === "saving" && (
+                  <div style={{ width: 10, height: 10, border: `1.5px solid rgba(245,242,237,0.3)`, borderTopColor: c.chalk, borderRadius: "50%", animation: "reportspin 0.8s linear infinite" }} />
+                )}
+                {saveState === "saved" && (
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                )}
+                {saveState === "error" && (
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/></svg>
+                )}
+                {!["saving", "saved", "error"].includes(saveState) && (
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+                )}
+                {saveState === "saving" ? "Saving…" : saveState === "saved" ? "Saved to Notebook" : saveState === "error" ? "Save failed" : "Save to Notebook"}
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -389,10 +487,15 @@ export const SessionReportView = memo(function SessionReportView({
   const [report, setReport] = useState<SessionReport | null>(null);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState("");
+  // Bumping this value re-runs the evaluate effect — used by the retry button.
+  const [reloadTick, setReloadTick] = useState(0);
+
+  const roleFamily: RoleFamily = useMemo(() => roleToFamily(session.role), [session.role]);
 
   useEffect(() => {
     let cancelled = false;
     const ac = new AbortController();
+    const t0 = Date.now();
 
     async function load() {
       setLoading(true);
@@ -400,7 +503,7 @@ export const SessionReportView = memo(function SessionReportView({
       try {
         const meta = {
           role: session.role,
-          roleFamily: roleToFamily(session.role),
+          roleFamily,
           difficulty: (session.difficulty as "warmup" | "standard" | "hard") || "standard",
           duration: parseDurationSec(session.duration),
         };
@@ -408,11 +511,25 @@ export const SessionReportView = memo(function SessionReportView({
           { sessionId: session.id, transcript: toTurns(session.transcript), meta },
           ac.signal,
         );
-        if (!cancelled && res) setReport(res);
+        if (!cancelled && res) {
+          setReport(res);
+          track("report_llm_completed", {
+            sessionId: session.id,
+            latencyMs: Date.now() - t0,
+            score: res.overallScore,
+            band: res.band,
+            model: res.model,
+          });
+        }
       } catch (err) {
         if (cancelled || ac.signal.aborted) return;
         const msg = err instanceof Error ? err.message : "Failed to generate report";
         setErrorMsg(msg);
+        track("report_llm_failed", {
+          sessionId: session.id,
+          latencyMs: Date.now() - t0,
+          error: msg.slice(0, 120),
+        });
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -420,20 +537,44 @@ export const SessionReportView = memo(function SessionReportView({
 
     load();
     return () => { cancelled = true; ac.abort(); };
-  }, [session.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [session.id, reloadTick]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Fire once per successful report view, for funnel analytics.
+  useEffect(() => {
+    if (report) track("report_viewed", { sessionId: session.id, score: report.overallScore, band: report.band });
+  }, [report, session.id]);
 
   const bandMeta = report ? BAND_META[report.band] : null;
   const weakestQuestion = useMemo(() => {
     if (!report?.perQuestion?.length) return null;
     return [...report.perQuestion].sort((a, b) => a.score - b.score)[0];
   }, [report]);
+  const weakestSkill = useMemo(() => {
+    if (!report?.skills?.length) return null;
+    return [...report.skills].sort((a, b) => a.score - b.score)[0];
+  }, [report]);
 
-  const onTryAgain = () => {
+  const onTryAgain = useCallback(() => {
     const focus = weakestQuestion?.question
       ? encodeURIComponent(weakestQuestion.question.slice(0, 80))
       : "";
+    track("report_action_clicked", { action: "try_again", sessionId: session.id });
     router.push(`/session/new?type=${encodeURIComponent(session.type)}${focus ? `&focus=${focus}` : ""}`);
-  };
+  }, [weakestQuestion, session.id, session.type, router]);
+
+  const onDrillSkill = useCallback(() => {
+    if (!weakestSkill) return;
+    const slug = weakestSkill.name.toLowerCase().replace(/\s+/g, "-");
+    track("report_action_clicked", { action: "drill_skill", sessionId: session.id, skill: weakestSkill.name });
+    router.push(`/session/new?type=behavioral&focus=${encodeURIComponent(slug)}`);
+  }, [weakestSkill, session.id, router]);
+
+  const onRetry = useCallback(() => {
+    track("report_retry_requested", { sessionId: session.id });
+    setReport(null);
+    setErrorMsg("");
+    setReloadTick((t) => t + 1);
+  }, [session.id]);
 
   return (
     <div style={{ maxWidth: 840, margin: "0 auto" }}>
@@ -473,7 +614,7 @@ export const SessionReportView = memo(function SessionReportView({
           <p style={{ fontFamily: font.ui, fontSize: 14, fontWeight: 500, color: c.ivory, margin: "0 0 6px" }}>Couldn't build your report</p>
           <p style={{ fontFamily: font.ui, fontSize: 13, color: c.stone, margin: "0 0 16px" }}>{errorMsg}</p>
           <button
-            onClick={() => { setErrorMsg(""); setLoading(true); /* re-trigger via key bump */ setReport(null); }}
+            onClick={onRetry}
             style={{
               fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: c.obsidian,
               background: c.gilt, border: "none", borderRadius: 8, padding: "9px 22px", cursor: "pointer",
@@ -566,11 +707,19 @@ export const SessionReportView = memo(function SessionReportView({
               background: c.graphite, borderRadius: 14, border: `1px solid ${c.border}`,
               padding: "22px 28px", marginBottom: 20,
             }}>
-              <h2 style={{ fontFamily: font.ui, fontSize: 15, fontWeight: 600, color: c.ivory, margin: "0 0 16px" }}>
-                Skills Breakdown
-              </h2>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 16 }}>
+                <h2 style={{ fontFamily: font.ui, fontSize: 15, fontWeight: 600, color: c.ivory, margin: 0 }}>
+                  Skills Breakdown
+                </h2>
+                <span style={{ fontFamily: font.ui, fontSize: 10, color: c.stone, display: "inline-flex", alignItems: "center", gap: 6 }}>
+                  <span aria-hidden="true" style={{ display: "inline-block", width: 1.5, height: 10, background: "rgba(245,242,237,0.45)" }} />
+                  cohort avg
+                </span>
+              </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-                {report.skills.map((s) => <SkillBar key={s.name} name={s.name} score={s.score} />)}
+                {report.skills.map((s) => (
+                  <SkillBar key={s.name} name={s.name} score={s.score} cohortAvg={getCohortAverage(roleFamily, s.name)} />
+                ))}
               </div>
             </div>
           )}
@@ -582,7 +731,7 @@ export const SessionReportView = memo(function SessionReportView({
                 Per-question Review
               </h2>
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                {report.perQuestion.map((q, i) => <QuestionCard key={i} q={q} index={i} />)}
+                {report.perQuestion.map((q, i) => <QuestionCard key={i} q={q} index={i} sessionId={session.id} />)}
               </div>
             </div>
           )}
@@ -597,22 +746,40 @@ export const SessionReportView = memo(function SessionReportView({
             </h2>
             <p style={{ fontFamily: font.ui, fontSize: 13, color: c.stone, margin: "0 0 16px" }}>
               {weakestQuestion
-                ? "We'll queue up your weakest question as a solo drill."
+                ? "Queue up your weakest question as a solo drill, or run a focused pack on your weakest skill."
                 : "Start another session to keep building."}
             </p>
-            <button
-              onClick={onTryAgain}
-              style={{
-                fontFamily: font.ui, fontSize: 14, fontWeight: 600, color: c.obsidian,
-                background: `linear-gradient(135deg, ${c.gilt}, ${c.giltDark})`,
-                border: "none", borderRadius: 10, padding: "12px 28px", cursor: "pointer",
-                boxShadow: "0 8px 24px rgba(212,179,127,0.18)",
-                display: "inline-flex", alignItems: "center", gap: 8,
-              }}
-            >
-              <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polygon points="5,3 19,12 5,21"/></svg>
-              {weakestQuestion ? "Try your weakest question again" : "Start a new session"}
-            </button>
+            <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
+              <button
+                onClick={onTryAgain}
+                style={{
+                  fontFamily: font.ui, fontSize: 14, fontWeight: 600, color: c.obsidian,
+                  background: `linear-gradient(135deg, ${c.gilt}, ${c.giltDark})`,
+                  border: "none", borderRadius: 10, padding: "12px 24px", cursor: "pointer",
+                  boxShadow: "0 8px 24px rgba(212,179,127,0.18)",
+                  display: "inline-flex", alignItems: "center", gap: 8,
+                }}
+              >
+                <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polygon points="5,3 19,12 5,21"/></svg>
+                {weakestQuestion ? "Try weakest question again" : "Start a new session"}
+              </button>
+              {weakestSkill && (
+                <button
+                  onClick={onDrillSkill}
+                  style={{
+                    fontFamily: font.ui, fontSize: 14, fontWeight: 500, color: c.chalk,
+                    background: "transparent", border: `1px solid rgba(245,242,237,0.18)`,
+                    borderRadius: 10, padding: "12px 24px", cursor: "pointer",
+                    display: "inline-flex", alignItems: "center", gap: 8,
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.borderColor = "rgba(245,242,237,0.35)"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.borderColor = "rgba(245,242,237,0.18)"; }}
+                >
+                  <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2v6m0 8v6m-10-10h6m8 0h6"/></svg>
+                  Drill {weakestSkill.name}
+                </button>
+              )}
+            </div>
           </div>
         </>
       )}

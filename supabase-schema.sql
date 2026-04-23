@@ -166,6 +166,27 @@ create index if not exists idx_llm_usage_user_created on llm_usage(user_id, crea
 create index if not exists idx_llm_usage_endpoint on llm_usage(endpoint, created_at);
 create index if not exists idx_llm_usage_created on llm_usage(created_at);
 
+-- 9. Story Notebook — saved STAR stories from interview results reports
+create table if not exists story_notebook (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references profiles(id) on delete cascade not null,
+  session_id text references sessions(id) on delete set null,
+  question_idx integer,
+  title text,
+  question text,
+  answer_text text,
+  star jsonb,
+  tags text[] default '{}',
+  created_at timestamptz default now(),
+  last_used_at timestamptz
+);
+
+create index if not exists idx_story_notebook_user on story_notebook(user_id, created_at desc);
+alter table story_notebook enable row level security;
+drop policy if exists "Users manage own stories" on story_notebook;
+create policy "Users manage own stories" on story_notebook
+  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
 -- ═══════════════════════════════════════════════════════
 -- Row Level Security (RLS)
 -- Users can only access their own data

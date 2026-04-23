@@ -931,3 +931,44 @@ export async function evaluateSessionWithAI(
     return report;
   });
 }
+
+/* ─── Story Notebook (saved STAR stories from results reports) ─────── */
+
+export interface StoryNotebookEntry {
+  sessionId: string;
+  questionIdx: number;
+  title: string;           // short derived label, e.g. "Catalyst IQ — quantified launch"
+  question: string;
+  answerText: string;
+  star?: { S?: string; T?: string; A?: string; R?: string; L?: string } | null;
+  tags?: string[];
+}
+
+export async function saveStoryToNotebook(entry: StoryNotebookEntry): Promise<{ id: string } | null> {
+  const { getSupabase } = await import("./supabase");
+  const client = await getSupabase();
+  const { data: sessionData } = await client.auth.getSession();
+  const userId = sessionData.session?.user?.id;
+  if (!userId) throw new Error("Not signed in — please refresh and sign in again.");
+
+  const { data, error } = await client
+    .from("story_notebook")
+    .insert({
+      user_id: userId,
+      session_id: entry.sessionId,
+      question_idx: entry.questionIdx,
+      title: entry.title.slice(0, 120),
+      question: entry.question.slice(0, 2000),
+      answer_text: entry.answerText.slice(0, 6000),
+      star: entry.star || null,
+      tags: entry.tags || [],
+    })
+    .select("id")
+    .single();
+
+  if (error) {
+    console.error("[saveStoryToNotebook] insert failed:", error.message);
+    throw new Error(error.message || "Failed to save story");
+  }
+  return data ? { id: (data as { id: string }).id } : null;
+}
