@@ -73,9 +73,18 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
+    title: "HireStepX",
+    // Absolute path — Next's Metadata API accepts string | string[] here.
+    // We reuse the 192 SVG; iOS rasterises from the device's preferred size.
+    startupImage: ["/icon-512.svg"],
   },
   other: {
     "apple-mobile-web-app-capable": "yes",
+    "apple-mobile-web-app-title": "HireStepX",
+    // apple-touch-icon points at the same 512 asset — iOS picks the best
+    // size from the 512 SVG. When we ship a rasterised 180×180 PNG later,
+    // update this href.
+    "apple-touch-icon": "/icon-512.svg",
   },
 };
 
@@ -207,6 +216,7 @@ import { ServiceWorkerRegistrar } from "./ServiceWorkerRegistrar";
 import { OfflineBanner } from "./OfflineBanner";
 import CookieConsent from "./CookieConsent";
 import ConsentGatedAnalytics from "./ConsentGatedAnalytics";
+import InstallPrompt from "./InstallPrompt";
 
 export default function RootLayout({
   children,
@@ -266,6 +276,7 @@ export default function RootLayout({
         <ServiceWorkerRegistrar />
         <CookieConsent />
         <ConsentGatedAnalytics />
+        <InstallPrompt />
       </body>
     </html>
   );

@@ -195,7 +195,9 @@ export const AvatarStage = memo(function AvatarStage({ phase, interviewerName, i
         <button onClick={skipSpeaking} style={{
           fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: c.chalk,
           background: "rgba(245,242,237,0.06)", border: `1px solid ${c.border}`,
-          borderRadius: 8, padding: "6px 16px", cursor: "pointer",
+          // min-height enforces WCAG 2.5.5 Level AAA (44px) on touch; was 28px
+          // before, too small for reliable tap on mobile.
+          borderRadius: 8, padding: "10px 18px", cursor: "pointer", minHeight: 44,
           display: "inline-flex", alignItems: "center", gap: 6,
           transition: "all 0.2s", marginTop: 4,
         }}
@@ -331,7 +333,9 @@ export const PanelAvatarStage = memo(function PanelAvatarStage({ phase, panelMem
         <button onClick={skipSpeaking} style={{
           fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: c.chalk,
           background: "rgba(245,242,237,0.06)", border: `1px solid ${c.border}`,
-          borderRadius: 8, padding: "6px 16px", cursor: "pointer",
+          // min-height enforces WCAG 2.5.5 Level AAA (44px) on touch; was 28px
+          // before, too small for reliable tap on mobile.
+          borderRadius: 8, padding: "10px 18px", cursor: "pointer", minHeight: 44,
           display: "inline-flex", alignItems: "center", gap: 6,
           transition: "all 0.2s", marginTop: 4,
         }}
@@ -1521,7 +1525,11 @@ export const ControlsBar = memo(function ControlsBar({ isMuted, setIsMuted, aiVo
   return (
     <footer className="iv-controls" style={{
       display: "flex", alignItems: "center", justifyContent: "center",
-      padding: "10px 24px", gap: 12,
+      // Bottom padding uses the max of 10px and env(safe-area-inset-bottom)
+      // so the iOS home indicator can't overlap the mute/end buttons. Users
+      // on iPhone 12+ were hitting this — the home bar covered ~34px of the
+      // control strip at the default 10px padding.
+      padding: "10px 24px max(10px, env(safe-area-inset-bottom, 10px))", gap: 12,
       borderTop: "1px solid rgba(245,242,237,0.04)",
       background: "rgba(6,6,7,0.6)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
       flexShrink: 0, zIndex: 10,

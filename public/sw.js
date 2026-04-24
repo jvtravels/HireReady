@@ -6,8 +6,16 @@ const SW_VERSION = "v4-2026-04-24";
 const CACHE_NAME = `hirestepx-${SW_VERSION}`;
 
 self.addEventListener("install", (event) => {
-  // Precache nothing — we don't want to serve stale HTML whose cached
-  // Content-Security-Policy headers omit newly-added hosts.
+  // Precache intentionally empty. Two reasons:
+  //   1. HTML is never cached (CSP headers on the document would go stale
+  //      and the app would miss newly-added script/connect hosts).
+  //   2. Next.js emits content-hashed JS/CSS — the filenames change every
+  //      deploy. Hard-coding them here would require a build-time manifest
+  //      step. Instead we cache-on-first-fetch (see the fetch handler
+  //      below), which catches the interview bundle the first time any
+  //      user visits /interview and keeps it warm for later offline use.
+  //      Trade-off: brand-new users can't start an interview while
+  //      offline. Acceptable because onboarding requires network anyway.
   event.waitUntil(caches.open(CACHE_NAME));
   self.skipWaiting();
 });

@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useCallback, useRef, useEffect } from "react";
 import { c, font } from "./tokens";
+import { haptic } from "./haptics";
 
 /* ─── Types ─── */
 export type ToastType = "success" | "error" | "info";
@@ -36,6 +37,9 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   const toast = useCallback((message: string, type: ToastType = "info") => {
     const id = ++nextId;
     setToasts(prev => [...prev.slice(-4), { id, message, type }]); // max 5
+    // Mobile haptic feedback tied to toast type. No-op on desktops and iOS.
+    if (type === "success") haptic.success();
+    else if (type === "error") haptic.error();
     const timer = setTimeout(() => dismiss(id), 4000);
     timersRef.current.set(id, timer);
   }, [dismiss]);

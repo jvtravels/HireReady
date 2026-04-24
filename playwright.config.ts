@@ -24,6 +24,21 @@ export default defineConfig({
       name: "mobile",
       use: { ...devices["iPhone 13"] },
     },
+    {
+      // Tablet coverage — iPad hits the 768px breakpoint bucket, distinct
+      // from phone-portrait (375–414) and desktop (1280+). Caught a
+      // dashboard grid regression during dogfooding that neither 'mobile'
+      // nor 'chromium' would have.
+      name: "tablet",
+      use: { ...devices["iPad Pro 11"] },
+    },
+    {
+      // Android mid-range — larger viewport than iPhone 13 and different
+      // default font metrics. Catches Android-specific layout bugs that
+      // iOS Safari absorbs silently.
+      name: "android",
+      use: { ...devices["Pixel 7"] },
+    },
   ],
 
   webServer: {

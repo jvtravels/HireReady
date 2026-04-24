@@ -3,21 +3,51 @@
 let _cachedApiKey: string | null = null;
 let _apiKeyExpiry = 0;
 const API_KEY_TTL = 5 * 60 * 1000; // 5 min
+const STORAGE_KEY = "hirestepx_deepgram_token";
+
+/**
+ * Rehydrate from sessionStorage on first call — survives page reloads
+ * mid-interview (e.g. a user on flaky mobile who refreshes after a
+ * disconnect). sessionStorage (not localStorage) so the token dies with
+ * the tab, keeping it off disk.
+ */
+function rehydrateFromStorage() {
+  if (_cachedApiKey || typeof sessionStorage === "undefined") return;
+  try {
+    const raw = sessionStorage.getItem(STORAGE_KEY);
+    if (!raw) return;
+    const parsed = JSON.parse(raw) as { apiKey?: string; expiresAt?: number };
+    if (parsed.apiKey && parsed.expiresAt && Date.now() < parsed.expiresAt - API_KEY_TTL * 0.2) {
+      _cachedApiKey = parsed.apiKey;
+      _apiKeyExpiry = parsed.expiresAt;
+    }
+  } catch { /* corrupted cache — ignore */ }
+}
 
 async function getDeepgramApiKey(): Promise<string | null> {
+  rehydrateFromStorage();
   if (_cachedApiKey && Date.now() < _apiKeyExpiry - API_KEY_TTL * 0.2) return _cachedApiKey;
   try {
     const { authHeaders } = await import("./supabase");
     const headers = await authHeaders();
     const res = await fetch("/api/stt-token", { method: "POST", headers });
-    if (!res.ok) return null;
+    if (!res.ok) {
+      // Fallback: use stale-but-present token if we have one. Offline
+      // reconnect path — better to let the old token fail at Deepgram
+      // than bail entirely.
+      return _cachedApiKey;
+    }
     const data = await res.json();
     _cachedApiKey = data.apiKey || null;
-    // Use server-provided expiry if available, otherwise fall back to local TTL
     _apiKeyExpiry = data.expiresAt || (Date.now() + API_KEY_TTL);
+    try {
+      if (typeof sessionStorage !== "undefined" && _cachedApiKey) {
+        sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ apiKey: _cachedApiKey, expiresAt: _apiKeyExpiry }));
+      }
+    } catch { /* restricted storage */ }
     return _cachedApiKey;
   } catch {
-    return null;
+    return _cachedApiKey; // network fail → stale fallback
   }
 }
 

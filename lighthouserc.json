@@ -1,0 +1,57 @@
+{
+  "_comment": "Lighthouse CI config — mobile performance budgets. Run with `npx @lhci/cli autorun` locally, or wire into a GitHub Action via the runbook in tests/e2e/README.md. Budgets tuned for a Moto G4 emulation (Lighthouse's default mobile form factor). Assertions fail the CI run on regression; raise each metric in its own PR as we improve.",
+  "ci": {
+    "collect": {
+      "startServerCommand": "npm run start",
+      "startServerReadyPattern": "ready",
+      "url": [
+        "http://localhost:3000/",
+        "http://localhost:3000/pricing",
+        "http://localhost:3000/login",
+        "http://localhost:3000/signup"
+      ],
+      "numberOfRuns": 3,
+      "settings": {
+        "preset": "desktop",
+        "emulatedFormFactor": "mobile",
+        "throttlingMethod": "simulate",
+        "screenEmulation": {
+          "mobile": true,
+          "width": 360,
+          "height": 640,
+          "deviceScaleFactor": 2,
+          "disabled": false
+        }
+      }
+    },
+    "assert": {
+      "preset": "lighthouse:recommended",
+      "assertions": {
+        "categories:performance": ["warn", { "minScore": 0.7 }],
+        "categories:accessibility": ["error", { "minScore": 0.9 }],
+        "categories:best-practices": ["warn", { "minScore": 0.85 }],
+        "categories:seo": ["warn", { "minScore": 0.9 }],
+        "first-contentful-paint": ["warn", { "maxNumericValue": 2000 }],
+        "largest-contentful-paint": ["warn", { "maxNumericValue": 2500 }],
+        "cumulative-layout-shift": ["error", { "maxNumericValue": 0.1 }],
+        "total-blocking-time": ["warn", { "maxNumericValue": 300 }],
+        "interactive": ["warn", { "maxNumericValue": 3500 }],
+        "installable-manifest": "error",
+        "apple-touch-icon": "warn",
+        "maskable-icon": "warn",
+        "viewport": "error",
+        "themed-omnibox": "warn",
+        "content-width": "error",
+        "tap-targets": "warn",
+        "color-contrast": "error",
+        "uses-responsive-images": "off",
+        "unused-javascript": "off",
+        "total-byte-weight": "off",
+        "csp-xss": "off"
+      }
+    },
+    "upload": {
+      "target": "temporary-public-storage"
+    }
+  }
+}

@@ -1,0 +1,35 @@
+name: Lighthouse CI (mobile)
+
+# Intentionally separate from ci.yml — Lighthouse runs are slow (~3-5min)
+# and only need to gate meaningful changes to public pages. Filters by path
+# so a test-only PR doesn't kick this off.
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "app/**"
+      - "src/landing/**"
+      - "src/index.css"
+      - "public/manifest.json"
+      - "public/sw.js"
+      - "next.config.*"
+      - "lighthouserc.json"
+
+jobs:
+  lighthouse:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: Lighthouse CI
+        run: npx --yes @lhci/cli@0.14 autorun --config=./lighthouserc.json
+        env:
+          # Optional: LHCI_GITHUB_APP_TOKEN lets status checks write back.
+          # Without it, runs still happen but no inline PR feedback. See
+          # https://github.com/GoogleChrome/lighthouse-ci/blob/main/docs/getting-started.md
+          LHCI_GITHUB_APP_TOKEN: ${{ secrets.LHCI_GITHUB_APP_TOKEN }}

@@ -69,6 +69,11 @@ body {
   background: #060607;
   color: #F5F2ED;
   overflow-x: hidden;
+  /* Prevent the browser's native pull-to-refresh — a user scrolling up on
+     the dashboard would accidentally reload the page, losing filter state
+     and scroll position. `contain` still allows local scroll bouncing
+     inside nested scroll containers. */
+  overscroll-behavior-y: contain;
 }
 
 /* ─── Screen Reader Only ─── */
@@ -948,6 +953,18 @@ input[type="range"]::-moz-range-thumb {
   .landing-stats-grid { grid-template-columns: 1fr !important; }
   .trust-badges-grid { grid-template-columns: 1fr !important; }
   .footer-grid { grid-template-columns: 1fr !important; }
+}
+
+/* Foldable / super-narrow (Galaxy Z Flip closed, ~280px). Defensive rules
+   so text doesn't overflow and spacings don't balloon. Very small user
+   base today but growing; cheap to support. */
+@media (max-width: 340px) {
+  body { font-size: 14px; }
+  .dash-main { padding: 16px 12px 64px !important; }
+  .iv-controls { gap: 4px !important; padding: 8px 6px max(8px, env(safe-area-inset-bottom, 8px)) !important; }
+  .iv-controls button { min-width: 44px !important; min-height: 44px !important; padding: 0 !important; }
+  h1 { font-size: 22px !important; }
+  h2 { font-size: 18px !important; }
 }
 
 @media print {

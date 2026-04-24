@@ -1873,6 +1873,13 @@ export function useInterviewEngine() {
       toast("Session saved successfully!", "success");
     }
 
+    // Completion haptic — two-pulse pattern tells mobile users the session
+    // is officially done even if they're not looking at the screen.
+    try {
+      const { haptic } = await import("./haptics");
+      haptic.completion();
+    } catch { /* no-op if haptics module missing */ }
+
     track("session_complete", {
       type: interviewType,
       score,
