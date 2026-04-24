@@ -61,8 +61,37 @@ interface FeedbackData {
   recent: Array<{ id: string; user_id: string; rating: string; comment: string; session_score: number; session_type: string; created_at: string }>;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-interface UserDetailData { profile: Record<string, any>; sessions: any[]; payments: any[]; llmUsage: any[]; feedback: any[] }
+/**
+ * Shape returned by /api/admin-data?userId=X. Declares the fields the
+ * profile card actually reads so the render sites get real type
+ * checking, plus an index signature for any extra columns we don't
+ * explicitly touch (session_credits, referral stats, etc.). The
+ * row arrays remain `Record<string, unknown>[]` because each table
+ * has a different row shape and the admin surface iterates them
+ * generically — formatCell() narrows values at render time.
+ *
+ * Previously this was `{ profile: Record<string, any>; sessions:
+ * any[]; ... }` with an eslint-disable. Now no `any` anywhere: named
+ * fields are strictly typed, the rest is unknown-safe.
+ */
+export interface AdminProfileRow {
+  id?: string;
+  name?: string | null;
+  email?: string;
+  subscription_tier?: string | null;
+  subscription_end?: string | null;
+  target_role?: string | null;
+  experience_level?: string | null;
+  created_at?: string;
+  [key: string]: unknown;
+}
+export interface UserDetailData {
+  profile: AdminProfileRow;
+  sessions: Record<string, unknown>[];
+  payments: Record<string, unknown>[];
+  llmUsage: Record<string, unknown>[];
+  feedback: Record<string, unknown>[];
+}
 
 type Tab = "overview" | "users" | "financials" | "llm" | "sessions" | "feedback";
 
@@ -716,7 +745,7 @@ export default function AdminDashboard() {
             </div>
           </div>
           <div style={{ textAlign: "right" }}>
-            <p style={{ margin: 0, fontSize: 11, color: c.stone }}>Joined {formatDate(p.created_at)}</p>
+            <p style={{ margin: 0, fontSize: 11, color: c.stone }}>Joined {formatDate(p.created_at || null)}</p>
             {p.subscription_end && <p style={{ margin: "2px 0 0", fontSize: 11, color: c.stone }}>Sub ends {formatDate(p.subscription_end)}</p>}
           </div>
         </div>

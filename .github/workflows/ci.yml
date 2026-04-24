@@ -24,7 +24,10 @@ jobs:
       - name: TypeScript type check
         run: npx tsc --noEmit
       - name: ESLint (zero errors, warnings capped)
-        run: npx eslint . --max-warnings 150
+        # Cap includes the new codebase-health warnings introduced in
+        # eslint.config.js (max-lines, no-restricted-syntax on `as unknown
+        # as X`). Ratchet downward as we fix each hit.
+        run: npx eslint . --max-warnings 200
 
   unit-tests:
     name: Unit Tests

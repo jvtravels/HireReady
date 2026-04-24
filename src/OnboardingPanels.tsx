@@ -540,6 +540,10 @@ export function ProfileReadyState({ aiProfile, resumeParsed, userName, fileName,
                 value={displayedSummary}
                 onChange={(e) => setSummaryDraft(e.target.value)}
                 onBlur={() => setSummaryEditing(false)}
+                // Explicit focus on user-triggered open — this textarea
+                // only renders when the user clicks Edit, so the focus
+                // is a response to their action, not a page-load surprise.
+                // eslint-disable-next-line jsx-a11y/no-autofocus
                 autoFocus
                 rows={3}
                 style={{
