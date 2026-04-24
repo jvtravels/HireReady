@@ -734,6 +734,135 @@ export default function DashboardHome() {
         </div>
       )}
 
+      {/* ─── "Next step" unified CTA card ─────────────────────────────────
+           Consolidates the signals we already compute — weakest skill,
+           current streak, bonus credits, smart-schedule hint — into a
+           single "do this now" recommendation. Everything needed is
+           already in context; this card just makes the habit loop
+           legible instead of spreading across six panels. Suppressed
+           for brand-new users (need ≥1 session to compute weakest
+           skill) and for users already hitting the paywall (the
+           exhausted-user banner above does that job). */}
+      {hasData && !(isFree && atSessionLimit) && (() => {
+        // Lowest-scoring skill is the highest-leverage practice target.
+        // `skills` is already sorted by name but carries score + prev; we
+        // pick the lowest-scoring one under 70. If none qualify the user is
+        // doing well enough that the card pivots to streak/welcome-back copy.
+        const weakest = (() => {
+          if (!skills || skills.length === 0) return null;
+          const sorted = [...skills].sort((a, b) => a.score - b.score);
+          const low = sorted[0];
+          return low && low.score < 70 ? low.name : null;
+        })();
+        const credits = user?.sessionCredits ?? 0;
+        const streakDay = currentStreak;
+        // Highest unmet milestone among 7/14/30; null once user has passed 30.
+        const nextMilestone = streakDay < 7 ? 7 : streakDay < 14 ? 14 : streakDay < 30 ? 30 : null;
+        const daysToNext = nextMilestone ? nextMilestone - streakDay : 0;
+        // Primary action: focused practice on the weakest skill. Fall back to
+        // "keep the streak going" when there's no weak-skill signal yet.
+        const ctaLabel = weakest ? `Practice ${weakest}` : streakDay > 0 ? "Keep the streak going" : "Start a session";
+        const ctaHref = weakest
+          ? `/session/new?focus=${encodeURIComponent(weakest)}`
+          : "/session/new";
+
+        // Compose the headline — prefer the weakest-skill nudge (highest
+        // learning ROI), then streak, then a generic welcome-back.
+        const headline = weakest
+          ? `Your ${weakest} is the highest-leverage thing to practice today.`
+          : streakDay >= 3
+            ? `You're on a ${streakDay}-day streak — don't break it.`
+            : "Pick up where you left off.";
+
+        // Tiny chip row below the CTA: streak + credits + schedule hint.
+        // Each chip only renders when its signal is meaningful.
+        const chips: Array<{ icon: React.ReactNode; label: string; color: string }> = [];
+        if (streakDay > 0) {
+          chips.push({
+            icon: <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>,
+            label: nextMilestone
+              ? `${streakDay}-day streak · ${daysToNext} to +1 bonus`
+              : `${streakDay}-day streak`,
+            color: c.ember,
+          });
+        }
+        if (credits > 0) {
+          chips.push({
+            icon: <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>,
+            label: `${credits} bonus session${credits !== 1 ? "s" : ""}`,
+            color: c.sage,
+          });
+        }
+        if (smartSchedule) {
+          chips.push({
+            icon: <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>,
+            // Strip the marketing framing — we just want the time-of-day cue.
+            label: smartSchedule.length > 48 ? `${smartSchedule.slice(0, 45)}…` : smartSchedule,
+            color: c.gilt,
+          });
+        }
+
+        return (
+          <div
+            style={{
+              display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap",
+              padding: "18px 22px", borderRadius: radius.lg,
+              background: `linear-gradient(135deg, rgba(212,179,127,0.06) 0%, rgba(122,158,126,0.04) 100%)`,
+              border: "1px solid rgba(212,179,127,0.18)",
+              marginBottom: sp.xl,
+            }}
+            data-testid="dashboard-next-step-card"
+          >
+            <div style={{ flex: 1, minWidth: 220 }}>
+              <div style={{ fontFamily: font.mono, fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: c.gilt, marginBottom: 4 }}>
+                Your next move
+              </div>
+              <p style={{ fontFamily: font.ui, fontSize: 15, fontWeight: 500, color: c.ivory, lineHeight: 1.45, margin: 0 }}>
+                {headline}
+              </p>
+              {chips.length > 0 && (
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 10 }}>
+                  {chips.map((chip, i) => (
+                    <span
+                      key={i}
+                      style={{
+                        display: "inline-flex", alignItems: "center", gap: 5,
+                        padding: "3px 9px", borderRadius: 999,
+                        background: "rgba(255,255,255,0.03)",
+                        border: `1px solid rgba(255,255,255,0.06)`,
+                        fontFamily: font.ui, fontSize: 11, fontWeight: 500,
+                        color: chip.color,
+                      }}
+                    >
+                      {chip.icon}{chip.label}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+            <button
+              onClick={() => router.push(ctaHref)}
+              style={{
+                fontFamily: font.ui, fontSize: 13, fontWeight: 600,
+                padding: "10px 22px", borderRadius: radius.md,
+                border: "none", background: `linear-gradient(135deg, ${c.gilt}, ${c.giltDark})`,
+                color: c.obsidian, cursor: "pointer", whiteSpace: "nowrap",
+                display: "inline-flex", alignItems: "center", gap: 7,
+                transition: "filter 0.2s",
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.filter = "brightness(1.08)"}
+              onMouseLeave={(e) => e.currentTarget.style.filter = "brightness(1)"}
+              aria-label={ctaLabel}
+            >
+              {ctaLabel}
+              <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+              </svg>
+            </button>
+          </div>
+        );
+      })()}
+
       {/* ─── Resume Draft Banner ─── */}
       {hasDraft && (
         <div style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 20px", borderRadius: radius.md, background: "rgba(212,179,127,0.04)", border: `1px solid rgba(212,179,127,0.15)`, marginBottom: sp.xl, flexWrap: "wrap" }}>

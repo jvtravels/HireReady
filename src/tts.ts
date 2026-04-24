@@ -378,6 +378,10 @@ async function _speakWithWebSocketInner(
 
     audioCtx = new AudioContext({ sampleRate: WS_SAMPLE_RATE });
     nextStartTime = audioCtx.currentTime;
+    // Expose on window so Interview.tsx's useMobileAudioResilience hook can
+    // resume it after backgrounding / rotation on iOS Safari, which otherwise
+    // suspends it silently and breaks mid-interview TTS.
+    try { (window as unknown as { __hirestepxAudioCtx?: AudioContext }).__hirestepxAudioCtx = audioCtx; } catch { /* SSR / restricted */ }
     const capturedCtx = audioCtx;
     const contextId = safeUUID();
 

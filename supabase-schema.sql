@@ -166,7 +166,38 @@ create index if not exists idx_llm_usage_user_created on llm_usage(user_id, crea
 create index if not exists idx_llm_usage_endpoint on llm_usage(endpoint, created_at);
 create index if not exists idx_llm_usage_created on llm_usage(created_at);
 
--- 9. Story Notebook — saved STAR stories from interview results reports
+-- 9. Role competencies + company guidance
+--
+-- Mirrors the ROLE_COMPETENCIES + COMPANY_GUIDANCE maps currently hardcoded
+-- in server-handlers/generate-questions.ts. The in-code constants are still
+-- the source of truth; generate-questions.ts falls back to them when the DB
+-- row is absent. Purpose: allow non-deploy updates, versioning, and eventual
+-- A/B testing of question prompts per role/company.
+--
+-- Seeding is a separate migration step — creating the tables here is safe on
+-- an empty DB because the fallback path keeps behaviour unchanged.
+create table if not exists role_competencies (
+  role_slug text primary key,
+  body text not null,
+  version integer default 1,
+  updated_at timestamptz default now()
+);
+create table if not exists company_guidance (
+  company_slug text primary key,
+  body text not null,
+  version integer default 1,
+  updated_at timestamptz default now()
+);
+alter table role_competencies enable row level security;
+alter table company_guidance enable row level security;
+drop policy if exists "Anyone can read role competencies" on role_competencies;
+create policy "Anyone can read role competencies" on role_competencies for select using (true);
+drop policy if exists "Anyone can read company guidance" on company_guidance;
+create policy "Anyone can read company guidance" on company_guidance for select using (true);
+-- Writes only via service role (bypasses RLS). No INSERT/UPDATE/DELETE policy
+-- for authenticated users — this data is admin-controlled.
+
+-- 10. Story Notebook — saved STAR stories from interview results reports
 create table if not exists story_notebook (
   id uuid primary key default gen_random_uuid(),
   user_id uuid references profiles(id) on delete cascade not null,

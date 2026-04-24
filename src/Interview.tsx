@@ -52,8 +52,49 @@ export default function Interview() {
   );
 }
 
+/**
+ * Mobile resilience: resume any suspended AudioContexts when the tab comes
+ * back to foreground or the device rotates. iOS Safari routinely suspends
+ * AudioContext on backgrounding / orientation change, which silently breaks
+ * TTS playback mid-interview without any visible error. Walking the global
+ * set is ugly but there's no clean way to enumerate them; we tag the ones
+ * we create and resume those.
+ */
+function useMobileAudioResilience() {
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const resumeSuspended = () => {
+      // tts.ts stashes its AudioContext on window.__hirestepxAudioCtx when
+      // available. If that pattern isn't in place yet, this is a no-op —
+      // cheap and safe. The real fix is in tts.ts itself but this covers
+      // the rotation-kills-voice case without refactoring the audio path.
+      const globalCtx = (window as unknown as { __hirestepxAudioCtx?: AudioContext }).__hirestepxAudioCtx;
+      if (globalCtx && globalCtx.state === "suspended") {
+        globalCtx.resume().catch(() => { /* expected: resume may fail if user gesture required */ });
+      }
+    };
+
+    const onVisibility = () => { if (document.visibilityState === "visible") resumeSuspended(); };
+    const onOrientation = () => { setTimeout(resumeSuspended, 200); };
+
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("orientationchange", onOrientation);
+    // Modern API replacement for orientationchange; not all browsers support it
+    const screenOrientation = (screen as Screen & { orientation?: { addEventListener: typeof addEventListener; removeEventListener: typeof removeEventListener } }).orientation;
+    screenOrientation?.addEventListener?.("change", onOrientation);
+
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("orientationchange", onOrientation);
+      screenOrientation?.removeEventListener?.("change", onOrientation);
+    };
+  }, []);
+}
+
 function InterviewInner() {
   useEffect(() => { addInterviewPreconnects(); }, []);
+  useMobileAudioResilience();
   const engine = useInterviewEngine();
   const video = useVideoRecorder();
 
@@ -112,6 +153,9 @@ function InterviewInner() {
           .iv-controls button { min-width: 48px !important; min-height: 48px !important; }
           .iv-controls .iv-hide-mobile { display: none !important; }
           .iv-transcript-panel { width: 100% !important; max-width: none !important; position: fixed !important; bottom: 0 !important; top: auto !important; right: 0 !important; left: 0 !important; height: 60vh !important; border-radius: 20px 20px 0 0 !important; animation: slideUpSheet 0.35s cubic-bezier(0.16, 1, 0.3, 1) both !important; }
+          /* Video preview default is 160×120 — 43% of a 375px viewport.
+             Shrinks to ~90px to stay out of the way of the main stage. */
+          .iv-video-preview { width: 90px !important; height: 68px !important; top: 64px !important; right: 8px !important; }
         }
         @keyframes slideUpSheet { from { transform: translateY(100%); } to { transform: translateY(0); } }
         @media (hover: none) and (pointer: coarse) {
@@ -139,7 +183,7 @@ function InterviewInner() {
       }}>
         {/* Video preview - small self-view */}
         {video.videoEnabled && (
-          <div style={{
+          <div className="iv-video-preview" style={{
             position: "fixed", top: 80, right: 16, zIndex: 20,
             width: 160, height: 120, borderRadius: 12,
             overflow: "hidden", border: "2px solid rgba(245,242,237,0.1)",

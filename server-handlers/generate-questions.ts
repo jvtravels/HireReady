@@ -5,6 +5,7 @@ export const config = { runtime: "edge" };
 import { withAuthAndRateLimit, corsHeaders, withRequestId, checkSessionLimit, sanitizeForLLM } from "./_shared";
 import { callLLM, extractJSON } from "./_llm";
 import { buildSalaryNegotiationGuidance, buildExperienceSalaryContext, generateNegotiationBand, getNegotiationStyleContext, INDUSTRY_PACKAGE_CONTEXT, type NegotiationStyle } from "../data/salary-lookup";
+import { loadRoleCompetency, loadCompanyGuidance } from "./_role-content";
 
 declare const process: { env: Record<string, string | undefined> };
 const GROQ_KEY = process.env.GROQ_API_KEY || "";
@@ -125,23 +126,40 @@ REAL INTERVIEW PATTERNS: Entry→"How do you run an effective sprint retrospecti
 CURRENT TRENDS (2025-26): Agile at scale (SAFe 6.0), flow metrics over velocity, continuous delivery practices, agile in non-tech teams, OKR integration with agile, remote agile ceremonies.`,
 };
 
-function getRoleCompetencies(role: string): string {
-  if (!role) return "";
+/** Match a free-text role to a ROLE_COMPETENCIES key. Returns the matched key
+    for DB lookup + the in-code fallback body. */
+function matchRoleKey(role: string): { key: string; fallback: string } {
+  if (!role) return { key: "", fallback: "" };
   const lower = role.toLowerCase();
   for (const [key, value] of Object.entries(ROLE_COMPETENCIES)) {
-    if (lower.includes(key) || key.split("-").some(part => lower.includes(part))) return value;
+    if (lower.includes(key) || key.split("-").some(part => lower.includes(part))) return { key, fallback: value };
   }
-  return "";
+  return { key: "", fallback: "" };
 }
 
-function getCompanyGuidance(company: string): string {
-  if (!company) return "";
+function matchCompanyKey(company: string): { key: string; fallback: string } {
+  if (!company) return { key: "", fallback: "" };
   const key = company.toLowerCase().replace(/\s+/g, "").replace(/[^a-z]/g, "");
-  // Check direct match and common abbreviations
   for (const [k, v] of Object.entries(COMPANY_GUIDANCE)) {
-    if (key.includes(k) || k.includes(key)) return v;
+    if (key.includes(k) || k.includes(key)) return { key: k, fallback: v };
   }
-  return "";
+  return { key: "", fallback: "" };
+}
+
+/** Role competencies: try the DB first (admin-editable, versioned), fall back
+    to the in-code constant. Zero behaviour change while the DB is empty. */
+async function getRoleCompetencies(role: string): Promise<string> {
+  const { key, fallback } = matchRoleKey(role);
+  if (!key) return "";
+  const dbBody = await loadRoleCompetency(key);
+  return dbBody || fallback;
+}
+
+async function getCompanyGuidance(company: string): Promise<string> {
+  const { key, fallback } = matchCompanyKey(company);
+  if (!key) return "";
+  const dbBody = await loadCompanyGuidance(key);
+  return dbBody || fallback;
 }
 
 export default async function handler(req: Request): Promise<Response> {
@@ -178,7 +196,7 @@ export default async function handler(req: Request): Promise<Response> {
     const targetRole = sanitizeForLLM(role, 100) || "the target role";
 
     const companyName = sanitizeForLLM(company, 100);
-    const companySpecificGuidance = getCompanyGuidance(companyName);
+    const companySpecificGuidance = await getCompanyGuidance(companyName);
     const companyContext = companyName ? `The candidate is interviewing at ${companyName}. ${companySpecificGuidance}` : "";
     const industryContext = industry ? `The industry is ${sanitizeForLLM(industry, 100)}.` : "";
     // Only add focus context if it differs from the interview type (otherwise it's redundant)
@@ -247,7 +265,7 @@ WHAT TO PROBE: "How did you build an engineering/product/design org?", "Describe
 REALISTIC EXPECTATIONS: Should demonstrate P&L ownership, hiring at scale, investor/board communication, multi-year strategic planning.${salaryCtx}`
       : "";
 
-    const roleCompContext = getRoleCompetencies(targetRole);
+    const roleCompContext = await getRoleCompetencies(targetRole);
 
     // Interview-type-specific guidance to ensure questions match the format
     // Salary-negotiation guidance is dynamically generated from structured data (~100 tokens vs ~2,000 tokens)
