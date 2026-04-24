@@ -117,7 +117,17 @@ function MetricTile({ label, value, unit, target, good }: {
     }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
         <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.stone, textTransform: "uppercase", letterSpacing: "0.06em" }}>{label}</span>
-        <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: dotColor }} aria-label={`${good} status`} />
+        <span
+          title={`${good === "green" ? "On target" : good === "amber" ? "Slightly off" : "Needs work"}`}
+          style={{
+            display: "inline-flex", alignItems: "center", justifyContent: "center",
+            width: 14, height: 14, borderRadius: "50%", background: dotColor,
+            color: c.obsidian, fontFamily: font.mono, fontSize: 10, fontWeight: 700,
+          }}
+          aria-label={`${good} status — ${good === "green" ? "On target" : good === "amber" ? "Slightly off" : "Needs work"}`}
+        >
+          {good === "green" ? "✓" : good === "amber" ? "!" : "✕"}
+        </span>
       </div>
       <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
         <span style={{ fontFamily: font.mono, fontSize: 26, fontWeight: 700, color: c.ivory, lineHeight: 1 }}>{value}</span>
@@ -368,7 +378,13 @@ function QuestionCard({ q, index, sessionId }: { q: SessionReportPerQuestion; in
 
   return (
     <div style={{
-      background: c.graphite, borderRadius: 12, border: `1px solid ${c.border}`,
+      background: c.graphite, borderRadius: 12,
+      // Verdict-tinted left accent + matching border. Lets users scan by color
+      // which questions were weak before expanding any card.
+      borderLeft: `3px solid ${verdictMeta.color}`,
+      borderTop: `1px solid ${c.border}`,
+      borderRight: `1px solid ${c.border}`,
+      borderBottom: `1px solid ${c.border}`,
       overflow: "hidden", transition: "border-color 200ms",
     }}>
       <button
@@ -477,6 +493,12 @@ function QuestionCard({ q, index, sessionId }: { q: SessionReportPerQuestion; in
             </div>
           )}
 
+          {/* Coached Version + Top Performer — side by side on desktop, stacked on mobile */}
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: (q.restructured?.text && q.topPerformerAnswer?.text) ? "repeat(auto-fit, minmax(280px, 1fr))" : "1fr",
+            gap: 10,
+          }}>
           {/* Restructured STAR answer — grounded in the candidate's words */}
           {q.restructured && q.restructured.text && (
             <div style={{
@@ -526,6 +548,7 @@ function QuestionCard({ q, index, sessionId }: { q: SessionReportPerQuestion; in
               )}
             </div>
           )}
+          </div>
 
           {/* Length verdict — flags too-brief / too-long answers */}
           {q.lengthVerdict && q.verdict !== "skipped" && <LengthVerdictBadge lv={q.lengthVerdict} />}
@@ -714,11 +737,78 @@ export const SessionReportView = memo(function SessionReportView({
   }, [session.id]);
 
   return (
-    <div style={{ maxWidth: 840, margin: "0 auto" }}>
+    <div className="sr-shell" style={{ maxWidth: 1280, margin: "0 auto", padding: "0 20px" }}>
+      {/* Global CSS for the new 3-column layout + responsive collapse + focus rings. */}
+      <style>{`
+        /* 3-column grid: sidebar + main + right rail. Collapses at 1080px. */
+        .sr-grid { display: grid; grid-template-columns: 180px minmax(0, 1fr) 280px; gap: 24px; align-items: start; }
+        .sr-sidebar, .sr-rail { position: sticky; top: 20px; align-self: start; }
+        .sr-main { min-width: 0; }
+        .sr-main > * { margin-bottom: 20px; }
+        .sr-main > *:last-child { margin-bottom: 0; }
+
+        @media (max-width: 1080px) {
+          .sr-grid { grid-template-columns: 1fr; }
+          .sr-sidebar, .sr-rail { position: static; }
+          .sr-sidebar { order: 1; }
+          .sr-main { order: 2; }
+          .sr-rail { order: 3; }
+        }
+
+        /* Section headings — bolder with gilt rule underneath. */
+        .sr-section-h {
+          font-family: var(--font-ui, inherit);
+          font-size: 18px; font-weight: 700;
+          letter-spacing: -0.01em;
+          margin: 0 0 12px;
+          padding-bottom: 6px;
+          border-bottom: 1px solid rgba(212,179,127,0.15);
+        }
+
+        /* Focus rings — keyboard accessibility. */
+        .sr-shell button:focus-visible,
+        .sr-shell [role="button"]:focus-visible,
+        .sr-shell [aria-expanded]:focus-visible {
+          outline: 2px solid ${c.gilt};
+          outline-offset: 2px;
+          border-radius: 6px;
+        }
+
+        /* Sidebar nav item. */
+        .sr-nav-item {
+          display: flex; align-items: center; gap: 8px;
+          padding: 7px 10px; border-radius: 6px;
+          font-family: inherit; font-size: 12px; font-weight: 500;
+          color: ${c.stone};
+          background: transparent; border: none; cursor: pointer; text-align: left;
+          width: 100%;
+          transition: background 120ms, color 120ms;
+        }
+        .sr-nav-item:hover { background: rgba(245,242,237,0.04); color: ${c.chalk}; }
+        .sr-nav-item.active { background: rgba(212,179,127,0.08); color: ${c.gilt}; }
+
+        /* Mobile: hide sidebar nav — main column owns everything. */
+        @media (max-width: 1080px) {
+          .sr-sidebar-panel { display: none; }
+        }
+
+        /* Touch target minimum on mobile. */
+        @media (max-width: 640px) {
+          .sr-shell button { min-height: 40px; }
+        }
+
+        /* Desktop: right rail owns core-metrics; hide the in-main strip.
+           Mobile (rail stacks below): show the in-main strip so metrics
+           appear near the top instead of below 10 other sections. */
+        @media (min-width: 1081px) {
+          .sr-metrics-strip { display: none !important; }
+        }
+      `}</style>
+
       {/* Back button */}
       <button onClick={onBack} style={{
         display: "flex", alignItems: "center", gap: 8, fontFamily: font.ui, fontSize: 13,
-        color: c.stone, background: "none", border: "none", cursor: "pointer", padding: "0 0 20px",
+        color: c.stone, background: "none", border: "none", cursor: "pointer", padding: "0 0 16px",
       }}>
         <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6"/></svg>
         Back to Dashboard
@@ -760,13 +850,20 @@ export const SessionReportView = memo(function SessionReportView({
         </div>
       )}
 
-      {/* Report content */}
+      {/* Report content — 3-column grid on desktop, stacked on mobile */}
       {report && bandMeta && (
-        <>
+        <div className="sr-grid">
+          {/* ── Left sidebar: jump nav + export controls ── */}
+          <aside className="sr-sidebar sr-sidebar-panel" aria-label="Section navigation">
+            <ReportSidebar onDownloadPdf={onDownloadPdf} />
+          </aside>
+
+          {/* ── Main column: hero + scrollable sections ── */}
+          <div className="sr-main">
           {/* 1. Hero */}
-          <div style={{
+          <div id="sr-hero" style={{
             background: c.graphite, borderRadius: 14, border: `1px solid ${c.border}`,
-            padding: "28px 32px", marginBottom: 20,
+            padding: "28px 32px",
           }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 20 }}>
               <div style={{ flex: 1, minWidth: 240 }}>
@@ -878,19 +975,23 @@ export const SessionReportView = memo(function SessionReportView({
           {/* Coach's note — longitudinal insights from prior sessions.
               Turns the report into a coach (not a scorecard) for returning users. */}
           {report.crossSessionInsights && report.crossSessionInsights.length > 0 && (
-            <CoachNoteSection insights={report.crossSessionInsights} priorCount={report.priorSessionCount} />
+            <div id="sr-coachnote">
+              <CoachNoteSection insights={report.crossSessionInsights} priorCount={report.priorSessionCount} />
+            </div>
           )}
 
           {/* Red-flag detector — rejection-grade signals shown above the fold */}
           {report.redFlags && report.redFlags.length > 0 && (
-            <RedFlagsSection flags={report.redFlags} />
+            <div id="sr-redflags">
+              <RedFlagsSection flags={report.redFlags} />
+            </div>
           )}
 
-          {/* 2. Core Metrics Strip */}
-          <div style={{
+          {/* 2. Core Metrics Strip (mobile only — right rail owns this on desktop) */}
+          <div id="sr-metrics" className="sr-metrics-strip" style={{
             display: "grid",
             gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-            gap: 12, marginBottom: 20,
+            gap: 12,
           }}>
             <MetricTile label="Filler Words" value={report.coreMetrics.fillerPerMin} unit="/ min" target="0–3" good={bandForFiller(report.coreMetrics.fillerPerMin)} />
             <MetricTile label="Silence Ratio" value={report.coreMetrics.silenceRatio} unit="%" target="0–20%" good={bandForSilence(report.coreMetrics.silenceRatio)} />
@@ -900,12 +1001,12 @@ export const SessionReportView = memo(function SessionReportView({
 
           {/* 3. Skills Breakdown */}
           {report.skills && report.skills.length > 0 && (
-            <div style={{
+            <div id="sr-skills" style={{
               background: c.graphite, borderRadius: 14, border: `1px solid ${c.border}`,
-              padding: "22px 28px", marginBottom: 20,
+              padding: "22px 28px",
             }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 16 }}>
-                <h2 style={{ fontFamily: font.ui, fontSize: 15, fontWeight: 600, color: c.ivory, margin: 0 }}>
+                <h2 className="sr-section-h" style={{ color: c.ivory, border: "none", padding: 0, margin: 0, fontFamily: font.ui, fontSize: 18, fontWeight: 700 }}>
                   Skills Breakdown
                 </h2>
                 <span style={{ fontFamily: font.ui, fontSize: 10, color: c.stone, display: "inline-flex", alignItems: "center", gap: 6 }}>
@@ -922,30 +1023,40 @@ export const SessionReportView = memo(function SessionReportView({
           )}
 
           {/* Advanced delivery panel — hedging density, lexical diversity, latency, self-correction */}
-          {report.advancedDelivery && <AdvancedDeliveryPanel ad={report.advancedDelivery} />}
+          {report.advancedDelivery && (
+            <div id="sr-advanced">
+              <AdvancedDeliveryPanel ad={report.advancedDelivery} />
+            </div>
+          )}
 
           {/* Interviewer thought bubble — LLM-inferred cognitive state over time */}
           {report.thoughtBubble && report.thoughtBubble.length > 0 && (
-            <ThoughtBubbleTimeline segments={report.thoughtBubble} totalMs={parseDurationSec(session.duration) * 1000} />
+            <div id="sr-thought">
+              <ThoughtBubbleTimeline segments={report.thoughtBubble} totalMs={parseDurationSec(session.duration) * 1000} />
+            </div>
           )}
 
           {/* Hidden-bias / perception-optimizer — detected from candidate's own answers */}
           {report.perQuestion && report.perQuestion.length > 0 && (
-            <BiasPanel
-              answers={report.perQuestion.map((q) => q.answerText || "")}
-              nonNativeEnglish={detectNonNativeEnglish()}
-            />
+            <div id="sr-bias">
+              <BiasPanel
+                answers={report.perQuestion.map((q) => q.answerText || "")}
+                nonNativeEnglish={detectNonNativeEnglish()}
+              />
+            </div>
           )}
 
           {/* Story reuse — flags when one story was stretched across multiple competencies */}
           {report.storyReuseFindings && report.storyReuseFindings.length > 0 && (
-            <StoryReuseSection findings={report.storyReuseFindings} />
+            <div id="sr-reuse">
+              <StoryReuseSection findings={report.storyReuseFindings} />
+            </div>
           )}
 
           {/* 4. Per-question deep-dive */}
           {report.perQuestion && report.perQuestion.length > 0 && (
-            <div style={{ marginBottom: 20 }}>
-              <h2 style={{ fontFamily: font.ui, fontSize: 15, fontWeight: 600, color: c.ivory, margin: "0 0 12px", padding: "0 4px" }}>
+            <div id="sr-questions">
+              <h2 className="sr-section-h" style={{ fontFamily: font.ui, color: c.ivory }}>
                 Per-question Review
               </h2>
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -956,16 +1067,20 @@ export const SessionReportView = memo(function SessionReportView({
 
           {/* Blind spots — competencies NOT assessed in this session but common in real loops */}
           {report.blindSpots && report.blindSpots.length > 0 && (
-            <BlindSpotsSection blindSpots={report.blindSpots} />
+            <div id="sr-blindspots">
+              <BlindSpotsSection blindSpots={report.blindSpots} />
+            </div>
           )}
 
           {/* Readiness forecast — estimated effort to reach target band */}
           {report.readiness && (
-            <ReadinessSection readiness={report.readiness} priorSessionCount={report.priorSessionCount} />
+            <div id="sr-readiness">
+              <ReadinessSection readiness={report.readiness} priorSessionCount={report.priorSessionCount} />
+            </div>
           )}
 
           {/* 5. Next Steps */}
-          <div style={{
+          <div id="sr-next" style={{
             background: c.graphite, borderRadius: 14, border: `1px solid ${c.border}`,
             padding: "22px 28px", textAlign: "center",
           }}>
@@ -1012,14 +1127,25 @@ export const SessionReportView = memo(function SessionReportView({
 
           {/* Trust + usefulness polls — diagnostic signal for tuning the rubric */}
           <div className="sr-print-hide" style={{
-            marginTop: 20, padding: "18px 24px",
+            padding: "18px 24px",
             background: "rgba(245,242,237,0.02)", border: `1px solid ${c.border}`,
             borderRadius: 12, display: "flex", flexWrap: "wrap", gap: 20, alignItems: "center", justifyContent: "space-between",
           }}>
             <PollRow label="Do these scores feel fair?" answer={trustAnswer} onAnswer={(v) => onPollAnswer("trust", v)} />
             <PollRow label="Did this help you know what to improve?" answer={usefulAnswer} onAnswer={(v) => onPollAnswer("usefulness", v)} />
           </div>
-        </>
+          </div>
+          {/* ── Right rail: sticky quick-stats + primary CTAs ── */}
+          <aside className="sr-rail" aria-label="Quick stats and actions">
+            <ReportRightRail
+              report={report}
+              weakestQuestion={weakestQuestion}
+              weakestSkill={weakestSkill}
+              onTryAgain={onTryAgain}
+              onDrillSkill={onDrillSkill}
+            />
+          </aside>
+        </div>
       )}
 
       {/* Print-only styles: hide controls, make layout printable */}
@@ -1183,6 +1309,186 @@ function ReadinessSection({ readiness, priorSessionCount }: {
           {readiness.rationale}
         </p>
       )}
+    </div>
+  );
+}
+
+/* ─── Layout chrome: sidebar nav + right rail ───────────────────── */
+
+const NAV_ITEMS = [
+  { id: "sr-hero",        label: "Overview" },
+  { id: "sr-coachnote",   label: "Coach's note" },
+  { id: "sr-redflags",    label: "Red flags" },
+  { id: "sr-metrics",     label: "Delivery" },
+  { id: "sr-skills",      label: "Skills" },
+  { id: "sr-advanced",    label: "Advanced" },
+  { id: "sr-thought",     label: "Thought bubble" },
+  { id: "sr-bias",        label: "Perception" },
+  { id: "sr-reuse",       label: "Story reuse" },
+  { id: "sr-questions",   label: "Per-question" },
+  { id: "sr-blindspots",  label: "Blind spots" },
+  { id: "sr-readiness",   label: "Readiness" },
+  { id: "sr-next",        label: "Next steps" },
+];
+
+/** Sidebar: jump-nav + export. Scrolls to anchors, highlights active section. */
+function ReportSidebar({ onDownloadPdf }: { onDownloadPdf: () => void }) {
+  const [active, setActive] = useState<string>("sr-hero");
+
+  useEffect(() => {
+    const ids = NAV_ITEMS.map((n) => n.id);
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) {
+          if (e.isIntersecting && e.intersectionRatio > 0.1) {
+            setActive(e.target.id);
+            break;
+          }
+        }
+      },
+      { rootMargin: "-30% 0px -60% 0px", threshold: [0.1, 0.3] },
+    );
+    ids.forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) observer.observe(el);
+    });
+    return () => observer.disconnect();
+  }, []);
+
+  const jump = (id: string) => {
+    const el = document.getElementById(id);
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  return (
+    <div style={{
+      background: c.graphite, border: `1px solid ${c.border}`, borderRadius: 12,
+      padding: "14px 10px",
+    }}>
+      <div style={{ fontFamily: font.ui, fontSize: 9, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: c.stone, padding: "0 8px 8px" }}>
+        Report
+      </div>
+      <nav style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+        {NAV_ITEMS.map((item) => {
+          const el = typeof document !== "undefined" ? document.getElementById(item.id) : null;
+          // Only render nav items whose section actually mounted.
+          if (!el) return null;
+          return (
+            <button
+              key={item.id}
+              className={`sr-nav-item${active === item.id ? " active" : ""}`}
+              onClick={() => jump(item.id)}
+            >{item.label}</button>
+          );
+        })}
+      </nav>
+      <div style={{ borderTop: `1px solid ${c.border}`, margin: "12px 0 10px" }} />
+      <button
+        onClick={onDownloadPdf}
+        className="sr-nav-item sr-print-hide"
+        style={{ color: c.chalk }}
+      >
+        <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+        Download PDF
+      </button>
+    </div>
+  );
+}
+
+/** Right rail: always-visible core metrics + readiness summary + primary CTAs. */
+function ReportRightRail({
+  report, weakestQuestion, weakestSkill, onTryAgain, onDrillSkill,
+}: {
+  report: SessionReport;
+  weakestQuestion: SessionReportPerQuestion | null;
+  weakestSkill: { name: string; score: number } | null;
+  onTryAgain: () => void;
+  onDrillSkill: () => void;
+}) {
+  const metrics = report.coreMetrics;
+  const rail: Array<{ label: string; value: string | number; sub: string; good: "green" | "amber" | "red" }> = [
+    { label: "Fillers / min", value: metrics.fillerPerMin, sub: "target 0–3", good: bandForFiller(metrics.fillerPerMin) },
+    { label: "Silence",       value: `${metrics.silenceRatio}%`, sub: "target ≤20%", good: bandForSilence(metrics.silenceRatio) },
+    { label: "Pace",          value: `${metrics.paceWpm} wpm`, sub: "target 140–180", good: bandForPace(metrics.paceWpm) },
+    { label: "Energy",        value: `${metrics.energy} / 100`, sub: "target ≥60", good: bandForEnergy(metrics.energy) },
+  ];
+
+  return (
+    <div className="sr-print-hide" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+      {/* Quick stats */}
+      <div style={{ background: c.graphite, border: `1px solid ${c.border}`, borderRadius: 12, padding: "14px 16px" }}>
+        <div style={{ fontFamily: font.ui, fontSize: 9, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: c.stone, marginBottom: 12 }}>
+          Quick stats
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {rail.map((m) => {
+            const dot = m.good === "green" ? c.sage : m.good === "amber" ? c.gilt : c.ember;
+            return (
+              <div key={m.label} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+                  <span aria-label={`${m.good} status`} style={{
+                    display: "inline-block", width: 10, height: 10, borderRadius: "50%", background: dot, flexShrink: 0,
+                  }} />
+                  <span style={{ fontFamily: font.ui, fontSize: 12, color: c.chalk }}>{m.label}</span>
+                </div>
+                <span style={{ fontFamily: font.mono, fontSize: 12, fontWeight: 600, color: c.ivory, whiteSpace: "nowrap" }}>{m.value}</span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Readiness (short form) */}
+      {report.readiness && (
+        <div style={{
+          background: `linear-gradient(135deg, rgba(122,158,126,0.08), rgba(122,158,126,0.02))`,
+          border: `1px solid rgba(122,158,126,0.22)`, borderRadius: 12, padding: "14px 16px",
+        }}>
+          <div style={{ fontFamily: font.ui, fontSize: 9, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: c.sage, marginBottom: 8 }}>
+            Readiness
+          </div>
+          <div style={{ fontFamily: font.mono, fontSize: 22, fontWeight: 700, color: c.ivory, lineHeight: 1.1 }}>
+            {report.readiness.estimatedHours}
+            <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, fontWeight: 400, marginLeft: 4 }}>hrs</span>
+          </div>
+          <div style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, marginTop: 4 }}>
+            to {BAND_LABEL_SHORT[report.readiness.targetBand]} · {report.readiness.estimatedSessions} sessions
+          </div>
+        </div>
+      )}
+
+      {/* Primary CTAs — always reachable on desktop. */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        {weakestQuestion && (
+          <button
+            onClick={onTryAgain}
+            style={{
+              fontFamily: font.ui, fontSize: 13, fontWeight: 600, color: c.obsidian,
+              background: `linear-gradient(135deg, ${c.gilt}, ${c.giltDark})`,
+              border: "none", borderRadius: 10, padding: "12px 16px", cursor: "pointer",
+              boxShadow: "0 6px 18px rgba(212,179,127,0.18)",
+              display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6,
+            }}
+          >
+            <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polygon points="5,3 19,12 5,21"/></svg>
+            Try weakest question
+          </button>
+        )}
+        {weakestSkill && (
+          <button
+            onClick={onDrillSkill}
+            style={{
+              fontFamily: font.ui, fontSize: 12, fontWeight: 500, color: c.chalk,
+              background: "transparent", border: `1px solid rgba(245,242,237,0.18)`,
+              borderRadius: 10, padding: "10px 16px", cursor: "pointer",
+            }}
+          >
+            Drill {weakestSkill.name}
+          </button>
+        )}
+      </div>
     </div>
   );
 }
@@ -1419,15 +1725,16 @@ function RedFlagsSection({ flags }: { flags: SessionReportRedFlag[] }) {
   const sorted = [...flags].sort((a, b) => SEVERITY_RANK[a.severity] - SEVERITY_RANK[b.severity]);
   return (
     <div style={{
-      background: "rgba(196,112,90,0.04)",
-      border: `1px solid rgba(196,112,90,0.18)`,
-      borderRadius: 14, padding: "18px 24px", marginBottom: 20,
+      background: "rgba(196,112,90,0.08)",
+      border: `1px solid rgba(196,112,90,0.28)`,
+      borderLeft: `4px solid ${c.ember}`,
+      borderRadius: 14, padding: "18px 24px",
     }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
-        <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={c.ember} strokeWidth="2">
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+        <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={c.ember} strokeWidth="2">
           <path d="M4 4v16M4 4l14 4-4 5 4 5-14 2" />
         </svg>
-        <h2 style={{ fontFamily: font.ui, fontSize: 14, fontWeight: 600, color: c.ivory, margin: 0 }}>
+        <h2 className="sr-section-h" style={{ color: c.ember, border: "none", padding: 0, margin: 0, fontFamily: font.ui, fontSize: 18, fontWeight: 700 }}>
           Red flags to address
         </h2>
         <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, marginLeft: "auto" }}>
@@ -1576,7 +1883,11 @@ function AdvancedDeliveryPanel({ ad }: { ad: NonNullable<SessionReport["advanced
             }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
                 <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, color: c.stone, textTransform: "uppercase", letterSpacing: "0.06em" }}>{t.label}</span>
-                <span style={{ display: "inline-block", width: 6, height: 6, borderRadius: "50%", background: dotColor }} />
+                <span
+                  title={t.good === "green" ? "On target" : t.good === "amber" ? "Slightly off" : "Needs work"}
+                  aria-label={`${t.good} status`}
+                  style={{ display: "inline-block", width: 10, height: 10, borderRadius: "50%", background: dotColor }}
+                />
               </div>
               <span style={{ fontFamily: font.mono, fontSize: 20, fontWeight: 700, color: c.ivory, lineHeight: 1 }}>{t.value}</span>
               <span style={{ fontFamily: font.ui, fontSize: 10, color: c.stone }}>Target: {t.target}</span>
