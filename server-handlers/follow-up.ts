@@ -4,6 +4,7 @@ export const config = { runtime: "edge" };
 
 import { withAuthAndRateLimit, corsHeaders, withRequestId, sanitizeForLLM, validateContentType } from "./_shared";
 import { callLLM, extractJSON } from "./_llm";
+import { detectCandidateIntent, extractCandidateSalaryNumber } from "./_follow-up-helpers";
 import { lookupSalaryContext, getNegotiationStyleContext, INDUSTRY_PACKAGE_CONTEXT, type NegotiationStyle } from "../data/salary-lookup";
 
 declare const process: { env: Record<string, string | undefined> };
@@ -300,65 +301,17 @@ YOUR GOAL: Summarize the SPECIFIC deal and set concrete next steps. Rebuild warm
         ? `\n${INDUSTRY_PACKAGE_CONTEXT[industry.toLowerCase()]}`
         : "";
 
-      // Detect candidate intent from the answer to make it prominent in the prompt
-      // Intent detection: acceptance, rejection, conditional acceptance
-      const acceptWords = /\b(i accept|i.?ll accept|accept the offer|sounds good|that works for me|it.?s a deal|i.?m happy with|fine with me|i agree|agreed|let.?s go ahead)\b/i;
-      const rejectWords = /\b(not acceptable|too low|can.?t accept|absolutely not|not enough|walk away|not interested|i reject|no deal|way too low|that.?s insulting)\b/i;
-      const hedgeWords = /\b(but|however|only if|unless|provided|on condition|contingent|except|though)\b/i;
-      const deflectWords = /\b(you first|your offer|what.*you.*offer|tell me.*first|don.?t want to share|prefer not|rather not|you tell me)\b/i;
-      const thinkWords = /\b(need time|think about|sleep on|let me think|consider|talk to.*(?:family|partner|wife|husband)|get back to you|not ready)\b/i;
-      const competingWords = /\b(other offer|competing|another company|counter.?offer|multiple offers|also talking|interviewing at|got an offer)\b/i;
-      const walkAwayWords = /\b(walk away|walking away|i.?m out|not interested|i.?ll pass|no deal|withdraw|decline the offer|i decline|pull out|not worth|won.?t work|isn.?t going to work|move on|take the other|thanks but no|not for me|have to pass)\b/i;
-      // Short affirmative-only answers (< 8 words) like "yes", "okay", "sure" count as acceptance
-      const isShortAffirmative = answer.trim().split(/\s+/).length < 8
-        && /^(yes|yeah|okay|ok|sure|deal|agreed|accept|sounds good|that works|fine)\b/i.test(answer.trim())
-        && !hedgeWords.test(answer);
-      // Acceptance detection: "I accept but what about equity?" = CONDITIONAL acceptance (still acceptance)
-      // Only NOT acceptance if the hedge introduces a REJECTION ("I accept but it's too low" = contradiction → rejection wins)
-      const acceptIdx = answer.search(acceptWords);
-      const hedgeIdx = answer.search(hedgeWords);
-      const hasAccept = acceptIdx >= 0;
-      const hasHedgeAfterAccept = hasAccept && hedgeIdx > acceptIdx;
-      // Check what comes AFTER the hedge — if it's a rejection, the whole thing is a rejection
-      const postHedgeText = hasHedgeAfterAccept ? answer.slice(hedgeIdx) : "";
-      const hedgeIsRejection = rejectWords.test(postHedgeText);
-      // "I accept, but what about equity?" → conditional acceptance (not rejection after hedge)
-      // "I accept, but it's too low" → contradiction, treat as rejection
-      const candidateAccepted = (hasAccept || isShortAffirmative) && !hedgeIsRejection;
-      const isConditionalAccept = candidateAccepted && hasHedgeAfterAccept && !hedgeIsRejection;
-      const candidateRejected = rejectWords.test(answer) && !candidateAccepted;
-      const candidateDeflected = deflectWords.test(answer);
-      const candidateWalkAway = walkAwayWords.test(answer) && !acceptWords.test(answer);
-
-      // Extract candidate's TARGET salary number (not current CTC)
-      // Strategy: find ALL salary numbers, then pick the one most likely to be the target/ask
-      const salaryNumRe = /₹?\s*(\d+(?:\.\d+)?)\s*(?:lpa|lakh|lakhs|l\b)/gi;
-      const currentCtcRe = /(?:currently|current(?:ly)?|earning|getting|drawing|my ctc|i'm at|making|take home|i get|i earn)\s.*?(\d+(?:\.\d+)?)/i;
-      const targetRe = /(?:expecting|looking for|want|need|asking|target|hoping|would like|i'd like|i want|i need|looking at|aiming)\s.*?(\d+(?:\.\d+)?)/i;
-      const allNums: string[] = [];
-      let m: RegExpExecArray | null;
-      while ((m = salaryNumRe.exec(answer)) !== null) allNums.push(m[1]);
-      // Also capture bare numbers in negotiation context (e.g., "I need 30" without LPA suffix)
-      if (allNums.length === 0) {
-        const bareNumMatch = answer.match(/(?:expecting|want|need|asking|target|hoping|looking for|around|about|at least|minimum)\s+(?:₹?\s*)?(\d+(?:\.\d+)?)\b/i);
-        if (bareNumMatch && parseFloat(bareNumMatch[1]) >= 3 && parseFloat(bareNumMatch[1]) <= 200) {
-          allNums.push(bareNumMatch[1]);
-        }
-      }
-      // Prefer target/ask number over current CTC
-      const targetMatch = targetRe.exec(answer);
-      const currentMatch = currentCtcRe.exec(answer);
-      let candidateNum: string | null = null;
-      if (targetMatch && allNums.includes(targetMatch[1])) {
-        candidateNum = targetMatch[1]; // explicit target
-      } else if (allNums.length > 0 && currentMatch && allNums[0] === currentMatch[1] && allNums.length > 1) {
-        candidateNum = allNums[allNums.length - 1]; // first num is CTC, use last as target
-      } else if (allNums.length > 0) {
-        candidateNum = allNums[allNums.length - 1]; // default: use last number mentioned (most likely the ask)
-      }
-      // "consider" co-occurring with a number is a counter, not a time request
-      const candidateNeedsTime = thinkWords.test(answer) && !candidateNum;
-      const candidateMentionedCompeting = competingWords.test(answer);
+      // Intent detection + salary-number extraction extracted into
+      // ./_follow-up-helpers.ts so the regex rules can be unit-tested.
+      const intent = detectCandidateIntent(answer);
+      const candidateAccepted = intent.accepted;
+      const isConditionalAccept = intent.conditionalAccept;
+      const candidateRejected = intent.rejected;
+      const candidateDeflected = intent.deflected;
+      const candidateWalkAway = intent.walkAway;
+      const candidateNeedsTime = intent.needsTime;
+      const candidateMentionedCompeting = intent.mentionedCompeting;
+      const candidateNum = extractCandidateSalaryNumber(answer);
 
       // Build intent banner — placed at the VERY TOP of the prompt so the LLM can't miss it
       let intentBanner = "";

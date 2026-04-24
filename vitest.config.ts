@@ -57,10 +57,10 @@ export default defineConfig({
       // tests on every component. Raise when Playwright + MSW integration
       // tests cover the UI paths.
       thresholds: {
-        lines: 18,
-        statements: 17,
-        functions: 15,
-        branches: 14,
+        lines: 19,
+        statements: 18,
+        functions: 16,
+        branches: 15,
       },
     },
   },
