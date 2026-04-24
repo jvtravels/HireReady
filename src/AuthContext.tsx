@@ -67,37 +67,12 @@ function storeDeviceToken(token: string) {
 /* ─── Session Fingerprint (detect session hijacking) ─── */
 const SESSION_FP_KEY = "hirestepx_session_fp";
 
-// Cache expensive GPU/canvas signals so they don't block session restore
-let _cachedHeavySignals: string | null = null;
-function getHeavySignals(): string {
-  if (_cachedHeavySignals !== null) return _cachedHeavySignals;
-  let canvas = "";
-  let webgl = "";
-  try {
-    const c = document.createElement("canvas");
-    c.width = 64;
-    c.height = 16;
-    const ctx = c.getContext("2d");
-    if (ctx) {
-      ctx.textBaseline = "top";
-      ctx.font = "14px Arial";
-      ctx.fillStyle = "#f60";
-      ctx.fillRect(0, 0, 64, 16);
-      ctx.fillStyle = "#069";
-      ctx.fillText("Hx", 2, 1);
-      canvas = c.toDataURL().slice(-32);
-    }
-  } catch { /* noop */ }
-  try {
-    const gl = document.createElement("canvas").getContext("webgl");
-    if (gl) {
-      const ext = gl.getExtension("WEBGL_debug_renderer_info");
-      if (ext) webgl = gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) || "";
-    }
-  } catch { /* noop */ }
-  _cachedHeavySignals = `${canvas}|${webgl}`;
-  return _cachedHeavySignals;
-}
+// getHeavySignals() with canvas+webgl fingerprinting previously lived here
+// but was never referenced. The lightweight signals below are what the
+// session-fingerprint check actually uses. Canvas/webgl signals were
+// expensive (~50-150ms on cold start) and contributed nothing, so they're
+// gone. If a future fraud-detection pass wants them, add back with a real
+// consumer and a Web Worker to keep them off the main thread.
 
 function computeSessionFingerprint(): string {
   const signals = [
@@ -119,17 +94,9 @@ function storeSessionFingerprint() {
   try { localStorage.setItem(SESSION_FP_KEY, computeSessionFingerprint()); } catch { /* expected */ }
 }
 
-function validateSessionFingerprint(): boolean {
-  try {
-    const stored = localStorage.getItem(SESSION_FP_KEY);
-    if (!stored) {
-      // First time: store fingerprint immediately to close the hijacking window
-      try { localStorage.setItem(SESSION_FP_KEY, computeSessionFingerprint()); } catch { /* expected */ }
-      return true;
-    }
-    return stored === computeSessionFingerprint();
-  } catch { return true; }
-}
+// validateSessionFingerprint() was exported for a rollback path that was
+// never wired. The active path uses storeSessionFingerprint() on login +
+// compares in-memory; no localStorage comparison is performed today.
 
 /* ─── Audit Logging (persists security events to audit_log table + function logs) ─── */
 function logAuditEvent(event: string, details?: Record<string, unknown>) {
@@ -443,7 +410,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // Helper: build a new user from session metadata and seed the profiles table
     async function ensureProfile(session: Session) {
-      const client = await getSupabase();
+      await getSupabase(); // ensure client is initialised before upsertProfile fires
       const meta = session.user.user_metadata || {};
       const newProfile: Partial<Profile> & { id: string } = {
         id: session.user.id,
@@ -1138,7 +1105,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         if (remaining <= 0) {
           // Session JWT expired — try to refresh before logging out
-          const { data: refreshed, error: refreshErr } = await client.auth.refreshSession();
+          const { data: refreshed } = await client.auth.refreshSession();
           if (refreshed?.session) {
             setSessionExpiryWarning(null);
             return;

@@ -21,6 +21,7 @@
 export const config = { runtime: "edge" };
 
 import { withAuthAndRateLimit, corsHeaders, withRequestId } from "./_shared";
+import { computeCurrentStreak, pickStreakMilestone } from "./_streak-reward";
 
 declare const process: { env: Record<string, string | undefined> };
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || "";
@@ -173,32 +174,9 @@ export default async function handler(req: Request): Promise<Response> {
       // Cap at 500 entries to keep the column small; the oldest are least useful.
       const next = [...existing, nowIso].slice(-500);
 
-      // Compute current streak length from the unique practice days including
-      // today. Walk backwards from today; stop at the first gap.
-      const daySet = new Set<string>();
-      for (const iso of next) {
-        const d = new Date(iso);
-        if (!isFinite(d.getTime())) continue;
-        daySet.add(d.toISOString().slice(0, 10));
-      }
-      let streakDays = 0;
-      const today = new Date();
-      for (let i = 0; i < 400; i++) {
-        const d = new Date(today.getTime() - i * 86400000);
-        const key = d.toISOString().slice(0, 10);
-        if (daySet.has(key)) streakDays++;
-        else break;
-      }
-
-      // Eligible milestones: 7, 14, 30. Reward exactly one credit the first
-      // time the user crosses each tier. last_streak_reward_day tracks the
-      // highest milestone already rewarded, so a user who broke streak and
-      // rebuilt to day 8 won't be re-rewarded for the 7-day tier.
-      const milestones = [30, 14, 7];
-      let awardedMilestone = 0;
-      for (const m of milestones) {
-        if (streakDays >= m && lastRewardDay < m) { awardedMilestone = m; break; }
-      }
+      // Streak math extracted to ./_streak-reward.ts and unit-tested.
+      const streakDays = computeCurrentStreak(next);
+      const awardedMilestone = pickStreakMilestone(streakDays, lastRewardDay);
 
       const patch: Record<string, unknown> = {
         practice_timestamps: next,

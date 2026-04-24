@@ -3,12 +3,10 @@
  * Tests ARIA landmarks, focus traps, keyboard navigation, and screen reader support.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, fireEvent, act, cleanup } from "@testing-library/react";
-import { mockRouter } from "./setup-next-navigation";
+import { render, screen, act, cleanup } from "@testing-library/react";
+import "./setup-next-navigation";
 
 /* ─── Shared Mocks ─── */
-
-const mockNavigate = mockRouter.push;
 
 const mockUpdateUser = vi.fn();
 const mockLogout = vi.fn();
@@ -154,12 +152,9 @@ describe("Accessibility: ARIA Landmarks", () => {
 });
 
 /* ─── Focus Traps ─── */
-
-describe("Accessibility: Focus Traps", () => {
-  beforeEach(() => vi.clearAllMocks());
-  afterEach(cleanup);
-
-});
+// The Focus Traps describe block previously lived here but never had any
+// test bodies filled in. Vitest 4 fails on empty describe suites. Re-add
+// with real tests when implementing modal-trap verification.
 
 /* ─── Alert Roles ─── */
 

@@ -39,7 +39,7 @@ export default async function handler(req: Request): Promise<Response> {
   }
 
   try {
-    const { transcript, type, difficulty, role, company, questions, resumeText, language, jobDescription, previousScores, negotiationContext } = await req.json();
+    const { transcript, type, difficulty, role, company, questions, resumeText, jobDescription, previousScores, negotiationContext } = await req.json();
 
     const validSpeakers = new Set(["ai", "user"]);
     if (!transcript || !Array.isArray(transcript) || transcript.length === 0 ||

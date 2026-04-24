@@ -5,11 +5,9 @@
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent, act, cleanup } from "@testing-library/react";
-import { mockRouter } from "./setup-next-navigation";
+import "./setup-next-navigation";
 
 /* ─── Shared Mocks ─── */
-
-const mockNavigate = mockRouter.push;
 
 const mockUpdateUser = vi.fn();
 const mockLogout = vi.fn();
@@ -129,7 +127,9 @@ describe("Flow 1: Onboarding", () => {
       );
     });
     expect(screen.getAllByText(/Resume/i).length).toBeGreaterThan(0);
-    expect(screen.getByText("1")).toBeInTheDocument();
+    // Multiple "1" labels render now (step indicator + shortcut chip etc.) —
+    // just verify at least one is present instead of a uniqueness assertion.
+    expect(screen.getAllByText("1").length).toBeGreaterThan(0);
   });
 });
 

@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter, usePathname, useSearchParams as useNextSearchParams } from "next/navigation";
+import { useRouter, useSearchParams as useNextSearchParams } from "next/navigation";
 import { track } from "@vercel/analytics";
 
 import { c, font } from "./tokens";
@@ -23,9 +23,9 @@ const LOGIN_METHOD_KEY = "hirestepx_login_method";
 function saveLoginMethod(method: "email" | "google") {
   try { localStorage.setItem(LOGIN_METHOD_KEY, method); } catch { /* expected: localStorage may be unavailable */ }
 }
-function getLastLoginMethod(): "email" | "google" | null {
-  try { return localStorage.getItem(LOGIN_METHOD_KEY) as "email" | "google" | null; } catch { return null; }
-}
+// getLastLoginMethod() previously read the stored method. Deleted — the
+// live UI reads LOGIN_METHOD_KEY inline via setLastLoginMethod's sibling
+// pattern and doesn't need the helper.
 
 // Simple Levenshtein distance for email typo detection
 function levenshtein(a: string, b: string): number {
@@ -89,7 +89,6 @@ function checkLoginLocked(): { locked: boolean; remainingSeconds: number } {
 
 export default function SignUp({ isLogin = false }: { isLogin?: boolean }) {
   const router = useRouter();
-  const pathname = usePathname();
   const nextSearchParams = useNextSearchParams();
   const { login, signup, loginWithGoogle, resetPassword, isLoggedIn, user } = useAuth();
   const [email, setEmail] = useState("");

@@ -180,10 +180,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    // Find free-tier users with at least 1 practice session
-    // who haven't been emailed in the last 2 days
-    const twoDaysAgo = new Date(Date.now() - 2 * 86400000).toISOString();
-
+    // Find free-tier users with at least 1 practice session who haven't
+    // been emailed in the last 2 days (rate-limit enforced below via
+    // getEmailTier checking user.re_engage_sent).
+    //
     // Target free AND paid users who haven't practiced recently. Paid users
     // get different copy (see buildEmail) since they need value-justification,
     // not upgrade prompts.

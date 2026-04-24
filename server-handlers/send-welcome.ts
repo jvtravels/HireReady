@@ -38,24 +38,10 @@ function logResendUsage(action: string, status: "success" | "error", latencyMs?:
   }).catch(() => {});
 }
 
-/** Tracked Resend email send — wraps fetch with logging */
-async function sendResendEmail(action: string, payload: Record<string, unknown>, signal?: AbortSignal): Promise<Response> {
-  const t0 = Date.now();
-  try {
-    const resp = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
-      signal,
-      body: JSON.stringify(payload),
-    });
-    const latency = Date.now() - t0;
-    logResendUsage(action, resp.ok ? "success" : "error", latency, resp.ok ? undefined : `HTTP ${resp.status}`);
-    return resp;
-  } catch (err) {
-    logResendUsage(action, "error", Date.now() - t0, err instanceof Error ? err.message : "Unknown error");
-    throw err;
-  }
-}
+// NOTE: a tracked sendResendEmail() wrapper previously lived here. All
+// callers below still use raw fetch; remove the unused wrapper rather than
+// leaving dead code. If we want tracked sends everywhere, rewire the
+// call sites explicitly in a future PR.
 
 /** Generate a unique, non-deterministic verification token with nonce. */
 export function generateVerifyToken(email: string, expiresAt?: number): string {

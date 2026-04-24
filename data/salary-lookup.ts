@@ -8,7 +8,7 @@
 
 import { SALARY_DATA, ROLE_ALIASES, matchRoleKey, type RoleKey, type ExperienceLevel, type SalaryEntry } from "./salaries";
 import { getCompanyTier, getSalaryTierFallback, TIER_LABELS, type CompanyTier } from "./company-tiers";
-import { getCityTier, CITY_MULTIPLIERS, adjustForCity, type CityTier } from "./city-tiers";
+import { getCityTier, CITY_MULTIPLIERS, adjustForCity } from "./city-tiers";
 
 export interface SalaryLookupParams {
   role: string;

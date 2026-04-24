@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { c, font } from "./tokens";
@@ -38,8 +38,8 @@ export default function DashboardLayout({ children }: { children?: React.ReactNo
   // Use focused hooks instead of aggregate useDashboard() — prevents this
   // layout from re-rendering when unrelated state (e.g. recentSessions poll)
   // changes. Each sub-context only notifies when ITS slice changes.
-  const { displayName, persisted, handleStartSession, handleExport } = useDashboardCore();
-  const { calendarEvents, recentSessions, refreshSessions } = useDashboardSessions();
+  const { displayName, persisted } = useDashboardCore();
+  const { calendarEvents, refreshSessions } = useDashboardSessions();
   const { isFree, isStarter, isPro, sessionsUsed, sessionsRemaining, starterRemaining, sessionsThisWeek } = useDashboardSubscription();
   const {
     isMobile,

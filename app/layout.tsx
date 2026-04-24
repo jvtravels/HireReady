@@ -86,6 +86,11 @@ export const viewport: Viewport = {
   maximumScale: 5,   // Allow pinch-zoom up to 5x (WCAG 2.1 SC 1.4.4)
   userScalable: true,
   viewportFit: "cover",
+  // Resize layout when the mobile virtual keyboard opens so inputs stay
+  // visible instead of being hidden behind the keyboard. Without this,
+  // Chrome/Safari default to overlaying the keyboard on top of the
+  // content, which pushes forms out of view mid-typing.
+  interactiveWidget: "resizes-content",
 };
 
 /* ── Structured Data (JSON-LD) ── */

@@ -8,7 +8,10 @@ describe("design tokens", () => {
     expect(c.ivory).toBe("#F5F2ED");
     expect(c.gilt).toBe("#D4B37F");
     expect(c.sage).toBe("#7A9E7E");
-    expect(c.ember).toBe("#C4705A");
+    // Brightened from #C4705A to #D17E68 in commit a6d9b5d for better
+    // 6.3:1 contrast on obsidian; test was stale until noUnusedLocals
+    // surfaced the drift during a coverage cleanup.
+    expect(c.ember).toBe("#D17E68");
   });
 
   it("exports font families", () => {

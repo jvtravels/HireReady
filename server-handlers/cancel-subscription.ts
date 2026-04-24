@@ -6,7 +6,6 @@ import {
   handlePreflightAndMethod,
   supabaseUrl,
   supabaseAnonKey,
-  supabaseServiceHeaders,
   escapeHtml,
 } from "./_shared";
 

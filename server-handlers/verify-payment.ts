@@ -397,7 +397,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (plan === "single") {
       const now = new Date();
       const purchaseAmount = 1000 * sessionQuantity;
-      const label = sessionQuantity > 1 ? `${sessionQuantity} Sessions (₹${sessionQuantity * 10})` : PLAN_LABEL["single"];
       // Store payment record
       const paymentRecordRes = await fetchWithTimeout(`${SUPABASE_URL}/rest/v1/payments`, {
         method: "POST",
