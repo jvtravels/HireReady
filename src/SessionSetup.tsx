@@ -252,9 +252,15 @@ export default function SessionSetup() {
   const [step, setStep] = useState(1);
   const [targetRole, setTargetRole] = useState(user?.targetRole || "");
   const [roleTouched, setRoleTouched] = useState(false);
-  const [targetCompany, setTargetCompany] = useState(
-    user?.targetCompany || user?.resumeData?.experience?.[0]?.company || "",
-  );
+  const [targetCompany, setTargetCompany] = useState(() => {
+    if (user?.targetCompany) return user.targetCompany;
+    // Fallback variant carries job history — pull the latest employer if
+    // the stored resume is the regex-parsed shape. AI variant has no
+    // equivalent field (headline instead), so skip.
+    const rd = user?.resumeData;
+    if (rd && rd._type === "fallback") return rd.experience?.[0]?.company || "";
+    return "";
+  });
   const [currentCity, setCurrentCity] = useState(user?.city || "");
   const [jobCity, setJobCity] = useState("");
   const recommendedFocus = getRecommendedFocus(user?.targetRole);

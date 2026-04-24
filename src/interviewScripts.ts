@@ -206,7 +206,14 @@ export function getMiniScript(user: User | null, company?: string, interviewType
   const role = user?.targetRole || "the role";
   const targetCompany = company || user?.targetCompany || "";
   const hasResume = !!user?.resumeFileName;
-  const latestRole = user?.resumeData?.experience?.[0];
+  // Only the fallback (regex-parsed) variant carries an experience array;
+  // the AI variant exposes ResumeProfile fields (topSkills / headline)
+  // which don't include raw job-history rows. The intro line depends on
+  // job title + company, so we key off the fallback variant only.
+  const resumeData = user?.resumeData;
+  const latestRole = resumeData && resumeData._type === "fallback"
+    ? resumeData.experience?.[0]
+    : undefined;
   const title = latestRole?.title || "";
 
   const companyContext = targetCompany ? ` at ${targetCompany}` : "";
@@ -275,7 +282,11 @@ export function getScript(type: string | null, difficulty: string | null, user: 
   const name = user?.name?.split(" ")[0] || "";
   const feedbackStyle = user?.learningStyle || "direct";
   const hasResume = !!user?.resumeFileName;
-  const latestRole = user?.resumeData?.experience?.[0];
+  // See note on fallback-only narrowing above — same rationale.
+  const resumeData2 = user?.resumeData;
+  const latestRole = resumeData2 && resumeData2._type === "fallback"
+    ? resumeData2.experience?.[0]
+    : undefined;
   const title = latestRole?.title || "";
 
   const companyContext = company ? ` at ${company}` : "";

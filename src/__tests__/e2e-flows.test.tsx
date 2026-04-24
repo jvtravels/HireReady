@@ -461,6 +461,7 @@ describe("Flow 7: Resume Page", () => {
       resumeFileName: "resume.pdf",
       resumeText: "Experienced designer with 10 years...",
       resumeData: {
+        _type: "ai",
         headline: "Senior Design Leader",
         summary: "10 years of design experience",
         seniorityLevel: "Senior",

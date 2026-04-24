@@ -4,8 +4,27 @@ import { c, font } from "./tokens";
 import { useAuth } from "./AuthContext";
 import { useDocTitle } from "./useDocTitle";
 import { useDashboardCore, useDashboardUI } from "./DashboardContext";
-import { extractResumeText, parseResumeData, type ParsedResume } from "./resumeParser";
+import { extractResumeText, parseResumeData, isAiResume, isFallbackResume, type FallbackStoredResume } from "./resumeParser";
 import { type ResumeProfile, analyzeResumeWithAI } from "./dashboardData";
+
+/** Project a regex-fallback resume into the ResumeProfile shape the UI
+ *  expects, so the AI and fallback branches can render through a single
+ *  ResumeProfile path. First experience entry's bullets feed
+ *  keyAchievements; anything missing falls back to a readable default. */
+function fallbackToProfile(r: FallbackStoredResume): ResumeProfile {
+  return {
+    headline: r.name || "Resume uploaded",
+    summary: r.summary || "Your resume has been uploaded and will be used to personalize your interview questions.",
+    yearsExperience: null,
+    seniorityLevel: "",
+    topSkills: (r.skills || []).slice(0, 8),
+    keyAchievements: (r.experience || []).flatMap(e => (e as { bullets?: string[] }).bullets || []).slice(0, 5),
+    industries: [],
+    interviewStrengths: [],
+    interviewGaps: [],
+    careerTrajectory: "",
+  };
+}
 import { DataLoadingSkeleton } from "./dashboardComponents";
 
 /* ─── Resume Version History (localStorage) ─── */
@@ -228,20 +247,20 @@ export default function DashboardResume() {
     if (user?.resumeText) setResumeText(user.resumeText);
     if (user?.resumeFileName) setFileName(user.resumeFileName);
 
-    const stored = user?.resumeData as unknown as (ResumeProfile & { name?: string; skills?: string[]; [key: string]: unknown }) | undefined;
+    const stored = user?.resumeData;
     if (stored) {
-      const isFallback = (stored as Record<string, unknown>)._type === "fallback"
-        || (!stored.headline && !(stored as Record<string, unknown>)._type);
-      if (stored.headline && !isFallback) {
+      if (isAiResume(stored)) {
+        // AI variant carries headline/topSkills directly — show as-is.
         setProfile(stored);
         setAnalysisSource("ai");
         setPhase("done");
-      } else if (isFallback && user?.resumeText && !analyzingRef.current) {
-        // Fallback profile stored — auto-trigger AI re-analysis
+      } else if (isFallbackResume(stored) && user?.resumeText && !analyzingRef.current) {
+        // Regex-fallback stored — opportunistically try AI re-analysis in
+        // the background. Keep the fallback visible while we wait.
         analyzingRef.current = true;
         abortControllerRef.current?.abort();
         abortControllerRef.current = new AbortController();
-        setProfile(stored); // show fallback while analyzing
+        setProfile(fallbackToProfile(stored));
         setPhase("analyzing");
         analyzeResumeWithAI(user.resumeText, user?.targetRole, abortControllerRef.current.signal)
           .then(result => {
@@ -249,7 +268,7 @@ export default function DashboardResume() {
               setProfile(result.profile);
               setAnalysisSource("ai");
               setErrorMsg("");
-              updateUser({ resumeData: { ...result.profile, _type: "ai" } as unknown as ParsedResume });
+              updateUser({ resumeData: { _type: "ai", ...result.profile } });
             } else {
               setErrorMsg("AI analysis returned no results. Try clicking re-analyze.");
             }
@@ -262,22 +281,9 @@ export default function DashboardResume() {
             setPhase("done");
           })
           .finally(() => { analyzingRef.current = false; });
-      } else if (stored.name || stored.skills) {
-        type LegacyResume = { name?: string; summary?: string; skills?: string[]; experience?: { bullets?: string[] }[] };
-        const parsed = stored as unknown as LegacyResume;
-        const fallback: ResumeProfile = {
-          headline: parsed.name || "Resume uploaded",
-          summary: parsed.summary || "Your resume has been uploaded and will be used to personalize your interview questions.",
-          yearsExperience: null, seniorityLevel: "",
-          topSkills: (parsed.skills || []).slice(0, 8),
-          keyAchievements: (parsed.experience || []).flatMap(e => e.bullets || []).slice(0, 5),
-          industries: [], interviewStrengths: [], interviewGaps: [], careerTrajectory: "",
-        };
-        setProfile(fallback);
-        setAnalysisSource("fallback");
-        setPhase("done");
-      } else {
-        setProfile(stored);
+      } else if (isFallbackResume(stored)) {
+        // Fallback without resumeText to re-analyze — render it directly.
+        setProfile(fallbackToProfile(stored));
         setAnalysisSource("fallback");
         setPhase("done");
         if (!user?.resumeText) setNeedsReupload(true);
@@ -294,7 +300,7 @@ export default function DashboardResume() {
         .then(result => {
           if (result?.profile) {
             setProfile(result.profile);
-            updateUser({ resumeData: { ...result.profile, _type: "ai" } as unknown as ParsedResume });
+            updateUser({ resumeData: { _type: "ai", ...result.profile } });
           }
           setPhase("done");
         })
@@ -362,7 +368,7 @@ export default function DashboardResume() {
       setProfile(result.profile);
       setAnalysisSource("ai");
       setTruncated(!!result.truncated);
-      updateUser({ resumeData: { ...result.profile, _type: "ai" } as unknown as ParsedResume });
+      updateUser({ resumeData: { _type: "ai", ...result.profile } });
       saveResumeVersion(file.name, result.profile.resumeScore, text);
       setPhase("done");
     } else {
@@ -381,17 +387,13 @@ export default function DashboardResume() {
                 : "AI analysis unavailable — showing basic profile. Click Re-analyze to retry.",
       );
       const parsed = parseResumeData(text);
-      const fallback: ResumeProfile = {
-        headline: parsed.name || "Resume uploaded",
-        summary: parsed.summary || "Your resume has been uploaded and will be used to personalize your interview questions.",
-        yearsExperience: null, seniorityLevel: "",
-        topSkills: (parsed.skills || []).slice(0, 8),
-        keyAchievements: (parsed.experience || []).flatMap(e => e.bullets || []).slice(0, 5),
-        industries: [], interviewStrengths: [], interviewGaps: [], careerTrajectory: "",
-      };
-      setProfile(fallback);
+      // Store the raw regex-parse result as the fallback — it carries
+      // the ParsedResume fields (name/experience/education) that the
+      // FallbackStoredResume discriminator branch expects. UI rendering
+      // runs through fallbackToProfile() to project into ResumeProfile.
+      updateUser({ resumeData: { _type: "fallback", ...parsed } });
+      setProfile(fallbackToProfile({ _type: "fallback", ...parsed }));
       setAnalysisSource("fallback");
-      updateUser({ resumeData: { ...fallback, _type: "fallback" } as unknown as ParsedResume });
       saveResumeVersion(file.name, undefined, text);
       setPhase("done");
     }
@@ -404,7 +406,7 @@ export default function DashboardResume() {
     setPhase("idle");
     setErrorMsg("");
     updatePersisted({ resumeFileName: null });
-    updateUser({ resumeFileName: null, resumeText: "", resumeData: null as unknown as ParsedResume });
+    updateUser({ resumeFileName: null, resumeText: "", resumeData: null });
     // Also clear the local resume cache so handleReanalyze's fallback chain
     // doesn't bring the deleted resume back from localStorage on the next
     // Re-analyze click. Onboarding writes the same key on upload, so staying
@@ -457,7 +459,7 @@ export default function DashboardResume() {
         setProfile(result.profile);
         setAnalysisSource("ai");
         setTruncated(!!result.truncated);
-        updateUser({ resumeData: { ...result.profile, _type: "ai" } as unknown as ParsedResume });
+        updateUser({ resumeData: { _type: "ai", ...result.profile } });
         if (fileName) saveResumeVersion(fileName, result.profile.resumeScore, textForAnalysis);
       } else {
         console.warn(`[resume] Re-analyze returned no profile in ${elapsed}ms`, result);
@@ -766,7 +768,7 @@ export default function DashboardResume() {
                             if (result?.profile) {
                               setProfile(result.profile);
                               setAnalysisSource("ai");
-                              updateUser({ resumeData: { ...result.profile, _type: "ai" } as unknown as ParsedResume });
+                              updateUser({ resumeData: { _type: "ai", ...result.profile } });
                               saveResumeVersion(v.fileName, result.profile.resumeScore, v.resumeText!);
                             }
                             setPhase("done");

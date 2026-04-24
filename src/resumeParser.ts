@@ -190,6 +190,35 @@ export interface ParsedResume {
   certifications: string[];
 }
 
+/**
+ * Persisted resume shape — what lives on `profiles.resume_data` (jsonb).
+ * Discriminated union of the AI-extracted variant (produced by
+ * /api/analyze-resume) and the regex-fallback variant (produced by
+ * parseResumeData() when AI is unavailable or disabled). Use the
+ * isAiResume() / isFallbackResume() guards to narrow.
+ *
+ * This type replaces 10+ `as unknown as ParsedResume` casts that used to
+ * live on the writers — the compiler now enforces that callers pick a
+ * discriminator tag, and readers can branch on it instead of peeking at
+ * optional fields.
+ *
+ * Note: the AI variant intentionally imports its shape lazily so this
+ * module has no runtime dependency on dashboardData.ts. The import is
+ * type-only.
+ */
+import type { ResumeProfile } from "./dashboardData";
+
+export type AiStoredResume = { _type: "ai" } & ResumeProfile;
+export type FallbackStoredResume = { _type: "fallback" } & ParsedResume;
+export type StoredResume = AiStoredResume | FallbackStoredResume;
+
+export function isAiResume(r: StoredResume | null | undefined): r is AiStoredResume {
+  return !!r && r._type === "ai";
+}
+export function isFallbackResume(r: StoredResume | null | undefined): r is FallbackStoredResume {
+  return !!r && r._type === "fallback";
+}
+
 const SECTION_PATTERNS: Record<string, RegExp> = {
   summary: /\b(summary|profile|objective|about\s*me|professional\s*summary|career\s*summary|executive\s*summary)\b/i,
   experience: /\b(experience|work\s*history|employment|professional\s*experience|work\s*experience|career\s*history)\b/i,

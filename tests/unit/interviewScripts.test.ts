@@ -68,6 +68,7 @@ describe("getMiniScript", () => {
     const user = makeUser({
       resumeFileName: "resume.pdf",
       resumeData: {
+        _type: "fallback",
         experience: [{ title: "Senior Engineer", company: "BigCo" }],
       },
     });

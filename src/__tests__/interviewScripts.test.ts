@@ -76,7 +76,10 @@ describe("interviewScripts", () => {
         name: "Bob",
         targetRole: "CTO",
         resumeFileName: "resume.pdf",
-        resumeData: { experience: [{ title: "VP Engineering", company: "Acme" }] },
+        // Use the discriminated-union fallback variant; intro line only
+        // reads experience from fallback resumes (AI variant carries
+        // headline/topSkills instead).
+        resumeData: { _type: "fallback", experience: [{ title: "VP Engineering", company: "Acme" }] },
       } as any;
       const script = getMiniScript(user);
       // Intro always mentions resume context

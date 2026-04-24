@@ -209,15 +209,26 @@ export default function Onboarding() {
       return;
     }
     setResumeText(rText);
-    import("./resumeParser").then(async ({ parseResumeData }) => {
-      const data = user?.resumeData || localResume?.data || parseResumeData(rText);
+    import("./resumeParser").then(async ({ parseResumeData, isFallbackResume, isAiResume }) => {
+      // Resolve a ParsedResume (fallback shape) for local use. If the
+      // stored resume is the AI variant, we don't have the regex-level
+      // fields (experience/education) — re-parse from raw text so this
+      // component can keep operating on the fallback shape it expects.
+      const stored = user?.resumeData;
+      const fromStored = isFallbackResume(stored)
+        ? { name: stored.name, email: stored.email, phone: stored.phone, location: stored.location, linkedin: stored.linkedin, summary: stored.summary, skills: stored.skills, experience: stored.experience, education: stored.education, certifications: stored.certifications }
+        : null;
+      const data: ParsedResume = fromStored || localResume?.data || parseResumeData(rText);
       setResumeParsed(data);
-      const savedAiProfile = localResume?.aiProfile || (data as ParsedResume & { aiProfile?: ResumeProfile })?.aiProfile;
+      // Prefer the AI profile from the stored union if present, else
+      // fall back to the localStorage mirror.
+      const savedAiProfile = (isAiResume(stored)
+        ? { headline: stored.headline, summary: stored.summary, yearsExperience: stored.yearsExperience, seniorityLevel: stored.seniorityLevel, topSkills: stored.topSkills, keyAchievements: stored.keyAchievements, industries: stored.industries, interviewStrengths: stored.interviewStrengths, interviewGaps: stored.interviewGaps, careerTrajectory: stored.careerTrajectory, resumeScore: stored.resumeScore, improvements: stored.improvements }
+        : null) || localResume?.aiProfile;
       if (looksLikePersonName(data.name) && !userName) setUserName(data.name);
-      const isRealAiProfile = savedAiProfile && savedAiProfile.headline
+      const isRealAiProfile = !!(savedAiProfile && savedAiProfile.headline
         && savedAiProfile.resumeScore != null
-        && savedAiProfile.topSkills && savedAiProfile.topSkills.length > 0
-        && (savedAiProfile as unknown as Record<string, unknown>)._type !== "fallback";
+        && savedAiProfile.topSkills && savedAiProfile.topSkills.length > 0);
       if (isRealAiProfile) {
         setAiProfile(savedAiProfile);
         setAiPhase("done");
@@ -442,7 +453,13 @@ export default function Onboarding() {
         // resume_text which already lives in its own column, and roughly
         // doubles the row size for no functional benefit. If we ever need
         // the structured parse again we can rehydrate it from resume_text.
-        resumeData: { ...finalProfile, _type: aiSuccess ? "ai" : "fallback" } as unknown as ParsedResume,
+        //
+        // Shape: finalProfile is a ResumeProfile (AI output) whether the
+        // AI call succeeded or we synthesised one from the fallback.
+        // Tag appropriately — readers use isAiResume/isFallbackResume.
+        resumeData: aiSuccess
+          ? { _type: "ai", ...finalProfile }
+          : { _type: "fallback", ...data },
       };
       if (!targetRole && autoRole) profileSave.targetRole = autoRole;
       if (data.name) profileSave.name = data.name;
@@ -495,10 +512,11 @@ export default function Onboarding() {
     if (fileName) {
       saveData.resumeFileName = fileName;
       saveData.resumeText = resumeText;
-      saveData.resumeData = (aiProfile
-        ? { ...aiProfile, _type: "ai" }
-        : { ...(resumeParsed || {}), _type: "fallback" }
-      ) as unknown as ParsedResume;
+      if (aiProfile) {
+        saveData.resumeData = { _type: "ai", ...aiProfile };
+      } else if (resumeParsed) {
+        saveData.resumeData = { _type: "fallback", ...resumeParsed };
+      }
     }
     setSaveStatus("saving");
     if (Object.keys(saveData).length > 0) {

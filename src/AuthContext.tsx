@@ -4,7 +4,7 @@ import { track } from "@vercel/analytics";
 import { getSupabase, preloadSupabase, supabaseConfigured, getProfile, upsertProfile, type Profile } from "./supabase";
 
 import type { Session } from "@supabase/supabase-js";
-import type { ParsedResume } from "./resumeParser";
+import type { StoredResume } from "./resumeParser";
 
 /** Check if Supabase has a session token stored in localStorage */
 export function hasStoredSession(): boolean {
@@ -223,7 +223,7 @@ export interface User {
   interviewTypes?: string[];
   practiceTimestamps?: string[];
   resumeText?: string;
-  resumeData?: ParsedResume;
+  resumeData?: StoredResume | null;
   subscriptionTier?: "free" | "starter" | "pro" | "team";
   subscriptionStart?: string;
   subscriptionEnd?: string;
@@ -293,7 +293,11 @@ function profileToUser(profile: Profile, session: Session): User {
     interviewDate: profile.interview_date || undefined,
     practiceTimestamps: profile.practice_timestamps || [],
     resumeText: profile.resume_text || undefined,
-    resumeData: (profile.resume_data as unknown as ParsedResume) || undefined,
+    // resume_data is persisted as jsonb; the in-app discriminated union
+    // StoredResume (see resumeParser.ts) tags AI vs fallback variants.
+    // Older rows predating the _type discriminator fall through as
+    // undefined — callers use isAiResume/isFallbackResume to narrow.
+    resumeData: (profile.resume_data as StoredResume | null | undefined) || undefined,
     subscriptionTier: (() => {
       const tier = (profile.subscription_tier as "free" | "starter" | "pro" | "team") || "free";
       // Auto-downgrade expired subscriptions
