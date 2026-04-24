@@ -345,6 +345,7 @@ function SkillBar({ name, score, cohortAvg }: { name: string; score: number; coh
 function QuestionCard({ q, index, sessionId }: { q: SessionReportPerQuestion; index: number; sessionId: string }) {
   const [open, setOpen] = useState(false);
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [saveCoachedState, setSaveCoachedState] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const verdictMeta = VERDICT_META[q.verdict] || VERDICT_META.partial;
   const starChips: Array<"S" | "T" | "A" | "R"> = ["S", "T", "A", "R"];
 
@@ -373,6 +374,41 @@ function QuestionCard({ q, index, sessionId }: { q: SessionReportPerQuestion; in
       console.warn("[QuestionCard] save failed:", err instanceof Error ? err.message : err);
       setSaveState("error");
       setTimeout(() => setSaveState("idle"), 4000);
+    }
+  };
+
+  // Save the coached / top-performer variant as a separate notebook entry so
+  // users can build a library of model answers they're aspiring to. Prefers
+  // the restructured STAR (grounded in their own words) over the synthesised
+  // top-performer example — the restructured version is more actionable
+  // because it preserves the candidate's context.
+  const coachedText = q.restructured?.text || q.topPerformerAnswer?.text || "";
+  const coachedSource = q.restructured?.text ? "coached" : "top-performer";
+  const onSaveCoached = async () => {
+    if (saveCoachedState === "saving" || saveCoachedState === "saved") return;
+    if (!coachedText) return;
+    setSaveCoachedState("saving");
+    track("report_action_clicked", { action: "save_coached_story", sessionId, questionIdx: index, source: coachedSource });
+    try {
+      const baseTitle = (q.question || "Story").replace(/\s+/g, " ").trim().slice(0, 70);
+      await saveStoryToNotebook({
+        sessionId,
+        // Offset the question index so the coached and raw versions don't
+        // collide on any (session_id, question_idx) uniqueness assumption
+        // downstream. 10000 is safely outside any real question count.
+        questionIdx: 10000 + index,
+        title: `Coached · ${baseTitle}`,
+        question: q.question || "",
+        answerText: coachedText,
+        star: null,
+        tags: ["coached", coachedSource],
+      });
+      setSaveCoachedState("saved");
+      setTimeout(() => setSaveCoachedState("idle"), 4000);
+    } catch (err) {
+      console.warn("[QuestionCard] save-coached failed:", err instanceof Error ? err.message : err);
+      setSaveCoachedState("error");
+      setTimeout(() => setSaveCoachedState("idle"), 4000);
     }
   };
 
@@ -563,9 +599,43 @@ function QuestionCard({ q, index, sessionId }: { q: SessionReportPerQuestion; in
             </p>
           )}
 
-          {/* Per-question actions — MVP ships Save-to-Notebook; Try-again is covered by the global CTA. */}
+          {/* Per-question actions — Save Your Answer + Save Coached Version. The
+              coached button only appears when the AI produced a restructured or
+              top-performer answer; otherwise there's nothing worth saving. */}
           {q.verdict !== "skipped" && q.answerText && (
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, paddingTop: 2 }}>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, paddingTop: 2, flexWrap: "wrap" }}>
+              {coachedText && (
+                <button
+                  onClick={onSaveCoached}
+                  disabled={saveCoachedState === "saving" || saveCoachedState === "saved"}
+                  aria-live="polite"
+                  title="Save the model answer to your Story Notebook for later review"
+                  style={{
+                    fontFamily: font.ui, fontSize: 12, fontWeight: 500,
+                    color: saveCoachedState === "saved" ? c.sage : saveCoachedState === "error" ? c.ember : c.gilt,
+                    background: "rgba(212,179,127,0.04)",
+                    border: `1px solid ${saveCoachedState === "saved" ? "rgba(122,158,126,0.35)" : saveCoachedState === "error" ? "rgba(196,112,90,0.35)" : "rgba(212,179,127,0.25)"}`,
+                    borderRadius: 8, padding: "6px 12px",
+                    cursor: (saveCoachedState === "saving" || saveCoachedState === "saved") ? "default" : "pointer",
+                    display: "inline-flex", alignItems: "center", gap: 6,
+                    transition: "all 150ms",
+                  }}
+                >
+                  {saveCoachedState === "saving" && (
+                    <div style={{ width: 10, height: 10, border: `1.5px solid rgba(212,179,127,0.3)`, borderTopColor: c.gilt, borderRadius: "50%", animation: "reportspin 0.8s linear infinite" }} />
+                  )}
+                  {saveCoachedState === "saved" && (
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                  )}
+                  {saveCoachedState === "error" && (
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/></svg>
+                  )}
+                  {!["saving", "saved", "error"].includes(saveCoachedState) && (
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                  )}
+                  {saveCoachedState === "saving" ? "Saving…" : saveCoachedState === "saved" ? "Coached answer saved" : saveCoachedState === "error" ? "Save failed" : "Save coached version"}
+                </button>
+              )}
               <button
                 onClick={onSave}
                 disabled={saveState === "saving" || saveState === "saved"}
