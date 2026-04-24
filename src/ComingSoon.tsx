@@ -76,25 +76,6 @@ function ParticleBg() {
   return <canvas ref={canvasRef} style={{ position: "fixed", inset: 0, pointerEvents: "none", zIndex: 0 }} />;
 }
 
-/* ─── Countdown timer ─── */
-function useCountdown(targetDate: Date) {
-  const calc = () => {
-    const diff = Math.max(0, targetDate.getTime() - Date.now());
-    return {
-      days: Math.floor(diff / 86400000),
-      hours: Math.floor((diff % 86400000) / 3600000),
-      minutes: Math.floor((diff % 3600000) / 60000),
-      seconds: Math.floor((diff % 60000) / 1000),
-    };
-  };
-  const [time, setTime] = useState(calc);
-  useEffect(() => {
-    const id = setInterval(() => setTime(calc), 1000);
-    return () => clearInterval(id);
-  }, []);
-  return time;
-}
-
 /* ─── Feature preview cards ─── */
 const FEATURES = [
   {
@@ -135,20 +116,6 @@ export default function ComingSoon() {
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<"idle" | "sending" | "done" | "error">("idle");
   const [count, setCount] = useState<number | null>(null);
-
-  // Launch date — configurable via env var, auto-extends if past
-  const launchDate = (() => {
-    const configured = process.env.NEXT_PUBLIC_LAUNCH_DATE;
-    const date = configured ? new Date(configured) : new Date("2026-05-15T00:00:00+05:30");
-    // If launch date has passed, show countdown to 30 days from now
-    if (date.getTime() <= Date.now()) {
-      const future = new Date();
-      future.setDate(future.getDate() + 30);
-      return future;
-    }
-    return date;
-  })();
-  const countdown = useCountdown(launchDate);
 
   // Fetch waitlist count — defer until browser is idle to avoid blocking FCP/LCP
   useEffect(() => {
@@ -208,8 +175,6 @@ export default function ComingSoon() {
         @media (max-width: 768px) {
           .cs-hero-title { font-size: clamp(28px, 7vw, 42px) !important; white-space: normal !important; }
           .cs-features { flex-direction: column !important; }
-          .cs-countdown { gap: 24px !important; }
-          .cs-countdown-item { min-width: 70px !important; }
           .cs-form { flex-direction: column !important; }
           .cs-form button { width: 100% !important; }
         }
@@ -271,39 +236,10 @@ export default function ComingSoon() {
           </p>
         </div>
 
-        {/* ─── Countdown ─── */}
-        <div className="cs-countdown" style={{
-          display: "flex", justifyContent: "center", gap: 36,
-          marginBottom: 40,
-          animation: "fadeInUp 0.8s ease 0.4s both",
-        }}>
-          {[
-            { label: "Days", value: countdown.days },
-            { label: "Hours", value: countdown.hours },
-            { label: "Minutes", value: countdown.minutes },
-            { label: "Seconds", value: countdown.seconds },
-          ].map((item) => (
-            <div key={item.label} className="cs-countdown-item" style={{
-              textAlign: "center", minWidth: 80,
-            }}>
-              <div style={{
-                fontFamily: font.mono, fontSize: "clamp(28px, 4vw, 44px)",
-                fontWeight: 600, color: c.ivory, lineHeight: 1,
-                background: c.graphite, borderRadius: 12,
-                border: `1px solid ${c.border}`, padding: "16px 8px",
-              }}>
-                {String(item.value).padStart(2, "0")}
-              </div>
-              <span style={{
-                fontFamily: font.ui, fontSize: 11, fontWeight: 500,
-                color: c.stone, letterSpacing: "0.08em", textTransform: "uppercase",
-                marginTop: 8, display: "block",
-              }}>
-                {item.label}
-              </span>
-            </div>
-          ))}
-        </div>
+        {/* Countdown timer removed for now — hero copy implies "soon"
+            without committing to a specific launch date. Restore by
+            reintroducing useCountdown + launchDate from git history
+            (commit 3129b84^) when we have a firm launch target. */}
 
         {/* ─── Email Signup ─── */}
         <div style={{
