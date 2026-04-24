@@ -1877,15 +1877,18 @@ export function useInterviewEngine() {
     try { localStorage.removeItem(draftKey); } catch { /* expected: localStorage cleanup is non-critical */ }
     try { await deleteFromIDB(draftKey); } catch { /* expected: IDB cleanup is non-critical */ }
     try {
+      // /api/sessions/save already atomically appends the timestamp and sets
+      // has_completed_onboarding=true server-side. We still call updateUser
+      // so the in-memory User object reflects the new timestamp immediately
+      // (it's an optimistic setState, no blocking network dependency).
+      // The request itself is non-awaited — any server round-trip is already
+      // done via the save-session call above.
       const timestamps = user?.practiceTimestamps || [];
       const updates: Partial<Parameters<typeof updateUser>[0]> = {
         practiceTimestamps: [...timestamps, new Date().toISOString()],
       };
       if (!user?.hasCompletedOnboarding) updates.hasCompletedOnboarding = true;
-      await Promise.race([
-        updateUser(updates),
-        new Promise(r => setTimeout(r, 5000)),
-      ]);
+      void updateUser(updates).catch(err => console.warn("[interview] updateUser post-session:", err));
     } catch (err) { console.error("[interview] Profile update failed:", err); }
 
     if (!localOk || !cloudOk) {

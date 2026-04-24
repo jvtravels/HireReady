@@ -2,10 +2,31 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { saveSessionResult } from "../interviewAPI";
 import type { SessionResult } from "../interviewAPI";
 
-// Mock supabase saveSession
+// Mock supabase decrementSessionCredit (saveSession is no longer used — the
+// client now routes through /api/sessions/save via apiFetch to avoid
+// extension-wrapped fetch hangs on large transcript payloads).
 vi.mock("../supabase", () => ({
-  saveSession: vi.fn(() => Promise.resolve()),
+  decrementSessionCredit: vi.fn(() => Promise.resolve(false)),
   authHeaders: vi.fn(() => Promise.resolve({ "Content-Type": "application/json" })),
+}));
+
+// Mock apiClient's apiFetch — the new transport for session saves.
+interface MockApiResponse {
+  ok: boolean;
+  status: number;
+  data: { ok: boolean; practiceAppended?: boolean } | null;
+  error: string | null;
+  headers: Record<string, string>;
+}
+const mockApiFetch = vi.fn<(...args: unknown[]) => Promise<MockApiResponse>>(() => Promise.resolve({
+  ok: true,
+  status: 200,
+  data: { ok: true, practiceAppended: true },
+  error: null,
+  headers: {},
+}));
+vi.mock("../apiClient", () => ({
+  apiFetch: (path: unknown, body: unknown) => mockApiFetch(path, body),
 }));
 
 // Mock fetch for API calls
@@ -79,13 +100,11 @@ describe("interviewAPI", () => {
     });
 
     it("saves to Supabase when userId is provided", async () => {
-      const { saveSession } = await import("../supabase");
       const session = makeSession();
       const result = await saveSessionResult(session, "user-abc");
       expect(result.cloudOk).toBe(true);
-      expect(saveSession).toHaveBeenCalledWith(expect.objectContaining({
+      expect(mockApiFetch).toHaveBeenCalledWith("/api/sessions/save", expect.objectContaining({
         id: "test123",
-        user_id: "user-abc",
       }));
     });
 
@@ -95,8 +114,13 @@ describe("interviewAPI", () => {
     });
 
     it("handles Supabase failure gracefully", async () => {
-      const { saveSession } = await import("../supabase");
-      (saveSession as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error("Network error"));
+      mockApiFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 502,
+        data: null,
+        error: "bad gateway",
+        headers: {},
+      });
       const result = await saveSessionResult(makeSession(), "user-abc");
       expect(result.localOk).toBe(true);
       expect(result.cloudOk).toBe(false);

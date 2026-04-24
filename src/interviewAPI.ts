@@ -1,7 +1,8 @@
 /* ─── Interview API Client: LLM calls, session persistence, offline retry ─── */
 
 import type { InterviewStep } from "./interviewScripts";
-import { saveSession, decrementSessionCredit } from "./supabase";
+import { decrementSessionCredit } from "./supabase";
+import { apiFetch } from "./apiClient";
 import { openIDB, loadFromIDB, deleteFromIDB } from "./interviewIDB";
 import { checkRateLimit } from "./rateLimit";
 
@@ -107,9 +108,16 @@ export async function saveSessionResult(result: SessionResult, userId?: string):
   }
   if (userId) {
     try {
-      await saveSession({
+      // Route through our own edge endpoint via XHR (apiFetch) rather than
+      // supabase-js directly. supabase-js uses window.fetch, which extension-
+      // based fetch wrappers (Loom, Jam.dev, Hotjar) hang on POST bodies
+      // above ~64 KB — transcripts + jd_analysis routinely exceed that, so
+      // users reported "session completed but dashboard shows nothing."
+      // The /api/sessions/save handler also atomically appends to
+      // practice_timestamps, so the dashboard's session counter updates in
+      // the same round-trip.
+      const res = await apiFetch<{ ok: boolean; practiceAppended?: boolean; strippedColumns?: string[] }>("/api/sessions/save", {
         id: result.id,
-        user_id: userId,
         date: result.date,
         type: result.type,
         difficulty: result.difficulty,
@@ -123,7 +131,14 @@ export async function saveSessionResult(result: SessionResult, userId?: string):
         job_description: result.jobDescription || null,
         jd_analysis: result.jdAnalysis || null,
       });
-      cloudOk = true;
+      if (res.ok && res.data?.ok) {
+        cloudOk = true;
+        if (res.data.strippedColumns && res.data.strippedColumns.length > 0) {
+          console.warn("[save] server stripped columns:", res.data.strippedColumns);
+        }
+      } else {
+        console.warn(`[save] /api/sessions/save failed (${res.status}): ${res.error || "unknown"}`);
+      }
       // Decrement session credit for free-tier users who purchased credits
       try { await decrementSessionCredit(userId); } catch { /* best-effort */ }
     } catch (err) {
