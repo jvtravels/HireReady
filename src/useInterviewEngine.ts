@@ -1830,13 +1830,24 @@ export function useInterviewEngine() {
           jobDescription: jobDescription || undefined,
           jdAnalysis: jdAnalysisData || null,
         }, user?.id),
-        new Promise<{ localOk: boolean; cloudOk: boolean }>((resolve) => setTimeout(() => {
+        new Promise<{ localOk: boolean; cloudOk: boolean; streakReward?: { milestone: number; bonusCredits: number } | null }>((resolve) => setTimeout(() => {
           console.warn("[interview] saveSessionResult timeout (10s) — proceeding with whatever landed");
-          resolve({ localOk: true, cloudOk: false });
+          resolve({ localOk: true, cloudOk: false, streakReward: null });
         }, 10_000)),
       ]);
       localOk = saveResult.localOk;
       cloudOk = saveResult.cloudOk;
+      // Server-side awarded a streak milestone — celebrate it. This is cheap
+      // dopamine that costs us nothing and is one of the stronger retention
+      // levers we have (free users especially notice the bonus-session drop).
+      if (saveResult.streakReward) {
+        const { milestone, bonusCredits } = saveResult.streakReward;
+        track("streak_reward_granted", { milestone, bonusCredits });
+        // Delay slightly so it lands after the "Session saved" toast below.
+        setTimeout(() => {
+          toast(`${milestone}-day streak! +${bonusCredits} bonus session added to your account.`, "success");
+        }, 1200);
+      }
     } catch (saveErr) {
       console.error("[interview] saveSessionResult threw:", saveErr);
     }

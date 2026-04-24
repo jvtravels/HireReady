@@ -30,6 +30,115 @@ const APP_URL = (process.env.APP_URL || "https://hirestepx.vercel.app").replace(
 const UPSTASH_URL = (process.env.UPSTASH_REDIS_REST_URL || "").trim();
 const UPSTASH_TOKEN = (process.env.UPSTASH_REDIS_REST_TOKEN || "").trim();
 
+/**
+ * Grant the referrer +1 bonus session_credit when the payee (who used the
+ * referrer's code) completes their first real paid conversion (subscription
+ * tier, not single-session). Idempotent — the `referrals` row carries a
+ * `reward_granted` flag that we flip atomically to prevent double-grants.
+ *
+ * Only called for subscription plans (weekly/monthly/yearly). A ₹10 single-
+ * session purchase would make self-referrals trivially exploitable for
+ * unlimited free sessions, so we gate on an actual paid subscription.
+ *
+ * Best-effort: any failure is logged but does not abort the payment flow.
+ * The payment has already succeeded by the time we're here.
+ */
+async function grantReferralReward(
+  supabaseUrl: string,
+  serviceKey: string,
+  payeeUserId: string,
+): Promise<{ rewarded: boolean; referrerId?: string; referralCode?: string }> {
+  try {
+    // 1. Look up the payee's referred_by code (set at signup via /api/referral POST).
+    const payeeRes = await fetch(
+      `${supabaseUrl}/rest/v1/profiles?id=eq.${encodeURIComponent(payeeUserId)}&select=referred_by`,
+      { headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` } },
+    );
+    if (!payeeRes.ok) return { rewarded: false };
+    const payeeRows = await payeeRes.json().catch(() => []);
+    const referralCode: string | null = Array.isArray(payeeRows) && payeeRows[0]?.referred_by ? payeeRows[0].referred_by : null;
+    if (!referralCode) return { rewarded: false };
+
+    // 2. Find the referrer profile by their code.
+    const referrerRes = await fetch(
+      `${supabaseUrl}/rest/v1/profiles?referral_code=eq.${encodeURIComponent(referralCode)}&select=id,session_credits`,
+      { headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` } },
+    );
+    if (!referrerRes.ok) return { rewarded: false };
+    const referrerRows = await referrerRes.json().catch(() => []);
+    if (!Array.isArray(referrerRows) || referrerRows.length === 0) return { rewarded: false };
+    const referrer = referrerRows[0];
+    const referrerId: string = referrer.id;
+    const currentCredits: number = typeof referrer.session_credits === "number" ? referrer.session_credits : 0;
+
+    // 3. Find the open (not yet rewarded) referral row linking these two users.
+    //    Records are created at redemption time in referral.ts — status=redeemed.
+    //    On first paid conversion we flip status=rewarded and reward_granted=true.
+    const recRes = await fetch(
+      `${supabaseUrl}/rest/v1/referrals?referrer_id=eq.${encodeURIComponent(referrerId)}&referred_id=eq.${encodeURIComponent(payeeUserId)}&reward_granted=eq.false&select=id`,
+      { headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` } },
+    );
+    if (!recRes.ok) return { rewarded: false };
+    const recRows = await recRes.json().catch(() => []);
+    if (!Array.isArray(recRows) || recRows.length === 0) {
+      // Either no record or already rewarded — nothing to do.
+      return { rewarded: false };
+    }
+    const referralRowId: string = recRows[0].id;
+
+    // 4. Flip the referral row FIRST so a concurrent verification can't
+    //    double-grant. We match on reward_granted=false to make the update
+    //    effectively a compare-and-swap — if the row has already been flipped
+    //    by a parallel request, the PATCH returns an empty array and we abort.
+    const flipRes = await fetch(
+      `${supabaseUrl}/rest/v1/referrals?id=eq.${encodeURIComponent(referralRowId)}&reward_granted=eq.false`,
+      {
+        method: "PATCH",
+        headers: {
+          apikey: serviceKey,
+          Authorization: `Bearer ${serviceKey}`,
+          "Content-Type": "application/json",
+          Prefer: "return=representation",
+        },
+        body: JSON.stringify({ status: "rewarded", reward_granted: true }),
+      },
+    );
+    if (!flipRes.ok) return { rewarded: false };
+    const flipped = await flipRes.json().catch(() => []);
+    if (!Array.isArray(flipped) || flipped.length === 0) {
+      // Another concurrent request won the race. Not an error.
+      return { rewarded: false };
+    }
+
+    // 5. Increment the referrer's session_credits. If this step fails we're
+    //    in a slightly bad state — the referral row says rewarded but the
+    //    credit wasn't granted. Worst-case the user pings support for a
+    //    missing credit; better than double-granting on a retry.
+    const creditRes = await fetch(
+      `${supabaseUrl}/rest/v1/profiles?id=eq.${encodeURIComponent(referrerId)}`,
+      {
+        method: "PATCH",
+        headers: {
+          apikey: serviceKey,
+          Authorization: `Bearer ${serviceKey}`,
+          "Content-Type": "application/json",
+          Prefer: "return=minimal",
+        },
+        body: JSON.stringify({ session_credits: currentCredits + 1 }),
+      },
+    );
+    if (!creditRes.ok) {
+      console.error(`[referral-reward] credit grant FAILED after flip for referrer=${referrerId.slice(0, 8)}. Manual reconciliation needed.`);
+      return { rewarded: false, referrerId, referralCode };
+    }
+    console.log(`[referral-reward] +1 credit → referrer=${referrerId.slice(0, 8)} (referee=${payeeUserId.slice(0, 8)}, code=${referralCode})`);
+    return { rewarded: true, referrerId, referralCode };
+  } catch (err) {
+    console.warn("[referral-reward] threw:", (err as Error).message);
+    return { rewarded: false };
+  }
+}
+
 /** Clear the payment-abandonment intent key so the cron doesn't email a paying user. */
 async function clearPaymentIntent(orderId: string): Promise<void> {
   if (!UPSTASH_URL || !UPSTASH_TOKEN || !orderId) return;
@@ -514,6 +623,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(500).json({ error: "Failed to activate subscription" });
     }
 
+    // 6b. Grant referral reward if this user was referred. Only triggered on a
+    //     real paid subscription — single-session purchases can't grant
+    //     referral credits (too cheap to be exploit-proof). Fire-and-forget:
+    //     failure here doesn't affect the payment outcome for the payer.
+    let referralRewarded = false;
+    try {
+      const { rewarded } = await grantReferralReward(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, userId);
+      referralRewarded = rewarded;
+    } catch (e) { console.warn("[verify-payment] referral reward threw:", e); }
+
     // 6c. Send confirmation email with retry (non-critical — don't fail payment if email fails)
     let emailSent = false;
     if (userEmail) {
@@ -577,6 +696,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       emailSent,
       receiptUrl,
       ...(proratedDays > 0 ? { proratedBonusDays: proratedDays } : {}),
+      ...(referralRewarded ? { referralRewardGranted: true } : {}),
     });
   } catch (err) {
     console.error("Payment verification error:", err);

@@ -195,6 +195,22 @@ create policy "Users manage own stories" on story_notebook
 -- Weekly-summary cron uses this to rate-limit emails per user.
 alter table profiles add column if not exists last_summary_email_at timestamptz;
 
+-- Bonus-session economy. Credits are granted by:
+--   (a) One-time single-session purchase (verify-payment.ts)
+--   (b) Streak milestones (save-session.ts — 7/14/30-day)
+--   (c) Successful referrals (verify-payment.ts, when referee pays)
+-- They are consumed by decrementSessionCredit() after a free-tier user exceeds
+-- the 3-session free limit. Paid tiers ignore this column.
+alter table profiles add column if not exists session_credits integer default 0;
+
+-- Tracks the highest streak milestone the user has already been rewarded for
+-- (7, 14, 30). Prevents double-grants when a user hovers around a milestone
+-- after a missed day + resume. Value 0 means "no reward granted yet".
+alter table profiles add column if not exists last_streak_reward_day integer default 0;
+
+-- Re-engagement cron uses this to rate-limit emails per user (see re-engage-users.ts).
+alter table profiles add column if not exists re_engage_sent timestamptz;
+
 alter table profiles enable row level security;
 alter table sessions enable row level security;
 alter table calendar_events enable row level security;

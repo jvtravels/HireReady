@@ -146,14 +146,16 @@ export default async function handler(req: Request): Promise<Response> {
     }), { status: 500, headers });
   }
 
-  // 2. Atomically append a timestamp to practice_timestamps. We read-modify-
-  //    write with the service role — not ideal for high concurrency but the
-  //    user is only completing one session at a time, so races aren't real.
+  // 2. Atomically append a timestamp to practice_timestamps AND evaluate
+  //    streak milestones for a reward. Read-modify-write with the service
+  //    role — not ideal for high concurrency but a user only completes one
+  //    session at a time, so races aren't real here.
   const nowIso = new Date().toISOString();
   let practiceAppended = false;
+  let streakReward: { milestone: number; bonusCredits: number } | null = null;
   try {
     const getRes = await fetch(
-      `${SUPABASE_URL}/rest/v1/profiles?id=eq.${encodeURIComponent(auth.userId)}&select=practice_timestamps`,
+      `${SUPABASE_URL}/rest/v1/profiles?id=eq.${encodeURIComponent(auth.userId)}&select=practice_timestamps,session_credits,last_streak_reward_day`,
       {
         headers: {
           apikey: SUPABASE_SERVICE_KEY,
@@ -163,11 +165,51 @@ export default async function handler(req: Request): Promise<Response> {
     );
     if (getRes.ok) {
       const arr = await getRes.json().catch(() => []);
-      const existing: string[] = Array.isArray(arr) && arr[0] && Array.isArray(arr[0].practice_timestamps)
-        ? arr[0].practice_timestamps
-        : [];
+      const row = Array.isArray(arr) && arr[0] ? arr[0] : {};
+      const existing: string[] = Array.isArray(row.practice_timestamps) ? row.practice_timestamps : [];
+      const currentCredits: number = typeof row.session_credits === "number" ? row.session_credits : 0;
+      const lastRewardDay: number = typeof row.last_streak_reward_day === "number" ? row.last_streak_reward_day : 0;
+
       // Cap at 500 entries to keep the column small; the oldest are least useful.
       const next = [...existing, nowIso].slice(-500);
+
+      // Compute current streak length from the unique practice days including
+      // today. Walk backwards from today; stop at the first gap.
+      const daySet = new Set<string>();
+      for (const iso of next) {
+        const d = new Date(iso);
+        if (!isFinite(d.getTime())) continue;
+        daySet.add(d.toISOString().slice(0, 10));
+      }
+      let streakDays = 0;
+      const today = new Date();
+      for (let i = 0; i < 400; i++) {
+        const d = new Date(today.getTime() - i * 86400000);
+        const key = d.toISOString().slice(0, 10);
+        if (daySet.has(key)) streakDays++;
+        else break;
+      }
+
+      // Eligible milestones: 7, 14, 30. Reward exactly one credit the first
+      // time the user crosses each tier. last_streak_reward_day tracks the
+      // highest milestone already rewarded, so a user who broke streak and
+      // rebuilt to day 8 won't be re-rewarded for the 7-day tier.
+      const milestones = [30, 14, 7];
+      let awardedMilestone = 0;
+      for (const m of milestones) {
+        if (streakDays >= m && lastRewardDay < m) { awardedMilestone = m; break; }
+      }
+
+      const patch: Record<string, unknown> = {
+        practice_timestamps: next,
+        has_completed_onboarding: true,
+      };
+      if (awardedMilestone > 0) {
+        patch.session_credits = currentCredits + 1;
+        patch.last_streak_reward_day = awardedMilestone;
+        streakReward = { milestone: awardedMilestone, bonusCredits: 1 };
+      }
+
       const patchRes = await fetch(
         `${SUPABASE_URL}/rest/v1/profiles?id=eq.${encodeURIComponent(auth.userId)}`,
         {
@@ -178,17 +220,34 @@ export default async function handler(req: Request): Promise<Response> {
             Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`,
             Prefer: "return=minimal",
           },
-          body: JSON.stringify({
-            practice_timestamps: next,
-            has_completed_onboarding: true,
-          }),
+          body: JSON.stringify(patch),
         },
       );
       if (patchRes.ok) {
         practiceAppended = true;
       } else {
         const t = await patchRes.text().catch(() => "");
-        console.warn(`[save-session] practice_timestamps patch failed HTTP ${patchRes.status}: ${t.slice(0, 200)}`);
+        // If the reward columns are missing in this environment, retry without
+        // them so we still persist the timestamp — reward is a bonus, not core.
+        if (awardedMilestone > 0 && /session_credits|last_streak_reward_day/.test(t)) {
+          console.warn(`[save-session] reward columns missing; retrying core patch only`);
+          const retry = await fetch(
+            `${SUPABASE_URL}/rest/v1/profiles?id=eq.${encodeURIComponent(auth.userId)}`,
+            {
+              method: "PATCH",
+              headers: {
+                "Content-Type": "application/json",
+                apikey: SUPABASE_SERVICE_KEY,
+                Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`,
+                Prefer: "return=minimal",
+              },
+              body: JSON.stringify({ practice_timestamps: next, has_completed_onboarding: true }),
+            },
+          );
+          if (retry.ok) { practiceAppended = true; streakReward = null; }
+        } else {
+          console.warn(`[save-session] practice_timestamps patch failed HTTP ${patchRes.status}: ${t.slice(0, 200)}`);
+        }
       }
     } else {
       console.warn(`[save-session] profile read failed HTTP ${getRes.status}`);
@@ -197,7 +256,7 @@ export default async function handler(req: Request): Promise<Response> {
     console.warn(`[save-session] practice_timestamps update threw: ${(err as Error).message}`);
   }
 
-  console.log(`[save-session] OK user=${auth.userId.slice(0, 8)} session=${sessionRow.id.slice(0, 8)} practiceAppended=${practiceAppended} stripped=${strippedSession.join(",") || "-"} latency=${Date.now() - t0}ms`);
+  console.log(`[save-session] OK user=${auth.userId.slice(0, 8)} session=${sessionRow.id.slice(0, 8)} practiceAppended=${practiceAppended} streakReward=${streakReward ? streakReward.milestone : "-"} stripped=${strippedSession.join(",") || "-"} latency=${Date.now() - t0}ms`);
 
   return new Response(JSON.stringify({
     ok: true,
@@ -205,5 +264,6 @@ export default async function handler(req: Request): Promise<Response> {
     practiceAppended,
     timestamp: nowIso,
     strippedColumns: strippedSession,
+    streakReward, // { milestone, bonusCredits } or null — client can show a toast
   }), { status: 200, headers });
 }
