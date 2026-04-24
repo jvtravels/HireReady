@@ -1,6 +1,5 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
-import Image from "next/image";
 import { track } from "@vercel/analytics";
 import { c, font } from "./tokens";
 import { getSupabase, supabaseConfigured } from "./supabase";
@@ -338,37 +337,11 @@ export default function ComingSoon() {
           ))}
         </div>
 
-        {/* ─── Social proof teaser ─── */}
-        <div style={{
-          textAlign: "center", paddingBottom: 80,
-          animation: "fadeInUp 0.8s ease 1s both",
-        }}>
-          <div style={{
-            display: "inline-flex", alignItems: "center", gap: 12,
-            padding: "12px 24px", borderRadius: 100,
-            background: "rgba(212,179,127,0.04)", border: `1px solid ${c.border}`,
-          }}>
-            <div style={{ display: "flex" }}>
-              {[
-                "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=80&h=80&fit=crop&crop=face",
-                "https://images.unsplash.com/photo-1594744803329-e58b31de8bf5?w=80&h=80&fit=crop&crop=face",
-                "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=80&h=80&fit=crop&crop=face",
-                "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=80&h=80&fit=crop&crop=face",
-                "https://images.unsplash.com/photo-1633332755192-727a05c4013d?w=80&h=80&fit=crop&crop=face",
-              ].map((src, i) => (
-                <Image key={i} src={src} alt="" aria-hidden width={32} height={32} style={{
-                  width: 32, height: 32, borderRadius: "50%",
-                  border: `2px solid ${c.obsidian}`,
-                  marginLeft: i > 0 ? -10 : 0,
-                  objectFit: "cover",
-                }} />
-              ))}
-            </div>
-            <span style={{ fontFamily: font.ui, fontSize: 13, color: c.chalk }}>
-              Join early adopters preparing for their dream jobs
-            </span>
-          </div>
-        </div>
+        {/* Social-proof avatar strip removed for now — used stock photos
+            with a vague "early adopters" line that overclaimed. Restore
+            from git history (commit b8398b5^) once we have real
+            testimonials or an actual waitlist count to show. */}
+        <div style={{ paddingBottom: 80 }} />
 
         {/* ─── Social Links ─── */}
         <div style={{
