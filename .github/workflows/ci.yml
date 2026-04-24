@@ -37,7 +37,9 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npm test
+      # Run with coverage — thresholds in vitest.config.ts fail the build
+      # on regression. Calibrate thresholds upward as coverage improves.
+      - run: npm run test:coverage
 
   build:
     name: Build

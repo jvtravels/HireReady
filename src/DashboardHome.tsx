@@ -11,6 +11,7 @@ import { SectionErrorBoundary } from "./ErrorBoundary";
 import { scoreLabel, scoreLabelColor, sessionTypes } from "./dashboardTypes";
 import { daysUntilEvent, formatEventDate, formatEventTime } from "./dashboardHelpers";
 import { getPersonalizedGreeting } from "./dashboardData";
+import { pickNextMove } from "./nextMove";
 const ScoreTrendChart = dynamic(() => import("./DashboardCharts").then(m => ({ default: m.ScoreTrendChart })), { ssr: false });
 const SkillRadar = dynamic(() => import("./DashboardCharts").then(m => ({ default: m.SkillRadar })), { ssr: false });
 import { useDocTitle } from "./useDocTitle";
@@ -744,63 +745,23 @@ export default function DashboardHome() {
            skill) and for users already hitting the paywall (the
            exhausted-user banner above does that job). */}
       {hasData && !(isFree && atSessionLimit) && (() => {
-        // Lowest-scoring skill is the highest-leverage practice target.
-        // `skills` is already sorted by name but carries score + prev; we
-        // pick the lowest-scoring one under 70. If none qualify the user is
-        // doing well enough that the card pivots to streak/welcome-back copy.
-        const weakest = (() => {
-          if (!skills || skills.length === 0) return null;
-          const sorted = [...skills].sort((a, b) => a.score - b.score);
-          const low = sorted[0];
-          return low && low.score < 70 ? low.name : null;
-        })();
-        const credits = user?.sessionCredits ?? 0;
-        const streakDay = currentStreak;
-        // Highest unmet milestone among 7/14/30; null once user has passed 30.
-        const nextMilestone = streakDay < 7 ? 7 : streakDay < 14 ? 14 : streakDay < 30 ? 30 : null;
-        const daysToNext = nextMilestone ? nextMilestone - streakDay : 0;
-        // Primary action: focused practice on the weakest skill. Fall back to
-        // "keep the streak going" when there's no weak-skill signal yet.
-        const ctaLabel = weakest ? `Practice ${weakest}` : streakDay > 0 ? "Keep the streak going" : "Start a session";
-        const ctaHref = weakest
-          ? `/session/new?focus=${encodeURIComponent(weakest)}`
-          : "/session/new";
+        // All decision logic in ./nextMove.ts (pure, unit-tested). Here we
+        // only map chip kinds to their visual styling.
+        const next = pickNextMove({
+          skills: skills || [],
+          currentStreak,
+          sessionCredits: user?.sessionCredits ?? 0,
+          smartSchedule,
+        });
+        const { headline, ctaLabel, ctaHref, chips: pureChips } = next;
 
-        // Compose the headline — prefer the weakest-skill nudge (highest
-        // learning ROI), then streak, then a generic welcome-back.
-        const headline = weakest
-          ? `Your ${weakest} is the highest-leverage thing to practice today.`
-          : streakDay >= 3
-            ? `You're on a ${streakDay}-day streak — don't break it.`
-            : "Pick up where you left off.";
-
-        // Tiny chip row below the CTA: streak + credits + schedule hint.
-        // Each chip only renders when its signal is meaningful.
-        const chips: Array<{ icon: React.ReactNode; label: string; color: string }> = [];
-        if (streakDay > 0) {
-          chips.push({
-            icon: <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>,
-            label: nextMilestone
-              ? `${streakDay}-day streak · ${daysToNext} to +1 bonus`
-              : `${streakDay}-day streak`,
-            color: c.ember,
-          });
-        }
-        if (credits > 0) {
-          chips.push({
-            icon: <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>,
-            label: `${credits} bonus session${credits !== 1 ? "s" : ""}`,
-            color: c.sage,
-          });
-        }
-        if (smartSchedule) {
-          chips.push({
-            icon: <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>,
-            // Strip the marketing framing — we just want the time-of-day cue.
-            label: smartSchedule.length > 48 ? `${smartSchedule.slice(0, 45)}…` : smartSchedule,
-            color: c.gilt,
-          });
-        }
+        const chipIcon = {
+          streak: <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>,
+          credits: <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>,
+          schedule: <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>,
+        } as const;
+        const chipColor = { streak: c.ember, credits: c.sage, schedule: c.gilt } as const;
+        const chips = pureChips.map(cp => ({ icon: chipIcon[cp.kind], label: cp.label, color: chipColor[cp.kind] }));
 
         return (
           <div

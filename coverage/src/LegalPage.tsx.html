@@ -1,0 +1,265 @@
+
+<!doctype html>
+<html lang="en">
+
+<head>
+    <title>Code coverage report for src/LegalPage.tsx</title>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="../prettify.css" />
+    <link rel="stylesheet" href="../base.css" />
+    <link rel="shortcut icon" type="image/x-icon" href="../favicon.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style type='text/css'>
+        .coverage-summary .sorter {
+            background-image: url(../sort-arrow-sprite.png);
+        }
+    </style>
+</head>
+    
+<body>
+<div class='wrapper'>
+    <div class='pad1'>
+        <h1><a href="../index.html">All files</a> / <a href="index.html">src</a> LegalPage.tsx</h1>
+        <div class='clearfix'>
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">0% </span>
+                <span class="quiet">Statements</span>
+                <span class='fraction'>0/7</span>
+            </div>
+        
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">0% </span>
+                <span class="quiet">Branches</span>
+                <span class='fraction'>0/8</span>
+            </div>
+        
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">0% </span>
+                <span class="quiet">Functions</span>
+                <span class='fraction'>0/2</span>
+            </div>
+        
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">0% </span>
+                <span class="quiet">Lines</span>
+                <span class='fraction'>0/7</span>
+            </div>
+        
+            
+        </div>
+        <p class="quiet">
+            Press <em>n</em> or <em>j</em> to go to the next uncovered block, <em>b</em>, <em>p</em> or <em>k</em> for the previous block.
+        </p>
+        <template id="filterTemplate">
+            <div class="quiet">
+                Filter:
+                <input type="search" id="fileSearch">
+            </div>
+        </template>
+    </div>
+    <div class='status-line low'></div>
+    <pre><table class="coverage">
+<tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
+<a name='L2'></a><a href='#L2'>2</a>
+<a name='L3'></a><a href='#L3'>3</a>
+<a name='L4'></a><a href='#L4'>4</a>
+<a name='L5'></a><a href='#L5'>5</a>
+<a name='L6'></a><a href='#L6'>6</a>
+<a name='L7'></a><a href='#L7'>7</a>
+<a name='L8'></a><a href='#L8'>8</a>
+<a name='L9'></a><a href='#L9'>9</a>
+<a name='L10'></a><a href='#L10'>10</a>
+<a name='L11'></a><a href='#L11'>11</a>
+<a name='L12'></a><a href='#L12'>12</a>
+<a name='L13'></a><a href='#L13'>13</a>
+<a name='L14'></a><a href='#L14'>14</a>
+<a name='L15'></a><a href='#L15'>15</a>
+<a name='L16'></a><a href='#L16'>16</a>
+<a name='L17'></a><a href='#L17'>17</a>
+<a name='L18'></a><a href='#L18'>18</a>
+<a name='L19'></a><a href='#L19'>19</a>
+<a name='L20'></a><a href='#L20'>20</a>
+<a name='L21'></a><a href='#L21'>21</a>
+<a name='L22'></a><a href='#L22'>22</a>
+<a name='L23'></a><a href='#L23'>23</a>
+<a name='L24'></a><a href='#L24'>24</a>
+<a name='L25'></a><a href='#L25'>25</a>
+<a name='L26'></a><a href='#L26'>26</a>
+<a name='L27'></a><a href='#L27'>27</a>
+<a name='L28'></a><a href='#L28'>28</a>
+<a name='L29'></a><a href='#L29'>29</a>
+<a name='L30'></a><a href='#L30'>30</a>
+<a name='L31'></a><a href='#L31'>31</a>
+<a name='L32'></a><a href='#L32'>32</a>
+<a name='L33'></a><a href='#L33'>33</a>
+<a name='L34'></a><a href='#L34'>34</a>
+<a name='L35'></a><a href='#L35'>35</a>
+<a name='L36'></a><a href='#L36'>36</a>
+<a name='L37'></a><a href='#L37'>37</a>
+<a name='L38'></a><a href='#L38'>38</a>
+<a name='L39'></a><a href='#L39'>39</a>
+<a name='L40'></a><a href='#L40'>40</a>
+<a name='L41'></a><a href='#L41'>41</a>
+<a name='L42'></a><a href='#L42'>42</a>
+<a name='L43'></a><a href='#L43'>43</a>
+<a name='L44'></a><a href='#L44'>44</a>
+<a name='L45'></a><a href='#L45'>45</a>
+<a name='L46'></a><a href='#L46'>46</a>
+<a name='L47'></a><a href='#L47'>47</a>
+<a name='L48'></a><a href='#L48'>48</a>
+<a name='L49'></a><a href='#L49'>49</a>
+<a name='L50'></a><a href='#L50'>50</a>
+<a name='L51'></a><a href='#L51'>51</a>
+<a name='L52'></a><a href='#L52'>52</a>
+<a name='L53'></a><a href='#L53'>53</a>
+<a name='L54'></a><a href='#L54'>54</a>
+<a name='L55'></a><a href='#L55'>55</a>
+<a name='L56'></a><a href='#L56'>56</a>
+<a name='L57'></a><a href='#L57'>57</a>
+<a name='L58'></a><a href='#L58'>58</a>
+<a name='L59'></a><a href='#L59'>59</a>
+<a name='L60'></a><a href='#L60'>60</a>
+<a name='L61'></a><a href='#L61'>61</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import { c, font } from "./tokens";
+import Link from "next/link";
+&nbsp;
+const TERMS_SECTIONS = <span class="cstat-no" title="statement not covered" >[</span>
+  { title: "1. Acceptance of Terms", body: "By accessing or using HireStepX, you agree to be bound by these Terms of Service. If you do not agree, do not use the platform." },
+  { title: "2. Description of Service", body: "HireStepX provides AI-powered mock interview practice, including question generation, speech recognition, performance evaluation, and personalized feedback. The service is intended for educational and professional development purposes only." },
+  { title: "3. User Accounts", body: "You are responsible for maintaining the confidentiality of your account credentials. You agree to provide accurate information and to update it as necessary. You must be at least 16 years old to create an account." },
+  { title: "4. User Content", body: "You retain ownership of content you upload (resumes, interview responses). By uploading content, you grant us a limited license to process it for the purpose of providing the service. We do not sell your data to third parties." },
+  { title: "5. Acceptable Use", body: "You agree not to misuse the service, including attempting to reverse-engineer AI models, scraping content, impersonating others, or using the platform for any unlawful purpose." },
+  { title: "6. AI-Generated Content", body: "Interview questions, feedback, and evaluations are generated by AI and are provided for practice purposes only. They do not constitute professional career advice. Results may vary and should not be relied upon as the sole basis for career decisions." },
+  { title: "7. Subscription &amp; Billing", body: "Paid features are billed according to the plan selected at checkout. You may cancel at any time. Refunds are handled on a case-by-case basis within 14 days of purchase." },
+  { title: "8. Termination", body: "We may suspend or terminate your account if you violate these terms. You may delete your account at any time from Settings, which will remove your personal data from our systems." },
+  { title: "9. Limitation of Liability", body: "HireStepX is provided \"as is\" without warranties. We are not liable for any indirect, incidental, or consequential damages arising from your use of the service." },
+  { title: "10. Changes to Terms", body: "We may update these terms from time to time. Continued use of the service after changes constitutes acceptance of the new terms." },
+];
+&nbsp;
+const PRIVACY_SECTIONS = <span class="cstat-no" title="statement not covered" >[</span>
+  { title: "1. Information We Collect", body: "We collect information you provide directly: name, email, resume text, interview responses, and preferences. We also collect usage data such as session scores and practice frequency." },
+  { title: "2. How We Use Your Information", body: "Your data is used to provide and improve the service: generating personalized interview questions, evaluating responses, tracking progress, and delivering features you request." },
+  { title: "3. AI Processing", body: "Resume text and interview transcripts are sent to AI language models (Google Gemini) for analysis. This data is processed in real-time and is not stored by the AI provider beyond the request lifecycle." },
+  { title: "4. Data Storage", body: "Your data is stored securely using Supabase (PostgreSQL with row-level security). Passwords are hashed. Data at rest is encrypted by the hosting provider. We use HTTPS for all data in transit." },
+  { title: "5. Data Sharing", body: "We do not sell, rent, or share your personal data with third parties for marketing purposes. We share data only with service providers necessary to operate the platform (Supabase, Vercel, Google Cloud)." },
+  { title: "6. Cookies &amp; Local Storage", body: "We use localStorage to cache session data for offline access and faster loading. We do not use tracking cookies or third-party analytics." },
+  { title: "7. Your Rights", body: "You can access, export, or delete your data at any time. Use the Settings page to download your data or delete your account. Upon deletion, your data is permanently removed within 30 days." },
+  { title: "8. Data Retention", body: "We retain your data for as long as your account is active. After account deletion, data is purged within 30 days. Anonymous, aggregated analytics may be retained indefinitely." },
+  { title: "9. Security", body: "We implement industry-standard security measures including encryption, rate limiting, CORS validation, and content security policies. However, no system is 100% secure." },
+  { title: "10. Contact", body: "For privacy concerns or data requests, contact us through the support channels available in the application." },
+];
+&nbsp;
+export default function <span class="fstat-no" title="function not covered" >LegalPage({</span> type }: { type: "terms" | "privacy" }) {
+  const isTerms = <span class="cstat-no" title="statement not covered" >type === "terms";</span>
+  const sections = <span class="cstat-no" title="statement not covered" >isTerms ? TERMS_SECTIONS : PRIVACY_SECTIONS;</span>
+  const title = <span class="cstat-no" title="statement not covered" >isTerms ? "Terms of Service" : "Privacy Policy";</span>
+&nbsp;
+<span class="cstat-no" title="statement not covered" >  return (</span>
+    &lt;div style={{ minHeight: "100vh", background: c.obsidian, padding: "60px 24px 80px" }}&gt;
+      &lt;div style={{ maxWidth: 640, margin: "0 auto" }}&gt;
+        &lt;Link href="/" style={{ fontFamily: font.ui, fontSize: 12, color: c.gilt, textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 6, marginBottom: 32 }}&gt;
+          &lt;svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"&gt;&lt;polyline points="15 18 9 12 15 6"/&gt;&lt;/svg&gt;
+          Back to home
+        &lt;/Link&gt;
+&nbsp;
+        &lt;h1 style={{ fontFamily: font.display, fontSize: 36, color: c.ivory, marginBottom: 8, letterSpacing: "-0.02em" }}&gt;{title}&lt;/h1&gt;
+        &lt;p style={{ fontFamily: font.ui, fontSize: 13, color: c.stone, marginBottom: 40 }}&gt;Last updated: April 2026&lt;/p&gt;
+&nbsp;
+        {sections.map(<span class="fstat-no" title="function not covered" >(s</span>ection, i) =&gt; (
+<span class="cstat-no" title="statement not covered" >          &lt;div key={i} style={{ marginBottom: 28 }}&gt;</span>
+            &lt;h2 style={{ fontFamily: font.ui, fontSize: 15, fontWeight: 600, color: c.ivory, marginBottom: 8 }}&gt;{section.title}&lt;/h2&gt;
+            &lt;p style={{ fontFamily: font.ui, fontSize: 13.5, color: c.chalk, lineHeight: 1.7, margin: 0 }}&gt;{section.body}&lt;/p&gt;
+          &lt;/div&gt;
+        ))}
+&nbsp;
+        &lt;div style={{ marginTop: 40, paddingTop: 24, borderTop: `1px solid ${c.border}`, display: "flex", gap: 20 }}&gt;
+          &lt;Link href="/terms" style={{ fontFamily: font.ui, fontSize: 12, color: isTerms ? c.ivory : c.stone, textDecoration: "none" }}&gt;Terms of Service&lt;/Link&gt;
+          &lt;Link href="/privacy" style={{ fontFamily: font.ui, fontSize: 12, color: !isTerms ? c.ivory : c.stone, textDecoration: "none" }}&gt;Privacy Policy&lt;/Link&gt;
+        &lt;/div&gt;
+      &lt;/div&gt;
+    &lt;/div&gt;
+  );
+}
+&nbsp;</pre></td></tr></table></pre>
+
+                <div class='push'></div><!-- for sticky footer -->
+            </div><!-- /wrapper -->
+            <div class='footer quiet pad2 space-top1 center small'>
+                Code coverage generated by
+                <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
+                at 2026-04-24T08:50:45.518Z
+            </div>
+        <script src="../prettify.js"></script>
+        <script>
+            window.onload = function () {
+                prettyPrint();
+            };
+        </script>
+        <script src="../sorter.js"></script>
+        <script src="../block-navigation.js"></script>
+    </body>
+</html>
+    

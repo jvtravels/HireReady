@@ -23,7 +23,7 @@ const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
  * this list is silently dropped so a malicious client can't touch e.g.
  * subscription_tier, email_verified, deleted_at, etc.
  */
-const ALLOWED_COLUMNS = new Set<string>([
+export const ALLOWED_COLUMNS = new Set<string>([
   "name",
   "target_role",
   "target_company",
@@ -45,11 +45,11 @@ const ALLOWED_COLUMNS = new Set<string>([
   "feedback_style",
 ]);
 
-interface ProfileUpdate {
+export interface ProfileUpdate {
   [key: string]: unknown;
 }
 
-function sanitizeUpdate(raw: unknown): ProfileUpdate {
+export function sanitizeUpdate(raw: unknown): ProfileUpdate {
   if (!raw || typeof raw !== "object") return {};
   const out: ProfileUpdate = {};
   for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {

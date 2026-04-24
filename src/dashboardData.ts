@@ -1108,6 +1108,54 @@ export interface StoryNotebookRow {
   daysStale: number;
 }
 
+/** Raw DB shape — exported for tests. */
+export interface StoryNotebookDbRow {
+  id: string;
+  session_id: string | null;
+  question_idx: number | null;
+  title: string | null;
+  question: string | null;
+  answer_text: string | null;
+  tags: string[] | null;
+  created_at: string;
+  last_used_at: string | null;
+}
+
+/**
+ * Pure transform: DB rows → UI rows with daysStale + SR-order sort.
+ * Leitner-lite: entries never reviewed OR last reviewed >7 days ago rise
+ * to the top; everything else stays chronological (newest-first within
+ * each bucket). Extracted so the ordering rule has unit tests.
+ */
+export function transformNotebookRows(
+  rows: StoryNotebookDbRow[],
+  now: number = Date.now(),
+): StoryNotebookRow[] {
+  return rows
+    .map((r) => {
+      const referenceTs = new Date(r.last_used_at || r.created_at).getTime();
+      const daysStale = Math.floor((now - referenceTs) / 86_400_000);
+      return {
+        id: r.id,
+        sessionId: r.session_id,
+        questionIdx: r.question_idx,
+        title: r.title || "Untitled story",
+        question: r.question || "",
+        answerText: r.answer_text || "",
+        tags: r.tags || [],
+        createdAt: r.created_at,
+        lastUsedAt: r.last_used_at,
+        daysStale,
+      };
+    })
+    .sort((a, b) => {
+      const aStale = a.daysStale >= 7;
+      const bStale = b.daysStale >= 7;
+      if (aStale !== bStale) return aStale ? -1 : 1;
+      return b.daysStale - a.daysStale;
+    });
+}
+
 /**
  * Fetch the user's Story Notebook, oldest-stale-first for spaced repetition.
  * Leitner-lite: entries never reviewed OR last reviewed >7 days ago surface
@@ -1131,36 +1179,7 @@ export async function fetchStoryNotebook(): Promise<StoryNotebookRow[]> {
     console.warn("[fetchStoryNotebook] query failed:", error.message);
     throw new Error(error.message || "Failed to load your Story Notebook");
   }
-  const now = Date.now();
-  const rows = (data || []) as Array<{
-    id: string; session_id: string | null; question_idx: number | null;
-    title: string | null; question: string | null; answer_text: string | null;
-    tags: string[] | null; created_at: string; last_used_at: string | null;
-  }>;
-  return rows
-    .map((r) => {
-      const referenceTs = new Date(r.last_used_at || r.created_at).getTime();
-      const daysStale = Math.floor((now - referenceTs) / 86_400_000);
-      return {
-        id: r.id,
-        sessionId: r.session_id,
-        questionIdx: r.question_idx,
-        title: r.title || "Untitled story",
-        question: r.question || "",
-        answerText: r.answer_text || "",
-        tags: r.tags || [],
-        createdAt: r.created_at,
-        lastUsedAt: r.last_used_at,
-        daysStale,
-      };
-    })
-    // Stale (≥7d) rises to the top; fresh stays chronological under.
-    .sort((a, b) => {
-      const aStale = a.daysStale >= 7;
-      const bStale = b.daysStale >= 7;
-      if (aStale !== bStale) return aStale ? -1 : 1;
-      return b.daysStale - a.daysStale;
-    });
+  return transformNotebookRows((data || []) as StoryNotebookDbRow[]);
 }
 
 /** Mark a story as reviewed — updates last_used_at so SR deprioritizes it. */

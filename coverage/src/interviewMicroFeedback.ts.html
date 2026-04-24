@@ -1,0 +1,1201 @@
+
+<!doctype html>
+<html lang="en">
+
+<head>
+    <title>Code coverage report for src/interviewMicroFeedback.ts</title>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="../prettify.css" />
+    <link rel="stylesheet" href="../base.css" />
+    <link rel="shortcut icon" type="image/x-icon" href="../favicon.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style type='text/css'>
+        .coverage-summary .sorter {
+            background-image: url(../sort-arrow-sprite.png);
+        }
+    </style>
+</head>
+    
+<body>
+<div class='wrapper'>
+    <div class='pad1'>
+        <h1><a href="../index.html">All files</a> / <a href="index.html">src</a> interviewMicroFeedback.ts</h1>
+        <div class='clearfix'>
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">83.89% </span>
+                <span class="quiet">Statements</span>
+                <span class='fraction'>250/298</span>
+            </div>
+        
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">77.85% </span>
+                <span class="quiet">Branches</span>
+                <span class='fraction'>232/298</span>
+            </div>
+        
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">100% </span>
+                <span class="quiet">Functions</span>
+                <span class='fraction'>11/11</span>
+            </div>
+        
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">81.7% </span>
+                <span class="quiet">Lines</span>
+                <span class='fraction'>201/246</span>
+            </div>
+        
+            
+        </div>
+        <p class="quiet">
+            Press <em>n</em> or <em>j</em> to go to the next uncovered block, <em>b</em>, <em>p</em> or <em>k</em> for the previous block.
+        </p>
+        <template id="filterTemplate">
+            <div class="quiet">
+                Filter:
+                <input type="search" id="fileSearch">
+            </div>
+        </template>
+    </div>
+    <div class='status-line high'></div>
+    <pre><table class="coverage">
+<tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
+<a name='L2'></a><a href='#L2'>2</a>
+<a name='L3'></a><a href='#L3'>3</a>
+<a name='L4'></a><a href='#L4'>4</a>
+<a name='L5'></a><a href='#L5'>5</a>
+<a name='L6'></a><a href='#L6'>6</a>
+<a name='L7'></a><a href='#L7'>7</a>
+<a name='L8'></a><a href='#L8'>8</a>
+<a name='L9'></a><a href='#L9'>9</a>
+<a name='L10'></a><a href='#L10'>10</a>
+<a name='L11'></a><a href='#L11'>11</a>
+<a name='L12'></a><a href='#L12'>12</a>
+<a name='L13'></a><a href='#L13'>13</a>
+<a name='L14'></a><a href='#L14'>14</a>
+<a name='L15'></a><a href='#L15'>15</a>
+<a name='L16'></a><a href='#L16'>16</a>
+<a name='L17'></a><a href='#L17'>17</a>
+<a name='L18'></a><a href='#L18'>18</a>
+<a name='L19'></a><a href='#L19'>19</a>
+<a name='L20'></a><a href='#L20'>20</a>
+<a name='L21'></a><a href='#L21'>21</a>
+<a name='L22'></a><a href='#L22'>22</a>
+<a name='L23'></a><a href='#L23'>23</a>
+<a name='L24'></a><a href='#L24'>24</a>
+<a name='L25'></a><a href='#L25'>25</a>
+<a name='L26'></a><a href='#L26'>26</a>
+<a name='L27'></a><a href='#L27'>27</a>
+<a name='L28'></a><a href='#L28'>28</a>
+<a name='L29'></a><a href='#L29'>29</a>
+<a name='L30'></a><a href='#L30'>30</a>
+<a name='L31'></a><a href='#L31'>31</a>
+<a name='L32'></a><a href='#L32'>32</a>
+<a name='L33'></a><a href='#L33'>33</a>
+<a name='L34'></a><a href='#L34'>34</a>
+<a name='L35'></a><a href='#L35'>35</a>
+<a name='L36'></a><a href='#L36'>36</a>
+<a name='L37'></a><a href='#L37'>37</a>
+<a name='L38'></a><a href='#L38'>38</a>
+<a name='L39'></a><a href='#L39'>39</a>
+<a name='L40'></a><a href='#L40'>40</a>
+<a name='L41'></a><a href='#L41'>41</a>
+<a name='L42'></a><a href='#L42'>42</a>
+<a name='L43'></a><a href='#L43'>43</a>
+<a name='L44'></a><a href='#L44'>44</a>
+<a name='L45'></a><a href='#L45'>45</a>
+<a name='L46'></a><a href='#L46'>46</a>
+<a name='L47'></a><a href='#L47'>47</a>
+<a name='L48'></a><a href='#L48'>48</a>
+<a name='L49'></a><a href='#L49'>49</a>
+<a name='L50'></a><a href='#L50'>50</a>
+<a name='L51'></a><a href='#L51'>51</a>
+<a name='L52'></a><a href='#L52'>52</a>
+<a name='L53'></a><a href='#L53'>53</a>
+<a name='L54'></a><a href='#L54'>54</a>
+<a name='L55'></a><a href='#L55'>55</a>
+<a name='L56'></a><a href='#L56'>56</a>
+<a name='L57'></a><a href='#L57'>57</a>
+<a name='L58'></a><a href='#L58'>58</a>
+<a name='L59'></a><a href='#L59'>59</a>
+<a name='L60'></a><a href='#L60'>60</a>
+<a name='L61'></a><a href='#L61'>61</a>
+<a name='L62'></a><a href='#L62'>62</a>
+<a name='L63'></a><a href='#L63'>63</a>
+<a name='L64'></a><a href='#L64'>64</a>
+<a name='L65'></a><a href='#L65'>65</a>
+<a name='L66'></a><a href='#L66'>66</a>
+<a name='L67'></a><a href='#L67'>67</a>
+<a name='L68'></a><a href='#L68'>68</a>
+<a name='L69'></a><a href='#L69'>69</a>
+<a name='L70'></a><a href='#L70'>70</a>
+<a name='L71'></a><a href='#L71'>71</a>
+<a name='L72'></a><a href='#L72'>72</a>
+<a name='L73'></a><a href='#L73'>73</a>
+<a name='L74'></a><a href='#L74'>74</a>
+<a name='L75'></a><a href='#L75'>75</a>
+<a name='L76'></a><a href='#L76'>76</a>
+<a name='L77'></a><a href='#L77'>77</a>
+<a name='L78'></a><a href='#L78'>78</a>
+<a name='L79'></a><a href='#L79'>79</a>
+<a name='L80'></a><a href='#L80'>80</a>
+<a name='L81'></a><a href='#L81'>81</a>
+<a name='L82'></a><a href='#L82'>82</a>
+<a name='L83'></a><a href='#L83'>83</a>
+<a name='L84'></a><a href='#L84'>84</a>
+<a name='L85'></a><a href='#L85'>85</a>
+<a name='L86'></a><a href='#L86'>86</a>
+<a name='L87'></a><a href='#L87'>87</a>
+<a name='L88'></a><a href='#L88'>88</a>
+<a name='L89'></a><a href='#L89'>89</a>
+<a name='L90'></a><a href='#L90'>90</a>
+<a name='L91'></a><a href='#L91'>91</a>
+<a name='L92'></a><a href='#L92'>92</a>
+<a name='L93'></a><a href='#L93'>93</a>
+<a name='L94'></a><a href='#L94'>94</a>
+<a name='L95'></a><a href='#L95'>95</a>
+<a name='L96'></a><a href='#L96'>96</a>
+<a name='L97'></a><a href='#L97'>97</a>
+<a name='L98'></a><a href='#L98'>98</a>
+<a name='L99'></a><a href='#L99'>99</a>
+<a name='L100'></a><a href='#L100'>100</a>
+<a name='L101'></a><a href='#L101'>101</a>
+<a name='L102'></a><a href='#L102'>102</a>
+<a name='L103'></a><a href='#L103'>103</a>
+<a name='L104'></a><a href='#L104'>104</a>
+<a name='L105'></a><a href='#L105'>105</a>
+<a name='L106'></a><a href='#L106'>106</a>
+<a name='L107'></a><a href='#L107'>107</a>
+<a name='L108'></a><a href='#L108'>108</a>
+<a name='L109'></a><a href='#L109'>109</a>
+<a name='L110'></a><a href='#L110'>110</a>
+<a name='L111'></a><a href='#L111'>111</a>
+<a name='L112'></a><a href='#L112'>112</a>
+<a name='L113'></a><a href='#L113'>113</a>
+<a name='L114'></a><a href='#L114'>114</a>
+<a name='L115'></a><a href='#L115'>115</a>
+<a name='L116'></a><a href='#L116'>116</a>
+<a name='L117'></a><a href='#L117'>117</a>
+<a name='L118'></a><a href='#L118'>118</a>
+<a name='L119'></a><a href='#L119'>119</a>
+<a name='L120'></a><a href='#L120'>120</a>
+<a name='L121'></a><a href='#L121'>121</a>
+<a name='L122'></a><a href='#L122'>122</a>
+<a name='L123'></a><a href='#L123'>123</a>
+<a name='L124'></a><a href='#L124'>124</a>
+<a name='L125'></a><a href='#L125'>125</a>
+<a name='L126'></a><a href='#L126'>126</a>
+<a name='L127'></a><a href='#L127'>127</a>
+<a name='L128'></a><a href='#L128'>128</a>
+<a name='L129'></a><a href='#L129'>129</a>
+<a name='L130'></a><a href='#L130'>130</a>
+<a name='L131'></a><a href='#L131'>131</a>
+<a name='L132'></a><a href='#L132'>132</a>
+<a name='L133'></a><a href='#L133'>133</a>
+<a name='L134'></a><a href='#L134'>134</a>
+<a name='L135'></a><a href='#L135'>135</a>
+<a name='L136'></a><a href='#L136'>136</a>
+<a name='L137'></a><a href='#L137'>137</a>
+<a name='L138'></a><a href='#L138'>138</a>
+<a name='L139'></a><a href='#L139'>139</a>
+<a name='L140'></a><a href='#L140'>140</a>
+<a name='L141'></a><a href='#L141'>141</a>
+<a name='L142'></a><a href='#L142'>142</a>
+<a name='L143'></a><a href='#L143'>143</a>
+<a name='L144'></a><a href='#L144'>144</a>
+<a name='L145'></a><a href='#L145'>145</a>
+<a name='L146'></a><a href='#L146'>146</a>
+<a name='L147'></a><a href='#L147'>147</a>
+<a name='L148'></a><a href='#L148'>148</a>
+<a name='L149'></a><a href='#L149'>149</a>
+<a name='L150'></a><a href='#L150'>150</a>
+<a name='L151'></a><a href='#L151'>151</a>
+<a name='L152'></a><a href='#L152'>152</a>
+<a name='L153'></a><a href='#L153'>153</a>
+<a name='L154'></a><a href='#L154'>154</a>
+<a name='L155'></a><a href='#L155'>155</a>
+<a name='L156'></a><a href='#L156'>156</a>
+<a name='L157'></a><a href='#L157'>157</a>
+<a name='L158'></a><a href='#L158'>158</a>
+<a name='L159'></a><a href='#L159'>159</a>
+<a name='L160'></a><a href='#L160'>160</a>
+<a name='L161'></a><a href='#L161'>161</a>
+<a name='L162'></a><a href='#L162'>162</a>
+<a name='L163'></a><a href='#L163'>163</a>
+<a name='L164'></a><a href='#L164'>164</a>
+<a name='L165'></a><a href='#L165'>165</a>
+<a name='L166'></a><a href='#L166'>166</a>
+<a name='L167'></a><a href='#L167'>167</a>
+<a name='L168'></a><a href='#L168'>168</a>
+<a name='L169'></a><a href='#L169'>169</a>
+<a name='L170'></a><a href='#L170'>170</a>
+<a name='L171'></a><a href='#L171'>171</a>
+<a name='L172'></a><a href='#L172'>172</a>
+<a name='L173'></a><a href='#L173'>173</a>
+<a name='L174'></a><a href='#L174'>174</a>
+<a name='L175'></a><a href='#L175'>175</a>
+<a name='L176'></a><a href='#L176'>176</a>
+<a name='L177'></a><a href='#L177'>177</a>
+<a name='L178'></a><a href='#L178'>178</a>
+<a name='L179'></a><a href='#L179'>179</a>
+<a name='L180'></a><a href='#L180'>180</a>
+<a name='L181'></a><a href='#L181'>181</a>
+<a name='L182'></a><a href='#L182'>182</a>
+<a name='L183'></a><a href='#L183'>183</a>
+<a name='L184'></a><a href='#L184'>184</a>
+<a name='L185'></a><a href='#L185'>185</a>
+<a name='L186'></a><a href='#L186'>186</a>
+<a name='L187'></a><a href='#L187'>187</a>
+<a name='L188'></a><a href='#L188'>188</a>
+<a name='L189'></a><a href='#L189'>189</a>
+<a name='L190'></a><a href='#L190'>190</a>
+<a name='L191'></a><a href='#L191'>191</a>
+<a name='L192'></a><a href='#L192'>192</a>
+<a name='L193'></a><a href='#L193'>193</a>
+<a name='L194'></a><a href='#L194'>194</a>
+<a name='L195'></a><a href='#L195'>195</a>
+<a name='L196'></a><a href='#L196'>196</a>
+<a name='L197'></a><a href='#L197'>197</a>
+<a name='L198'></a><a href='#L198'>198</a>
+<a name='L199'></a><a href='#L199'>199</a>
+<a name='L200'></a><a href='#L200'>200</a>
+<a name='L201'></a><a href='#L201'>201</a>
+<a name='L202'></a><a href='#L202'>202</a>
+<a name='L203'></a><a href='#L203'>203</a>
+<a name='L204'></a><a href='#L204'>204</a>
+<a name='L205'></a><a href='#L205'>205</a>
+<a name='L206'></a><a href='#L206'>206</a>
+<a name='L207'></a><a href='#L207'>207</a>
+<a name='L208'></a><a href='#L208'>208</a>
+<a name='L209'></a><a href='#L209'>209</a>
+<a name='L210'></a><a href='#L210'>210</a>
+<a name='L211'></a><a href='#L211'>211</a>
+<a name='L212'></a><a href='#L212'>212</a>
+<a name='L213'></a><a href='#L213'>213</a>
+<a name='L214'></a><a href='#L214'>214</a>
+<a name='L215'></a><a href='#L215'>215</a>
+<a name='L216'></a><a href='#L216'>216</a>
+<a name='L217'></a><a href='#L217'>217</a>
+<a name='L218'></a><a href='#L218'>218</a>
+<a name='L219'></a><a href='#L219'>219</a>
+<a name='L220'></a><a href='#L220'>220</a>
+<a name='L221'></a><a href='#L221'>221</a>
+<a name='L222'></a><a href='#L222'>222</a>
+<a name='L223'></a><a href='#L223'>223</a>
+<a name='L224'></a><a href='#L224'>224</a>
+<a name='L225'></a><a href='#L225'>225</a>
+<a name='L226'></a><a href='#L226'>226</a>
+<a name='L227'></a><a href='#L227'>227</a>
+<a name='L228'></a><a href='#L228'>228</a>
+<a name='L229'></a><a href='#L229'>229</a>
+<a name='L230'></a><a href='#L230'>230</a>
+<a name='L231'></a><a href='#L231'>231</a>
+<a name='L232'></a><a href='#L232'>232</a>
+<a name='L233'></a><a href='#L233'>233</a>
+<a name='L234'></a><a href='#L234'>234</a>
+<a name='L235'></a><a href='#L235'>235</a>
+<a name='L236'></a><a href='#L236'>236</a>
+<a name='L237'></a><a href='#L237'>237</a>
+<a name='L238'></a><a href='#L238'>238</a>
+<a name='L239'></a><a href='#L239'>239</a>
+<a name='L240'></a><a href='#L240'>240</a>
+<a name='L241'></a><a href='#L241'>241</a>
+<a name='L242'></a><a href='#L242'>242</a>
+<a name='L243'></a><a href='#L243'>243</a>
+<a name='L244'></a><a href='#L244'>244</a>
+<a name='L245'></a><a href='#L245'>245</a>
+<a name='L246'></a><a href='#L246'>246</a>
+<a name='L247'></a><a href='#L247'>247</a>
+<a name='L248'></a><a href='#L248'>248</a>
+<a name='L249'></a><a href='#L249'>249</a>
+<a name='L250'></a><a href='#L250'>250</a>
+<a name='L251'></a><a href='#L251'>251</a>
+<a name='L252'></a><a href='#L252'>252</a>
+<a name='L253'></a><a href='#L253'>253</a>
+<a name='L254'></a><a href='#L254'>254</a>
+<a name='L255'></a><a href='#L255'>255</a>
+<a name='L256'></a><a href='#L256'>256</a>
+<a name='L257'></a><a href='#L257'>257</a>
+<a name='L258'></a><a href='#L258'>258</a>
+<a name='L259'></a><a href='#L259'>259</a>
+<a name='L260'></a><a href='#L260'>260</a>
+<a name='L261'></a><a href='#L261'>261</a>
+<a name='L262'></a><a href='#L262'>262</a>
+<a name='L263'></a><a href='#L263'>263</a>
+<a name='L264'></a><a href='#L264'>264</a>
+<a name='L265'></a><a href='#L265'>265</a>
+<a name='L266'></a><a href='#L266'>266</a>
+<a name='L267'></a><a href='#L267'>267</a>
+<a name='L268'></a><a href='#L268'>268</a>
+<a name='L269'></a><a href='#L269'>269</a>
+<a name='L270'></a><a href='#L270'>270</a>
+<a name='L271'></a><a href='#L271'>271</a>
+<a name='L272'></a><a href='#L272'>272</a>
+<a name='L273'></a><a href='#L273'>273</a>
+<a name='L274'></a><a href='#L274'>274</a>
+<a name='L275'></a><a href='#L275'>275</a>
+<a name='L276'></a><a href='#L276'>276</a>
+<a name='L277'></a><a href='#L277'>277</a>
+<a name='L278'></a><a href='#L278'>278</a>
+<a name='L279'></a><a href='#L279'>279</a>
+<a name='L280'></a><a href='#L280'>280</a>
+<a name='L281'></a><a href='#L281'>281</a>
+<a name='L282'></a><a href='#L282'>282</a>
+<a name='L283'></a><a href='#L283'>283</a>
+<a name='L284'></a><a href='#L284'>284</a>
+<a name='L285'></a><a href='#L285'>285</a>
+<a name='L286'></a><a href='#L286'>286</a>
+<a name='L287'></a><a href='#L287'>287</a>
+<a name='L288'></a><a href='#L288'>288</a>
+<a name='L289'></a><a href='#L289'>289</a>
+<a name='L290'></a><a href='#L290'>290</a>
+<a name='L291'></a><a href='#L291'>291</a>
+<a name='L292'></a><a href='#L292'>292</a>
+<a name='L293'></a><a href='#L293'>293</a>
+<a name='L294'></a><a href='#L294'>294</a>
+<a name='L295'></a><a href='#L295'>295</a>
+<a name='L296'></a><a href='#L296'>296</a>
+<a name='L297'></a><a href='#L297'>297</a>
+<a name='L298'></a><a href='#L298'>298</a>
+<a name='L299'></a><a href='#L299'>299</a>
+<a name='L300'></a><a href='#L300'>300</a>
+<a name='L301'></a><a href='#L301'>301</a>
+<a name='L302'></a><a href='#L302'>302</a>
+<a name='L303'></a><a href='#L303'>303</a>
+<a name='L304'></a><a href='#L304'>304</a>
+<a name='L305'></a><a href='#L305'>305</a>
+<a name='L306'></a><a href='#L306'>306</a>
+<a name='L307'></a><a href='#L307'>307</a>
+<a name='L308'></a><a href='#L308'>308</a>
+<a name='L309'></a><a href='#L309'>309</a>
+<a name='L310'></a><a href='#L310'>310</a>
+<a name='L311'></a><a href='#L311'>311</a>
+<a name='L312'></a><a href='#L312'>312</a>
+<a name='L313'></a><a href='#L313'>313</a>
+<a name='L314'></a><a href='#L314'>314</a>
+<a name='L315'></a><a href='#L315'>315</a>
+<a name='L316'></a><a href='#L316'>316</a>
+<a name='L317'></a><a href='#L317'>317</a>
+<a name='L318'></a><a href='#L318'>318</a>
+<a name='L319'></a><a href='#L319'>319</a>
+<a name='L320'></a><a href='#L320'>320</a>
+<a name='L321'></a><a href='#L321'>321</a>
+<a name='L322'></a><a href='#L322'>322</a>
+<a name='L323'></a><a href='#L323'>323</a>
+<a name='L324'></a><a href='#L324'>324</a>
+<a name='L325'></a><a href='#L325'>325</a>
+<a name='L326'></a><a href='#L326'>326</a>
+<a name='L327'></a><a href='#L327'>327</a>
+<a name='L328'></a><a href='#L328'>328</a>
+<a name='L329'></a><a href='#L329'>329</a>
+<a name='L330'></a><a href='#L330'>330</a>
+<a name='L331'></a><a href='#L331'>331</a>
+<a name='L332'></a><a href='#L332'>332</a>
+<a name='L333'></a><a href='#L333'>333</a>
+<a name='L334'></a><a href='#L334'>334</a>
+<a name='L335'></a><a href='#L335'>335</a>
+<a name='L336'></a><a href='#L336'>336</a>
+<a name='L337'></a><a href='#L337'>337</a>
+<a name='L338'></a><a href='#L338'>338</a>
+<a name='L339'></a><a href='#L339'>339</a>
+<a name='L340'></a><a href='#L340'>340</a>
+<a name='L341'></a><a href='#L341'>341</a>
+<a name='L342'></a><a href='#L342'>342</a>
+<a name='L343'></a><a href='#L343'>343</a>
+<a name='L344'></a><a href='#L344'>344</a>
+<a name='L345'></a><a href='#L345'>345</a>
+<a name='L346'></a><a href='#L346'>346</a>
+<a name='L347'></a><a href='#L347'>347</a>
+<a name='L348'></a><a href='#L348'>348</a>
+<a name='L349'></a><a href='#L349'>349</a>
+<a name='L350'></a><a href='#L350'>350</a>
+<a name='L351'></a><a href='#L351'>351</a>
+<a name='L352'></a><a href='#L352'>352</a>
+<a name='L353'></a><a href='#L353'>353</a>
+<a name='L354'></a><a href='#L354'>354</a>
+<a name='L355'></a><a href='#L355'>355</a>
+<a name='L356'></a><a href='#L356'>356</a>
+<a name='L357'></a><a href='#L357'>357</a>
+<a name='L358'></a><a href='#L358'>358</a>
+<a name='L359'></a><a href='#L359'>359</a>
+<a name='L360'></a><a href='#L360'>360</a>
+<a name='L361'></a><a href='#L361'>361</a>
+<a name='L362'></a><a href='#L362'>362</a>
+<a name='L363'></a><a href='#L363'>363</a>
+<a name='L364'></a><a href='#L364'>364</a>
+<a name='L365'></a><a href='#L365'>365</a>
+<a name='L366'></a><a href='#L366'>366</a>
+<a name='L367'></a><a href='#L367'>367</a>
+<a name='L368'></a><a href='#L368'>368</a>
+<a name='L369'></a><a href='#L369'>369</a>
+<a name='L370'></a><a href='#L370'>370</a>
+<a name='L371'></a><a href='#L371'>371</a>
+<a name='L372'></a><a href='#L372'>372</a>
+<a name='L373'></a><a href='#L373'>373</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">37x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">37x</span>
+<span class="cline-any cline-yes">9x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">28x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">24x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">20x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">16x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">12x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">9x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">6x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">9x</span>
+<span class="cline-any cline-yes">9x</span>
+<span class="cline-any cline-yes">9x</span>
+<span class="cline-any cline-yes">9x</span>
+<span class="cline-any cline-yes">9x</span>
+<span class="cline-any cline-yes">9x</span>
+<span class="cline-any cline-yes">9x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">9x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">9x</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">6x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">5x</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">9x</span>
+<span class="cline-any cline-yes">9x</span>
+<span class="cline-any cline-yes">9x</span>
+<span class="cline-any cline-yes">9x</span>
+<span class="cline-any cline-yes">9x</span>
+<span class="cline-any cline-yes">9x</span>
+<span class="cline-any cline-yes">9x</span>
+<span class="cline-any cline-yes">9x</span>
+<span class="cline-any cline-yes">9x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">6x</span>
+<span class="cline-any cline-yes">6x</span>
+<span class="cline-any cline-yes">6x</span>
+<span class="cline-any cline-yes">6x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">6x</span>
+<span class="cline-any cline-yes">6x</span>
+<span class="cline-any cline-yes">6x</span>
+<span class="cline-any cline-yes">6x</span>
+<span class="cline-any cline-yes">6x</span>
+<span class="cline-any cline-yes">6x</span>
+<span class="cline-any cline-yes">6x</span>
+<span class="cline-any cline-yes">6x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">6x</span>
+<span class="cline-any cline-yes">10x</span>
+<span class="cline-any cline-yes">6x</span>
+<span class="cline-any cline-yes">6x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">6x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">6x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">43x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">/* ─── Interview Micro-Feedback ─── */
+/* Pure function: given an answer and interview type, returns instant micro-feedback
+   and a numeric quality score for difficulty tracking. Extracted from useInterviewEngine. */
+&nbsp;
+export interface MicroFeedbackResult {
+  feedback: string | null;
+  score: number;
+}
+&nbsp;
+export function computeMicroFeedback(
+  answerText: string,
+  interviewType: string,
+  runningScores: number[],
+  negotiationPhase?: string,
+): MicroFeedbackResult {
+  const wordCount = answerText.trim().split(/\s+/).length;
+&nbsp;
+  if (interviewType === "salary-negotiation") {
+    return salaryNegFeedback(answerText, wordCount, negotiationPhase);
+  }
+  if (interviewType === "government-psu") {
+    return govPsuFeedback(answerText, wordCount);
+  }
+  if (interviewType === "teaching") {
+    return teachingFeedback(answerText, wordCount);
+  }
+  if (interviewType === "case-study") {
+    return caseStudyFeedback(answerText, wordCount);
+  }
+  if (interviewType === "hr-round") {
+    return hrRoundFeedback(answerText, wordCount);
+  }
+  if (interviewType === "management") {
+    return managementFeedback(answerText, wordCount);
+  }
+  if (interviewType === "campus-placement") {
+    return campusPlacementFeedback(answerText, wordCount);
+  }
+  return standardFeedback(answerText, wordCount, runningScores);
+}
+&nbsp;
+/* ─── Salary Negotiation (phase-aware) ─── */
+function salaryNegFeedback(text: string, wordCount: number, phase?: string): MicroFeedbackResult {
+  const mentionsNumber = /₹|lakh|lpa|lakhs|\d+\s*l(?:pa|akh)/i.test(text);
+  const mentionsBenefits = /benefit|esop|equity|bonus|flexible|remote|insurance|learning|budget/i.test(text);
+  const mentionsEquityVague = /esop|equity|stock|option|vest/i.test(text) &amp;&amp; !/₹|\d+\s*(?:lakh|lpa|%)/i.test(text);
+  const mentionsCompeting = /other offer|competing|another company|counter/i.test(text);
+  const mentionsResearch = /market|glassdoor|research|benchmark|industry|average|range|data/i.test(text);
+  const acceptsImmediately = /(?:sounds good|i accept|that works|deal|perfect|okay sure|fine with me|yes.*accept)/i.test(text) &amp;&amp; wordCount &lt; 25;
+  const rejectsOutright = /(?:way too low|not interested|can'?t accept|wouldn'?t consider|absolutely not|that'?s insulting|no way)/i.test(text);
+&nbsp;
+  let feedback: string | null = null;
+&nbsp;
+  // Universal checks first (override phase-specific)
+  if (rejectsOutright &amp;&amp; wordCount &lt; 30) {
+    feedback = "Tip: Stay open and professional — counter with data, don't reject outright.";
+  } else if (acceptsImmediately) {
+    feedback = phase === "closing"
+      ? <span class="branch-0 cbranch-no" title="branch not covered" >"Tip: Before accepting, confirm all terms — base, bonus, equity, start date."</span>
+      : "Tip: Don't accept too quickly — explore the full package first.";
+  } else if (wordCount &gt; 100) {
+    feedback = "Tip: Keep negotiation points concise — 2-3 sentences per response works best.";
+  } else if (wordCount &lt; 15) {
+    feedback = mentionsNumber
+      ? "Tip: Elaborate on your reasoning — why that number? What's your basis?"
+      : "Tip: Share more detail — what are your expectations and reasoning?";
+  <span class="missing-if-branch" title="if path not taken" >I</span>}
+  // Phase-specific feedback
+  else if (phase === "offer-reaction") {
+<span class="cstat-no" title="statement not covered" >    if (mentionsNumber) {</span>
+<span class="cstat-no" title="statement not covered" >      feedback = "Tip: In the offer phase, listen first — don't counter yet. Ask about the full package.";</span>
+<span class="cstat-no" title="statement not covered" >    } else if (mentionsBenefits) {</span>
+<span class="cstat-no" title="statement not covered" >      feedback = "Smart — asking about the full package before reacting to numbers.";</span>
+    } else {
+<span class="cstat-no" title="statement not covered" >      feedback = "Good — stay curious. Ask about equity, bonuses, and growth before countering.";</span>
+    }
+  <span class="missing-if-branch" title="if path not taken" >I</span>} else if (phase === "probe-expectations") {
+<span class="cstat-no" title="statement not covered" >    if (mentionsResearch) {</span>
+<span class="cstat-no" title="statement not covered" >      feedback = "Strong — backing your expectations with market research builds credibility.";</span>
+<span class="cstat-no" title="statement not covered" >    } else if (mentionsNumber &amp;&amp; !mentionsResearch) {</span>
+<span class="cstat-no" title="statement not covered" >      feedback = "Good anchor! Strengthen with market data — 'based on Glassdoor/industry benchmarks...'";</span>
+    } else {
+<span class="cstat-no" title="statement not covered" >      feedback = "Tip: Share a specific number backed by research — vague expectations are weaker.";</span>
+    }
+  <span class="missing-if-branch" title="if path not taken" >I</span>} else if (phase === "counter-offer") {
+<span class="cstat-no" title="statement not covered" >    if (mentionsNumber &amp;&amp; mentionsCompeting) {</span>
+<span class="cstat-no" title="statement not covered" >      feedback = "Strong counter — specific number plus leverage from competing offers.";</span>
+<span class="cstat-no" title="statement not covered" >    } else if (mentionsNumber) {</span>
+<span class="cstat-no" title="statement not covered" >      feedback = "Good counter! Mention why — market data, competing offers, or unique value you bring.";</span>
+<span class="cstat-no" title="statement not covered" >    } else if (mentionsCompeting) {</span>
+<span class="cstat-no" title="statement not covered" >      feedback = "Good leverage. Now state your specific number to anchor the negotiation.";</span>
+    } else {
+<span class="cstat-no" title="statement not covered" >      feedback = "Tip: State a specific counter-offer — 'Based on X, I'd need ₹Y LPA.'";</span>
+    }
+  <span class="missing-if-branch" title="if path not taken" >I</span>} else if (phase === "benefits-discussion") {
+<span class="cstat-no" title="statement not covered" >    if (mentionsBenefits &amp;&amp; mentionsNumber) {</span>
+<span class="cstat-no" title="statement not covered" >      feedback = "Excellent — negotiating total comp with specific numbers on benefits.";</span>
+<span class="cstat-no" title="statement not covered" >    } else if (mentionsBenefits) {</span>
+<span class="cstat-no" title="statement not covered" >      feedback = "Good topic! Push for specifics — 'What's the equity vesting schedule?' or 'How much is the joining bonus?'";</span>
+<span class="cstat-no" title="statement not covered" >    } else if (mentionsEquityVague) {</span>
+<span class="cstat-no" title="statement not covered" >      feedback = "Good interest in equity! Ask for the vesting schedule and annual value in ₹.";</span>
+    } else {
+<span class="cstat-no" title="statement not covered" >      feedback = "Tip: This is the time for total comp — equity, bonus, flexibility, learning budget.";</span>
+    }
+  <span class="missing-if-branch" title="if path not taken" >I</span>} else if (phase === "closing-pressure") {
+<span class="cstat-no" title="statement not covered" >    if (mentionsCompeting) {</span>
+<span class="cstat-no" title="statement not covered" >      feedback = "Using leverage well under pressure. Stay firm but professional.";</span>
+    } else {
+<span class="cstat-no" title="statement not covered" >      feedback = "Tip: Don't fold under deadline pressure — use BATNA or competing offers to hold your ground.";</span>
+    }
+  <span class="missing-if-branch" title="if path not taken" >I</span>} else if (phase === "closing") {
+<span class="cstat-no" title="statement not covered" >    if (mentionsBenefits &amp;&amp; mentionsNumber) {</span>
+<span class="cstat-no" title="statement not covered" >      feedback = "Strong close — confirming both comp and benefits. Get everything in writing.";</span>
+    } else {
+<span class="cstat-no" title="statement not covered" >      feedback = "Tip: Confirm all terms explicitly — base, bonus, equity, start date, notice period.";</span>
+    }
+  <span class="missing-if-branch" title="if path not taken" >I</span>}
+  // Fallback (no phase info)
+  else if (mentionsEquityVague) {
+<span class="cstat-no" title="statement not covered" >    feedback = "Good interest in equity! Ask for the vesting schedule and annual value in ₹.";</span>
+  } else if (mentionsNumber &amp;&amp; !mentionsBenefits) {
+    feedback = "Good anchor! Consider discussing beyond base — benefits, equity, flexibility.";
+  } else if (mentionsBenefits &amp;&amp; mentionsNumber) {
+    feedback = "Strong negotiation — covering both compensation and package elements.";
+  } else if (mentionsCompeting) {
+    feedback = "Using leverage well. Be careful not to bluff — stay credible.";
+<span class="cstat-no" title="statement not covered" >  <span class="missing-if-branch" title="else path not taken" >E</span>} else if (wordCount &gt;= 30) {</span>
+<span class="cstat-no" title="statement not covered" >    feedback = "Good response — clear and substantive.";</span>
+  }
+&nbsp;
+  let score = 50;
+  if (mentionsNumber) score += 15;
+  if (mentionsBenefits) score += 15;
+  if (mentionsResearch) score += 10;
+  if (wordCount &gt;= 30) score += 10;
+  if (!acceptsImmediately &amp;&amp; !rejectsOutright) score += 10;
+  if (rejectsOutright) score -= 10;
+  if (wordCount &lt; 15) score -= 15;
+  return { feedback, score: clamp(score) };
+}
+&nbsp;
+/* ─── Government / PSU ─── */
+function govPsuFeedback(text: string, wordCount: number): MicroFeedbackResult {
+  const mentionsPolicy = /policy|scheme|act|bill|amendment|article|constitution|nep|dpdp|rti|panchayat|niti aayog|budget/i.test(text);
+  const mentionsEthics = /ethic|integrity|transparen|accountab|corrupt|honest|impartial|fair|justice|public interest/i.test(text);
+  const isBalanced = /however|on the other hand|while|although|both|balance|trade-?off|at the same time/i.test(text);
+  const mentionsGovt = /government|ministry|department|district|collector|ias|ips|upsc|commission|committee|parliament/i.test(text);
+&nbsp;
+  let score = 50;
+  if (wordCount &gt;= 50) score += 10;
+  if (mentionsPolicy) score += 15;
+  if (mentionsEthics) score += 10;
+  if (isBalanced) score += 10;
+  if (mentionsGovt) score += 5;
+  if (wordCount &lt; 30) score -= 15;
+&nbsp;
+  let feedback: string | null;
+  if (wordCount &lt; 30) {
+    feedback = "Elaborate more — government interviews expect detailed, well-reasoned answers.";
+  } else if (!mentionsPolicy &amp;&amp; !mentionsEthics) {
+    feedback = "Tip: Reference specific policies, schemes, or constitutional provisions to strengthen your answer.";
+  } else if (!isBalanced) {
+    feedback = "Good points! Present a balanced perspective — acknowledge trade-offs and multiple viewpoints.";
+  } else if (mentionsPolicy &amp;&amp; isBalanced) {
+    feedback = "Strong answer — policy-aware and balanced. Well articulated.";
+  } else <span class="missing-if-branch" title="else path not taken" >E</span>{
+<span class="cstat-no" title="statement not covered" >    feedback = "Good response — clear reasoning and relevant context.";</span>
+  }
+  return { feedback, score: clamp(score) };
+}
+&nbsp;
+/* ─── Teaching ─── */
+function teachingFeedback(text: string, wordCount: number): MicroFeedbackResult {
+  const mentionsStudents = /student|learner|child|classroom|class|pupil/i.test(text);
+  const mentionsPedagogy = /pedagogy|curriculum|lesson plan|assessment|learning objective|differentiat|scaffold|bloom|formative|summative|inclusive|engagement/i.test(text);
+  const mentionsExample = /for example|for instance|in my class|when I taught|one time|in a lesson/i.test(text);
+  const mentionsTech = /technology|digital|online|app|video|interactive|smart board|gamif/i.test(text);
+&nbsp;
+  let score = 50;
+  if (wordCount &gt;= 50) score += 10;
+  if (mentionsStudents) score += 10;
+  if (mentionsPedagogy) score += 15;
+  if (mentionsExample) score += 10;
+  if (mentionsTech) score += 5;
+  if (wordCount &lt; 30) score -= 15;
+&nbsp;
+  let feedback: string | null;
+  if (wordCount &lt; 30) {
+    feedback = "Elaborate more — describe your approach and reasoning with examples.";
+  } else if (!mentionsStudents &amp;&amp; !mentionsPedagogy) {
+    feedback = "Tip: Center your answer on student outcomes — how does this approach help learners?";
+  } else if (!mentionsExample) {
+    feedback = "Good thinking! Add a specific classroom example to make it concrete.";
+  } else if (mentionsPedagogy &amp;&amp; mentionsExample) {
+    feedback = "Excellent — practical, student-centered, and well-supported with examples.";
+  } else <span class="missing-if-branch" title="else path not taken" >E</span>{
+<span class="cstat-no" title="statement not covered" >    feedback = "Good answer — clear and student-focused.";</span>
+  }
+  return { feedback, score: clamp(score) };
+}
+&nbsp;
+/* ─── Case Study ─── */
+function caseStudyFeedback(text: string, wordCount: number): MicroFeedbackResult {
+  const hasFramework = /framework|hypothesis|assumption|estimate|segment|prioriti|trade-?off|constraint|root cause|funnel|cohort|a\/b test/i.test(text);
+  const hasStructure = /first|second|third|step \d|approach.*would be|i would start/i.test(text);
+  const hasData = /\d+%|\d+x|₹[\d,]+|\$[\d,]+|\d+ (users|customers|million|crore|lakh)/i.test(text);
+  const hasRecommendation = /recommend|suggest|conclusion|therefore|my proposal|i would choose|the best option/i.test(text);
+&nbsp;
+  let score = 50;
+  if (wordCount &gt;= 50) score += 10;
+  if (hasFramework) score += 15;
+  if (hasStructure) score += 10;
+  if (hasData) score += 10;
+  if (hasRecommendation) score += 5;
+  if (wordCount &lt; 30) score -= 15;
+&nbsp;
+  let feedback: string | null;
+  if (wordCount &lt; 30) {
+    feedback = "Case studies need structured thinking — walk through your approach step by step.";
+  } else if (!hasFramework &amp;&amp; !hasStructure) {
+    feedback = "Tip: Structure your answer — state your hypothesis, break down the problem, then recommend.";
+  } else if (!hasData &amp;&amp; hasStructure) {
+    feedback = "Good structure! Strengthen with data estimates or metrics to support your reasoning.";
+  <span class="missing-if-branch" title="if path not taken" >I</span>} else if (!hasRecommendation) {
+<span class="cstat-no" title="statement not covered" >    feedback = "Good analysis! Close with a clear recommendation and expected impact.";</span>
+  } else if (hasFramework &amp;&amp; hasData) {
+    feedback = "Excellent — structured, data-backed, with a clear recommendation.";
+  } else <span class="missing-if-branch" title="else path not taken" >E</span>{
+<span class="cstat-no" title="statement not covered" >    feedback = "Good analysis — logical and well-reasoned.";</span>
+  }
+  return { feedback, score: clamp(score) };
+}
+&nbsp;
+/* ─── HR Round ─── */
+function hrRoundFeedback(text: string, wordCount: number): MicroFeedbackResult {
+  const showsSelfAwareness = /strength|weakness|learned|realized|improved|growth|feedback|reflect/i.test(text);
+  const showsMotivation = /passion|motivat|excit|interest|driven|purpose|goal|aspir|value/i.test(text);
+  const showsCulturalFit = /team|collaborat|culture|value|inclusive|diverse|together|support/i.test(text);
+  const isAuthentic = /honestly|personally|I believe|I feel|for me|in my experience/i.test(text);
+  const hasFirstPerson = /\bI\b/.test(text);
+&nbsp;
+  let score = 50;
+  if (wordCount &gt;= 40) score += 10;
+  if (showsSelfAwareness) score += 15;
+  if (showsMotivation) score += 10;
+  if (showsCulturalFit) score += 5;
+  <span class="missing-if-branch" title="if path not taken" >I</span>if (isAuthentic) <span class="cstat-no" title="statement not covered" >score += 5;</span>
+  if (hasFirstPerson) score += 5;
+  if (wordCount &lt; 25) score -= 15;
+&nbsp;
+  let feedback: string | null;
+  if (wordCount &lt; 25) {
+    feedback = "HR rounds value thoughtful answers — share your genuine perspective and reasoning.";
+  } else if (!showsSelfAwareness &amp;&amp; !showsMotivation) {
+    feedback = "Tip: Show self-awareness — reflect on what drives you and how you've grown.";
+  } else if (!showsCulturalFit) {
+    feedback = "Good answer! Connect it to teamwork or the company's values for cultural fit.";
+  } else if (showsSelfAwareness &amp;&amp; showsMotivation) {
+    feedback = "Great — authentic, self-aware, and clearly motivated.";
+  } else <span class="missing-if-branch" title="else path not taken" >E</span>{
+<span class="cstat-no" title="statement not covered" >    feedback = "Good answer — genuine and well-articulated.";</span>
+  }
+  return { feedback, score: clamp(score) };
+}
+&nbsp;
+/* ─── Management ─── */
+function managementFeedback(text: string, wordCount: number): MicroFeedbackResult {
+  const mentionsPeople = /team|report|member|hire|coach|mentor|delegate|1[:-]1|one-on-one|performance|feedback/i.test(text);
+  const mentionsScale = /\d+\s*(people|engineers|reports|members|team)|scaled|grew|built.*team/i.test(text);
+  const hasOutcome = /result|outcome|impact|improved|reduced|achieved|delivered|shipped/i.test(text);
+  const mentionsProcess = /process|framework|standup|retro|sprint|okr|kpi|metric|cadence|ritual/i.test(text);
+&nbsp;
+  let score = 50;
+  if (wordCount &gt;= 50) score += 10;
+  if (mentionsPeople) score += 15;
+  <span class="missing-if-branch" title="if path not taken" >I</span>if (mentionsScale) <span class="cstat-no" title="statement not covered" >score += 10;</span>
+  if (hasOutcome) score += 10;
+  if (mentionsProcess) score += 5;
+  if (wordCount &lt; 30) score -= 15;
+&nbsp;
+  let feedback: string | null;
+  if (wordCount &lt; 30) {
+    feedback = "Management answers need depth — describe your approach and its impact on the team.";
+  } else if (!mentionsPeople) {
+    feedback = "Tip: Center on people — how did your approach affect your team, reports, or stakeholders?";
+  <span class="missing-if-branch" title="if path not taken" >I</span>} else if (!mentionsScale &amp;&amp; !hasOutcome) {
+<span class="cstat-no" title="statement not covered" >    feedback = "Good people focus! Add team size and measurable outcomes to show impact.";</span>
+  } else if (mentionsPeople &amp;&amp; hasOutcome) {
+    feedback = "Strong — people-focused with clear outcomes. Well articulated.";
+  } else <span class="missing-if-branch" title="else path not taken" >E</span>{
+<span class="cstat-no" title="statement not covered" >    feedback = "Good answer — clear leadership thinking.";</span>
+  }
+  return { feedback, score: clamp(score) };
+}
+&nbsp;
+/* ─── Campus Placement ─── */
+function campusPlacementFeedback(text: string, wordCount: number): MicroFeedbackResult {
+  const mentionsProject = /project|built|developed|created|designed|implemented|hackathon|internship/i.test(text);
+  const hasLearning = /learned|realized|taught me|takeaway|improved|grew|mistake|challenge/i.test(text);
+  const hasClarity = /because|reason|approach|decided|goal|objective/i.test(text);
+  const hasFirstPerson = /\bI\b/.test(text);
+&nbsp;
+  let score = 50;
+  if (wordCount &gt;= 40) score += 10;
+  if (mentionsProject) score += 15;
+  if (hasLearning) score += 10;
+  <span class="missing-if-branch" title="if path not taken" >I</span>if (hasClarity) <span class="cstat-no" title="statement not covered" >score += 10;</span>
+  <span class="missing-if-branch" title="else path not taken" >E</span>if (hasFirstPerson) score += 5;
+  if (wordCount &lt; 20) score -= 10;
+&nbsp;
+  let feedback: string | null;
+  if (wordCount &lt; 20) {
+    feedback = "Try to say a bit more — even briefly describing your approach helps.";
+  } else if (!mentionsProject &amp;&amp; !hasLearning) {
+    feedback = "Tip: Reference a specific project or experience — concrete examples are powerful.";
+  <span class="missing-if-branch" title="if path not taken" >I</span>} else if (!hasLearning) {
+<span class="cstat-no" title="statement not covered" >    feedback = "Good example! Share what you learned or how the experience shaped your thinking.";</span>
+  } else if (mentionsProject &amp;&amp; hasLearning) {
+    feedback = "Great answer — specific, reflective, and shows your growth mindset.";
+  } else <span class="missing-if-branch" title="else path not taken" >E</span>{
+<span class="cstat-no" title="statement not covered" >    feedback = "Good answer — clear and well-communicated.";</span>
+  }
+  return { feedback, score: clamp(score) };
+}
+&nbsp;
+/* ─── Standard (behavioral / technical / strategic / panel) ─── */
+function standardFeedback(text: string, wordCount: number, runningScores: number[]): MicroFeedbackResult {
+  const hasMetrics = /\d+%|\$\d|[0-9]+x|[0-9]+ (users|customers|engineers|people)/i.test(text);
+  const hasStructure = /first|second|then|finally|result|outcome|impact/i.test(text);
+  const hasFirstPerson = /\bI\b/i.test(text);
+  const hasCounterfactual = /without|otherwise|if.*not|had.*not|wouldn't/i.test(text);
+&nbsp;
+  let score = 50;
+  if (wordCount &gt;= 50) score += 10;
+  if (wordCount &gt;= 100) score += 5;
+  if (hasMetrics) score += 15;
+  if (hasStructure) score += 10;
+  if (hasFirstPerson) score += 5;
+  if (hasCounterfactual) score += 5;
+  if (wordCount &lt; 30) score -= 15;
+&nbsp;
+  const allScores = [...runningScores, clamp(score)];
+  const runningAvg = allScores.length &gt; 0 ? Math.round(allScores.reduce((a, b) =&gt; a + b, 0) / allScores.length) : <span class="branch-1 cbranch-no" title="branch not covered" >50;</span>
+  const isExcelling = runningAvg &gt;= 80 &amp;&amp; allScores.length &gt;= 2;
+  const isStruggling = runningAvg &lt; 50 &amp;&amp; allScores.length &gt;= 2;
+&nbsp;
+  let feedback: string | null;
+  if (wordCount &lt; 30) {
+    feedback = isStruggling
+      ? "Try to say more — even 2-3 sentences about the situation helps."
+      : "Try to elaborate more — aim for 60+ seconds per answer.";
+  <span class="missing-if-branch" title="if path not taken" >I</span>} else if (!hasMetrics &amp;&amp; <span class="branch-1 cbranch-no" title="branch not covered" >!hasStructure) {</span>
+<span class="cstat-no" title="statement not covered" >    feedback = isExcelling</span>
+      ? "Good content — push further with specific metrics and counterfactual reasoning."
+      : "Good start! Try adding specific metrics and structuring with STAR.";
+  <span class="missing-if-branch" title="if path not taken" >I</span>} else if (!hasMetrics) {
+<span class="cstat-no" title="statement not covered" >    feedback = isExcelling</span>
+      ? "Nice structure! Add quantified impact — '$X revenue', '30% faster', etc."
+      : "Nice structure! Strengthen with specific numbers or metrics.";
+  <span class="missing-if-branch" title="if path not taken" >I</span>} else if (!hasStructure) {
+<span class="cstat-no" title="statement not covered" >    feedback = "Great data! Try structuring as Situation → Action → Result.";</span>
+  } else if (isExcelling &amp;&amp; !hasCounterfactual) {
+    feedback = "Strong answer! Next level: add counterfactual reasoning — 'Without this, X would have happened.'";
+  } else {
+    feedback = isExcelling ? <span class="branch-0 cbranch-no" title="branch not covered" >"Excellent — specific, structured, and impactful." : "</span>Strong answer — specific and well-structured.";
+  }
+  return { feedback, score: clamp(score) };
+}
+&nbsp;
+function clamp(score: number): number {
+  return Math.min(100, Math.max(0, score));
+}
+&nbsp;</pre></td></tr></table></pre>
+
+                <div class='push'></div><!-- for sticky footer -->
+            </div><!-- /wrapper -->
+            <div class='footer quiet pad2 space-top1 center small'>
+                Code coverage generated by
+                <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
+                at 2026-04-24T08:50:45.518Z
+            </div>
+        <script src="../prettify.js"></script>
+        <script>
+            window.onload = function () {
+                prettyPrint();
+            };
+        </script>
+        <script src="../sorter.js"></script>
+        <script src="../block-navigation.js"></script>
+    </body>
+</html>
+    
