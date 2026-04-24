@@ -13,14 +13,18 @@ export interface FeatureFlag {
   description?: string;
 }
 
-export const FLAGS: Record<string, FeatureFlag> = {
-  RESUME_GAP_COACHING: { name: "RESUME_GAP_COACHING", enabled: false, description: "Show resume gap analysis in interview coaching" },
-  TRANSCRIPT_EDIT:     { name: "TRANSCRIPT_EDIT",     enabled: false, description: "Allow users to edit STT transcript before submission" },
-  SUPPORT_WIDGET:      { name: "SUPPORT_WIDGET",      enabled: false, description: "Show floating support widget in dashboard" },
-  DARK_LIGHT_TOGGLE:   { name: "DARK_LIGHT_TOGGLE",   enabled: false, description: "Enable dark/light mode toggle" },
-  REFERRAL_DASHBOARD:  { name: "REFERRAL_DASHBOARD",   enabled: true,  description: "Show referral program in dashboard" },
-  VIDEO_PLAYBACK:      { name: "VIDEO_PLAYBACK",       enabled: false, description: "Enable session video playback" },
-};
+/**
+ * Runtime feature flags. Register new flags here and check with
+ * `isEnabled(flagName, user?.id)` at the call site.
+ *
+ * Declared flags must have a real consumer — unused entries rot and confuse
+ * future readers into thinking a feature exists when it doesn't. Previous
+ * entries (RESUME_GAP_COACHING, TRANSCRIPT_EDIT, SUPPORT_WIDGET,
+ * DARK_LIGHT_TOGGLE, REFERRAL_DASHBOARD, VIDEO_PLAYBACK) were removed — all
+ * six were declared but never checked in any component, so they only served
+ * to suggest unreleased features that didn't exist. Re-add when shipping.
+ */
+export const FLAGS: Record<string, FeatureFlag> = {};
 
 /* ─── Hash for percentage rollout ─── */
 /* FNV-1a 32-bit hash mod 100 — fast, well-distributed, deterministic */
@@ -83,8 +87,8 @@ export function clearOverrides(): void {
 
 /* ─── Browser console access ─── */
 /* Devs can open the console and use:
-     window.__FF.overrideFlag('TRANSCRIPT_EDIT', true)
-     window.__FF.isEnabled('DARK_LIGHT_TOGGLE')
+     window.__FF.overrideFlag('EXAMPLE_FLAG', true)
+     window.__FF.isEnabled('EXAMPLE_FLAG')
      window.__FF.getEnabledFlags()
      window.__FF.clearOverrides()
      window.__FF.FLAGS                                  */

@@ -4,6 +4,7 @@ import { c, font } from "./tokens";
 import { scoreLabel, scoreLabelColor } from "./dashboardTypes";
 import type { DashboardSession } from "./dashboardTypes";
 import { FREE_SESSION_LIMIT, STARTER_WEEKLY_LIMIT, PRO_MONTHLY_LIMIT } from "./dashboardData";
+import { SectionErrorBoundary } from "./ErrorBoundary";
 
 // MVP results report — lazy-loaded so the legacy view still ships in bundles
 // where the flag is off.
@@ -679,7 +680,14 @@ export const SessionDetailView = memo(function SessionDetailView({ session, onBa
   // layout otherwise (keeps the rollout safe + reversible).
   const transcriptLen = (session.transcript || []).filter((t) => t.text && t.text.trim().length > 0).length;
   if (RESULTS_REPORT_MVP_ENABLED && transcriptLen >= 2) {
-    return <SessionReportView session={session} onBack={onBack} />;
+    // Wrap so a crash during evaluation (bad LLM payload, shape drift, etc.)
+    // doesn't replace the whole dashboard with a blank screen — user gets a
+    // retry button and stays in the dashboard shell.
+    return (
+      <SectionErrorBoundary label="results report">
+        <SessionReportView session={session} onBack={onBack} />
+      </SectionErrorBoundary>
+    );
   }
 
   return (

@@ -1040,8 +1040,12 @@ export async function fetchRecentSessionScores(limit = 10): Promise<SessionTrend
     .order("created_at", { ascending: false })
     .limit(limit);
   if (error) {
+    // Throw so callers can surface the failure. Previously we returned [] here,
+    // which made a DB outage indistinguishable from "user has no sessions" in
+    // the UI. The sparkline caller already has a silent-catch for this; any
+    // new caller needs to handle the rejection explicitly.
     console.warn("[fetchRecentSessionScores] query failed:", error.message);
-    return [];
+    throw new Error(error.message || "Failed to load session history");
   }
   const rows = (data || []) as Array<{ id: string; created_at: string; score: number }>;
   return rows
@@ -1122,8 +1126,10 @@ export async function fetchStoryNotebook(): Promise<StoryNotebookRow[]> {
     .order("created_at", { ascending: false })
     .limit(200);
   if (error) {
+    // Throw — StoryNotebookPage can't tell an empty notebook from a failed
+    // fetch otherwise. Returning [] silently hid DB outages.
     console.warn("[fetchStoryNotebook] query failed:", error.message);
-    return [];
+    throw new Error(error.message || "Failed to load your Story Notebook");
   }
   const now = Date.now();
   const rows = (data || []) as Array<{
@@ -1165,7 +1171,12 @@ export async function markStoryReviewed(storyId: string): Promise<void> {
     .from("story_notebook")
     .update({ last_used_at: new Date().toISOString() })
     .eq("id", storyId);
-  if (error) console.warn("[markStoryReviewed] update failed:", error.message);
+  if (error) {
+    // Throw so the Review button state can roll back / surface a toast.
+    // Silent fail previously left last_used_at stale with no user feedback.
+    console.warn("[markStoryReviewed] update failed:", error.message);
+    throw new Error(error.message || "Could not mark as reviewed");
+  }
 }
 
 /** Delete a story — user-controlled. */

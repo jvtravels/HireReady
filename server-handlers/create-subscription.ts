@@ -45,9 +45,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   let authenticatedUserId: string | undefined;
   const authToken = (req.headers.authorization || "").replace("Bearer ", "");
   if (authToken && SUPABASE_URL && SUPABASE_ANON_KEY) {
-    const authRes = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
-      headers: { Authorization: `Bearer ${authToken}`, apikey: SUPABASE_ANON_KEY },
-    });
+    // 5s timeout: if Supabase auth hangs the entire checkout flow hangs. The
+    // sibling handlers (delete-account.ts, verify-payment.ts) already wrap
+    // their auth fetches; this one didn't, so a Supabase blip took the whole
+    // upgrade path down instead of a fast 503.
+    const ac = new AbortController();
+    const timer = setTimeout(() => ac.abort(), 5_000);
+    let authRes: Response;
+    try {
+      authRes = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+        headers: { Authorization: `Bearer ${authToken}`, apikey: SUPABASE_ANON_KEY },
+        signal: ac.signal,
+      });
+    } catch (e) {
+      clearTimeout(timer);
+      const aborted = (e as { name?: string })?.name === "AbortError";
+      return res.status(aborted ? 504 : 502).json({
+        error: aborted ? "Authentication service timed out. Please try again." : "Authentication service unavailable",
+      });
+    }
+    clearTimeout(timer);
     if (!authRes.ok) return res.status(401).json({ error: "Unauthorized" });
     try {
       const userData = await authRes.json();

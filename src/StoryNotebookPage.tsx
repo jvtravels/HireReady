@@ -23,11 +23,23 @@ export default function StoryNotebookPage() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [tab, setTab] = useState<FilterTab>("due");
+  // Tracks the last fetch error so we can render an inline retry panel instead
+  // of leaving the page in a misleading empty state when the DB is unreachable.
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    const data = await fetchStoryNotebook();
-    setRows(data);
-  }, []);
+    try {
+      const data = await fetchStoryNotebook();
+      setRows(data);
+      setLoadError(null);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Could not load your Story Notebook.";
+      setLoadError(msg);
+      // Leave rows as-is so a transient failure after a successful load still
+      // shows the last-known-good list underneath the error banner.
+      if (rows === null) setRows([]);
+    }
+  }, [rows]);
 
   useEffect(() => { load(); track("notebook_viewed"); }, [load]);
 
@@ -46,6 +58,10 @@ export default function StoryNotebookPage() {
       await markStoryReviewed(id);
       track("notebook_story_reviewed", { storyId: id });
       await load();
+    } catch (err) {
+      // Surface the failure — previously this was silent.
+      const msg = err instanceof Error ? err.message : "Could not mark as reviewed.";
+      setLoadError(msg);
     } finally {
       setBusyId(null);
     }
@@ -75,6 +91,24 @@ export default function StoryNotebookPage() {
           Stories you haven't reviewed in a week rise to the top.
         </p>
       </div>
+
+      {loadError && (
+        <div role="alert" style={{
+          marginBottom: 20, padding: "12px 16px", borderRadius: 10,
+          background: "rgba(196,112,90,0.06)", border: "1px solid rgba(196,112,90,0.2)",
+          display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12,
+        }}>
+          <span style={{ fontFamily: font.ui, fontSize: 13, color: c.stone }}>{loadError}</span>
+          <button
+            onClick={() => load()}
+            style={{
+              fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: c.gilt,
+              background: "transparent", border: `1px solid rgba(212,179,127,0.3)`,
+              borderRadius: 8, padding: "6px 12px", cursor: "pointer",
+            }}
+          >Retry</button>
+        </div>
+      )}
 
       {/* Tabs */}
       <div role="tablist" aria-label="Story filters" style={{

@@ -10,6 +10,7 @@ import {
 import { useInterviewEngine } from "./useInterviewEngine";
 import { useVideoRecorder } from "./useVideoRecorder";
 import { InterviewProvider } from "./InterviewContext";
+import ErrorBoundary from "./ErrorBoundary";
 
 /* ═══════════════════════════════════════════════
    INTERVIEW SCREEN
@@ -36,7 +37,22 @@ function addInterviewPreconnects() {
   }
 }
 
+/**
+ * Top-level wrapper: any unhandled throw from the interview engine, TTS, STT,
+ * evaluator, or a render-time null-deref propagates into this boundary instead
+ * of unmounting the page with a blank screen. The boundary's fallback UI gives
+ * the user a "Start over / Go to dashboard" path, and logs the error to
+ * /api/log-error so we see these in production.
+ */
 export default function Interview() {
+  return (
+    <ErrorBoundary>
+      <InterviewInner />
+    </ErrorBoundary>
+  );
+}
+
+function InterviewInner() {
   useEffect(() => { addInterviewPreconnects(); }, []);
   const engine = useInterviewEngine();
   const video = useVideoRecorder();
