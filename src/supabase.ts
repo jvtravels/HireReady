@@ -127,6 +127,8 @@ export interface Profile {
   razorpay_subscription_id: string | null;
   referral_code: string | null;
   referred_by: string | null;
+  session_credits: number | null;
+  last_streak_reward_day: number | null;
   created_at: string;
 }
 

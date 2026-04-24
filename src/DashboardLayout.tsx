@@ -201,6 +201,19 @@ export default function DashboardLayout({ children }: { children?: React.ReactNo
           <p style={{ fontFamily: font.ui, fontSize: 11, color: (isFree && sessionsRemaining <= 1 && sessionsRemaining > 0) || (isStarter && starterRemaining <= 2 && starterRemaining > 0) ? c.ember : c.stone, lineHeight: 1.5, marginBottom: user?.subscriptionEnd && !isFree ? 4 : 10, fontWeight: (isFree && sessionsRemaining <= 1) || (isStarter && starterRemaining <= 2) ? 600 : 400 }}>
             {isPro ? "Unlimited sessions" : isStarter ? `${starterRemaining} of ${STARTER_WEEKLY_LIMIT} sessions left this week${starterRemaining <= 2 && starterRemaining > 0 ? " — running low!" : ""}` : sessionsRemaining > 0 ? `${sessionsRemaining} of ${FREE_SESSION_LIMIT} session${sessionsRemaining !== 1 ? "s" : ""} remaining${sessionsRemaining === 1 ? " — last one!" : ""}` : "No sessions remaining — upgrade to continue"}
           </p>
+          {/* Bonus credits from streak milestones, referrals, or single-session purchases.
+              Only shown when there's something to celebrate — suppress if 0. Hidden for
+              Pro (unlimited, credits irrelevant). */}
+          {!isPro && (user?.sessionCredits ?? 0) > 0 && (
+            <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 10px", marginBottom: 10, borderRadius: 8, background: "rgba(122,158,126,0.10)", border: `1px solid rgba(122,158,126,0.22)` }}>
+              <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={c.sage} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+              </svg>
+              <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.sage }}>
+                +{user?.sessionCredits} bonus session{(user?.sessionCredits ?? 0) !== 1 ? "s" : ""}
+              </span>
+            </div>
+          )}
           {user?.subscriptionEnd && !isFree && (
             <p style={{ fontFamily: font.ui, fontSize: 10, color: c.stone, opacity: 0.7, marginBottom: 10 }}>
               Renews {new Date(user.subscriptionEnd).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}

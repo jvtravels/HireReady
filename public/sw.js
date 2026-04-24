@@ -2,7 +2,7 @@
 
 // Bump this string on intentional SW changes to force clients to swap in the new version
 // (Vercel doesn't substitute __BUILD_TS__, so we version manually.)
-const SW_VERSION = "v3-2026-04-23";
+const SW_VERSION = "v4-2026-04-24";
 const CACHE_NAME = `hirestepx-${SW_VERSION}`;
 
 self.addEventListener("install", (event) => {

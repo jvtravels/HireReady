@@ -18,7 +18,7 @@ export const FLAGS: Record<string, FeatureFlag> = {
   TRANSCRIPT_EDIT:     { name: "TRANSCRIPT_EDIT",     enabled: false, description: "Allow users to edit STT transcript before submission" },
   SUPPORT_WIDGET:      { name: "SUPPORT_WIDGET",      enabled: false, description: "Show floating support widget in dashboard" },
   DARK_LIGHT_TOGGLE:   { name: "DARK_LIGHT_TOGGLE",   enabled: false, description: "Enable dark/light mode toggle" },
-  REFERRAL_DASHBOARD:  { name: "REFERRAL_DASHBOARD",   enabled: false, description: "Show referral program in dashboard" },
+  REFERRAL_DASHBOARD:  { name: "REFERRAL_DASHBOARD",   enabled: true,  description: "Show referral program in dashboard" },
   VIDEO_PLAYBACK:      { name: "VIDEO_PLAYBACK",       enabled: false, description: "Enable session video playback" },
 };
 
