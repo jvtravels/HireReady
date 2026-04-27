@@ -19,7 +19,7 @@ import {
   type SessionReportReadiness,
   type SessionTrendPoint,
 } from "./dashboardData";
-import { getCohortAverage, type RoleFamily } from "./roleBenchmarks";
+import { fetchLiveCohort, resolveCohort, type LiveCohort, type RoleFamily } from "./roleBenchmarks";
 import { detectBias, countBias, BIAS_LABELS, type BiasPatternKind } from "./biasDetector";
 import { useAuth } from "./AuthContext";
 
@@ -300,24 +300,39 @@ function bandForPace(v: number) { return v >= 140 && v <= 180 ? "green" : (v >= 
 function bandForEnergy(v: number) { return v >= 60 ? "green" : v >= 40 ? "amber" : "red"; }
 
 /** Skill bar — user score + cohort average overlay (static priors from roleBenchmarks). */
-function SkillBar({ name, score, cohortAvg }: { name: string; score: number; cohortAvg: number | null }) {
+function SkillBar({ name, score, cohort }: {
+  name: string;
+  score: number;
+  cohort: { avg: number; n: number; live: boolean } | null;
+}) {
   const pct = Math.max(0, Math.min(100, score));
   const barColor = pct >= 70 ? c.sage : pct >= 50 ? c.gilt : c.ember;
-  const delta = cohortAvg != null ? pct - cohortAvg : null;
+  const delta = cohort != null ? pct - cohort.avg : null;
+  // Tooltip explains both the numeric average and whether it's a live aggregate
+  // or a seed prior. Helps users trust the comparison.
+  const cohortTitle = cohort
+    ? cohort.live
+      ? `Cohort average ${cohort.avg} from ${cohort.n} recent sessions (live)`
+      : `Cohort average ${cohort.avg} (seed estimate — collecting live data)`
+    : "";
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
         <span style={{ fontFamily: font.ui, fontSize: 13, fontWeight: 500, color: c.ivory }}>{name}</span>
         <div style={{ display: "inline-flex", alignItems: "baseline", gap: 8 }}>
-          {delta != null && (
+          {delta != null && cohort && (
             <span
               style={{
                 fontFamily: font.mono, fontSize: 10, fontWeight: 600,
                 color: delta >= 0 ? c.sage : c.ember,
+                opacity: cohort.live ? 1 : 0.7,
               }}
-              title={`Cohort average: ${cohortAvg}`}
+              title={cohortTitle}
             >
               {delta >= 0 ? "+" : ""}{delta} vs avg
+              {cohort.live && cohort.n > 0 && (
+                <span style={{ color: c.stone, marginLeft: 4 }}>· n={cohort.n}</span>
+              )}
             </span>
           )}
           <span style={{ fontFamily: font.mono, fontSize: 13, fontWeight: 600, color: barColor }}>{pct}</span>
@@ -325,13 +340,14 @@ function SkillBar({ name, score, cohortAvg }: { name: string; score: number; coh
       </div>
       <div style={{ position: "relative", height: 6, background: "rgba(245,242,237,0.05)", borderRadius: 3, overflow: "hidden" }}>
         <div style={{ width: `${pct}%`, height: "100%", background: barColor, borderRadius: 3, transition: "width 600ms ease" }} />
-        {cohortAvg != null && (
+        {cohort != null && (
           <span
-            aria-label={`cohort average marker at ${cohortAvg}`}
+            aria-label={`cohort average marker at ${cohort.avg}`}
+            title={cohortTitle}
             style={{
               position: "absolute", top: -2, bottom: -2,
-              left: `${cohortAvg}%`, width: 1.5,
-              background: "rgba(245,242,237,0.45)",
+              left: `${cohort.avg}%`, width: 1.5,
+              background: cohort.live ? "rgba(245,242,237,0.55)" : "rgba(245,242,237,0.3)",
               borderRadius: 1,
             }}
           />
@@ -690,6 +706,7 @@ export const SessionReportView = memo(function SessionReportView({
   // Bumping this value re-runs the evaluate effect — used by the retry button.
   const [reloadTick, setReloadTick] = useState(0);
   const [trend, setTrend] = useState<SessionTrendPoint[]>([]);
+  const [liveCohort, setLiveCohort] = useState<LiveCohort | null>(null);
   const [trustAnswer, setTrustAnswer] = useState<"yes" | "no" | null>(null);
   const [usefulAnswer, setUsefulAnswer] = useState<"yes" | "no" | null>(null);
 
@@ -786,6 +803,11 @@ export const SessionReportView = memo(function SessionReportView({
     fetchRecentSessionScores(10)
       .then((points) => { if (!cancelled) setTrend(points); })
       .catch(() => { /* sparkline is optional — silent fail */ });
+    // Live cohort averages: 60-day rolling aggregate. Falls back to seed
+    // priors silently if the sample is too small.
+    fetchLiveCohort()
+      .then((cohort) => { if (!cancelled) setLiveCohort(cohort); })
+      .catch(() => { /* cohort overlay is optional — seed priors take over */ });
     return () => { cancelled = true; };
   }, [session.id]);
 
@@ -1107,14 +1129,22 @@ export const SessionReportView = memo(function SessionReportView({
                 <h2 className="sr-section-h" style={{ color: c.ivory, border: "none", padding: 0, margin: 0, fontFamily: font.ui, fontSize: 18, fontWeight: 700 }}>
                   Skills Breakdown
                 </h2>
-                <span style={{ fontFamily: font.ui, fontSize: 10, color: c.stone, display: "inline-flex", alignItems: "center", gap: 6 }}>
-                  <span aria-hidden="true" style={{ display: "inline-block", width: 1.5, height: 10, background: "rgba(245,242,237,0.45)" }} />
+                <span
+                  title={liveCohort && liveCohort.totalSessions > 0
+                    ? `Cohort averages from ${liveCohort.totalSessions} recent sessions, updated ${new Date(liveCohort.lastUpdated).toLocaleDateString()}`
+                    : "Cohort averages — collecting more data"}
+                  style={{ fontFamily: font.ui, fontSize: 10, color: c.stone, display: "inline-flex", alignItems: "center", gap: 6 }}
+                >
+                  <span aria-hidden="true" style={{ display: "inline-block", width: 1.5, height: 10, background: "rgba(245,242,237,0.55)" }} />
                   cohort avg
+                  {liveCohort && liveCohort.totalSessions > 0 && (
+                    <span style={{ color: c.sage, fontWeight: 600 }}>· LIVE</span>
+                  )}
                 </span>
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                 {report.skills.map((s) => (
-                  <SkillBar key={s.name} name={s.name} score={s.score} cohortAvg={getCohortAverage(roleFamily, s.name)} />
+                  <SkillBar key={s.name} name={s.name} score={s.score} cohort={resolveCohort(liveCohort, roleFamily, s.name)} />
                 ))}
               </div>
             </div>
