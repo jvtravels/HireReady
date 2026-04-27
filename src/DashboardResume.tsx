@@ -314,12 +314,12 @@ export default function DashboardResume() {
         const client = await getSupabase();
         const { data, error } = await client
           .from("resumes")
-          .select("id, domain, title, active_version_id, updated_at, is_archived, resume_versions(id, version_number, parsed_data, is_latest)")
+          .select("id, domain, title, active_version_id, updated_at, is_archived, resume_versions(id, version_number, parsed_data, is_latest, file_name)")
           .eq("user_id", user.id)
           .eq("is_archived", false)
           .order("updated_at", { ascending: false });
         if (cancelled || error || !Array.isArray(data)) return;
-        type VersionRow = { id: string; version_number: number; parsed_data: ResumeProfile | null; is_latest: boolean };
+        type VersionRow = { id: string; version_number: number; parsed_data: ResumeProfile | null; is_latest: boolean; file_name: string | null };
         type ResumeRow = { id: string; domain: string; title: string | null; active_version_id: string | null; updated_at: string; resume_versions: VersionRow[] | null };
         // Active = the resume with the most-recent updated_at. The
         // server orders the response that way already, so the first
@@ -330,12 +330,20 @@ export default function DashboardResume() {
         const transformed = (data as ResumeRow[]).map((r, idx) => {
           const versions = Array.isArray(r.resume_versions) ? r.resume_versions : [];
           const latest = versions.find(v => v.is_latest) ?? versions.sort((a, b) => b.version_number - a.version_number)[0];
-          // Title fallback: "general" / "pm" feel like internal codes
-          // when shown as a card heading. Prefer a real fileName (from
-          // resume_versions if the resume was created before we started
-          // saving fileName on `resumes.title`).
-          const versionFileName = (latest?.parsed_data as { headline?: string } | null)?.headline;
-          const niceTitle = (r.title && r.title !== r.domain ? r.title : null) || versionFileName || `${r.domain.toUpperCase()} resume`;
+          // Title resolution — show the actual uploaded filename, not the
+          // domain code. Order:
+          //   1. latest version's file_name (the most authoritative source —
+          //      always set when the user uploaded a real file)
+          //   2. resumes.title if it's not just the domain code
+          //   3. friendly "{Domain} resume" fallback
+          // The previous version of this fell back to the parsed headline,
+          // which surfaced the LLM-generated tagline ("Senior Product
+          // Designer with 5+…") instead of the filename. That confused
+          // users into thinking the wrong resume was attached.
+          const titleCase = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+          const niceTitle = latest?.file_name
+            || (r.title && r.title !== r.domain ? r.title : null)
+            || `${titleCase(r.domain)} resume`;
           return {
             id: r.id,
             domain: r.domain || "general",
