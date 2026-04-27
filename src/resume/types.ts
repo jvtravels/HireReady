@@ -15,6 +15,7 @@ export interface ResumeCardVersion {
   score: number | null;
   profile: ResumeProfile | null;
   createdAt: string | null;
+  resumeText: string | null;
 }
 
 export interface ResumeCardData {

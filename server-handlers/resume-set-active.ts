@@ -80,28 +80,39 @@ export default async function handler(req: Request): Promise<Response> {
     return new Response(JSON.stringify({ error: "Version lookup error" }), { status: 502, headers });
   }
 
-  // Patch the active_version_id on the resumes row.
+  // Patch the active_version_id on the resumes row. Use return=
+  // representation so we can hand the updated row back — saves the
+  // client a round-trip when it just wants to reflect the new
+  // updated_at in its local cache.
+  const newUpdatedAt = new Date().toISOString();
   try {
     const patchRes = await fetch(
-      `${SUPABASE_URL}/rest/v1/resumes?id=eq.${encodeURIComponent(resumeId)}&user_id=eq.${encodeURIComponent(auth.userId)}`,
+      `${SUPABASE_URL}/rest/v1/resumes?id=eq.${encodeURIComponent(resumeId)}&user_id=eq.${encodeURIComponent(auth.userId)}&select=id,domain,title,active_version_id,updated_at`,
       {
         method: "PATCH",
         headers: {
           apikey: SUPABASE_SERVICE_KEY,
           Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`,
           "Content-Type": "application/json",
-          Prefer: "return=minimal",
+          Prefer: "return=representation",
         },
-        body: JSON.stringify({ active_version_id: versionId, updated_at: new Date().toISOString() }),
+        body: JSON.stringify({ active_version_id: versionId, updated_at: newUpdatedAt }),
       },
     );
     if (!patchRes.ok) {
       const errText = await patchRes.text().catch(() => "");
       return new Response(JSON.stringify({ error: `Update failed: ${errText.slice(0, 100)}` }), { status: 502, headers });
     }
+    const rows = await patchRes.json().catch(() => []);
+    const row = Array.isArray(rows) ? rows[0] : null;
+    return new Response(JSON.stringify({
+      ok: true,
+      resumeId,
+      versionId,
+      updatedAt: row?.updated_at || newUpdatedAt,
+      resume: row || null,
+    }), { status: 200, headers });
   } catch (err) {
     return new Response(JSON.stringify({ error: `Update error: ${(err as Error).message.slice(0, 100)}` }), { status: 502, headers });
   }
-
-  return new Response(JSON.stringify({ ok: true, resumeId, versionId }), { status: 200, headers });
 }

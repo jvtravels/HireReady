@@ -9,6 +9,7 @@ import { type ResumeProfile, analyzeResumeWithAI, ACTIVE_RESUME_VERSION_KEY } fr
 import { computeAllFitness } from "./resumeFitness";
 import CatalogueGrid from "./resume/CatalogueGrid";
 import CoveragePanel from "./resume/CoveragePanel";
+import { trackResumeEvent } from "./resume/track";
 
 /** Project a regex-fallback resume into the ResumeProfile shape the UI
  *  expects, so the AI and fallback branches can render through a single
@@ -274,6 +275,16 @@ export default function DashboardResume() {
   // state only; on upload we pass it to /api/analyze-resume which
   // creates/finds the matching `resumes` row.
   const [domain, setDomain] = useState<string>("general");
+  // Free-form text used when the user picks "Custom". Trimmed,
+  // lowercased and slash-replaced before being sent as the domain
+  // value, so "Solutions Engineering" becomes "solutions-engineering"
+  // — keeps the (user_id, domain) grouping key stable and URL-safe.
+  const [customDomain, setCustomDomain] = useState<string>("");
+  const effectiveDomain = useMemo(() => {
+    if (domain !== "custom") return domain;
+    const cleaned = customDomain.trim().toLowerCase().replace(/[^a-z0-9-]+/g, "-").replace(/^-+|-+$/g, "");
+    return cleaned || "custom"; // fall back to literal "custom" only if user left it blank
+  }, [domain, customDomain]);
   // Multi-resume list — shown above the single-active-resume card so
   // users can see they have e.g. an SDE resume + a PM resume in one
   // glance. Read-only for now; switching is a Phase 4 ticket.
@@ -288,7 +299,7 @@ export default function DashboardResume() {
     latestFileName: string | null;
     updatedAt: string;
     isActive: boolean;
-    versions: Array<{ id: string; versionNumber: number; isLatest: boolean; fileName: string | null; score: number | null; profile: ResumeProfile | null; createdAt: string | null }>;
+    versions: Array<{ id: string; versionNumber: number; isLatest: boolean; fileName: string | null; score: number | null; profile: ResumeProfile | null; createdAt: string | null; resumeText: string | null }>;
   }>>([]);
   // expandedTimeline / renamingId / renameDraft were lifted into
   // CatalogueGrid as local UI state; the parent only needs to know the
@@ -318,6 +329,17 @@ export default function DashboardResume() {
   // True until the first catalogue fetch resolves, then false. Used to
   // render a skeleton placeholder so cards don't pop in mid-render.
   const [loadingResumes, setLoadingResumes] = useState(true);
+  // Remember last seen catalogue count to render an honest skeleton
+  // (was always 2 cards, looked weird for users who had 1 or 4).
+  const SKELETON_COUNT_KEY = "hirestepx_resume_skeleton_count";
+  const skeletonCount = useMemo(() => {
+    try {
+      const raw = typeof localStorage !== "undefined" ? localStorage.getItem(SKELETON_COUNT_KEY) : null;
+      const n = raw ? parseInt(raw, 10) : 1;
+      if (!Number.isFinite(n) || n < 1) return 1;
+      return Math.min(4, n);
+    } catch { return 1; }
+  }, []);
   const analyzingRef = useRef(false);
   const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -347,7 +369,7 @@ export default function DashboardResume() {
         const client = await getSupabase();
         const { data, error } = await client
           .from("resumes")
-          .select("id, domain, title, active_version_id, updated_at, is_archived, resume_versions(id, version_number, parsed_data, is_latest, file_name, created_at)")
+          .select("id, domain, title, active_version_id, updated_at, is_archived, resume_versions(id, version_number, parsed_data, is_latest, file_name, created_at, resume_text)")
           .eq("user_id", user.id)
           .eq("is_archived", false)
           .order("updated_at", { ascending: false });
@@ -356,7 +378,7 @@ export default function DashboardResume() {
           setLoadingResumes(false);
           return;
         }
-        type VersionRow = { id: string; version_number: number; parsed_data: ResumeProfile | null; is_latest: boolean; file_name: string | null; created_at: string | null };
+        type VersionRow = { id: string; version_number: number; parsed_data: ResumeProfile | null; is_latest: boolean; file_name: string | null; created_at: string | null; resume_text: string | null };
         type ResumeRow = { id: string; domain: string; title: string | null; active_version_id: string | null; updated_at: string; resume_versions: VersionRow[] | null };
         // Active = the resume with the most-recent updated_at. The
         // server orders the response that way already, so the first
@@ -410,11 +432,17 @@ export default function DashboardResume() {
               score: typeof v.parsed_data?.resumeScore === "number" ? v.parsed_data.resumeScore : null,
               profile: v.parsed_data,
               createdAt: v.created_at,
+              resumeText: v.resume_text,
             })),
           };
         });
         setAllResumes(transformed);
         setLoadingResumes(false);
+        try {
+          if (typeof localStorage !== "undefined") {
+            localStorage.setItem(SKELETON_COUNT_KEY, String(transformed.length));
+          }
+        } catch { /* ignore */ }
       } catch {
         setLoadingResumes(false);
         /* best-effort */
@@ -511,6 +539,7 @@ export default function DashboardResume() {
     versionId: string | null,
     chosenProfile?: ResumeProfile | null,
     chosenFileName?: string | null,
+    chosenResumeText?: string | null,
   ) => {
     if (!versionId) return;
     setActivatingId(resumeId);
@@ -538,16 +567,26 @@ export default function DashboardResume() {
       if (chosenProfile) {
         setProfile(chosenProfile);
         setAnalysisSource("ai");
-        updateUser({
+        // Sync ALL three: profile, fileName, AND resumeText. The
+        // previous version forgot resumeText, so a Re-analyze after
+        // Restore was running on the OLD text. Subtle correctness bug.
+        const userPatch: Parameters<typeof updateUser>[0] = {
           resumeData: { _type: "ai", ...chosenProfile },
-          resumeFileName: chosenFileName || undefined,
-        });
+        };
+        if (chosenFileName) userPatch.resumeFileName = chosenFileName;
+        if (chosenResumeText) userPatch.resumeText = chosenResumeText;
+        updateUser(userPatch);
         if (chosenFileName) {
           setFileName(chosenFileName);
           updatePersisted({ resumeFileName: chosenFileName });
         }
+        if (chosenResumeText) {
+          setResumeText(chosenResumeText);
+        }
       }
       setCatalogueRefreshKey(k => k + 1);
+      const isRestore = chosenProfile != null && allResumes.find(r => r.id === resumeId)?.latestVersionId !== versionId;
+      trackResumeEvent(isRestore ? "resume_restore_version" : "resume_make_active", { resumeId, versionId });
       showNotice("ok", chosenFileName ? `Switched to ${chosenFileName}` : "Active resume switched");
     } catch (err) {
       setAllResumes(prev);
@@ -574,6 +613,7 @@ export default function DashboardResume() {
         setAllResumes(prev);
         showNotice("err", `Rename failed: ${error.message}`);
       } else {
+        trackResumeEvent("resume_renamed", { resumeId });
         showNotice("ok", `Renamed to "${trimmed}"`);
       }
     } catch (err) {
@@ -598,6 +638,7 @@ export default function DashboardResume() {
     // only after the user confirms, so no extra prompt here.
     setArchivingId(resumeId);
     const prev = allResumes;
+    const archivedRow = prev.find(r => r.id === resumeId);
     setAllResumes(prev.filter(r => r.id !== resumeId));
     try {
       const { getSupabase } = await import("./supabase");
@@ -607,6 +648,23 @@ export default function DashboardResume() {
         setAllResumes(prev);
         showNotice("err", `Archive failed: ${error.message}`);
       } else {
+        // Best-effort: clean up the original-file blobs from Storage so
+        // the bucket doesn't accumulate orphans for archived resumes.
+        // Failure here is non-fatal — the row is archived, the user
+        // doesn't see the files; a future cron can sweep stragglers.
+        if (archivedRow && user?.id) {
+          const paths = archivedRow.versions
+            .filter(v => v.fileName) // only versions that uploaded a file
+            .map(v => `${user.id}/${resumeId}/${v.id}.${(v.fileName || "").split(".").pop() || "bin"}`);
+          if (paths.length > 0) {
+            try {
+              await client.storage.from("resume-files").remove(paths);
+            } catch (storageErr) {
+              console.warn(`[resume-archive] storage cleanup failed for ${resumeId}: ${(storageErr as Error).message}`);
+            }
+          }
+        }
+        trackResumeEvent("resume_archived", { resumeId });
         showNotice("ok", "Resume archived");
       }
     } catch (err) {
@@ -635,6 +693,8 @@ export default function DashboardResume() {
       delete copy[idx];
       return copy;
     });
+    trackResumeEvent("resume_polish_applied", { idx });
+    showNotice("ok", "Suggestion applied to your resume");
   };
 
   /**
@@ -642,12 +702,13 @@ export default function DashboardResume() {
    * appears below the bullet; user can copy the suggestion or dismiss it.
    */
   const handlePolishBullet = async (idx: number, bullet: string) => {
+    trackResumeEvent("resume_polish_requested", { idx });
     setPolished(p => ({ ...p, [idx]: { state: "loading" } }));
     try {
       const { apiFetch } = await import("./apiClient");
       const res = await apiFetch<{ rewrite?: string; rationale?: string; error?: string }>(
         "/api/resume/rewrite-bullet",
-        { bullet, context: { role: user?.targetRole, domain } },
+        { bullet, context: { role: user?.targetRole, domain: effectiveDomain } },
       );
       if (!res.ok || !res.data?.rewrite) {
         setPolished(p => ({ ...p, [idx]: { state: "error", error: res.error || "Polish failed" } }));
@@ -682,8 +743,11 @@ export default function DashboardResume() {
     <div style={{ marginBottom: 24 }}>
       <p style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>Your resumes</p>
       {loadingResumes && allResumes.length === 0 ? (
+        // Skeleton count = whatever count we saw last time (cached in
+        // localStorage), capped to [1, 4]. Avoids the awkward "always
+        // shows 2 cards" placeholder when the user actually has 1 or 4.
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 12 }} aria-label="Loading resumes" aria-live="polite">
-          {[0, 1].map(i => (
+          {Array.from({ length: skeletonCount }).map((_, i) => (
             <div key={i} style={{ background: c.graphite, border: `1px solid ${c.border}`, borderRadius: 12, padding: "14px 16px", height: 130, display: "flex", flexDirection: "column", gap: 8 }}>
               <div style={{ height: 14, background: c.obsidian, borderRadius: 4, width: "30%", opacity: 0.5 }} />
               <div style={{ height: 12, background: c.obsidian, borderRadius: 4, width: "70%", opacity: 0.4 }} />
@@ -753,11 +817,11 @@ export default function DashboardResume() {
     } catch { /* file-hash is best-effort */ }
 
     setPhase("analyzing");
-    let result: { profile: ResumeProfile; truncated?: boolean; resumeVersionId?: string | null } | null = null;
+    let result: { profile: ResumeProfile; truncated?: boolean; resumeVersionId?: string | null; cached?: boolean } | null = null;
     let analyzeError: string | null = null;
     try {
       result = await Promise.race([
-        analyzeResumeWithAI(text, user?.targetRole, undefined, { fileName: file.name, fileHash, domain }),
+        analyzeResumeWithAI(text, user?.targetRole, undefined, { fileName: file.name, fileHash, domain: effectiveDomain }),
         // 40s covers the server's worst case: Groq (15s) → Gemini fallback
         // (15s) + auth/rate/quota pre-checks (~2–5s). A tighter 25s budget
         // was killing legitimate fallback paths.
@@ -775,6 +839,7 @@ export default function DashboardResume() {
       setTruncated(!!result.truncated);
       updateUser({ resumeData: { _type: "ai", ...result.profile } });
       saveResumeVersion(file.name, result.profile.resumeScore, text);
+      trackResumeEvent("resume_uploaded", { domain: effectiveDomain, cached: !!result.cached, score: result.profile.resumeScore });
       // Best-effort: ship the original file bytes to Supabase Storage
       // so the resume_versions row carries a file_path. Defensive — if
       // the bucket isn't configured (503 with bucketMissing=true) we
@@ -961,8 +1026,18 @@ export default function DashboardResume() {
             <option value="ops">Operations</option>
             <option value="hr">HR / People</option>
             <option value="data">Data / Analytics</option>
-            <option value="custom">Custom</option>
+            <option value="custom">Custom…</option>
           </select>
+          {domain === "custom" && (
+            <input
+              type="text"
+              value={customDomain}
+              onChange={(e) => setCustomDomain(e.target.value.slice(0, 32))}
+              placeholder="e.g. Solutions Engineering"
+              aria-label="Custom domain name"
+              style={{ fontFamily: font.ui, fontSize: 13, color: c.ivory, background: c.graphite, border: `1px solid ${c.border}`, borderRadius: 8, padding: "6px 10px", maxWidth: 200 }}
+            />
+          )}
           <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>Tag your resume by role so we can group versions and surface the right interview prep.</span>
         </div>
         <div role="button" tabIndex={0} onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }} onDragLeave={() => setIsDragging(false)}
@@ -1036,8 +1111,18 @@ export default function DashboardResume() {
             <option value="ops">Operations</option>
             <option value="hr">HR / People</option>
             <option value="data">Data / Analytics</option>
-            <option value="custom">Custom</option>
+            <option value="custom">Custom…</option>
           </select>
+          {domain === "custom" && (
+            <input
+              type="text"
+              value={customDomain}
+              onChange={(e) => setCustomDomain(e.target.value.slice(0, 32))}
+              placeholder="e.g. Solutions Engineering"
+              aria-label="Custom domain name"
+              style={{ fontFamily: font.ui, fontSize: 12, color: c.ivory, background: c.obsidian, border: `1px solid ${c.border}`, borderRadius: 6, padding: "5px 8px", minHeight: 28, maxWidth: 180 }}
+            />
+          )}
           <button
             onClick={triggerUpload}
             style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: c.gilt, background: "transparent", border: `1px solid ${c.gilt}`, borderRadius: 6, padding: "5px 14px", cursor: "pointer", minHeight: 28 }}

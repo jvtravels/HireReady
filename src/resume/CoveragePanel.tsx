@@ -51,8 +51,19 @@ export default function CoveragePanel({ profile, targetRole }: Props) {
       <h3 style={{ fontFamily: font.display, fontSize: 16, color: c.ivory, marginBottom: 4, letterSpacing: "-0.01em" }}>Coverage</h3>
       <p style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, marginBottom: 14 }}>
         Keywords your resume covers vs. what the role expects.
-        {!targetRole && " Set a target role on the dashboard for role-specific coverage."}
       </p>
+
+      {/* Friendly CTA when we don't have a target role to anchor on.
+        * Without it, the panel below shows the four interview-type
+        * vocabularies which are useful but generic — calling out the
+        * upgrade path lets the user know they can do better. */}
+      {!targetRole && (
+        <div style={{ marginBottom: 14, padding: "10px 12px", borderRadius: 8, background: "rgba(212,179,127,0.06)", border: `1px solid ${c.border}` }}>
+          <span style={{ fontFamily: font.ui, fontSize: 12, color: c.chalk }}>
+            Set your <strong style={{ color: c.gilt }}>target role</strong> on the dashboard to see role-specific coverage (PM, designer, SDE, etc.).
+          </span>
+        </div>
+      )}
 
       {/* Role-specific panel — primary surface when target role is known */}
       {roleSpecific && (

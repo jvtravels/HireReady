@@ -28,7 +28,7 @@ interface Props {
   fitsByResumeId: Record<string, FitnessAll | null>;
   activatingId: string | null;
   archivingId: string | null;
-  onMakeActive: (resumeId: string, versionId: string, profile: ResumeProfile | null, fileName: string | null) => void | Promise<void>;
+  onMakeActive: (resumeId: string, versionId: string, profile: ResumeProfile | null, fileName: string | null, resumeText: string | null) => void | Promise<void>;
   onArchive: (resumeId: string, isActive: boolean) => void | Promise<void>;
   onRename: (resumeId: string, newTitle: string) => void | Promise<void>;
 }
@@ -98,7 +98,15 @@ export default function CatalogueGrid({
                   </span>
                 ) : (
                   <button
-                    onClick={() => r.latestVersionId && onMakeActive(r.id, r.latestVersionId, r.latestProfile, r.latestFileName)}
+                    onClick={() => {
+                      if (!r.latestVersionId) return;
+                      // Find the matching version row for resume_text;
+                      // the card's "displayed" version is whichever the
+                      // catalogue picked (active or latest) and its
+                      // resume_text lives on the version row.
+                      const v = r.versions.find(x => x.id === r.latestVersionId);
+                      onMakeActive(r.id, r.latestVersionId, r.latestProfile, r.latestFileName, v?.resumeText ?? null);
+                    }}
                     disabled={activatingId === r.id || !r.latestVersionId}
                     style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, color: c.gilt, background: "transparent", border: `1px solid ${c.border}`, borderRadius: 4, padding: "4px 10px", minHeight: 26, cursor: activatingId === r.id ? "wait" : "pointer", opacity: activatingId === r.id ? 0.6 : 1 }}
                     title="Switch this resume to be the one used for interview sessions"
@@ -234,7 +242,7 @@ export default function CatalogueGrid({
                           <span style={{ fontFamily: font.ui, fontSize: 9, color: c.sage }}>current</span>
                         ) : (
                           <button
-                            onClick={() => onMakeActive(r.id, v.id, v.profile, v.fileName)}
+                            onClick={() => onMakeActive(r.id, v.id, v.profile, v.fileName, v.resumeText)}
                             disabled={activatingId === r.id}
                             style={{ fontFamily: font.ui, fontSize: 10, color: c.gilt, background: "transparent", border: `1px solid ${c.border}`, borderRadius: 3, padding: "2px 8px", cursor: activatingId === r.id ? "wait" : "pointer", minHeight: 22 }}
                           >
