@@ -915,7 +915,15 @@ export async function speak(
   // Cartesia fallback chain (before browser TTS)
   const cartesiaFallback = async () => {
     console.warn("Trying Cartesia TTS fallback");
-    const cartesiaVoice = DEFAULT_VOICE_ID;
+    // Prefer an Indian-English voice when one is available — matches the
+    // Azure primary (en-IN-NeerjaNeural) so users in our target market don't
+    // hear a sudden accent change when Azure fails over.
+    let cartesiaVoice = DEFAULT_VOICE_ID;
+    try {
+      const enInVoices = await fetchCartesiaVoices("en_IN");
+      const preferred = (gender && enInVoices.find(v => v.gender === gender)) || enInVoices[0];
+      if (preferred?.id) cartesiaVoice = preferred.id;
+    } catch { /* keep default voice on fetch failure */ }
     const prefetchEntry = _prefetchCache.get(text);
     const hasPrefetch = !!prefetchEntry && Date.now() - prefetchEntry.createdAt < PREFETCH_TTL;
     if (hasPrefetch) {
