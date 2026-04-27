@@ -458,6 +458,65 @@ export default function DashboardResume() {
     }
   };
 
+  // Multi-resume catalogue grid. Used to live only in the idle phase
+  // which meant nobody saw it once they had a profile. Now extracted
+  // and rendered in BOTH idle and done phases. Threshold relaxed from
+  // ">1" to ">=1" so a single-resume user still sees their fitness
+  // chips; the "Make active" button just doesn't render on the active
+  // card (no-op when there's nothing to switch from anyway).
+  const cataloguePanel = allResumes.length >= 1 ? (
+    <div style={{ marginBottom: 24 }}>
+      <p style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>Your resumes</p>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 12 }}>
+        {allResumes.map(r => {
+          const fits = r.latestProfile ? computeAllFitness(r.latestProfile) : null;
+          const bandColor = (b: FitnessBand) =>
+            b === "excellent" ? c.sage : b === "good" ? c.gilt : b === "fair" ? c.stone : c.ember;
+          const typeLabel: Record<InterviewType, string> = {
+            behavioral: "BEH",
+            technical: "TECH",
+            system_design: "SYS",
+            case: "CASE",
+          };
+          return (
+            <div key={r.id} style={{ background: c.graphite, border: `1px solid ${r.isActive ? c.gilt : c.border}`, borderRadius: 12, padding: "14px 16px" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6, gap: 8 }}>
+                <span style={{ fontFamily: font.mono, fontSize: 10, fontWeight: 600, color: c.gilt, background: "rgba(212,179,127,0.08)", padding: "2px 8px", borderRadius: 4, textTransform: "uppercase", letterSpacing: "0.06em" }}>{r.domain}</span>
+                {r.isActive ? (
+                  <span style={{ fontFamily: font.ui, fontSize: 10, color: c.sage }}>Active</span>
+                ) : (
+                  <button
+                    onClick={() => handleMakeActive(r.id, r.latestVersionId)}
+                    disabled={activatingId === r.id || !r.latestVersionId}
+                    style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, color: c.gilt, background: "transparent", border: `1px solid ${c.border}`, borderRadius: 4, padding: "2px 8px", cursor: activatingId === r.id ? "wait" : "pointer", opacity: activatingId === r.id ? 0.6 : 1 }}
+                    title="Switch this resume to be the one used for interview sessions"
+                  >
+                    {activatingId === r.id ? "…" : "Make active"}
+                  </button>
+                )}
+              </div>
+              <p style={{ fontFamily: font.ui, fontSize: 13, color: c.ivory, marginBottom: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.title}</p>
+              <p style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, marginBottom: fits ? 8 : 0 }}>v{r.latestVersion}{r.latestScore != null ? ` · Score ${r.latestScore}` : ""}</p>
+              {fits && (
+                <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                  {(["behavioral", "technical", "system_design", "case"] as InterviewType[]).map(t => (
+                    <span
+                      key={t}
+                      title={fits[t].rationale}
+                      style={{ fontFamily: font.mono, fontSize: 9, fontWeight: 600, color: bandColor(fits[t].band), background: `${bandColor(fits[t].band)}1A`, padding: "2px 6px", borderRadius: 3, letterSpacing: "0.04em" }}
+                    >
+                      {typeLabel[t]} {fits[t].score}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  ) : null;
+
   if (dataLoading) return <DataLoadingSkeleton />;
 
   const handleFile = async (file: File | undefined) => {
@@ -696,58 +755,7 @@ export default function DashboardResume() {
         <p style={{ fontFamily: font.ui, fontSize: 14, color: c.stone, marginBottom: 28, lineHeight: 1.6 }}>
           Upload your resume and our AI will build a candidate profile — identifying your strengths, key achievements, and areas to prepare for interviews.
         </p>
-        {allResumes.length > 1 && (
-          <div style={{ marginBottom: 24 }}>
-            <p style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>Your resumes</p>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 12 }}>
-              {allResumes.map(r => {
-                const fits = r.latestProfile ? computeAllFitness(r.latestProfile) : null;
-                const bandColor = (b: FitnessBand) =>
-                  b === "excellent" ? c.sage : b === "good" ? c.gilt : b === "fair" ? c.stone : c.ember;
-                const typeLabel: Record<InterviewType, string> = {
-                  behavioral: "BEH",
-                  technical: "TECH",
-                  system_design: "SYS",
-                  case: "CASE",
-                };
-                return (
-                  <div key={r.id} style={{ background: c.graphite, border: `1px solid ${r.isActive ? c.gilt : c.border}`, borderRadius: 12, padding: "14px 16px" }}>
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-                      <span style={{ fontFamily: font.mono, fontSize: 10, fontWeight: 600, color: c.gilt, background: "rgba(212,179,127,0.08)", padding: "2px 8px", borderRadius: 4, textTransform: "uppercase", letterSpacing: "0.06em" }}>{r.domain}</span>
-                      {r.isActive ? (
-                        <span style={{ fontFamily: font.ui, fontSize: 10, color: c.sage }}>Active</span>
-                      ) : (
-                        <button
-                          onClick={() => handleMakeActive(r.id, r.latestVersionId)}
-                          disabled={activatingId === r.id || !r.latestVersionId}
-                          style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, color: c.gilt, background: "transparent", border: `1px solid ${c.border}`, borderRadius: 4, padding: "2px 8px", cursor: activatingId === r.id ? "wait" : "pointer", opacity: activatingId === r.id ? 0.6 : 1 }}
-                          title="Switch this resume to be the one used for interview sessions"
-                        >
-                          {activatingId === r.id ? "…" : "Make active"}
-                        </button>
-                      )}
-                    </div>
-                    <p style={{ fontFamily: font.ui, fontSize: 13, color: c.ivory, marginBottom: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.title}</p>
-                    <p style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, marginBottom: fits ? 8 : 0 }}>v{r.latestVersion}{r.latestScore != null ? ` · Score ${r.latestScore}` : ""}</p>
-                    {fits && (
-                      <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-                        {(["behavioral", "technical", "system_design", "case"] as InterviewType[]).map(t => (
-                          <span
-                            key={t}
-                            title={fits[t].rationale}
-                            style={{ fontFamily: font.mono, fontSize: 9, fontWeight: 600, color: bandColor(fits[t].band), background: `${bandColor(fits[t].band)}1A`, padding: "2px 6px", borderRadius: 3, letterSpacing: "0.04em" }}
-                          >
-                            {typeLabel[t]} {fits[t].score}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
+        {cataloguePanel}
         <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
           <label htmlFor="resume-domain" style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, textTransform: "uppercase", letterSpacing: "0.08em" }}>Domain</label>
           <select
@@ -819,6 +827,7 @@ export default function DashboardResume() {
   // Profile view (done state)
   return (
     <div style={{ margin: "0 auto", padding: "20px 0" }}>
+      {cataloguePanel}
       <div style={{ background: `linear-gradient(135deg, ${c.graphite} 0%, rgba(212,179,127,0.04) 100%)`, borderRadius: 16, border: `1px solid ${c.border}`, padding: "28px 28px 24px", marginBottom: 14 }}>
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 12 }}>
           <div style={{ flex: 1 }}>
