@@ -290,16 +290,6 @@ export default function SessionSetup() {
     if (atSessionLimit) setShowUpgradeModal(true);
   }, [atSessionLimit]);
 
-  // Proactive warning on the last free session — surface the upgrade ask
-  // BEFORE the user exhausts the quota so they don't hit a hard paywall mid-flow.
-  const atLastFreeSession = isFreeUser && freeSessionCount === FREE_SESSION_LIMIT - 1;
-  const lastFreeWarnShownRef = useRef(false);
-  useEffect(() => {
-    if (!atLastFreeSession || lastFreeWarnShownRef.current) return;
-    lastFreeWarnShownRef.current = true;
-    toast("Last free session! After this, upgrade for ₹10/session or ₹149/mo for unlimited.", "info");
-  }, [atLastFreeSession, toast]);
-
   // Notify user if their subscription just expired and auto-downgraded
   useEffect(() => {
     try {
