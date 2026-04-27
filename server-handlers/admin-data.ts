@@ -864,6 +864,55 @@ async function getCalendar() {
   };
 }
 
+/**
+ * User outcomes — voluntary self-reports of post-HireStepX job-search
+ * results. The data unlock for fundraising case studies. Returns counts
+ * + the share-permitted testimonials (anonymized: only first name).
+ */
+async function getOutcomes() {
+  const [outcomes, profiles] = await Promise.all([
+    fetchJSON<{
+      user_id: string; applied: boolean | null; interviewed: boolean | null;
+      offer: boolean | null; accepted: boolean | null;
+      company: string | null; role_landed: string | null;
+      testimonial: string | null; may_share_publicly: boolean;
+      reported_at: string;
+    }>("user_outcomes?select=*&order=reported_at.desc&limit=500"),
+    fetchJSON<{ id: string; name: string | null }>("profiles?select=id,name&limit=2000"),
+  ]);
+  const profileMap = new Map(profiles.map((p) => [p.id, p.name || ""]));
+  const total = outcomes.length;
+  const applied = outcomes.filter((o) => o.applied === true).length;
+  const interviewed = outcomes.filter((o) => o.interviewed === true).length;
+  const offer = outcomes.filter((o) => o.offer === true).length;
+  const accepted = outcomes.filter((o) => o.accepted === true).length;
+  const offerRate = total > 0 ? Math.round((offer / total) * 100) : 0;
+
+  const shareableTestimonials = outcomes
+    .filter((o) => o.may_share_publicly && o.testimonial)
+    .slice(0, 30)
+    .map((o) => ({
+      firstName: (profileMap.get(o.user_id) || "Anonymous").split(" ")[0],
+      company: o.company || "—",
+      roleLanded: o.role_landed || "—",
+      testimonial: o.testimonial || "",
+      reportedAt: o.reported_at,
+    }));
+
+  const recent = outcomes.slice(0, 50).map((o) => ({
+    name: profileMap.get(o.user_id) || "(deleted user)",
+    applied: o.applied,
+    interviewed: o.interviewed,
+    offer: o.offer,
+    accepted: o.accepted,
+    company: o.company || "—",
+    roleLanded: o.role_landed || "—",
+    reportedAt: o.reported_at,
+  }));
+
+  return { total, applied, interviewed, offer, accepted, offerRate, shareableTestimonials, recent };
+}
+
 async function getStoryNotebookStats() {
   const [stories, profiles] = await Promise.all([
     fetchJSON<{ id: string; user_id: string; title: string; tags: string[] | null; created_at: string; last_used_at: string | null }>(
@@ -954,6 +1003,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         case "promo-codes": return getPromoCodes();
         case "calendar": return getCalendar();
         case "story-notebook": return getStoryNotebookStats();
+        case "outcomes": return getOutcomes();
         default: throw new Error(`Unknown section: ${section}`);
       }
     })();

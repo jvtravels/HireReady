@@ -122,6 +122,12 @@ export interface StoryNotebookData {
   recent: Array<{ id: string; userEmail: string; title: string; tags: string[]; createdAt: string; lastUsedAt: string | null }>;
 }
 
+export interface OutcomesData {
+  total: number; applied: number; interviewed: number; offer: number; accepted: number; offerRate: number;
+  shareableTestimonials: Array<{ firstName: string; company: string; roleLanded: string; testimonial: string; reportedAt: string }>;
+  recent: Array<{ name: string; applied: boolean | null; interviewed: boolean | null; offer: boolean | null; accepted: boolean | null; company: string; roleLanded: string; reportedAt: string }>;
+}
+
 export interface SessionDetailData {
   session: {
     id: string; user_id: string; date: string; type: string; difficulty: string;
@@ -141,7 +147,7 @@ export interface SessionDetailData {
   llmCalls: Array<{ endpoint: string; model: string; total_tokens: number; latency_ms: number; status: string; created_at: string }>;
 }
 
-type Tab = "overview" | "users" | "sessions" | "financials" | "llm" | "feedback" | "referrals" | "promo-codes" | "calendar" | "story-notebook";
+type Tab = "overview" | "users" | "sessions" | "financials" | "llm" | "feedback" | "referrals" | "promo-codes" | "calendar" | "story-notebook" | "outcomes";
 
 const TABS: { key: Tab; label: string; icon: string }[] = [
   { key: "overview", label: "Overview", icon: "📊" },
@@ -150,6 +156,7 @@ const TABS: { key: Tab; label: string; icon: string }[] = [
   { key: "financials", label: "Financials", icon: "💰" },
   { key: "llm", label: "AI / Services", icon: "🤖" },
   { key: "feedback", label: "Feedback", icon: "💬" },
+  { key: "outcomes", label: "Outcomes", icon: "🏆" },
   { key: "referrals", label: "Referrals", icon: "🔗" },
   { key: "promo-codes", label: "Promo Codes", icon: "🎟️" },
   { key: "calendar", label: "Calendar", icon: "📅" },
@@ -497,6 +504,7 @@ export default function AdminDashboard() {
   const [promoCodes, setPromoCodes] = useState<PromoCodesData | null>(null);
   const [calendar, setCalendar] = useState<CalendarData | null>(null);
   const [storyNotebook, setStoryNotebook] = useState<StoryNotebookData | null>(null);
+  const [outcomes, setOutcomes] = useState<OutcomesData | null>(null);
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
   const [sessionDetail, setSessionDetail] = useState<SessionDetailData | null>(null);
 
@@ -614,6 +622,11 @@ export default function AdminDashboard() {
           if (d) setStoryNotebook(d);
           break;
         }
+        case "outcomes": {
+          const d = await fetchSection("outcomes") as OutcomesData | null;
+          if (d) setOutcomes(d);
+          break;
+        }
       }
     })();
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -701,6 +714,11 @@ export default function AdminDashboard() {
       case "story-notebook": {
         const d = await fetchSection("story-notebook", undefined, true) as StoryNotebookData | null;
         if (d) setStoryNotebook(d);
+        break;
+      }
+      case "outcomes": {
+        const d = await fetchSection("outcomes", undefined, true) as OutcomesData | null;
+        if (d) setOutcomes(d);
         break;
       }
     }
@@ -1702,7 +1720,80 @@ export default function AdminDashboard() {
       case "promo-codes": return renderPromoCodes();
       case "calendar": return renderCalendar();
       case "story-notebook": return renderStoryNotebook();
+      case "outcomes": return renderOutcomes();
     }
+  };
+
+  const renderOutcomes = () => {
+    if (!outcomes) return <EmptyState message="No outcome data yet — users haven't reported job-search results." />;
+    return (
+      <div>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 16, marginBottom: 24 }}>
+          <div style={statCard}><p style={labelStyle}>Reports</p><p style={bigNum}>{outcomes.total}</p></div>
+          <div style={statCard}><p style={labelStyle}>Applied</p><p style={bigNum}>{outcomes.applied}</p></div>
+          <div style={statCard}><p style={labelStyle}>Interviewed</p><p style={bigNum}>{outcomes.interviewed}</p></div>
+          <div style={statCard}><p style={labelStyle}>Offers</p><p style={{ ...bigNum, color: c.sage }}>{outcomes.offer}</p></div>
+          <div style={statCard}><p style={labelStyle}>Accepted</p><p style={{ ...bigNum, color: c.sage }}>{outcomes.accepted}</p></div>
+          <div style={statCard}><p style={labelStyle}>Offer Rate</p><p style={{ ...bigNum, color: c.gilt }}>{outcomes.offerRate}%</p></div>
+        </div>
+
+        {outcomes.shareableTestimonials.length > 0 && (
+          <div style={{ ...card, marginBottom: 24 }}>
+            <p style={labelStyle}>Shareable Testimonials ({outcomes.shareableTestimonials.length})</p>
+            <p style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, margin: "4px 0 14px" }}>
+              Users gave permission to share. Use these for landing-page social proof / case studies.
+            </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              {outcomes.shareableTestimonials.map((t, i) => (
+                <div key={i} style={{ padding: "12px 14px", background: "rgba(122,158,126,0.04)", border: `1px solid rgba(122,158,126,0.18)`, borderRadius: 10 }}>
+                  <p style={{ fontFamily: font.ui, fontSize: 13, color: c.ivory, lineHeight: 1.6, margin: "0 0 6px", fontStyle: "italic" }}>&ldquo;{t.testimonial}&rdquo;</p>
+                  <p style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, margin: 0 }}>
+                    — <strong style={{ color: c.chalk }}>{t.firstName}</strong> · landed {t.roleLanded} at {t.company} · {formatDateTime(t.reportedAt)}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {outcomes.recent.length > 0 && (
+          <div style={{ ...card, padding: 0, overflow: "auto" }}>
+            <div style={{ padding: "16px 24px 8px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <p style={labelStyle}>Recent Reports</p>
+              <button onClick={() => exportCsv("outcomes.csv", outcomes.recent as unknown as Record<string, unknown>[])} style={exportBtn}>Export CSV</button>
+            </div>
+            <table style={tableStyle}>
+              <thead>
+                <tr>
+                  <th style={thStyle}>Name</th>
+                  <th style={thStyle}>Applied</th>
+                  <th style={thStyle}>Interviewed</th>
+                  <th style={thStyle}>Offer</th>
+                  <th style={thStyle}>Accepted</th>
+                  <th style={thStyle}>Company</th>
+                  <th style={thStyle}>Role</th>
+                  <th style={thStyle}>Date</th>
+                </tr>
+              </thead>
+              <tbody>
+                {outcomes.recent.map((r, i) => (
+                  <tr key={i}>
+                    <td style={tdStyle}>{r.name}</td>
+                    <td style={tdStyle}>{r.applied === true ? "✓" : r.applied === false ? "✕" : "—"}</td>
+                    <td style={tdStyle}>{r.interviewed === true ? "✓" : r.interviewed === false ? "✕" : "—"}</td>
+                    <td style={{ ...tdStyle, color: r.offer === true ? c.sage : c.stone }}>{r.offer === true ? "✓" : r.offer === false ? "✕" : "—"}</td>
+                    <td style={{ ...tdStyle, color: r.accepted === true ? c.sage : c.stone }}>{r.accepted === true ? "✓" : r.accepted === false ? "✕" : "—"}</td>
+                    <td style={tdStyle}>{r.company}</td>
+                    <td style={tdStyle}>{r.roleLanded}</td>
+                    <td style={{ ...tdStyle, fontSize: 12 }}>{formatDateTime(r.reportedAt)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    );
   };
 
   /* ─── New tab renderers ─── */

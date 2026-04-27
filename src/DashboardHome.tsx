@@ -6,6 +6,7 @@ import { useAuth } from "./AuthContext";
 import { useDashboardUI, useDashboardCore, useDashboardSessions, useDashboardSubscription } from "./DashboardContext";
 import dynamic from "next/dynamic";
 import { DataLoadingSkeleton, EmptyState } from "./dashboardComponents";
+const OutcomePromptBanner = dynamic(() => import("./OutcomePromptBanner"), { ssr: false });
 const SessionDetailView = dynamic(() => import("./dashboardComponents").then(m => ({ default: m.SessionDetailView })), { ssr: false });
 import { SectionErrorBoundary } from "./ErrorBoundary";
 import { scoreLabel, scoreLabelColor, sessionTypes } from "./dashboardTypes";
@@ -574,6 +575,15 @@ export default function DashboardHome() {
   return (
     <div style={{ margin: "0 auto", lineHeight: 1.5 }} className="dash-card">
       <style>{dashboardStyles}</style>
+
+      {/* Outcome self-report banner. Lazy-loaded; gates itself based on whether
+          the user has already reported. Renders nothing when not applicable. */}
+      {recentSessions.length >= 3 && (
+        <div style={{ marginBottom: sp.xl }}>
+          <OutcomePromptBanner />
+        </div>
+      )}
+
       {/* ─── Header ─── */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: sp["3xl"], flexWrap: "wrap", gap: sp.lg }}>
         <div style={{ flex: 1, minWidth: 0 }}>

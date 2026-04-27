@@ -258,6 +258,32 @@ drop policy if exists "Users manage own shares" on report_shares;
 create policy "Users manage own shares" on report_shares
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
+-- 11. Outcome tracking — voluntary self-report so we can build real
+-- "X candidates landed Y offers" case studies (currently the biggest
+-- investor-pitch gap). Users opt in via a banner on the dashboard
+-- after they've completed ≥3 sessions.
+create table if not exists user_outcomes (
+  user_id uuid references profiles(id) on delete cascade primary key,
+  applied boolean,
+  interviewed boolean,
+  offer boolean,
+  accepted boolean,
+  company text,
+  role_landed text,
+  testimonial text,
+  may_share_publicly boolean default false,
+  reported_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+create index if not exists idx_user_outcomes_offer on user_outcomes(offer) where offer = true;
+create index if not exists idx_user_outcomes_share on user_outcomes(may_share_publicly) where may_share_publicly = true;
+
+alter table user_outcomes enable row level security;
+drop policy if exists "Users manage own outcomes" on user_outcomes;
+create policy "Users manage own outcomes" on user_outcomes
+  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
 -- ═══════════════════════════════════════════════════════
 -- 11. Resume management — multi-resume + version history
 --
