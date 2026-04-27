@@ -27,6 +27,44 @@ function fallbackToProfile(r: FallbackStoredResume): ResumeProfile {
 }
 import { DataLoadingSkeleton } from "./dashboardComponents";
 
+/**
+ * Push the original file bytes up to /api/resume/upload-file. Best-effort:
+ * if the Storage bucket isn't configured, the endpoint returns 503 with
+ * `bucketMissing: true` and we silently no-op. Resume analysis itself is
+ * unaffected — this is purely "archive the original PDF so we can let
+ * the user re-download or audit it later".
+ *
+ * Encoding: read the file as ArrayBuffer, base64-encode in-browser, send
+ * via apiFetch (XHR). Same transport layer as every other mutation.
+ */
+async function uploadOriginalFile(file: File, resumeVersionId: string): Promise<void> {
+  const buf = await file.arrayBuffer();
+  // btoa requires a binary string; build it in 32K chunks to avoid
+  // "argument list too large" on bigger PDFs.
+  const bytes = new Uint8Array(buf);
+  let binary = "";
+  const chunk = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunk) {
+    binary += String.fromCharCode.apply(null, Array.from(bytes.subarray(i, i + chunk)));
+  }
+  const fileBase64 = btoa(binary);
+  const { apiFetch } = await import("./apiClient");
+  const res = await apiFetch<{ ok?: boolean; bucketMissing?: boolean; file_path?: string; error?: string }>(
+    "/api/resume/upload-file",
+    {
+      resumeVersionId,
+      fileName: file.name,
+      contentType: file.type || "application/octet-stream",
+      fileBase64,
+    },
+  );
+  if (!res.ok && !res.data?.bucketMissing) {
+    // Bucket-missing is "expected" while file storage isn't enabled
+    // for this Supabase project — don't spam the console.
+    console.warn(`[resume] file storage upload failed (${res.status}): ${res.error}`);
+  }
+}
+
 /* ─── Resume Version History (localStorage) ─── */
 const RESUME_HISTORY_KEY = "hirestepx_resume_history";
 interface ResumeVersion { fileName: string; date: string; resumeScore?: number; contentHash?: string; resumeText?: string; }
@@ -228,6 +266,15 @@ export default function DashboardResume() {
   const [analysisSource, setAnalysisSource] = useState<"ai" | "fallback" | null>(null);
   const [truncated, setTruncated] = useState(false);
   const [tooltipVisible, setTooltipVisible] = useState(false);
+  // Resume v2 — domain tag selected at upload. Defaults to "general"
+  // for back-compat with single-resume users. Persists in component
+  // state only; on upload we pass it to /api/analyze-resume which
+  // creates/finds the matching `resumes` row.
+  const [domain, setDomain] = useState<string>("general");
+  // Multi-resume list — shown above the single-active-resume card so
+  // users can see they have e.g. an SDE resume + a PM resume in one
+  // glance. Read-only for now; switching is a Phase 4 ticket.
+  const [allResumes, setAllResumes] = useState<Array<{ id: string; domain: string; title: string; latestVersion: number; latestScore: number | null; updatedAt: string; isActive: boolean }>>([]);
   const analyzingRef = useRef(false);
   const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -242,6 +289,46 @@ export default function DashboardResume() {
   useEffect(() => {
     return () => { abortControllerRef.current?.abort(); };
   }, []);
+
+  // Fetch the user's full resume catalogue (all domains, all versions) so
+  // we can render the multi-resume list view above the active card. RLS
+  // restricts this to rows owned by the current user. Best-effort — if
+  // the request fails (offline, RLS misconfig) the list just stays empty
+  // and the single-active-resume UI renders as before.
+  useEffect(() => {
+    if (!user?.id) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { getSupabase } = await import("./supabase");
+        const client = await getSupabase();
+        const { data, error } = await client
+          .from("resumes")
+          .select("id, domain, title, active_version_id, updated_at, is_archived, resume_versions(id, version_number, parsed_data, is_latest)")
+          .eq("user_id", user.id)
+          .eq("is_archived", false)
+          .order("updated_at", { ascending: false });
+        if (cancelled || error || !Array.isArray(data)) return;
+        type VersionRow = { id: string; version_number: number; parsed_data: { resumeScore?: number } | null; is_latest: boolean };
+        type ResumeRow = { id: string; domain: string; title: string | null; active_version_id: string | null; updated_at: string; resume_versions: VersionRow[] | null };
+        const transformed = (data as ResumeRow[]).map((r) => {
+          const versions = Array.isArray(r.resume_versions) ? r.resume_versions : [];
+          const latest = versions.find(v => v.is_latest) ?? versions.sort((a, b) => b.version_number - a.version_number)[0];
+          return {
+            id: r.id,
+            domain: r.domain || "general",
+            title: r.title || "Untitled resume",
+            latestVersion: latest?.version_number ?? 1,
+            latestScore: typeof latest?.parsed_data?.resumeScore === "number" ? latest.parsed_data.resumeScore : null,
+            updatedAt: r.updated_at,
+            isActive: !!r.active_version_id,
+          };
+        });
+        setAllResumes(transformed);
+      } catch { /* best-effort */ }
+    })();
+    return () => { cancelled = true; };
+  }, [user?.id, fileName]);
 
   useEffect(() => {
     if (user?.resumeText) setResumeText(user.resumeText);
@@ -365,7 +452,7 @@ export default function DashboardResume() {
     let analyzeError: string | null = null;
     try {
       result = await Promise.race([
-        analyzeResumeWithAI(text, user?.targetRole, undefined, { fileName: file.name, fileHash }),
+        analyzeResumeWithAI(text, user?.targetRole, undefined, { fileName: file.name, fileHash, domain }),
         // 40s covers the server's worst case: Groq (15s) → Gemini fallback
         // (15s) + auth/rate/quota pre-checks (~2–5s). A tighter 25s budget
         // was killing legitimate fallback paths.
@@ -383,6 +470,16 @@ export default function DashboardResume() {
       setTruncated(!!result.truncated);
       updateUser({ resumeData: { _type: "ai", ...result.profile } });
       saveResumeVersion(file.name, result.profile.resumeScore, text);
+      // Best-effort: ship the original file bytes to Supabase Storage
+      // so the resume_versions row carries a file_path. Defensive — if
+      // the bucket isn't configured (503 with bucketMissing=true) we
+      // log and move on. Resume analysis already succeeded; archival
+      // is bonus.
+      if (result.resumeVersionId) {
+        uploadOriginalFile(file, result.resumeVersionId).catch(err => {
+          console.warn("[resume] file storage upload failed:", err?.message || err);
+        });
+      }
       setPhase("done");
     } else {
       const isTimeout = analyzeError?.toLowerCase().includes("timeout");
@@ -541,6 +638,44 @@ export default function DashboardResume() {
         <p style={{ fontFamily: font.ui, fontSize: 14, color: c.stone, marginBottom: 28, lineHeight: 1.6 }}>
           Upload your resume and our AI will build a candidate profile — identifying your strengths, key achievements, and areas to prepare for interviews.
         </p>
+        {allResumes.length > 1 && (
+          <div style={{ marginBottom: 24 }}>
+            <p style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>Your resumes</p>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 12 }}>
+              {allResumes.map(r => (
+                <div key={r.id} style={{ background: c.graphite, border: `1px solid ${r.isActive ? c.gilt : c.border}`, borderRadius: 12, padding: "14px 16px" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+                    <span style={{ fontFamily: font.mono, fontSize: 10, fontWeight: 600, color: c.gilt, background: "rgba(212,179,127,0.08)", padding: "2px 8px", borderRadius: 4, textTransform: "uppercase", letterSpacing: "0.06em" }}>{r.domain}</span>
+                    {r.isActive && <span style={{ fontFamily: font.ui, fontSize: 10, color: c.sage }}>Active</span>}
+                  </div>
+                  <p style={{ fontFamily: font.ui, fontSize: 13, color: c.ivory, marginBottom: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.title}</p>
+                  <p style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>v{r.latestVersion}{r.latestScore != null ? ` · Score ${r.latestScore}` : ""}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
+          <label htmlFor="resume-domain" style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, textTransform: "uppercase", letterSpacing: "0.08em" }}>Domain</label>
+          <select
+            id="resume-domain"
+            value={domain}
+            onChange={(e) => setDomain(e.target.value)}
+            style={{ fontFamily: font.ui, fontSize: 13, color: c.ivory, background: c.graphite, border: `1px solid ${c.border}`, borderRadius: 8, padding: "6px 10px", cursor: "pointer" }}
+          >
+            <option value="general">General</option>
+            <option value="sde">Software Engineering</option>
+            <option value="pm">Product Management</option>
+            <option value="design">Design</option>
+            <option value="sales">Sales</option>
+            <option value="marketing">Marketing</option>
+            <option value="ops">Operations</option>
+            <option value="hr">HR / People</option>
+            <option value="data">Data / Analytics</option>
+            <option value="custom">Custom</option>
+          </select>
+          <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>Tag this resume so we can group versions and tailor coaching.</span>
+        </div>
         <div role="button" tabIndex={0} onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }} onDragLeave={() => setIsDragging(false)}
           onDrop={(e) => { e.preventDefault(); setIsDragging(false); handleFile(e.dataTransfer.files[0]); }}
           onClick={triggerUpload}
