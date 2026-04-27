@@ -41,24 +41,24 @@ const REACTIONS = {
     "I appreciate the specificity there.",
   ],
   decent: [
-    "Okay, got it.",
-    "Alright.",
-    "I see where you're going with that.",
+    "Achha, got it.",
+    "Right, right.",
+    "Okay, got it got it.",
     "Hmm, okay.",
-    "Right, understood.",
+    "Theek hai.",
     "Fair enough.",
   ],
   weak: [
-    "Okay… let me ask you something else.",
-    "Alright, let's move on.",
+    "Achha… let me ask something else.",
+    "Okay, let's move on.",
     "Hmm, I see.",
     "Noted.",
     "Okay.",
   ],
   short: [
-    "I'd love to hear more, but let's keep going.",
+    "Achha, but let's keep going.",
     "Okay — we'll come back to depth later.",
-    "Alright, moving on.",
+    "Right, moving on.",
     "Hmm, that was brief — let's continue.",
   ],
   followUpBridge: [
@@ -70,12 +70,13 @@ const REACTIONS = {
     "Before the next topic, I want to understand —",
   ],
   topicTransition: [
+    "Achha —",
     "So —",
     "Okay, next.",
     "Right.",
+    "Ek aur question —",
+    "One more thing —",
     "Now —",
-    "Different angle —",
-    "Switching gears.",
   ],
   dontKnowRedirect: [
     "That's okay — let me rephrase that differently.",
@@ -85,11 +86,11 @@ const REACTIONS = {
     "Okay, let's pivot. Think about it this way instead —",
   ],
   ramblingInterject: [
-    "Sorry to interrupt — can you get to the outcome?",
-    "I want to make sure we cover everything. What was the result?",
-    "Let me jump in — what was the bottom line?",
-    "I'm getting the context. Now tell me — what happened?",
-    "Let me pause you there. What was the impact?",
+    "Achha, but can you get to the outcome quickly?",
+    "I want to make sure we cover everything — what was the result?",
+    "Sorry to cut in — what was the bottom line?",
+    "Got the context. Now tell me — what happened?",
+    "Let me pause you there. What was the actual impact?",
   ],
   timePressure: [
     "We're running short on time, so let me pick up the pace.",
@@ -987,7 +988,7 @@ export function useInterviewEngine() {
         // Dedupe stacked fillers: if reaction and transition both start with a
         // small filler word (Hmm/Okay/Right/Got it/I see), drop the reaction so
         // we don't get "Hmm, okay. Right, let me ask…" — sounds robotic.
-        const fillerStart = /^(hmm|okay|right|got it|i see|alright|sure|noted)/i;
+        const fillerStart = /^(hmm|okay|right|got it|i see|alright|sure|noted|achha|acha|theek hai)/i;
         if (fillerStart.test(reaction.trim()) && fillerStart.test(transition.trim())) {
           thinkingPhrase = transition;
         } else {

@@ -132,6 +132,10 @@ const miniQuestionsByType: Record<string, QuestionBank[]> = {
     { q: "How do you handle stress and pressure at work? Give me a specific example.", qResume: "As {title}, how did you handle stress during high-pressure periods? Walk me through a specific example.", scoreNote: "Stress management, emotional regulation, practical strategies" },
     { q: "What kind of work culture do you thrive in? What values matter most to you in a workplace?", qResume: "Having worked as {title}, what kind of work culture helps you do your best work? What values matter most?", scoreNote: "Cultural fit awareness, values articulation, self-knowledge" },
     { q: "Where do you see yourself professionally in the next 3-5 years? How does this role help you get there?", qResume: "Where do you see your career heading in 3-5 years after {title}? How does this {role} position fit your trajectory?", scoreNote: "Career clarity, ambition, realistic planning" },
+    { q: "What's your current CTC and what are you expecting in your next role? Help me understand the thinking behind that number.", qResume: "Coming from {title}, what's your current CTC and what are you expecting for this {role}? What's driving that expectation?", scoreNote: "Salary clarity, market awareness, anchoring without over-asking" },
+    { q: "What's your notice period currently, and is there any flexibility to negotiate it down? When could you realistically join?", qResume: "What's your notice period at your current role as {title}? Is there flexibility, and when could you realistically join us?", scoreNote: "Joining timeline awareness, professional handover thinking, flexibility" },
+    { q: "Are you open to working from our office in Bangalore? Or is your preference fully remote? Help me understand what's workable.", qResume: "Are you open to relocating or working from our office? Coming from {title}, what kind of work setup are you looking for?", scoreNote: "Relocation openness, communication of constraints, flexibility" },
+    { q: "Why are you looking to leave your current company? What's not working there that you're hoping to find here?", qResume: "Why are you looking to move from your current role as {title}? What are you hoping to find with us that's missing today?", scoreNote: "Honest motivation, professionalism in framing, clarity on what they want" },
   ],
   "campus-placement": [
     { q: "Tell me about yourself — your academic background, key projects, and what you're looking for in your first role.", qResume: "I can see you've been involved in some interesting work. Tell me about your academic background, your role as {title}, and what you're looking for in your career.", scoreNote: "Concise intro, relevant highlights, career clarity" },
@@ -140,6 +144,8 @@ const miniQuestionsByType: Record<string, QuestionBank[]> = {
     { q: "What was the toughest technical problem you solved during your studies or internship? Walk me through your approach.", qResume: "As {title}, what was the toughest technical problem you tackled? Walk me through your debugging or problem-solving approach.", scoreNote: "Problem-solving methodology, technical thinking, persistence" },
     { q: "Tell me about a time you worked in a team where not everyone contributed equally. How did you handle it?", qResume: "During your time as {title}, tell me about working with a team where contributions were uneven. How did you handle it?", scoreNote: "Teamwork, conflict handling, leadership potential" },
     { q: "Why did you choose your field of study? How has it prepared you for this career?", qResume: "What led you to become {title}? How has that experience prepared you for a career as {role}?", scoreNote: "Self-awareness, motivation, career narrative" },
+    { q: "Are you open to relocating to Bangalore, Hyderabad, or Pune for this role? What about working different shift timings if the role demands it?", qResume: "Given your background as {title}, are you open to relocating across India for this {role}? What about working in shifts if needed?", scoreNote: "Flexibility, adaptability, awareness of fresher-role realities" },
+    { q: "What salary expectations do you have for your first role? Are you aware of typical packages for freshers in this domain?", qResume: "What package are you expecting for your first role coming from your background as {title}? What's your understanding of typical fresher CTC?", scoreNote: "Realistic expectations, market awareness, humility without underselling" },
   ],
   strategic: [
     { q: "If you joined a company as {role} and the tech stack was aging but product-market fit was strong, how would you approach building a technical strategy?", qResume: "Based on your experience as {title}, if you joined a company where the tech stack was aging but PMF was strong, how would you build a technical strategy?", scoreNote: "Strategic vision, prioritization, stakeholder buy-in" },
@@ -239,10 +245,10 @@ export function getMiniScript(user: User | null, company?: string, interviewType
   const panelPersonas = ["Hiring Manager", "Technical Lead", "Hiring Manager", "HR Partner", "Hiring Manager"];
 
   const introText = isSalaryNeg
-    ? `Hi${name ? ` ${name}` : ""}! Good to see you again. We've completed all the interview rounds for the ${role} position${companyContext}, and the team was very impressed. I'm here to walk you through the offer we've put together. Let me get into the details.`
+    ? `Hi${name ? ` ${name}` : ""}! Hope you're doing well. So we've completed all the interview rounds for the ${role} position${companyContext}, and the team was really impressed with you. I'm here to walk you through the offer we've put together. Let me get into the details.`
     : isPanel
-    ? `Hi${name ? ` ${name}` : ""}! Welcome to your panel interview at HireStepX. I'm the hiring manager, and I'll be joined by our technical lead and HR partner. This is a quick 3-question practice round for the ${role} position${companyContext}.${resumeContext} We'll each ask you questions from our perspective. Ready? Let's go.`
-    : `Hi${name ? ` ${name}` : ""}! Welcome to HireStepX. This is a quick 3-question ${typeLabel} practice round for the ${role} position${companyContext}.${resumeContext} I'll ask you real interview questions and give you a score at the end. Ready? Let's go.`;
+    ? `Hi${name ? ` ${name}` : ""}! Hope you're doing well. Welcome to your panel interview. I'm the hiring manager, and I'll be joined by our technical lead and HR partner. This is a quick 3-question practice round for the ${role} position${companyContext}.${resumeContext} We'll each ask from our side. Shall we begin?`
+    : `Hi${name ? ` ${name}` : ""}! Hope you're doing well. This is a quick 3-question ${typeLabel} practice round for the ${role} position${companyContext}.${resumeContext} I'll ask real interview questions and you'll get a detailed report at the end. Shall we begin?`;
 
   // Build question steps dynamically (salary-neg gets 5, others get 3)
   const questionSteps: InterviewStep[] = questions.map((bank, i) => ({
@@ -260,10 +266,10 @@ export function getMiniScript(user: User | null, company?: string, interviewType
       thinkingDuration: 800, speakingDuration: 5000, waitForUser: true, ...(isPanel ? { persona: panelPersonas[0] } : {}) },
     ...questionSteps,
     { type: "closing" as const, aiText: isSalaryNeg
-      ? `I think we've covered the key points${name ? `, ${name}` : ""}. I'll have HR send the formal offer letter. Generating your detailed report now — stay on this screen for a moment.`
+      ? `Achha, I think we've covered the main points${name ? `, ${name}` : ""}. I'll have HR send the formal offer letter. All the best — generating your detailed report now. Stay on this screen for a moment.`
       : isPanel
-      ? "Thank you for speaking with all of us today. Generating your detailed report now — stay on this screen for a moment."
-      : "Great. That wraps up your practice round. Generating your detailed report now — stay on this screen for a moment.",
+      ? "Thank you for speaking with all of us today. All the best — generating your detailed report now. Stay on this screen for a moment."
+      : "Achha, that's all from my side. All the best — generating your detailed report now. Stay on this screen for a moment.",
       thinkingDuration: 800, speakingDuration: 4000, waitForUser: false, ...(isPanel ? { persona: panelPersonas[4] } : {}) },
   ];
 }
@@ -297,8 +303,8 @@ export function getScript(type: string | null, difficulty: string | null, user: 
   const personalizedIntro: InterviewStep = {
     type: "intro",
     aiText: isPanel
-      ? `Hi${name ? ` ${name}` : ""}! Welcome to your panel interview. I'm the hiring manager, and I'll be joined by our technical lead and HR partner. We'll be focusing on ${role} position${companyContext}${industryContext}.${resumeContext} ${difficulty === "warmup" ? "This will be conversational — no pressure." : difficulty === "intense" ? "We'll be pushing you hard today." : "We have 5 questions for you today."} We'll each ask you questions from our perspective. Ready to begin?`
-      : `Hi${name ? ` ${name}` : ""}! Welcome to your mock interview. I'm your AI interviewer today. We'll be focusing on ${(typeKey).replace(/-/g, " ")} questions for the ${role} position${companyContext}${industryContext}.${resumeContext} ${difficulty === "warmup" ? "This will be conversational — no pressure, just practice." : difficulty === "intense" ? "I'll be pushing you hard today — expect rapid follow-ups and high expectations." : "I have 5 questions lined up for you. Feel free to take your time."} Ready to begin?`,
+      ? `Hi${name ? ` ${name}` : ""}! Hope you're doing well. Welcome to your panel interview. I'm the hiring manager, and I'll be joined by our technical lead and HR partner. We'll be focusing on the ${role} position${companyContext}${industryContext}.${resumeContext} ${difficulty === "warmup" ? "This will be conversational — no pressure." : difficulty === "intense" ? "We'll be pushing you a bit today." : "We have 5 questions for you today."} We'll each ask from our side. Shall we begin?`
+      : `Hi${name ? ` ${name}` : ""}! Hope you're doing well. Welcome to your mock interview. We'll be focusing on ${(typeKey).replace(/-/g, " ")} questions for the ${role} position${companyContext}${industryContext}.${resumeContext} ${difficulty === "warmup" ? "This will be conversational — no pressure, just practice." : difficulty === "intense" ? "I'll be pushing you today — expect quick follow-ups and high expectations." : "I have 5 questions for you. Feel free to take your time."} Shall we begin?`,
     thinkingDuration: 1000,
     speakingDuration: 6000,
     waitForUser: true,
@@ -308,8 +314,8 @@ export function getScript(type: string | null, difficulty: string | null, user: 
   const personalizedClosing: InterviewStep = {
     type: "closing",
     aiText: isPanel
-      ? `Thank you for speaking with all of us today${name ? `, ${name}` : ""}. That's everything we had for you. Generating your detailed report now — stay on this screen for a moment.`
-      : `Alright${name ? `, ${name}` : ""}, that's everything I needed. Thanks for the conversation — generating your detailed report now. Stay on this screen for a moment.`,
+      ? `Thank you for speaking with all of us today${name ? `, ${name}` : ""}. That's everything we had for you. All the best — generating your detailed report now. Stay on this screen for a moment.`
+      : `Achha${name ? `, ${name}` : ""}, that's everything from my side. All the best — generating your detailed report now. Stay on this screen for a moment.`,
     thinkingDuration: 800,
     speakingDuration: 4500,
     waitForUser: false,
