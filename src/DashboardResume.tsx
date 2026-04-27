@@ -968,12 +968,23 @@ export default function DashboardResume() {
           {profile.improvements && profile.improvements.length > 0 && (
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               <span style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.stone, textTransform: "uppercase", letterSpacing: "0.05em" }}>How to improve</span>
-              {profile.improvements.map((tip, i) => (
-                <div key={i} style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "10px 14px", borderRadius: 8, background: c.obsidian, border: `1px solid ${c.border}` }}>
-                  <span style={{ fontFamily: font.mono, fontSize: 10, fontWeight: 700, color: c.gilt, background: "rgba(212,179,127,0.08)", borderRadius: 4, padding: "2px 6px", flexShrink: 0, marginTop: 1 }}>{i + 1}</span>
-                  <span style={{ fontFamily: font.ui, fontSize: 12.5, color: c.chalk, lineHeight: 1.5 }}>{tip}</span>
-                </div>
-              ))}
+              {profile.improvements.map((tip, i) => {
+                // Defensive coerce: server normalizer should send strings,
+                // but if a stale cache or third-party LLM returns
+                // {change, why} objects we don't want React error #31 to
+                // crash the page. Stringify keys → "key1 — key2" join.
+                const text = typeof tip === "string"
+                  ? tip
+                  : tip && typeof tip === "object"
+                    ? Object.values(tip as Record<string, unknown>).filter(v => typeof v === "string").join(" — ")
+                    : String(tip ?? "");
+                return (
+                  <div key={i} style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "10px 14px", borderRadius: 8, background: c.obsidian, border: `1px solid ${c.border}` }}>
+                    <span style={{ fontFamily: font.mono, fontSize: 10, fontWeight: 700, color: c.gilt, background: "rgba(212,179,127,0.08)", borderRadius: 4, padding: "2px 6px", flexShrink: 0, marginTop: 1 }}>{i + 1}</span>
+                    <span style={{ fontFamily: font.ui, fontSize: 12.5, color: c.chalk, lineHeight: 1.5 }}>{text}</span>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
