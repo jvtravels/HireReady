@@ -648,6 +648,192 @@ async function getFeedback() {
   return { total: totalCount, byRating, recent: feedback.slice(0, LIMIT_RECENT) };
 }
 
+/* ─── New section handlers (referrals, promo codes, calendar, story notebook) ─── */
+
+interface ReferralRow {
+  id: string;
+  referrer_id: string;
+  referee_id?: string;
+  referee_email?: string;
+  status: string;
+  reward_granted_at?: string | null;
+  created_at: string;
+}
+
+async function getReferrals() {
+  const monthAgo = daysAgo(30);
+  const [allReferrals, recentProfiles] = await Promise.all([
+    fetchJSON<ReferralRow>("referrals?select=id,referrer_id,referee_id,referee_email,status,reward_granted_at,created_at&order=created_at.desc&limit=500"),
+    fetchJSON<{ id: string; name: string | null; email: string }>("profiles?select=id,name,email&limit=2000"),
+  ]);
+  const profileMap = new Map(recentProfiles.map((p) => [p.id, { name: p.name || "(no name)", email: p.email }]));
+
+  const total = allReferrals.length;
+  const last30d = allReferrals.filter((r) => r.created_at >= monthAgo).length;
+  const converted = allReferrals.filter((r) => r.status === "converted" || !!r.reward_granted_at).length;
+  const conversionRate = total > 0 ? Math.round((converted / total) * 100) : 0;
+
+  // Top referrers by total referrals brought in
+  const referrerCounts = new Map<string, { count: number; converted: number }>();
+  for (const r of allReferrals) {
+    const cur = referrerCounts.get(r.referrer_id) || { count: 0, converted: 0 };
+    cur.count++;
+    if (r.status === "converted" || r.reward_granted_at) cur.converted++;
+    referrerCounts.set(r.referrer_id, cur);
+  }
+  const topReferrers = Array.from(referrerCounts.entries())
+    .map(([id, stats]) => ({
+      id,
+      name: profileMap.get(id)?.name || "(deleted user)",
+      email: profileMap.get(id)?.email || "—",
+      total: stats.count,
+      converted: stats.converted,
+    }))
+    .sort((a, b) => b.total - a.total)
+    .slice(0, 20);
+
+  const recent = allReferrals.slice(0, 50).map((r) => ({
+    id: r.id,
+    referrerName: profileMap.get(r.referrer_id)?.name || "(deleted)",
+    refereeEmail: r.referee_email || (r.referee_id ? (profileMap.get(r.referee_id)?.email || "—") : "—"),
+    status: r.status,
+    rewardGranted: !!r.reward_granted_at,
+    createdAt: r.created_at,
+  }));
+
+  return { total, last30d, converted, conversionRate, topReferrers, recent };
+}
+
+interface PromoRow {
+  id: string;
+  code: string;
+  discount_pct?: number;
+  discount_amount?: number;
+  max_uses: number | null;
+  uses: number;
+  active: boolean;
+  applies_to: string;
+  expires_at: string | null;
+  created_at: string;
+}
+
+async function getPromoCodes() {
+  const codes = await fetchJSON<PromoRow>("promo_codes?select=*&order=created_at.desc&limit=200");
+  const active = codes.filter((c) => c.active && (!c.expires_at || c.expires_at > new Date().toISOString())).length;
+  const expired = codes.filter((c) => c.expires_at && c.expires_at <= new Date().toISOString()).length;
+  const totalUses = codes.reduce((sum, c) => sum + (c.uses || 0), 0);
+  return {
+    total: codes.length,
+    active,
+    expired,
+    totalUses,
+    codes: codes.map((c) => ({
+      id: c.id,
+      code: c.code,
+      discountPct: c.discount_pct ?? null,
+      discountAmount: c.discount_amount ?? null,
+      maxUses: c.max_uses,
+      uses: c.uses || 0,
+      active: c.active,
+      appliesTo: c.applies_to,
+      expiresAt: c.expires_at,
+      createdAt: c.created_at,
+    })),
+  };
+}
+
+interface CalendarEvent {
+  id: string;
+  user_id: string;
+  type: string;
+  date: string;
+  time?: string;
+  company?: string;
+  reminded?: boolean;
+  created_at: string;
+}
+
+async function getCalendar() {
+  const weekAgo = daysAgo(7);
+  const today = new Date().toISOString();
+  const [allEvents, profiles] = await Promise.all([
+    fetchJSON<CalendarEvent>("calendar_events?select=id,user_id,type,date,time,company,reminded,created_at&order=date.desc&limit=500"),
+    fetchJSON<{ id: string; name: string | null; email: string }>("profiles?select=id,name,email&limit=2000"),
+  ]);
+  const profileMap = new Map(profiles.map((p) => [p.id, { name: p.name || "(no name)", email: p.email }]));
+
+  const upcoming = allEvents.filter((e) => e.date >= today).length;
+  const pastWeek = allEvents.filter((e) => e.date >= weekAgo && e.date < today).length;
+
+  // Events grouped by type
+  const byType: Record<string, number> = {};
+  for (const e of allEvents) {
+    byType[e.type] = (byType[e.type] || 0) + 1;
+  }
+
+  const recent = allEvents.slice(0, 50).map((e) => ({
+    id: e.id,
+    userName: profileMap.get(e.user_id)?.name || "(deleted user)",
+    userEmail: profileMap.get(e.user_id)?.email || "—",
+    type: e.type,
+    company: e.company || "—",
+    date: e.date,
+    time: e.time || "",
+    reminded: !!e.reminded,
+  }));
+
+  return {
+    total: allEvents.length,
+    upcoming,
+    pastWeek,
+    byType,
+    recent,
+  };
+}
+
+async function getStoryNotebookStats() {
+  const [stories, profiles] = await Promise.all([
+    fetchJSON<{ id: string; user_id: string; title: string; tags: string[] | null; created_at: string; last_used_at: string | null }>(
+      "story_notebook?select=id,user_id,title,tags,created_at,last_used_at&order=created_at.desc&limit=500",
+    ),
+    fetchJSON<{ id: string; name: string | null; email: string }>("profiles?select=id,name,email&limit=2000"),
+  ]);
+  const profileMap = new Map(profiles.map((p) => [p.id, { name: p.name || "(no name)", email: p.email }]));
+
+  const now = Date.now();
+  const sevenDaysMs = 7 * 86400000;
+  const dueForReview = stories.filter((s) => {
+    const ref = new Date(s.last_used_at || s.created_at).getTime();
+    return now - ref >= sevenDaysMs;
+  }).length;
+
+  // Top users by story count
+  const userCounts = new Map<string, number>();
+  for (const s of stories) userCounts.set(s.user_id, (userCounts.get(s.user_id) || 0) + 1);
+  const topUsers = Array.from(userCounts.entries())
+    .map(([id, count]) => ({
+      id, count,
+      name: profileMap.get(id)?.name || "(deleted)",
+      email: profileMap.get(id)?.email || "—",
+    }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 15);
+
+  return {
+    total: stories.length,
+    dueForReview,
+    topUsers,
+    recent: stories.slice(0, 30).map((s) => ({
+      id: s.id,
+      userEmail: profileMap.get(s.user_id)?.email || "—",
+      title: s.title || "(untitled)",
+      tags: s.tags || [],
+      createdAt: s.created_at,
+      lastUsedAt: s.last_used_at,
+    })),
+  };
+}
+
 /* ─── Handler ─── */
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -688,6 +874,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         case "llm": return getLLMUsage();
         case "sessions": return getSessions();
         case "feedback": return getFeedback();
+        case "referrals": return getReferrals();
+        case "promo-codes": return getPromoCodes();
+        case "calendar": return getCalendar();
+        case "story-notebook": return getStoryNotebookStats();
         default: throw new Error(`Unknown section: ${section}`);
       }
     })();

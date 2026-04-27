@@ -93,15 +93,48 @@ export interface UserDetailData {
   feedback: Record<string, unknown>[];
 }
 
-type Tab = "overview" | "users" | "financials" | "llm" | "sessions" | "feedback";
+export interface ReferralsData {
+  total: number; last30d: number; converted: number; conversionRate: number;
+  topReferrers: Array<{ id: string; name: string; email: string; total: number; converted: number }>;
+  recent: Array<{ id: string; referrerName: string; refereeEmail: string; status: string; rewardGranted: boolean; createdAt: string }>;
+}
+
+export interface PromoCodesData {
+  total: number; active: number; expired: number; totalUses: number;
+  codes: Array<{
+    id: string; code: string;
+    discountPct: number | null; discountAmount: number | null;
+    maxUses: number | null; uses: number;
+    active: boolean; appliesTo: string;
+    expiresAt: string | null; createdAt: string;
+  }>;
+}
+
+export interface CalendarData {
+  total: number; upcoming: number; pastWeek: number;
+  byType: Record<string, number>;
+  recent: Array<{ id: string; userName: string; userEmail: string; type: string; company: string; date: string; time: string; reminded: boolean }>;
+}
+
+export interface StoryNotebookData {
+  total: number; dueForReview: number;
+  topUsers: Array<{ id: string; count: number; name: string; email: string }>;
+  recent: Array<{ id: string; userEmail: string; title: string; tags: string[]; createdAt: string; lastUsedAt: string | null }>;
+}
+
+type Tab = "overview" | "users" | "sessions" | "financials" | "llm" | "feedback" | "referrals" | "promo-codes" | "calendar" | "story-notebook";
 
 const TABS: { key: Tab; label: string; icon: string }[] = [
   { key: "overview", label: "Overview", icon: "📊" },
   { key: "users", label: "Users", icon: "👤" },
+  { key: "sessions", label: "Sessions", icon: "🎯" },
   { key: "financials", label: "Financials", icon: "💰" },
   { key: "llm", label: "AI / Services", icon: "🤖" },
-  { key: "sessions", label: "Sessions", icon: "🎯" },
   { key: "feedback", label: "Feedback", icon: "💬" },
+  { key: "referrals", label: "Referrals", icon: "🔗" },
+  { key: "promo-codes", label: "Promo Codes", icon: "🎟️" },
+  { key: "calendar", label: "Calendar", icon: "📅" },
+  { key: "story-notebook", label: "Story Bank", icon: "📖" },
 ];
 
 /* ─── Cache (per tab, 5 min TTL) ─── */
@@ -141,6 +174,27 @@ function timeAgo(d: string | null): string {
   const days = Math.floor(hrs / 24);
   if (days < 30) return `${days}d ago`;
   return formatDate(d);
+}
+
+/**
+ * Export an array of objects as a CSV download. Quotes cells containing
+ * commas/quotes/newlines per RFC 4180. Browser-only — no-op on SSR.
+ */
+function exportCsv<T extends Record<string, unknown>>(filename: string, rows: T[]): void {
+  if (typeof window === "undefined" || rows.length === 0) return;
+  const keys = Array.from(new Set(rows.flatMap((r) => Object.keys(r))));
+  const escape = (v: unknown): string => {
+    if (v === null || v === undefined) return "";
+    const s = typeof v === "object" ? JSON.stringify(v) : String(v);
+    return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+  const lines = [keys.join(","), ...rows.map((r) => keys.map((k) => escape(r[k])).join(","))];
+  const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a); URL.revokeObjectURL(url);
 }
 
 /* ─── Styles ─── */
@@ -197,6 +251,13 @@ const tdStyle = {
   padding: "10px 12px",
   color: c.chalk,
   borderBottom: `1px solid ${c.borderSubtle}`,
+} as const;
+
+const exportBtn = {
+  fontFamily: font.ui, fontSize: 11, fontWeight: 600,
+  color: c.gilt, background: "transparent",
+  border: `1px solid rgba(212,179,127,0.3)`,
+  borderRadius: 6, padding: "5px 12px", cursor: "pointer",
 } as const;
 
 /* ─── Mini Bar Chart (memoized) ─── */
@@ -413,6 +474,10 @@ export default function AdminDashboard() {
   const [llm, setLlm] = useState<LLMData | null>(null);
   const [sessions, setSessions] = useState<SessionsData | null>(null);
   const [feedback, setFeedback] = useState<FeedbackData | null>(null);
+  const [referrals, setReferrals] = useState<ReferralsData | null>(null);
+  const [promoCodes, setPromoCodes] = useState<PromoCodesData | null>(null);
+  const [calendar, setCalendar] = useState<CalendarData | null>(null);
+  const [storyNotebook, setStoryNotebook] = useState<StoryNotebookData | null>(null);
 
   const fetchSection = useCallback(async (section: string, extra?: Record<string, unknown>, skipCache = false): Promise<unknown> => {
     if (!authed) return null;
@@ -508,6 +573,26 @@ export default function AdminDashboard() {
           if (d) setFeedback(d);
           break;
         }
+        case "referrals": {
+          const d = await fetchSection("referrals") as ReferralsData | null;
+          if (d) setReferrals(d);
+          break;
+        }
+        case "promo-codes": {
+          const d = await fetchSection("promo-codes") as PromoCodesData | null;
+          if (d) setPromoCodes(d);
+          break;
+        }
+        case "calendar": {
+          const d = await fetchSection("calendar") as CalendarData | null;
+          if (d) setCalendar(d);
+          break;
+        }
+        case "story-notebook": {
+          const d = await fetchSection("story-notebook") as StoryNotebookData | null;
+          if (d) setStoryNotebook(d);
+          break;
+        }
       }
     })();
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -565,6 +650,26 @@ export default function AdminDashboard() {
       case "feedback": {
         const d = await fetchSection("feedback", undefined, true) as FeedbackData | null;
         if (d) setFeedback(d);
+        break;
+      }
+      case "referrals": {
+        const d = await fetchSection("referrals", undefined, true) as ReferralsData | null;
+        if (d) setReferrals(d);
+        break;
+      }
+      case "promo-codes": {
+        const d = await fetchSection("promo-codes", undefined, true) as PromoCodesData | null;
+        if (d) setPromoCodes(d);
+        break;
+      }
+      case "calendar": {
+        const d = await fetchSection("calendar", undefined, true) as CalendarData | null;
+        if (d) setCalendar(d);
+        break;
+      }
+      case "story-notebook": {
+        const d = await fetchSection("story-notebook", undefined, true) as StoryNotebookData | null;
+        if (d) setStoryNotebook(d);
         break;
       }
     }
@@ -649,19 +754,27 @@ export default function AdminDashboard() {
     if (selectedUserId && userDetail) return renderUserDetail();
     return (
       <div>
-        {/* Search */}
-        <div style={{ marginBottom: 20 }}>
+        {/* Search + export */}
+        <div style={{ marginBottom: 20, display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center" }}>
           <input
             type="text"
             placeholder="Search by name or email..."
             value={userSearch}
             onChange={e => setUserSearch(e.target.value)}
             style={{
-              width: "100%", maxWidth: 400, padding: "10px 16px",
+              flex: 1, minWidth: 240, maxWidth: 400, padding: "10px 16px",
               background: c.onyx, border: `1px solid ${c.border}`, borderRadius: radius.md,
               color: c.ivory, fontSize: 14, fontFamily: font.ui, outline: "none",
             }}
           />
+          <span style={{ fontFamily: font.ui, fontSize: 12, color: c.stone }}>
+            {users.length} result{users.length === 1 ? "" : "s"}
+          </span>
+          <button
+            onClick={() => exportCsv("users.csv", users as unknown as Record<string, unknown>[])}
+            style={exportBtn}
+            disabled={users.length === 0}
+          >Export CSV</button>
         </div>
 
         {/* Table */}
@@ -1387,7 +1500,271 @@ export default function AdminDashboard() {
       case "llm": return renderLLM();
       case "sessions": return renderSessions();
       case "feedback": return renderFeedback();
+      case "referrals": return renderReferrals();
+      case "promo-codes": return renderPromoCodes();
+      case "calendar": return renderCalendar();
+      case "story-notebook": return renderStoryNotebook();
     }
+  };
+
+  /* ─── New tab renderers ─── */
+
+  const renderReferrals = () => {
+    if (!referrals) return <EmptyState message="No referral data available" />;
+    return (
+      <div>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 16, marginBottom: 24 }}>
+          <div style={statCard}><p style={labelStyle}>Total Referrals</p><p style={bigNum}>{referrals.total}</p></div>
+          <div style={statCard}><p style={labelStyle}>Last 30 days</p><p style={bigNum}>{referrals.last30d}</p></div>
+          <div style={statCard}><p style={labelStyle}>Converted</p><p style={{ ...bigNum, color: c.sage }}>{referrals.converted}</p></div>
+          <div style={statCard}><p style={labelStyle}>Conversion Rate</p><p style={bigNum}>{referrals.conversionRate}%</p></div>
+        </div>
+
+        {referrals.topReferrers.length > 0 && (
+          <div style={{ ...card, padding: 0, marginBottom: 24, overflow: "auto" }}>
+            <div style={{ padding: "16px 24px 8px" }}>
+              <p style={labelStyle}>Top Referrers</p>
+            </div>
+            <table style={tableStyle}>
+              <thead>
+                <tr>
+                  <th style={thStyle}>Name</th>
+                  <th style={thStyle}>Email</th>
+                  <th style={thStyle}>Total</th>
+                  <th style={thStyle}>Converted</th>
+                </tr>
+              </thead>
+              <tbody>
+                {referrals.topReferrers.map((r) => (
+                  <tr key={r.id}>
+                    <td style={tdStyle}>{r.name}</td>
+                    <td style={{ ...tdStyle, fontFamily: font.mono, fontSize: 12 }}>{r.email}</td>
+                    <td style={{ ...tdStyle, fontFamily: font.mono }}>{r.total}</td>
+                    <td style={{ ...tdStyle, fontFamily: font.mono, color: c.sage }}>{r.converted}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {referrals.recent.length > 0 && (
+          <div style={{ ...card, padding: 0, overflow: "auto" }}>
+            <div style={{ padding: "16px 24px 8px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <p style={labelStyle}>Recent Referrals</p>
+              <button onClick={() => exportCsv("referrals.csv", referrals.recent)} style={exportBtn}>Export CSV</button>
+            </div>
+            <table style={tableStyle}>
+              <thead>
+                <tr>
+                  <th style={thStyle}>Referrer</th>
+                  <th style={thStyle}>Referee</th>
+                  <th style={thStyle}>Status</th>
+                  <th style={thStyle}>Reward</th>
+                  <th style={thStyle}>Date</th>
+                </tr>
+              </thead>
+              <tbody>
+                {referrals.recent.map((r) => (
+                  <tr key={r.id}>
+                    <td style={tdStyle}>{r.referrerName}</td>
+                    <td style={{ ...tdStyle, fontFamily: font.mono, fontSize: 12 }}>{r.refereeEmail}</td>
+                    <td style={{ ...tdStyle, color: r.status === "converted" ? c.sage : c.stone }}>{r.status}</td>
+                    <td style={tdStyle}>{r.rewardGranted ? "✓" : "—"}</td>
+                    <td style={{ ...tdStyle, fontSize: 12 }}>{formatDateTime(r.createdAt)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderPromoCodes = () => {
+    if (!promoCodes) return <EmptyState message="No promo code data available" />;
+    return (
+      <div>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 16, marginBottom: 24 }}>
+          <div style={statCard}><p style={labelStyle}>Total Codes</p><p style={bigNum}>{promoCodes.total}</p></div>
+          <div style={statCard}><p style={labelStyle}>Active</p><p style={{ ...bigNum, color: c.sage }}>{promoCodes.active}</p></div>
+          <div style={statCard}><p style={labelStyle}>Expired</p><p style={{ ...bigNum, color: c.stone }}>{promoCodes.expired}</p></div>
+          <div style={statCard}><p style={labelStyle}>Total Uses</p><p style={bigNum}>{promoCodes.totalUses}</p></div>
+        </div>
+
+        {promoCodes.codes.length > 0 ? (
+          <div style={{ ...card, padding: 0, overflow: "auto" }}>
+            <div style={{ padding: "16px 24px 8px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <p style={labelStyle}>All Codes</p>
+              <button onClick={() => exportCsv("promo-codes.csv", promoCodes.codes)} style={exportBtn}>Export CSV</button>
+            </div>
+            <table style={tableStyle}>
+              <thead>
+                <tr>
+                  <th style={thStyle}>Code</th>
+                  <th style={thStyle}>Discount</th>
+                  <th style={thStyle}>Applies to</th>
+                  <th style={thStyle}>Uses</th>
+                  <th style={thStyle}>Status</th>
+                  <th style={thStyle}>Expires</th>
+                </tr>
+              </thead>
+              <tbody>
+                {promoCodes.codes.map((p) => {
+                  const isActive = p.active && (!p.expiresAt || new Date(p.expiresAt) > new Date());
+                  const usagePct = p.maxUses ? Math.round((p.uses / p.maxUses) * 100) : null;
+                  return (
+                    <tr key={p.id}>
+                      <td style={{ ...tdStyle, fontFamily: font.mono, fontWeight: 600 }}>{p.code}</td>
+                      <td style={tdStyle}>{p.discountPct ? `${p.discountPct}%` : p.discountAmount ? `₹${(p.discountAmount/100).toFixed(0)}` : "—"}</td>
+                      <td style={tdStyle}>{p.appliesTo}</td>
+                      <td style={{ ...tdStyle, fontFamily: font.mono }}>
+                        {p.uses}{p.maxUses ? ` / ${p.maxUses}` : ""}
+                        {usagePct !== null && <span style={{ color: c.stone, marginLeft: 6 }}>({usagePct}%)</span>}
+                      </td>
+                      <td style={{ ...tdStyle, color: isActive ? c.sage : c.stone }}>{isActive ? "Active" : "Inactive"}</td>
+                      <td style={{ ...tdStyle, fontSize: 12 }}>{p.expiresAt ? formatDateTime(p.expiresAt) : "—"}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        ) : <EmptyState message="No promo codes have been created yet." />}
+      </div>
+    );
+  };
+
+  const renderCalendar = () => {
+    if (!calendar) return <EmptyState message="No calendar data available" />;
+    return (
+      <div>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 16, marginBottom: 24 }}>
+          <div style={statCard}><p style={labelStyle}>Total Events</p><p style={bigNum}>{calendar.total}</p></div>
+          <div style={statCard}><p style={labelStyle}>Upcoming</p><p style={{ ...bigNum, color: c.gilt }}>{calendar.upcoming}</p></div>
+          <div style={statCard}><p style={labelStyle}>Last 7 days</p><p style={bigNum}>{calendar.pastWeek}</p></div>
+        </div>
+
+        {Object.keys(calendar.byType).length > 0 && (
+          <div style={{ ...card, marginBottom: 24 }}>
+            <p style={labelStyle}>Events by type</p>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 16, marginTop: 12 }}>
+              {Object.entries(calendar.byType).map(([type, n]) => (
+                <div key={type} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                  <span style={{ fontSize: 11, color: c.stone, textTransform: "uppercase", letterSpacing: "0.06em" }}>{type}</span>
+                  <span style={{ fontFamily: font.mono, fontSize: 20, color: c.ivory, fontWeight: 600 }}>{n}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {calendar.recent.length > 0 ? (
+          <div style={{ ...card, padding: 0, overflow: "auto" }}>
+            <div style={{ padding: "16px 24px 8px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <p style={labelStyle}>Recent Events</p>
+              <button onClick={() => exportCsv("calendar.csv", calendar.recent)} style={exportBtn}>Export CSV</button>
+            </div>
+            <table style={tableStyle}>
+              <thead>
+                <tr>
+                  <th style={thStyle}>User</th>
+                  <th style={thStyle}>Email</th>
+                  <th style={thStyle}>Type</th>
+                  <th style={thStyle}>Company</th>
+                  <th style={thStyle}>Date</th>
+                  <th style={thStyle}>Time</th>
+                  <th style={thStyle}>Reminded</th>
+                </tr>
+              </thead>
+              <tbody>
+                {calendar.recent.map((e) => (
+                  <tr key={e.id}>
+                    <td style={tdStyle}>{e.userName}</td>
+                    <td style={{ ...tdStyle, fontFamily: font.mono, fontSize: 12 }}>{e.userEmail}</td>
+                    <td style={tdStyle}>{e.type}</td>
+                    <td style={tdStyle}>{e.company}</td>
+                    <td style={{ ...tdStyle, fontSize: 12 }}>{formatDateTime(e.date)}</td>
+                    <td style={{ ...tdStyle, fontFamily: font.mono, fontSize: 12 }}>{e.time}</td>
+                    <td style={tdStyle}>{e.reminded ? "✓" : "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : <EmptyState message="No upcoming or recent calendar events." />}
+      </div>
+    );
+  };
+
+  const renderStoryNotebook = () => {
+    if (!storyNotebook) return <EmptyState message="No story-notebook data available" />;
+    return (
+      <div>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 16, marginBottom: 24 }}>
+          <div style={statCard}><p style={labelStyle}>Total Stories</p><p style={bigNum}>{storyNotebook.total}</p></div>
+          <div style={statCard}><p style={labelStyle}>Due for review (≥7d)</p><p style={{ ...bigNum, color: c.gilt }}>{storyNotebook.dueForReview}</p></div>
+        </div>
+
+        {storyNotebook.topUsers.length > 0 && (
+          <div style={{ ...card, padding: 0, marginBottom: 24, overflow: "auto" }}>
+            <div style={{ padding: "16px 24px 8px" }}>
+              <p style={labelStyle}>Top users by story count</p>
+            </div>
+            <table style={tableStyle}>
+              <thead>
+                <tr>
+                  <th style={thStyle}>Name</th>
+                  <th style={thStyle}>Email</th>
+                  <th style={thStyle}>Stories</th>
+                </tr>
+              </thead>
+              <tbody>
+                {storyNotebook.topUsers.map((u) => (
+                  <tr key={u.id}>
+                    <td style={tdStyle}>{u.name}</td>
+                    <td style={{ ...tdStyle, fontFamily: font.mono, fontSize: 12 }}>{u.email}</td>
+                    <td style={{ ...tdStyle, fontFamily: font.mono }}>{u.count}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {storyNotebook.recent.length > 0 ? (
+          <div style={{ ...card, padding: 0, overflow: "auto" }}>
+            <div style={{ padding: "16px 24px 8px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <p style={labelStyle}>Recent Stories</p>
+              <button onClick={() => exportCsv("stories.csv", storyNotebook.recent)} style={exportBtn}>Export CSV</button>
+            </div>
+            <table style={tableStyle}>
+              <thead>
+                <tr>
+                  <th style={thStyle}>User</th>
+                  <th style={thStyle}>Title</th>
+                  <th style={thStyle}>Tags</th>
+                  <th style={thStyle}>Created</th>
+                  <th style={thStyle}>Last reviewed</th>
+                </tr>
+              </thead>
+              <tbody>
+                {storyNotebook.recent.map((s) => (
+                  <tr key={s.id}>
+                    <td style={{ ...tdStyle, fontFamily: font.mono, fontSize: 12 }}>{s.userEmail}</td>
+                    <td style={{ ...tdStyle, maxWidth: 260, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const }}>{s.title}</td>
+                    <td style={{ ...tdStyle, fontSize: 12, color: c.stone }}>{(s.tags || []).join(", ") || "—"}</td>
+                    <td style={{ ...tdStyle, fontSize: 12 }}>{formatDateTime(s.createdAt)}</td>
+                    <td style={{ ...tdStyle, fontSize: 12 }}>{s.lastUsedAt ? formatDateTime(s.lastUsedAt) : "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : <EmptyState message="No saved stories yet." />}
+      </div>
+    );
   };
 
   /* ─── Layout ─── */
@@ -1498,9 +1875,9 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      <div style={{ display: "flex", minHeight: "calc(100vh - 57px)" }}>
-        {/* Sidebar */}
-        <div style={{
+      <div className="admin-shell" style={{ display: "flex", minHeight: "calc(100vh - 57px)" }}>
+        {/* Sidebar — collapses to a horizontal tab strip on narrow screens. */}
+        <div className="admin-tabs" style={{
           width: 220, flexShrink: 0, padding: "24px 16px",
           borderRight: `1px solid ${c.border}`, background: c.graphite,
         }}>
@@ -1536,7 +1913,28 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      <style>{`
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @media (max-width: 900px) {
+          /* Sidebar → horizontal scrollable strip. */
+          .admin-shell { flex-direction: column; }
+          .admin-tabs {
+            width: auto !important; padding: 8px 12px !important;
+            display: flex; gap: 4px; overflow-x: auto !important;
+            border-right: none !important;
+            border-bottom: 1px solid rgba(245,242,237,0.06);
+            -webkit-overflow-scrolling: touch;
+          }
+          .admin-tabs button { white-space: nowrap; flex-shrink: 0; width: auto !important; }
+          .admin-tabs::-webkit-scrollbar { height: 3px; }
+          .admin-tabs::-webkit-scrollbar-thumb { background: rgba(245,242,237,0.12); border-radius: 2px; }
+        }
+        /* Tables remain scrollable horizontally on narrow screens. */
+        @media (max-width: 720px) {
+          table { font-size: 12px; }
+          table th, table td { padding: 8px 10px !important; }
+        }
+      `}</style>
     </div>
   );
 }
