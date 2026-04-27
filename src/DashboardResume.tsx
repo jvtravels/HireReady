@@ -281,6 +281,10 @@ export default function DashboardResume() {
   // polishing is a transient UI nudge, not persisted.
   const [polished, setPolished] = useState<Record<number, { state: "loading" | "done" | "error"; rewrite?: string; rationale?: string; error?: string }>>({});
   const [activatingId, setActivatingId] = useState<string | null>(null);
+  // Bump to force the catalogue useEffect to refetch (e.g. after the
+  // server PATCH on Make Active so updated_at-based ordering reflects
+  // DB truth).
+  const [catalogueRefreshKey, setCatalogueRefreshKey] = useState(0);
   const analyzingRef = useRef(false);
   const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -317,26 +321,38 @@ export default function DashboardResume() {
         if (cancelled || error || !Array.isArray(data)) return;
         type VersionRow = { id: string; version_number: number; parsed_data: ResumeProfile | null; is_latest: boolean };
         type ResumeRow = { id: string; domain: string; title: string | null; active_version_id: string | null; updated_at: string; resume_versions: VersionRow[] | null };
-        const transformed = (data as ResumeRow[]).map((r) => {
+        // Active = the resume with the most-recent updated_at. The
+        // server orders the response that way already, so the first
+        // row in the array is the one driving the user's experience.
+        // resumes.active_version_id is per-resume "which version of
+        // this row is current" — every row has one, so it can't tell
+        // us which resume is "active" in the user-facing sense.
+        const transformed = (data as ResumeRow[]).map((r, idx) => {
           const versions = Array.isArray(r.resume_versions) ? r.resume_versions : [];
           const latest = versions.find(v => v.is_latest) ?? versions.sort((a, b) => b.version_number - a.version_number)[0];
+          // Title fallback: "general" / "pm" feel like internal codes
+          // when shown as a card heading. Prefer a real fileName (from
+          // resume_versions if the resume was created before we started
+          // saving fileName on `resumes.title`).
+          const versionFileName = (latest?.parsed_data as { headline?: string } | null)?.headline;
+          const niceTitle = (r.title && r.title !== r.domain ? r.title : null) || versionFileName || `${r.domain.toUpperCase()} resume`;
           return {
             id: r.id,
             domain: r.domain || "general",
-            title: r.title || "Untitled resume",
+            title: niceTitle,
             latestVersion: latest?.version_number ?? 1,
             latestVersionId: latest?.id ?? null,
             latestScore: typeof latest?.parsed_data?.resumeScore === "number" ? latest.parsed_data.resumeScore : null,
             latestProfile: latest?.parsed_data ?? null,
             updatedAt: r.updated_at,
-            isActive: !!r.active_version_id,
+            isActive: idx === 0,
           };
         });
         setAllResumes(transformed);
       } catch { /* best-effort */ }
     })();
     return () => { cancelled = true; };
-  }, [user?.id, fileName]);
+  }, [user?.id, fileName, catalogueRefreshKey]);
 
   useEffect(() => {
     if (user?.resumeText) setResumeText(user.resumeText);
@@ -427,6 +443,11 @@ export default function DashboardResume() {
       if (!res.ok) {
         setAllResumes(prev); // revert
         setErrorMsg(res.error || "Failed to switch active resume");
+      } else {
+        // Server bumped updated_at on the chosen row. Trigger a refetch
+        // so the cards re-order (active card moves to position 0) and
+        // the badge stays consistent across navigations.
+        setCatalogueRefreshKey(k => k + 1);
       }
     } catch (err) {
       setAllResumes(prev);
