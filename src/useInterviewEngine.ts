@@ -501,7 +501,12 @@ export function useInterviewEngine() {
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
   const deepgramRef = useRef<DeepgramSTTHandle | null>(null);
   const sarvamRef = useRef<SarvamSTTHandle | null>(null);
-  const [currentTranscript, setCurrentTranscript] = useState("");
+  // Restored from draft on resume so an in-progress answer (typed but not yet
+  // submitted) survives a tab close / network blip / refresh.
+  const [currentTranscript, setCurrentTranscript] = useState<string>(() => {
+    const draft = draftRef.current as InterviewDraft & { currentTranscript?: string } | null;
+    return typeof draft?.currentTranscript === "string" ? draft.currentTranscript : "";
+  });
   const [phase, setPhase] = useState<"thinking" | "speaking" | "listening" | "done">("thinking");
   const [isRecording, setIsRecording] = useState(false);
 
@@ -685,7 +690,12 @@ export function useInterviewEngine() {
     }
     const saveDraft = () => {
       const draftData = {
-        transcript, currentStep, elapsed, interviewType, interviewDifficulty, interviewFocus,
+        transcript,
+        // Include the in-progress answer so users don't lose words mid-typing
+        // when they refresh / close the tab. Restored into currentTranscript
+        // on resume — see the draft-restore block earlier in this hook.
+        currentTranscript,
+        currentStep, elapsed, interviewType, interviewDifficulty, interviewFocus,
         targetRole, targetCompany,
         script: interviewScript,
         savedAt: Date.now(),
@@ -717,7 +727,7 @@ export function useInterviewEngine() {
       window.removeEventListener("beforeunload", handleBeforeUnload);
       clearInterval(autoSaveInterval);
     };
-  }, [phase, evaluating, transcript, currentStep, elapsed, interviewType, interviewDifficulty, interviewFocus]);
+  }, [phase, evaluating, transcript, currentTranscript, currentStep, elapsed, interviewType, interviewDifficulty, interviewFocus]);
 
   // Cancel speech + recognition on unmount or when voice toggled
   useEffect(() => {
