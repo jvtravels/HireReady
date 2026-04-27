@@ -7,6 +7,8 @@ import { useDashboardCore, useDashboardUI } from "./DashboardContext";
 import { extractResumeText, parseResumeData, isAiResume, isFallbackResume, type FallbackStoredResume } from "./resumeParser";
 import { type ResumeProfile, analyzeResumeWithAI, ACTIVE_RESUME_VERSION_KEY } from "./dashboardData";
 import { computeAllFitness, type InterviewType, type FitnessBand } from "./resumeFitness";
+import { computeResumeDiff } from "./resumeDiff";
+import { reconcileResumeAgainstRole } from "./skillReconcile";
 
 /** Project a regex-fallback resume into the ResumeProfile shape the UI
  *  expects, so the AI and fallback branches can render through a single
@@ -727,24 +729,50 @@ export default function DashboardResume() {
               )}
               {expanded && r.versions.length > 1 && (
                 <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px solid ${c.border}`, display: "flex", flexDirection: "column", gap: 6 }}>
-                  {r.versions.map(v => {
+                  {r.versions.map((v, vIdx) => {
                     const isCurrent = v.id === r.latestVersionId;
                     const dateLabel = v.createdAt ? new Date(v.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : "";
+                    // Diff against the immediately newer version (vIdx-1
+                    // because the array is newest-first). For the very
+                    // newest row there's nothing newer to compare to.
+                    const newerVersion = vIdx > 0 ? r.versions[vIdx - 1] : null;
+                    const diff = newerVersion ? computeResumeDiff(v.profile, newerVersion.profile) : null;
                     return (
-                      <div key={v.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-                        <span style={{ fontFamily: font.mono, fontSize: 10, color: c.stone }}>
-                          v{v.versionNumber}{v.score != null ? ` · ${v.score}` : ""}{dateLabel ? ` · ${dateLabel}` : ""}
-                        </span>
-                        {isCurrent ? (
-                          <span style={{ fontFamily: font.ui, fontSize: 9, color: c.sage }}>current</span>
-                        ) : (
-                          <button
-                            onClick={() => handleMakeActive(r.id, v.id, v.profile, v.fileName)}
-                            disabled={activatingId === r.id}
-                            style={{ fontFamily: font.ui, fontSize: 9, color: c.gilt, background: "transparent", border: `1px solid ${c.border}`, borderRadius: 3, padding: "1px 6px", cursor: activatingId === r.id ? "wait" : "pointer" }}
-                          >
-                            Restore
-                          </button>
+                      <div key={v.id} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                          <span style={{ fontFamily: font.mono, fontSize: 10, color: c.stone }}>
+                            v{v.versionNumber}{v.score != null ? ` · ${v.score}` : ""}{dateLabel ? ` · ${dateLabel}` : ""}
+                          </span>
+                          {isCurrent ? (
+                            <span style={{ fontFamily: font.ui, fontSize: 9, color: c.sage }}>current</span>
+                          ) : (
+                            <button
+                              onClick={() => handleMakeActive(r.id, v.id, v.profile, v.fileName)}
+                              disabled={activatingId === r.id}
+                              style={{ fontFamily: font.ui, fontSize: 9, color: c.gilt, background: "transparent", border: `1px solid ${c.border}`, borderRadius: 3, padding: "1px 6px", cursor: activatingId === r.id ? "wait" : "pointer" }}
+                            >
+                              Restore
+                            </button>
+                          )}
+                        </div>
+                        {diff && !diff.isUnchanged && (
+                          <div style={{ display: "flex", flexDirection: "column", gap: 2, paddingLeft: 8, borderLeft: `2px solid ${c.border}` }}>
+                            {diff.scoreDelta != null && diff.scoreDelta !== 0 && (
+                              <span style={{ fontFamily: font.mono, fontSize: 9, color: diff.scoreDelta > 0 ? c.sage : c.ember }}>
+                                score {diff.scoreDelta > 0 ? "+" : ""}{diff.scoreDelta} → v{newerVersion!.versionNumber}
+                              </span>
+                            )}
+                            {diff.addedSkills.length > 0 && (
+                              <span style={{ fontFamily: font.ui, fontSize: 10, color: c.sage }} title={diff.addedSkills.join(", ")}>
+                                + {diff.addedSkills.slice(0, 4).join(", ")}{diff.addedSkills.length > 4 ? ` +${diff.addedSkills.length - 4}` : ""}
+                              </span>
+                            )}
+                            {diff.removedSkills.length > 0 && (
+                              <span style={{ fontFamily: font.ui, fontSize: 10, color: c.ember }} title={diff.removedSkills.join(", ")}>
+                                − {diff.removedSkills.slice(0, 4).join(", ")}{diff.removedSkills.length > 4 ? ` −${diff.removedSkills.length - 4}` : ""}
+                              </span>
+                            )}
+                          </div>
                         )}
                       </div>
                     );
@@ -1508,6 +1536,61 @@ export default function DashboardResume() {
               })}
             </div>
           )}
+        </div>
+      )}
+
+      {/* Skill ↔ role reconciliation. Shows the four interview types in
+        * a tabbed grid (collapsed default), each surfacing what the
+        * resume covers vs. what's missing. Powered by the same vocab
+        * the fitness chips use, so the two views always agree. */}
+      {profile && (
+        <div style={{ background: c.graphite, borderRadius: 14, border: `1px solid ${c.border}`, padding: "20px 22px", marginBottom: 14 }}>
+          <h3 style={{ fontFamily: font.display, fontSize: 16, color: c.ivory, marginBottom: 4, letterSpacing: "-0.01em" }}>Coverage by interview type</h3>
+          <p style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, marginBottom: 14 }}>
+            Which keywords each interview type expects, and which your resume covers right now.
+          </p>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 12 }}>
+            {(["behavioral", "technical", "system_design", "case"] as InterviewType[]).map(t => {
+              const rec = reconcileResumeAgainstRole(profile, t);
+              const typeLabel: Record<InterviewType, string> = {
+                behavioral: "Behavioral",
+                technical: "Technical",
+                system_design: "System Design",
+                case: "Case",
+              };
+              return (
+                <div key={t} style={{ background: c.obsidian, borderRadius: 10, border: `1px solid ${c.border}`, padding: "12px 14px" }}>
+                  <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 8 }}>
+                    <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: c.ivory }}>{typeLabel[t]}</span>
+                    <span style={{ fontFamily: font.mono, fontSize: 10, color: rec.coveragePct >= 60 ? c.sage : rec.coveragePct >= 30 ? c.gilt : c.stone }}>{rec.coveragePct}% coverage</span>
+                  </div>
+                  {rec.matched.length > 0 && (
+                    <div style={{ marginBottom: 6 }}>
+                      <span style={{ fontFamily: font.ui, fontSize: 9, fontWeight: 600, color: c.sage, textTransform: "uppercase", letterSpacing: "0.06em" }}>Covered</span>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 3, marginTop: 3 }}>
+                        {rec.matched.slice(0, 6).map(m => (
+                          <span key={m} style={{ fontFamily: font.mono, fontSize: 9, color: c.sage, background: "rgba(140,182,144,0.08)", padding: "1px 6px", borderRadius: 3 }}>{m}</span>
+                        ))}
+                        {rec.matched.length > 6 && (
+                          <span style={{ fontFamily: font.mono, fontSize: 9, color: c.stone }}>+{rec.matched.length - 6}</span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                  {rec.topGaps.length > 0 && (
+                    <div>
+                      <span style={{ fontFamily: font.ui, fontSize: 9, fontWeight: 600, color: c.ember, textTransform: "uppercase", letterSpacing: "0.06em" }}>Add to strengthen</span>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 3, marginTop: 3 }}>
+                        {rec.topGaps.map(g => (
+                          <span key={g} style={{ fontFamily: font.mono, fontSize: 9, color: c.ember, background: "rgba(196,112,90,0.08)", padding: "1px 6px", borderRadius: 3 }}>{g}</span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
 
