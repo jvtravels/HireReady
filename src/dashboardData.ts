@@ -817,7 +817,25 @@ export interface ResumeProfile {
   improvements?: string[];
 }
 
-export async function analyzeResumeWithAI(resumeText: string, targetRole?: string, signal?: AbortSignal): Promise<{ profile: ResumeProfile; truncated?: boolean } | null> {
+/**
+ * sessionStorage key holding the user's currently-active resume_version_id.
+ * Set when /api/analyze-resume returns a version id (cache hit OR fresh
+ * analysis). Read by useInterviewEngine at session start so the session
+ * pins to the version it actually used. Cleared when the user removes
+ * their resume.
+ *
+ * Why sessionStorage and not localStorage: dies with the tab — prevents a
+ * stale version id from sticking around if the user signs out, signs in
+ * as a different account, and starts a session.
+ */
+export const ACTIVE_RESUME_VERSION_KEY = "hirestepx_active_resume_version";
+
+export async function analyzeResumeWithAI(
+  resumeText: string,
+  targetRole?: string,
+  signal?: AbortSignal,
+  opts?: { domain?: string; fileName?: string; fileHash?: string },
+): Promise<{ profile: ResumeProfile; truncated?: boolean; resumeVersionId?: string | null; cached?: boolean } | null> {
   return withRetry(async () => {
     const tFetchStart = Date.now();
     // Route through the shared apiFetch helper — same transport (XHR,
@@ -825,12 +843,25 @@ export async function analyzeResumeWithAI(resumeText: string, targetRole?: strin
     // in the app uses. Failures are surfaced via ok/status/error on the
     // response object, matching the AuthContext pattern.
     const { apiFetch } = await import("./apiClient");
-    const res = await apiFetch<{ profile: ResumeProfile; truncated?: boolean; error?: string; retryAfter?: number }>(
+    const res = await apiFetch<{
+      profile: ResumeProfile;
+      truncated?: boolean;
+      error?: string;
+      retryAfter?: number;
+      resumeVersionId?: string | null;
+      cached?: boolean;
+    }>(
       "/api/analyze-resume",
-      { resumeText, targetRole },
+      {
+        resumeText,
+        targetRole,
+        domain: opts?.domain,
+        fileName: opts?.fileName,
+        fileHash: opts?.fileHash,
+      },
       { signal },
     );
-    console.log(`[analyzeResume] response status=${res.status} reqId=${res.headers["x-request-id"] || "?"} timing=${res.headers["x-timing"] || "?"} elapsed=${Date.now() - tFetchStart}ms`);
+    console.log(`[analyzeResume] response status=${res.status} cache=${res.headers["x-cache"] || "?"} version=${res.headers["x-resume-version-id"]?.slice(0, 8) || "?"} timing=${res.headers["x-timing"] || "?"} elapsed=${Date.now() - tFetchStart}ms`);
 
     if (res.status === 401) throw new Error("Session expired — please refresh and sign in again.");
     if (res.status === 429) {
@@ -847,7 +878,16 @@ export async function analyzeResumeWithAI(resumeText: string, targetRole?: strin
       console.warn("[analyzeResume] No profile in response");
       throw new Error("Server returned no profile data");
     }
-    return { profile, truncated: res.data?.truncated };
+    // Persist the active version id so useInterviewEngine can pin
+    // future sessions to it. Falls back to header if body field is
+    // missing (older deploys). Tolerates restricted storage.
+    const versionId = res.data?.resumeVersionId || res.headers["x-resume-version-id"] || null;
+    try {
+      if (typeof sessionStorage !== "undefined" && versionId) {
+        sessionStorage.setItem(ACTIVE_RESUME_VERSION_KEY, versionId);
+      }
+    } catch { /* restricted */ }
+    return { profile, truncated: res.data?.truncated, resumeVersionId: versionId, cached: res.data?.cached };
   });
 }
 

@@ -347,12 +347,25 @@ export default function DashboardResume() {
       return;
     }
 
+    // Compute SHA-256 of the original file bytes so the server can
+    // dedup at the file level (even if the extracted text identically
+    // matches a prior version, the file_hash distinguishes "exact same
+    // PDF re-uploaded" from "different PDF with same text". Useful for
+    // future audit/integrity checks; for now it just gets persisted on
+    // the resume_versions row.
+    let fileHash: string | undefined;
+    try {
+      const buf = await file.arrayBuffer();
+      const digest = await crypto.subtle.digest("SHA-256", buf);
+      fileHash = Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, "0")).join("");
+    } catch { /* file-hash is best-effort */ }
+
     setPhase("analyzing");
-    let result: { profile: ResumeProfile; truncated?: boolean } | null = null;
+    let result: { profile: ResumeProfile; truncated?: boolean; resumeVersionId?: string | null } | null = null;
     let analyzeError: string | null = null;
     try {
       result = await Promise.race([
-        analyzeResumeWithAI(text, user?.targetRole),
+        analyzeResumeWithAI(text, user?.targetRole, undefined, { fileName: file.name, fileHash }),
         // 40s covers the server's worst case: Groq (15s) → Gemini fallback
         // (15s) + auth/rate/quota pre-checks (~2–5s). A tighter 25s budget
         // was killing legitimate fallback paths.

@@ -49,6 +49,14 @@ export interface SessionResult {
   improvements?: string[];
   nextSteps?: string[];
   resumeUsed?: boolean;
+  /**
+   * Resume v2 — UUID of the resume_versions row used to generate this
+   * session's questions. Captured at session start (when the engine
+   * fetches questions) and never re-bound, so scores stay reproducible
+   * if the user re-uploads later. Sent to /api/sessions/save which
+   * writes it into sessions.resume_version_id.
+   */
+  resumeVersionId?: string | null;
   jobDescription?: string;
   jdAnalysis?: {
     matchScore: number;
@@ -141,6 +149,13 @@ export async function saveSessionResult(result: SessionResult, userId?: string):
         skill_scores: result.skill_scores || null,
         job_description: result.jobDescription || null,
         jd_analysis: result.jdAnalysis || null,
+        // Pin the resume version captured at session start. Server
+        // falls back to resolveActiveResumeVersionId if absent, but
+        // sending the client-captured value closes the edge case where
+        // a user re-uploads mid-interview — the server-side resolver
+        // would pick the new version, which would silently rebind the
+        // session. This way it's locked from the start.
+        resume_version_id: result.resumeVersionId || null,
       });
       if (res.ok && res.data?.ok) {
         cloudOk = true;

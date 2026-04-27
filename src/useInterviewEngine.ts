@@ -207,6 +207,17 @@ export function useInterviewEngine() {
   const liveSessionIdRef = useRef<string>(safeUUID());
   // Turn counter for real-time persistence ordering
   const turnIndexRef = useRef(0);
+  // Resume v2: capture the active resume_version_id at engine init
+  // (pre-question-fetch) and freeze it for the session's lifetime. Even
+  // if the user re-uploads in another tab mid-interview, this session
+  // saves with the version it actually started on. Falls back to null
+  // when the user has no resume — the server still resolves a sensible
+  // default at save time.
+  const resumeVersionIdRef = useRef<string | null>(
+    typeof sessionStorage !== "undefined"
+      ? sessionStorage.getItem("hirestepx_active_resume_version") || null
+      : null,
+  );
   // Negotiation band (populated by LLM question generation for salary-neg)
   const negotiationBandRef = useRef<NegotiationBandData | null>(null);
   // Candidate's target salary (set via warm-up calibration card)
@@ -1827,6 +1838,8 @@ export function useInterviewEngine() {
           improvements,
           nextSteps,
           resumeUsed: !!user?.resumeText,
+          // Frozen at engine init — see resumeVersionIdRef above for why.
+          resumeVersionId: resumeVersionIdRef.current,
           jobDescription: jobDescription || undefined,
           jdAnalysis: jdAnalysisData || null,
         }, user?.id),

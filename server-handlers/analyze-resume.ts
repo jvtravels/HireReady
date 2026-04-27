@@ -37,7 +37,7 @@ export default async function handler(req: Request): Promise<Response> {
   const { headers, auth } = pre;
 
   try {
-    const { resumeText, targetRole, domain, fileName } = await req.json();
+    const { resumeText, targetRole, domain, fileName, fileHash } = await req.json();
 
     if (!resumeText || typeof resumeText !== "string" || resumeText.length < 20) {
       return new Response(JSON.stringify({ error: "Resume text too short" }), { status: 400, headers });
@@ -131,7 +131,9 @@ CRITICAL RULES:
         userId: auth.userId,
         domain: typeof domain === "string" && domain ? domain.slice(0, 32) : "general",
         textHash,
-        fileHash: null, // file storage isn't wired yet — phase 2
+        // SHA-256 hex string from the client (computed over the
+        // original file bytes). Validate cheaply before storing.
+        fileHash: typeof fileHash === "string" && /^[0-9a-f]{64}$/i.test(fileHash) ? fileHash.toLowerCase() : null,
         resumeText,
         parsedData: profile,
         parseSource: "ai",
