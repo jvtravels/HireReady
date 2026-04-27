@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { reconcileResumeAgainstRole } from "../skillReconcile";
+import { reconcileResumeAgainstRole, reconcileForTargetRole, labelForRoleSlug } from "../skillReconcile";
 import type { ResumeProfile } from "../dashboardData";
 
 const baseProfile: ResumeProfile = {
@@ -45,6 +45,38 @@ describe("reconcileResumeAgainstRole", () => {
     const r = reconcileResumeAgainstRole(profile, "behavioral");
     expect(r.coveragePct).toBeGreaterThan(0);
     expect(r.coveragePct).toBeLessThanOrEqual(100);
+  });
+
+  it("reconcileForTargetRole returns null for unknown roles", () => {
+    expect(reconcileForTargetRole(baseProfile, null)).toBeNull();
+    expect(reconcileForTargetRole(baseProfile, "")).toBeNull();
+    expect(reconcileForTargetRole(baseProfile, "Underwater Basket Weaver")).toBeNull();
+  });
+
+  it("reconcileForTargetRole maps fuzzy role titles to slugs", () => {
+    const r1 = reconcileForTargetRole(baseProfile, "Senior Product Manager");
+    expect(r1?.roleSlug).toBe("product-manager");
+    const r2 = reconcileForTargetRole(baseProfile, "Software Engineer III");
+    expect(r2?.roleSlug).toBe("software-engineer");
+    const r3 = reconcileForTargetRole(baseProfile, "UX Designer");
+    expect(r3?.roleSlug).toBe("designer");
+  });
+
+  it("reconcileForTargetRole computes coverage against role vocab", () => {
+    const designer: ResumeProfile = {
+      ...baseProfile,
+      summary: "Built design systems and ran user research with Figma.",
+      topSkills: ["Figma", "Prototyping", "Wireframes"],
+    };
+    const r = reconcileForTargetRole(designer, "Product Designer");
+    expect(r).not.toBeNull();
+    expect(r!.result.matched).toEqual(expect.arrayContaining(["figma", "wireframes", "user research"]));
+    expect(r!.result.coveragePct).toBeGreaterThan(0);
+  });
+
+  it("labelForRoleSlug formats slug into Title Case", () => {
+    expect(labelForRoleSlug("product-manager")).toBe("Product Manager");
+    expect(labelForRoleSlug("software-engineer")).toBe("Software Engineer");
   });
 
   it("topGaps are missing terms (not matched)", () => {

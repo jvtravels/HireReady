@@ -6,9 +6,9 @@ import { useDocTitle } from "./useDocTitle";
 import { useDashboardCore, useDashboardUI } from "./DashboardContext";
 import { extractResumeText, parseResumeData, isAiResume, isFallbackResume, type FallbackStoredResume } from "./resumeParser";
 import { type ResumeProfile, analyzeResumeWithAI, ACTIVE_RESUME_VERSION_KEY } from "./dashboardData";
-import { computeAllFitness, type InterviewType, type FitnessBand } from "./resumeFitness";
-import { computeResumeDiff } from "./resumeDiff";
-import { reconcileResumeAgainstRole } from "./skillReconcile";
+import { computeAllFitness } from "./resumeFitness";
+import CatalogueGrid from "./resume/CatalogueGrid";
+import CoveragePanel from "./resume/CoveragePanel";
 
 /** Project a regex-fallback resume into the ResumeProfile shape the UI
  *  expects, so the AI and fallback branches can render through a single
@@ -290,12 +290,10 @@ export default function DashboardResume() {
     isActive: boolean;
     versions: Array<{ id: string; versionNumber: number; isLatest: boolean; fileName: string | null; score: number | null; profile: ResumeProfile | null; createdAt: string | null }>;
   }>>([]);
-  // Per-card "expand to show all versions" toggle — keyed by resumeId
-  // so multiple cards can be expanded independently.
-  const [expandedTimeline, setExpandedTimeline] = useState<Record<string, boolean>>({});
+  // expandedTimeline / renamingId / renameDraft were lifted into
+  // CatalogueGrid as local UI state; the parent only needs to know the
+  // pending action ids (archivingId, activatingId) to gate spinners.
   const [archivingId, setArchivingId] = useState<string | null>(null);
-  const [renamingId, setRenamingId] = useState<string | null>(null);
-  const [renameDraft, setRenameDraft] = useState("");
   // Lightweight toast — single slot, auto-dismiss. Used for
   // confirmation feedback on Make Active / Restore / Archive / Rename
   // so users actually know their click did something. Errors still go
@@ -317,6 +315,9 @@ export default function DashboardResume() {
   // server PATCH on Make Active so updated_at-based ordering reflects
   // DB truth).
   const [catalogueRefreshKey, setCatalogueRefreshKey] = useState(0);
+  // True until the first catalogue fetch resolves, then false. Used to
+  // render a skeleton placeholder so cards don't pop in mid-render.
+  const [loadingResumes, setLoadingResumes] = useState(true);
   const analyzingRef = useRef(false);
   const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -350,7 +351,11 @@ export default function DashboardResume() {
           .eq("user_id", user.id)
           .eq("is_archived", false)
           .order("updated_at", { ascending: false });
-        if (cancelled || error || !Array.isArray(data)) return;
+        if (cancelled) return;
+        if (error || !Array.isArray(data)) {
+          setLoadingResumes(false);
+          return;
+        }
         type VersionRow = { id: string; version_number: number; parsed_data: ResumeProfile | null; is_latest: boolean; file_name: string | null; created_at: string | null };
         type ResumeRow = { id: string; domain: string; title: string | null; active_version_id: string | null; updated_at: string; resume_versions: VersionRow[] | null };
         // Active = the resume with the most-recent updated_at. The
@@ -409,7 +414,11 @@ export default function DashboardResume() {
           };
         });
         setAllResumes(transformed);
-      } catch { /* best-effort */ }
+        setLoadingResumes(false);
+      } catch {
+        setLoadingResumes(false);
+        /* best-effort */
+      }
     })();
     return () => { cancelled = true; };
   }, [user?.id, fileName, catalogueRefreshKey]);
@@ -554,13 +563,9 @@ export default function DashboardResume() {
    */
   const handleRenameResume = async (resumeId: string, newTitle: string) => {
     const trimmed = newTitle.trim().slice(0, 120);
-    if (!trimmed) {
-      setRenamingId(null);
-      return;
-    }
+    if (!trimmed) return;
     const prev = allResumes;
     setAllResumes(prev.map(r => r.id === resumeId ? { ...r, title: trimmed } : r));
-    setRenamingId(null);
     try {
       const { getSupabase } = await import("./supabase");
       const client = await getSupabase();
@@ -589,9 +594,8 @@ export default function DashboardResume() {
       setErrorMsg("Switch to another resume first, then archive this one.");
       return;
     }
-    if (typeof window !== "undefined" && !window.confirm("Archive this resume? You can recover it from support if needed; sessions that used it stay readable.")) {
-      return;
-    }
+    // Confirm UI is now inline inside CatalogueGrid; this handler runs
+    // only after the user confirms, so no extra prompt here.
     setArchivingId(resumeId);
     const prev = allResumes;
     setAllResumes(prev.filter(r => r.id !== resumeId));
@@ -659,18 +663,6 @@ export default function DashboardResume() {
   // 4 regex passes over the profile blob × N cards × every render —
   // cheap individually but adds up on big catalogues. Recompute only
   // when the underlying allResumes array changes.
-  // Memoize the reconciliation panel's per-type computations against
-  // the active profile. Same rationale as the catalogue fitness memo —
-  // 4 regex passes × every render is wasteful.
-  const reconcileByType = useMemo(() => {
-    if (!profile) return null;
-    return {
-      behavioral: reconcileResumeAgainstRole(profile, "behavioral"),
-      technical: reconcileResumeAgainstRole(profile, "technical"),
-      system_design: reconcileResumeAgainstRole(profile, "system_design"),
-      case: reconcileResumeAgainstRole(profile, "case"),
-    };
-  }, [profile]);
 
   const fitsByResumeId = useMemo(() => {
     const out: Record<string, ReturnType<typeof computeAllFitness> | null> = {};
@@ -686,221 +678,30 @@ export default function DashboardResume() {
   // ">1" to ">=1" so a single-resume user still sees their fitness
   // chips; the "Make active" button just doesn't render on the active
   // card (no-op when there's nothing to switch from anyway).
-  const cataloguePanel = allResumes.length >= 1 ? (
+  const cataloguePanel = (loadingResumes || allResumes.length >= 1) ? (
     <div style={{ marginBottom: 24 }}>
-      {notice && (
-        <div
-          role="status"
-          aria-live="polite"
-          style={{
-            marginBottom: 12,
-            padding: "8px 14px",
-            borderRadius: 8,
-            background: notice.kind === "ok" ? "rgba(140,182,144,0.08)" : "rgba(196,112,90,0.08)",
-            border: `1px solid ${notice.kind === "ok" ? "rgba(140,182,144,0.3)" : "rgba(196,112,90,0.3)"}`,
-            color: notice.kind === "ok" ? c.sage : c.ember,
-            fontFamily: font.ui,
-            fontSize: 12,
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-          }}
-        >
-          <span style={{ fontWeight: 600 }}>{notice.kind === "ok" ? "✓" : "!"}</span>
-          {notice.text}
-        </div>
-      )}
       <p style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>Your resumes</p>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 12 }}>
-        {allResumes.map(r => {
-          const fits = fitsByResumeId[r.id] ?? null;
-          const bandColor = (b: FitnessBand) =>
-            b === "excellent" ? c.sage : b === "good" ? c.gilt : b === "fair" ? c.stone : c.ember;
-          const typeLabel: Record<InterviewType, string> = {
-            behavioral: "BEH",
-            technical: "TECH",
-            system_design: "SYS",
-            case: "CASE",
-          };
-          const expanded = !!expandedTimeline[r.id];
-          const isRenaming = renamingId === r.id;
-          return (
-            <div key={r.id} style={{ background: c.graphite, border: `1px solid ${r.isActive ? c.gilt : c.border}`, borderRadius: 12, padding: "14px 16px" }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6, gap: 8 }}>
-                <span style={{ fontFamily: font.mono, fontSize: 10, fontWeight: 600, color: c.gilt, background: "rgba(212,179,127,0.08)", padding: "2px 8px", borderRadius: 4, textTransform: "uppercase", letterSpacing: "0.06em" }}>{r.domain}</span>
-                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  {r.isActive ? (
-                    <span
-                      title="This is the resume your interview sessions use right now."
-                      style={{
-                        fontFamily: font.ui,
-                        fontSize: 10,
-                        fontWeight: 600,
-                        color: c.sage,
-                        background: "rgba(140,182,144,0.10)",
-                        border: "1px solid rgba(140,182,144,0.3)",
-                        borderRadius: 4,
-                        padding: "2px 8px",
-                        textTransform: "uppercase",
-                        letterSpacing: "0.06em",
-                      }}
-                    >
-                      Active
-                    </span>
-                  ) : (
-                    <button
-                      onClick={() => handleMakeActive(r.id, r.latestVersionId, r.latestProfile, r.latestFileName)}
-                      disabled={activatingId === r.id || !r.latestVersionId}
-                      style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, color: c.gilt, background: "transparent", border: `1px solid ${c.border}`, borderRadius: 4, padding: "2px 8px", cursor: activatingId === r.id ? "wait" : "pointer", opacity: activatingId === r.id ? 0.6 : 1 }}
-                      title="Switch this resume to be the one used for interview sessions"
-                    >
-                      {activatingId === r.id ? "…" : "Make active"}
-                    </button>
-                  )}
-                  {!r.isActive && (
-                    <button
-                      onClick={() => handleArchiveResume(r.id, r.isActive)}
-                      disabled={archivingId === r.id}
-                      title="Archive this resume — sessions that used it stay readable"
-                      aria-label="Archive resume"
-                      style={{ fontFamily: font.ui, fontSize: 10, color: c.stone, background: "transparent", border: "none", cursor: "pointer", padding: "2px 4px", lineHeight: 1 }}
-                    >
-                      {archivingId === r.id ? "…" : "✕"}
-                    </button>
-                  )}
-                </div>
-              </div>
-              {isRenaming ? (
-                // Edit mode: blur CANCELS to avoid accidental commits
-                // when the user clicks elsewhere mid-edit. Enter saves;
-                // Esc explicitly cancels. The visible Save button gives
-                // a touch-friendly commit path that doesn't rely on the
-                // keyboard.
-                <div style={{ display: "flex", gap: 4, marginBottom: 4 }}>
-                  <input
-                    autoFocus
-                    defaultValue={renameDraft}
-                    aria-label="Resume title"
-                    onChange={(e) => setRenameDraft(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") { e.preventDefault(); handleRenameResume(r.id, renameDraft); }
-                      if (e.key === "Escape") setRenamingId(null);
-                    }}
-                    style={{ fontFamily: font.ui, fontSize: 13, color: c.ivory, background: c.obsidian, border: `1px solid ${c.gilt}`, borderRadius: 4, padding: "4px 6px", flex: 1, minWidth: 0 }}
-                  />
-                  <button
-                    onMouseDown={(e) => { e.preventDefault(); handleRenameResume(r.id, renameDraft); }}
-                    title="Save (Enter)"
-                    style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.obsidian, background: c.gilt, border: "none", borderRadius: 4, padding: "0 8px", cursor: "pointer" }}
-                  >
-                    Save
-                  </button>
-                  <button
-                    onMouseDown={(e) => { e.preventDefault(); setRenamingId(null); }}
-                    title="Cancel (Esc)"
-                    aria-label="Cancel rename"
-                    style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, background: "transparent", border: `1px solid ${c.border}`, borderRadius: 4, padding: "0 8px", cursor: "pointer" }}
-                  >
-                    ✕
-                  </button>
-                </div>
-              ) : (
-                <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 4 }}>
-                  <p style={{ fontFamily: font.ui, fontSize: 13, color: c.ivory, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1, minWidth: 0 }}>{r.title}</p>
-                  <button
-                    onClick={() => { setRenameDraft(r.title); setRenamingId(r.id); }}
-                    title="Rename"
-                    aria-label="Rename resume"
-                    style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, background: "transparent", border: "none", cursor: "pointer", padding: "2px 4px", lineHeight: 1, flexShrink: 0 }}
-                  >
-                    {/* Pencil glyph — gives a discoverable affordance the
-                      * old click-the-title pattern lacked. */}
-                    ✎
-                  </button>
-                </div>
-              )}
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: fits ? 8 : 0 }}>
-                <p style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>v{r.latestVersion}{r.latestScore != null ? ` · Score ${r.latestScore}` : ""}</p>
-                {r.versions.length > 1 && (
-                  <button
-                    onClick={() => setExpandedTimeline(t => ({ ...t, [r.id]: !t[r.id] }))}
-                    aria-expanded={expanded}
-                    aria-controls={`history-${r.id}`}
-                    style={{ fontFamily: font.ui, fontSize: 10, color: c.stone, background: "transparent", border: "none", cursor: "pointer", padding: 0 }}
-                  >
-                    {expanded ? "Hide history ↑" : `Show ${r.versions.length} versions ↓`}
-                  </button>
-                )}
-              </div>
-              {fits && (
-                <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-                  {(["behavioral", "technical", "system_design", "case"] as InterviewType[]).map(t => (
-                    <span
-                      key={t}
-                      title={fits[t].rationale}
-                      style={{ fontFamily: font.mono, fontSize: 9, fontWeight: 600, color: bandColor(fits[t].band), background: `${bandColor(fits[t].band)}1A`, padding: "2px 6px", borderRadius: 3, letterSpacing: "0.04em" }}
-                    >
-                      {typeLabel[t]} {fits[t].score}
-                    </span>
-                  ))}
-                </div>
-              )}
-              {expanded && r.versions.length > 1 && (
-                <div id={`history-${r.id}`} style={{ marginTop: 10, paddingTop: 10, borderTop: `1px solid ${c.border}`, display: "flex", flexDirection: "column", gap: 6 }}>
-                  {r.versions.map((v, vIdx) => {
-                    const isCurrent = v.id === r.latestVersionId;
-                    const dateLabel = v.createdAt ? new Date(v.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : "";
-                    // Diff against the immediately newer version (vIdx-1
-                    // because the array is newest-first). For the very
-                    // newest row there's nothing newer to compare to.
-                    const newerVersion = vIdx > 0 ? r.versions[vIdx - 1] : null;
-                    const diff = newerVersion ? computeResumeDiff(v.profile, newerVersion.profile) : null;
-                    return (
-                      <div key={v.id} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-                          <span style={{ fontFamily: font.mono, fontSize: 10, color: c.stone }}>
-                            v{v.versionNumber}{v.score != null ? ` · ${v.score}` : ""}{dateLabel ? ` · ${dateLabel}` : ""}
-                          </span>
-                          {isCurrent ? (
-                            <span style={{ fontFamily: font.ui, fontSize: 9, color: c.sage }}>current</span>
-                          ) : (
-                            <button
-                              onClick={() => handleMakeActive(r.id, v.id, v.profile, v.fileName)}
-                              disabled={activatingId === r.id}
-                              style={{ fontFamily: font.ui, fontSize: 9, color: c.gilt, background: "transparent", border: `1px solid ${c.border}`, borderRadius: 3, padding: "1px 6px", cursor: activatingId === r.id ? "wait" : "pointer" }}
-                            >
-                              Restore
-                            </button>
-                          )}
-                        </div>
-                        {diff && !diff.isUnchanged && (
-                          <div style={{ display: "flex", flexDirection: "column", gap: 2, paddingLeft: 8, borderLeft: `2px solid ${c.border}` }}>
-                            {diff.scoreDelta != null && diff.scoreDelta !== 0 && (
-                              <span style={{ fontFamily: font.mono, fontSize: 9, color: diff.scoreDelta > 0 ? c.sage : c.ember }}>
-                                score {diff.scoreDelta > 0 ? "+" : ""}{diff.scoreDelta} → v{newerVersion!.versionNumber}
-                              </span>
-                            )}
-                            {diff.addedSkills.length > 0 && (
-                              <span style={{ fontFamily: font.ui, fontSize: 10, color: c.sage }} title={diff.addedSkills.join(", ")}>
-                                + {diff.addedSkills.slice(0, 4).join(", ")}{diff.addedSkills.length > 4 ? ` +${diff.addedSkills.length - 4}` : ""}
-                              </span>
-                            )}
-                            {diff.removedSkills.length > 0 && (
-                              <span style={{ fontFamily: font.ui, fontSize: 10, color: c.ember }} title={diff.removedSkills.join(", ")}>
-                                − {diff.removedSkills.slice(0, 4).join(", ")}{diff.removedSkills.length > 4 ? ` −${diff.removedSkills.length - 4}` : ""}
-                              </span>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
+      {loadingResumes && allResumes.length === 0 ? (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 12 }} aria-label="Loading resumes" aria-live="polite">
+          {[0, 1].map(i => (
+            <div key={i} style={{ background: c.graphite, border: `1px solid ${c.border}`, borderRadius: 12, padding: "14px 16px", height: 130, display: "flex", flexDirection: "column", gap: 8 }}>
+              <div style={{ height: 14, background: c.obsidian, borderRadius: 4, width: "30%", opacity: 0.5 }} />
+              <div style={{ height: 12, background: c.obsidian, borderRadius: 4, width: "70%", opacity: 0.4 }} />
+              <div style={{ height: 10, background: c.obsidian, borderRadius: 4, width: "40%", opacity: 0.3 }} />
             </div>
-          );
-        })}
-      </div>
+          ))}
+        </div>
+      ) : (
+        <CatalogueGrid
+          resumes={allResumes}
+          fitsByResumeId={fitsByResumeId}
+          activatingId={activatingId}
+          archivingId={archivingId}
+          onMakeActive={handleMakeActive}
+          onArchive={handleArchiveResume}
+          onRename={handleRenameResume}
+        />
+      )}
     </div>
   ) : null;
 
@@ -1162,7 +963,7 @@ export default function DashboardResume() {
             <option value="data">Data / Analytics</option>
             <option value="custom">Custom</option>
           </select>
-          <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>Tag this resume so we can group versions and tailor coaching.</span>
+          <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>Tag your resume by role so we can group versions and surface the right interview prep.</span>
         </div>
         <div role="button" tabIndex={0} onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }} onDragLeave={() => setIsDragging(false)}
           onDrop={(e) => { e.preventDefault(); setIsDragging(false); handleFile(e.dataTransfer.files[0]); }}
@@ -1215,6 +1016,37 @@ export default function DashboardResume() {
   return (
     <div style={{ margin: "0 auto", padding: "20px 0" }}>
       {cataloguePanel}
+      {/* Upload-another affordance for done phase. Lets users add a
+        * second resume with a different domain without first having to
+        * delete or archive the current one. */}
+      {!loadingResumes && allResumes.length >= 1 && (
+        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 24, padding: "10px 14px", background: c.graphite, border: `1px dashed ${c.border}`, borderRadius: 10 }}>
+          <select
+            value={domain}
+            onChange={(e) => setDomain(e.target.value)}
+            aria-label="Domain for next upload"
+            style={{ fontFamily: font.ui, fontSize: 12, color: c.ivory, background: c.obsidian, border: `1px solid ${c.border}`, borderRadius: 6, padding: "5px 8px", cursor: "pointer", minHeight: 28 }}
+          >
+            <option value="general">General</option>
+            <option value="sde">Software Engineering</option>
+            <option value="pm">Product Management</option>
+            <option value="design">Design</option>
+            <option value="sales">Sales</option>
+            <option value="marketing">Marketing</option>
+            <option value="ops">Operations</option>
+            <option value="hr">HR / People</option>
+            <option value="data">Data / Analytics</option>
+            <option value="custom">Custom</option>
+          </select>
+          <button
+            onClick={triggerUpload}
+            style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: c.gilt, background: "transparent", border: `1px solid ${c.gilt}`, borderRadius: 6, padding: "5px 14px", cursor: "pointer", minHeight: 28 }}
+          >
+            + Add another resume
+          </button>
+          <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>Pick a domain, then upload a resume tailored for it.</span>
+        </div>
+      )}
       <div style={{ background: `linear-gradient(135deg, ${c.graphite} 0%, rgba(212,179,127,0.04) 100%)`, borderRadius: 16, border: `1px solid ${c.border}`, padding: "28px 28px 24px", marginBottom: 14 }}>
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 12 }}>
           <div style={{ flex: 1 }}>
@@ -1657,65 +1489,44 @@ export default function DashboardResume() {
         </div>
       )}
 
-      {/* Skill ↔ role reconciliation. Shows the four interview types in
-        * a tabbed grid (collapsed default), each surfacing what the
-        * resume covers vs. what's missing. Powered by the same vocab
-        * the fitness chips use, so the two views always agree. */}
       {profile && (
-        <div style={{ background: c.graphite, borderRadius: 14, border: `1px solid ${c.border}`, padding: "20px 22px", marginBottom: 14 }}>
-          <h3 style={{ fontFamily: font.display, fontSize: 16, color: c.ivory, marginBottom: 4, letterSpacing: "-0.01em" }}>Coverage by interview type</h3>
-          <p style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, marginBottom: 14 }}>
-            Which keywords each interview type expects, and which your resume covers right now.
-          </p>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 12 }}>
-            {(["behavioral", "technical", "system_design", "case"] as InterviewType[]).map(t => {
-              const rec = reconcileByType ? reconcileByType[t] : reconcileResumeAgainstRole(profile, t);
-              const typeLabel: Record<InterviewType, string> = {
-                behavioral: "Behavioral",
-                technical: "Technical",
-                system_design: "System Design",
-                case: "Case",
-              };
-              return (
-                <div key={t} style={{ background: c.obsidian, borderRadius: 10, border: `1px solid ${c.border}`, padding: "12px 14px" }}>
-                  <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 8 }}>
-                    <span style={{ fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: c.ivory }}>{typeLabel[t]}</span>
-                    <span style={{ fontFamily: font.mono, fontSize: 10, color: rec.coveragePct >= 60 ? c.sage : rec.coveragePct >= 30 ? c.gilt : c.stone }}>{rec.coveragePct}% coverage</span>
-                  </div>
-                  {rec.matched.length > 0 && (
-                    <div style={{ marginBottom: 6 }}>
-                      <span style={{ fontFamily: font.ui, fontSize: 9, fontWeight: 600, color: c.sage, textTransform: "uppercase", letterSpacing: "0.06em" }}>Covered</span>
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: 3, marginTop: 3 }}>
-                        {rec.matched.slice(0, 6).map(m => (
-                          <span key={m} style={{ fontFamily: font.mono, fontSize: 9, color: c.sage, background: "rgba(140,182,144,0.08)", padding: "1px 6px", borderRadius: 3 }}>{m}</span>
-                        ))}
-                        {rec.matched.length > 6 && (
-                          <span style={{ fontFamily: font.mono, fontSize: 9, color: c.stone }}>+{rec.matched.length - 6}</span>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                  {rec.topGaps.length > 0 && (
-                    <div>
-                      <span style={{ fontFamily: font.ui, fontSize: 9, fontWeight: 600, color: c.ember, textTransform: "uppercase", letterSpacing: "0.06em" }}>Add to strengthen</span>
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: 3, marginTop: 3 }}>
-                        {rec.topGaps.map(g => (
-                          <span key={g} style={{ fontFamily: font.mono, fontSize: 9, color: c.ember, background: "rgba(196,112,90,0.08)", padding: "1px 6px", borderRadius: 3 }}>{g}</span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
+        <CoveragePanel profile={profile} targetRole={user?.targetRole} />
       )}
 
       <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "12px 16px", borderRadius: 8, background: "rgba(212,179,127,0.03)", border: `1px solid ${c.border}` }}>
         <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.gilt} strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
         <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>Your resume is analyzed securely and never shared. Delete anytime.</span>
       </div>
+
+      {/* Floating toast — fixed position so it stays visible regardless
+        * of scroll. Single slot; auto-dismisses after 3.2s. */}
+      {notice && (
+        <div
+          role="status"
+          aria-live="polite"
+          style={{
+            position: "fixed",
+            bottom: 24,
+            right: 24,
+            zIndex: 1000,
+            maxWidth: 360,
+            padding: "10px 14px",
+            borderRadius: 8,
+            background: notice.kind === "ok" ? "rgba(140,182,144,0.96)" : "rgba(196,112,90,0.96)",
+            color: c.obsidian,
+            fontFamily: font.ui,
+            fontSize: 12,
+            fontWeight: 500,
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            boxShadow: "0 8px 24px rgba(0,0,0,0.3)",
+          }}
+        >
+          <span style={{ fontWeight: 700 }}>{notice.kind === "ok" ? "✓" : "!"}</span>
+          {notice.text}
+        </div>
+      )}
     </div>
   );
 }
