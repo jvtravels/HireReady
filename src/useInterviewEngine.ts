@@ -70,11 +70,12 @@ const REACTIONS = {
     "Before the next topic, I want to understand —",
   ],
   topicTransition: [
-    "Alright, let me shift gears.",
-    "Good. Let's talk about something different.",
-    "Okay, moving to the next area.",
-    "Let's switch topics.",
-    "Right — now I want to explore another angle.",
+    "So —",
+    "Okay, next.",
+    "Right.",
+    "Now —",
+    "Different angle —",
+    "Switching gears.",
   ],
   dontKnowRedirect: [
     "That's okay — let me rephrase that differently.",
@@ -894,8 +895,13 @@ export function useInterviewEngine() {
       prefetchTTS(step.aiText, interviewerGender);
     }
 
-    // Whether this step should get a reaction phrase (question/follow-up, not first step)
-    const shouldUseThinkingPhrase = currentStep > 0 && (step.type === "question" || step.type === "follow-up" || (step.type === "closing" && interviewType === "salary-negotiation"));
+    // Whether this step should get a reaction phrase (question/follow-up, not first step).
+    // Real interviewers don't fill every gap — strategic silence (~20% of decent answers)
+    // forces the candidate to elaborate and feels much more human than constant filler.
+    const baseShouldUseThinkingPhrase = currentStep > 0 && (step.type === "question" || step.type === "follow-up" || (step.type === "closing" && interviewType === "salary-negotiation"));
+    const lastQ = lastAnswerQualityRef.current;
+    const allowStrategicSilence = baseShouldUseThinkingPhrase && (lastQ === "decent" || lastQ === "strong") && interviewType !== "salary-negotiation";
+    const shouldUseThinkingPhrase = baseShouldUseThinkingPhrase && !(allowStrategicSilence && Math.random() < 0.2);
 
     // Build context-aware reaction phrase
     let thinkingPhrase: string | null = null;
@@ -1411,6 +1417,23 @@ export function useInterviewEngine() {
       advancingRef.current = false;
       clearTimeout(advancingSafetyTimer);
       return;
+    }
+
+    // "Repeat that question" voice command — if the candidate's only utterance
+    // is a request to repeat, re-speak the current AI turn instead of treating
+    // it as an answer. Real interviewers do this naturally and it's frustrating
+    // to be forced to type "..." or skip just to hear the question again.
+    const repeatPat = /^(?:sorry,?\s+)?(?:can you|could you|please)?\s*(?:repeat|say|ask)\s*(?:that|the\s+question|it|again)?(?:\s+please)?\s*\??$/i;
+    const altRepeatPat = /^(?:one more time|come again|say (?:that )?again|i didn'?t (?:hear|catch) (?:that|you))\s*\??$/i;
+    if ((repeatPat.test(rawTranscript) || altRepeatPat.test(rawTranscript)) && rawTranscript.length < 60) {
+      const currentStepObj = interviewScript[currentStep];
+      if (currentStepObj?.aiText && aiVoiceEnabled) {
+        setCurrentTranscript("");
+        advancingRef.current = false;
+        clearTimeout(advancingSafetyTimer);
+        speak(currentStepObj.aiText, () => {}, () => {}, interviewerGender).catch(() => {});
+        return;
+      }
     }
 
     // Warn user when STT captured nothing — encourage typing

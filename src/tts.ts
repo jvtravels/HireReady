@@ -843,6 +843,7 @@ export async function speakAs(
   gender?: "male" | "female",
   onDurationKnown?: (ms: number) => void,
 ): Promise<{ cancel: () => void }> {
+  text = addBreathCues(text);
   const settings = loadTTSSettings();
   if (settings.provider === "browser") {
     return speak(text, onEnd, onError);
@@ -881,6 +882,21 @@ export async function speakAs(
 }
 
 /* ─── Unified speak function ─── */
+/**
+ * Insert breath pauses into long clauses so synthesized speech doesn't read
+ * as a wall of words. Real humans pause every 8-14 words; most TTS engines
+ * (Cartesia included) respect commas and ellipses as breath cues.
+ */
+function addBreathCues(text: string): string {
+  if (!text || text.length < 80) return text;
+  // Replace "..." → "… " (Cartesia respects ellipsis as a longer pause)
+  let out = text.replace(/\.{3,}/g, "… ");
+  // Insert a comma before connector words when the preceding clause is >12 words
+  // and there's no comma already.
+  out = out.replace(/(\b\w+(?:\s+\w+){11,})\s+(but|and|so|because|then|however|although)\b/gi, "$1, $2");
+  return out;
+}
+
 export async function speak(
   text: string,
   onEnd: () => void,
@@ -888,6 +904,7 @@ export async function speak(
   gender?: "male" | "female",
   onDurationKnown?: (ms: number) => void,
 ): Promise<{ cancel: () => void }> {
+  text = addBreathCues(text);
   const settings = loadTTSSettings();
   let handle: { cancel: () => void };
 
