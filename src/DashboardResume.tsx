@@ -5,7 +5,7 @@ import { useAuth } from "./AuthContext";
 import { useDocTitle } from "./useDocTitle";
 import { useDashboardCore, useDashboardUI } from "./DashboardContext";
 import { extractResumeText, parseResumeData, isAiResume, isFallbackResume, type FallbackStoredResume } from "./resumeParser";
-import { type ResumeProfile, analyzeResumeWithAI } from "./dashboardData";
+import { type ResumeProfile, analyzeResumeWithAI, ACTIVE_RESUME_VERSION_KEY } from "./dashboardData";
 import { computeAllFitness, type InterviewType, type FitnessBand } from "./resumeFitness";
 
 /** Project a regex-fallback resume into the ResumeProfile shape the UI
@@ -275,7 +275,25 @@ export default function DashboardResume() {
   // Multi-resume list — shown above the single-active-resume card so
   // users can see they have e.g. an SDE resume + a PM resume in one
   // glance. Read-only for now; switching is a Phase 4 ticket.
-  const [allResumes, setAllResumes] = useState<Array<{ id: string; domain: string; title: string; latestVersion: number; latestVersionId: string | null; latestScore: number | null; latestProfile: ResumeProfile | null; updatedAt: string; isActive: boolean }>>([]);
+  const [allResumes, setAllResumes] = useState<Array<{
+    id: string;
+    domain: string;
+    title: string;
+    latestVersion: number;
+    latestVersionId: string | null;
+    latestScore: number | null;
+    latestProfile: ResumeProfile | null;
+    latestFileName: string | null;
+    updatedAt: string;
+    isActive: boolean;
+    versions: Array<{ id: string; versionNumber: number; isLatest: boolean; fileName: string | null; score: number | null; profile: ResumeProfile | null; createdAt: string | null }>;
+  }>>([]);
+  // Per-card "expand to show all versions" toggle — keyed by resumeId
+  // so multiple cards can be expanded independently.
+  const [expandedTimeline, setExpandedTimeline] = useState<Record<string, boolean>>({});
+  const [archivingId, setArchivingId] = useState<string | null>(null);
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameDraft, setRenameDraft] = useState("");
   // Per-bullet polish state. key = improvement index, value = pending /
   // returned suggestion. Lives only as long as the user is on the tab —
   // polishing is a transient UI nudge, not persisted.
@@ -314,12 +332,12 @@ export default function DashboardResume() {
         const client = await getSupabase();
         const { data, error } = await client
           .from("resumes")
-          .select("id, domain, title, active_version_id, updated_at, is_archived, resume_versions(id, version_number, parsed_data, is_latest, file_name)")
+          .select("id, domain, title, active_version_id, updated_at, is_archived, resume_versions(id, version_number, parsed_data, is_latest, file_name, created_at)")
           .eq("user_id", user.id)
           .eq("is_archived", false)
           .order("updated_at", { ascending: false });
         if (cancelled || error || !Array.isArray(data)) return;
-        type VersionRow = { id: string; version_number: number; parsed_data: ResumeProfile | null; is_latest: boolean; file_name: string | null };
+        type VersionRow = { id: string; version_number: number; parsed_data: ResumeProfile | null; is_latest: boolean; file_name: string | null; created_at: string | null };
         type ResumeRow = { id: string; domain: string; title: string | null; active_version_id: string | null; updated_at: string; resume_versions: VersionRow[] | null };
         // Active = the resume with the most-recent updated_at. The
         // server orders the response that way already, so the first
@@ -344,6 +362,8 @@ export default function DashboardResume() {
           const niceTitle = latest?.file_name
             || (r.title && r.title !== r.domain ? r.title : null)
             || `${titleCase(r.domain)} resume`;
+          // Sort versions newest-first for the timeline rendering.
+          const sortedVersions = [...versions].sort((a, b) => b.version_number - a.version_number);
           return {
             id: r.id,
             domain: r.domain || "general",
@@ -352,8 +372,18 @@ export default function DashboardResume() {
             latestVersionId: latest?.id ?? null,
             latestScore: typeof latest?.parsed_data?.resumeScore === "number" ? latest.parsed_data.resumeScore : null,
             latestProfile: latest?.parsed_data ?? null,
+            latestFileName: latest?.file_name ?? null,
             updatedAt: r.updated_at,
             isActive: idx === 0,
+            versions: sortedVersions.map(v => ({
+              id: v.id,
+              versionNumber: v.version_number,
+              isLatest: v.is_latest,
+              fileName: v.file_name,
+              score: typeof v.parsed_data?.resumeScore === "number" ? v.parsed_data.resumeScore : null,
+              profile: v.parsed_data,
+              createdAt: v.created_at,
+            })),
           };
         });
         setAllResumes(transformed);
@@ -433,11 +463,24 @@ export default function DashboardResume() {
   }, [user?.resumeData, user?.resumeFileName, user?.resumeText]);
 
   /**
-   * Promote a non-active resume to active. Optimistically update local
-   * state; revert on error. The server endpoint also updates `updated_at`
-   * which the next catalogue refetch will pick up.
+   * Promote a resume version to active. Three jobs:
+   *   1. PATCH `resumes.active_version_id` + `updated_at` server-side
+   *   2. Mirror the change into in-memory state — profile view, user
+   *      data, and the sessionStorage key the interview engine reads
+   *      at session init. Without (2) the catalogue badge moves but
+   *      the next interview still pins to whatever resume the user
+   *      last *analyzed*, which silently breaks the contract.
+   *   3. Bump catalogueRefreshKey so cards re-order on the wire too.
+   *
+   * Used by both the "Make active" button on a non-active card and
+   * the "Use this version" button on the per-version timeline.
    */
-  const handleMakeActive = async (resumeId: string, versionId: string | null) => {
+  const handleMakeActive = async (
+    resumeId: string,
+    versionId: string | null,
+    chosenProfile?: ResumeProfile | null,
+    chosenFileName?: string | null,
+  ) => {
     if (!versionId) return;
     setActivatingId(resumeId);
     const prev = allResumes;
@@ -451,18 +494,116 @@ export default function DashboardResume() {
       if (!res.ok) {
         setAllResumes(prev); // revert
         setErrorMsg(res.error || "Failed to switch active resume");
-      } else {
-        // Server bumped updated_at on the chosen row. Trigger a refetch
-        // so the cards re-order (active card moves to position 0) and
-        // the badge stays consistent across navigations.
-        setCatalogueRefreshKey(k => k + 1);
+        return;
       }
+      // Server PATCH succeeded. Now keep local state in sync so the
+      // profile view + interview engine pick up the new active resume
+      // immediately without a page refresh.
+      try {
+        if (typeof sessionStorage !== "undefined") {
+          sessionStorage.setItem(ACTIVE_RESUME_VERSION_KEY, versionId);
+        }
+      } catch { /* restricted */ }
+      if (chosenProfile) {
+        setProfile(chosenProfile);
+        setAnalysisSource("ai");
+        updateUser({
+          resumeData: { _type: "ai", ...chosenProfile },
+          resumeFileName: chosenFileName || undefined,
+        });
+        if (chosenFileName) {
+          setFileName(chosenFileName);
+          updatePersisted({ resumeFileName: chosenFileName });
+        }
+      }
+      setCatalogueRefreshKey(k => k + 1);
     } catch (err) {
       setAllResumes(prev);
       setErrorMsg((err as Error).message || "Failed to switch active resume");
     } finally {
       setActivatingId(null);
     }
+  };
+
+  /**
+   * Rename a resume row's title. Direct supabase-js call — RLS already
+   * scopes updates to the owner. Optimistic update with revert on error.
+   */
+  const handleRenameResume = async (resumeId: string, newTitle: string) => {
+    const trimmed = newTitle.trim().slice(0, 120);
+    if (!trimmed) {
+      setRenamingId(null);
+      return;
+    }
+    const prev = allResumes;
+    setAllResumes(prev.map(r => r.id === resumeId ? { ...r, title: trimmed } : r));
+    setRenamingId(null);
+    try {
+      const { getSupabase } = await import("./supabase");
+      const client = await getSupabase();
+      const { error } = await client.from("resumes").update({ title: trimmed }).eq("id", resumeId);
+      if (error) {
+        setAllResumes(prev);
+        setErrorMsg(`Rename failed: ${error.message}`);
+      }
+    } catch (err) {
+      setAllResumes(prev);
+      setErrorMsg((err as Error).message || "Rename failed");
+    }
+  };
+
+  /**
+   * Archive (soft-delete) a non-active resume. We keep the row in DB so
+   * historical sessions that reference its versions still resolve. The
+   * catalogue filters `is_archived=false`, so the user just stops seeing
+   * it. Refuses if the resume is currently active — user must switch to
+   * another resume first.
+   */
+  const handleArchiveResume = async (resumeId: string, isActive: boolean) => {
+    if (isActive) {
+      setErrorMsg("Switch to another resume first, then archive this one.");
+      return;
+    }
+    if (typeof window !== "undefined" && !window.confirm("Archive this resume? You can recover it from support if needed; sessions that used it stay readable.")) {
+      return;
+    }
+    setArchivingId(resumeId);
+    const prev = allResumes;
+    setAllResumes(prev.filter(r => r.id !== resumeId));
+    try {
+      const { getSupabase } = await import("./supabase");
+      const client = await getSupabase();
+      const { error } = await client.from("resumes").update({ is_archived: true, updated_at: new Date().toISOString() }).eq("id", resumeId);
+      if (error) {
+        setAllResumes(prev);
+        setErrorMsg(`Archive failed: ${error.message}`);
+      }
+    } catch (err) {
+      setAllResumes(prev);
+      setErrorMsg((err as Error).message || "Archive failed");
+    } finally {
+      setArchivingId(null);
+    }
+  };
+
+  /**
+   * Replace an improvement bullet in-place with the polished suggestion.
+   * Persists the edited profile to user.resumeData so the change survives
+   * navigation. The cached resume_versions row in Postgres is intentionally
+   * NOT mutated — we keep the original LLM output as the source of truth
+   * and treat polish as a user-applied delta on top.
+   */
+  const handleApplyPolish = (idx: number, rewrite: string) => {
+    if (!profile) return;
+    const next = { ...profile, improvements: [...(profile.improvements || [])] };
+    next.improvements![idx] = rewrite;
+    setProfile(next);
+    updateUser({ resumeData: { _type: "ai", ...next } });
+    setPolished(p => {
+      const copy = { ...p };
+      delete copy[idx];
+      return copy;
+    });
   };
 
   /**
@@ -507,25 +648,70 @@ export default function DashboardResume() {
             system_design: "SYS",
             case: "CASE",
           };
+          const expanded = !!expandedTimeline[r.id];
+          const isRenaming = renamingId === r.id;
           return (
             <div key={r.id} style={{ background: c.graphite, border: `1px solid ${r.isActive ? c.gilt : c.border}`, borderRadius: 12, padding: "14px 16px" }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6, gap: 8 }}>
                 <span style={{ fontFamily: font.mono, fontSize: 10, fontWeight: 600, color: c.gilt, background: "rgba(212,179,127,0.08)", padding: "2px 8px", borderRadius: 4, textTransform: "uppercase", letterSpacing: "0.06em" }}>{r.domain}</span>
-                {r.isActive ? (
-                  <span style={{ fontFamily: font.ui, fontSize: 10, color: c.sage }}>Active</span>
-                ) : (
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  {r.isActive ? (
+                    <span style={{ fontFamily: font.ui, fontSize: 10, color: c.sage }}>Active</span>
+                  ) : (
+                    <button
+                      onClick={() => handleMakeActive(r.id, r.latestVersionId, r.latestProfile, r.latestFileName)}
+                      disabled={activatingId === r.id || !r.latestVersionId}
+                      style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, color: c.gilt, background: "transparent", border: `1px solid ${c.border}`, borderRadius: 4, padding: "2px 8px", cursor: activatingId === r.id ? "wait" : "pointer", opacity: activatingId === r.id ? 0.6 : 1 }}
+                      title="Switch this resume to be the one used for interview sessions"
+                    >
+                      {activatingId === r.id ? "…" : "Make active"}
+                    </button>
+                  )}
+                  {!r.isActive && (
+                    <button
+                      onClick={() => handleArchiveResume(r.id, r.isActive)}
+                      disabled={archivingId === r.id}
+                      title="Archive this resume — sessions that used it stay readable"
+                      aria-label="Archive resume"
+                      style={{ fontFamily: font.ui, fontSize: 10, color: c.stone, background: "transparent", border: "none", cursor: "pointer", padding: "2px 4px", lineHeight: 1 }}
+                    >
+                      {archivingId === r.id ? "…" : "✕"}
+                    </button>
+                  )}
+                </div>
+              </div>
+              {isRenaming ? (
+                <input
+                  autoFocus
+                  defaultValue={renameDraft}
+                  onChange={(e) => setRenameDraft(e.target.value)}
+                  onBlur={() => handleRenameResume(r.id, renameDraft)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleRenameResume(r.id, renameDraft);
+                    if (e.key === "Escape") setRenamingId(null);
+                  }}
+                  style={{ fontFamily: font.ui, fontSize: 13, color: c.ivory, background: c.obsidian, border: `1px solid ${c.gilt}`, borderRadius: 4, padding: "4px 6px", marginBottom: 4, width: "100%" }}
+                />
+              ) : (
+                <button
+                  onClick={() => { setRenameDraft(r.title); setRenamingId(r.id); }}
+                  title="Rename"
+                  style={{ all: "unset", display: "block", width: "100%", marginBottom: 4, cursor: "pointer" }}
+                >
+                  <p style={{ fontFamily: font.ui, fontSize: 13, color: c.ivory, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.title}</p>
+                </button>
+              )}
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: fits ? 8 : 0 }}>
+                <p style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>v{r.latestVersion}{r.latestScore != null ? ` · Score ${r.latestScore}` : ""}</p>
+                {r.versions.length > 1 && (
                   <button
-                    onClick={() => handleMakeActive(r.id, r.latestVersionId)}
-                    disabled={activatingId === r.id || !r.latestVersionId}
-                    style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, color: c.gilt, background: "transparent", border: `1px solid ${c.border}`, borderRadius: 4, padding: "2px 8px", cursor: activatingId === r.id ? "wait" : "pointer", opacity: activatingId === r.id ? 0.6 : 1 }}
-                    title="Switch this resume to be the one used for interview sessions"
+                    onClick={() => setExpandedTimeline(t => ({ ...t, [r.id]: !t[r.id] }))}
+                    style={{ fontFamily: font.ui, fontSize: 10, color: c.stone, background: "transparent", border: "none", cursor: "pointer", padding: 0 }}
                   >
-                    {activatingId === r.id ? "…" : "Make active"}
+                    {expanded ? "Hide history ↑" : `Show ${r.versions.length} versions ↓`}
                   </button>
                 )}
               </div>
-              <p style={{ fontFamily: font.ui, fontSize: 13, color: c.ivory, marginBottom: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.title}</p>
-              <p style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, marginBottom: fits ? 8 : 0 }}>v{r.latestVersion}{r.latestScore != null ? ` · Score ${r.latestScore}` : ""}</p>
               {fits && (
                 <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
                   {(["behavioral", "technical", "system_design", "case"] as InterviewType[]).map(t => (
@@ -537,6 +723,32 @@ export default function DashboardResume() {
                       {typeLabel[t]} {fits[t].score}
                     </span>
                   ))}
+                </div>
+              )}
+              {expanded && r.versions.length > 1 && (
+                <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px solid ${c.border}`, display: "flex", flexDirection: "column", gap: 6 }}>
+                  {r.versions.map(v => {
+                    const isCurrent = v.id === r.latestVersionId;
+                    const dateLabel = v.createdAt ? new Date(v.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : "";
+                    return (
+                      <div key={v.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                        <span style={{ fontFamily: font.mono, fontSize: 10, color: c.stone }}>
+                          v{v.versionNumber}{v.score != null ? ` · ${v.score}` : ""}{dateLabel ? ` · ${dateLabel}` : ""}
+                        </span>
+                        {isCurrent ? (
+                          <span style={{ fontFamily: font.ui, fontSize: 9, color: c.sage }}>current</span>
+                        ) : (
+                          <button
+                            onClick={() => handleMakeActive(r.id, v.id, v.profile, v.fileName)}
+                            disabled={activatingId === r.id}
+                            style={{ fontFamily: font.ui, fontSize: 9, color: c.gilt, background: "transparent", border: `1px solid ${c.border}`, borderRadius: 3, padding: "1px 6px", cursor: activatingId === r.id ? "wait" : "pointer" }}
+                          >
+                            Restore
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -1260,12 +1472,32 @@ export default function DashboardResume() {
                       </button>
                     </div>
                     {polishState?.state === "done" && polishState.rewrite && (
-                      <div style={{ display: "flex", flexDirection: "column", gap: 4, padding: "8px 10px", borderRadius: 6, background: "rgba(140,182,144,0.05)", border: `1px solid rgba(140,182,144,0.2)` }}>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 6, padding: "8px 10px", borderRadius: 6, background: "rgba(140,182,144,0.05)", border: `1px solid rgba(140,182,144,0.2)` }}>
                         <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, color: c.sage, textTransform: "uppercase", letterSpacing: "0.06em" }}>Suggested rewrite</span>
                         <span style={{ fontFamily: font.ui, fontSize: 12.5, color: c.chalk, lineHeight: 1.5 }}>{polishState.rewrite}</span>
                         {polishState.rationale && (
                           <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, fontStyle: "italic" }}>{polishState.rationale}</span>
                         )}
+                        <div style={{ display: "flex", gap: 6, marginTop: 2 }}>
+                          <button
+                            onClick={() => handleApplyPolish(i, polishState.rewrite!)}
+                            style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, color: c.obsidian, background: c.sage, border: "none", borderRadius: 4, padding: "3px 10px", cursor: "pointer" }}
+                          >
+                            Use this
+                          </button>
+                          <button
+                            onClick={() => navigator.clipboard?.writeText(polishState.rewrite!)}
+                            style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, color: c.stone, background: "transparent", border: `1px solid ${c.border}`, borderRadius: 4, padding: "3px 10px", cursor: "pointer" }}
+                          >
+                            Copy
+                          </button>
+                          <button
+                            onClick={() => setPolished(p => { const copy = { ...p }; delete copy[i]; return copy; })}
+                            style={{ fontFamily: font.ui, fontSize: 10, color: c.stone, background: "transparent", border: "none", cursor: "pointer", padding: "3px 6px" }}
+                          >
+                            Dismiss
+                          </button>
+                        </div>
                       </div>
                     )}
                     {polishState?.state === "error" && (
