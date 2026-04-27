@@ -6,6 +6,7 @@ import { useDocTitle } from "./useDocTitle";
 import { useDashboardCore, useDashboardUI } from "./DashboardContext";
 import { extractResumeText, parseResumeData, isAiResume, isFallbackResume, type FallbackStoredResume } from "./resumeParser";
 import { type ResumeProfile, analyzeResumeWithAI } from "./dashboardData";
+import { computeAllFitness, type InterviewType, type FitnessBand } from "./resumeFitness";
 
 /** Project a regex-fallback resume into the ResumeProfile shape the UI
  *  expects, so the AI and fallback branches can render through a single
@@ -274,7 +275,12 @@ export default function DashboardResume() {
   // Multi-resume list — shown above the single-active-resume card so
   // users can see they have e.g. an SDE resume + a PM resume in one
   // glance. Read-only for now; switching is a Phase 4 ticket.
-  const [allResumes, setAllResumes] = useState<Array<{ id: string; domain: string; title: string; latestVersion: number; latestScore: number | null; updatedAt: string; isActive: boolean }>>([]);
+  const [allResumes, setAllResumes] = useState<Array<{ id: string; domain: string; title: string; latestVersion: number; latestVersionId: string | null; latestScore: number | null; latestProfile: ResumeProfile | null; updatedAt: string; isActive: boolean }>>([]);
+  // Per-bullet polish state. key = improvement index, value = pending /
+  // returned suggestion. Lives only as long as the user is on the tab —
+  // polishing is a transient UI nudge, not persisted.
+  const [polished, setPolished] = useState<Record<number, { state: "loading" | "done" | "error"; rewrite?: string; rationale?: string; error?: string }>>({});
+  const [activatingId, setActivatingId] = useState<string | null>(null);
   const analyzingRef = useRef(false);
   const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -309,7 +315,7 @@ export default function DashboardResume() {
           .eq("is_archived", false)
           .order("updated_at", { ascending: false });
         if (cancelled || error || !Array.isArray(data)) return;
-        type VersionRow = { id: string; version_number: number; parsed_data: { resumeScore?: number } | null; is_latest: boolean };
+        type VersionRow = { id: string; version_number: number; parsed_data: ResumeProfile | null; is_latest: boolean };
         type ResumeRow = { id: string; domain: string; title: string | null; active_version_id: string | null; updated_at: string; resume_versions: VersionRow[] | null };
         const transformed = (data as ResumeRow[]).map((r) => {
           const versions = Array.isArray(r.resume_versions) ? r.resume_versions : [];
@@ -319,7 +325,9 @@ export default function DashboardResume() {
             domain: r.domain || "general",
             title: r.title || "Untitled resume",
             latestVersion: latest?.version_number ?? 1,
+            latestVersionId: latest?.id ?? null,
             latestScore: typeof latest?.parsed_data?.resumeScore === "number" ? latest.parsed_data.resumeScore : null,
+            latestProfile: latest?.parsed_data ?? null,
             updatedAt: r.updated_at,
             isActive: !!r.active_version_id,
           };
@@ -399,6 +407,56 @@ export default function DashboardResume() {
       setNeedsReupload(true);
     }
   }, [user?.resumeData, user?.resumeFileName, user?.resumeText]);
+
+  /**
+   * Promote a non-active resume to active. Optimistically update local
+   * state; revert on error. The server endpoint also updates `updated_at`
+   * which the next catalogue refetch will pick up.
+   */
+  const handleMakeActive = async (resumeId: string, versionId: string | null) => {
+    if (!versionId) return;
+    setActivatingId(resumeId);
+    const prev = allResumes;
+    setAllResumes(prev.map(r => ({ ...r, isActive: r.id === resumeId })));
+    try {
+      const { apiFetch } = await import("./apiClient");
+      const res = await apiFetch<{ ok?: boolean; error?: string }>(
+        "/api/resume/set-active",
+        { resumeId, versionId },
+      );
+      if (!res.ok) {
+        setAllResumes(prev); // revert
+        setErrorMsg(res.error || "Failed to switch active resume");
+      }
+    } catch (err) {
+      setAllResumes(prev);
+      setErrorMsg((err as Error).message || "Failed to switch active resume");
+    } finally {
+      setActivatingId(null);
+    }
+  };
+
+  /**
+   * Ask the server to rewrite a single improvement bullet. Inline result
+   * appears below the bullet; user can copy the suggestion or dismiss it.
+   */
+  const handlePolishBullet = async (idx: number, bullet: string) => {
+    setPolished(p => ({ ...p, [idx]: { state: "loading" } }));
+    try {
+      const { apiFetch } = await import("./apiClient");
+      const res = await apiFetch<{ rewrite?: string; rationale?: string; error?: string }>(
+        "/api/resume/rewrite-bullet",
+        { bullet, context: { role: user?.targetRole, domain } },
+      );
+      if (!res.ok || !res.data?.rewrite) {
+        setPolished(p => ({ ...p, [idx]: { state: "error", error: res.error || "Polish failed" } }));
+      } else {
+        setPolished(p => ({ ...p, [idx]: { state: "done", rewrite: res.data!.rewrite, rationale: res.data!.rationale } }));
+      }
+    } catch (err) {
+      setPolished(p => ({ ...p, [idx]: { state: "error", error: (err as Error).message } }));
+    }
+  };
 
   if (dataLoading) return <DataLoadingSkeleton />;
 
@@ -642,16 +700,51 @@ export default function DashboardResume() {
           <div style={{ marginBottom: 24 }}>
             <p style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>Your resumes</p>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 12 }}>
-              {allResumes.map(r => (
-                <div key={r.id} style={{ background: c.graphite, border: `1px solid ${r.isActive ? c.gilt : c.border}`, borderRadius: 12, padding: "14px 16px" }}>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-                    <span style={{ fontFamily: font.mono, fontSize: 10, fontWeight: 600, color: c.gilt, background: "rgba(212,179,127,0.08)", padding: "2px 8px", borderRadius: 4, textTransform: "uppercase", letterSpacing: "0.06em" }}>{r.domain}</span>
-                    {r.isActive && <span style={{ fontFamily: font.ui, fontSize: 10, color: c.sage }}>Active</span>}
+              {allResumes.map(r => {
+                const fits = r.latestProfile ? computeAllFitness(r.latestProfile) : null;
+                const bandColor = (b: FitnessBand) =>
+                  b === "excellent" ? c.sage : b === "good" ? c.gilt : b === "fair" ? c.stone : c.ember;
+                const typeLabel: Record<InterviewType, string> = {
+                  behavioral: "BEH",
+                  technical: "TECH",
+                  system_design: "SYS",
+                  case: "CASE",
+                };
+                return (
+                  <div key={r.id} style={{ background: c.graphite, border: `1px solid ${r.isActive ? c.gilt : c.border}`, borderRadius: 12, padding: "14px 16px" }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+                      <span style={{ fontFamily: font.mono, fontSize: 10, fontWeight: 600, color: c.gilt, background: "rgba(212,179,127,0.08)", padding: "2px 8px", borderRadius: 4, textTransform: "uppercase", letterSpacing: "0.06em" }}>{r.domain}</span>
+                      {r.isActive ? (
+                        <span style={{ fontFamily: font.ui, fontSize: 10, color: c.sage }}>Active</span>
+                      ) : (
+                        <button
+                          onClick={() => handleMakeActive(r.id, r.latestVersionId)}
+                          disabled={activatingId === r.id || !r.latestVersionId}
+                          style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, color: c.gilt, background: "transparent", border: `1px solid ${c.border}`, borderRadius: 4, padding: "2px 8px", cursor: activatingId === r.id ? "wait" : "pointer", opacity: activatingId === r.id ? 0.6 : 1 }}
+                          title="Switch this resume to be the one used for interview sessions"
+                        >
+                          {activatingId === r.id ? "…" : "Make active"}
+                        </button>
+                      )}
+                    </div>
+                    <p style={{ fontFamily: font.ui, fontSize: 13, color: c.ivory, marginBottom: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.title}</p>
+                    <p style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, marginBottom: fits ? 8 : 0 }}>v{r.latestVersion}{r.latestScore != null ? ` · Score ${r.latestScore}` : ""}</p>
+                    {fits && (
+                      <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                        {(["behavioral", "technical", "system_design", "case"] as InterviewType[]).map(t => (
+                          <span
+                            key={t}
+                            title={fits[t].rationale}
+                            style={{ fontFamily: font.mono, fontSize: 9, fontWeight: 600, color: bandColor(fits[t].band), background: `${bandColor(fits[t].band)}1A`, padding: "2px 6px", borderRadius: 3, letterSpacing: "0.04em" }}
+                          >
+                            {typeLabel[t]} {fits[t].score}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                  <p style={{ fontFamily: font.ui, fontSize: 13, color: c.ivory, marginBottom: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.title}</p>
-                  <p style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>v{r.latestVersion}{r.latestScore != null ? ` · Score ${r.latestScore}` : ""}</p>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}
@@ -1113,10 +1206,33 @@ export default function DashboardResume() {
                   : tip && typeof tip === "object"
                     ? Object.values(tip as Record<string, unknown>).filter(v => typeof v === "string").join(" — ")
                     : String(tip ?? "");
+                const polishState = polished[i];
                 return (
-                  <div key={i} style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "10px 14px", borderRadius: 8, background: c.obsidian, border: `1px solid ${c.border}` }}>
-                    <span style={{ fontFamily: font.mono, fontSize: 10, fontWeight: 700, color: c.gilt, background: "rgba(212,179,127,0.08)", borderRadius: 4, padding: "2px 6px", flexShrink: 0, marginTop: 1 }}>{i + 1}</span>
-                    <span style={{ fontFamily: font.ui, fontSize: 12.5, color: c.chalk, lineHeight: 1.5 }}>{text}</span>
+                  <div key={i} style={{ display: "flex", flexDirection: "column", gap: 8, padding: "10px 14px", borderRadius: 8, background: c.obsidian, border: `1px solid ${c.border}` }}>
+                    <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+                      <span style={{ fontFamily: font.mono, fontSize: 10, fontWeight: 700, color: c.gilt, background: "rgba(212,179,127,0.08)", borderRadius: 4, padding: "2px 6px", flexShrink: 0, marginTop: 1 }}>{i + 1}</span>
+                      <span style={{ fontFamily: font.ui, fontSize: 12.5, color: c.chalk, lineHeight: 1.5, flex: 1 }}>{text}</span>
+                      <button
+                        onClick={() => handlePolishBullet(i, text)}
+                        disabled={polishState?.state === "loading"}
+                        title="Rewrite this bullet with stronger verbs and metrics"
+                        style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, color: c.gilt, background: "transparent", border: `1px solid ${c.border}`, borderRadius: 4, padding: "2px 8px", cursor: polishState?.state === "loading" ? "wait" : "pointer", flexShrink: 0, opacity: polishState?.state === "loading" ? 0.6 : 1 }}
+                      >
+                        {polishState?.state === "loading" ? "…" : polishState?.state === "done" ? "✓" : "Polish"}
+                      </button>
+                    </div>
+                    {polishState?.state === "done" && polishState.rewrite && (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 4, padding: "8px 10px", borderRadius: 6, background: "rgba(140,182,144,0.05)", border: `1px solid rgba(140,182,144,0.2)` }}>
+                        <span style={{ fontFamily: font.ui, fontSize: 10, fontWeight: 600, color: c.sage, textTransform: "uppercase", letterSpacing: "0.06em" }}>Suggested rewrite</span>
+                        <span style={{ fontFamily: font.ui, fontSize: 12.5, color: c.chalk, lineHeight: 1.5 }}>{polishState.rewrite}</span>
+                        {polishState.rationale && (
+                          <span style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, fontStyle: "italic" }}>{polishState.rationale}</span>
+                        )}
+                      </div>
+                    )}
+                    {polishState?.state === "error" && (
+                      <span style={{ fontFamily: font.ui, fontSize: 11, color: c.ember }}>{polishState.error}</span>
+                    )}
                   </div>
                 );
               })}
