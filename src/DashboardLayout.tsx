@@ -52,6 +52,24 @@ export default function DashboardLayout({ children }: { children?: React.ReactNo
   // Refetch sessions on mount (e.g. returning from interview)
   useEffect(() => { refreshSessions(); }, [refreshSessions]);
 
+  // Drain any interview-turn writes that failed during a previous session
+  // (network blip mid-interview, browser tab closed before save, etc.).
+  // Runs once per dashboard mount; flushPendingTurns is a no-op when the
+  // queue is empty and only retries each turn once before re-queueing.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { flushPendingTurns } = await import("./supabase");
+        const result = await flushPendingTurns();
+        if (!cancelled && result.flushed > 0) {
+          console.warn(`[dashboard] flushed ${result.flushed} pending turn(s) from previous session`);
+        }
+      } catch { /* best effort */ }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
   const hasUrgentInterview = useMemo(() =>
     calendarEvents.some(e => e.status === "upcoming" && daysUntilEvent(e.date, e.time) >= 0 && daysUntilEvent(e.date, e.time) <= 3),
     [calendarEvents]

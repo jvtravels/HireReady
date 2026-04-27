@@ -228,7 +228,11 @@ export interface InterviewTurn {
   created_at?: string;
 }
 
-/** Create the live session row and save all initial questions as turns */
+/**
+ * Create the live session row and save all initial questions as turns.
+ * Returns success/failure so callers can react (toast, retry queue, etc.) —
+ * previous void-returning version meant transcript loss was silent.
+ */
 export async function initLiveSession(params: {
   sessionId: string;
   userId: string;
@@ -238,8 +242,8 @@ export async function initLiveSession(params: {
   role: string;
   company: string;
   questions: { type: string; aiText: string; persona?: string }[];
-}): Promise<void> {
-  if (!supabaseConfigured) return;
+}): Promise<{ ok: boolean; error?: string }> {
+  if (!supabaseConfigured) return { ok: false, error: "Supabase not configured" };
   try {
     const client = await getSupabase();
     const turns: Omit<InterviewTurn, "created_at">[] = [
@@ -264,21 +268,82 @@ export async function initLiveSession(params: {
         metadata: { questionType: q.type, ...(q.persona ? { persona: q.persona } : {}) },
       })),
     ];
-    await client.from("interview_turns").insert(turns);
+    const { error } = await client.from("interview_turns").insert(turns);
+    if (error) {
+      console.error("[supabase] initLiveSession insert failed:", error.message);
+      return { ok: false, error: error.message };
+    }
+    return { ok: true };
   } catch (err) {
-    console.warn("[supabase] initLiveSession failed:", err);
+    const msg = err instanceof Error ? err.message : "Unknown error";
+    console.error("[supabase] initLiveSession threw:", msg);
+    return { ok: false, error: msg };
   }
 }
 
-/** Save a single turn (answer or follow-up) in real-time */
-export async function saveInterviewTurn(turn: Omit<InterviewTurn, "created_at">): Promise<void> {
-  if (!supabaseConfigured) return;
+/**
+ * Save a single turn (answer or follow-up) in real-time.
+ * Returns success/failure + queues a localStorage backup on failure so
+ * transcripts aren't silently lost on flaky network.
+ */
+const TURN_RETRY_QUEUE_KEY = "hirestepx_pending_turns";
+
+export async function saveInterviewTurn(turn: Omit<InterviewTurn, "created_at">): Promise<{ ok: boolean; error?: string }> {
+  if (!supabaseConfigured) return { ok: false, error: "Supabase not configured" };
   try {
     const client = await getSupabase();
-    await client.from("interview_turns").insert(turn);
+    const { error } = await client.from("interview_turns").insert(turn);
+    if (error) {
+      console.error("[supabase] saveInterviewTurn failed:", error.message);
+      queueTurnForRetry(turn);
+      return { ok: false, error: error.message };
+    }
+    return { ok: true };
   } catch (err) {
-    console.warn("[supabase] saveInterviewTurn failed:", err);
+    const msg = err instanceof Error ? err.message : "Unknown error";
+    console.error("[supabase] saveInterviewTurn threw:", msg);
+    queueTurnForRetry(turn);
+    return { ok: false, error: msg };
   }
+}
+
+/** Localstorage backup queue for failed turns. Survives reload. Drained by flushPendingTurns(). */
+function queueTurnForRetry(turn: Omit<InterviewTurn, "created_at">): void {
+  if (typeof localStorage === "undefined") return;
+  try {
+    const raw = localStorage.getItem(TURN_RETRY_QUEUE_KEY);
+    const queue = raw ? (JSON.parse(raw) as Array<Omit<InterviewTurn, "created_at">>) : [];
+    queue.push(turn);
+    // Cap at 200 to prevent localStorage overflow on prolonged outage.
+    if (queue.length > 200) queue.splice(0, queue.length - 200);
+    localStorage.setItem(TURN_RETRY_QUEUE_KEY, JSON.stringify(queue));
+  } catch { /* localStorage may be full or disabled — best effort */ }
+}
+
+/** Drain the retry queue. Call on app load or network-recovery events. */
+export async function flushPendingTurns(): Promise<{ flushed: number; failed: number }> {
+  if (typeof localStorage === "undefined" || !supabaseConfigured) return { flushed: 0, failed: 0 };
+  let queue: Array<Omit<InterviewTurn, "created_at">> = [];
+  try {
+    const raw = localStorage.getItem(TURN_RETRY_QUEUE_KEY);
+    if (!raw) return { flushed: 0, failed: 0 };
+    queue = JSON.parse(raw);
+  } catch { return { flushed: 0, failed: 0 }; }
+  if (queue.length === 0) return { flushed: 0, failed: 0 };
+
+  const remaining: typeof queue = [];
+  let flushed = 0;
+  for (const turn of queue) {
+    const res = await saveInterviewTurn(turn);
+    // saveInterviewTurn auto-requeues on failure; avoid double-queueing here.
+    if (res.ok) flushed++;
+    else remaining.push(turn);
+  }
+  try {
+    if (remaining.length === 0) localStorage.removeItem(TURN_RETRY_QUEUE_KEY);
+    else localStorage.setItem(TURN_RETRY_QUEUE_KEY, JSON.stringify(remaining));
+  } catch { /* best effort */ }
+  return { flushed, failed: remaining.length };
 }
 
 /* ─── Session helpers ─── */

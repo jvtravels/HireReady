@@ -22,7 +22,7 @@
 
 export const config = { runtime: "edge" };
 
-import { withAuthAndRateLimit, corsHeaders, withRequestId } from "./_shared";
+import { withAuthAndRateLimit, corsHeaders, withRequestId, isRateLimited, getClientIp, rateLimitResponse } from "./_shared";
 
 declare const process: { env: Record<string, string | undefined> };
 const SUPABASE_URL = process.env.SUPABASE_URL || "";
@@ -167,6 +167,14 @@ export default async function handler(req: Request): Promise<Response> {
 
   // ── Public read path (no auth required) ─────────────────────
   if (req.method === "GET") {
+    // Rate limit per IP to prevent token enumeration / DoS. Public reads are
+    // read-only and the cost per call is low, but unbounded scraping of
+    // tokens (even unguessable ones) would still let an attacker harvest
+    // any tokens leaked via referrer headers, public posts, etc.
+    const ip = getClientIp(req);
+    if (await isRateLimited(ip, "share-report-read", 60, 60_000)) {
+      return rateLimitResponse(headers);
+    }
     const token = url.searchParams.get("token");
     if (!token || typeof token !== "string" || token.length < 16) {
       return new Response(JSON.stringify({ error: "Invalid share link" }), { status: 404, headers });
