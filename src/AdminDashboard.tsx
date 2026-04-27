@@ -122,6 +122,25 @@ export interface StoryNotebookData {
   recent: Array<{ id: string; userEmail: string; title: string; tags: string[]; createdAt: string; lastUsedAt: string | null }>;
 }
 
+export interface SessionDetailData {
+  session: {
+    id: string; user_id: string; date: string; type: string; difficulty: string;
+    focus: string; duration: number; score: number; questions: number;
+    transcript: Array<{ speaker: string; text: string; time?: string }>;
+    ai_feedback: string;
+    skill_scores: Record<string, unknown> | null;
+    job_description?: string;
+    jd_analysis?: Record<string, unknown> | null;
+    report_json?: Record<string, unknown> | null;
+    report_version?: string | null;
+    report_generated_at?: string | null;
+    created_at: string;
+  } | null;
+  profile: { id: string; name: string | null; email: string } | null;
+  qaPairs: Array<{ question: string; answer: string; questionTime?: string; answerTime?: string }>;
+  llmCalls: Array<{ endpoint: string; model: string; total_tokens: number; latency_ms: number; status: string; created_at: string }>;
+}
+
 type Tab = "overview" | "users" | "sessions" | "financials" | "llm" | "feedback" | "referrals" | "promo-codes" | "calendar" | "story-notebook";
 
 const TABS: { key: Tab; label: string; icon: string }[] = [
@@ -478,6 +497,8 @@ export default function AdminDashboard() {
   const [promoCodes, setPromoCodes] = useState<PromoCodesData | null>(null);
   const [calendar, setCalendar] = useState<CalendarData | null>(null);
   const [storyNotebook, setStoryNotebook] = useState<StoryNotebookData | null>(null);
+  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
+  const [sessionDetail, setSessionDetail] = useState<SessionDetailData | null>(null);
 
   const fetchSection = useCallback(async (section: string, extra?: Record<string, unknown>, skipCache = false): Promise<unknown> => {
     if (!authed) return null;
@@ -619,6 +640,16 @@ export default function AdminDashboard() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedUserId]);
 
+  // Load session detail
+  useEffect(() => {
+    if (!selectedSessionId || !authed) return;
+    (async () => {
+      const d = await fetchSection("session-detail", { sessionId: selectedSessionId }, true) as SessionDetailData | null;
+      if (d) setSessionDetail(d);
+    })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedSessionId]);
+
   // Refresh handler for current tab
   const refreshTab = useCallback(async () => {
     switch (tab) {
@@ -751,6 +782,7 @@ export default function AdminDashboard() {
   };
 
   const renderUsers = () => {
+    if (selectedSessionId && sessionDetail) return renderSessionDetail();
     if (selectedUserId && userDetail) return renderUserDetail();
     return (
       <div>
@@ -818,6 +850,163 @@ export default function AdminDashboard() {
             </tbody>
           </table>
         </div>
+      </div>
+    );
+  };
+
+  const renderSessionDetail = () => {
+    if (!sessionDetail || !sessionDetail.session) return <EmptyState message="Session not found" />;
+    const s = sessionDetail.session;
+    const skillScores = s.skill_scores && typeof s.skill_scores === "object" ? s.skill_scores as Record<string, unknown> : {};
+    const scoreColor = (score: number) => score >= 65 ? c.sage : score >= 40 ? c.gilt : c.ember;
+
+    return (
+      <div>
+        {/* Back nav: prefer back-to-user when we got here from a user detail. */}
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 16, alignItems: "center" }}>
+          <button
+            onClick={() => { setSelectedSessionId(null); setSessionDetail(null); }}
+            style={{ ...exportBtn, color: c.stone, borderColor: c.border }}
+          >← Back</button>
+          {sessionDetail.profile && (
+            <span style={{ fontFamily: font.ui, fontSize: 12, color: c.stone }}>
+              Viewing session for{" "}
+              <span style={{ color: c.chalk, fontWeight: 600 }}>{sessionDetail.profile.name || "(no name)"}</span>{" "}
+              <span style={{ fontFamily: font.mono }}>({sessionDetail.profile.email})</span>
+            </span>
+          )}
+        </div>
+
+        {/* Session metadata */}
+        <div style={{ ...card, marginBottom: 20 }}>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 24, alignItems: "flex-start", justifyContent: "space-between" }}>
+            <div style={{ flex: 1, minWidth: 280 }}>
+              <p style={labelStyle}>Session ID</p>
+              <p style={{ fontFamily: font.mono, fontSize: 12, color: c.chalk, margin: "2px 0 14px", wordBreak: "break-all" }}>{s.id}</p>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 18, fontFamily: font.ui, fontSize: 13, color: c.chalk }}>
+                <div><span style={{ color: c.stone }}>Type:</span> {s.type}</div>
+                <div><span style={{ color: c.stone }}>Difficulty:</span> {s.difficulty}</div>
+                {s.focus && <div><span style={{ color: c.stone }}>Focus:</span> {s.focus}</div>}
+                <div><span style={{ color: c.stone }}>Questions:</span> {s.questions}</div>
+                <div><span style={{ color: c.stone }}>Duration:</span> {s.duration ? `${Math.round(s.duration / 60)}m` : "—"}</div>
+                <div><span style={{ color: c.stone }}>Date:</span> {formatDateTime(s.created_at)}</div>
+                {s.report_generated_at && (
+                  <div><span style={{ color: c.stone }}>Report:</span> {String(s.report_version || "—")} · {formatDateTime(s.report_generated_at)}</div>
+                )}
+              </div>
+            </div>
+            <div style={{ textAlign: "center", flexShrink: 0 }}>
+              <p style={labelStyle}>Score</p>
+              <p style={{ fontFamily: font.mono, fontSize: 56, fontWeight: 700, lineHeight: 1, color: scoreColor(s.score), margin: "4px 0 0" }}>
+                {s.score}<span style={{ fontSize: 18, color: c.stone, fontWeight: 400 }}>/100</span>
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Skill scores */}
+        {Object.keys(skillScores).length > 0 && (
+          <div style={{ ...card, marginBottom: 20 }}>
+            <p style={labelStyle}>Skill Breakdown</p>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 14, marginTop: 12 }}>
+              {Object.entries(skillScores).map(([name, raw]) => {
+                const score = typeof raw === "number" ? raw : (typeof raw === "object" && raw !== null && "score" in raw ? (raw as { score: number }).score : 0);
+                return (
+                  <div key={name}>
+                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+                      <span style={{ fontFamily: font.ui, fontSize: 12, color: c.chalk, textTransform: "capitalize" }}>{name}</span>
+                      <span style={{ fontFamily: font.mono, fontSize: 12, fontWeight: 600, color: scoreColor(score) }}>{score}</span>
+                    </div>
+                    <div style={{ height: 5, borderRadius: 3, background: "rgba(245,242,237,0.05)", overflow: "hidden" }}>
+                      <div style={{ width: `${Math.max(0, Math.min(100, score))}%`, height: "100%", background: scoreColor(score), borderRadius: 3 }} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* AI feedback */}
+        {s.ai_feedback && (
+          <div style={{ ...card, marginBottom: 20 }}>
+            <p style={labelStyle}>AI Feedback</p>
+            <p style={{ fontFamily: font.ui, fontSize: 13, color: c.chalk, lineHeight: 1.65, margin: "8px 0 0", whiteSpace: "pre-wrap" }}>{s.ai_feedback}</p>
+          </div>
+        )}
+
+        {/* Q&A pairs */}
+        {sessionDetail.qaPairs.length > 0 ? (
+          <div style={{ ...card, marginBottom: 20 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+              <p style={labelStyle}>Interview Transcript ({sessionDetail.qaPairs.length} Q&amp;A pair{sessionDetail.qaPairs.length === 1 ? "" : "s"})</p>
+              <button
+                onClick={() => exportCsv(`session-${s.id.slice(0,8)}-transcript.csv`, sessionDetail.qaPairs as unknown as Record<string, unknown>[])}
+                style={exportBtn}
+              >Export CSV</button>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              {sessionDetail.qaPairs.map((qa, i) => (
+                <div key={i} style={{
+                  border: `1px solid ${c.borderSubtle}`, borderRadius: 10, overflow: "hidden",
+                  background: "rgba(245,242,237,0.02)",
+                }}>
+                  {/* AI question */}
+                  <div style={{ padding: "12px 16px", borderBottom: `1px solid ${c.borderSubtle}` }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                      <span style={{
+                        fontFamily: font.ui, fontSize: 9, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase",
+                        color: c.gilt, background: "rgba(212,179,127,0.1)", padding: "2px 7px", borderRadius: 3,
+                      }}>Q{i + 1} · Interviewer</span>
+                      {qa.questionTime && <span style={{ fontFamily: font.mono, fontSize: 10, color: c.stone }}>{qa.questionTime}</span>}
+                    </div>
+                    <p style={{ fontFamily: font.ui, fontSize: 13, color: c.ivory, lineHeight: 1.6, margin: 0 }}>{qa.question}</p>
+                  </div>
+                  {/* Candidate answer */}
+                  <div style={{ padding: "12px 16px", background: "rgba(122,158,126,0.04)" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                      <span style={{
+                        fontFamily: font.ui, fontSize: 9, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase",
+                        color: c.sage, background: "rgba(122,158,126,0.1)", padding: "2px 7px", borderRadius: 3,
+                      }}>Candidate</span>
+                      {qa.answerTime && <span style={{ fontFamily: font.mono, fontSize: 10, color: c.stone }}>{qa.answerTime}</span>}
+                    </div>
+                    <p style={{
+                      fontFamily: font.ui, fontSize: 13,
+                      color: qa.answer === "(no answer)" ? c.stone : c.chalk,
+                      fontStyle: qa.answer === "(no answer)" ? "italic" : "normal",
+                      lineHeight: 1.7, margin: 0, whiteSpace: "pre-wrap",
+                    }}>{qa.answer}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div style={{ ...card, marginBottom: 20, textAlign: "center" }}>
+            <p style={{ fontFamily: font.ui, fontSize: 13, color: c.stone, margin: 0 }}>No transcript was recorded for this session.</p>
+          </div>
+        )}
+
+        {/* Cached report summary, if generated */}
+        {s.report_json && Object.keys(s.report_json).length > 0 && (
+          <div style={{ ...card, marginBottom: 20 }}>
+            <p style={labelStyle}>Cached Report (v6 evaluator)</p>
+            <pre style={{
+              fontFamily: font.mono, fontSize: 11, color: c.chalk, lineHeight: 1.5,
+              background: c.onyx, border: `1px solid ${c.border}`, borderRadius: 8,
+              padding: "12px 14px", overflow: "auto", maxHeight: 400, margin: "10px 0 0",
+            }}>{JSON.stringify(s.report_json, null, 2)}</pre>
+          </div>
+        )}
+
+        {/* Job description (if attached) */}
+        {s.job_description && (
+          <div style={{ ...card, marginBottom: 20 }}>
+            <p style={labelStyle}>Job Description (used for personalization)</p>
+            <p style={{ fontFamily: font.ui, fontSize: 12, color: c.chalk, lineHeight: 1.6, margin: "8px 0 0", whiteSpace: "pre-wrap" }}>{s.job_description}</p>
+          </div>
+        )}
       </div>
     );
   };
@@ -897,11 +1086,19 @@ export default function AdminDashboard() {
                   <th style={thStyle}>Score</th>
                   <th style={thStyle}>Duration</th>
                   <th style={thStyle}>Date</th>
+                  <th style={thStyle}></th>
                 </tr>
               </thead>
               <tbody>
                 {userDetail.sessions.slice(0, 20).map((s: Record<string, unknown>, i: number) => (
-                  <tr key={i}>
+                  <tr
+                    key={i}
+                    onClick={() => { setSelectedSessionId(String(s.id)); setSessionDetail(null); }}
+                    style={{ cursor: "pointer", transition: "background 120ms" }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(245,242,237,0.04)"; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+                    title="Click to view full session transcript"
+                  >
                     <td style={tdStyle}>{String(s.type || "—")}</td>
                     <td style={tdStyle}>{String(s.difficulty || "—")}</td>
                     <td style={{ ...tdStyle, fontFamily: font.mono, fontWeight: 600, color: (s.score as number) >= 65 ? c.sage : (s.score as number) >= 40 ? c.gilt : c.ember }}>
@@ -909,6 +1106,7 @@ export default function AdminDashboard() {
                     </td>
                     <td style={{ ...tdStyle, fontFamily: font.mono }}>{s.duration ? `${Math.round(s.duration as number / 60)}m` : "—"}</td>
                     <td style={{ ...tdStyle, fontSize: 12 }}>{formatDateTime(s.created_at as string)}</td>
+                    <td style={{ ...tdStyle, color: c.gilt, fontSize: 11 }}>View →</td>
                   </tr>
                 ))}
               </tbody>
@@ -1884,7 +2082,7 @@ export default function AdminDashboard() {
           {TABS.map(t => (
             <button
               key={t.key}
-              onClick={() => { setTab(t.key); setSelectedUserId(null); setUserDetail(null); }}
+              onClick={() => { setTab(t.key); setSelectedUserId(null); setUserDetail(null); setSelectedSessionId(null); setSessionDetail(null); }}
               style={{
                 display: "flex", alignItems: "center", gap: 10, width: "100%",
                 padding: "10px 14px", marginBottom: 4, border: "none", borderRadius: radius.md,

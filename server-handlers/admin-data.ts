@@ -293,6 +293,79 @@ async function getUserDetail(userId: string) {
   return { profile: profile[0] || null, sessions, payments, llmUsage, feedback };
 }
 
+/**
+ * Full session payload for admin drill-down: metadata + transcript + skill
+ * scores + cached report (if generated). Q&A pairing is done client-side
+ * from the transcript array since the engine writes interleaved
+ * { speaker: "ai"|"user", text } turns.
+ */
+async function getSessionDetail(sessionId: string) {
+  const encoded = encodeURIComponent(sessionId);
+  const [sessionRows, llmUsage] = await Promise.all([
+    fetchJSON<{
+      id: string; user_id: string; date: string; type: string; difficulty: string;
+      focus: string; duration: number; score: number; questions: number;
+      transcript: Array<{ speaker: string; text: string; time?: string }>;
+      ai_feedback: string;
+      skill_scores: Record<string, unknown> | null;
+      job_description?: string;
+      jd_analysis?: Record<string, unknown> | null;
+      report_json?: Record<string, unknown> | null;
+      report_version?: string | null;
+      report_generated_at?: string | null;
+      created_at: string;
+    }>(
+      `sessions?id=eq.${encoded}&select=*&limit=1`,
+    ),
+    fetchJSON<{ endpoint: string; model: string; total_tokens: number; latency_ms: number; status: string; created_at: string }>(
+      `llm_usage?endpoint=ilike.evaluate*&select=endpoint,model,total_tokens,latency_ms,status,created_at&order=created_at.desc&limit=20`,
+    ),
+  ]);
+  const session = sessionRows[0];
+  if (!session) return { session: null, profile: null, qaPairs: [], llmCalls: [] };
+
+  // Fetch the user's profile so admins can see who this session belongs to.
+  const profileRows = await fetchJSON<{ id: string; name: string | null; email: string }>(
+    `profiles?id=eq.${encodeURIComponent(session.user_id)}&select=id,name,email&limit=1`,
+  );
+  const profile = profileRows[0] || null;
+
+  // Pair AI questions with the candidate answers that follow them.
+  const transcript = Array.isArray(session.transcript) ? session.transcript : [];
+  const qaPairs: Array<{ question: string; answer: string; questionTime?: string; answerTime?: string }> = [];
+  let pendingQuestion: { text: string; time?: string } | null = null;
+  for (const turn of transcript) {
+    const speaker = String(turn?.speaker ?? "").toLowerCase();
+    const text = String(turn?.text ?? "").trim();
+    if (!text) continue;
+    const isAI = speaker === "ai" || speaker === "interviewer" || speaker === "assistant";
+    const isUser = speaker === "user" || speaker === "candidate";
+    if (isAI) {
+      // Flush any orphaned question (interviewer asked twice, candidate didn't answer).
+      if (pendingQuestion) {
+        qaPairs.push({ question: pendingQuestion.text, answer: "(no answer)", questionTime: pendingQuestion.time });
+      }
+      pendingQuestion = { text, time: turn.time };
+    } else if (isUser && pendingQuestion) {
+      qaPairs.push({
+        question: pendingQuestion.text,
+        answer: text,
+        questionTime: pendingQuestion.time,
+        answerTime: turn.time,
+      });
+      pendingQuestion = null;
+    } else if (isUser) {
+      // Candidate spoke without a paired question (initial monologue, etc.)
+      qaPairs.push({ question: "(no question recorded)", answer: text, answerTime: turn.time });
+    }
+  }
+  if (pendingQuestion) {
+    qaPairs.push({ question: pendingQuestion.text, answer: "(no answer)", questionTime: pendingQuestion.time });
+  }
+
+  return { session, profile, qaPairs, llmCalls: llmUsage };
+}
+
 async function getFinancials() {
   const payments = await fetchJSON<{
     id: string; user_id: string; amount: number; currency: string; status: string; tier: string; plan: string; created_at: string;
@@ -859,7 +932,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(503).json({ error: "Not configured" });
   }
 
-  const body = req.body as { section?: string; search?: string; offset?: number; userId?: string } | undefined;
+  const body = req.body as { section?: string; search?: string; offset?: number; userId?: string; sessionId?: string } | undefined;
   const section = body?.section || "overview";
 
   try {
@@ -870,6 +943,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         case "user-detail":
           if (!body?.userId) throw new Error("userId required");
           return getUserDetail(body.userId);
+        case "session-detail":
+          if (!body?.sessionId) throw new Error("sessionId required");
+          return getSessionDetail(body.sessionId);
         case "financials": return getFinancials();
         case "llm": return getLLMUsage();
         case "sessions": return getSessions();
