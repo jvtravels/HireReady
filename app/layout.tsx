@@ -216,7 +216,6 @@ import { ServiceWorkerRegistrar } from "./ServiceWorkerRegistrar";
 import { OfflineBanner } from "./OfflineBanner";
 import CookieConsent from "./CookieConsent";
 import ConsentGatedAnalytics from "./ConsentGatedAnalytics";
-import InstallPrompt from "./InstallPrompt";
 
 export default function RootLayout({
   children,
@@ -276,7 +275,6 @@ export default function RootLayout({
         <ServiceWorkerRegistrar />
         <CookieConsent />
         <ConsentGatedAnalytics />
-        <InstallPrompt />
       </body>
     </html>
   );

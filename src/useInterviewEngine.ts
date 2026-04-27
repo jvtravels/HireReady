@@ -961,7 +961,15 @@ export function useInterviewEngine() {
         } else {
           transition = pickRandom(REACTIONS.topicTransition);
         }
-        thinkingPhrase = `${reaction} ${transition}`;
+        // Dedupe stacked fillers: if reaction and transition both start with a
+        // small filler word (Hmm/Okay/Right/Got it/I see), drop the reaction so
+        // we don't get "Hmm, okay. Right, let me ask…" — sounds robotic.
+        const fillerStart = /^(hmm|okay|right|got it|i see|alright|sure|noted)/i;
+        if (fillerStart.test(reaction.trim()) && fillerStart.test(transition.trim())) {
+          thinkingPhrase = transition;
+        } else {
+          thinkingPhrase = `${reaction} ${transition}`;
+        }
       }
     }
 
@@ -1953,6 +1961,18 @@ export function useInterviewEngine() {
       setEvaluating(false);
     }
   }, [router, elapsed, interviewType, interviewDifficulty, interviewFocus, totalQuestions, user, updateUser, currentStep, interviewScript.length, transcript, currentTranscript]);
+
+  // Auto-finalize once we hit the done phase. The closing step now has
+  // waitForUser: false so the engine reaches "done" automatically — fire
+  // handleEnd so the user never has to press a button or sit on a dead screen.
+  useEffect(() => {
+    if (phase !== "done") return;
+    if (interviewEndedRef.current) return;
+    const t = setTimeout(() => {
+      if (!interviewEndedRef.current) handleEnd();
+    }, 600);
+    return () => clearTimeout(t);
+  }, [phase, handleEnd]);
 
   // ─── Live negotiation state (derived from transcript for dashboard) ───
   const liveNegotiationState = useMemo(() => {
