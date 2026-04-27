@@ -28,13 +28,24 @@
 -- production traffic.
 -- ═══════════════════════════════════════════════════════════════════
 
+-- Belt-and-braces: pgcrypto provides digest() for the SHA-256 step
+-- below. Most Supabase projects have it on by default but enabling
+-- here keeps the migration self-contained.
+create extension if not exists pgcrypto;
+
 begin;
+
+-- Defensive type casting: every join/filter that crosses uuid/text
+-- boundaries gets an explicit ::uuid cast. Some Supabase projects
+-- have profiles.id stored or compared as text in custom triggers
+-- (a known footgun), so we cast both sides to uuid to side-step the
+-- "operator does not exist: uuid = text" error class.
 
 -- ── Step 1: backfill resumes (one row per existing user with a resume) ──
 insert into resumes (id, user_id, domain, title, is_archived, created_at, updated_at)
 select
   gen_random_uuid()                  as id,
-  p.id                               as user_id,
+  p.id::uuid                         as user_id,
   'general'                          as domain,
   coalesce(nullif(p.resume_file_name, ''), 'Resume') as title,
   false                              as is_archived,
@@ -43,7 +54,7 @@ select
 from profiles p
 where p.resume_data is not null
   and not exists (
-    select 1 from resumes r where r.user_id = p.id
+    select 1 from resumes r where r.user_id::text = p.id::text
   );
 
 -- ── Step 2: backfill resume_versions v1 for each new resume row ──
@@ -85,7 +96,7 @@ select
   true                               as is_latest,
   coalesce(p.created_at, now())      as created_at
 from profiles p
-join resumes r on r.user_id = p.id and r.domain = 'general'
+join resumes r on r.user_id::text = p.id::text and r.domain = 'general'
 where p.resume_data is not null
   and not exists (
     select 1 from resume_versions v where v.resume_id = r.id
@@ -108,7 +119,7 @@ update sessions s
 set resume_version_id = v.id
 from resumes r
 join resume_versions v on v.resume_id = r.id and v.version_number = 1
-where r.user_id = s.user_id
+where r.user_id::text = s.user_id::text
   and s.resume_version_id is null;
 
 -- ── Verification queries (commented; run manually if you want) ──
