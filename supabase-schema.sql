@@ -224,7 +224,7 @@ create index if not exists idx_story_notebook_user on story_notebook(user_id, cr
 alter table story_notebook enable row level security;
 drop policy if exists "Users manage own stories" on story_notebook;
 create policy "Users manage own stories" on story_notebook
-  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+  for all using ((auth.uid())::text = user_id::text) with check ((auth.uid())::text = user_id::text);
 
 -- ═══════════════════════════════════════════════════════
 -- 11. Resume management — multi-resume + version history
@@ -278,18 +278,25 @@ create index if not exists idx_resume_versions_resume on resume_versions(resume_
 alter table resumes enable row level security;
 alter table resume_versions enable row level security;
 
+-- IMPORTANT: every policy compares (auth.uid())::text = column::text.
+-- Reason: auth.uid() returns either text or uuid depending on the
+-- Supabase Postgres version. Older projects ship the text variant;
+-- newer ones ship uuid. Casting both sides to text avoids the
+-- "operator does not exist: uuid = text" parse error on either flavor.
+-- Performance impact is negligible (still indexed via the cast).
+
 drop policy if exists "Users view own resumes" on resumes;
 create policy "Users view own resumes" on resumes
-  for select using (auth.uid() = user_id);
+  for select using ((auth.uid())::text = user_id::text);
 drop policy if exists "Users insert own resumes" on resumes;
 create policy "Users insert own resumes" on resumes
-  for insert with check (auth.uid() = user_id);
+  for insert with check ((auth.uid())::text = user_id::text);
 drop policy if exists "Users update own resumes" on resumes;
 create policy "Users update own resumes" on resumes
-  for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+  for update using ((auth.uid())::text = user_id::text) with check ((auth.uid())::text = user_id::text);
 drop policy if exists "Users delete own resumes" on resumes;
 create policy "Users delete own resumes" on resumes
-  for delete using (auth.uid() = user_id);
+  for delete using ((auth.uid())::text = user_id::text);
 
 -- resume_versions inherits user-ownership via resume_id join. We don't
 -- duplicate user_id on the version row to avoid drift; reads/writes go
@@ -297,12 +304,12 @@ create policy "Users delete own resumes" on resumes
 drop policy if exists "Users view own versions" on resume_versions;
 create policy "Users view own versions" on resume_versions
   for select using (
-    exists (select 1 from resumes r where r.id = resume_versions.resume_id and r.user_id = auth.uid())
+    exists (select 1 from resumes r where r.id = resume_versions.resume_id and r.user_id::text = (auth.uid())::text)
   );
 drop policy if exists "Users insert own versions" on resume_versions;
 create policy "Users insert own versions" on resume_versions
   for insert with check (
-    exists (select 1 from resumes r where r.id = resume_versions.resume_id and r.user_id = auth.uid())
+    exists (select 1 from resumes r where r.id = resume_versions.resume_id and r.user_id::text = (auth.uid())::text)
   );
 -- No UPDATE/DELETE policy for users — versions are immutable. Service
 -- role can flip is_latest when a newer version is added.
@@ -343,66 +350,66 @@ alter table payments enable row level security;
 -- the Supabase SQL editor never errors with "policy already exists".
 drop policy if exists "Users can view own profile" on profiles;
 create policy "Users can view own profile" on profiles
-  for select using (auth.uid() = id);
+  for select using ((auth.uid())::text = id::text);
 drop policy if exists "Users can update own profile" on profiles;
 create policy "Users can update own profile" on profiles
-  for update using (auth.uid() = id);
+  for update using ((auth.uid())::text = id::text);
 drop policy if exists "Users can insert own profile" on profiles;
 create policy "Users can insert own profile" on profiles
-  for insert with check (auth.uid() = id);
+  for insert with check ((auth.uid())::text = id::text);
 
 -- Sessions: users can CRUD their own sessions
 drop policy if exists "Users can view own sessions" on sessions;
 create policy "Users can view own sessions" on sessions
-  for select using (auth.uid() = user_id);
+  for select using ((auth.uid())::text = user_id::text);
 drop policy if exists "Users can insert own sessions" on sessions;
 create policy "Users can insert own sessions" on sessions
-  for insert with check (auth.uid() = user_id);
+  for insert with check ((auth.uid())::text = user_id::text);
 drop policy if exists "Users can delete own sessions" on sessions;
 create policy "Users can delete own sessions" on sessions
-  for delete using (auth.uid() = user_id);
+  for delete using ((auth.uid())::text = user_id::text);
 
 -- Calendar: users can CRUD their own events
 drop policy if exists "Users can view own events" on calendar_events;
 create policy "Users can view own events" on calendar_events
-  for select using (auth.uid() = user_id);
+  for select using ((auth.uid())::text = user_id::text);
 drop policy if exists "Users can insert own events" on calendar_events;
 create policy "Users can insert own events" on calendar_events
-  for insert with check (auth.uid() = user_id);
+  for insert with check ((auth.uid())::text = user_id::text);
 drop policy if exists "Users can delete own events" on calendar_events;
 create policy "Users can delete own events" on calendar_events
-  for delete using (auth.uid() = user_id);
+  for delete using ((auth.uid())::text = user_id::text);
 drop policy if exists "Users can update own events" on calendar_events;
 create policy "Users can update own events" on calendar_events
-  for update using (auth.uid() = user_id);
+  for update using ((auth.uid())::text = user_id::text);
 
 -- Feedback: users can CRUD their own feedback
 drop policy if exists "Users can view own feedback" on feedback;
 create policy "Users can view own feedback" on feedback
-  for select using (auth.uid() = user_id);
+  for select using ((auth.uid())::text = user_id::text);
 drop policy if exists "Users can insert own feedback" on feedback;
 create policy "Users can insert own feedback" on feedback
-  for insert with check (auth.uid() = user_id);
+  for insert with check ((auth.uid())::text = user_id::text);
 drop policy if exists "Users can update own feedback" on feedback;
 create policy "Users can update own feedback" on feedback
-  for update using (auth.uid() = user_id);
+  for update using ((auth.uid())::text = user_id::text);
 drop policy if exists "Users can delete own feedback" on feedback;
 create policy "Users can delete own feedback" on feedback
-  for delete using (auth.uid() = user_id);
+  for delete using ((auth.uid())::text = user_id::text);
 
 -- Payments: users can only view their own payments (insert via service role only)
 drop policy if exists "Users can view own payments" on payments;
 create policy "Users can view own payments" on payments
-  for select using (auth.uid() = user_id);
+  for select using ((auth.uid())::text = user_id::text);
 
 -- Referrals: users can view/create their own referrals
 alter table referrals enable row level security;
 drop policy if exists "Users can view own referrals" on referrals;
 create policy "Users can view own referrals" on referrals
-  for select using (auth.uid() = referrer_id);
+  for select using ((auth.uid())::text = referrer_id::text);
 drop policy if exists "Users can insert own referrals" on referrals;
 create policy "Users can insert own referrals" on referrals
-  for insert with check (auth.uid() = referrer_id);
+  for insert with check ((auth.uid())::text = referrer_id::text);
 
 -- Promo codes: anyone can read (validation is server-side)
 alter table promo_codes enable row level security;
@@ -414,7 +421,7 @@ create policy "Anyone can view promo codes" on promo_codes
 alter table llm_usage enable row level security;
 drop policy if exists "Users can view own llm usage" on llm_usage;
 create policy "Users can view own llm usage" on llm_usage
-  for select using (auth.uid() = user_id);
+  for select using ((auth.uid())::text = user_id::text);
 -- Explicit INSERT policy as a safety net. The `service_role` key bypasses RLS
 -- by design, but if SUPABASE_SERVICE_ROLE_KEY is ever misconfigured (e.g. set
 -- to the anon key instead), writes would silently fail with a 401/403. This
