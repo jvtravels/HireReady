@@ -796,6 +796,34 @@ export const SessionReportView = memo(function SessionReportView({
     if (typeof window !== "undefined") window.print();
   }, [session.id]);
 
+  const onShare = useCallback(async () => {
+    track("report_action_clicked", { action: "share", sessionId: session.id });
+    try {
+      const { apiFetch } = await import("./apiClient");
+      const res = await apiFetch<{ url?: string; expiresAt?: string; error?: string }>(
+        "/api/share-report?action=create",
+        { sessionId: session.id, ttlDays: 14 },
+      );
+      if (!res.ok || !res.data?.url) {
+        const msg = res.error || res.data?.error || "Could not create share link";
+        if (typeof window !== "undefined") window.alert(msg);
+        return;
+      }
+      // Copy to clipboard + show a confirmation. Fallback: prompt.
+      const url = res.data.url;
+      const ttl = res.data.expiresAt ? new Date(res.data.expiresAt).toLocaleDateString() : "in 14 days";
+      try {
+        await navigator.clipboard.writeText(url);
+        if (typeof window !== "undefined") window.alert(`Share link copied! Anyone with this link can view your report until ${ttl}.\n\n${url}`);
+      } catch {
+        if (typeof window !== "undefined") window.prompt(`Share link (expires ${ttl}). Copy this URL:`, url);
+      }
+    } catch (err) {
+      console.error("[report] share failed:", err instanceof Error ? err.message : err);
+      if (typeof window !== "undefined") window.alert("Could not create share link. Please try again.");
+    }
+  }, [session.id]);
+
   const onPollAnswer = useCallback((kind: "trust" | "usefulness", value: "yes" | "no") => {
     if (kind === "trust") {
       setTrustAnswer(value);
@@ -925,7 +953,7 @@ export const SessionReportView = memo(function SessionReportView({
         <div className="sr-grid">
           {/* ── Left sidebar: jump nav + export controls ── */}
           <aside className="sr-sidebar sr-sidebar-panel" aria-label="Section navigation">
-            <ReportSidebar onDownloadPdf={onDownloadPdf} />
+            <ReportSidebar onDownloadPdf={onDownloadPdf} onShare={onShare} />
           </aside>
 
           {/* ── Main column: hero + scrollable sections ── */}
@@ -1402,7 +1430,7 @@ const NAV_ITEMS = [
 ];
 
 /** Sidebar: jump-nav + export. Scrolls to anchors, highlights active section. */
-function ReportSidebar({ onDownloadPdf }: { onDownloadPdf: () => void }) {
+function ReportSidebar({ onDownloadPdf, onShare }: { onDownloadPdf: () => void; onShare?: () => void }) {
   const [active, setActive] = useState<string>("sr-hero");
 
   useEffect(() => {
@@ -1463,6 +1491,18 @@ function ReportSidebar({ onDownloadPdf }: { onDownloadPdf: () => void }) {
         </svg>
         Download PDF
       </button>
+      {onShare && (
+        <button
+          onClick={onShare}
+          className="sr-nav-item sr-print-hide"
+          style={{ color: c.gilt }}
+        >
+          <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+          </svg>
+          Share link
+        </button>
+      )}
     </div>
   );
 }

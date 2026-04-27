@@ -226,6 +226,38 @@ drop policy if exists "Users manage own stories" on story_notebook;
 create policy "Users manage own stories" on story_notebook
   for all using ((auth.uid())::text = user_id::text) with check ((auth.uid())::text = user_id::text);
 
+-- 10. Report shares — tokenized public links to a session report
+-- Used by candidates to share their results with recruiters / mentors.
+-- The token is the public identifier (URL-safe random); session_id stays
+-- private. expires_at gates anonymous access; revoked_at lets the owner
+-- kill the link on demand. view_count tracks how many times the link
+-- was opened so the owner sees engagement.
+create table if not exists report_shares (
+  token text primary key,
+  session_id text references sessions(id) on delete cascade not null,
+  user_id uuid references profiles(id) on delete cascade not null,
+  expires_at timestamptz not null,
+  revoked_at timestamptz,
+  view_count integer default 0,
+  last_viewed_at timestamptz,
+  -- Optional candidate-controlled visibility flags. Defaults are conservative:
+  -- transcripts and per-question content are HIDDEN unless the user opts in.
+  include_transcript boolean default false,
+  include_per_question boolean default false,
+  created_at timestamptz default now()
+);
+
+create index if not exists idx_report_shares_session on report_shares(session_id);
+create index if not exists idx_report_shares_user on report_shares(user_id, created_at desc);
+create index if not exists idx_report_shares_expires on report_shares(expires_at) where revoked_at is null;
+
+alter table report_shares enable row level security;
+-- Owner can manage their own share rows. Public reads happen via service
+-- role from /api/get-shared-report, NOT via RLS.
+drop policy if exists "Users manage own shares" on report_shares;
+create policy "Users manage own shares" on report_shares
+  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
 -- ═══════════════════════════════════════════════════════
 -- 11. Resume management — multi-resume + version history
 --
