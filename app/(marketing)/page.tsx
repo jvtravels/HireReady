@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import App from "@/App";
 import ComingSoon from "@/ComingSoon";
 
@@ -9,25 +10,39 @@ export const metadata: Metadata = {
 };
 
 /**
- * Landing page is fully static — the HTML shell is identical for every
- * visitor. Auth-aware bits (CTA text like "Get Started" vs "Dashboard")
- * are rendered client-side after hydration. Marking this static drops
- * TTFB from ~1s (SSR fresh) to ~50ms (CDN cached) on the highest-traffic
- * route. Revalidate hourly so testimonial / pricing edits go live fast.
+ * Landing page gating — Coming Soon only renders on the public production
+ * apex hosts. Everywhere else (staging, app.*, vercel previews, localhost)
+ * shows the real app so the team can keep shipping while the public
+ * site is still gated.
  *
- * Pre-launch gate: defaults to showing ComingSoon. To expose the full
- * landing page (launch day), set NEXT_PUBLIC_COMING_SOON="0" in Vercel
- * and redeploy. Any other value — including unset — keeps the waitlist
- * gate active so we never accidentally leak the app before we're ready.
+ * We render dynamically here (read host header) instead of at build time
+ * so a single deploy can serve both staging.hirestepx.com (full app) AND
+ * www.hirestepx.com (Coming Soon) without env-var juggling per env.
+ *
+ * NEXT_PUBLIC_COMING_SOON kept as a manual override:
+ *   - Set to "0" → never show Coming Soon (force open everywhere).
+ *   - Set to "1" → always show Coming Soon (lock everything down).
+ *   - Unset → host-based default below.
  */
-export const dynamic = "force-static";
-export const revalidate = 3600;
+export const dynamic = "force-dynamic";
 
-// Inverted default: full app only renders when the env var is explicitly
-// set to "0". Any other value (unset / "1" / anything) → ComingSoon.
-const SHOW_FULL_APP = process.env.NEXT_PUBLIC_COMING_SOON === "0";
+const PRODUCTION_HOSTS = new Set([
+  "www.hirestepx.com",
+  "hirestepx.com",
+]);
 
-export default function Page() {
-  if (!SHOW_FULL_APP) return <ComingSoon />;
+export default async function Page() {
+  const override = process.env.NEXT_PUBLIC_COMING_SOON;
+  if (override === "0") return <App />;
+  if (override === "1") return <ComingSoon />;
+
+  // Host-based default. headers() needs await in the Next 15 app router.
+  let host = "";
+  try {
+    const h = await headers();
+    host = (h.get("host") || "").toLowerCase().split(":")[0]; // strip port
+  } catch { /* SSR-only API; on edge cases default to full app */ }
+
+  if (PRODUCTION_HOSTS.has(host)) return <ComingSoon />;
   return <App />;
 }
