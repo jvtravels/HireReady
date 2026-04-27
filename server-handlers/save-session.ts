@@ -22,6 +22,7 @@ export const config = { runtime: "edge" };
 
 import { withAuthAndRateLimit, corsHeaders, withRequestId } from "./_shared";
 import { computeCurrentStreak, pickStreakMilestone } from "./_streak-reward";
+import { resolveActiveResumeVersionId } from "./_resume-versioning";
 
 declare const process: { env: Record<string, string | undefined> };
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || "";
@@ -41,6 +42,11 @@ interface SessionBody {
   skill_scores?: unknown;
   job_description?: unknown;
   jd_analysis?: unknown;
+  // Optional: client can send the version id it was using when the
+  // session started. Falls back to resolveActiveResumeVersionId on the
+  // server if not provided. Either way, immutable once written —
+  // re-uploading a resume after the session never re-binds the row.
+  resume_version_id?: unknown;
 }
 
 function asString(v: unknown, max = 500): string {
@@ -83,6 +89,17 @@ export default async function handler(req: Request): Promise<Response> {
     return new Response(JSON.stringify({ error: "Invalid JSON body" }), { status: 400, headers });
   }
 
+  // Pin the resume_version_id used to generate this session's questions
+  // so scores stay reproducible if the user later re-uploads. Prefer the
+  // value the client sent (captured at session start); fall back to
+  // looking up whatever resume is currently active for this user. Null
+  // is acceptable — sessions can run with no resume.
+  const clientVersionId = typeof body.resume_version_id === "string" && /^[0-9a-f-]{32,}$/i.test(body.resume_version_id)
+    ? body.resume_version_id
+    : null;
+  const resolvedVersionId = clientVersionId
+    || await resolveActiveResumeVersionId(SUPABASE_URL, SUPABASE_SERVICE_KEY, auth.userId, asString(body.type, 64));
+
   const sessionRow = {
     id: asString(body.id, 64),
     user_id: auth.userId,
@@ -98,6 +115,7 @@ export default async function handler(req: Request): Promise<Response> {
     skill_scores: (body.skill_scores && typeof body.skill_scores === "object") ? body.skill_scores : null,
     job_description: asString(body.job_description, 20000) || null,
     jd_analysis: (body.jd_analysis && typeof body.jd_analysis === "object") ? body.jd_analysis : null,
+    resume_version_id: resolvedVersionId,
   };
 
   if (!sessionRow.id) {

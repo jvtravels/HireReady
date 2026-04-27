@@ -60,6 +60,14 @@ alter table sessions add column if not exists report_version text default 'mvp-1
 alter table sessions add column if not exists report_generated_at timestamptz;
 create index if not exists idx_sessions_report_generated on sessions(report_generated_at);
 
+-- Resume v2 binding — every session captures the exact resume_version
+-- used at session start so question generation, scoring, and feedback
+-- reference an immutable snapshot. NULL on legacy rows; new rows always
+-- populated. Set to NULL on cascade rather than blocking so deleting an
+-- old resume doesn't trash session history.
+alter table sessions add column if not exists resume_version_id uuid;
+create index if not exists idx_sessions_resume_version on sessions(resume_version_id);
+
 -- 3. Calendar events
 create table if not exists calendar_events (
   id text primary key,
@@ -217,6 +225,87 @@ alter table story_notebook enable row level security;
 drop policy if exists "Users manage own stories" on story_notebook;
 create policy "Users manage own stories" on story_notebook
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+-- ═══════════════════════════════════════════════════════
+-- 11. Resume management — multi-resume + version history
+--
+-- Replaces the single-resume-per-user pattern (profile.resume_data jsonb).
+-- The legacy column stays during a sunset window — handlers prefer the
+-- new tables but fall back to profile.resume_data when missing.
+--
+--   resumes              — one logical resume per (user, domain).
+--   resume_versions      — immutable history; one row per upload.
+--   sessions.resume_version_id (added above) — pin to the version that
+--                          ran the interview so scores are reproducible.
+--
+-- Hash-based AI dedup: text_hash is SHA256 of the normalized resume
+-- text. analyze-resume.ts checks for an existing version with the same
+-- hash before calling the LLM — same content → cached parse.
+-- ═══════════════════════════════════════════════════════
+
+create table if not exists resumes (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references profiles(id) on delete cascade not null,
+  domain text not null default 'general',         -- 'sde' | 'pm' | 'sales' | 'design' | 'general' | custom
+  title text default '',                           -- "PM Resume — Product Companies"
+  is_archived boolean default false,
+  active_version_id uuid,                          -- soft FK to resume_versions(id); set after the version row exists
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+create index if not exists idx_resumes_user_archived on resumes(user_id, is_archived);
+create index if not exists idx_resumes_user_domain on resumes(user_id, domain);
+
+create table if not exists resume_versions (
+  id uuid primary key default gen_random_uuid(),
+  resume_id uuid references resumes(id) on delete cascade not null,
+  version_number integer not null,                 -- 1, 2, 3...
+  file_hash text,                                  -- SHA256 of original file bytes (null for text-only uploads)
+  text_hash text not null,                         -- SHA256 of normalized resume_text
+  file_path text,                                  -- Supabase Storage path (null until file upload added)
+  file_name text,
+  resume_text text,                                -- normalized text, capped at 50KB upstream
+  parsed_data jsonb,                               -- AI ResumeProfile or fallback ParsedResume
+  parse_source text default 'ai',                  -- 'ai' | 'fallback' | 'cached'
+  is_latest boolean default true,
+  created_at timestamptz default now()
+);
+create unique index if not exists idx_resume_versions_unique on resume_versions(resume_id, version_number);
+create index if not exists idx_resume_versions_text_hash on resume_versions(text_hash);
+create index if not exists idx_resume_versions_file_hash on resume_versions(file_hash);
+create index if not exists idx_resume_versions_resume on resume_versions(resume_id, is_latest);
+
+alter table resumes enable row level security;
+alter table resume_versions enable row level security;
+
+drop policy if exists "Users view own resumes" on resumes;
+create policy "Users view own resumes" on resumes
+  for select using (auth.uid() = user_id);
+drop policy if exists "Users insert own resumes" on resumes;
+create policy "Users insert own resumes" on resumes
+  for insert with check (auth.uid() = user_id);
+drop policy if exists "Users update own resumes" on resumes;
+create policy "Users update own resumes" on resumes
+  for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+drop policy if exists "Users delete own resumes" on resumes;
+create policy "Users delete own resumes" on resumes
+  for delete using (auth.uid() = user_id);
+
+-- resume_versions inherits user-ownership via resume_id join. We don't
+-- duplicate user_id on the version row to avoid drift; reads/writes go
+-- through the resume parent.
+drop policy if exists "Users view own versions" on resume_versions;
+create policy "Users view own versions" on resume_versions
+  for select using (
+    exists (select 1 from resumes r where r.id = resume_versions.resume_id and r.user_id = auth.uid())
+  );
+drop policy if exists "Users insert own versions" on resume_versions;
+create policy "Users insert own versions" on resume_versions
+  for insert with check (
+    exists (select 1 from resumes r where r.id = resume_versions.resume_id and r.user_id = auth.uid())
+  );
+-- No UPDATE/DELETE policy for users — versions are immutable. Service
+-- role can flip is_latest when a newer version is added.
 
 -- ═══════════════════════════════════════════════════════
 -- Row Level Security (RLS)

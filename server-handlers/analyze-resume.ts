@@ -4,10 +4,17 @@ export const config = { runtime: "edge" };
 
 import { withAuthAndRateLimit, sanitizeForLLM, corsHeaders, withRequestId } from "./_shared";
 import { callLLM, extractJSON } from "./_llm";
+import {
+  computeResumeTextHash,
+  findCachedResumeVersion,
+  persistResumeVersion,
+} from "./_resume-versioning";
 
 declare const process: { env: Record<string, string | undefined> };
 const GROQ_KEY = process.env.GROQ_API_KEY || "";
 const GEMINI_KEY = process.env.GEMINI_API_KEY || "";
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || "";
+const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 
 export default async function handler(req: Request): Promise<Response> {
   const t0 = Date.now();
@@ -30,13 +37,34 @@ export default async function handler(req: Request): Promise<Response> {
   const { headers, auth } = pre;
 
   try {
-    const { resumeText, targetRole } = await req.json();
+    const { resumeText, targetRole, domain, fileName } = await req.json();
 
     if (!resumeText || typeof resumeText !== "string" || resumeText.length < 20) {
       return new Response(JSON.stringify({ error: "Resume text too short" }), { status: 400, headers });
     }
     if (resumeText.length > 50000) {
       return new Response(JSON.stringify({ error: "Resume text too long" }), { status: 400, headers });
+    }
+
+    // Hash-based dedup. If the user has uploaded text with this exact
+    // normalized hash before, skip the LLM and return the cached parse.
+    // Cuts a meaningful chunk of LLM cost on re-uploads + makes the
+    // "Re-analyze" button instant when the content hasn't actually
+    // changed.
+    const textHash = await computeResumeTextHash(resumeText);
+    if (auth.userId && SUPABASE_URL && SUPABASE_SERVICE_KEY) {
+      const cached = await findCachedResumeVersion(SUPABASE_URL, SUPABASE_SERVICE_KEY, auth.userId, textHash);
+      if (cached?.parsed_data) {
+        const totalMs = Date.now() - t0;
+        console.log(`[analyze-resume] CACHE HIT user=${auth.userId.slice(0, 8)} version=${cached.id.slice(0, 8)} latency=${totalMs}ms`);
+        headers["X-Cache"] = "hit";
+        headers["X-Resume-Version-Id"] = cached.id;
+        return new Response(JSON.stringify({
+          profile: cached.parsed_data,
+          resumeVersionId: cached.id,
+          cached: true,
+        }), { status: 200, headers });
+      }
     }
 
     const roleContext = targetRole ? `The candidate is targeting a ${sanitizeForLLM(targetRole, 100)} role.` : "";
@@ -91,8 +119,31 @@ CRITICAL RULES:
     const totalMs = Date.now() - t0;
     console.log(`[analyze-resume] OK: llm=${tLLM}ms total=${totalMs}ms model=${result.model} user=${auth.userId?.slice(0, 8)}`);
     headers["X-Timing"] = `llm=${tLLM},total=${totalMs},model=${result.model}`;
+    headers["X-Cache"] = "miss";
 
-    return new Response(JSON.stringify({ profile }), { status: 200, headers });
+    // Shadow-write the new version row. Best-effort — if the persistence
+    // fails the analysis still returns to the client, we just lose the
+    // cache benefit on the next identical upload. The client gets the
+    // version id when persistence succeeds so it can pin sessions to it.
+    let resumeVersionId: string | null = null;
+    if (auth.userId && SUPABASE_URL && SUPABASE_SERVICE_KEY) {
+      const persisted = await persistResumeVersion(SUPABASE_URL, SUPABASE_SERVICE_KEY, {
+        userId: auth.userId,
+        domain: typeof domain === "string" && domain ? domain.slice(0, 32) : "general",
+        textHash,
+        fileHash: null, // file storage isn't wired yet — phase 2
+        resumeText,
+        parsedData: profile,
+        parseSource: "ai",
+        fileName: typeof fileName === "string" ? fileName.slice(0, 255) : null,
+      });
+      if (persisted) {
+        resumeVersionId = persisted.versionId;
+        headers["X-Resume-Version-Id"] = persisted.versionId;
+      }
+    }
+
+    return new Response(JSON.stringify({ profile, resumeVersionId, cached: false }), { status: 200, headers });
   } catch (err) {
     const totalMs = Date.now() - t0;
     const isTimeout = err instanceof Error && (err.name === "AbortError" || err.message.includes("abort"));
