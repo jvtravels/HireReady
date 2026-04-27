@@ -789,6 +789,23 @@ export function useInterviewEngine() {
     silenceNudgeFiredRef.current = true; // Don't nudge once they've started
   }, [currentTranscript, phase, aiVoiceEnabled]);
 
+  // Hard-cap on dead silence: if listening phase has zero transcript activity
+  // for 60s (e.g. STT silently failed or user walked away), auto-advance with
+  // an empty answer so the interview never stalls forever.
+  useEffect(() => {
+    if (phase !== "listening") return;
+    const stallTimer = setTimeout(() => {
+      if (interviewEndedRef.current) return;
+      const silenceDuration = Date.now() - lastTranscriptChangeRef.current;
+      // Only fire if no transcript activity at all for 60s+
+      if (silenceDuration >= 60_000 && !currentTranscript) {
+        console.warn("[interview] listening phase stalled 60s — auto-advancing");
+        if (handleNextRef.current) handleNextRef.current();
+      }
+    }, 60_000);
+    return () => clearTimeout(stallTimer);
+  }, [phase, currentStep, currentTranscript]);
+
   // Rambling interjection — if user has been speaking for 90s+, interject to wrap up
   useEffect(() => {
     if (phase !== "listening" || !aiVoiceEnabled) {
