@@ -337,60 +337,82 @@ alter table calendar_events enable row level security;
 alter table feedback enable row level security;
 alter table payments enable row level security;
 
--- Profiles: users can read/update their own profile
+-- Profiles: users can read/update their own profile.
+-- All `create policy` statements are paired with `drop policy if exists`
+-- so the entire schema file stays idempotent — re-running this file in
+-- the Supabase SQL editor never errors with "policy already exists".
+drop policy if exists "Users can view own profile" on profiles;
 create policy "Users can view own profile" on profiles
   for select using (auth.uid() = id);
+drop policy if exists "Users can update own profile" on profiles;
 create policy "Users can update own profile" on profiles
   for update using (auth.uid() = id);
+drop policy if exists "Users can insert own profile" on profiles;
 create policy "Users can insert own profile" on profiles
   for insert with check (auth.uid() = id);
 
 -- Sessions: users can CRUD their own sessions
+drop policy if exists "Users can view own sessions" on sessions;
 create policy "Users can view own sessions" on sessions
   for select using (auth.uid() = user_id);
+drop policy if exists "Users can insert own sessions" on sessions;
 create policy "Users can insert own sessions" on sessions
   for insert with check (auth.uid() = user_id);
+drop policy if exists "Users can delete own sessions" on sessions;
 create policy "Users can delete own sessions" on sessions
   for delete using (auth.uid() = user_id);
 
 -- Calendar: users can CRUD their own events
+drop policy if exists "Users can view own events" on calendar_events;
 create policy "Users can view own events" on calendar_events
   for select using (auth.uid() = user_id);
+drop policy if exists "Users can insert own events" on calendar_events;
 create policy "Users can insert own events" on calendar_events
   for insert with check (auth.uid() = user_id);
+drop policy if exists "Users can delete own events" on calendar_events;
 create policy "Users can delete own events" on calendar_events
   for delete using (auth.uid() = user_id);
+drop policy if exists "Users can update own events" on calendar_events;
 create policy "Users can update own events" on calendar_events
   for update using (auth.uid() = user_id);
 
 -- Feedback: users can CRUD their own feedback
+drop policy if exists "Users can view own feedback" on feedback;
 create policy "Users can view own feedback" on feedback
   for select using (auth.uid() = user_id);
+drop policy if exists "Users can insert own feedback" on feedback;
 create policy "Users can insert own feedback" on feedback
   for insert with check (auth.uid() = user_id);
+drop policy if exists "Users can update own feedback" on feedback;
 create policy "Users can update own feedback" on feedback
   for update using (auth.uid() = user_id);
+drop policy if exists "Users can delete own feedback" on feedback;
 create policy "Users can delete own feedback" on feedback
   for delete using (auth.uid() = user_id);
 
 -- Payments: users can only view their own payments (insert via service role only)
+drop policy if exists "Users can view own payments" on payments;
 create policy "Users can view own payments" on payments
   for select using (auth.uid() = user_id);
 
 -- Referrals: users can view/create their own referrals
 alter table referrals enable row level security;
+drop policy if exists "Users can view own referrals" on referrals;
 create policy "Users can view own referrals" on referrals
   for select using (auth.uid() = referrer_id);
+drop policy if exists "Users can insert own referrals" on referrals;
 create policy "Users can insert own referrals" on referrals
   for insert with check (auth.uid() = referrer_id);
 
 -- Promo codes: anyone can read (validation is server-side)
 alter table promo_codes enable row level security;
+drop policy if exists "Anyone can view promo codes" on promo_codes;
 create policy "Anyone can view promo codes" on promo_codes
   for select using (true);
 
 -- LLM usage: users can view their own usage (insert via service role only)
 alter table llm_usage enable row level security;
+drop policy if exists "Users can view own llm usage" on llm_usage;
 create policy "Users can view own llm usage" on llm_usage
   for select using (auth.uid() = user_id);
 -- Explicit INSERT policy as a safety net. The `service_role` key bypasses RLS
