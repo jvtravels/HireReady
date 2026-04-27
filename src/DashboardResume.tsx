@@ -296,6 +296,18 @@ export default function DashboardResume() {
   const [archivingId, setArchivingId] = useState<string | null>(null);
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameDraft, setRenameDraft] = useState("");
+  // Lightweight toast — single slot, auto-dismiss. Used for
+  // confirmation feedback on Make Active / Restore / Archive / Rename
+  // so users actually know their click did something. Errors still go
+  // through errorMsg so the existing error UI keeps working.
+  const [notice, setNotice] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
+  const noticeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const showNotice = (kind: "ok" | "err", text: string) => {
+    setNotice({ kind, text });
+    if (noticeTimerRef.current) clearTimeout(noticeTimerRef.current);
+    noticeTimerRef.current = setTimeout(() => setNotice(null), 3200);
+  };
+  useEffect(() => () => { if (noticeTimerRef.current) clearTimeout(noticeTimerRef.current); }, []);
   // Per-bullet polish state. key = improvement index, value = pending /
   // returned suggestion. Lives only as long as the user is on the tab —
   // polishing is a transient UI nudge, not persisted.
@@ -366,15 +378,23 @@ export default function DashboardResume() {
             || `${titleCase(r.domain)} resume`;
           // Sort versions newest-first for the timeline rendering.
           const sortedVersions = [...versions].sort((a, b) => b.version_number - a.version_number);
+          // Pick the version the card should display. After Restore, the
+          // active version may NOT be the latest. The card must mirror
+          // what sessions + the profile view see — i.e. the active
+          // version. Fall back to latest when active_version_id is null
+          // (legacy rows) or points at an absent row (data error).
+          const displayed =
+            (r.active_version_id ? versions.find(v => v.id === r.active_version_id) : null)
+            ?? latest;
           return {
             id: r.id,
             domain: r.domain || "general",
             title: niceTitle,
-            latestVersion: latest?.version_number ?? 1,
-            latestVersionId: latest?.id ?? null,
-            latestScore: typeof latest?.parsed_data?.resumeScore === "number" ? latest.parsed_data.resumeScore : null,
-            latestProfile: latest?.parsed_data ?? null,
-            latestFileName: latest?.file_name ?? null,
+            latestVersion: displayed?.version_number ?? 1,
+            latestVersionId: displayed?.id ?? null,
+            latestScore: typeof displayed?.parsed_data?.resumeScore === "number" ? displayed.parsed_data.resumeScore : null,
+            latestProfile: displayed?.parsed_data ?? null,
+            latestFileName: displayed?.file_name ?? null,
             updatedAt: r.updated_at,
             isActive: idx === 0,
             versions: sortedVersions.map(v => ({
@@ -495,7 +515,7 @@ export default function DashboardResume() {
       );
       if (!res.ok) {
         setAllResumes(prev); // revert
-        setErrorMsg(res.error || "Failed to switch active resume");
+        showNotice("err", res.error || "Failed to switch active resume");
         return;
       }
       // Server PATCH succeeded. Now keep local state in sync so the
@@ -519,9 +539,10 @@ export default function DashboardResume() {
         }
       }
       setCatalogueRefreshKey(k => k + 1);
+      showNotice("ok", chosenFileName ? `Switched to ${chosenFileName}` : "Active resume switched");
     } catch (err) {
       setAllResumes(prev);
-      setErrorMsg((err as Error).message || "Failed to switch active resume");
+      showNotice("err", (err as Error).message || "Failed to switch active resume");
     } finally {
       setActivatingId(null);
     }
@@ -546,11 +567,13 @@ export default function DashboardResume() {
       const { error } = await client.from("resumes").update({ title: trimmed }).eq("id", resumeId);
       if (error) {
         setAllResumes(prev);
-        setErrorMsg(`Rename failed: ${error.message}`);
+        showNotice("err", `Rename failed: ${error.message}`);
+      } else {
+        showNotice("ok", `Renamed to "${trimmed}"`);
       }
     } catch (err) {
       setAllResumes(prev);
-      setErrorMsg((err as Error).message || "Rename failed");
+      showNotice("err", (err as Error).message || "Rename failed");
     }
   };
 
@@ -578,11 +601,13 @@ export default function DashboardResume() {
       const { error } = await client.from("resumes").update({ is_archived: true, updated_at: new Date().toISOString() }).eq("id", resumeId);
       if (error) {
         setAllResumes(prev);
-        setErrorMsg(`Archive failed: ${error.message}`);
+        showNotice("err", `Archive failed: ${error.message}`);
+      } else {
+        showNotice("ok", "Resume archived");
       }
     } catch (err) {
       setAllResumes(prev);
-      setErrorMsg((err as Error).message || "Archive failed");
+      showNotice("err", (err as Error).message || "Archive failed");
     } finally {
       setArchivingId(null);
     }
@@ -630,6 +655,31 @@ export default function DashboardResume() {
     }
   };
 
+  // Memoize the per-card fitness computation. computeAllFitness runs
+  // 4 regex passes over the profile blob × N cards × every render —
+  // cheap individually but adds up on big catalogues. Recompute only
+  // when the underlying allResumes array changes.
+  // Memoize the reconciliation panel's per-type computations against
+  // the active profile. Same rationale as the catalogue fitness memo —
+  // 4 regex passes × every render is wasteful.
+  const reconcileByType = useMemo(() => {
+    if (!profile) return null;
+    return {
+      behavioral: reconcileResumeAgainstRole(profile, "behavioral"),
+      technical: reconcileResumeAgainstRole(profile, "technical"),
+      system_design: reconcileResumeAgainstRole(profile, "system_design"),
+      case: reconcileResumeAgainstRole(profile, "case"),
+    };
+  }, [profile]);
+
+  const fitsByResumeId = useMemo(() => {
+    const out: Record<string, ReturnType<typeof computeAllFitness> | null> = {};
+    for (const r of allResumes) {
+      out[r.id] = r.latestProfile ? computeAllFitness(r.latestProfile) : null;
+    }
+    return out;
+  }, [allResumes]);
+
   // Multi-resume catalogue grid. Used to live only in the idle phase
   // which meant nobody saw it once they had a profile. Now extracted
   // and rendered in BOTH idle and done phases. Threshold relaxed from
@@ -638,10 +688,32 @@ export default function DashboardResume() {
   // card (no-op when there's nothing to switch from anyway).
   const cataloguePanel = allResumes.length >= 1 ? (
     <div style={{ marginBottom: 24 }}>
+      {notice && (
+        <div
+          role="status"
+          aria-live="polite"
+          style={{
+            marginBottom: 12,
+            padding: "8px 14px",
+            borderRadius: 8,
+            background: notice.kind === "ok" ? "rgba(140,182,144,0.08)" : "rgba(196,112,90,0.08)",
+            border: `1px solid ${notice.kind === "ok" ? "rgba(140,182,144,0.3)" : "rgba(196,112,90,0.3)"}`,
+            color: notice.kind === "ok" ? c.sage : c.ember,
+            fontFamily: font.ui,
+            fontSize: 12,
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+          }}
+        >
+          <span style={{ fontWeight: 600 }}>{notice.kind === "ok" ? "✓" : "!"}</span>
+          {notice.text}
+        </div>
+      )}
       <p style={{ fontFamily: font.ui, fontSize: 12, color: c.stone, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>Your resumes</p>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 12 }}>
         {allResumes.map(r => {
-          const fits = r.latestProfile ? computeAllFitness(r.latestProfile) : null;
+          const fits = fitsByResumeId[r.id] ?? null;
           const bandColor = (b: FitnessBand) =>
             b === "excellent" ? c.sage : b === "good" ? c.gilt : b === "fair" ? c.stone : c.ember;
           const typeLabel: Record<InterviewType, string> = {
@@ -658,7 +730,23 @@ export default function DashboardResume() {
                 <span style={{ fontFamily: font.mono, fontSize: 10, fontWeight: 600, color: c.gilt, background: "rgba(212,179,127,0.08)", padding: "2px 8px", borderRadius: 4, textTransform: "uppercase", letterSpacing: "0.06em" }}>{r.domain}</span>
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                   {r.isActive ? (
-                    <span style={{ fontFamily: font.ui, fontSize: 10, color: c.sage }}>Active</span>
+                    <span
+                      title="This is the resume your interview sessions use right now."
+                      style={{
+                        fontFamily: font.ui,
+                        fontSize: 10,
+                        fontWeight: 600,
+                        color: c.sage,
+                        background: "rgba(140,182,144,0.10)",
+                        border: "1px solid rgba(140,182,144,0.3)",
+                        borderRadius: 4,
+                        padding: "2px 8px",
+                        textTransform: "uppercase",
+                        letterSpacing: "0.06em",
+                      }}
+                    >
+                      Active
+                    </span>
                   ) : (
                     <button
                       onClick={() => handleMakeActive(r.id, r.latestVersionId, r.latestProfile, r.latestFileName)}
@@ -683,31 +771,61 @@ export default function DashboardResume() {
                 </div>
               </div>
               {isRenaming ? (
-                <input
-                  autoFocus
-                  defaultValue={renameDraft}
-                  onChange={(e) => setRenameDraft(e.target.value)}
-                  onBlur={() => handleRenameResume(r.id, renameDraft)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") handleRenameResume(r.id, renameDraft);
-                    if (e.key === "Escape") setRenamingId(null);
-                  }}
-                  style={{ fontFamily: font.ui, fontSize: 13, color: c.ivory, background: c.obsidian, border: `1px solid ${c.gilt}`, borderRadius: 4, padding: "4px 6px", marginBottom: 4, width: "100%" }}
-                />
+                // Edit mode: blur CANCELS to avoid accidental commits
+                // when the user clicks elsewhere mid-edit. Enter saves;
+                // Esc explicitly cancels. The visible Save button gives
+                // a touch-friendly commit path that doesn't rely on the
+                // keyboard.
+                <div style={{ display: "flex", gap: 4, marginBottom: 4 }}>
+                  <input
+                    autoFocus
+                    defaultValue={renameDraft}
+                    aria-label="Resume title"
+                    onChange={(e) => setRenameDraft(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") { e.preventDefault(); handleRenameResume(r.id, renameDraft); }
+                      if (e.key === "Escape") setRenamingId(null);
+                    }}
+                    style={{ fontFamily: font.ui, fontSize: 13, color: c.ivory, background: c.obsidian, border: `1px solid ${c.gilt}`, borderRadius: 4, padding: "4px 6px", flex: 1, minWidth: 0 }}
+                  />
+                  <button
+                    onMouseDown={(e) => { e.preventDefault(); handleRenameResume(r.id, renameDraft); }}
+                    title="Save (Enter)"
+                    style={{ fontFamily: font.ui, fontSize: 11, fontWeight: 600, color: c.obsidian, background: c.gilt, border: "none", borderRadius: 4, padding: "0 8px", cursor: "pointer" }}
+                  >
+                    Save
+                  </button>
+                  <button
+                    onMouseDown={(e) => { e.preventDefault(); setRenamingId(null); }}
+                    title="Cancel (Esc)"
+                    aria-label="Cancel rename"
+                    style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, background: "transparent", border: `1px solid ${c.border}`, borderRadius: 4, padding: "0 8px", cursor: "pointer" }}
+                  >
+                    ✕
+                  </button>
+                </div>
               ) : (
-                <button
-                  onClick={() => { setRenameDraft(r.title); setRenamingId(r.id); }}
-                  title="Rename"
-                  style={{ all: "unset", display: "block", width: "100%", marginBottom: 4, cursor: "pointer" }}
-                >
-                  <p style={{ fontFamily: font.ui, fontSize: 13, color: c.ivory, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.title}</p>
-                </button>
+                <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 4 }}>
+                  <p style={{ fontFamily: font.ui, fontSize: 13, color: c.ivory, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1, minWidth: 0 }}>{r.title}</p>
+                  <button
+                    onClick={() => { setRenameDraft(r.title); setRenamingId(r.id); }}
+                    title="Rename"
+                    aria-label="Rename resume"
+                    style={{ fontFamily: font.ui, fontSize: 11, color: c.stone, background: "transparent", border: "none", cursor: "pointer", padding: "2px 4px", lineHeight: 1, flexShrink: 0 }}
+                  >
+                    {/* Pencil glyph — gives a discoverable affordance the
+                      * old click-the-title pattern lacked. */}
+                    ✎
+                  </button>
+                </div>
               )}
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: fits ? 8 : 0 }}>
                 <p style={{ fontFamily: font.ui, fontSize: 11, color: c.stone }}>v{r.latestVersion}{r.latestScore != null ? ` · Score ${r.latestScore}` : ""}</p>
                 {r.versions.length > 1 && (
                   <button
                     onClick={() => setExpandedTimeline(t => ({ ...t, [r.id]: !t[r.id] }))}
+                    aria-expanded={expanded}
+                    aria-controls={`history-${r.id}`}
                     style={{ fontFamily: font.ui, fontSize: 10, color: c.stone, background: "transparent", border: "none", cursor: "pointer", padding: 0 }}
                   >
                     {expanded ? "Hide history ↑" : `Show ${r.versions.length} versions ↓`}
@@ -728,7 +846,7 @@ export default function DashboardResume() {
                 </div>
               )}
               {expanded && r.versions.length > 1 && (
-                <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px solid ${c.border}`, display: "flex", flexDirection: "column", gap: 6 }}>
+                <div id={`history-${r.id}`} style={{ marginTop: 10, paddingTop: 10, borderTop: `1px solid ${c.border}`, display: "flex", flexDirection: "column", gap: 6 }}>
                   {r.versions.map((v, vIdx) => {
                     const isCurrent = v.id === r.latestVersionId;
                     const dateLabel = v.createdAt ? new Date(v.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : "";
@@ -1551,7 +1669,7 @@ export default function DashboardResume() {
           </p>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 12 }}>
             {(["behavioral", "technical", "system_design", "case"] as InterviewType[]).map(t => {
-              const rec = reconcileResumeAgainstRole(profile, t);
+              const rec = reconcileByType ? reconcileByType[t] : reconcileResumeAgainstRole(profile, t);
               const typeLabel: Record<InterviewType, string> = {
                 behavioral: "Behavioral",
                 technical: "Technical",
