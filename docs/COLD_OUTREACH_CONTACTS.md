@@ -42,13 +42,24 @@ emails change.
 | **KIIT School of Rural Mgmt** | placement@ksrm.ac.in | 8309497071 | Use for management programs |
 | **PES University Bangalore** | (form via pes.edu/contact/) | 080-2672 1983 | Get placement contact via main switchboard |
 
+### IIITs + BITS + Delhi Tech (Tier 1)
+
+| College | Email | Phone | Notes |
+|---|---|---|---|
+| **IIIT Hyderabad** | placements@iiit.ac.in, placements.head@iiit.ac.in | +91-40-6653 1000 | Head: Mr. T.V. Devi Prasad (deviprasad.tv@iiit.ac.in, 8886866554) |
+| **IIIT Bangalore** | iiitb_placement@iiitb.ac.in, placement.committee@iiitb.ac.in | — | Office hours: Mon-Fri, 9 AM-5 PM. Electronics City Phase 1 |
+| **IIIT Delhi** | rashmil@iiitd.ac.in (Head Career Services) | +91-11-26907423 | Send JAFs (Job Announcement Forms) here. 311, Seminar Block |
+| **BITS Pilani Hyderabad** | placement@hyderabad.bits-pilani.ac.in, corporaterelations@hyderabad.bits-pilani.ac.in | — | Also PSD (Practice School): psd@hyderabad.bits-pilani.ac.in |
+| **NSUT Delhi** | placements@nsitonline.in | +91-11-25099021 ext 2209/2211 | Head: Dr. M.P.S. Bhatia (+91-9968604104, +91-9818192294) |
+| **DTU Delhi** | (use tnp.dtu.ac.in) | — | Form-based contact via training & placement portal |
+
 ### Still need to verify (search their websites)
-- IIIT Hyderabad / Bangalore / Delhi / Allahabad / Bhubaneswar
-- BITS Pilani Hyderabad / Goa
+- IIIT Allahabad / Bhubaneswar (try `placement@iiita.ac.in`, `placement@iiit-bh.ac.in`)
+- BITS Pilani (main campus) / Goa
 - Bennett University, Shiv Nadar, Chitkara
-- DTU Delhi, NSUT Delhi
 - BMS College Bangalore, RVCE Bangalore
 - Thapar Institute, Jaypee Institute
+- ISB Hyderabad, NMIMS Mumbai, XLRI Jamshedpur (MBA — find Career Services dept)
 
 For these, search Google: `site:[college].edu.in placement contact`
 
@@ -62,6 +73,8 @@ For these, search Google: `site:[college].edu.in placement contact`
 | **Apna College** | alpha@apnacollege.in, delta@apnacollege.in, sigma@apnacollege.in | Listed on apnacollege.in. Also runs YouTube channel. Founded by Aman Dhattarwal + Shradha Khapra |
 | **Code with Harry** | harry@codewithharry.com | For business inquiries. 7.5M+ subs. Founder: Haris Ali Khan |
 | **Take U Forward (Striver)** | striver@takeuforward.org | For collaborations. 1M+ subs. Founder: Raj Vikramaditya |
+| **CodeHelp (Love Babbar)** | partnerwithbabbar@gmail.com, businesswithbabbar@gmail.com | Business + collab inquiries. Ex-Amazon, Ex-Microsoft. 113K+ LinkedIn followers. Also: itscodehelp@gmail.com (general guidance) |
+| **Anuj Bhaiya (Coding Shuttle)** | anujbhaiyaofficial@gmail.com **[third-party data — verify]** | Ex-Amazon, Ex-Urban Company. Founder of Coding Shuttle. Best to DM on Instagram first: [@anuj.kumar.sharma](https://instagram.com/anuj.kumar.sharma) |
 
 ### Need to find directly (use their websites)
 - Newton School (now part of upGrad — pitch via upgrad.com/contact)
@@ -85,6 +98,8 @@ LinkedIn first, then DM. Higher reply rate than email.
 | **Code with Harry (Haris Ali Khan)** | Code With Harry | harry@codewithharry.com | 7.5M+ subs. Tutorials + careers. IIT Kgp grad |
 | **Aman Dhattarwal (Apna College)** | Apna College | alpha@apnacollege.in | 5M+ subs. Programming + placements |
 | **Akshay Saini** | Namaste JavaScript | (find via LinkedIn) | Engineer at Uber. JS-focused. Very engaged community |
+| **Love Babbar (CodeHelp)** | CodeHelp | partnerwithbabbar@gmail.com | 1M+ subs. Ex-Amazon/Microsoft. TEDx speaker |
+| **Anuj Bhaiya** | Anuj Kumar Sharma | anujbhaiyaofficial@gmail.com **[verify]** | 200K+ subs. Ex-Amazon. DSA/system design |
 
 ### Find via LinkedIn (search by name)
 - Anuj Bhaiya — DSA/system design, 200K+ subs
@@ -209,12 +224,12 @@ For finding emails NOT in this doc:
 
 | Source | Volume | Expected reply rate | Expected meetings |
 |---|---|---|---|
-| Verified institutional emails (colleges) | 11 contacts | 15-25% | 2-3 demos |
-| Verified bootcamp public emails | 4 contacts | 20-30% | 1 demo |
-| Verified YouTuber emails | 4 contacts | 25-40% | 1-2 partnerships |
+| Verified institutional emails (colleges) | 17 contacts | 15-25% | 3-5 demos |
+| Verified bootcamp + creator public emails | 6 contacts | 20-30% | 1-2 demos |
+| Verified YouTuber emails | 6 contacts | 25-40% | 2-3 partnerships |
 | Press (3 contacts) | 3 contacts | 5-10% | Possibly 0 (need a story) |
 
-**Total from verified contacts in this doc: 22 emails → ~4-6 replies → ~3-5 actual conversations.**
+**Total from verified contacts in this doc: 32 emails → ~6-9 replies → ~5-8 actual conversations.**
 
 To scale beyond this, use the LinkedIn search URLs + Apollo/Hunter to
 build out 100+ more contacts per audience.
@@ -252,12 +267,20 @@ College / institutional contacts:
 - [KIIT Training & Placement](https://kiit.ac.in/training-placement/training-placement-contact/)
 - [Amity Placement](https://amity.edu/placement/contact.aspx)
 - [PES University Contact](https://pes.edu/contact/)
+- [IIIT Hyderabad Placements](https://placements.iiit.ac.in/contact)
+- [IIIT Bangalore Placement Team](https://www.iiitb.ac.in/placement-team)
+- [IIIT Delhi Training & Placement](https://iiitd.ac.in/placement/contactT_P)
+- [BITS Pilani Hyderabad Placements](https://www.bits-pilani.ac.in/placements/hyderabad/)
+- [NSUT Training & Placement](https://www.nsut.ac.in/en/for-students/existing-students/training-&-placement)
+- [DTU Training & Placement](https://tnp.dtu.ac.in/)
 
 Bootcamp / creator contacts:
 - [Scaler Careers](https://www.scaler.com/careers)
 - [Apna College](https://www.apnacollege.in/)
 - [Code with Harry Contact](https://www.codewithharry.com/contact)
 - [Take U Forward Contribute](https://takeuforward.org/contribute/help-us-grow-takeuforward)
+- [CodeHelp by Babbar (YouTube)](https://www.youtube.com/@CodeHelp)
+- [Anuj Kumar Sharma (YouTube)](https://www.youtube.com/c/AnujBhaiya)
 
 Press contacts:
 - [Inc42 Contact](https://inc42.com/contact/)
