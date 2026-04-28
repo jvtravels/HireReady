@@ -3,6 +3,7 @@
 export const config = { runtime: "edge" };
 
 import { withAuthAndRateLimit, sanitizeForLLM, corsHeaders, withRequestId } from "./_shared";
+import { captureServerEvent, distinctIdFrom } from "./_posthog";
 import { callLLM, extractJSON } from "./_llm";
 import { classifyCompanyTier, tierPromptSuffix } from "./_company-tier";
 
@@ -568,6 +569,11 @@ export default async function handler(req: Request): Promise<Response> {
       : "";
 
     const tierSuffix = tierPromptSuffix(classifyCompanyTier(meta?.targetCompany));
+    // Anti-vague-feedback directive: every wins/fixes/red-flag finding must
+    // quote a specific phrase or moment from the transcript. Generic feedback
+    // ("be more specific", "structure your answer") is the #1 complaint about
+    // AI eval — force grounding.
+    const groundingDirective = "GROUNDING REQUIREMENT: Every wins/fixes/red-flag finding in the report MUST quote a SPECIFIC phrase from the transcript (≤15 words). Do NOT produce generic feedback like 'be more specific' or 'use STAR' — point to the exact moment: 'When you said \"we improved performance\", you didn't quantify it — what was the actual %?'. If you can't ground a finding in a transcript quote, omit it.";
     // Per-type rubric weights — different interview formats prize different
     // dimensions. A perfect case-study answer is structurally rigorous; a
     // perfect behavioral answer follows STAR; a perfect technical answer
@@ -586,7 +592,7 @@ export default async function handler(req: Request): Promise<Response> {
       "government-psu": "Weight HEAVILY: balanced positioning, policy/scheme/article references, ethical reasoning rigor, current-affairs awareness, public-service genuineness.",
     };
     const rubricWeight = meta?.type ? typeRubricWeight[meta.type] : "";
-    const prompt = `You are a senior I/O-psychology-trained interview scorer. Produce a JSON report for this mock interview, calibrated to structured-interview rubrics (SHL UCF, STAR+L). Be honest and specific.${tierSuffix ? `\n\n${tierSuffix}` : ""}${rubricWeight ? `\n\nRUBRIC WEIGHTS FOR THIS INTERVIEW TYPE:\n${rubricWeight}` : ""}
+    const prompt = `You are a senior I/O-psychology-trained interview scorer. Produce a JSON report for this mock interview, calibrated to structured-interview rubrics (SHL UCF, STAR+L). Be honest and specific.${tierSuffix ? `\n\n${tierSuffix}` : ""}${rubricWeight ? `\n\nRUBRIC WEIGHTS FOR THIS INTERVIEW TYPE:\n${rubricWeight}` : ""}\n\n${groundingDirective}
 
 CONTEXT:
 Role: ${sanitizeForLLM(meta?.role || "general", 80)}
@@ -923,6 +929,15 @@ CRITICAL RULES:
     const totalMs = Date.now() - t0;
     console.warn(`[evaluate-session] OK session=${sessionId.slice(0, 8)} score=${overallScore} band=${report.band} llm=${tLLM}ms total=${totalMs}ms model=${result.model}`);
     headers["X-Timing"] = `llm=${tLLM},total=${totalMs},model=${result.model}`;
+
+    await captureServerEvent("session_evaluated", distinctIdFrom(req, auth.userId), {
+      session_id: sessionId,
+      overall_score: overallScore,
+      band: report.band,
+      llm_ms: tLLM,
+      total_ms: totalMs,
+      model: result.model,
+    }, req);
 
     return new Response(JSON.stringify({ report, cached: false }), { status: 200, headers });
   } catch (err) {
