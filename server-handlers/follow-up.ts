@@ -36,11 +36,11 @@ export default async function handler(req: Request): Promise<Response> {
   const { headers, auth } = pre;
 
   try {
-    const { question, answer, type, role, jobDescription, company, currentCity, jobCity, followUpDepth = 0, previousFollowUps, persona, conversationHistory, negotiationPhase, questionIndex, totalQuestions, resumeTopSkills, initialOfferText, negotiationFacts, negotiationStyle, negotiationBand, industry, highestOfferMade, candidateTarget, negotiationScenario } = await req.json() as {
+    const { question, answer, type, role, jobDescription, company, currentCity, jobCity, followUpDepth = 0, adaptiveDifficulty, previousFollowUps, persona, conversationHistory, negotiationPhase, questionIndex, totalQuestions, resumeTopSkills, initialOfferText, negotiationFacts, negotiationStyle, negotiationBand, industry, highestOfferMade, candidateTarget, negotiationScenario } = await req.json() as {
       question: string; answer: string; type: string; role: string;
       jobDescription?: string; company?: string;
       currentCity?: string; jobCity?: string;
-      followUpDepth?: number; previousFollowUps?: string[];
+      followUpDepth?: number; adaptiveDifficulty?: "escalate" | "ease" | "hold"; previousFollowUps?: string[];
       persona?: string; conversationHistory?: string;
       negotiationPhase?: string; questionIndex?: number; totalQuestions?: number;
       resumeTopSkills?: string[];
@@ -483,6 +483,8 @@ CROSS-QUESTION MEMORY: If the candidate mentioned something interesting in an ea
 PUSHBACK RULE: Real interviewers push back on weak or vague answers — they don't just nod and move on. If the answer is high-level, generic, or lacks specifics (no metrics, no concrete actions, no "I" voice), your follow-up MUST press for specifics ONCE before changing topic. Examples: "That's high-level — what specifically did *you* do?", "Give me a concrete number.", "Walk me through one moment, not the general approach." Do NOT pile on with multiple challenges; one sharp pushback per weak answer.
 
 MIRRORING (rapport): Echo 1-2 distinctive nouns or phrases from the candidate's last answer in your follow-up. If they said "the migration" use "the migration" not "the project". If they said "my team of six" use "your team of six". Research shows verbal mirroring lifts perceived rapport ~30%. Don't be heavy-handed — one or two echoes per follow-up is enough.
+
+ADAPTIVE DIFFICULTY: ${adaptiveDifficulty === "escalate" ? "The candidate is performing strongly across recent answers. Push harder — go deeper, ask more challenging follow-ups, probe for trade-offs and edge cases. Don't go easy." : adaptiveDifficulty === "ease" ? "The candidate is struggling across recent answers. Ease the pressure — phrase the follow-up gently, offer a smaller scope, give them a chance to recover with a more concrete or familiar angle. Do NOT give up; just calibrate down." : "The candidate is performing as expected. Hold steady on difficulty."}
 
 QUESTION LENGTH: Mix lengths like a real interviewer. About 30% of follow-ups should be ≤8 words ("So why now?", "And the team's reaction?", "What was the actual number?"). The rest can be longer. Avoid every follow-up being 25+ words — it sounds scripted.
 

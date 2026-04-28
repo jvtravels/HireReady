@@ -1607,6 +1607,16 @@ export function useInterviewEngine() {
           }
         }
 
+        // Adaptive difficulty: trend over the last 3 answer-quality scores tells
+        // the follow-up LLM whether to escalate or ease up. Keeps the experience
+        // calibrated to how the candidate is actually performing in this session.
+        const recentScores = answerQualityRef.current.slice(-3);
+        const recentAvg = recentScores.length > 0 ? recentScores.reduce((a, b) => a + b, 0) / recentScores.length : 0;
+        const adaptiveDifficulty: "escalate" | "ease" | "hold" =
+          recentScores.length >= 2 && recentAvg >= 4 ? "escalate"
+          : recentScores.length >= 2 && recentAvg <= 2 ? "ease"
+          : "hold";
+
         pendingFollowUpRef.current = fetchFollowUp({
           question: currentStepObj!.aiText,
           answer: answerText,
@@ -1617,6 +1627,7 @@ export function useInterviewEngine() {
           currentCity: currentCity || undefined,
           jobCity: jobCity || undefined,
           followUpDepth: depth,
+          adaptiveDifficulty,
           previousFollowUps: recentFollowUps.length > 0 ? recentFollowUps : undefined,
           persona: isPanelInterview ? currentStepObj?.persona : undefined,
           conversationHistory: conversationHistory || undefined,
