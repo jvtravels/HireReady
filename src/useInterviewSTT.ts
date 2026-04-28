@@ -103,11 +103,20 @@ export function useInterviewSTT(
         }
       };
 
+      // Preserve transcript across Deepgram reconnects — without this, the
+      // user's words spoken before the disconnect are lost on retry and they
+      // have to repeat themselves.
+      let preservedFinalText = "";
+      let lastFinalText = "";
+
       const tryDeepgram = async () => {
         if (stopped) return;
+        lastFinalText = "";
         const handle = await createDeepgramSTT({
           onTranscript: (finalText, interim) => {
-            if (!stopped) callbacks.setCurrentTranscript(finalText + interim);
+            if (stopped) return;
+            lastFinalText = finalText;
+            callbacks.setCurrentTranscript(preservedFinalText + finalText + interim);
           },
           onError: (error) => {
             if (stopped) return;
@@ -121,6 +130,9 @@ export function useInterviewSTT(
           },
           onEnd: () => {
             if (stopped || callbacks.interviewEndedRef.current) return;
+            // Roll the partial finalText forward so the next handle continues
+            // the user's answer instead of starting fresh.
+            preservedFinalText += lastFinalText;
             refs.deepgramRef.current = null;
             if (navigator.onLine && deepgramRetryRef.current < 2) {
               deepgramRetryRef.current++;

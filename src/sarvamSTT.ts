@@ -151,12 +151,32 @@ export async function createSarvamSTT(
 
     try {
       if (ctx.audioWorklet) {
+        // Buffer frames so we post ~85ms chunks instead of every 128-frame
+        // (~2.7ms) callback. Cuts postMessage overhead from ~360 to ~12 msg/s.
         const workletCode = `
 class SarvamPCMProcessor extends AudioWorkletProcessor {
+  constructor() {
+    super();
+    this._buffer = new Float32Array(4096);
+    this._offset = 0;
+  }
   process(inputs) {
     const input = inputs[0];
     if (!input || !input[0]) return true;
-    this.port.postMessage(input[0]);
+    const ch = input[0];
+    let i = 0;
+    while (i < ch.length) {
+      const space = this._buffer.length - this._offset;
+      const take = Math.min(space, ch.length - i);
+      this._buffer.set(ch.subarray(i, i + take), this._offset);
+      this._offset += take;
+      i += take;
+      if (this._offset === this._buffer.length) {
+        const out = this._buffer.slice();
+        this.port.postMessage(out, [out.buffer]);
+        this._offset = 0;
+      }
+    }
     return true;
   }
 }
@@ -179,7 +199,11 @@ registerProcessor('sarvam-pcm-processor', SarvamPCMProcessor);
         };
 
         source.connect(workletNode);
-        workletNode.connect(ctx.destination);
+        // Muted sink — avoid mic feedback while keeping the graph live.
+        const sink = ctx.createGain();
+        sink.gain.value = 0;
+        workletNode.connect(sink);
+        sink.connect(ctx.destination);
         processorNode = workletNode;
         console.warn("[Sarvam] Using AudioWorklet for audio capture");
         return;
@@ -201,7 +225,10 @@ registerProcessor('sarvam-pcm-processor', SarvamPCMProcessor);
     };
 
     source.connect(scriptNode);
-    scriptNode.connect(ctx.destination);
+    const sink = ctx.createGain();
+    sink.gain.value = 0;
+    scriptNode.connect(sink);
+    sink.connect(ctx.destination);
     processorNode = scriptNode;
     console.warn("[Sarvam] Using ScriptProcessorNode fallback for audio capture");
   }

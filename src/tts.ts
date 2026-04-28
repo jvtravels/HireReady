@@ -177,6 +177,10 @@ export function clearPrefetchCache(): void {
    Pass gender so the correct voice (male/female) is cached. */
 export async function prefetchTTS(text: string, gender?: "male" | "female"): Promise<void> {
   if (!text) return;
+  // Sanitize first so prefetch keys collide on equivalent text — caller
+  // and speak() both apply the same transform.
+  text = sanitizeForTTS(text);
+  if (!text) return;
   // Cache key includes gender so male/female prefetches don't clash
   const cacheKey = gender ? `${gender}::${text}` : text;
   const existing = _prefetchCache.get(cacheKey);
@@ -403,6 +407,11 @@ async function _speakWithWebSocketInner(
       try {
         const msg = JSON.parse(event.data);
 
+        // Drop chunks belonging to a previous utterance — when speak() is called
+        // back-to-back rapidly, in-flight chunks from the prior context can leak
+        // into the new handler and play garbled audio.
+        if (msg.context_id && msg.context_id !== contextId) return;
+
         if (msg.type === "chunk" && msg.data) {
           chunksReceived++;
           const binaryStr = atob(msg.data);
@@ -413,10 +422,11 @@ async function _speakWithWebSocketInner(
           const float32 = new Float32Array(bytes.buffer);
           totalPcmBytes += bytes.length;
 
-          // Report estimated duration after first chunk (refine on subsequent chunks)
-          if (!durationReported && onDurationKnown && chunksReceived >= 1) {
-            // Estimate total duration from text length — refine when "done" arrives
-            const estimatedTotalMs = (text.split(/\s+/).length / 150) * 60 * 1000; // ~150 wpm
+          // Emit a coarse estimate now so consumers (avatar mouth animation)
+          // have a duration during playback. The accurate value supersedes
+          // it at "done" — consumers must accept the later update.
+          if (!durationReported && onDurationKnown) {
+            const estimatedTotalMs = (text.split(/\s+/).length / 150) * 60 * 1000;
             onDurationKnown(Math.max(2000, estimatedTotalMs));
             durationReported = true;
           }
@@ -843,7 +853,7 @@ export async function speakAs(
   gender?: "male" | "female",
   onDurationKnown?: (ms: number) => void,
 ): Promise<{ cancel: () => void }> {
-  text = addBreathCues(text);
+  text = addBreathCues(sanitizeForTTS(text));
   const settings = loadTTSSettings();
   if (settings.provider === "browser") {
     return speak(text, onEnd, onError);
@@ -883,6 +893,25 @@ export async function speakAs(
 
 /* ─── Unified speak function ─── */
 /**
+ * Strip markdown / collapse whitespace before sending text to TTS providers.
+ * Saves billable characters on the free tier and removes literal "**" / "##"
+ * that some engines pronounce. Idempotent.
+ */
+function sanitizeForTTS(text: string): string {
+  if (!text) return text;
+  return text
+    .replace(/```[\s\S]*?```/g, " ")          // fenced code blocks
+    .replace(/`([^`]+)`/g, "$1")              // inline code
+    .replace(/\*\*([^*]+)\*\*/g, "$1")        // bold
+    .replace(/(?<!\*)\*([^*]+)\*(?!\*)/g, "$1") // italic
+    .replace(/^#{1,6}\s+/gm, "")              // headings
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")  // links
+    .replace(/[ \t]+/g, " ")                  // collapse spaces
+    .replace(/\s*\n\s*/g, " ")                // collapse newlines
+    .trim();
+}
+
+/**
  * Insert breath pauses into long clauses so synthesized speech doesn't read
  * as a wall of words. Real humans pause every 8-14 words; most TTS engines
  * (Cartesia included) respect commas and ellipses as breath cues.
@@ -904,7 +933,7 @@ export async function speak(
   gender?: "male" | "female",
   onDurationKnown?: (ms: number) => void,
 ): Promise<{ cancel: () => void }> {
-  text = addBreathCues(text);
+  text = addBreathCues(sanitizeForTTS(text));
   const settings = loadTTSSettings();
   let handle: { cancel: () => void };
 

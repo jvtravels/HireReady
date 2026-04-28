@@ -4,6 +4,7 @@ declare const process: { env: Record<string, string | undefined> };
 
 const GROQ_API_KEY = process.env.GROQ_API_KEY || "";
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "";
+const CEREBRAS_API_KEY = process.env.CEREBRAS_API_KEY || "";
 const SUPABASE_URL = process.env.SUPABASE_URL || "";
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 const USAGE_LOGGING_ENABLED = !!(SUPABASE_URL && SUPABASE_SERVICE_KEY);
@@ -137,15 +138,55 @@ async function callGemini(opts: LLMOptions, signal?: AbortSignal): Promise<LLMRe
   return { text: data.candidates?.[0]?.content?.parts?.[0]?.text || "", model, fallback: false, tokensUsed, latencyMs };
 }
 
-export async function callLLM(opts: LLMOptions, timeoutMs = 15000, meta?: { userId?: string; endpoint?: string }): Promise<LLMResult> {
-  const primary = GROQ_API_KEY ? { name: "groq", call: (s: AbortSignal) => callGroq(opts, s) } : null;
-  const fallback = GEMINI_API_KEY ? { name: "gemini", call: (s: AbortSignal) => callGemini(opts, s) } : null;
+async function callCerebras(opts: LLMOptions, signal?: AbortSignal): Promise<LLMResult> {
+  // Cerebras' free tier serves llama-3.3-70b at ~2200 tok/s — drop-in OpenAI-compatible.
+  // Used as a third fallback so a Groq+Gemini outage doesn't kill the interview.
+  const model = opts.fast ? "llama3.1-8b" : "llama-3.3-70b";
+  const start = Date.now();
+  console.log(`[LLM] Cerebras ${model} — starting request`);
+  const res = await fetch("https://api.cerebras.ai/v1/chat/completions", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${CEREBRAS_API_KEY}` },
+    signal,
+    body: JSON.stringify({
+      model,
+      messages: [{ role: "user", content: opts.prompt }],
+      temperature: opts.temperature ?? 0.3,
+      max_tokens: opts.maxTokens ?? 2000,
+      ...(opts.jsonMode ? { response_format: { type: "json_object" } } : {}),
+    }),
+  });
+  const latencyMs = Date.now() - start;
+  if (!res.ok) {
+    const errText = await res.text().catch(() => "");
+    console.error(`[LLM] Cerebras ${model} — HTTP ${res.status} after ${latencyMs}ms: ${errText.slice(0, 100)}`);
+    throw new Error(`Cerebras error ${res.status}: ${errText.slice(0, 200)}`);
+  }
+  const data = await res.json();
+  const usage = data.usage;
+  const tokensUsed = usage ? { prompt: usage.prompt_tokens, completion: usage.completion_tokens, total: usage.total_tokens } : undefined;
+  console.log(`[LLM] Cerebras ${model} — ${tokensUsed?.total ?? "?"} tokens, ${latencyMs}ms`);
+  return { text: data.choices?.[0]?.message?.content || "", model: `cerebras-${model}`, fallback: false, tokensUsed, latencyMs };
+}
 
-  if (!primary && !fallback) throw new Error("No LLM configured — set GROQ_API_KEY or GEMINI_API_KEY");
+export async function callLLM(opts: LLMOptions, timeoutMs = 15000, meta?: { userId?: string; endpoint?: string }): Promise<LLMResult> {
+  const providers: { name: string; call: (s: AbortSignal) => Promise<LLMResult> }[] = [];
+  if (GROQ_API_KEY) providers.push({ name: "groq", call: (s) => callGroq(opts, s) });
+  if (GEMINI_API_KEY) providers.push({ name: "gemini", call: (s) => callGemini(opts, s) });
+  if (CEREBRAS_API_KEY) providers.push({ name: "cerebras", call: (s) => callCerebras(opts, s) });
+
+  if (providers.length === 0) throw new Error("No LLM configured — set GROQ_API_KEY, GEMINI_API_KEY, or CEREBRAS_API_KEY");
+
+  // Per-provider timeout: tighter on Groq (p99 ~3s) so we fail over fast during
+  // incidents; full budget for Gemini/Cerebras since they're the fallback path.
+  const providerTimeout = (name: string) => {
+    if (name === "groq") return Math.min(timeoutMs, 6000);
+    return timeoutMs;
+  };
 
   const tryProvider = async (provider: { name: string; call: (s: AbortSignal) => Promise<LLMResult> }, isFallback: boolean): Promise<LLMResult> => {
     const ac = new AbortController();
-    const timer = setTimeout(() => ac.abort(), timeoutMs);
+    const timer = setTimeout(() => ac.abort(), providerTimeout(provider.name));
     try {
       const result = await provider.call(ac.signal);
       clearTimeout(timer);
@@ -155,57 +196,69 @@ export async function callLLM(opts: LLMOptions, timeoutMs = 15000, meta?: { user
     } catch (err) {
       clearTimeout(timer);
       const msg = err instanceof Error ? err.message : "";
-      const isTimeout = msg.includes("AbortError") || msg.includes("abort");
+      const errName = err instanceof Error ? err.name : "";
+      const isTimeout = errName === "AbortError" || msg.includes("aborted") || msg.includes("abort");
       console.error(`[LLM] ${provider.name} failed (${isTimeout ? "timeout" : "error"}): ${msg.slice(0, 150)}`);
       await logUsage({ userId: meta?.userId, endpoint: meta?.endpoint, model: provider.name, isFallback, promptTokens: 0, completionTokens: 0, totalTokens: 0, latencyMs: 0, status: isTimeout ? "timeout" : "error", errorMessage: msg.slice(0, 200) });
       throw err;
     }
   };
 
-  // Groq first, Gemini fallback
-  if (primary && fallback) {
-    console.warn(`[LLM] Trying ${primary.name} first, fallback: ${fallback.name} (timeout: ${timeoutMs}ms)`);
+  // Walk providers in order: groq → gemini → cerebras. First success wins.
+  console.warn(`[LLM] Provider chain: ${providers.map(p => p.name).join(" → ")} (timeout: ${timeoutMs}ms)`);
+  let lastErr: unknown;
+  for (let i = 0; i < providers.length; i++) {
+    const provider = providers[i];
     try {
-      return await tryProvider(primary, false);
-    } catch {
-      console.warn(`[LLM] ${primary.name} failed, falling back to ${fallback.name}`);
-      return await tryProvider(fallback, true);
+      return await tryProvider(provider, i > 0);
+    } catch (err) {
+      lastErr = err;
+      const next = providers[i + 1];
+      if (next) console.warn(`[LLM] ${provider.name} failed, falling back to ${next.name}`);
     }
   }
-
-  const solo = primary || fallback!;
-  console.warn(`[LLM] Using ${solo.name} only (timeout: ${timeoutMs}ms)`);
-  return await tryProvider(solo, false);
+  throw lastErr instanceof Error ? lastErr : new Error("All LLM providers failed");
 }
 
 export function extractJSON<T = unknown>(text: string): T | null {
   try { return JSON.parse(text); } catch { /* fallback */ }
   const cleaned = text.replace(/^```(?:json)?\s*\n?/i, "").replace(/\n?```\s*$/i, "").trim();
   try { return JSON.parse(cleaned); } catch { /* fallback */ }
-  const arrMatch = cleaned.match(/\[[\s\S]*\]/);
-  if (arrMatch) {
-    try { return JSON.parse(arrMatch[0]); } catch { /* fallback */ }
-  }
-  const objStart = cleaned.indexOf("{");
-  if (objStart !== -1) {
+  // Bracket-balanced scan for the first complete JSON value (array or object).
+  const scan = (open: string, close: string): T | null => {
+    const start = cleaned.indexOf(open);
+    if (start === -1) return null;
     let depth = 0;
     let inString = false;
     let escape = false;
-    for (let i = objStart; i < cleaned.length; i++) {
+    for (let i = start; i < cleaned.length; i++) {
       const ch = cleaned[i];
       if (escape) { escape = false; continue; }
       if (ch === "\\") { escape = true; continue; }
       if (ch === '"') { inString = !inString; continue; }
       if (inString) continue;
-      if (ch === "{") depth++;
-      if (ch === "}") {
+      if (ch === open) depth++;
+      else if (ch === close) {
         depth--;
         if (depth === 0) {
-          try { return JSON.parse(cleaned.slice(objStart, i + 1)); } catch { /* malformed */ }
-          break;
+          try { return JSON.parse(cleaned.slice(start, i + 1)); } catch { return null; }
         }
       }
     }
+    return null;
+  };
+  const objStart = cleaned.indexOf("{");
+  const arrStart = cleaned.indexOf("[");
+  // Prefer whichever appears first — matches the model's intended top-level shape.
+  if (objStart !== -1 && (arrStart === -1 || objStart < arrStart)) {
+    const obj = scan("{", "}");
+    if (obj !== null) return obj;
+    return scan("[", "]");
+  }
+  if (arrStart !== -1) {
+    const arr = scan("[", "]");
+    if (arr !== null) return arr;
+    return scan("{", "}");
   }
   return null;
 }

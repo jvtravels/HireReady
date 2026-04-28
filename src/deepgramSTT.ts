@@ -60,6 +60,8 @@ export interface DeepgramSTTCallbacks {
   onTranscript: (finalText: string, interim: string) => void;
   onError: (error: string) => void;
   onEnd: () => void;
+  /** Fired when Deepgram VAD detects speech start. Use for barge-in (cancel TTS). */
+  onSpeechStarted?: () => void;
 }
 
 /**
@@ -94,6 +96,10 @@ export async function createDeepgramSTT(
   }
 
   const dgLang = "multi";
+  // utterance_end_ms=1000 lets us detect "user genuinely paused" via UtteranceEnd
+  // events without raising endpointing (which would clip mid-sentence).
+  // vad_events=true emits SpeechStarted for barge-in. filler_words=false strips
+  // "um/uh" so transcripts going to the LLM are cleaner.
   const wsUrl =
     `wss://api.deepgram.com/v1/listen` +
     `?model=nova-3` +
@@ -102,6 +108,9 @@ export async function createDeepgramSTT(
     `&interim_results=true` +
     `&punctuate=true` +
     `&endpointing=300` +
+    `&utterance_end_ms=1000` +
+    `&vad_events=true` +
+    `&filler_words=false` +
     `&encoding=linear16` +
     `&sample_rate=${sampleRate}` +
     `&channels=1`;
@@ -189,7 +198,12 @@ registerProcessor('pcm-processor', PCMProcessor);
         };
 
         source.connect(workletNode);
-        workletNode.connect(ctx.destination);
+        // Route to a muted gain node — keeps the graph live without playing the
+        // mic back through the speakers (which caused feedback on weak-AEC headsets).
+        const sink = ctx.createGain();
+        sink.gain.value = 0;
+        workletNode.connect(sink);
+        sink.connect(ctx.destination);
         processorNode = workletNode;
         console.warn("[Deepgram] Using AudioWorklet for audio capture");
         return;
@@ -215,7 +229,13 @@ registerProcessor('pcm-processor', PCMProcessor);
     };
 
     source.connect(scriptNode);
-    scriptNode.connect(ctx.destination);
+    // ScriptProcessorNode requires a connection to destination to fire its
+    // onaudioprocess callback in some browsers. Route through a muted gain
+    // to avoid mic feedback.
+    const sink = ctx.createGain();
+    sink.gain.value = 0;
+    scriptNode.connect(sink);
+    sink.connect(ctx.destination);
     processorNode = scriptNode;
     console.warn("[Deepgram] Using ScriptProcessorNode fallback for audio capture");
   }
@@ -246,6 +266,8 @@ registerProcessor('pcm-processor', PCMProcessor);
         } else {
           callbacks.onTranscript(finalText, transcript);
         }
+      } else if (msg.type === "SpeechStarted") {
+        callbacks.onSpeechStarted?.();
       } else if (msg.type === "Error") {
         console.warn("[Deepgram] server error:", msg);
       }
