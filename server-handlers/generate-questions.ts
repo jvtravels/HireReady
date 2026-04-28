@@ -8,6 +8,7 @@ import { buildSalaryNegotiationGuidance, buildExperienceSalaryContext, generateN
 import { loadRoleCompetency, loadCompanyGuidance } from "./_role-content";
 import { matchRoleKey } from "../data/role-competencies";
 import { matchCompanyKey } from "../data/company-guidance";
+import { classifyCompanyTier, tierPromptSuffix } from "./_company-tier";
 
 declare const process: { env: Record<string, string | undefined> };
 const GROQ_KEY = process.env.GROQ_API_KEY || "";
@@ -218,8 +219,9 @@ The intro persona should be "Hiring Manager". Distribute questions across all th
     const safeCandidateName = candidateName ? sanitizeForLLM(candidateName, 60) : "";
     const candidateCtx = safeCandidateName ? `- Candidate's name: ${safeCandidateName}. Address them by first name in the intro. Use the name EXACTLY as provided — do NOT rearrange or abbreviate it.\n` : "";
 
+    const tierSuffix = tierPromptSuffix(classifyCompanyTier(companyName));
     const prompt = `You are an expert interviewer conducting a ${interviewType.replace(/-/g, " ")} mock interview for a ${targetRole} candidate. ${tone}
-${typeGuidance ? `\n${typeGuidance}\n` : ""}${languageContext ? `\nLANGUAGE INSTRUCTION: ${languageContext}\n` : ""}${experienceCalibration ? `\n${experienceCalibration}\n` : ""}
+${typeGuidance ? `\n${typeGuidance}\n` : ""}${languageContext ? `\nLANGUAGE INSTRUCTION: ${languageContext}\n` : ""}${experienceCalibration ? `\n${experienceCalibration}\n` : ""}${tierSuffix ? `\n${tierSuffix}\n` : ""}
 Context:
 ${candidateCtx}${companyContext ? `- ${companyContext}\n` : ""}${industryContext ? `- ${industryContext}\n` : ""}${focusContext ? `- ${focusContext}\n` : ""}${!isSalaryType && roleCompContext ? `- Role competencies to test: ${roleCompContext}\n` : ""}${resumeContext ? `- ${resumeContext}\n` : ""}${resumeIntelligence ? `- ${resumeIntelligence}\n` : ""}${jdContext ? `- ${jdContext}\n` : ""}${avoidTopics ? `- ${avoidTopics}\n` : ""}${weakSkillsContext ? `- ${weakSkillsContext}\n` : ""}
 Generate exactly ${stepCount} interview steps as a JSON array. Sequence: intro, ${Array(questionCount).fill("question").join(", ")}, closing. Do NOT include follow-up steps — those are generated dynamically based on the candidate's answers.

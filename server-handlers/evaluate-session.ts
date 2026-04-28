@@ -4,6 +4,7 @@ export const config = { runtime: "edge" };
 
 import { withAuthAndRateLimit, sanitizeForLLM, corsHeaders, withRequestId } from "./_shared";
 import { callLLM, extractJSON } from "./_llm";
+import { classifyCompanyTier, tierPromptSuffix } from "./_company-tier";
 
 declare const process: { env: Record<string, string | undefined> };
 const GROQ_KEY = process.env.GROQ_API_KEY || "";
@@ -565,7 +566,8 @@ export default async function handler(req: Request): Promise<Response> {
           .join("\n")
       : "";
 
-    const prompt = `You are a senior I/O-psychology-trained interview scorer. Produce a JSON report for this mock interview, calibrated to structured-interview rubrics (SHL UCF, STAR+L). Be honest and specific.
+    const tierSuffix = tierPromptSuffix(classifyCompanyTier(meta?.targetCompany));
+    const prompt = `You are a senior I/O-psychology-trained interview scorer. Produce a JSON report for this mock interview, calibrated to structured-interview rubrics (SHL UCF, STAR+L). Be honest and specific.${tierSuffix ? `\n\n${tierSuffix}` : ""}
 
 CONTEXT:
 Role: ${sanitizeForLLM(meta?.role || "general", 80)}
