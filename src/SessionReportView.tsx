@@ -724,6 +724,7 @@ export const SessionReportView = memo(function SessionReportView({
         const meta = {
           role: session.role,
           roleFamily,
+          type: session.type,
           targetCompany: user?.targetCompany || null,
           difficulty: (session.difficulty as "warmup" | "standard" | "hard") || "standard",
           duration: parseDurationSec(session.duration),

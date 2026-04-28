@@ -138,6 +138,7 @@ interface EvaluateRequest {
   meta: {
     role?: string;
     roleFamily?: "swe" | "pm" | "em" | "data" | "behavioral";
+    type?: string; // interview focus type (behavioral, case-study, technical, etc.)
     targetCompany?: string | null;
     level?: string | null;
     difficulty?: "warmup" | "standard" | "hard";
@@ -567,7 +568,26 @@ export default async function handler(req: Request): Promise<Response> {
       : "";
 
     const tierSuffix = tierPromptSuffix(classifyCompanyTier(meta?.targetCompany));
-    const prompt = `You are a senior I/O-psychology-trained interview scorer. Produce a JSON report for this mock interview, calibrated to structured-interview rubrics (SHL UCF, STAR+L). Be honest and specific.${tierSuffix ? `\n\n${tierSuffix}` : ""}
+    // Per-type rubric weights — different interview formats prize different
+    // dimensions. A perfect case-study answer is structurally rigorous; a
+    // perfect behavioral answer follows STAR; a perfect technical answer
+    // articulates trade-offs. Surface this to the scorer so the same generic
+    // 75/100 doesn't appear across very different formats.
+    const typeRubricWeight: Record<string, string> = {
+      "behavioral": "Weight HEAVILY: STAR completeness (Situation/Task/Action/Result fully present), specificity (names, numbers, dates), 'I' vs 'we' clarity, learning/reflection. De-weight: technical depth, framework breadth.",
+      "case-study": "Weight HEAVILY: structural rigor (explicit framework, MECE, hypothesis-driven), quantitative reasoning (back-of-envelope numbers, sanity checks), clarifying-question quality. De-weight: STAR structure, soft skills.",
+      "technical": "Weight HEAVILY: trade-off articulation (every choice has a stated cost), depth-tree handling (going 2-3 levels deep on a topic), correctness on technical claims, system-design completeness. De-weight: STAR structure, soft skills.",
+      "strategic": "Weight HEAVILY: framework recognition (RICE, OKR, etc.), real-experience anchoring (not aspirational), prioritization reasoning, business-acumen tells. De-weight: technical depth, STAR.",
+      "management": "Weight HEAVILY: actual people-management evidence (hire/fire/comp decisions owned), team-size calibration, difficult-conversation handling, system-thinking on team design. De-weight: technical depth.",
+      "hr-round": "Weight HEAVILY: motivation authenticity, self-awareness on weaknesses, company-research depth, communication clarity. De-weight: technical depth, framework breadth.",
+      "campus-placement": "Weight HEAVILY: fundamentals clarity, project ownership, learning agility, communication. De-weight: leadership, P&L. Calibrate expectations to fresher level.",
+      "salary-negotiation": "Weight HEAVILY: anchoring discipline, multi-lever negotiation (not just base), leverage usage (BATNA, competing offers), professional handling of pressure. De-weight: STAR, technical depth.",
+      "panel": "Weight HEAVILY: multi-audience awareness (different framing for HM vs TL vs HR), STAR for behavioral asks, depth for technical asks, cultural-fit signals for HR asks. Look for whether candidate adapted their tone across panelists.",
+      "government-psu": "Weight HEAVILY: balanced positioning, policy/scheme/article references, ethical reasoning rigor, current-affairs awareness, public-service genuineness.",
+      "teaching": "Weight HEAVILY: pedagogical concreteness (specific lesson plans, not platitudes), classroom-scenario handling, age-appropriate communication, demo-lesson clarity.",
+    };
+    const rubricWeight = meta?.type ? typeRubricWeight[meta.type] : "";
+    const prompt = `You are a senior I/O-psychology-trained interview scorer. Produce a JSON report for this mock interview, calibrated to structured-interview rubrics (SHL UCF, STAR+L). Be honest and specific.${tierSuffix ? `\n\n${tierSuffix}` : ""}${rubricWeight ? `\n\nRUBRIC WEIGHTS FOR THIS INTERVIEW TYPE:\n${rubricWeight}` : ""}
 
 CONTEXT:
 Role: ${sanitizeForLLM(meta?.role || "general", 80)}

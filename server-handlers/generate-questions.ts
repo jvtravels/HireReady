@@ -162,55 +162,81 @@ REALISTIC EXPECTATIONS: Should demonstrate P&L ownership, hiring at scale, inves
 - Questions should be appropriate for 0-2 years experience
 - Focus on: academic projects, internships, technical fundamentals, problem-solving approach, teamwork in college
 - Do NOT ask about years of professional experience, P&L ownership, or executive decisions
-- Include at least one question about a college project or academic achievement`,
+- Include at least one question about a college project or academic achievement
+- INDIAN CAMPUS PATTERNS: tailor to known formats when the company matches —
+  • TCS / Infosys / Wipro / Cognizant: emphasize fundamentals (DBMS, OS, OOP), willingness to relocate + work in shifts, "Spirit of Wipro / Infosys values" type questions, simple coding logic
+  • Product cos (Flipkart/Razorpay/Zomato): deeper project depth, ownership, "what would you do differently if you redid this project"
+  • Consulting (Deloitte, EY, KPMG): structured problem-solving on lightweight cases, communication clarity
+- "TELL ME ABOUT YOURSELF" DISCIPLINE: include at least one timed-monologue question. If the candidate rambles past 2 minutes, the follow-up should redirect: "Let me jump in — give me the same in 60 seconds, just the highlights."`,
       "hr-round": `This is an HR ROUND interview focusing on culture fit, motivation, and soft skills.
 - Focus on: why this company, career goals, work-life balance expectations, conflict resolution, teamwork values
 - Do NOT ask deep technical or system design questions
-- Include questions about motivation, cultural fit, and communication style`,
+- Include questions about motivation, cultural fit, and communication style
+- INDIAN HR ESSENTIALS: at least one of these MUST appear in the question set — current/expected CTC + reasoning, notice period + flexibility, "what do you know about our company", "what would you do if you got a higher offer just before joining", relocation/shift willingness.
+- FAKE-WEAKNESS DETECTOR: if the candidate names a "fake weakness" ("I'm a perfectionist", "I work too hard", "I care too much"), the follow-up MUST push for a real one: "That's a strength dressed as a weakness. Tell me a real one — something a manager has actually given you feedback on."`,
       "case-study": `This is a CASE STUDY interview.
 - Present a specific business problem/scenario for the candidate to analyze
 - Questions should ask the candidate to structure their thinking, identify key issues, propose solutions, and estimate impact
 - Use frameworks: market sizing, profitability analysis, product launch, competitive strategy
-- Do NOT ask standard behavioral STAR questions`,
+- Do NOT ask standard behavioral STAR questions
+- DEMAND STRUCTURE: every answer must show explicit framework (MECE, hypothesis-driven, profit = revenue - cost, etc.). If the candidate jumps to a solution without structuring, the next follow-up MUST force them to step back: "Before solutions — what's your framework for breaking this down?"
+- DEMAND NUMBERS: the candidate must produce concrete estimates (market size, customer count, % impact). Vague answers get pushed: "Give me a number, even if rough — what's your back-of-envelope?"
+- PLAY THE CASE: as facts come up in answers, you may *reveal* additional context the candidate should ask for: "Good question — assume CAC is ₹2000 and retention is 60%." Reward candidates who ask the right clarifying questions.`,
       "government-psu": `This is a GOVERNMENT/PSU interview.
 - Focus on: general knowledge, current affairs, ethical decision-making, public service motivation, administrative skills
 - Questions should reflect government/PSU interview patterns: panel-style, formal, testing integrity and dedication
-- Include questions about why public service, handling bureaucracy, and ethical dilemmas`,
+- Include questions about why public service, handling bureaucracy, and ethical dilemmas
+- DAF-STYLE CROSS-QUESTIONING: probe biographical details from the resume specifically. If the candidate mentions a hometown, district, hobby, or college — ask a follow-up that tests their depth on that specific detail (this mirrors UPSC/SSC interview style).
+- POLICY REFERENCE EXPECTATION: reward candidates who reference specific policies, schemes (e.g. PM Awas, MGNREGA, PM-KISAN, Digital India, Make in India) or constitutional provisions (Article 14, 19, 21, 356). Push back on vague answers: "Which specific scheme are you thinking of?"
+- BALANCED POSITIONING: avoid extreme positions. The right answer balances economic reality with social impact, central vs state authority, individual rights vs public good. Push candidates who pick one side: "What about the counterargument?"`,
       "management": `This is a MANAGEMENT-level interview.
 - Focus on: team building, delegation, performance management, strategic planning, cross-functional leadership
 - Questions should test leadership philosophy, handling underperformers, scaling teams, and organizational design
-- Expect answers with org-wide impact and people management depth`,
+- Expect answers with org-wide impact and people management depth
+- CALIBRATE TO SENIORITY: First questions should establish team size and scope ("how many direct reports? how many indirect?"). Subsequent questions calibrate to that — a manager of 3 should not be asked about org redesigns; a director of 30+ should not be asked about basic 1:1 cadence. If team size is small (≤5), prioritize: hiring first reports, IC→manager transition, time allocation. If large (>15), prioritize: org design, manager-of-managers, cross-skip dynamics.
+- IC-vs-PEOPLE SIGNAL: probe whether the candidate has actually managed people (hire/fire/comp decisions) vs only "tech lead" influence. The follow-up should ask: "Walk me through the last hire/fire/promo decision YOU owned."`,
       "behavioral": `This is a BEHAVIORAL interview using the STAR method.
 - Every question must ask about a specific past experience or situation
 - Expect answers structured as: Situation → Task → Action → Result
-- Test different competencies: leadership, conflict resolution, decision-making, collaboration, failure/learning
+- Test different competencies — DISTINCT ones: leadership, conflict resolution, decision-making, collaboration, failure/learning, ambiguity, prioritization. Do NOT generate two questions on the same competency.
 - Do NOT ask hypothetical or case-study questions — ask "Tell me about a time when..."
-- Each question should target a distinct competency`,
+- DIFFICULTY PHRASING: Calibrate each question's specificity demand to the difficulty level —
+  • warmup: "Tell me about a time when..." (broad invitation)
+  • standard: "Walk me through a specific moment..." (specific moment, not the general approach)
+  • intense: "Give me the moment-by-moment of how you handled the first 24 hours of..." (moment-by-moment, names, numbers, what you said in the room)`,
       "strategic": `This is a STRATEGIC THINKING interview.
 - Questions should test vision-setting, roadmap planning, business alignment, and long-term thinking
 - Ask about resource allocation, competitive strategy, market positioning, and stakeholder influence
 - Expect candidates to demonstrate business acumen, prioritization frameworks, and strategic trade-offs
-- Include at least one question about navigating uncertainty or pivoting strategy`,
+- Include at least one question about navigating uncertainty or pivoting strategy
+- ANCHOR TO REAL EXPERIENCE: aspirational answers ("I would do X, Y, Z") are weak. Every strategic answer must reference an actual past situation where the candidate did this. Pushback if missing: "That's the framework — now show me where you actually applied this. What did you decide, and what happened?"
+- FRAMEWORK RECOGNITION: reward explicit framework use (RICE, ICE, OKR, Eisenhower, North Star Metric, Wardley map, JTBD). When candidate uses one, name it back to confirm: "So you used RICE here — how did you weight the R vs the I?"`,
       "technical": `This is a TECHNICAL LEADERSHIP interview.
 - Focus on: system design, architecture decisions, technology evaluation, tech debt management, scaling systems
 - Questions should test both depth (specific technical trade-offs) and breadth (cross-system thinking)
 - Ask about production incidents, migration strategies, build-vs-buy decisions, and performance optimization
-- Do NOT ask pure coding/algorithm questions — focus on architecture and technical judgment`,
+- Do NOT ask pure coding/algorithm questions — focus on architecture and technical judgment
+- DEPTH-TREE PROBING: when a candidate names a technology choice ("I'd use Kafka", "we picked DynamoDB"), the follow-up MUST drill 2-3 levels: "Why Kafka over Kinesis or RabbitMQ?" → "How do you handle exactly-once semantics?" → "What's your rebalancing strategy when consumers scale?". Don't accept surface-level claims.
+- TRADE-OFF DEMAND: every architectural decision must have an articulated trade-off. If the candidate says "we used X" without saying what it cost them, push: "What did you give up by choosing X? Nothing's free."
+- SKEPTICAL POSTURE: don't accept confidently wrong answers. If a candidate says something dubious (e.g. "Kafka is stateless" or "Postgres can't scale beyond 1TB"), gently challenge: "Hmm — say more about what you mean by that. I want to make sure I follow."`,
       "teaching": `This is a TEACHING POSITION interview.
 - Focus on: teaching philosophy, classroom management, student engagement, pedagogical methods
 - Ask about handling diverse learners, integrating technology, parent communication, and curriculum design
 - Include scenarios about student discipline, learning assessments, and inclusive education
-- Questions should reflect typical school/college teaching interview patterns`,
+- Questions should reflect typical school/college teaching interview patterns
+- TIER-AWARENESS: school-tier matters. CBSE/ICSE focus on board-exam outcomes; state-board on regional language + practical skills; IB/IGCSE on inquiry-based and research projects. If the candidate's role/company hints at a tier, calibrate questions accordingly.
+- CONCRETE PEDAGOGY DEMAND: vague answers ("I make it interactive") get pushed: "Walk me through a specific lesson plan — opening hook, main activity, assessment. Pick one topic from your subject."
+- DEMO-LESSON SIMULATION: include at least one question that simulates a mini-demo: "Explain photosynthesis to me as if I were a Class 7 student. Take 90 seconds." Reward clarity, age-appropriate language, examples.`,
     };
     const typeGuidance = TYPE_GUIDANCE[interviewType] || "";
 
     const panelNote = interviewType === "panel"
       ? `\nThis is a PANEL interview with three panelists. Include a "persona" field in EVERY question object.
-Panelist roles and what they should ask:
-- "Hiring Manager": leadership, strategic vision, team management, business impact, stakeholder alignment
-- "Technical Lead": architecture, system design, technical depth, trade-offs, scalability, debugging
-- "HR Partner": cultural fit, conflict resolution, motivation, teamwork, communication style, values alignment
-The intro persona should be "Hiring Manager". Distribute questions across all three panelists. The closing should be from "Hiring Manager".`
+Panelist roles, topics, AND distinct personalities (tone matters — they should sound like different people):
+- "Hiring Manager" — TOPICS: leadership, strategic vision, team management, business impact, stakeholder alignment. TONE: warm, big-picture, asks the "why" questions, frames things in terms of customer/business impact. Phrases like "Help me understand...", "What's the story behind that?".
+- "Technical Lead" — TOPICS: architecture, system design, technical depth, trade-offs, scalability, debugging. TONE: skeptical-but-fair, drills into specifics, tests for surface-level claims. Phrases like "Hmm, but what about...", "Walk me through the trade-off...", "How would that scale to 10x?".
+- "HR Partner" — TOPICS: cultural fit, conflict resolution, motivation, teamwork, communication style, values alignment. TONE: empathetic, observational, listens for tone and word choice. Phrases like "How did that make you feel?", "Tell me more about how the team reacted", "What did you learn about yourself?".
+The intro persona should be "Hiring Manager". Distribute questions across all three panelists. The closing should be from "Hiring Manager". Each persona's aiText should reflect their TONE, not just their TOPIC — a Technical Lead question should feel skeptical, an HR Partner question should feel empathetic.`
       : "";
 
     const questionCount = isMini ? (isSalaryType ? 5 : 3) : 5;

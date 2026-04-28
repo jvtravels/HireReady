@@ -1019,6 +1019,7 @@ export interface EvaluateSessionInput {
   meta: {
     role?: string;
     roleFamily?: "swe" | "pm" | "em" | "data" | "behavioral";
+    type?: string; // interview focus type — drives per-type rubric weights
     targetCompany?: string | null;
     level?: string | null;
     difficulty?: "warmup" | "standard" | "hard";
