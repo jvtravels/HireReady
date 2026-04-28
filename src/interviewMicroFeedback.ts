@@ -21,9 +21,6 @@ export function computeMicroFeedback(
   if (interviewType === "government-psu") {
     return govPsuFeedback(answerText, wordCount);
   }
-  if (interviewType === "teaching") {
-    return teachingFeedback(answerText, wordCount);
-  }
   if (interviewType === "case-study") {
     return caseStudyFeedback(answerText, wordCount);
   }
@@ -165,36 +162,6 @@ function govPsuFeedback(text: string, wordCount: number): MicroFeedbackResult {
     feedback = "Strong answer — policy-aware and balanced. Well articulated.";
   } else {
     feedback = "Good response — clear reasoning and relevant context.";
-  }
-  return { feedback, score: clamp(score) };
-}
-
-/* ─── Teaching ─── */
-function teachingFeedback(text: string, wordCount: number): MicroFeedbackResult {
-  const mentionsStudents = /student|learner|child|classroom|class|pupil/i.test(text);
-  const mentionsPedagogy = /pedagogy|curriculum|lesson plan|assessment|learning objective|differentiat|scaffold|bloom|formative|summative|inclusive|engagement/i.test(text);
-  const mentionsExample = /for example|for instance|in my class|when I taught|one time|in a lesson/i.test(text);
-  const mentionsTech = /technology|digital|online|app|video|interactive|smart board|gamif/i.test(text);
-
-  let score = 50;
-  if (wordCount >= 50) score += 10;
-  if (mentionsStudents) score += 10;
-  if (mentionsPedagogy) score += 15;
-  if (mentionsExample) score += 10;
-  if (mentionsTech) score += 5;
-  if (wordCount < 30) score -= 15;
-
-  let feedback: string | null;
-  if (wordCount < 30) {
-    feedback = "Elaborate more — describe your approach and reasoning with examples.";
-  } else if (!mentionsStudents && !mentionsPedagogy) {
-    feedback = "Tip: Center your answer on student outcomes — how does this approach help learners?";
-  } else if (!mentionsExample) {
-    feedback = "Good thinking! Add a specific classroom example to make it concrete.";
-  } else if (mentionsPedagogy && mentionsExample) {
-    feedback = "Excellent — practical, student-centered, and well-supported with examples.";
-  } else {
-    feedback = "Good answer — clear and student-focused.";
   }
   return { feedback, score: clamp(score) };
 }

@@ -94,31 +94,6 @@ describe("computeMicroFeedback", () => {
     });
   });
 
-  describe("teaching", () => {
-    it("asks to elaborate for short answers", () => {
-      const r = computeMicroFeedback("I teach well.", "teaching", []);
-      expect(r.feedback).toContain("Elaborate");
-    });
-
-    it("suggests student focus when missing", () => {
-      const text = pad("I use technology and various methodologies to create effective learning experiences that bring good results in examinations and tests across all the schools I have worked in during my career", 55);
-      const r = computeMicroFeedback(text, "teaching", []);
-      expect(r.feedback).toContain("student outcomes");
-    });
-
-    it("asks for examples when pedagogy mentioned but no example", () => {
-      const text = pad("I use scaffolding techniques with my students and focus on formative assessment to track their learning objectives across the classroom setting throughout the academic year", 55);
-      const r = computeMicroFeedback(text, "teaching", []);
-      expect(r.feedback).toContain("example");
-    });
-
-    it("praises pedagogy plus example", () => {
-      const text = pad("I use differentiated instruction with my students and for example in my class last year I grouped learners by reading level for scaffolded activities that targeted specific learning objectives", 55);
-      const r = computeMicroFeedback(text, "teaching", []);
-      expect(r.feedback).toContain("Excellent");
-    });
-  });
-
   describe("case-study", () => {
     it("requests structure for short answers", () => {
       const r = computeMicroFeedback("Increase revenue.", "case-study", []);

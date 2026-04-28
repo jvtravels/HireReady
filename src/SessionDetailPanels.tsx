@@ -32,7 +32,6 @@ export function normalizeType(type: string): string {
     technical: "Technical", case: "Case Study",
     "campus-placement": "Campus Placement", "hr-round": "HR Round",
     management: "Management", "government-psu": "Government & PSU",
-    teaching: "Teaching",
   };
   return map[type] || type;
 }
@@ -624,7 +623,7 @@ export interface WhatsNextProps {
 
 export const WhatsNext = memo(function WhatsNext({ session, skillEntries, isFreeUser, onNavigate }: WhatsNextProps) {
   const weakest = skillEntries.length > 0 ? [...skillEntries].sort((a, b) => a.score - b.score)[0] : null;
-  const typeRotation = ["behavioral", "case-study", "technical", "strategic", "campus-placement", "hr-round", "management", "government-psu", "teaching"];
+  const typeRotation = ["behavioral", "case-study", "technical", "strategic", "campus-placement", "hr-round", "management", "government-psu"];
   const currentIdx = typeRotation.indexOf(session.type);
   const nextType = typeRotation[(currentIdx + 1) % typeRotation.length] || "behavioral";
   const nextDifficulty = session.score >= 85 ? "intense" : session.score < 70 ? "warmup" : "standard";

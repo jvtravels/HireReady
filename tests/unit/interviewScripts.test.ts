@@ -122,7 +122,6 @@ describe("scriptsByType", () => {
     "hr-round",
     "management",
     "government-psu",
-    "teaching",
     "panel",
     "salary-negotiation",
   ];
@@ -223,24 +222,20 @@ describe("getScript", () => {
     expect(script[0].aiText).toContain("resume");
   });
 
-  it("uses encouraging closing for encouraging learning style", () => {
-    const user = makeUser({ learningStyle: "encouraging" });
-    const script = getScript("behavioral", null, user);
-    const closing = script[script.length - 1];
-    expect(closing.aiText).toContain("Really great work");
-  });
-
-  it("uses direct closing by default", () => {
-    const user = makeUser({ learningStyle: "direct" });
-    const script = getScript("behavioral", null, user);
-    const closing = script[script.length - 1];
-    expect(closing.aiText).toContain("direct feedback");
-  });
-
-  it("mentions company in closing when provided", () => {
+  it("closing is a sign-off, not a question (no waitForUser dead-end)", () => {
     const user = makeUser();
     const script = getScript("behavioral", null, user);
     const closing = script[script.length - 1];
-    expect(closing.aiText).toContain("Acme Corp");
+    expect(closing.type).toBe("closing");
+    expect(closing.waitForUser).toBe(false);
+    // Sign-off mentions the report-generation cue
+    expect(closing.aiText).toMatch(/report/i);
+  });
+
+  it("personalizes closing with the candidate's first name when provided", () => {
+    const user = makeUser({ name: "Jane Doe" });
+    const script = getScript("behavioral", null, user);
+    const closing = script[script.length - 1];
+    expect(closing.aiText).toContain("Jane");
   });
 });

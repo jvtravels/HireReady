@@ -96,7 +96,6 @@ export default async function handler(req: Request): Promise<Response> {
       "hr-round": "For this HR round, weight communication, self-awareness, cultural fit, and motivation highest. Technical depth is not expected.",
       management: "For this management interview, weight leadership, people management, stakeholder alignment, and strategic thinking highest.",
       "government-psu": "For this government/public sector interview, weight current affairs knowledge, ethical reasoning, communication, and policy awareness highest. Technical depth is secondary.",
-      teaching: "For this teaching interview, weight pedagogy, classroom management, communication clarity, and student-centered thinking highest.",
       "salary-negotiation": "For this salary negotiation session, weight communication, confidence, negotiation strategy, and composure highest. Technical depth is not relevant.",
       "panel": "For this panel interview, the candidate faced THREE panelists: Hiring Manager (leadership, strategy), Technical Lead (architecture, technical depth), and HR Partner (cultural fit, soft skills). In the transcript, panelist questions are prefixed with [Role]. Evaluate how well the candidate adapted their answers to each panelist's perspective. Note which panelist's questions the candidate handled best/worst in your feedback.",
     };
@@ -107,7 +106,6 @@ export default async function handler(req: Request): Promise<Response> {
     const isSalaryNeg = interviewType === "salary-negotiation";
     const isCampusPlacement = interviewType === "campus-placement";
     const isGovPsu = interviewType === "government-psu";
-    const isTeaching = interviewType === "teaching";
     const isHrRound = interviewType === "hr-round";
     const isCaseStudy = interviewType === "case-study";
 
@@ -134,13 +132,6 @@ NOTE: This is a CAMPUS PLACEMENT interview for freshers. Do NOT penalize for lac
 - 60-74: Basic understanding of the topic but lacks depth — generic answers without policy specifics, limited current affairs awareness, or overly idealistic without practical grounding.
 - Below 60: Off-topic, factually incorrect, or shows no awareness of governance/policy context.
 NOTE: Do NOT evaluate using STAR structure. Government interviews test: policy awareness, ethical reasoning, balanced analysis, administrative aptitude, and public service motivation. Score based on these criteria.`;
-    } else if (isTeaching) {
-      scoringRubric = `Scoring rubric (TEACHING — evaluate pedagogical thinking and student-centered approach):
-- 90-100: Demonstrates clear teaching philosophy, uses specific classroom examples, shows student-centered thinking with differentiated approaches, references pedagogical methods or frameworks, addresses diverse learner needs.
-- 75-89: Good pedagogical awareness with some practical examples, but missing differentiation strategies or specific classroom management techniques.
-- 60-74: Basic answers about teaching with generic approaches — lacks specific examples, limited awareness of inclusive education or modern pedagogy.
-- Below 60: Off-topic, shows no understanding of teaching methodology, or purely theoretical without practical application.
-NOTE: Do NOT evaluate using STAR/business metrics. Teaching interviews test: pedagogy, classroom management, student engagement, inclusivity, and curriculum thinking. Score based on these criteria.`;
     } else if (isHrRound) {
       scoringRubric = diffLevel === "warmup"
         ? `Scoring rubric (HR ROUND — WARMUP — be encouraging):

@@ -66,7 +66,7 @@ export function normalizeType(type: string): string {
     technical: "Technical", case: "Case Study",
     "campus-placement": "Campus Placement", "hr-round": "HR Round",
     management: "Management", "government-psu": "Government & PSU",
-    teaching: "Teaching", "salary-negotiation": "Salary Negotiation",
+    "salary-negotiation": "Salary Negotiation",
     panel: "Panel Interview",
   };
   return map[type] || type;

@@ -584,7 +584,6 @@ export default async function handler(req: Request): Promise<Response> {
       "salary-negotiation": "Weight HEAVILY: anchoring discipline, multi-lever negotiation (not just base), leverage usage (BATNA, competing offers), professional handling of pressure. De-weight: STAR, technical depth.",
       "panel": "Weight HEAVILY: multi-audience awareness (different framing for HM vs TL vs HR), STAR for behavioral asks, depth for technical asks, cultural-fit signals for HR asks. Look for whether candidate adapted their tone across panelists.",
       "government-psu": "Weight HEAVILY: balanced positioning, policy/scheme/article references, ethical reasoning rigor, current-affairs awareness, public-service genuineness.",
-      "teaching": "Weight HEAVILY: pedagogical concreteness (specific lesson plans, not platitudes), classroom-scenario handling, age-appropriate communication, demo-lesson clarity.",
     };
     const rubricWeight = meta?.type ? typeRubricWeight[meta.type] : "";
     const prompt = `You are a senior I/O-psychology-trained interview scorer. Produce a JSON report for this mock interview, calibrated to structured-interview rubrics (SHL UCF, STAR+L). Be honest and specific.${tierSuffix ? `\n\n${tierSuffix}` : ""}${rubricWeight ? `\n\nRUBRIC WEIGHTS FOR THIS INTERVIEW TYPE:\n${rubricWeight}` : ""}

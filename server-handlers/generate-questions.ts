@@ -219,14 +219,6 @@ REALISTIC EXPECTATIONS: Should demonstrate P&L ownership, hiring at scale, inves
 - DEPTH-TREE PROBING: when a candidate names a technology choice ("I'd use Kafka", "we picked DynamoDB"), the follow-up MUST drill 2-3 levels: "Why Kafka over Kinesis or RabbitMQ?" → "How do you handle exactly-once semantics?" → "What's your rebalancing strategy when consumers scale?". Don't accept surface-level claims.
 - TRADE-OFF DEMAND: every architectural decision must have an articulated trade-off. If the candidate says "we used X" without saying what it cost them, push: "What did you give up by choosing X? Nothing's free."
 - SKEPTICAL POSTURE: don't accept confidently wrong answers. If a candidate says something dubious (e.g. "Kafka is stateless" or "Postgres can't scale beyond 1TB"), gently challenge: "Hmm — say more about what you mean by that. I want to make sure I follow."`,
-      "teaching": `This is a TEACHING POSITION interview.
-- Focus on: teaching philosophy, classroom management, student engagement, pedagogical methods
-- Ask about handling diverse learners, integrating technology, parent communication, and curriculum design
-- Include scenarios about student discipline, learning assessments, and inclusive education
-- Questions should reflect typical school/college teaching interview patterns
-- TIER-AWARENESS: school-tier matters. CBSE/ICSE focus on board-exam outcomes; state-board on regional language + practical skills; IB/IGCSE on inquiry-based and research projects. If the candidate's role/company hints at a tier, calibrate questions accordingly.
-- CONCRETE PEDAGOGY DEMAND: vague answers ("I make it interactive") get pushed: "Walk me through a specific lesson plan — opening hook, main activity, assessment. Pick one topic from your subject."
-- DEMO-LESSON SIMULATION: include at least one question that simulates a mini-demo: "Explain photosynthesis to me as if I were a Class 7 student. Take 90 seconds." Reward clarity, age-appropriate language, examples.`,
     };
     const typeGuidance = TYPE_GUIDANCE[interviewType] || "";
 
