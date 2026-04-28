@@ -2147,7 +2147,25 @@ export function useInterviewEngine() {
       lengthGuidance = "Consider wrapping up";
     }
 
-    return { wordCount, wpm, fillerCount, lengthGuidance };
+    // Live coaching signals — surface "I" vs "we" framing and specificity
+    // (numbers/names/dates). Helps candidates self-correct mid-answer instead
+    // of waiting for the report. Research-backed: real-time biofeedback
+    // outperforms post-game review for behavior change.
+    const iCount = (text.match(/\bi\b/gi) || []).length;
+    const weCount = (text.match(/\bwe\b/gi) || []).length;
+    const ownership: "i-led" | "balanced" | "we-heavy" | null =
+      (iCount + weCount) < 2 ? null
+      : iCount >= weCount * 1.2 ? "i-led"
+      : weCount > iCount * 1.5 ? "we-heavy"
+      : "balanced";
+    const specificityHits =
+      (currentTranscript.match(/\d+%|\d+x|₹[\d,]+|\$[\d,]+|\d+\s*(users|customers|months|days|people|team|engineers|percent|crore|lakh|lpa|qps|ms|gb|tb)/gi) || []).length;
+    let specificityHint: string | null = null;
+    if (wordCount >= 40 && specificityHits === 0) {
+      specificityHint = "Add a number — metric, count, or %";
+    }
+
+    return { wordCount, wpm, fillerCount, lengthGuidance, ownership, specificityHits, specificityHint };
   }, [currentTranscript, answerTimer]);
 
   const displayRole = targetRole || user?.targetRole || interviewType.split("-").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");

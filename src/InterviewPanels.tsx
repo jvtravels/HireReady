@@ -442,7 +442,7 @@ export const UserAnswerArea = memo(function UserAnswerArea({ currentTranscript, 
   textareaRef: React.RefObject<HTMLTextAreaElement | null>;
   nextBtnRef: React.RefObject<HTMLButtonElement | null>;
   currentStep: number; interviewScriptLength: number;
-  liveMetrics: { wordCount: number; wpm: number; fillerCount: number; lengthGuidance: string | null } | null;
+  liveMetrics: { wordCount: number; wpm: number; fillerCount: number; lengthGuidance: string | null; ownership?: "i-led" | "balanced" | "we-heavy" | null; specificityHits?: number; specificityHint?: string | null } | null;
 }) {
   const [isEditingTranscript, setIsEditingTranscript] = useState(false);
   const hintDismissed = useRef(false);
@@ -614,6 +614,36 @@ export const UserAnswerArea = memo(function UserAnswerArea({ currentTranscript, 
             </span>
             <span style={{ fontFamily: font.ui, fontSize: 10, color: c.stone }}>words</span>
           </div>
+          {liveMetrics.ownership && (
+            <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+              <span style={{
+                fontFamily: font.mono, fontSize: 11, fontWeight: 600,
+                color: liveMetrics.ownership === "we-heavy" ? c.ember : liveMetrics.ownership === "i-led" ? c.sage : c.gilt,
+              }}>
+                {liveMetrics.ownership === "we-heavy" ? "we" : liveMetrics.ownership === "i-led" ? "I" : "I/we"}
+              </span>
+              <span style={{ fontFamily: font.ui, fontSize: 10, color: c.stone }}>voice</span>
+            </div>
+          )}
+          {typeof liveMetrics.specificityHits === "number" && (
+            <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+              <span style={{
+                fontFamily: font.mono, fontSize: 11, fontWeight: 600,
+                color: liveMetrics.specificityHits > 0 ? c.sage : (liveMetrics.wordCount >= 40 ? c.ember : c.stone),
+              }}>
+                {liveMetrics.specificityHits}
+              </span>
+              <span style={{ fontFamily: font.ui, fontSize: 10, color: c.stone }}>metrics</span>
+            </div>
+          )}
+          {liveMetrics.specificityHint && (
+            <>
+              <div style={{ width: 1, height: 12, background: "rgba(245,242,237,0.08)" }} />
+              <span style={{ fontFamily: font.ui, fontSize: 10, color: c.ember, fontStyle: "italic" }}>
+                {liveMetrics.specificityHint}
+              </span>
+            </>
+          )}
           {liveMetrics.lengthGuidance && (
             <>
               <div style={{ width: 1, height: 12, background: "rgba(245,242,237,0.08)" }} />
