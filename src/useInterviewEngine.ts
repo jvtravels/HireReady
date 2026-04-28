@@ -897,12 +897,19 @@ export function useInterviewEngine() {
     }
 
     // Whether this step should get a reaction phrase (question/follow-up, not first step).
-    // Real interviewers don't fill every gap — strategic silence (~20% of decent answers)
-    // forces the candidate to elaborate and feels much more human than constant filler.
+    // Smart silence: real interviewers go quiet specifically after a vague answer
+    // that's missing one detail — the silence pulls the missing detail out of the
+    // candidate (Stivers et al. 2009). Random silence after strong answers is just
+    // weird, so we gate on (a) decent answer with (b) no concrete metric / number.
     const baseShouldUseThinkingPhrase = currentStep > 0 && (step.type === "question" || step.type === "follow-up" || (step.type === "closing" && interviewType === "salary-negotiation"));
     const lastQ = lastAnswerQualityRef.current;
-    const allowStrategicSilence = baseShouldUseThinkingPhrase && (lastQ === "decent" || lastQ === "strong") && interviewType !== "salary-negotiation";
-    const shouldUseThinkingPhrase = baseShouldUseThinkingPhrase && !(allowStrategicSilence && Math.random() < 0.2);
+    const lastA = lastAnswerTextRef.current || "";
+    const lastHasMetric = /\d+%|\d+x|₹[\d,]+|\$[\d,]+|\d+\s*(users|customers|months|days|people|team|engineers|percent|crore|lakh|lpa)/i.test(lastA);
+    // Silence is most powerful when the answer was decent-but-vague (good content,
+    // no number). Skip for salary-neg (silence reads as pressure tactic, not coaching)
+    // and for genuinely weak answers (silence on weak feels punitive — they need help).
+    const silenceProductive = baseShouldUseThinkingPhrase && lastQ === "decent" && !lastHasMetric && interviewType !== "salary-negotiation";
+    const shouldUseThinkingPhrase = baseShouldUseThinkingPhrase && !(silenceProductive && Math.random() < 0.4);
 
     // Build context-aware reaction phrase
     let thinkingPhrase: string | null = null;
