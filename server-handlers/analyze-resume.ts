@@ -3,6 +3,7 @@
 export const config = { runtime: "edge" };
 
 import { withAuthAndRateLimit, sanitizeForLLM, corsHeaders, withRequestId } from "./_shared";
+import { captureServerEvent, captureServerException, distinctIdFrom } from "./_posthog";
 import { callLLM, extractJSON } from "./_llm";
 import {
   computeResumeTextHash,
@@ -223,12 +224,19 @@ CRITICAL RULES:
       }
     }
 
+    await captureServerEvent("resume_uploaded", distinctIdFrom(req, auth.userId), {
+      resume_version_id: resumeVersionId,
+      cached: false,
+      latency_ms: Date.now() - t0,
+    }, req);
+
     return new Response(JSON.stringify({ profile, resumeVersionId, cached: false }), { status: 200, headers });
   } catch (err) {
     const totalMs = Date.now() - t0;
     const isTimeout = err instanceof Error && (err.name === "AbortError" || err.message.includes("abort"));
     const errMsg = err instanceof Error ? err.message : String(err);
     console.error(`[analyze-resume] FAILED after ${totalMs}ms (${isTimeout ? "timeout" : "error"}): ${errMsg.slice(0, 200)}`);
+    await captureServerException(err, distinctIdFrom(req, auth.userId), { endpoint: "analyze-resume", timeout: isTimeout });
     return new Response(
       JSON.stringify({ error: isTimeout ? "Analysis timed out — please try again" : `Analysis error: ${errMsg.slice(0, 100)}` }),
       { status: isTimeout ? 504 : 500, headers },

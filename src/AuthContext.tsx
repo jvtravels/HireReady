@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useCallback, useEffect, useRef, ty
 import { useRouter, usePathname } from "next/navigation";
 import { track } from "@vercel/analytics";
 import { getSupabase, preloadSupabase, supabaseConfigured, getProfile, upsertProfile, type Profile } from "./supabase";
+import { captureClientEvent, identifyClient, resetClient } from "./posthogClient";
 
 import type { Session } from "@supabase/supabase-js";
 import type { StoredResume } from "./resumeParser";
@@ -719,6 +720,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(null);
 
       track("signup_completed", { method: "email" });
+      if (userId) {
+        identifyClient(userId, { email, name, signup_method: "email" });
+        captureClientEvent("user_signed_up", { method: "email", email });
+      }
       return { success: true, userId };
     } finally {
       signingUpRef.current = false;
@@ -865,6 +870,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }).catch(err => console.warn("[auth] login rate-limit clear failed (non-blocking):", err?.message));
     logAuditEvent("login_success", { email, method: "email" });
     track("login_success");
+    if (data?.user?.id) {
+      identifyClient(data.user.id, { email });
+      captureClientEvent("user_logged_in", { method: "email" });
+    }
     return { success: true };
   }, []);
 
@@ -943,6 +952,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(async () => {
     logAuditEvent("logout", { userId: user?.id });
+    resetClient();
     setUser(null);
     // Clear stored session tokens BEFORE signOut to prevent the routing guard
     // from re-restoring the session via hasStoredSession() retry logic

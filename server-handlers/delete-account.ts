@@ -8,6 +8,7 @@ import {
   supabaseAnonKey,
   escapeHtml,
 } from "./_shared";
+import { captureServerEvent } from "./_posthog";
 
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 const RESEND_API_KEY = (process.env.RESEND_API_KEY || "").trim();
@@ -240,6 +241,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       // Data already deleted but auth record remains — report partial failure
       return res.status(207).json({ success: true, partial: true, warning: "Account data deleted but auth cleanup incomplete. You can still sign up again with the same email." });
     }
+
+    await captureServerEvent("account_deleted", userId, { mode: "hard" });
 
     return res.status(200).json({ success: true });
   } catch (err) {

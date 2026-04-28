@@ -8,6 +8,7 @@ import {
   supabaseAnonKey,
   escapeHtml,
 } from "./_shared";
+import { captureServerEvent } from "./_posthog";
 
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 const RAZORPAY_KEY_ID = (process.env.RAZORPAY_KEY_ID || "").trim();
@@ -170,6 +171,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         console.warn("[reactivate] Confirmation email failed (non-critical):", emailErr);
       }
     }
+
+    await captureServerEvent("subscription_reactivated", userId, {
+      tier: profile?.subscription_tier || "unknown",
+      next_billing: profile?.subscription_end || null,
+    });
 
     return res.status(200).json({ success: true });
   } catch (err) {

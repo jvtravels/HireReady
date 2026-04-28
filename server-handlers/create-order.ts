@@ -9,6 +9,7 @@ import {
   supabaseUrl,
   supabaseAnonKey,
 } from "./_shared";
+import { captureServerEvent } from "./_posthog";
 
 const RAZORPAY_KEY_ID = (process.env.RAZORPAY_KEY_ID || "").trim();
 const RAZORPAY_KEY_SECRET = (process.env.RAZORPAY_KEY_SECRET || "").trim();
@@ -193,6 +194,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         headers: { Authorization: `Bearer ${UPSTASH_TOKEN}` },
       }).catch(() => {});
     }
+
+    await captureServerEvent("checkout_started", resolvedUserId || "anonymous", {
+      plan,
+      amount: order.amount,
+      currency: order.currency,
+      order_id: order.id,
+      quantity,
+    });
 
     return res.status(200).json({
       orderId: order.id,

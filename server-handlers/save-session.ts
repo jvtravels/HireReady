@@ -23,6 +23,7 @@ export const config = { runtime: "edge" };
 import { withAuthAndRateLimit, corsHeaders, withRequestId } from "./_shared";
 import { computeCurrentStreak, pickStreakMilestone } from "./_streak-reward";
 import { resolveActiveResumeVersionId } from "./_resume-versioning";
+import { captureServerEvent, distinctIdFrom } from "./_posthog";
 
 declare const process: { env: Record<string, string | undefined> };
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || "";
@@ -253,6 +254,12 @@ export default async function handler(req: Request): Promise<Response> {
   }
 
   console.log(`[save-session] OK user=${auth.userId.slice(0, 8)} session=${sessionRow.id.slice(0, 8)} practiceAppended=${practiceAppended} streakReward=${streakReward ? streakReward.milestone : "-"} stripped=${strippedSession.join(",") || "-"} latency=${Date.now() - t0}ms`);
+
+  await captureServerEvent("interview_completed", distinctIdFrom(req, auth.userId), {
+    session_id: sessionRow.id,
+    streak_milestone: streakReward?.milestone ?? null,
+    practice_appended: practiceAppended,
+  }, req);
 
   return new Response(JSON.stringify({
     ok: true,

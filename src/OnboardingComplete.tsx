@@ -5,6 +5,7 @@ import { c, font } from "./tokens";
 import { useAuth } from "./AuthContext";
 import { getUserSessions } from "./supabase";
 import { FREE_SESSION_LIMIT } from "./dashboardData";
+import { captureClientEvent } from "./posthogClient";
 
 function scoreLabelColor(score: number) {
   if (score >= 85) return c.sage;
@@ -33,6 +34,7 @@ export default function OnboardingComplete() {
   const [sessionCount, setSessionCount] = useState(1);
 
   useEffect(() => {
+    captureClientEvent("onboarding_completed", { user_id: user?.id || null });
     if (stateData.score || !user?.id) { setLoading(false); return; }
     getUserSessions(user.id).then(sessions => {
       setSessionCount(sessions.length || 1);

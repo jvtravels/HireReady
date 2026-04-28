@@ -16,6 +16,7 @@
  */
 
 import { authHeaders } from "./supabase";
+import { getDistinctId, getSessionId } from "./posthogClient";
 
 export interface ApiResponse<T> {
   ok: boolean;
@@ -58,6 +59,13 @@ export async function apiFetch<T = unknown>(
     xhr.open(opts.method || "POST", path, true);
     xhr.responseType = "text";
     for (const [k, v] of Object.entries(headers)) xhr.setRequestHeader(k, v);
+    // Forward PostHog correlation ids so server-side events join the same person/session
+    try {
+      const did = getDistinctId();
+      const sid = getSessionId();
+      if (did) xhr.setRequestHeader("X-PostHog-Distinct-Id", did);
+      if (sid) xhr.setRequestHeader("X-PostHog-Session-Id", sid);
+    } catch { /* never break a request on telemetry header injection */ }
 
     xhr.onload = () => {
       const headerMap: Record<string, string> = {};

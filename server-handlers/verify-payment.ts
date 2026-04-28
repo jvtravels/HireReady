@@ -33,6 +33,7 @@ const UPSTASH_TOKEN = (process.env.UPSTASH_REDIS_REST_TOKEN || "").trim();
 // Extracted to ./_referral-reward so it's unit-testable in isolation. See
 // that module for the full docstring and compare-and-swap rationale.
 import { grantReferralReward } from "./_referral-reward";
+import { captureServerEvent } from "./_posthog";
 
 /** Clear the payment-abandonment intent key so the cron doesn't email a paying user. */
 async function clearPaymentIntent(orderId: string): Promise<void> {
@@ -422,6 +423,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       // Send confirmation email (7 args: email, name, plan, tier, paymentId, startDate, endDate)
       try { await sendPaymentEmail(userEmail || "", userName || "Customer", "single", "free", razorpay_payment_id, now.toISOString(), now.toISOString()); } catch (e) { console.warn("Email send failed:", e); }
       await clearPaymentIntent(razorpay_order_id);
+      await captureServerEvent("payment_completed", userId, {
+        plan: "single",
+        tier: current?.subscription_tier || "free",
+        amount: purchaseAmount,
+        currency: "INR",
+        payment_id: razorpay_payment_id,
+        quantity: sessionQuantity,
+      });
       return res.status(200).json({ success: true, tier: current?.subscription_tier || "free", plan: "single", credits: newCredits, quantity: sessionQuantity, subscription_start: now.toISOString(), subscription_end: current?.subscription_end || now.toISOString() });
     }
 
@@ -523,8 +532,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     //     failure here doesn't affect the payment outcome for the payer.
     let referralRewarded = false;
     try {
-      const { rewarded } = await grantReferralReward(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, userId);
+      const { rewarded, referrerId } = await grantReferralReward(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, userId);
       referralRewarded = rewarded;
+      if (rewarded && referrerId) {
+        await captureServerEvent("referral_converted", referrerId, {
+          referee_user_id: userId,
+          plan,
+          tier,
+        });
+      }
     } catch (e) { console.warn("[verify-payment] referral reward threw:", e); }
 
     // 6c. Send confirmation email with retry (non-critical — don't fail payment if email fails)
@@ -581,6 +597,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     if (razorpay_order_id) await clearPaymentIntent(razorpay_order_id);
+    await captureServerEvent("payment_completed", userId, {
+      plan,
+      tier,
+      payment_id: razorpay_payment_id,
+      subscription_end: end.toISOString(),
+      prorated_days: proratedDays,
+      referral_rewarded: !!referralRewarded,
+    });
     return res.status(200).json({
       success: true,
       subscriptionTier: tier,

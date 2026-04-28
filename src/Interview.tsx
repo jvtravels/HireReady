@@ -11,6 +11,7 @@ import { useInterviewEngine } from "./useInterviewEngine";
 import { useVideoRecorder } from "./useVideoRecorder";
 import { InterviewProvider } from "./InterviewContext";
 import ErrorBoundary from "./ErrorBoundary";
+import { captureClientEvent } from "./posthogClient";
 
 /* ═══════════════════════════════════════════════
    INTERVIEW SCREEN
@@ -124,6 +125,25 @@ function InterviewInner() {
     micStreamRef, noSpeechCountRef, ttsCancelRef, interviewEndedRef,
   } = engine;
 
+
+  // Track interview abandonment — fires when user leaves before handleEnd runs
+  useEffect(() => {
+    const onUnload = () => {
+      if (!interviewEndedRef.current && phase !== "done" && currentStep > 0) {
+        captureClientEvent("interview_abandoned", {
+          questions_answered: currentStep,
+          total_questions: totalQuestions,
+          elapsed_seconds: elapsed,
+          phase,
+        });
+      }
+    };
+    window.addEventListener("pagehide", onUnload);
+    return () => {
+      window.removeEventListener("pagehide", onUnload);
+      onUnload();
+    };
+  }, [phase, currentStep, totalQuestions, elapsed, interviewEndedRef]);
 
   // Stop video recording when interview ends
   useEffect(() => {

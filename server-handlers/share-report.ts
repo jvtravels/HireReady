@@ -23,6 +23,7 @@
 export const config = { runtime: "edge" };
 
 import { withAuthAndRateLimit, corsHeaders, withRequestId, isRateLimited, getClientIp, rateLimitResponse } from "./_shared";
+import { captureServerEvent } from "./_posthog";
 
 declare const process: { env: Record<string, string | undefined> };
 const SUPABASE_URL = process.env.SUPABASE_URL || "";
@@ -256,6 +257,8 @@ async function createShare(req: Request, userId: string, headers: Record<string,
   // Public URL is built relative to the host so staging vs prod work transparently.
   const origin = req.headers.get("origin") || `https://${req.headers.get("host")}` || "";
   const publicUrl = `${origin}/report/share/${token}`;
+
+  await captureServerEvent("report_shared", userId, { ttl_days: ttl, expires_at: expiresAt });
 
   return new Response(JSON.stringify({ token, expiresAt, url: publicUrl, ttlDays: ttl }), { status: 200, headers });
 }

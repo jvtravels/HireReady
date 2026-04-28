@@ -6,6 +6,7 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { createHmac, timingSafeEqual } from "crypto";
 import { escapeHtml } from "./_shared";
+import { captureServerEvent } from "./_posthog";
 
 
 const RAZORPAY_WEBHOOK_SECRET = (process.env.RAZORPAY_WEBHOOK_SECRET || "").trim();
@@ -294,6 +295,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           } catch (emailErr) { console.error("[webhook] Renewal email failed:", emailErr); }
         }
 
+        await captureServerEvent("subscription_renewed", userId, {
+          tier,
+          subscription_end: end.toISOString(),
+          source: "razorpay_webhook",
+        });
+
         console.warn(`[webhook] subscription.charged: renewed ${tier} for user ${userId.slice(0, 8)}`);
         return res.status(200).json({ received: true, renewed: true, tier });
       }
@@ -411,6 +418,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             });
           } catch (emailErr) { console.error("[webhook] Payment-failed email failed:", emailErr); }
         }
+
+        await captureServerEvent("payment_failed", userId, {
+          previous_tier: previousTier,
+          downgraded_to: "free",
+          source: "razorpay_webhook",
+        });
 
         console.warn(`[webhook] subscription.halted: downgraded user ${userId.slice(0, 8)} to free`);
         return res.status(200).json({ received: true, downgraded: true });

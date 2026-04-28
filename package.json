@@ -27,6 +27,8 @@
     "@vercel/speed-insights": "^2.0.0",
     "next": "^16.2.4",
     "pdfjs-dist": "^3.11.174",
+    "posthog-js": "^1.372.3",
+    "posthog-node": "^5.30.6",
     "react": "^19.2.5",
     "react-dom": "^19.2.5"
   },
