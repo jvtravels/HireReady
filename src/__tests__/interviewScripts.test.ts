@@ -27,11 +27,12 @@ describe("interviewScripts", () => {
       }
     });
 
-    it.each(Object.keys(scriptsByType))("%s closing step has correct waitForUser", (type) => {
+    it.each(Object.keys(scriptsByType))("%s closing step is a sign-off (no dead-end question)", (type) => {
       const script = scriptsByType[type];
       const closing = script.find(s => s.type === "closing");
-      // All interview types including salary-negotiation allow user to respond at closing
-      expect(closing?.waitForUser).toBe(true);
+      // Closings now sign off and auto-advance to the report — no waitForUser
+      // dead-end. The handleEnd effect on phase=done finalizes the session.
+      expect(closing?.waitForUser).toBe(false);
     });
 
     it.each(Object.keys(scriptsByType))("%s has 3–5 questions", (type) => {
@@ -91,10 +92,14 @@ describe("interviewScripts", () => {
       expect(hasResumeRef).toBe(true);
     });
 
-    it("all steps wait for user", () => {
+    it("all steps wait for user except the closing sign-off", () => {
       const script = getMiniScript(null);
       for (const step of script) {
-        expect(step.waitForUser).toBe(true);
+        if (step.type === "closing") {
+          expect(step.waitForUser).toBe(false);
+        } else {
+          expect(step.waitForUser).toBe(true);
+        }
       }
     });
   });
@@ -138,11 +143,14 @@ describe("interviewScripts", () => {
       expect(intense[0].thinkingDuration).toBeLessThan(standard[0].thinkingDuration);
     });
 
-    it("uses encouraging closing prefix based on learning style", () => {
+    it("closing is a sign-off (no learning-style canned prefix anymore)", () => {
       const user = { learningStyle: "encouraging" } as any;
       const script = getScript("behavioral", null, user);
       const closing = script[script.length - 1];
-      expect(closing.aiText).toContain("Really great work");
+      // Closings now sign off and reference report generation; the per-style
+      // "Really great work" / "direct feedback" prefixes were removed when
+      // we killed the canned per-focus closing feedback.
+      expect(closing.aiText).toMatch(/report/i);
     });
 
     it("adds resume context when user has resume", () => {
@@ -151,10 +159,10 @@ describe("interviewScripts", () => {
       expect(script[0].aiText).toContain("resume");
     });
 
-    it("closing step always waits for user", () => {
+    it("closing step is a sign-off — auto-advances, doesn't wait", () => {
       const script = getScript("technical", "intense", null);
       const closing = script[script.length - 1];
-      expect(closing.waitForUser).toBe(true);
+      expect(closing.waitForUser).toBe(false);
     });
   });
 });

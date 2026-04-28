@@ -581,7 +581,7 @@ export default async function handler(req: Request): Promise<Response> {
       "management": "Weight HEAVILY: actual people-management evidence (hire/fire/comp decisions owned), team-size calibration, difficult-conversation handling, system-thinking on team design. De-weight: technical depth.",
       "hr-round": "Weight HEAVILY: motivation authenticity, self-awareness on weaknesses, company-research depth, communication clarity. De-weight: technical depth, framework breadth.",
       "campus-placement": "Weight HEAVILY: fundamentals clarity, project ownership, learning agility, communication. De-weight: leadership, P&L. Calibrate expectations to fresher level.",
-      "salary-negotiation": "Weight HEAVILY: anchoring discipline, multi-lever negotiation (not just base), leverage usage (BATNA, competing offers), professional handling of pressure. De-weight: STAR, technical depth.",
+      "salary-negotiation": "Weight HEAVILY: anchoring discipline, multi-lever negotiation (not just base), leverage usage (BATNA, competing offers), professional handling of pressure, NEGOTIATION STYLE (collaborative > adversarial — penalize zero-sum framing), and equity literacy (understanding ESOP cliff/vesting, RSU value, joining-bonus claw-back). De-weight: STAR, technical depth.",
       "panel": "Weight HEAVILY: multi-audience awareness (different framing for HM vs TL vs HR), STAR for behavioral asks, depth for technical asks, cultural-fit signals for HR asks. Look for whether candidate adapted their tone across panelists.",
       "government-psu": "Weight HEAVILY: balanced positioning, policy/scheme/article references, ethical reasoning rigor, current-affairs awareness, public-service genuineness.",
     };
