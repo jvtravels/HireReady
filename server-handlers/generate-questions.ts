@@ -175,16 +175,23 @@ REALISTIC EXPECTATIONS: Should demonstrate P&L ownership, hiring at scale, inves
 - Include questions about motivation, cultural fit, and communication style
 - INDIAN HR ESSENTIALS: at least TWO of these MUST appear in the question set, AND one MUST be either CTC or notice-period — (a) current/expected CTC + reasoning, (b) notice period + flexibility, (c) what do you know about our company, (d) what would you do if you got a higher offer just before joining, (e) relocation/shift willingness, (f) why are you leaving your current company. These are non-negotiable for Indian HR realism.
 - FAKE-WEAKNESS DETECTOR: if the candidate names a "fake weakness" ("I'm a perfectionist", "I work too hard", "I care too much"), the follow-up MUST push for a real one: "That's a strength dressed as a weakness. Tell me a real one — something a manager has actually given you feedback on."`,
-      "case-study": `This is a CASE STUDY interview.
-- Present a specific business problem/scenario for the candidate to analyze
-- Questions should ask the candidate to structure their thinking, identify key issues, propose solutions, and estimate impact
-- Use frameworks: market sizing, profitability analysis, product launch, competitive strategy
-- Do NOT ask standard behavioral STAR questions
-- DEMAND STRUCTURE: every answer must show explicit framework (MECE, hypothesis-driven, profit = revenue - cost, etc.). If the candidate jumps to a solution without structuring, the next follow-up MUST force them to step back: "Before solutions — what's your framework for breaking this down?"
-- DEMAND NUMBERS: the candidate must produce concrete estimates (market size, customer count, % impact). Vague answers get pushed: "Give me a number, even if rough — what's your back-of-envelope?"
-- PLAY THE CASE: as facts come up in answers, you may *reveal* additional context the candidate should ask for: "Good question — assume CAC is ₹2000 and retention is 60%." Reward candidates who ask the right clarifying questions.
-- SINGLE-CASE DISCIPLINE (pseudo): treat the 3-5 questions as ONE evolving case, not five disconnected ones. Q1 sets up the scenario; Q2-Q4 should drill DEEPER into the same scenario rather than presenting new ones. Only the final question may pivot to a different scenario if needed. This mimics real consulting/PM case interviews.
-- MATH SANITY-CHECK: when the candidate produces a number, verify it. If they say "the market is ₹50,000 crore" but a sanity check (population × spend) suggests it should be ₹5,000 crore, push back: "Walk me through your math — that feels off by an order of magnitude."`,
+      "case-study": `This is a CASE STUDY interview — modeled on real consulting/PM/strategy case rounds.
+
+CRITICAL: You are running ONE evolving case across all 5 questions, NOT five separate cases. Pick a SINGLE scenario at Q1 and drill into it across Q2-Q5. Only Q5 may pivot to a recommendation/synthesis question.
+
+CASE ARC (mandatory shape):
+- Q1 (FRAME): Present the scenario. Set context, name the company/situation, state what the "interviewer" wants to figure out. End with: "How would you approach this?" — open invitation to structure.
+- Q2 (STRUCTURE → DRILL): After they propose a framework, pick the BRANCH of their framework that matters most and drill: "Let's go deeper on [the specific branch they named]. Walk me through it." Reward MECE thinking; push if their framework was sloppy.
+- Q3 (QUANTIFY): Force a number. Market size, % impact, unit economics, payback period — pick what's relevant to the case. "Estimate it for me — back of envelope is fine, but show me the math."
+- Q4 (REVEAL & ADAPT): Reveal a NEW data point that should change their analysis: "Good. Now — what if I told you CAC is actually ₹2000, not ₹500? Does your conclusion change? How?". Tests adaptability + intellectual honesty.
+- Q5 (SYNTHESIZE): "If you had to give a 60-second recommendation to the CEO right now, what would you say and why? What's your top risk?" Tests prioritization + executive communication.
+
+ABSOLUTE RULES:
+- Do NOT ask STAR/behavioral questions. This is hypothesis-driven analysis.
+- Every answer that lacks structure or numbers MUST be pushed back: "Before solutions — what's your framework?" or "Give me a number, even rough."
+- Math sanity-check: if a candidate's number is off by an order of magnitude (population × spend ≠ their market size), challenge it: "Walk me through that math — feels off by 10x."
+- Reveal facts on demand: when candidates ask reasonable clarifying questions ("what's their CAC?"), reveal a number consistent with the scenario. Reward the asking.
+- Frameworks to recognize and name back: MECE, profit = revenue × margin, AARRR, RFM, hypothesis-driven, top-down vs bottom-up sizing.`,
       "government-psu": `This is a GOVERNMENT/PSU interview.
 - Focus on: general knowledge, current affairs, ethical decision-making, public service motivation, administrative skills
 - Questions should reflect government/PSU interview patterns: panel-style, formal, testing integrity and dedication
@@ -193,7 +200,19 @@ REALISTIC EXPECTATIONS: Should demonstrate P&L ownership, hiring at scale, inves
 - POLICY REFERENCE EXPECTATION: reward candidates who reference specific policies, schemes (e.g. PM Awas, MGNREGA, PM-KISAN, Digital India, Make in India) or constitutional provisions (Article 14, 19, 21, 356). Push back on vague answers: "Which specific scheme are you thinking of?"
 - BALANCED POSITIONING: avoid extreme positions. The right answer balances economic reality with social impact, central vs state authority, individual rights vs public good. Push candidates who pick one side: "What about the counterargument?"
 - ETHICAL DILEMMA REQUIREMENT: at least one question MUST present an ethical dilemma typical of PSU/government roles — corruption pressure, conflict between speed vs. due process, balancing public interest vs. political directives. Judge candidates on reasoning structure (stakeholder mapping, principle-based reasoning) not the "right" answer.
-- BUREAUCRATIC REALITY: include at least one question about working within constraints (file processing, hierarchy, transfer postings, citizen grievances). Romantic answers about "transforming the system" without acknowledging real constraints get pushback.`,
+- BUREAUCRATIC REALITY: include at least one question about working within constraints (file processing, hierarchy, transfer postings, citizen grievances). Romantic answers about "transforming the system" without acknowledging real constraints get pushback.
+
+CURATED REFERENCE BANK — questions and follow-ups should naturally surface from this bank when relevant. Award high scores when candidates cite these accurately:
+- Schemes: PM Awas Yojana, MGNREGA, PM-KISAN, Ayushman Bharat, Digital India, Make in India, PM Gati Shakti, PM Vishwakarma, Atal Pension Yojana, Jan Dhan, Skill India.
+- Constitutional: Article 14 (equality), 19 (freedoms), 21 (life & liberty), 32 (writs), 226 (HC writs), 356 (President's Rule), 370 (J&K — historical), 44 (UCC).
+- Bodies: NITI Aayog, Election Commission, CAG, UPSC, Finance Commission, RBI, SEBI, Lokpal, NHRC, NCLT.
+- Recent issues to be aware of: cooperative federalism, judicial overreach vs PIL activism, AI regulation in India, agricultural reforms, women's reservation bill, electoral bond ruling.
+
+INTERVIEW TIER: questions and tone should differ based on target service —
+- IAS/IFS/IRS (UPSC mains personality round): wide-ranging, biographical depth from DAF, balanced view on policy, ethical reasoning.
+- PSU (SBI PO / IBPS / RBI Grade B / ONGC): banking/economic awareness, current affairs of last 6 months, leadership scenarios in branch/operational settings.
+- State PSC: state-specific issues (state schemes, regional politics, language policies).
+If unclear, default to IAS-style interview tone.`,
       "management": `This is a MANAGEMENT-level interview.
 - Focus on: team building, delegation, performance management, strategic planning, cross-functional leadership
 - Questions should test leadership philosophy, handling underperformers, scaling teams, and organizational design
@@ -234,6 +253,15 @@ REALISTIC EXPECTATIONS: Should demonstrate P&L ownership, hiring at scale, inves
     };
     const typeGuidance = TYPE_GUIDANCE[interviewType] || "";
 
+    // Cross-cutting: when a resume is available, at least one question MUST cite
+    // a specific detail from it. Generic questions feel canned even when they're
+    // technically valid — anchoring to "your role at <company>" or "the <project>
+    // you led" makes the experience feel like a real recruiter who actually read
+    // the resume.
+    const resumeGroundingDirective = (resumeText || resumeTopSkills?.length || resumeIntelligence)
+      ? `\nRESUME GROUNDING (mandatory): at least ONE question (Q2 or Q3) MUST reference a specific detail from the candidate's resume — a past role, a project, a company name, or a specific skill they listed. Phrasing like "I see you led X at Y — tell me about..." or "You list <skill> on your resume — walk me through where you applied it." This makes the AI feel like an interviewer who actually read the resume, not a generic question generator.`
+      : "";
+
     const panelNote = interviewType === "panel"
       ? `\nThis is a PANEL interview with three panelists. Include a "persona" field in EVERY question object.
 Panelist roles, topics, AND distinct personalities (tone matters — they should sound like different people):
@@ -253,7 +281,7 @@ CROSS-PERSONA REFERENCE: at least one question (q3 or later) must reference what
 
     const tierSuffix = tierPromptSuffix(classifyCompanyTier(companyName));
     const prompt = `You are an expert interviewer conducting a ${interviewType.replace(/-/g, " ")} mock interview for a ${targetRole} candidate. ${tone}
-${typeGuidance ? `\n${typeGuidance}\n` : ""}${languageContext ? `\nLANGUAGE INSTRUCTION: ${languageContext}\n` : ""}${experienceCalibration ? `\n${experienceCalibration}\n` : ""}${tierSuffix ? `\n${tierSuffix}\n` : ""}
+${typeGuidance ? `\n${typeGuidance}\n` : ""}${resumeGroundingDirective}${languageContext ? `\nLANGUAGE INSTRUCTION: ${languageContext}\n` : ""}${experienceCalibration ? `\n${experienceCalibration}\n` : ""}${tierSuffix ? `\n${tierSuffix}\n` : ""}
 Context:
 ${candidateCtx}${companyContext ? `- ${companyContext}\n` : ""}${industryContext ? `- ${industryContext}\n` : ""}${focusContext ? `- ${focusContext}\n` : ""}${!isSalaryType && roleCompContext ? `- Role competencies to test: ${roleCompContext}\n` : ""}${resumeContext ? `- ${resumeContext}\n` : ""}${resumeIntelligence ? `- ${resumeIntelligence}\n` : ""}${jdContext ? `- ${jdContext}\n` : ""}${avoidTopics ? `- ${avoidTopics}\n` : ""}${weakSkillsContext ? `- ${weakSkillsContext}\n` : ""}
 Generate exactly ${stepCount} interview steps as a JSON array. Sequence: intro, ${Array(questionCount).fill("question").join(", ")}, closing. Do NOT include follow-up steps — those are generated dynamically based on the candidate's answers.
