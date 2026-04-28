@@ -574,6 +574,9 @@ export default async function handler(req: Request): Promise<Response> {
     // ("be more specific", "structure your answer") is the #1 complaint about
     // AI eval — force grounding.
     const groundingDirective = "GROUNDING REQUIREMENT: Every wins/fixes/red-flag finding in the report MUST quote a SPECIFIC phrase from the transcript (≤15 words). Do NOT produce generic feedback like 'be more specific' or 'use STAR' — point to the exact moment: 'When you said \"we improved performance\", you didn't quantify it — what was the actual %?'. If you can't ground a finding in a transcript quote, omit it.";
+    const fairnessDirective = "FAIRNESS: Do NOT penalize for accent, code-switching (Hindi/English mixing), non-elite college background, or gender-linked communication style. Score on substance — what they said, the structure, the evidence — not how it sounded. If a candidate uses 'we' frequently as a collectivist framing, probe for the 'I' but don't auto-deduct.";
+    const lengthTargetsDirective = "ANSWER-LENGTH TARGETS (per type, calibrate lengthVerdict.targetRange): behavioral STAR 120-240 words, technical/system-design 180-360 words, case-study 200-400 words, HR/intro questions 80-180 words, salary-negotiation 60-180 words (concise + numeric), campus-placement 90-200 words. Penalize too-brief; don't punish slightly-long if substance is high.";
+    const selfCheckDirective = "SELF-CHECK: Before finalizing, internally verify each fix has a concrete transcript quote and each skill score has at least one supporting moment. If a score and its evidence don't match, recalibrate the score to match the evidence — never fabricate evidence to match a preset score.";
     // Per-type rubric weights — different interview formats prize different
     // dimensions. A perfect case-study answer is structurally rigorous; a
     // perfect behavioral answer follows STAR; a perfect technical answer
@@ -592,7 +595,7 @@ export default async function handler(req: Request): Promise<Response> {
       "government-psu": "Weight HEAVILY: balanced positioning, policy/scheme/article references, ethical reasoning rigor, current-affairs awareness, public-service genuineness.",
     };
     const rubricWeight = meta?.type ? typeRubricWeight[meta.type] : "";
-    const prompt = `You are a senior I/O-psychology-trained interview scorer. Produce a JSON report for this mock interview, calibrated to structured-interview rubrics (SHL UCF, STAR+L). Be honest and specific.${tierSuffix ? `\n\n${tierSuffix}` : ""}${rubricWeight ? `\n\nRUBRIC WEIGHTS FOR THIS INTERVIEW TYPE:\n${rubricWeight}` : ""}\n\n${groundingDirective}
+    const prompt = `You are a senior I/O-psychology-trained interview scorer. Produce a JSON report for this mock interview, calibrated to structured-interview rubrics (SHL UCF, STAR+L). Be honest and specific.${tierSuffix ? `\n\n${tierSuffix}` : ""}${rubricWeight ? `\n\nRUBRIC WEIGHTS FOR THIS INTERVIEW TYPE:\n${rubricWeight}` : ""}\n\n${groundingDirective}\n\n${fairnessDirective}\n\n${lengthTargetsDirective}\n\n${selfCheckDirective}
 
 CONTEXT:
 Role: ${sanitizeForLLM(meta?.role || "general", 80)}
