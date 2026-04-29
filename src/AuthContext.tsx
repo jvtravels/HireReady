@@ -446,6 +446,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const safetyMs = isSlow ? 15000 : 10000;
     const safetyTimer = setTimeout(() => {
       console.warn("[auth] safety timeout: forcing loading=false after", safetyMs, "ms");
+      // Defensive: if we never resolved a user, ensure state is clean so the
+      // login form can render. Without this, a half-restored state can cause
+      // RequireAuth-driven hydration mismatches (React error #418).
+      setUser((current) => current ?? null);
       setLoading(false);
     }, safetyMs);
 
@@ -467,7 +471,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } else {
       // Restore session from local JWT
       try {
-        const { data: { session } } = await client.auth.getSession();
+        // Race getSession() against an 8s timeout. Some browser extensions
+        // (Jam.dev, Loom, Hotjar) wrap window.fetch and silently hang the
+        // Supabase navigator-lock acquisition. Without this race, the page
+        // would sit on the loading spinner until the 10s safety timer fires
+        // and the user couldn't even see the login form. Falling through
+        // to "no session" lets the form render; sign-in itself uses a
+        // separate code path that doesn't share the same lock contention.
+        const session = await Promise.race([
+          client.auth.getSession().then(r => r.data.session ?? null),
+          new Promise<null>((resolve) => setTimeout(() => {
+            console.warn("[auth] getSession() exceeded 8s — treating as no session (browser extension may be blocking fetch)");
+            resolve(null);
+          }, 8000)),
+        ]);
         if (session) {
           // Block unverified email users — sign them out immediately
           // Google OAuth users are always verified; email/password users must pass our custom verification
