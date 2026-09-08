@@ -113,6 +113,7 @@ export default function Login() {
   // Plan + redirect param preservation (matches existing SignUp behavior)
   const planParam = searchParams?.get("plan") ?? null;
   const nextParam = searchParams?.get("next") ?? null;
+  const isEmployerFlow = !!nextParam?.startsWith("/employer");
 
   const computeRedirect = useCallback(
     () =>
@@ -412,17 +413,35 @@ export default function Login() {
                 color: t.coal,
               }}
             >
-              Clarity{" "}
-              <em
-                style={{
-                  fontStyle: "italic",
-                  fontWeight: 400,
-                  color: t.copper,
-                }}
-              >
-                wins
-              </em>{" "}
-              interviews
+              {isEmployerFlow ? (
+                <>
+                  Hire{" "}
+                  <em
+                    style={{
+                      fontStyle: "italic",
+                      fontWeight: 400,
+                      color: t.copper,
+                    }}
+                  >
+                    faster
+                  </em>{" "}
+                  with proof
+                </>
+              ) : (
+                <>
+                  Clarity{" "}
+                  <em
+                    style={{
+                      fontStyle: "italic",
+                      fontWeight: 400,
+                      color: t.copper,
+                    }}
+                  >
+                    wins
+                  </em>{" "}
+                  interviews
+                </>
+              )}
             </h1>
             <p
               className="hsx-login-subtitle"
@@ -436,8 +455,9 @@ export default function Login() {
                 textWrap: "balance",
               }}
             >
-              Practise interviews with an AI coach. Get scored, structured
-              feedback after every session.
+              {isEmployerFlow
+                ? "Sign in to review your shortlist of candidates who've already been scored on real interview practice."
+                : "Practise interviews with an AI coach. Get scored, structured feedback after every session."}
             </p>
           </div>
 
@@ -738,7 +758,7 @@ export default function Login() {
                       </>
                     ) : (
                       <>
-                        Continue to practise
+                        {isEmployerFlow ? "Continue to your roster" : "Continue to practise"}
                         <svg
                           className="hsx-login-cta-arrow"
                           width="16"

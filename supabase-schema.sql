@@ -882,6 +882,16 @@ alter table profiles add column if not exists re_engage_sent timestamptz;
 -- retained — older ones get pruned on each write.
 alter table profiles add column if not exists started_session_ids jsonb default '[]'::jsonb;
 
+-- B-EMP1 (2026-08-20): per-entry start timestamps for started_session_ids,
+-- same order and same 50-entry cap so the two arrays stay index-aligned.
+-- Used by detectConcurrentSession (_record-session-start-helpers.ts) to tell
+-- a genuinely in-flight cross-device session apart from an old abandoned one
+-- that never got a `sessions` row — without this, any unsaved start stayed
+-- flagged as "concurrent" forever, regardless of age (production incident:
+-- a single abandoned first session permanently false-flagged every later
+-- attempt for a low-frequency user).
+alter table profiles add column if not exists started_session_ts jsonb default '[]'::jsonb;
+
 -- Soft-delete marker. delete-account.ts (PATCH path) sets this on
 -- user-requested account deletion; cleanup-deleted-accounts.ts
 -- permanently removes profiles where deleted_at < now() - 7 days.

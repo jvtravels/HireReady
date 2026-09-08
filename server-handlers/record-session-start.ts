@@ -80,7 +80,7 @@ export default async function handler(req: Request): Promise<Response> {
      keeps the column small — older entries get pruned on each write. */
   try {
     const getRes = await fetch(
-      `${SUPABASE_URL}/rest/v1/profiles?id=eq.${encodeURIComponent(auth.userId)}&select=practice_timestamps,started_session_ids`,
+      `${SUPABASE_URL}/rest/v1/profiles?id=eq.${encodeURIComponent(auth.userId)}&select=practice_timestamps,started_session_ids,started_session_ts`,
       {
         headers: {
           apikey: SUPABASE_SERVICE_KEY,
@@ -100,6 +100,15 @@ export default async function handler(req: Request): Promise<Response> {
     const arr = await getRes.json().catch(() => []);
     const row = Array.isArray(arr) && arr[0] ? arr[0] : {};
     const existingStarts: string[] = Array.isArray(row.started_session_ids) ? row.started_session_ids : [];
+    /* B-EMP1: timestamps for existingStarts, same order/cap as started_session_ids,
+       used only to decide whether an unsaved prior start is still "in-flight" for
+       the concurrent-session check below. Column may not exist pre-migration —
+       falls back to no known timestamps (never flagged concurrent, see helper). */
+    const existingStartTs: string[] = Array.isArray(row.started_session_ts) ? row.started_session_ts : [];
+    const startedAtById: Record<string, string> = {};
+    existingStarts.forEach((id, i) => {
+      if (existingStartTs[i]) startedAtById[id] = existingStartTs[i];
+    });
 
     /* Idempotency: if this sessionId was already recorded, return ok
        without re-appending or re-checking credits. Handles React StrictMode
@@ -153,6 +162,7 @@ export default async function handler(req: Request): Promise<Response> {
             existingStarts,
             currentSessionId: sessionId,
             savedSessionIds: savedIds,
+            startedAtById,
           });
         }
       } catch { /* non-critical — never block session start */ }
@@ -164,6 +174,9 @@ export default async function handler(req: Request): Promise<Response> {
        the existing save-session.ts cap pattern. */
     const nextTimestamps = [...existingTimestamps, nowIso].slice(-500);
     const nextStarts = [...existingStarts, sessionId].slice(-50);
+    /* Same cap as nextStarts (50) so the two arrays stay index-aligned —
+       startedAtById is rebuilt from them by position on the next call. */
+    const nextStartTs = [...existingStartTs, nowIso].slice(-50);
 
     const patchRes = await fetch(
       `${SUPABASE_URL}/rest/v1/profiles?id=eq.${encodeURIComponent(auth.userId)}`,
@@ -178,6 +191,7 @@ export default async function handler(req: Request): Promise<Response> {
         body: JSON.stringify({
           practice_timestamps: nextTimestamps,
           started_session_ids: nextStarts,
+          started_session_ts: nextStartTs,
           has_completed_onboarding: true,
         }),
       },
@@ -185,9 +199,9 @@ export default async function handler(req: Request): Promise<Response> {
 
     if (!patchRes.ok) {
       const t = await patchRes.text().catch(() => "");
-      /* Schema may not yet have started_session_ids column — retry
-         without it so the practice_timestamps bump still happens. */
-      if (/started_session_ids/.test(t)) {
+      /* Schema may not yet have started_session_ids/started_session_ts columns —
+         retry without them so the practice_timestamps bump still happens. */
+      if (/started_session_ids|started_session_ts/.test(t)) {
         const retry = await fetch(
           `${SUPABASE_URL}/rest/v1/profiles?id=eq.${encodeURIComponent(auth.userId)}`,
           {

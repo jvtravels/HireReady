@@ -118,12 +118,30 @@ describe("Interview", () => {
   it("has control button for mute", async () => {
     await act(async () => {
       render(
-        
+
           <Interview />
         ,
       );
     });
 
     expect(screen.getByLabelText(/^Mute \(Alt\+M\)/)).toBeInTheDocument();
+  });
+
+  it("B-EMP2: does not call record-session-start when entering /interview with no start intent and no draft", async () => {
+    // mockSearchParams (setup-next-navigation) carries no `new=1`/`resume=true`,
+    // and localStorage has no draft — this is the "should bounce to /dashboard"
+    // case. Before the fix, record-session-start still fired here and burned a
+    // credit for a session the user never saw, even though router.replace was
+    // called in the same tick.
+    const { apiFetch } = await import("../apiClient");
+    await act(async () => {
+      render(
+
+          <Interview />
+        ,
+      );
+    });
+
+    expect(apiFetch).not.toHaveBeenCalledWith("/api/record-session-start", expect.anything());
   });
 });

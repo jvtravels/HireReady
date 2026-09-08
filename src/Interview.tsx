@@ -7,7 +7,6 @@ import {
   TranscriptPanel, EndModal, EvaluatingOverlay,
   DealSummaryCard, AnnotatedReplayPanel,
   SaveToast, ReconnectingOverlay,
-  InterviewCoachmarks,
 } from "./InterviewPanels";
 import {
   CanvasVoiceVisualizer, CanvasPersonaLabel, CanvasPlainHeading,
@@ -403,9 +402,6 @@ function InterviewInner() {
           .iv-controls button { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
         }
       `}</style>
-
-      {/* First-time onboarding — three quick callouts, then never again */}
-      <InterviewCoachmarks />
 
       <StatusToasts tabConflict={tabConflict} isOffline={isOffline} micError={micError} ttsError={ttsError} ttsFailed={ttsFailed} />
 

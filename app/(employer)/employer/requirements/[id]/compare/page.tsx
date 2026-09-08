@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { useEmployerData, Requirement } from "@/employer/EmployerDataContext";
 import { Candidate } from "@/employer/mockData";
@@ -22,6 +23,11 @@ function CompareColumn({ candidate }: { candidate: Candidate }) {
       <Divider />
       <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 12, fontFamily: f.sans, fontSize: 13, color: t.inkSoft }}>
         <div>Match score for this role: <strong style={{ color: t.coal }}>{candidate.matchScore}</strong></div>
+        {candidate.matchBreakdown && (
+          <div style={{ fontSize: 12.5, color: t.inkFaint, marginTop: -4 }}>
+            Role {candidate.matchBreakdown.roleMatch}% · Skill {candidate.matchBreakdown.skillMatch}% · Location {candidate.matchBreakdown.locationMatch}%
+          </div>
+        )}
         <div>Roster score (lifetime): <strong style={{ color: t.coal }}>{candidate.rosterScore}</strong></div>
         <div>Practice sessions: <strong style={{ color: t.coal }}>{candidate.sessionsCompleted}</strong> · last active {candidate.lastActiveDaysAgo}d ago</div>
         <div>
@@ -74,9 +80,12 @@ export default function ComparePage() {
   if (!requirement || !a || !b) {
     return (
       <Card style={{ textAlign: "center", padding: 48 }}>
-        <p style={{ fontFamily: f.sans, fontSize: 14, color: t.inkSoft }}>
+        <p style={{ fontFamily: f.sans, fontSize: 14, color: t.inkSoft, marginBottom: 16 }}>
           Select two candidates from the shortlist to compare them.
         </p>
+        <Link href={`/employer/requirements/${params.id}`} style={{ fontFamily: f.sans, fontSize: 13, fontWeight: 600, color: t.indigo, textDecoration: "none" }}>
+          ← Back to shortlist
+        </Link>
       </Card>
     );
   }

@@ -1,6 +1,8 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
 import { c, font } from "./tokens";
+import { authHeaders } from "./supabase";
+import { apiFetch } from "./apiClient";
 
 /**
  * Voluntary outcome self-report banner.
@@ -25,7 +27,7 @@ interface ExistingOutcome {
   may_share_publicly: boolean;
 }
 
-type Stage = "loading" | "prompt" | "filling" | "submitted" | "skipped" | "hidden";
+type Stage = "loading" | "prompt" | "filling" | "submitted" | "error" | "skipped" | "hidden";
 
 const SKIP_KEY = "hirestepx_outcome_skip_until";
 const SKIP_DAYS = 30;
@@ -53,8 +55,10 @@ export default function OutcomePromptBanner() {
       }
     } catch { /* ignore */ }
 
-    fetch("/api/user-outcome", { credentials: "include" })
-      .then(async (res) => {
+    (async () => {
+      try {
+        const headers = await authHeaders();
+        const res = await fetch("/api/user-outcome", { headers });
         if (cancelled) return;
         if (!res.ok) { setStage("hidden"); return; }
         const data = await res.json();
@@ -65,8 +69,10 @@ export default function OutcomePromptBanner() {
           return;
         }
         setStage("prompt");
-      })
-      .catch(() => { if (!cancelled) setStage("hidden"); });
+      } catch {
+        if (!cancelled) setStage("hidden");
+      }
+    })();
     return () => { cancelled = true; };
   }, []);
 
@@ -78,31 +84,42 @@ export default function OutcomePromptBanner() {
 
   const onSubmit = useCallback(async () => {
     setSubmitting(true);
-    try {
-      const res = await fetch("/api/user-outcome", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          applied, interviewed, offer, accepted,
-          company: company.trim() || undefined,
-          roleLanded: roleLanded.trim() || undefined,
-          testimonial: testimonial.trim() || undefined,
-          mayShare: mayShare && offer,
-        }),
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      setStage("submitted");
-      // Clear skip pref since they engaged.
-      try { localStorage.removeItem(SKIP_KEY); } catch { /* ignore */ }
-    } catch (err) {
-      console.warn("[outcome] submit failed:", err instanceof Error ? err.message : err);
-    } finally {
-      setSubmitting(false);
+    const res = await apiFetch("/api/user-outcome", {
+      applied, interviewed, offer, accepted,
+      company: company.trim() || undefined,
+      roleLanded: roleLanded.trim() || undefined,
+      testimonial: testimonial.trim() || undefined,
+      mayShare: mayShare && offer,
+    });
+    setSubmitting(false);
+    if (!res.ok) {
+      console.warn("[outcome] submit failed:", res.error ?? res.status);
+      setStage("error");
+      return;
     }
+    setStage("submitted");
+    // Clear skip pref since they engaged.
+    try { localStorage.removeItem(SKIP_KEY); } catch { /* ignore */ }
   }, [applied, interviewed, offer, accepted, company, roleLanded, testimonial, mayShare]);
 
   if (stage === "hidden" || stage === "loading" || stage === "skipped") return null;
+
+  if (stage === "error") {
+    return (
+      <div style={{
+        background: "rgba(220,38,38,0.06)", border: `1px solid rgba(220,38,38,0.3)`,
+        borderRadius: 12, padding: "14px 18px", display: "flex", alignItems: "center", gap: 10,
+      }}>
+        <p style={{ fontFamily: font.ui, fontSize: 13, color: c.chalk, margin: 0, flex: 1 }}>
+          Couldn&apos;t save your update. Please try again.
+        </p>
+        <button onClick={() => setStage("filling")} style={{
+          fontFamily: font.ui, fontSize: 12, fontWeight: 600, color: c.obsidian,
+          background: c.gilt, border: "none", borderRadius: 6, padding: "6px 14px", cursor: "pointer",
+        }}>Retry</button>
+      </div>
+    );
+  }
 
   if (stage === "submitted") {
     return (

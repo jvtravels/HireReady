@@ -28,12 +28,19 @@ export interface CandidateResumeDetail {
   currentCtc: string | null;
 }
 
+export interface MatchBreakdown {
+  roleMatch: number;
+  skillMatch: number;
+  locationMatch: number;
+}
+
 export interface Candidate {
   id: string; // requirement_matches row id
   name: string;
   targetRole: string;
   city: string;
   matchScore: number; // fit against THIS requirement only
+  matchBreakdown?: MatchBreakdown; // why matchScore is what it is
   rosterScore: number; // lifetime performance across all practice sessions
   sessionsCompleted: number;
   lastActiveDaysAgo: number;

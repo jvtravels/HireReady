@@ -516,7 +516,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
-function profileToUser(profile: Profile, session: Session): User {
+export function profileToUser(profile: Profile, session: Session): User {
   // Completion signals, strongest to weakest:
   //   1. Postgres column explicitly true — canonical source of truth.
   //   2. Per-user localStorage flag (hirestepx_onboarding_done_<id>) — set
@@ -586,11 +586,15 @@ function profileToUser(profile: Profile, session: Session): User {
     deletedAt: profile.deleted_at,
     // OAuth provider — used by Settings to hide "Reset Password" for
     // Google-only users (they have no internal-app password to reset).
+    // Checked against the linked-providers list, not the current
+    // session's provider: a dual-provider account (email + Google both
+    // linked) has a real password to reset even on a session where they
+    // happened to sign in via Google, so it must not be misreported as
+    // Google-only just because Google is one of the linked providers.
     signedInVia:
-      session.user.app_metadata?.provider === "google" ||
-      session.user.app_metadata?.providers?.includes?.("google")
-        ? "google"
-        : "email",
+      session.user.app_metadata?.providers?.includes?.("email")
+        ? "email"
+        : "google",
   };
 }
 

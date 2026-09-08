@@ -61,12 +61,21 @@ export function useInterviewSTT(
 ) {
   const recognitionRestartCountRef = useRef(0);
   const deepgramRetryRef = useRef(0);
+  /* B-EMP3 (2026-08-20): Chrome's Web Speech API "network" error is a
+   * well-documented transient blip (it round-trips audio to Google's
+   * servers even though the API is "free" client-side) — it fires and
+   * clears within seconds on a healthy connection. Treating it as fatal
+   * on the FIRST occurrence (previous behavior) permanently disabled
+   * voice input for the rest of the interview on one hiccup. Tolerate a
+   * few before giving up, matching the existing no-speech retry pattern. */
+  const networkErrorCountRef = useRef(0);
 
   // Start/stop speech recognition based on phase
   useEffect(() => {
     if (phase === "listening" && !isMuted && !speechUnavailable) {
       recognitionRestartCountRef.current = 0;
       deepgramRetryRef.current = 0;
+      networkErrorCountRef.current = 0;
       let stopped = false;
 
       // Billable-STT instrumentation. Deepgram/Sarvam bill by audio (≈ wall-clock
@@ -287,7 +296,12 @@ export function useInterviewSTT(
               handleFallbackToText("No speech detected after multiple attempts. Type your answer below.");
             }
           } else if (error === "network") {
-            handleFallbackToText("Speech recognition network error. Type your answer below.");
+            networkErrorCountRef.current += 1;
+            if (networkErrorCountRef.current >= 3) {
+              handleFallbackToText("Speech recognition network error. Type your answer below.");
+            } else {
+              console.warn(`[speech] transient network error (${networkErrorCountRef.current}/3), letting onend retry`);
+            }
           } else if (error !== "aborted") {
             handleFallbackToText("Microphone issue detected. Try unmuting or refreshing.");
           }
@@ -298,6 +312,7 @@ export function useInterviewSTT(
           return (event: SpeechRecognitionEvent) => {
             refs.noSpeechCountRef.current = 0;
             recognitionRestartCountRef.current = 0;
+            networkErrorCountRef.current = 0;
             armSafetyTimer();
             origOnResult(event);
           };

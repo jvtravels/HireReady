@@ -155,7 +155,7 @@ export default function AuthCallback() {
     })();
   }, [router]);
 
-  if (!error) return <LoadingScreen message="Completing sign-in…" />;
+  if (!error) return <LoadingScreen />;
 
   return (
     <div style={{

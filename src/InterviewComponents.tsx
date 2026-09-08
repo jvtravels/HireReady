@@ -129,6 +129,33 @@ export function getInterviewerName(seed: string, userId?: string, company?: stri
   return INTERVIEWER_NAMES[absHash % INTERVIEWER_NAMES.length];
 }
 
+/* ─── Interviewer reroll (user-initiated voice change) ───
+ * getInterviewerName's hash is otherwise fully deterministic per
+ * (type, focus, company, userId), so a user who dislikes the assigned
+ * voice has no way to get a different one. This per-user counter is
+ * mixed into the seed (see useInterviewEngine.ts) to let them roll to
+ * a new name/gender/voice on demand, persisted so it sticks across
+ * reloads until they roll again. */
+const REROLL_KEY_PREFIX = "hirestepx_interviewer_reroll_";
+
+export function getInterviewerRerollCount(userId?: string): number {
+  if (typeof localStorage === "undefined" || !userId) return 0;
+  const raw = localStorage.getItem(`${REROLL_KEY_PREFIX}${userId}`);
+  const n = raw ? parseInt(raw, 10) : 0;
+  return Number.isFinite(n) ? n : 0;
+}
+
+export function bumpInterviewerReroll(userId?: string): number {
+  if (typeof localStorage === "undefined" || !userId) return 0;
+  const next = getInterviewerRerollCount(userId) + 1;
+  try {
+    localStorage.setItem(`${REROLL_KEY_PREFIX}${userId}`, String(next));
+  } catch {
+    // localStorage full or unavailable — silently ignore.
+  }
+  return next;
+}
+
 // Prita is added explicitly; first name lookup keeps gender routing
 // honest end-to-end (display name → gender → TTS voice).
 const FEMALE_FIRST_NAMES = new Set([

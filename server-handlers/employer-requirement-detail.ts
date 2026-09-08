@@ -21,7 +21,7 @@
 export const config = { runtime: "edge" };
 
 import { withAuthAndRateLimit, corsHeaders, withRequestId, slog } from "./_shared";
-import { extractResumeLocation } from "./_requirement-match-helpers";
+import { extractResumeLocation, explainMatch } from "./_requirement-match-helpers";
 import { extractResumeDetail } from "./_resume-detail-helpers";
 
 declare const process: { env: Record<string, string | undefined> };
@@ -136,6 +136,10 @@ export default async function handler(req: Request): Promise<Response> {
       const lastActive = timestamps.length ? timestamps[timestamps.length - 1] : null;
       const lastActiveDaysAgo = lastActive ? Math.max(0, Math.round((Date.now() - new Date(lastActive).getTime()) / 86_400_000)) : -1;
       const resumeDetail = extractResumeDetail(profile?.resume_data);
+      const matchBreakdown = explainMatch(
+        { target_role: profile?.target_role ?? null, resume_data: profile?.resume_data ?? null },
+        { title: requirement.title, location: requirement.location, description: requirement.description || "" },
+      );
 
       return {
         id: m.id,
@@ -144,6 +148,7 @@ export default async function handler(req: Request): Promise<Response> {
         city: extractResumeLocation(profile?.resume_data) || "Not specified",
         matchScore: m.match_score,
         rosterScore: m.roster_score,
+        matchBreakdown,
         sessionsCompleted: sessionCounts.get(m.candidate_user_id) || 0,
         lastActiveDaysAgo,
         skills: extractSkills(profile?.resume_data),

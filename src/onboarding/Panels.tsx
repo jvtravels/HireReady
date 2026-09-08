@@ -734,6 +734,13 @@ export function ProfileReadyState({
   // name and use email-initials downstream.
   const trimmedName = (userName && userName.trim()) || "";
 
+  // resumeScore is only ever populated on the real LLM analysis path
+  // (server-handlers/analyze-resume.ts computes it from the rubric
+  // breakdown); the client-side regex fallback profile never sets it.
+  // Use that as the signal for whether this card is showing AI output
+  // or a degraded fallback — the badge must not claim success it didn't have.
+  const isRealAiProfile = aiProfile.resumeScore != null;
+
   return (
     <>
       <style>{AUTH_STYLES}{ONBOARDING_STYLES}</style>
@@ -749,15 +756,24 @@ export function ProfileReadyState({
           <section
             style={{ background: t.white, border: `1px solid ${t.line}`, borderRadius: 14, padding: "18px 20px", boxShadow: shadows.card, display: "flex", flexDirection: "column" }}
           >
-            <div
-              role="status"
-              style={{ alignSelf: "flex-start", display: "inline-flex", alignItems: "center", gap: 6, padding: "5px 11px", borderRadius: 999, background: t.success100, border: `1px solid rgba(21, 128, 61, 0.25)`, fontFamily: f.mono, fontSize: 11, letterSpacing: "0.10em", textTransform: "uppercase", color: t.success, fontWeight: 500, marginBottom: 14 }}
-            >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <polyline points="20 6 9 17 4 12" />
-              </svg>
-              AI analysis complete
-            </div>
+            {isRealAiProfile ? (
+              <div
+                role="status"
+                style={{ alignSelf: "flex-start", display: "inline-flex", alignItems: "center", gap: 6, padding: "5px 11px", borderRadius: 999, background: t.success100, border: `1px solid rgba(21, 128, 61, 0.25)`, fontFamily: f.mono, fontSize: 11, letterSpacing: "0.10em", textTransform: "uppercase", color: t.success, fontWeight: 500, marginBottom: 14 }}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+                AI analysis complete
+              </div>
+            ) : (
+              <div
+                role="status"
+                style={{ alignSelf: "flex-start", display: "inline-flex", alignItems: "center", gap: 6, padding: "5px 11px", borderRadius: 999, background: t.warning100, border: `1px solid ${t.warningLine}`, fontFamily: f.mono, fontSize: 11, letterSpacing: "0.10em", textTransform: "uppercase", color: t.warningInk, fontWeight: 500, marginBottom: 14 }}
+              >
+                Quick profile — AI analysis unavailable
+              </div>
+            )}
 
             <h1
               className="hsx-onb-profile-headline"
@@ -840,7 +856,7 @@ export function ProfileReadyState({
             )}
 
             {aiProfile.summary && (
-              <p style={{ fontFamily: f.sans, fontSize: 14.5, lineHeight: 1.6, color: t.inkSoft, margin: 0, marginBottom: 16, flex: 1 }}>
+              <p style={{ fontFamily: f.sans, fontSize: 14.5, lineHeight: 1.6, color: t.inkSoft, margin: 0, marginBottom: 16, flex: 1, whiteSpace: "pre-wrap" }}>
                 {aiProfile.summary}
               </p>
             )}

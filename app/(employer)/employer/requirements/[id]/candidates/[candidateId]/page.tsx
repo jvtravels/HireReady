@@ -77,6 +77,7 @@ export default function CandidateDetailPage() {
   const [requirement, setRequirement] = useState<Requirement | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"about" | "resume">("about");
+  const [showBreakdown, setShowBreakdown] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -155,12 +156,28 @@ export default function CandidateDetailPage() {
                 <h1 style={{ fontFamily: f.serif, fontSize: 24, color: t.coal, margin: 0 }}>{displayName}</h1>
                 <Pill tone="indigo">{candidate.targetRole}</Pill>
               </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 8 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 8, flexWrap: "wrap" }}>
                 <ScoreChip score={candidate.matchScore} />
                 <span style={{ fontFamily: f.sans, fontSize: 12.5, color: t.inkFaint }}>match score</span>
+                {candidate.matchBreakdown && (
+                  <button
+                    type="button"
+                    onClick={() => setShowBreakdown((v) => !v)}
+                    style={{ fontFamily: f.sans, fontSize: 12, fontWeight: 600, color: t.indigo, background: "none", border: "none", padding: 0, cursor: "pointer", textDecoration: "underline" }}
+                  >
+                    {showBreakdown ? "Hide why" : "Why this score?"}
+                  </button>
+                )}
                 <span style={{ color: t.line }}>·</span>
                 <span style={{ fontFamily: f.sans, fontSize: 13, color: t.inkSoft }}>{candidate.city}</span>
               </div>
+              {showBreakdown && candidate.matchBreakdown && (
+                <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginTop: 8, fontFamily: f.sans, fontSize: 12.5, color: t.inkSoft }}>
+                  <span>Role match: <strong style={{ color: t.coal }}>{candidate.matchBreakdown.roleMatch}%</strong></span>
+                  <span>Skill match: <strong style={{ color: t.coal }}>{candidate.matchBreakdown.skillMatch}%</strong></span>
+                  <span>Location match: <strong style={{ color: t.coal }}>{candidate.matchBreakdown.locationMatch}%</strong></span>
+                </div>
+              )}
               {resume?.headline && (
                 <div style={{ fontFamily: f.sans, fontSize: 13, color: t.inkFaint, marginTop: 8 }}>{resume.headline}</div>
               )}
@@ -431,11 +448,15 @@ export default function CandidateDetailPage() {
 
               <div style={{ marginBottom: 20 }}>
                 <SectionTitle>Tools &amp; skills</SectionTitle>
-                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                  {candidate.skills.map((s) => (
-                    <SkillTag key={s}>{s}</SkillTag>
-                  ))}
-                </div>
+                {candidate.skills.length ? (
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                    {candidate.skills.map((s) => (
+                      <SkillTag key={s}>{s}</SkillTag>
+                    ))}
+                  </div>
+                ) : (
+                  <HelpText>No tools or skills listed on this resume.</HelpText>
+                )}
               </div>
 
               {!!resume?.certifications.length && (

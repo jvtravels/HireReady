@@ -27,7 +27,7 @@ if (!USAGE_LOGGING_ENABLED) {
  * empty despite LLM calls succeeding.)
  */
 /** Map a model id OR a bare provider name to the provider label. Success rows
- *  carry the real model id ("llama-3.3-70b-versatile", "gemini-2.5-flash",
+ *  carry the real model id ("llama-3.3-70b-specdec", "gemini-2.5-flash",
  *  "cerebras-llama-3.3-70b"); error rows carry the provider name directly. */
 function providerFromModel(model: string): string {
   const m = model.toLowerCase();

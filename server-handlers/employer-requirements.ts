@@ -180,7 +180,7 @@ async function handlePost(req: Request, userId: string, headers: Record<string, 
     const inserted = (await insertRes.json()) as RequirementRow[];
     const requirement = inserted[0];
 
-    const finalStatus = await runMatching(requirement.id, { title, location, description });
+    const finalStatus = await runMatching(requirement.id, { title, location, description }, userId);
 
     return new Response(
       JSON.stringify({
@@ -213,10 +213,10 @@ async function handlePost(req: Request, userId: string, headers: Record<string, 
     persists requirement_matches, and PATCHes the requirement's final
     status. Returns that status. Any failure here is caught and recorded
     as a "failed" requirement rather than left stuck on "generating". */
-async function runMatching(requirementId: string, req: { title: string; location: string; description: string }): Promise<string> {
+async function runMatching(requirementId: string, req: { title: string; location: string; description: string }, ownerUserId: string): Promise<string> {
   try {
     const poolRes = await fetch(
-      `${SUPABASE_URL}/rest/v1/profiles?is_discoverable_to_employers=eq.true&select=id,name,target_role,industry,resume_data,practice_timestamps`,
+      `${SUPABASE_URL}/rest/v1/profiles?is_discoverable_to_employers=eq.true&id=neq.${encodeURIComponent(ownerUserId)}&select=id,name,target_role,industry,resume_data,practice_timestamps`,
       { headers: serviceHeaders() },
     );
     if (!poolRes.ok) throw new Error(`candidate pool read failed: ${poolRes.status}`);

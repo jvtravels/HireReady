@@ -390,6 +390,7 @@ export default function RequirementDetailPage() {
   const [activeTab, setActiveTab] = useState<"candidates" | "description">("candidates");
   const [search, setSearch] = useState("");
   const [contactFilter, setContactFilter] = useState<ContactFilter>("all");
+  const [locationFilter, setLocationFilter] = useState<string>("all");
   const [sortKey, setSortKey] = useState<SortKey>("match");
 
   const load = useCallback(async () => {
@@ -412,19 +413,25 @@ export default function RequirementDetailPage() {
     return () => clearTimeout(timer);
   }, [requirement?.status, load]);
 
+  const locationOptions = useMemo(() => {
+    const cities = new Set((requirement?.candidates ?? []).map((c) => c.city).filter((c) => c && c !== "Not specified"));
+    return Array.from(cities).sort();
+  }, [requirement]);
+
   const filteredSorted = useMemo(() => {
     const candidates = requirement?.candidates ?? [];
     const q = search.trim().toLowerCase();
     const filtered = candidates.filter((c) => {
       if (contactFilter === "locked" && c.unlocked) return false;
       if (contactFilter === "unlocked" && !c.unlocked) return false;
+      if (locationFilter !== "all" && c.city !== locationFilter) return false;
       if (!q) return true;
-      const haystack = [c.unlocked ? c.name : "", c.targetRole, c.city, ...c.skills].join(" ").toLowerCase();
+      const haystack = [c.unlocked ? c.name : "", c.targetRole, c.city, c.resume?.noticePeriod || "", ...c.skills].join(" ").toLowerCase();
       return haystack.includes(q);
     });
     const recency = (c: Candidate) => (c.lastActiveDaysAgo < 0 ? Number.POSITIVE_INFINITY : c.lastActiveDaysAgo);
     return filtered.sort((a, b) => (sortKey === "match" ? b.matchScore - a.matchScore : recency(a) - recency(b)));
-  }, [requirement, search, contactFilter, sortKey]);
+  }, [requirement, search, contactFilter, locationFilter, sortKey]);
 
   const handleUnlocked = (candidateId: string, name: string, email: string) => {
     setRequirement((prev) =>
@@ -713,14 +720,6 @@ export default function RequirementDetailPage() {
 
           {(requirement.status === "ready" || requirement.status === "partial" || requirement.status === "closed") && (
             <>
-              {requirement.status === "partial" && (
-                <Card style={{ background: t.warning100, border: "none", marginBottom: 16 }}>
-                  <span style={{ fontFamily: f.sans, fontSize: 13, color: t.warningInk }}>
-                    Only a partial match was found — fewer candidates met this requirement closely. Consider widening
-                    location or experience range.
-                  </span>
-                </Card>
-              )}
               {readOnly && (
                 <Card style={{ background: t.creamSoft, marginBottom: 16 }}>
                   <span style={{ fontFamily: f.sans, fontSize: 13, color: t.inkSoft }}>
@@ -742,7 +741,7 @@ export default function RequirementDetailPage() {
                 <input
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search by name, role, or skill…"
+                  placeholder="Search by name, role, skill, or notice period…"
                   style={{ ...toolbarInputStyle, flex: "1 1 220px", minWidth: 200 }}
                   aria-label="Search candidates"
                 />
@@ -756,6 +755,19 @@ export default function RequirementDetailPage() {
                     <option key={o.value} value={o.value}>{o.label}</option>
                   ))}
                 </select>
+                {locationOptions.length > 1 && (
+                  <select
+                    value={locationFilter}
+                    onChange={(e) => setLocationFilter(e.target.value)}
+                    style={toolbarInputStyle}
+                    aria-label="Filter by location"
+                  >
+                    <option value="all">All locations</option>
+                    {locationOptions.map((loc) => (
+                      <option key={loc} value={loc}>{loc}</option>
+                    ))}
+                  </select>
+                )}
                 <select
                   value={sortKey}
                   onChange={(e) => setSortKey(e.target.value as SortKey)}
@@ -766,10 +778,10 @@ export default function RequirementDetailPage() {
                     <option key={o.value} value={o.value}>{o.label}</option>
                   ))}
                 </select>
-                {(search.trim() !== "" || contactFilter !== "all") && (
+                {(search.trim() !== "" || contactFilter !== "all" || locationFilter !== "all") && (
                   <button
                     type="button"
-                    onClick={() => { setSearch(""); setContactFilter("all"); }}
+                    onClick={() => { setSearch(""); setContactFilter("all"); setLocationFilter("all"); }}
                     style={{ ...toolbarInputStyle, background: "transparent", border: "none", color: t.indigo, fontWeight: 600, cursor: "pointer" }}
                   >
                     Clear filters

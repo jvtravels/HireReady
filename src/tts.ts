@@ -972,12 +972,27 @@ async function speakWithAzure(
   };
 }
 
+// The Web Speech API exposes no gender field on SpeechSynthesisVoice, only
+// a name/lang string. Match common vendor naming conventions so the final
+// fallback tier doesn't hand back a voice of the wrong (or just different)
+// gender from whatever Sarvam/Cartesia/Azure used earlier in the session —
+// see B-EMP4 in speakWithBrowser below.
+const BROWSER_FEMALE_VOICE_HINTS = ["female", "samantha", "veena", "zira", "karen", "victoria", "moira", "tessa", "fiona"];
+const BROWSER_MALE_VOICE_HINTS = ["male", "daniel", "rishi", "david", "alex", "fred", "aaron", "arthur"];
+export function browserVoiceGender(name: string): "male" | "female" | undefined {
+  const lower = name.toLowerCase();
+  if (BROWSER_FEMALE_VOICE_HINTS.some((h) => lower.includes(h))) return "female";
+  if (BROWSER_MALE_VOICE_HINTS.some((h) => lower.includes(h))) return "male";
+  return undefined;
+}
+
 /* ─── Browser TTS (fallback) ─── */
 function speakWithBrowser(
   text: string,
   onEnd: () => void,
   onError: () => void,
   onAudioStarted?: () => void,
+  gender?: "male" | "female",
 ): { cancel: () => void } {
   // If autoplay is blocked, skip — browser TTS also requires user gesture
   if (_autoplayBlocked) {
@@ -999,11 +1014,16 @@ function speakWithBrowser(
   // Prefer Indian English voices, fall back to US English. MVP is
   // English-only; Hindi voice fallback removed (was hinting Hindi
   // pronunciation when no Indian-English voice was available).
-  const preferred = voices.find(
+  // B-EMP4 (2026-08-20): rank by gender match first so this last-resort
+  // tier doesn't audibly swap the interviewer's voice identity when Sarvam/
+  // Cartesia/Azure have already spoken in a specific gender this session.
+  const genderMatches = gender ? voices.filter((v) => browserVoiceGender(v.name) === gender) : voices;
+  const pool = genderMatches.length > 0 ? genderMatches : voices;
+  const preferred = pool.find(
     (v) =>
       v.lang === "en-IN" ||
       v.name.includes("Indian"),
-  ) || voices.find(
+  ) || pool.find(
     (v) =>
       v.name.includes("Samantha") ||
       v.name.includes("Google US English") ||
@@ -1175,7 +1195,7 @@ export async function speakAs(
     handle = await speakWithAzure(text, wrapEnd, () => {
       console.warn("Azure TTS also failed (speakAs), falling back to browser TTS");
       recordTtsAttempt(attempt, "browser");
-      const browserHandle = speakWithBrowser(text, wrapEnd, wrapError, wrapStart("browser"));
+      const browserHandle = speakWithBrowser(text, wrapEnd, wrapError, wrapStart("browser"), gender);
       handle = browserHandle;
       setCancel(browserHandle.cancel);
     }, gender, voiceId, onDurationKnown, wrapStart("azure"));
@@ -1509,7 +1529,7 @@ export async function speak(
     handle = await speakWithAzure(text, wrapEnd, () => {
       console.warn("Azure TTS also failed, falling back to browser TTS");
       recordTtsAttempt(attempt, "browser");
-      const browserHandle = speakWithBrowser(text, wrapEnd, wrapError, wrapStart("browser"));
+      const browserHandle = speakWithBrowser(text, wrapEnd, wrapError, wrapStart("browser"), gender);
       handle = browserHandle;
       setCancel(browserHandle.cancel);
     }, gender, voiceId, onDurationKnown, wrapStart("azure"));
@@ -1579,7 +1599,7 @@ export async function speak(
 
   if (settings.provider === "browser") {
     recordTtsAttempt(attempt, "browser");
-    handle = speakWithBrowser(text, wrapEnd, wrapError, wrapStart("browser"));
+    handle = speakWithBrowser(text, wrapEnd, wrapError, wrapStart("browser"), gender);
   } else {
     // Sarvam primary → Cartesia → Azure → Browser. Each layer escalates
     // on `onError`; `onEnd` short-circuits the chain on success or on

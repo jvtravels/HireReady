@@ -857,7 +857,7 @@ async function buildServiceDetails(
       name: "Groq",
       type: "LLM",
       role: "Primary",
-      model: "llama-3.3-70b-versatile",
+      model: "llama-3.3-70b-specdec",
       status: groqWindowErrors > groqCalls.length * 0.1 ? "degraded" : "healthy",
       usage: {
         callsTotal: groqCallsTotal,

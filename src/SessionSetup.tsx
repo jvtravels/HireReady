@@ -1428,6 +1428,7 @@ export default function SessionSetup() {
     interviewFocus.length > 0 &&
     !companyMissing &&
     !hardRoleCompanyMismatch;
+
   /* Mic is only a hard requirement when the AI actually speaks. With the
      TTS kill-switch on (VOICE_OUTPUT_DISABLED), the interview is text-first
      and fully answerable by typing — the engine's `?nomic=1` path drives a

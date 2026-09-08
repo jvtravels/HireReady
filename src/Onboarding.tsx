@@ -582,7 +582,10 @@ export default function Onboarding() {
           !/^(and|or|the|with|for|from|working|worked|used|using|also|various)\b/i.test(s)
         );
         if (cleanSkills.length > 0) {
-          finalProfile = { ...fallback, topSkills: cleanSkills.slice(0, 8), headline: data.name || "Your Profile" };
+          // headline stays generic here — it must never be the candidate's own
+          // name (data.name), which the UI renders both as the profile title
+          // and, absent a separately-set targetRole, as the "Target role" pill.
+          finalProfile = { ...fallback, topSkills: cleanSkills.slice(0, 8), headline: "Your Profile" };
           setAiProfile(finalProfile);
         }
       }
@@ -921,7 +924,7 @@ export default function Onboarding() {
           )}
           {resumeParsed && !resumeParsing && aiPhase === "done" && (
             <ProfileReadyState
-              aiProfile={aiProfile || { headline: resumeParsed.name || "Your Profile", summary: "", yearsExperience: null, seniorityLevel: "", topSkills: resumeParsed.skills?.slice(0, 8) || [], keyAchievements: [], industries: [], interviewStrengths: [], interviewGaps: [], careerTrajectory: "" }}
+              aiProfile={aiProfile || { headline: "Your Profile", summary: "", yearsExperience: null, seniorityLevel: "", topSkills: resumeParsed.skills?.slice(0, 8) || [], keyAchievements: [], industries: [], interviewStrengths: [], interviewGaps: [], careerTrajectory: "" }}
               resumeParsed={resumeParsed} userName={userName}
               fileName={fileName} resumeText={resumeText} targetRole={targetRole}
               fileInputRef={fileInputRef} onUserNameChange={setUserName}

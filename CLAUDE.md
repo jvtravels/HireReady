@@ -214,19 +214,17 @@ git push origin main    # Vercel auto-deploys from main
 
 Preview deploys happen per PR. `/api/uptime-check` is the health probe.
 
-**Always test on staging before it reaches production.** `main` deploys
-straight to prod, so any change whose behaviour can only be confirmed
-on a real deploy (anything touching the LLM/TTS/STT/payment provider
-paths, edge-runtime-only code, or an end-to-end interview flow) must be
-validated on **`staging.hirestepx.com`** (the team/pre-prod full-app
-host, see `proxy.ts`) — or its per-branch Vercel preview — *before*
-merging to `main`. Don't push provider-path or flow changes straight to
-`main` and call them verified off local unit tests alone. Workflow:
-branch → push → let Vercel build the preview → run the live/E2E check
-against that URL (`BASE_URL=<preview-or-staging-url>`, see
-`.github/workflows/e2e.yml`) → merge once green. Staging is behind
-Vercel deployment protection; automated runs need the bypass secret +
-a staging test user (ask the maintainer if not configured locally).
+**Deploy directly to production (2026-08-20 policy change, explicit
+maintainer request).** Push/merge to `main` and let Vercel's auto-deploy
+take it straight to prod — don't gate on a staging/preview check first,
+including for changes touching the LLM/TTS/STT/payment provider paths,
+edge-runtime-only code, or the end-to-end interview flow. Still run
+`npx tsc --noEmit` and `npm test` locally before pushing, and still watch
+the Vercel/CI build status after push in case it fails outright — this
+policy trades pre-merge staging verification for speed, it doesn't
+excuse shipping code that doesn't build or fails its own unit tests.
+`staging.hirestepx.com` and per-branch Vercel previews still exist and
+remain available if a change specifically warrants that extra check.
 
 **DO NOT run `vercel deploy --prod` from the CLI.** The Vercel GitHub
 integration is enabled on this repo — every push to `main` triggers a

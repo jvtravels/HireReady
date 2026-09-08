@@ -20,6 +20,8 @@ import type { DashboardSession } from "./dashboardTypes";
 import { tokens as T, fonts as F, shadows as S } from "./auth/_tokens";
 import { UpcomingInterviews } from "./DashboardHomePanels";
 import HiringActivityCard from "./HiringActivityCard";
+import { authHeaders } from "./supabase";
+import { apiFetch } from "./apiClient";
 import {
   computeResumeFreshness,
   parseDismissal,
@@ -59,6 +61,8 @@ const t = {
   copperBorder: T.copperBorder,
   success:      T.success,
   success100:   T.success100,
+  error:        T.error,
+  error100:     T.error100,
   warning100:   T.warning100,
   warningInk:   T.warningInk,
   warningLine:  T.warningLine,
@@ -281,7 +285,7 @@ function ResumeFreshnessStrip({ parsedAt, onRefresh }: {
 const OUTCOME_DISMISS_KEY = "hirestepx_outcome_dismissed";
 
 function OutcomePrompt({ firstSessionDate, isCampus }: { firstSessionDate: string | null | undefined; isCampus?: boolean }) {
-  const [status, setStatus] = useState<"idle" | "open" | "done" | "dismissed">("idle");
+  const [status, setStatus] = useState<"idle" | "open" | "done" | "error" | "dismissed">("idle");
   const [applied, setApplied] = useState(false);
   const [interviewed, setInterviewed] = useState(false);
   const [offer, setOffer] = useState(false);
@@ -301,12 +305,14 @@ function OutcomePrompt({ firstSessionDate, isCampus }: { firstSessionDate: strin
     } catch { /* private mode */ }
 
     // Check if already reported
-    fetch("/api/user-outcome", { credentials: "include" })
-      .then(r => r.ok ? r.json() : null)
-      .then((data: { outcome: Record<string, unknown> | null } | null) => {
+    (async () => {
+      try {
+        const res = await fetch("/api/user-outcome", { headers: await authHeaders() });
+        if (!res.ok) return;
+        const data = (await res.json()) as { outcome: Record<string, unknown> | null } | null;
         if (!data?.outcome) setStatus("open");
-      })
-      .catch(() => { /* best-effort */ });
+      } catch { /* best-effort */ }
+    })();
   }, [firstSessionDate]);
 
   const dismiss = () => {
@@ -316,21 +322,33 @@ function OutcomePrompt({ firstSessionDate, isCampus }: { firstSessionDate: strin
 
   const submit = async () => {
     setBusy(true);
-    try {
-      await fetch("/api/user-outcome", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ applied, interviewed, offer, accepted,
-          company: company.trim() || undefined, roleLanded: roleLanded.trim() || undefined,
-          testimonial: testimonial.trim() || undefined, mayShare }),
-      });
-    } catch { /* best-effort */ }
+    const res = await apiFetch("/api/user-outcome", { applied, interviewed, offer, accepted,
+      company: company.trim() || undefined, roleLanded: roleLanded.trim() || undefined,
+      testimonial: testimonial.trim() || undefined, mayShare });
     setBusy(false);
-    setStatus("done");
+    setStatus(res.ok ? "done" : "error");
   };
 
   if (status === "idle" || status === "dismissed") return null;
+
+  if (status === "error") {
+    return (
+      <div style={{
+        padding: "12px 14px", background: t.error100,
+        border: `1px solid ${t.error}`, borderRadius: 10,
+        display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10,
+      }}>
+        <p style={{ fontFamily: f.sans, fontSize: 13, color: t.coal, margin: 0, lineHeight: 1.4 }}>
+          Couldn&apos;t save your result. Please try again.
+        </p>
+        <button
+          type="button" onClick={() => setStatus("open")}
+          style={{ fontFamily: f.sans, fontSize: 12, fontWeight: 600, color: t.indigo,
+            background: "transparent", border: "none", cursor: "pointer", flexShrink: 0 }}
+        >Retry</button>
+      </div>
+    );
+  }
 
   if (status === "done") {
     return (
@@ -449,12 +467,6 @@ const MOCK_FALLBACK_SESSIONS: DemoSession[] = [
 ];
 
 type DemoSession = { title: string; date: string; score: number; icon: React.ReactNode };
-
-const MOCK_INSIGHT = {
-  headline: "Your STAR breakdowns lose specificity by minute 3.",
-  body: "Across your last 8 behavioral runs, the Situation plus Task averaged 41s, strong. Action narrowed to a single tradeoff. But the Result drifted to generic outcome language in 6 of 8. Try ending every story with a quantified delta.",
-  evidence: "8 behavioral sessions, 23 May to 4 Jun",
-};
 
 const MOCK_KPI = {
   practiceHours:    { value: 12.4, unit: "h",     sub: "this week",        percentile: 78 },
@@ -580,7 +592,6 @@ export default function DashboardHome() {
     router.push(href);
   };
   const goToSessions  = () => router.push("/sessions");
-  const goToAnalytics = () => router.push("/analytics");
   const goToResume    = () => router.push("/resume");
 
   /* North-Star coaching input: a click on the "Your next move" primary CTA.
@@ -881,53 +892,6 @@ export default function DashboardHome() {
         {/* ─── Rail (one card only, supporting strips below) ─── */}
         <aside className="hsx-dh-rail" style={{ display: "flex", flexDirection: "column", gap: 24, minWidth: 0 }}>
 
-          {/* AI coach insight — demo-only until the insights queue ships */}
-          {demoMode ? (
-            <Card labelledBy="dh-insight">
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <span style={{ color: t.indigo }}>{Icons.sparkle}</span>
-                  <h2 id="dh-insight" style={{ fontFamily: f.sans, fontSize: 13, fontWeight: 600, color: t.coal, margin: 0 }}>
-                    AI coach insight
-                  </h2>
-                </div>
-                <SampleDataPill />
-              </div>
-              <p style={{ fontFamily: f.serif, fontSize: 22, fontWeight: 400, color: t.coal, letterSpacing: "-0.01em", lineHeight: 1.2, margin: "0 0 8px" }}>
-                {MOCK_INSIGHT.headline}
-              </p>
-              <p style={{ fontFamily: f.sans, fontSize: 13, color: t.inkSoft, lineHeight: 1.55, margin: "0 0 12px" }}>
-                {MOCK_INSIGHT.body}
-              </p>
-              <div style={{
-                fontFamily: f.mono, fontSize: 10, color: t.inkSoft, letterSpacing: 0.4,
-                padding: "8px 10px", background: t.cream, border: `1px solid ${t.line}`, borderRadius: 6,
-                marginBottom: 14,
-              }}>
-                BASED ON: {MOCK_INSIGHT.evidence}
-              </div>
-              <PrimaryCta size="sm" fullWidth onClick={goToInterview("ai-insight-demo")}>Start sharpening drill</PrimaryCta>
-            </Card>
-          ) : (
-            <Card labelledBy="dh-insight">
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-                <span style={{ color: t.indigo }}>{Icons.sparkle}</span>
-                <h2 id="dh-insight" style={{ fontFamily: f.sans, fontSize: 13, fontWeight: 600, color: t.coal, margin: 0 }}>
-                  AI coach insight
-                </h2>
-              </div>
-              <p style={{ fontFamily: f.sans, fontSize: 13, color: t.inkSoft, lineHeight: 1.5, margin: "0 0 14px" }}>
-                {hasPatternData
-                  ? "Your patterns are tracked across sessions. Open your Readiness Index for a full coaching breakdown — blind spots, skill decay, and follow-up prep."
-                  : "After four sessions, your coach surfaces a specific pattern from your STAR breakdowns. Keep going."}
-              </p>
-              {hasPatternData
-                ? <PrimaryCta size="sm" fullWidth onClick={() => router.push("/analytics")}>Open Readiness Index →</PrimaryCta>
-                : <PrimaryCta size="sm" fullWidth onClick={goToInterview("ai-insight-real")}>Start a session</PrimaryCta>
-              }
-            </Card>
-          )}
-
           {/* Peer cohort — demo-only until backend ships */}
           {demoMode && (
             <div>
@@ -953,34 +917,9 @@ export default function DashboardHome() {
           {/* Job-search outcome prompt — fires 30 days after first session. */}
           <OutcomePrompt firstSessionDate={user?.practiceTimestamps?.[0]} isCampus={core.recentSessions.some(s => s.focus === "campus-placement")} />
 
-          {/* Resume, inline single line. Copy generic (no fake "4 days ago"). */}
-          <div style={{
-            display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12,
-            padding: "14px 16px",
-            background: t.creamSoft, border: `1px solid ${t.line}`, borderRadius: 10,
-          }}>
-            <div style={{ minWidth: 0 }}>
-              <Eyebrow as="h2" tone="ink">Resume</Eyebrow>
-              <p style={{ fontFamily: f.sans, fontSize: 13, color: t.coal, margin: "4px 0 0", lineHeight: 1.4 }}>
-                Refresh before each interview window.
-              </p>
-            </div>
-            <OutlineCta size="sm" onClick={goToResume}>Open</OutlineCta>
-          </div>
-
           {/* Talent-roster visibility — see settingsSections.tsx AccountSection
               for the opt-in toggle this reflects. */}
           <HiringActivityCard />
-
-          {/* Jump back in, plain link list */}
-          <nav aria-label="Quick links">
-            <Eyebrow as="h2" tone="ink">Jump back in</Eyebrow>
-            <ul style={{ listStyle: "none", margin: "10px 0 0", padding: 0, display: "flex", flexDirection: "column", gap: 2 }}>
-              <RailLink onClick={goToAnalytics}>Analytics, score trend</RailLink>
-              <RailLink onClick={goToSessions}>All session reports</RailLink>
-              <RailLink onClick={goToResume}>Upload a new resume version</RailLink>
-            </ul>
-          </nav>
         </aside>
       </div>
 
@@ -1036,18 +975,6 @@ export default function DashboardHome() {
           display: inline-block;
           transition: transform 160ms cubic-bezier(0.2, 0.7, 0.2, 1);
         }
-        /* Rail link (list row) — bg tint, arrow advance, text darkens. */
-        .hsx-dh-root .hsx-dh-raillink {
-          padding-left: 4px !important;
-          padding-right: 4px !important;
-        }
-        .hsx-dh-root .hsx-dh-raillink:hover {
-          background: rgba(49, 46, 129, 0.04);
-          color: ${t.indigo};
-        }
-        .hsx-dh-root .hsx-dh-raillink:active {
-          background: rgba(49, 46, 129, 0.07);
-        }
         .hsx-dh-root .hsx-dh-btn:focus-visible {
           outline: 2px solid ${t.copper};
           outline-offset: 3px;
@@ -1071,8 +998,7 @@ export default function DashboardHome() {
         @media (hover: none), (pointer: coarse) {
           .hsx-dh-root .hsx-dh-cta-primary:hover,
           .hsx-dh-root .hsx-dh-cta-outline:hover,
-          .hsx-dh-root .hsx-dh-textlink:hover,
-          .hsx-dh-root .hsx-dh-raillink:hover {
+          .hsx-dh-root .hsx-dh-textlink:hover {
             transform: none !important;
             filter: none !important;
             background: inherit;
@@ -1456,19 +1382,3 @@ function DailyGoalStub() {
   );
 }
 
-function RailLink({ children, onClick }: { children: React.ReactNode; onClick: () => void }) {
-  return (
-    <li>
-      <button onClick={onClick} className="hsx-dh-btn hsx-dh-raillink" style={{
-        display: "flex", alignItems: "center", justifyContent: "space-between",
-        width: "100%", padding: "12px 0", minHeight: 44,
-        background: "transparent", border: "none", borderBottom: `1px solid ${t.line}`,
-        cursor: "pointer",
-        fontFamily: f.sans, fontSize: 14, fontWeight: 500, color: t.coal, textAlign: "left",
-      }}>
-        <span>{children}</span>
-        <span style={{ color: t.inkSoft }}>{Icons.arrow}</span>
-      </button>
-    </li>
-  );
-}

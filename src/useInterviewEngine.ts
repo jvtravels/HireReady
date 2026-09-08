@@ -34,7 +34,7 @@ import { extractNounPhrases, appendToMemory } from "./_noun-phrase-memory";
 import type { NegotiationBandData } from "./interviewAPI";
 import type { DeepgramSTTHandle } from "./deepgramSTT";
 import type { SarvamSTTHandle } from "./sarvamSTT";
-import { getInterviewerName, getInterviewerGender, getPanelMembers, formatTime, getPersonaTrait } from "./InterviewComponents";
+import { getInterviewerName, getInterviewerGender, getPanelMembers, formatTime, getPersonaTrait, getInterviewerRerollCount } from "./InterviewComponents";
 import type { SpeechRecognitionInstance } from "./speechRecognition";
 import { safeUUID } from "./utils";
 import { computeMicroFeedback } from "./interviewMicroFeedback";
@@ -281,10 +281,17 @@ export function useInterviewEngine() {
   //     - Fresh start from SessionSetup → has ?new=1
   //     - Resume from dashboard → has ?resume=true
   //     - Page refresh mid-session → draftRef.current is populated
+  //
+  //   B-EMP2 (2026-08-20): this redirect and the record-session-start
+  //   effect below both fire on mount as SEPARATE effects. Before this ref,
+  //   a bounce-worthy entry (no intent, no draft) still let
+  //   record-session-start's effect run and burn a credit for a session
+  //   the user never saw — router.replace() only kicks off navigation, it
+  //   doesn't stop already-scheduled effects. missingStartIntentRef lets
+  //   the later effect check "are we bouncing?" before spending a credit.
+  const missingStartIntentRef = useRef(!(isNewSession || isResuming) && !draftRef.current);
   useEffect(() => {
-    const hasExplicitIntent = isNewSession || isResuming;
-    const hasRestorableDraft = !!draftRef.current;
-    if (!hasExplicitIntent && !hasRestorableDraft) {
+    if (missingStartIntentRef.current) {
       console.warn("[interview] Entered /interview with no start intent and no draft — redirecting to /dashboard");
       router.replace("/dashboard");
     }
@@ -335,6 +342,7 @@ export function useInterviewEngine() {
      would cause quota counting to undercount active sessions. */
   useEffect(() => {
     if (!user?.id) return; // anon sessions don't count
+    if (missingStartIntentRef.current) return; // B-EMP2: bouncing to /dashboard — don't charge a credit
     const sessionId = liveSessionIdRef.current;
     (async () => {
       try {
@@ -842,7 +850,10 @@ export function useInterviewEngine() {
   const [evaluating, setEvaluating] = useState(false);
   const [evalElapsed, setEvalElapsed] = useState(0);
   const micStreamRef = useRef<MediaStream | null>(null);
-  const interviewerName = useMemo(() => getInterviewerName(`${interviewType}-${interviewFocus}-${targetCompany}-${user?.id || ""}`, user?.id, targetCompany), [interviewType, interviewFocus, targetCompany, user?.id]);
+  const interviewerName = useMemo(() => {
+    const reroll = getInterviewerRerollCount(user?.id);
+    return getInterviewerName(`${interviewType}-${interviewFocus}-${targetCompany}-${user?.id || ""}-${reroll}`, user?.id, targetCompany);
+  }, [interviewType, interviewFocus, targetCompany, user?.id]);
   const interviewerGender = useMemo(() => getInterviewerGender(interviewerName), [interviewerName]);
   // Pick a random female voice once per session (seeded by interviewerName so
   // the same interviewer always uses the same voice, but different interviewers

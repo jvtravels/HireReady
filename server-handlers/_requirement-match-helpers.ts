@@ -27,6 +27,18 @@ export interface ScoredCandidate {
   rosterScore: number;
 }
 
+/** 0-100 read-outs for the three inputs that drive matchScore, for
+    surfacing "why this score" to employers. Not persisted — recomputed
+    from the same live inputs (resume, requirement) each time it's read,
+    so it can drift slightly from the stored matchScore if a candidate's
+    resume changed since the match was scored. That's fine for an
+    explanatory breakdown; it isn't the number of record. */
+export interface MatchBreakdown {
+  roleMatch: number;
+  skillMatch: number;
+  locationMatch: number;
+}
+
 function tokenize(text: string): string[] {
   return (text || "").toLowerCase().match(/[a-z0-9+.#]+/g) || [];
 }
@@ -58,10 +70,7 @@ export function extractResumeLocation(resumeData: unknown): string {
   return typeof loc === "string" ? loc : "";
 }
 
-/** Deterministic 0-100 fit score for one candidate against one requirement,
-    plus the candidate's lifetime roster score (session-performance based,
-    independent of this specific requirement). */
-export function scoreCandidateMatch(candidate: CandidatePoolRow, req: RequirementInput): ScoredCandidate {
+function fitInputs(candidate: Pick<CandidatePoolRow, "target_role" | "resume_data">, req: RequirementInput) {
   const reqTokens = new Set([...tokenize(req.title), ...tokenize(req.description)]);
   const roleTokens = new Set(tokenize(candidate.target_role || ""));
   const skillTokens = new Set(extractSkills(candidate.resume_data).flatMap(tokenize));
@@ -80,6 +89,15 @@ export function scoreCandidateMatch(candidate: CandidatePoolRow, req: Requiremen
     locationFit = reqLocTokens.some((t) => candidateLocation.includes(t)) ? 1 : 0.35;
   }
 
+  return { roleOverlap, skillOverlap, locationFit };
+}
+
+/** Deterministic 0-100 fit score for one candidate against one requirement,
+    plus the candidate's lifetime roster score (session-performance based,
+    independent of this specific requirement). */
+export function scoreCandidateMatch(candidate: CandidatePoolRow, req: RequirementInput): ScoredCandidate {
+  const { roleOverlap, skillOverlap, locationFit } = fitInputs(candidate, req);
+
   const rosterScore = Math.round(clamp(candidate.avg_score ?? 50, 0, 100));
   const activityBoost = clamp(candidate.sessions_completed, 0, 10) / 10;
   const recencyPenalty = candidate.last_active_days_ago > 30 ? 0.85 : 1;
@@ -90,6 +108,17 @@ export function scoreCandidateMatch(candidate: CandidatePoolRow, req: Requiremen
   );
 
   return { candidateId: candidate.id, matchScore: clamp(matchScore, 0, 100), rosterScore };
+}
+
+/** Human-readable 0-100 read-outs of the same three inputs scoreCandidateMatch
+    weighs internally, for a "why this score" breakdown in the UI. */
+export function explainMatch(candidate: Pick<CandidatePoolRow, "target_role" | "resume_data">, req: RequirementInput): MatchBreakdown {
+  const { roleOverlap, skillOverlap, locationFit } = fitInputs(candidate, req);
+  return {
+    roleMatch: Math.round(clamp(roleOverlap, 0, 1) * 100),
+    skillMatch: Math.round(clamp(skillOverlap, 0, 1) * 100),
+    locationMatch: Math.round(clamp(locationFit, 0, 1) * 100),
+  };
 }
 
 export type RequirementMatchStatus = "ready" | "partial" | "zero";
