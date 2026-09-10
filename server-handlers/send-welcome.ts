@@ -31,9 +31,10 @@ const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
    also let an attacker forge verification tokens for any account, which
    is a much wider blast radius than the leak alone.
 
-   The startup probe at the bottom of this module crashes the function
-   on first invocation if EMAIL_VERIFICATION_SECRET is missing in
-   production (VERCEL_ENV === "production"). Dev / preview keep working.
+   Every call site that issues a token via generateVerifyToken() checks
+   assertEmailSecret() first and returns a clean 500 instead of sending
+   an email whose verify link is guaranteed to fail — see handleVerify
+   and handleVerifyReminder below.
 
    The "fallback-secret" string is intentionally kept as a last-resort
    default so a misconfigured local dev doesn't crash with a cryptic
@@ -56,10 +57,10 @@ const EMAIL_SECRET = (() => {
 })();
 
 /* assertEmailSecret returns true if the HMAC signing key is sufficiently
-   strong to issue tokens. Currently consulted only by generateVerifyToken
-   which uses EMAIL_SECRET directly; surface here in case future callers
-   want to fail loudly before issuing a link signed against a missing
-   secret in production. */
+   strong to issue tokens. Call this before generateVerifyToken() at any
+   new call site — without it, a missing EMAIL_VERIFICATION_SECRET in
+   production still emails a "successful" signup with a verify link that
+   is silently guaranteed to fail at /api/verify-email. */
 export function assertEmailSecret(): boolean {
   return EMAIL_SECRET.length >= 16;
 }
@@ -245,6 +246,10 @@ async function handleVerifyReminder(req: VercelRequest, res: VercelResponse, nor
   // Rate limit: max 2 reminders per IP per day
   if (await checkRateLimit(req, "reminder", 2)) {
     return res.status(429).json({ error: "Too many reminder requests." });
+  }
+
+  if (!assertEmailSecret()) {
+    return res.status(500).json({ error: "Email verification is not configured" });
   }
 
   const token = generateVerifyToken(normalizedEmail);
@@ -547,6 +552,13 @@ async function handleVerify(req: VercelRequest, res: VercelResponse, email: stri
         .json({ ok: false, error: "Email service unavailable" });
     }
     return res.status(200).json({ ok: true, skipped: true });
+  }
+
+  if (!assertEmailSecret()) {
+    // Don't flip the user to unverified below if we can't issue a token
+    // that will ever pass verification — that would strand them worse
+    // than leaving them as Supabase's default-confirmed state.
+    return res.status(500).json({ error: "Email verification is not configured" });
   }
 
   // Clear email_confirmed_at so user must verify (Supabase auto-sets it when "Confirm email" is OFF)
