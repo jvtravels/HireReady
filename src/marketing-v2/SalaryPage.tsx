@@ -940,7 +940,6 @@ export function SalaryCompanyPage({
             eyebrow="Practice rounds"
             title="Prepare for your"
             accent={`${companyLabel} interview`}
-            videoSrc="/cta.mp4"
           >
             <p
               style={{
