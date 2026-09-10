@@ -35,7 +35,11 @@ function relatedSalaryPages(currentSlug: string): Array<{ slug: string; label: s
     .map((s) => ({ slug: s, label: salaryCompanyLabel(s) }));
 }
 
-export const revalidate = 86400;
+/* Content is a static data file (data/salary-seo.ts) — it only changes on
+   redeploy, which invalidates the ISR cache anyway. A long interval here
+   costs nothing in freshness but avoids racking up ISR writes across ~220
+   pages every day (see Vercel Usage: ISR Writes). */
+export const revalidate = 2592000; /* 30 days */
 
 export async function generateStaticParams() {
   return getAllSalarySlugs().map((company) => ({ company }));

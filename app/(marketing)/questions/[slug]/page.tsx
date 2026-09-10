@@ -19,7 +19,10 @@ import { buildQuestionsPageModel } from "./_jsonld";
  * answering them with an AI that grades them in real time.
  */
 
-export const revalidate = 86400; /* 24 h */
+/* Content is static data (data/seo-pages.ts) — only changes on redeploy,
+   which invalidates the ISR cache anyway. Long interval avoids racking up
+   ISR writes every day across ~326 pages (see Vercel Usage: ISR Writes). */
+export const revalidate = 2592000; /* 30 days */
 
 /* GSC Coverage (Sept 2026): "Crawled - currently not indexed", 27 URLs.
  * Of the 14 /questions/[slug] URLs in that report, 11 fall back to the

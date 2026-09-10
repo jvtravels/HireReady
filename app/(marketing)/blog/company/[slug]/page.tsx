@@ -31,7 +31,10 @@ const GENERAL_COMPANIES = new Set([
   "Career Advice", "Career",
 ]);
 
-export const revalidate = 86400;
+/* Content is static data (BLOG_META) — only changes on redeploy, which
+   invalidates the ISR cache anyway. Long interval avoids racking up ISR
+   writes every day across every company page (see Vercel Usage: ISR Writes). */
+export const revalidate = 2592000; /* 30 days */
 
 export async function generateStaticParams() {
   return getAllBlogCompanySlugs().map((slug) => ({ slug }));

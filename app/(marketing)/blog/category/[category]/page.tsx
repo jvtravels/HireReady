@@ -19,7 +19,10 @@ import { buildBlogCategoryJsonLd, bucketFromSlug, getAllBlogCategorySlugs } from
  * Schema: BreadcrumbList + ItemList
  */
 
-export const revalidate = 86400;
+/* Content is static data (BLOG_META buckets) — only changes on redeploy,
+   which invalidates the ISR cache anyway. Long interval avoids racking up
+   ISR writes every day (see Vercel Usage: ISR Writes). */
+export const revalidate = 2592000; /* 30 days */
 
 export async function generateStaticParams() {
   return getAllBlogCategorySlugs().map((category) => ({ category }));

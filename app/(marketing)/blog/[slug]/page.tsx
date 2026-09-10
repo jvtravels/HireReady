@@ -88,7 +88,11 @@ export async function generateStaticParams() {
   return getAllBlogSlugs().map((slug) => ({ slug }));
 }
 
-export const revalidate = 86400;
+/* Content is a static data file (data/blog-posts.ts) — it only changes on
+   redeploy, which invalidates the ISR cache anyway. A long interval here
+   costs nothing in freshness but avoids racking up ISR writes on ~1,100
+   pages every day (see Vercel Usage: ISR Writes). */
+export const revalidate = 2592000; /* 30 days */
 export const dynamicParams = true;
 
 export default async function Page({ params }: { params: Promise<{ slug: string }> }) {

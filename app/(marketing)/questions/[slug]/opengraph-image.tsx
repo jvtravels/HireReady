@@ -5,7 +5,7 @@ import { COMPANY_LABEL } from "../../../../data/company-labels";
 // Not edge runtime — seo-pages.ts bundle exceeds 1 MB edge limit.
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
-export const revalidate = 86400; /* 24h, mirrors sibling page.tsx */
+export const revalidate = 2592000; /* 30 days, mirrors sibling page.tsx */
 
 /* No generateStaticParams: the 404s in prod were never a build-resource
    problem. Root cause (confirmed via `vercel build` + inspecting

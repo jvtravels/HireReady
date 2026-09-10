@@ -22,7 +22,10 @@ import { buildInterviewPrepCityJsonLd } from "./_jsonld";
  * Schema: BreadcrumbList + FAQPage
  */
 
-export const revalidate = 86400;
+/* Content is static data (data/city-pages.ts) — only changes on redeploy,
+   which invalidates the ISR cache anyway. Long interval avoids racking up
+   ISR writes every day (see Vercel Usage: ISR Writes). */
+export const revalidate = 2592000; /* 30 days */
 
 export async function generateStaticParams() {
   return getAllCitySlugs().map((city) => ({ city }));
