@@ -26,6 +26,17 @@ function slugToTitle(slug: string): string {
     .replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
+// A share of hand-written metaDescription entries in blog-meta.ts run past
+// the ~155-char SERP budget once a post covers several sub-topics — sent
+// through unmodified, Google truncates them mid-word/mid-sentence. Mirror
+// the word-boundary trim already used on /salary/[company].
+function truncateAtWord(text: string, maxLen: number): string {
+  if (text.length <= maxLen) return text;
+  const cut = text.slice(0, maxLen);
+  const lastSpace = cut.lastIndexOf(" ");
+  return (lastSpace > 0 ? cut.slice(0, lastSpace) : cut).replace(/[,;:/&-]+$/, "");
+}
+
 export async function generateMetadata({
   params,
 }: {
@@ -35,8 +46,9 @@ export async function generateMetadata({
   const meta = getBlogMetaBySlug(slug);
 
   const title = meta?.title ?? `${slugToTitle(slug)} | HireStepX Blog`;
-  const description = meta?.metaDescription ??
+  const rawDescription = meta?.metaDescription ??
     `Read "${slugToTitle(slug)}" on the HireStepX blog: interview tips, career advice, and job search strategies for Indian candidates.`;
+  const description = truncateAtWord(rawDescription, 155);
   const image = meta?.heroImage ?? "https://hirestepx.com/opengraph-image";
 
   /* Google truncates SERP titles around ~60 chars. The raw post title is

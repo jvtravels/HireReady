@@ -21,6 +21,33 @@ import { buildQuestionsPageModel } from "./_jsonld";
 
 export const revalidate = 86400; /* 24 h */
 
+/* GSC Coverage (Sept 2026): "Crawled - currently not indexed", 27 URLs.
+ * Of the 14 /questions/[slug] URLs in that report, 11 fall back to the
+ * generic focus-only question set (tier 3 in _jsonld.ts's questionsForPage)
+ * — byte-identical content shared with dozens of other unrelated-company
+ * pages, which is exactly the kind of duplicate content Google declines to
+ * index. The other 3 flagged slugs (atlassian-behavioral, swiggy-pm,
+ * razorpay-pm) already have genuine company-specific question sets and
+ * aren't duplicates, so they're deliberately left indexable here — the
+ * "not indexed" status for those has some other cause and noindexing them
+ * would just be giving up on real content.
+ * Scoped to exactly this list, not all tier-3 pages (269 of 326) — see
+ * SEO GSC fix discussion. Revisit per-slug as company-specific question
+ * banks are added. */
+const NOINDEX_THIN_DUPLICATE_SLUGS = new Set([
+  "jane-street-swe-interview-questions",
+  "deutsche-bank-system-design-interview-questions",
+  "lowes-india-software-engineer-interview-questions",
+  "bcg-case-interview-practice",
+  "cognizant-genc-interview-questions",
+  "jpmorgan-interview-questions-india",
+  "ibm-freshers-interview-questions",
+  "de-shaw-quant-interview-questions",
+  "phonepe-engineering-interview-questions",
+  "morgan-stanley-system-design-interview-questions",
+  "meesho-pm-interview-questions",
+]);
+
 /* ─── generateStaticParams — pre-renders every slug at build time ────────── */
 
 export async function generateStaticParams() {
@@ -64,6 +91,7 @@ export async function generateMetadata(
     description,
     keywords: page.metaKeywords.join(", "),
     alternates: { canonical: `/questions/${slug}` },
+    ...(NOINDEX_THIN_DUPLICATE_SLUGS.has(slug) ? { robots: { index: false, follow: true } } : {}),
     openGraph: {
       type: "article",
       title,

@@ -26,39 +26,57 @@ import { FooterDome } from "@/marketing-v2/FooterDome";
    the same fix here with the actual indexed question-set count. */
 const totalQuestionSets = SEO_PAGES.length;
 
-export const metadata: Metadata = {
-  title: `${totalQuestionSets} Real Interview Question Sets: 200+ Companies 2026`,
-  description:
-    `${totalQuestionSets} question sets covering Google, Amazon, TCS, Razorpay, Flipkart, McKinsey & 200+ more — practice out loud with AI voice feedback and get scored. 2 sessions free.`,
-  keywords: [
-    "interview questions",
-    "company interview questions",
-    "tcs interview questions",
-    "amazon interview questions",
-    "google interview questions",
-    "flipkart interview questions",
-    "razorpay interview questions",
-    "infosys campus interview",
-    "ai mock interview",
-  ].join(", "),
-  alternates: { canonical: "/questions" },
-  openGraph: {
-    type: "website",
-    title: `${totalQuestionSets} Real Interview Question Sets — 200+ Companies`,
+// ?page=N and ?focus=X render real subsets of SEO_PAGES with their own
+// URLs, but alternates.canonical always points back to plain /questions —
+// without a matching noindex, Google is free to index those variants
+// separately anyway (a self-canonical is a hint, not a directive), which
+// is exactly the kind of thin/duplicate paginated URL that shows up as
+// "Crawled - currently not indexed". follow keeps link equity flowing to
+// the real /questions/[slug] pages.
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: Promise<{ focus?: string; page?: string }>;
+}): Promise<Metadata> {
+  const { focus, page } = await searchParams;
+  const pageNum = Math.max(1, parseInt(page ?? "1", 10) || 1);
+  const isCanonicalVariant = pageNum === 1 && !focus;
+
+  return {
+    title: `${totalQuestionSets} Real Interview Question Sets: 200+ Companies 2026`,
     description:
-      `${totalQuestionSets} question sets for 200+ companies. Practice answering them out loud with AI voice feedback.`,
-    url: "https://hirestepx.com/questions",
-    siteName: "HireStepX",
-    locale: "en_IN",
-    images: [{ url: "https://hirestepx.com/opengraph-image", width: 1200, height: 630, alt: "HireStepX Interview Questions" }],
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: `${totalQuestionSets} Real Interview Question Sets — 200+ Companies`,
-    description: `${totalQuestionSets} question sets for 200+ companies. Practice with AI voice feedback.`,
-    images: ["https://hirestepx.com/opengraph-image"],
-  },
-};
+      `${totalQuestionSets} question sets covering Google, Amazon, TCS, Razorpay, Flipkart, McKinsey & 200+ more — practice out loud with AI voice feedback and get scored. 2 sessions free.`,
+    keywords: [
+      "interview questions",
+      "company interview questions",
+      "tcs interview questions",
+      "amazon interview questions",
+      "google interview questions",
+      "flipkart interview questions",
+      "razorpay interview questions",
+      "infosys campus interview",
+      "ai mock interview",
+    ].join(", "),
+    alternates: { canonical: "/questions" },
+    ...(isCanonicalVariant ? {} : { robots: { index: false, follow: true } }),
+    openGraph: {
+      type: "website",
+      title: `${totalQuestionSets} Real Interview Question Sets — 200+ Companies`,
+      description:
+        `${totalQuestionSets} question sets for 200+ companies. Practice answering them out loud with AI voice feedback.`,
+      url: "https://hirestepx.com/questions",
+      siteName: "HireStepX",
+      locale: "en_IN",
+      images: [{ url: "https://hirestepx.com/opengraph-image", width: 1200, height: 630, alt: "HireStepX Interview Questions" }],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: `${totalQuestionSets} Real Interview Question Sets — 200+ Companies`,
+      description: `${totalQuestionSets} question sets for 200+ companies. Practice with AI voice feedback.`,
+      images: ["https://hirestepx.com/opengraph-image"],
+    },
+  };
+}
 
 export default async function QuestionsIndexRoute({
   searchParams,

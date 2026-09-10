@@ -77,7 +77,25 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.88,
     },
   ];
-  const questionEntries: MetadataRoute.Sitemap = SEO_PAGES.map((p) => ({
+  /* Mirrors NOINDEX_THIN_DUPLICATE_SLUGS in questions/[slug]/page.tsx —
+     11 GSC-flagged ("Crawled - not indexed") pages that fall back to the
+     generic tier-3 question set. Don't submit noindexed URLs for crawling. */
+  const NOINDEX_THIN_DUPLICATE_SLUGS = new Set([
+    "jane-street-swe-interview-questions",
+    "deutsche-bank-system-design-interview-questions",
+    "lowes-india-software-engineer-interview-questions",
+    "bcg-case-interview-practice",
+    "cognizant-genc-interview-questions",
+    "jpmorgan-interview-questions-india",
+    "ibm-freshers-interview-questions",
+    "de-shaw-quant-interview-questions",
+    "phonepe-engineering-interview-questions",
+    "morgan-stanley-system-design-interview-questions",
+    "meesho-pm-interview-questions",
+  ]);
+  const questionEntries: MetadataRoute.Sitemap = SEO_PAGES.filter(
+    (p) => !NOINDEX_THIN_DUPLICATE_SLUGS.has(p.slug),
+  ).map((p) => ({
     url: `${baseUrl}/questions/${p.slug}`,
     lastModified: seoPagesLastModified,
     changeFrequency: "monthly" as const,

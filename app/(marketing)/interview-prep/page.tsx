@@ -29,38 +29,56 @@ import { tokens as t, fonts } from "@/auth/_tokens";
 
 export const revalidate = 86400;
 
-export const metadata: Metadata = {
-  title: "Interview Preparation Guide India 2026 | HireStepX",
-  description:
-    "Interview prep guide for India 2026. AI mock interviews for TCS, Infosys, Google, Amazon, Flipkart, and 200+ companies. All formats covered.",
-  keywords: [
-    "interview preparation India 2026",
-    "how to prepare for job interview India",
-    "interview tips freshers India",
-    "mock interview practice India",
-    "ai mock interview India",
-    "campus placement preparation",
-    "technical interview preparation",
-    "behavioral interview preparation India",
-  ].join(", "),
-  alternates: { canonical: "/interview-prep" },
-  openGraph: {
-    type: "article",
+// Same self-canonical-but-not-noindexed gap that /questions and /salary
+// had: ?page=N renders a distinct, thin card-grid URL (no guide prose —
+// that only renders on page 1) while alternates.canonical always points
+// back to plain /interview-prep. A self-canonical is a hint, not a
+// directive, so Google is free to index those paginated URLs on their own
+// merits — which are weak, given the content mismatch with the declared
+// title/description. Add the matching noindex so they can't get flagged
+// as duplicate/thin ("Crawled - currently not indexed") on their own.
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}): Promise<Metadata> {
+  const { page } = await searchParams;
+  const pageNum = Math.max(1, parseInt(page ?? "1", 10) || 1);
+
+  return {
     title: "Interview Preparation Guide India 2026 | HireStepX",
     description:
-      "Complete interview preparation guide for Indian job seekers. AI mock interviews for 200+ companies, 2 sessions free.",
-    url: "https://hirestepx.com/interview-prep",
-    siteName: "HireStepX",
-    locale: "en_IN",
-    images: [{ url: "https://hirestepx.com/opengraph-image", width: 1200, height: 630, alt: "Interview Preparation Guide India 2026 | HireStepX" }],
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Interview Preparation Guide India 2026 | HireStepX",
-    description: "Complete guide + AI mock interview practice for 200+ Indian companies.",
-    images: ["https://hirestepx.com/opengraph-image"],
-  },
-};
+      "Interview prep guide for India 2026. AI mock interviews for TCS, Infosys, Google, Amazon, Flipkart, and 200+ companies. All formats covered.",
+    keywords: [
+      "interview preparation India 2026",
+      "how to prepare for job interview India",
+      "interview tips freshers India",
+      "mock interview practice India",
+      "ai mock interview India",
+      "campus placement preparation",
+      "technical interview preparation",
+      "behavioral interview preparation India",
+    ].join(", "),
+    alternates: { canonical: "/interview-prep" },
+    ...(pageNum === 1 ? {} : { robots: { index: false, follow: true } }),
+    openGraph: {
+      type: "article",
+      title: "Interview Preparation Guide India 2026 | HireStepX",
+      description:
+        "Complete interview preparation guide for Indian job seekers. AI mock interviews for 200+ companies, 2 sessions free.",
+      url: "https://hirestepx.com/interview-prep",
+      siteName: "HireStepX",
+      locale: "en_IN",
+      images: [{ url: "https://hirestepx.com/opengraph-image", width: 1200, height: 630, alt: "Interview Preparation Guide India 2026 | HireStepX" }],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: "Interview Preparation Guide India 2026 | HireStepX",
+      description: "Complete guide + AI mock interview practice for 200+ Indian companies.",
+      images: ["https://hirestepx.com/opengraph-image"],
+    },
+  };
+}
 
 /* ── Company groupings ──────────────────────────────────────────────── */
 const COMPANY_LABEL = ALL_LABELS;

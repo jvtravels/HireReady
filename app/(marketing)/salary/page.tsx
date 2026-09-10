@@ -11,7 +11,11 @@ import { tokens as t, fonts } from "@/auth/_tokens";
 /* Accessing searchParams makes this page dynamic — intentional, mirrors
    app/(marketing)/questions/page.tsx. The ?page= param drives real
    crawlable pagination via <Link href="/salary?page=N"> in SalaryHubPage. */
-export function generateMetadata(): Metadata {
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}): Promise<Metadata> {
   const count = SALARY_SEO_PAGES.length;
   /* GSC (Aug 2026): 326 impressions, 0 clicks, avg pos ~24 — same pattern
      as /questions. The old title carried no number at all; the individual
@@ -21,6 +25,14 @@ export function generateMetadata(): Metadata {
      already computed for ogDesc below — put it in the title too. */
   const title = `${count} Company Salary Guides India 2026 | HireStepX`;
   const ogDesc = `Salary ranges for ${count} companies, total CTC sourced from AmbitionBox and Glassdoor.`;
+
+  // Same self-canonical-but-not-noindexed gap as /questions: ?page=N is a
+  // real, separately-crawlable URL that only ever points its canonical
+  // back to plain /salary — add the matching noindex so Google doesn't
+  // treat each page of the directory as its own thin, duplicate result.
+  const { page } = await searchParams;
+  const pageNum = Math.max(1, parseInt(page ?? "1", 10) || 1);
+
   return {
     title,
     description:
@@ -37,6 +49,7 @@ export function generateMetadata(): Metadata {
       "company salary guide India",
     ],
     alternates: { canonical: "/salary" },
+    ...(pageNum === 1 ? {} : { robots: { index: false, follow: true } }),
     openGraph: {
       type: "website",
       title,
